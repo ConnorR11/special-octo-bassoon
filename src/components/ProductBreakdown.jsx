@@ -1,3 +1,4 @@
+import React from "react"
 import { money } from "../utils/formatters"
 
 function ProductBreakdown({ contracts }) {
