@@ -93,7 +93,7 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
             title="Marketing"
             icon={Target}
             open={openFolders.marketing}
-            onClick={() => toggleFolder("sales")}
+            onClick={() => toggleFolder("marketing")}
           >
             <NavItem
               icon={FileText}
