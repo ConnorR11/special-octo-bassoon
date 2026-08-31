@@ -1,59 +1,333 @@
-import React from "react"
+import React, { useState } from "react"
 
 import {
   LayoutDashboard,
   FileText,
   Calculator,
-  Menu,
+  ChevronDown,
+  ChevronRight,
+  Sun,
+  Users,
+  BarChart3,
+  CalendarDays,
+  Wrench,
+  PoundSterling,
+  CreditCard,
+  Headphones,
+  Settings,
+  Target,
+  ClipboardCheck,
 } from "lucide-react"
 
 function Sidebar({ page, setPage, mobile, setMobile }) {
-  const navigate = (nextPage) => {
-    setPage(nextPage)
+  const [openFolders, setOpenFolders] = useState({
+    sales: true,
+    installation: false,
+    finance: false,
+    solar: true,
+    customerService: false,
+    admin: false,
+  })
+
+  const toggleFolder = (folder) => {
+    setOpenFolders((current) => ({
+      ...current,
+      [folder]: !current[folder],
+    }))
+  }
+
+  const navigate = (pageName) => {
+    setPage(pageName)
     setMobile(false)
   }
 
+  const isActive = (pageName) => page === pageName
+
   return (
-    <aside className={mobile ? "sidebar open" : "sidebar"}>
-      <div className="brand">
-        <div className="logo">SC</div>
-        <div>
-          <b>Sold Contracts</b>
-          <span>Customer CRM</span>
+    <>
+      {mobile && (
+        <div
+          className="sidebar-overlay"
+          onClick={() => setMobile(false)}
+        />
+      )}
+
+      <aside className={`sidebar ${mobile ? "sidebar-open" : ""}`}>
+        <div className="sidebar-brand">
+          <div className="brand-mark">C</div>
+
+          <div>
+            <strong>CRM</strong>
+            <span>Home Improvements</span>
+          </div>
         </div>
-      </div>
 
-      <nav>
-        <button
-          className={page === "dashboard" ? "active" : ""}
-          onClick={() => navigate("dashboard")}
-        >
-          <LayoutDashboard size={18} />
-          Dashboard
-        </button>
+        <nav className="sidebar-nav">
 
-        <button
-          className={page === "contracts" ? "active" : ""}
-          onClick={() => navigate("contracts")}
-        >
-          <FileText size={18} />
-          Contracts
-        </button>
+          {/* DASHBOARD */}
 
-        <button
-          className={page === "epvs" ? "active" : ""}
-          onClick={() => navigate("epvs")}
-        >
-          <Calculator size={18} />
-          EPVS Calculator
-        </button>
-      </nav>
+          <button
+            className={`sidebar-item ${
+              isActive("dashboard") ? "active" : ""
+            }`}
+            onClick={() => navigate("dashboard")}
+          >
+            <LayoutDashboard size={18} />
+            <span>Dashboard</span>
+          </button>
 
-      <div className="sidebar-bottom">
-        <span>Supabase connected</span>
-        <i />
-      </div>
-    </aside>
+          <div className="sidebar-divider" />
+
+          {/* SALES */}
+
+          <Folder
+            title="Sales"
+            icon={Target}
+            open={openFolders.sales}
+            onClick={() => toggleFolder("sales")}
+          >
+            <NavItem
+              icon={FileText}
+              label="Sold Contracts"
+              active={isActive("contracts")}
+              onClick={() => navigate("contracts")}
+            />
+
+            <NavItem
+              icon={Users}
+              label="Customers"
+              disabled
+            />
+
+            <NavItem
+              icon={BarChart3}
+              label="Sales Performance"
+              disabled
+            />
+          </Folder>
+
+          {/* SURVEY & INSTALLATION */}
+
+          <Folder
+            title="Survey & Installation"
+            icon={Wrench}
+            open={openFolders.installation}
+            onClick={() => toggleFolder("installation")}
+          >
+            <NavItem
+              icon={ClipboardCheck}
+              label="Surveys"
+              disabled
+            />
+
+            <NavItem
+              icon={CalendarDays}
+              label="Installations"
+              disabled
+            />
+
+            <NavItem
+              icon={Wrench}
+              label="Installation Issues"
+              disabled
+            />
+          </Folder>
+
+          {/* FINANCE */}
+
+          <Folder
+            title="Finance"
+            icon={PoundSterling}
+            open={openFolders.finance}
+            onClick={() => toggleFolder("finance")}
+          >
+            <NavItem
+              icon={PoundSterling}
+              label="Revenue"
+              disabled
+            />
+
+            <NavItem
+              icon={CreditCard}
+              label="Payments"
+              disabled
+            />
+
+            <NavItem
+              icon={FileText}
+              label="Invoices"
+              disabled
+            />
+          </Folder>
+
+          {/* SOLAR / EPVS */}
+
+          <Folder
+            title="Solar / EPVS"
+            icon={Sun}
+            open={openFolders.solar}
+            onClick={() => toggleFolder("solar")}
+          >
+            <NavItem
+              icon={Calculator}
+              label="EPVS Calculator"
+              active={isActive("epvs")}
+              onClick={() => navigate("epvs")}
+            />
+
+            <NavItem
+              icon={FileText}
+              label="EPVS Calculations"
+              disabled
+            />
+
+            <NavItem
+              icon={Sun}
+              label="Solar Systems"
+              disabled
+            />
+          </Folder>
+
+          {/* CUSTOMER SERVICE */}
+
+          <Folder
+            title="Customer Service"
+            icon={Headphones}
+            open={openFolders.customerService}
+            onClick={() => toggleFolder("customerService")}
+          >
+            <NavItem
+              icon={Users}
+              label="Customers"
+              disabled
+            />
+
+            <NavItem
+              icon={Headphones}
+              label="Follow-ups"
+              disabled
+            />
+
+            <NavItem
+              icon={FileText}
+              label="Complaints"
+              disabled
+            />
+          </Folder>
+
+          {/* ADMIN */}
+
+          <Folder
+            title="Administration"
+            icon={Settings}
+            open={openFolders.admin}
+            onClick={() => toggleFolder("admin")}
+          >
+            <NavItem
+              icon={Users}
+              label="Users"
+              disabled
+            />
+
+            <NavItem
+              icon={Settings}
+              label="Settings"
+              disabled
+            />
+          </Folder>
+
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="sidebar-footer-icon">
+            <Settings size={16} />
+          </div>
+
+          <div>
+            <strong>CRM System</strong>
+            <span>v1.0</span>
+          </div>
+        </div>
+      </aside>
+    </>
+  )
+}
+
+
+/* -------------------------------- */
+/* FOLDER                            */
+/* -------------------------------- */
+
+function Folder({
+  title,
+  icon: Icon,
+  open,
+  onClick,
+  children,
+}) {
+  return (
+    <div className="sidebar-folder">
+
+      <button
+        className="sidebar-folder-header"
+        onClick={onClick}
+        type="button"
+      >
+        <span className="sidebar-folder-left">
+          <Icon size={17} />
+          <span>{title}</span>
+        </span>
+
+        {open ? (
+          <ChevronDown size={15} />
+        ) : (
+          <ChevronRight size={15} />
+        )}
+      </button>
+
+      {open && (
+        <div className="sidebar-folder-items">
+          {children}
+        </div>
+      )}
+
+    </div>
+  )
+}
+
+
+/* -------------------------------- */
+/* NAV ITEM                          */
+/* -------------------------------- */
+
+function NavItem({
+  icon: Icon,
+  label,
+  active,
+  onClick,
+  disabled,
+}) {
+  return (
+    <button
+      type="button"
+      className={`sidebar-subitem ${
+        active ? "active" : ""
+      } ${disabled ? "disabled" : ""}`}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+    >
+      <span className="sidebar-subitem-icon">
+        <Icon size={15} />
+      </span>
+
+      <span>{label}</span>
+
+      {disabled && (
+        <span className="coming-soon">
+          Soon
+        </span>
+      )}
+    </button>
   )
 }
 
