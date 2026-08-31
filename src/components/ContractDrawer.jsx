@@ -1,4 +1,6 @@
+import React from "react"
 import { X } from "lucide-react"
+
 import { formatDate, money, statusLabel } from "../utils/formatters"
 
 function ContractDrawer({ contract, close }) {
