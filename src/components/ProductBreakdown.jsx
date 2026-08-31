@@ -1,130 +1,115 @@
-import React, { useMemo } from "react"
-
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-} from "recharts"
-
+import React from "react"
 import { money } from "../utils/formatters"
 
 function ProductBreakdown({ contracts }) {
-  const data = useMemo(() => {
-    const months = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ]
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ]
 
-    const totals = months.map((month) => ({
-      month,
-      value: 0,
-    }))
+  const monthlyTotals = months.map((month, index) => {
+    const total = contracts
+      .filter((contract) => {
+        if (!contract.sale_date) return false
 
-    contracts.forEach((contract) => {
-      if (!contract.sale_date) return
+        const date = new Date(contract.sale_date)
 
-      const date = new Date(contract.sale_date)
-
-      if (Number.isNaN(date.getTime())) return
-
-      if (date.getFullYear() !== 2026) return
-
-      const monthIndex = date.getMonth()
-
-      totals[monthIndex].value += Number(
-        contract.deal_value || 0
+        return (
+          date.getFullYear() === 2026 &&
+          date.getMonth() === index
+        )
+      })
+      .reduce(
+        (sum, contract) =>
+          sum + Number(contract.deal_value || 0),
+        0
       )
-    })
 
-    return totals
-  }, [contracts])
+    return {
+      month,
+      value: total,
+    }
+  })
 
-  const total = data.reduce(
-    (sum, month) => sum + month.value,
+  const max = Math.max(
+    ...monthlyTotals.map((item) => item.value),
+    1
+  )
+
+  const total2026 = monthlyTotals.reduce(
+    (sum, item) => sum + item.value,
     0
   )
 
   return (
-    <div className="annual-sales-chart">
-      <div className="annual-sales-header">
+    <div className="breakdown">
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: "20px",
+        }}
+      >
         <div>
-          <h2>2026 sales performance</h2>
-          <p>Contract value by month</p>
+          <h2 style={{ margin: 0 }}>
+            2026 Sales
+          </h2>
+
+          <p>
+            Total contract value by month
+          </p>
         </div>
 
-        <div className="annual-sales-total">
-          <span>2026 total</span>
-          <strong>{money(total)}</strong>
-        </div>
-      </div>
-
-      <div className="annual-sales-graph">
-        <ResponsiveContainer width="100%" height={320}>
-          <BarChart
-            data={data}
-            margin={{
-              top: 10,
-              right: 10,
-              left: 10,
-              bottom: 5,
+        <div style={{ textAlign: "right" }}>
+          <span
+            style={{
+              display: "block",
+              color: "#888",
+              fontSize: "10px",
             }}
           >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              vertical={false}
-            />
+            2026 total
+          </span>
 
-            <XAxis
-              dataKey="month"
-              tickFormatter={(value) =>
-                value.substring(0, 3)
-              }
-              tick={{ fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-            />
-
-            <YAxis
-              tickFormatter={(value) =>
-                `£${Number(value).toLocaleString()}`
-              }
-              tick={{ fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-              width={75}
-            />
-
-            <Tooltip
-              formatter={(value) => [
-                money(value),
-                "Contract value",
-              ]}
-              labelFormatter={(label) => label}
-            />
-
-            <Bar
-              dataKey="value"
-              name="Contract value"
-              fill="#172554"
-              radius={[5, 5, 0, 0]}
-            />
-          </BarChart>
-        </ResponsiveContainer>
+          <strong
+            style={{
+              display: "block",
+              fontSize: "18px",
+              marginTop: "3px",
+            }}
+          >
+            {money(total2026)}
+          </strong>
+        </div>
       </div>
+
+      {monthlyTotals.map(({ month, value }) => (
+        <div className="bar-row" key={month}>
+          <div>
+            <span>{month}</span>
+            <b>{money(value)}</b>
+          </div>
+
+          <div className="bar">
+            <i
+              style={{
+                width: `${(value / max) * 100}%`,
+              }}
+            />
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
