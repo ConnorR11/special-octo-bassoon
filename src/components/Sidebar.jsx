@@ -17,12 +17,28 @@ import {
   Settings,
   Target,
   ClipboardCheck,
+  Megaphone,
+  Phone,
+  Handshake,
+  Trophy,
+  ClipboardList,
+  AlertTriangle,
+  Receipt,
+  PanelsTopLeft,
+  UserRound,
+  MessageCircle,
+  Files,
+  FilePlus,
+  UserCog,
+  FileCheck,
 } from "lucide-react"
 
+
 function Sidebar({ page, setPage, mobile, setMobile }) {
+
   const [openFolders, setOpenFolders] = useState({
     sales: false,
-    marketing:false,
+    marketing: false,
     installation: false,
     finance: false,
     solar: false,
@@ -31,6 +47,7 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
     admin: false,
   })
 
+
   const toggleFolder = (folder) => {
     setOpenFolders((current) => ({
       ...current,
@@ -38,12 +55,15 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
     }))
   }
 
+
   const navigate = (pageName) => {
     setPage(pageName)
     setMobile(false)
   }
 
+
   const isActive = (pageName) => page === pageName
+
 
   return (
     <>
@@ -54,23 +74,38 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
         />
       )}
 
+
       <aside
         className={`sidebar ${
           mobile ? "sidebar-open" : ""
         }`}
       >
-        {/* BRAND */}
+
+
+        {/* ================================= */}
+        {/* BRAND                             */}
+        {/* ================================= */}
 
         <div className="sidebar-brand">
-          <div className="brand-mark">C</div>
+
+          <div className="brand-mark">
+            C
+          </div>
 
           <div>
             <strong>CRM</strong>
             <span>Home Improvements</span>
           </div>
+
         </div>
 
+
+        {/* ================================= */}
+        {/* NAVIGATION                        */}
+        {/* ================================= */}
+
         <nav className="sidebar-nav">
+
 
           {/* DASHBOARD */}
 
@@ -82,92 +117,110 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
             onClick={() => navigate("dashboard")}
           >
             <LayoutDashboard size={18} />
-            <span>Dashboard</span>
+
+            <span>
+              Dashboard
+            </span>
           </button>
+
 
           <div className="sidebar-divider" />
 
-          {/* MARKETING */}
+
+          {/* ================================= */}
+          {/* MARKETING                         */}
+          {/* ================================= */}
 
           <Folder
             title="Marketing"
-            icon={Target}
+            icon={Megaphone}
             open={openFolders.marketing}
-            onClick={() => toggleFolder("marketing")}
+            onClick={() =>
+              toggleFolder("marketing")
+            }
           >
+
             <NavItem
-              icon={FileText}
+              icon={Target}
               label="Leads"
-              active={isActive("contracts")}
-              onClick={() => navigate("contracts")}
+              disabled
             />
 
             <NavItem
-              icon={Users}
+              icon={Phone}
               label="Call Log"
               disabled
             />
 
             <NavItem
-              icon={Users}
+              icon={CalendarDays}
               label="Booked Leads"
               disabled
             />
 
             <NavItem
-              icon={Users}
+              icon={Handshake}
               label="Commissions"
               disabled
             />
 
             <NavItem
-              icon={Users}
+              icon={Trophy}
               label="Canvasser KPI"
               disabled
             />
+
           </Folder>
 
-          {/* SALES */}
+
+          {/* ================================= */}
+          {/* SALES                             */}
+          {/* ================================= */}
 
           <Folder
             title="Sales"
             icon={Target}
             open={openFolders.sales}
-            onClick={() => toggleFolder("sales")}
+            onClick={() =>
+              toggleFolder("sales")
+            }
           >
+
             <NavItem
               icon={FileText}
               label="Sold Contracts"
               active={isActive("contracts")}
-              onClick={() => navigate("contracts")}
+              onClick={() =>
+                navigate("contracts")
+              }
             />
 
             <NavItem
-              icon={Users}
+              icon={ClipboardList}
               label="Leads To Issue"
               disabled
             />
 
             <NavItem
-              icon={Users}
+              icon={CalendarDays}
               label="Booked Leads"
               disabled
             />
 
             <NavItem
-              icon={Users}
+              icon={FileCheck}
               label="ECOF"
               disabled
             />
 
             <NavItem
-              icon={Users}
+              icon={PoundSterling}
               label="Commissions"
               disabled
             />
 
             <NavItem
-              icon={Users}
+              icon={Trophy}
               label="Sales KPI"
               disabled
             />
@@ -177,11 +230,13 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
               label="Sales Performance"
               disabled
             />
+
           </Folder>
 
-          
 
-          {/* SURVEY & INSTALLATION */}
+          {/* ================================= */}
+          {/* SURVEY & INSTALLATION             */}
+          {/* ================================= */}
 
           <Folder
             title="Survey & Installation"
@@ -191,6 +246,7 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
               toggleFolder("installation")
             }
           >
+
             <NavItem
               icon={ClipboardCheck}
               label="Surveys"
@@ -204,13 +260,17 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
             />
 
             <NavItem
-              icon={Wrench}
+              icon={AlertTriangle}
               label="Installation Issues"
               disabled
             />
+
           </Folder>
 
-          {/* FINANCE */}
+
+          {/* ================================= */}
+          {/* FINANCE                           */}
+          {/* ================================= */}
 
           <Folder
             title="Finance"
@@ -220,6 +280,7 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
               toggleFolder("finance")
             }
           >
+
             <NavItem
               icon={PoundSterling}
               label="Revenue"
@@ -233,13 +294,17 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
             />
 
             <NavItem
-              icon={FileText}
+              icon={Receipt}
               label="Invoices"
               disabled
             />
+
           </Folder>
 
-          {/* SOLAR / EPVS */}
+
+          {/* ================================= */}
+          {/* SOLAR / EPVS                     */}
+          {/* ================================= */}
 
           <Folder
             title="Solar / EPVS"
@@ -249,11 +314,14 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
               toggleFolder("solar")
             }
           >
+
             <NavItem
               icon={Calculator}
               label="EPVS Calculator"
               active={isActive("epvs")}
-              onClick={() => navigate("epvs")}
+              onClick={() =>
+                navigate("epvs")
+              }
             />
 
             <NavItem
@@ -263,13 +331,17 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
             />
 
             <NavItem
-              icon={Sun}
+              icon={PanelsTopLeft}
               label="Solar Systems"
               disabled
             />
+
           </Folder>
 
-          {/* CUSTOMER SERVICE */}
+
+          {/* ================================= */}
+          {/* CUSTOMER SERVICE                  */}
+          {/* ================================= */}
 
           <Folder
             title="Customer Service"
@@ -279,35 +351,41 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
               toggleFolder("customerService")
             }
           >
+
             <NavItem
-              icon={Users}
+              icon={UserRound}
               label="Customers"
               disabled
             />
 
             <NavItem
-              icon={Headphones}
+              icon={MessageCircle}
               label="Follow-ups"
               disabled
             />
 
             <NavItem
-              icon={FileText}
+              icon={AlertTriangle}
               label="Complaints"
               disabled
             />
+
           </Folder>
 
-          {/* DOCUMENTS */}
+
+          {/* ================================= */}
+          {/* DOCUMENTS                         */}
+          {/* ================================= */}
 
           <Folder
             title="Documents"
-            icon={FileText}
+            icon={Files}
             open={openFolders.documents}
             onClick={() =>
               toggleFolder("documents")
             }
           >
+
             <NavItem
               icon={FileText}
               label="Company Brochures"
@@ -315,19 +393,23 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
             />
 
             <NavItem
-              icon={FileText}
+              icon={Files}
               label="Customer Documents"
               disabled
             />
 
             <NavItem
-              icon={FileText}
+              icon={FilePlus}
               label="Templates"
               disabled
             />
+
           </Folder>
 
-          {/* ADMINISTRATION */}
+
+          {/* ================================= */}
+          {/* ADMINISTRATION                    */}
+          {/* ================================= */}
 
           <Folder
             title="Administration"
@@ -337,8 +419,9 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
               toggleFolder("admin")
             }
           >
+
             <NavItem
-              icon={Users}
+              icon={UserCog}
               label="Users"
               disabled
             />
@@ -348,22 +431,36 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
               label="Settings"
               disabled
             />
+
           </Folder>
+
 
         </nav>
 
-        {/* FOOTER */}
+
+        {/* ================================= */}
+        {/* FOOTER                            */}
+        {/* ================================= */}
 
         <div className="sidebar-footer">
+
           <div className="sidebar-footer-icon">
             <Settings size={16} />
           </div>
 
           <div>
-            <strong>CRM System</strong>
-            <span>v1.0</span>
+            <strong>
+              CRM System
+            </strong>
+
+            <span>
+              v1.0
+            </span>
           </div>
+
         </div>
+
+
       </aside>
     </>
   )
@@ -381,6 +478,7 @@ function Folder({
   onClick,
   children,
 }) {
+
   return (
     <div className="sidebar-folder">
 
@@ -389,13 +487,17 @@ function Folder({
         className="sidebar-folder-header"
         onClick={onClick}
       >
+
         <span className="sidebar-folder-left">
 
           <Icon size={17} />
 
-          <span>{title}</span>
+          <span>
+            {title}
+          </span>
 
         </span>
+
 
         {open ? (
           <ChevronDown size={15} />
@@ -404,6 +506,7 @@ function Folder({
         )}
 
       </button>
+
 
       {open && (
         <div className="sidebar-folder-items">
@@ -427,6 +530,7 @@ function NavItem({
   onClick,
   disabled = false,
 }) {
+
   return (
     <button
       type="button"
@@ -436,23 +540,34 @@ function NavItem({
         disabled ? "disabled" : ""
       }`}
       onClick={
-        disabled ? undefined : onClick
+        disabled
+          ? undefined
+          : onClick
       }
       disabled={disabled}
     >
+
       <span className="sidebar-subitem-icon">
+
         <Icon size={15} />
+
       </span>
 
-      <span>{label}</span>
+
+      <span>
+        {label}
+      </span>
+
 
       {disabled && (
         <span className="coming-soon">
           Soon
         </span>
       )}
+
     </button>
   )
 }
+
 
 export default Sidebar
