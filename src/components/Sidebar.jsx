@@ -26,6 +26,7 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
     finance: false,
     solar: true,
     customerService: false,
+    documents: false,
     admin: false,
   })
 
@@ -52,7 +53,13 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
         />
       )}
 
-      <aside className={`sidebar ${mobile ? "sidebar-open" : ""}`}>
+      <aside
+        className={`sidebar ${
+          mobile ? "sidebar-open" : ""
+        }`}
+      >
+        {/* BRAND */}
+
         <div className="sidebar-brand">
           <div className="brand-mark">C</div>
 
@@ -67,6 +74,7 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
           {/* DASHBOARD */}
 
           <button
+            type="button"
             className={`sidebar-item ${
               isActive("dashboard") ? "active" : ""
             }`}
@@ -136,7 +144,9 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
             title="Survey & Installation"
             icon={Wrench}
             open={openFolders.installation}
-            onClick={() => toggleFolder("installation")}
+            onClick={() =>
+              toggleFolder("installation")
+            }
           >
             <NavItem
               icon={ClipboardCheck}
@@ -163,7 +173,9 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
             title="Finance"
             icon={PoundSterling}
             open={openFolders.finance}
-            onClick={() => toggleFolder("finance")}
+            onClick={() =>
+              toggleFolder("finance")
+            }
           >
             <NavItem
               icon={PoundSterling}
@@ -190,7 +202,9 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
             title="Solar / EPVS"
             icon={Sun}
             open={openFolders.solar}
-            onClick={() => toggleFolder("solar")}
+            onClick={() =>
+              toggleFolder("solar")
+            }
           >
             <NavItem
               icon={Calculator}
@@ -218,7 +232,9 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
             title="Customer Service"
             icon={Headphones}
             open={openFolders.customerService}
-            onClick={() => toggleFolder("customerService")}
+            onClick={() =>
+              toggleFolder("customerService")
+            }
           >
             <NavItem
               icon={Users}
@@ -239,27 +255,44 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
             />
           </Folder>
 
-          {/* Documents */}
+          {/* DOCUMENTS */}
 
           <Folder
             title="Documents"
-            icon={Settings}
-            open={openFolders.admin}
-            onClick={() => toggleFolder("admin")}
+            icon={FileText}
+            open={openFolders.documents}
+            onClick={() =>
+              toggleFolder("documents")
+            }
           >
             <NavItem
-              icon={Users}
+              icon={FileText}
               label="Company Brochures"
               disabled
             />
 
-          {/* ADMIN */}
+            <NavItem
+              icon={FileText}
+              label="Customer Documents"
+              disabled
+            />
+
+            <NavItem
+              icon={FileText}
+              label="Templates"
+              disabled
+            />
+          </Folder>
+
+          {/* ADMINISTRATION */}
 
           <Folder
             title="Administration"
             icon={Settings}
             open={openFolders.admin}
-            onClick={() => toggleFolder("admin")}
+            onClick={() =>
+              toggleFolder("admin")
+            }
           >
             <NavItem
               icon={Users}
@@ -275,6 +308,8 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
           </Folder>
 
         </nav>
+
+        {/* FOOTER */}
 
         <div className="sidebar-footer">
           <div className="sidebar-footer-icon">
@@ -292,9 +327,9 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
 }
 
 
-/* -------------------------------- */
+/* ================================= */
 /* FOLDER                            */
-/* -------------------------------- */
+/* ================================= */
 
 function Folder({
   title,
@@ -307,13 +342,16 @@ function Folder({
     <div className="sidebar-folder">
 
       <button
+        type="button"
         className="sidebar-folder-header"
         onClick={onClick}
-        type="button"
       >
         <span className="sidebar-folder-left">
+
           <Icon size={17} />
+
           <span>{title}</span>
+
         </span>
 
         {open ? (
@@ -321,6 +359,7 @@ function Folder({
         ) : (
           <ChevronRight size={15} />
         )}
+
       </button>
 
       {open && (
@@ -334,24 +373,28 @@ function Folder({
 }
 
 
-/* -------------------------------- */
+/* ================================= */
 /* NAV ITEM                          */
-/* -------------------------------- */
+/* ================================= */
 
 function NavItem({
   icon: Icon,
   label,
-  active,
+  active = false,
   onClick,
-  disabled,
+  disabled = false,
 }) {
   return (
     <button
       type="button"
       className={`sidebar-subitem ${
         active ? "active" : ""
-      } ${disabled ? "disabled" : ""}`}
-      onClick={disabled ? undefined : onClick}
+      } ${
+        disabled ? "disabled" : ""
+      }`}
+      onClick={
+        disabled ? undefined : onClick
+      }
       disabled={disabled}
     >
       <span className="sidebar-subitem-icon">
