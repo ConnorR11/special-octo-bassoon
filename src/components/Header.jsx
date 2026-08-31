@@ -1,3 +1,4 @@
+import React from "react"
 import { Menu, RefreshCw } from "lucide-react"
 
 function Header({ page, setMobile, onRefresh }) {
