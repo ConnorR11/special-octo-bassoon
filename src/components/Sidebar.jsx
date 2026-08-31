@@ -92,7 +92,7 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
           <Folder
             title="Marketing"
             icon={Target}
-            open={openFolders.Marketing}
+            open={openFolders.marketing}
             onClick={() => toggleFolder("sales")}
           >
             <NavItem
