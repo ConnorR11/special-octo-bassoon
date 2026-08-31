@@ -32,7 +32,7 @@ function App() {
     const { data, error: supabaseError } = await supabase
       .from("sold_contracts")
       .select("*")
-      .order("sale_date", { ascending: false })
+      .order("sale_date", { ascending: true })
 
     if (supabaseError) {
       setError(supabaseError.message)
