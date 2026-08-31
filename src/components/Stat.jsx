@@ -1,3 +1,5 @@
+import React from "react"
+
 function Stat({ icon, label, value }) {
   return (
     <div className="stat">
