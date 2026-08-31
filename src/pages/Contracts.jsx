@@ -1,3 +1,5 @@
+import React from "react"
+
 import ContractsTable from "../components/ContractsTable"
 
 function Contracts(props) {
