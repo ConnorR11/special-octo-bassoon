@@ -1,13 +1,21 @@
+import React from "react"
+
 import {
   FileText,
   PoundSterling,
   CalendarDays,
   ChevronRight,
 } from "lucide-react"
+
 import Stat from "../components/Stat"
 import SalesChart from "../components/SalesChart"
 import ProductBreakdown from "../components/ProductBreakdown"
-import { formatDate, getInitials, money } from "../utils/formatters"
+
+import {
+  formatDate,
+  getInitials,
+  money,
+} from "../utils/formatters"
 
 function Dashboard({
   contracts,
