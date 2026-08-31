@@ -1,5 +1,11 @@
+import React from "react"
 import { Search } from "lucide-react"
-import { formatDate, getInitials, money, statusLabel } from "../utils/formatters"
+import {
+  formatDate,
+  getInitials,
+  money,
+  statusLabel,
+} from "../utils/formatters"
 
 function ContractsTable({
   filtered,
