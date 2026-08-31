@@ -8,119 +8,157 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
 } from "recharts"
 
 import { money } from "../utils/formatters"
 
 function SalesChart({ contracts }) {
-  const chart = useMemo(() => {
-    const months = []
-    const now = new Date()
-
-    for (let i = 11; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
-
-      months.push({
-        key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
-        month: date.toLocaleDateString("en-GB", { month: "short" }),
-      })
-    }
-
-    const products = [
-      ...new Set(
-        contracts.map((contract) => contract.product).filter(Boolean)
-      ),
+  const chartData = useMemo(() => {
+    const months = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
     ]
 
-    const chartData = months.map((month) => {
-      const row = { ...month, total: 0 }
+    return months.map((month, index) => {
+      const total = contracts.reduce(
+        (sum, contract) => {
+          if (!contract.sale_date) {
+            return sum
+          }
 
-      products.forEach((product) => {
-        row[product] = 0
-      })
+          const date = new Date(
+            `${contract.sale_date}T00:00:00`
+          )
 
-      contracts.forEach((contract) => {
-        if (!contract.sale_date) return
+          if (
+            date.getFullYear() !== 2026 ||
+            date.getMonth() !== index
+          ) {
+            return sum
+          }
 
-        const date = new Date(`${contract.sale_date}T00:00:00`)
-        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+          return (
+            sum +
+            Number(contract.deal_value || 0)
+          )
+        },
+        0
+      )
 
-        if (key === month.key) {
-          const product = contract.product || "Other"
-          const value = Number(contract.deal_value || 0)
-
-          row[product] = (row[product] || 0) + value
-          row.total += value
-        }
-      })
-
-      return row
+      return {
+        month,
+        shortMonth: month.substring(0, 3),
+        total,
+      }
     })
-
-    return { data: chartData, products }
   }, [contracts])
 
-  const totalValue = chart.data.reduce(
-    (total, month) => total + month.total,
+  const totalValue = chartData.reduce(
+    (total, month) =>
+      total + month.total,
     0
   )
 
   return (
     <div className="card sales-chart">
+
       <div className="card-head">
+
         <div>
-          <h2>Sales performance</h2>
-          <p>Contract value by product — last 12 months</p>
+          <h2>2026 Sales Performance</h2>
+
+          <p>
+            Total contract value by month
+          </p>
         </div>
 
         <div className="chart-total">
-          <span>12 month value</span>
-          <b>{money(totalValue)}</b>
+
+          <span>
+            2026 value
+          </span>
+
+          <b>
+            {money(totalValue)}
+          </b>
+
         </div>
+
       </div>
 
-      {chart.products.length === 0 ? (
-        <div className="empty chart-empty">
-          No product sales data available yet.
-        </div>
-      ) : (
-        <div className="chart-container">
-          <ResponsiveContainer width="100%" height={340}>
-            <BarChart
-              data={chart.data}
-              margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="month" axisLine={false} tickLine={false} />
-              <YAxis
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={(value) =>
-                  value >= 1000
-                    ? `£${Math.round(value / 1000)}k`
-                    : `£${value}`
-                }
-              />
-              <Tooltip
-                formatter={(value, product) => [money(value), product]}
-                labelFormatter={(label) => `Month: ${label}`}
-              />
-              <Legend />
+      <div className="chart-container">
 
-              {chart.products.map((product, index) => (
-                <Bar
-                  key={product}
-                  dataKey={product}
-                  stackId="sales"
-                  name={product}
-                  fill={`hsl(${(index * 67) % 360}, 55%, 45%)`}
-                />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+        <ResponsiveContainer
+          width="100%"
+          height={340}
+        >
+
+          <BarChart
+            data={chartData}
+            margin={{
+              top: 10,
+              right: 10,
+              left: 0,
+              bottom: 5,
+            }}
+          >
+
+            <CartesianGrid
+              strokeDasharray="3 3"
+              vertical={false}
+            />
+
+            <XAxis
+              dataKey="shortMonth"
+              axisLine={false}
+              tickLine={false}
+            />
+
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(value) =>
+                value >= 1000
+                  ? `£${Math.round(
+                      value / 1000
+                    )}k`
+                  : `£${value}`
+              }
+            />
+
+            <Tooltip
+              formatter={(value) => [
+                money(value),
+                "Contract value",
+              ]}
+              labelFormatter={(label) =>
+                `2026 — ${label}`
+              }
+            />
+
+            <Bar
+              dataKey="total"
+              name="Contract value"
+              fill="#172554"
+              radius={[5, 5, 0, 0]}
+            />
+
+          </BarChart>
+
+        </ResponsiveContainer>
+
+      </div>
+
     </div>
   )
 }
