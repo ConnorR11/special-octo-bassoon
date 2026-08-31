@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useMemo, useState } from "react"
 
 import ContractsTable from "../components/ContractsTable"
 
