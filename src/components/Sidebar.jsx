@@ -127,7 +127,7 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
 
             <NavItem
               icon={Users}
-              label="Sales PI"
+              label="Sales KPI"
               disabled
             />
 
