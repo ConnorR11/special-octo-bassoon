@@ -86,6 +86,46 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
 
           <div className="sidebar-divider" />
 
+          {/* MARKETING */}
+
+          <Folder
+            title="Marketing"
+            icon={Target}
+            open={openFolders.sales}
+            onClick={() => toggleFolder("sales")}
+          >
+            <NavItem
+              icon={FileText}
+              label="Leads"
+              active={isActive("contracts")}
+              onClick={() => navigate("contracts")}
+            />
+
+            <NavItem
+              icon={Users}
+              label="Call Log"
+              disabled
+            />
+
+            <NavItem
+              icon={Users}
+              label="Booked Leads"
+              disabled
+            />
+
+            <NavItem
+              icon={Users}
+              label="Commissions"
+              disabled
+            />
+
+            <NavItem
+              icon={Users}
+              label="Canvasser KPI"
+              disabled
+            />
+          </Folder>
+
           {/* SALES */}
 
           <Folder
@@ -137,6 +177,8 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
               disabled
             />
           </Folder>
+
+          
 
           {/* SURVEY & INSTALLATION */}
 
