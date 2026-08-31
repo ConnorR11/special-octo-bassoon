@@ -95,7 +95,31 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
 
             <NavItem
               icon={Users}
-              label="Customers"
+              label="Leads To Issue"
+              disabled
+            />
+
+            <NavItem
+              icon={Users}
+              label="Booked Leads"
+              disabled
+            />
+
+            <NavItem
+              icon={Users}
+              label="ECOF"
+              disabled
+            />
+
+            <NavItem
+              icon={Users}
+              label="Commissions"
+              disabled
+            />
+
+            <NavItem
+              icon={Users}
+              label="Sales PI"
               disabled
             />
 
@@ -214,6 +238,20 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
               disabled
             />
           </Folder>
+
+          {/* Documents */}
+
+          <Folder
+            title="Documents"
+            icon={Settings}
+            open={openFolders.admin}
+            onClick={() => toggleFolder("admin")}
+          >
+            <NavItem
+              icon={Users}
+              label="Company Brochures"
+              disabled
+            />
 
           {/* ADMIN */}
 
