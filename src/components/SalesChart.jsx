@@ -1,4 +1,5 @@
-import { useMemo } from "react"
+import React, { useMemo } from "react"
+
 import {
   ResponsiveContainer,
   BarChart,
@@ -9,6 +10,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts"
+
 import { money } from "../utils/formatters"
 
 function SalesChart({ contracts }) {
