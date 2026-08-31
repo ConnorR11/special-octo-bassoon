@@ -139,7 +139,7 @@ textarea {
   width: 100%;
   border: 0;
   background: transparent;
-  color: #64748b;
+  color: #f8fafc;
   min-height: 42px;
   padding: 0 10px;
   border-radius: 8px;
@@ -175,7 +175,7 @@ textarea {
   min-height: 38px;
   border: 0;
   background: transparent;
-  color: #64748b;
+  color: #f8fafc;
   border-radius: 7px;
   padding: 0 8px;
   display: flex;
@@ -213,7 +213,7 @@ textarea {
 .coming-soon {
   margin-left: auto;
   font-size: 9px;
-  color: #94a3b8;
+  color: #f8fafc;
   font-weight: 500;
 }
 
