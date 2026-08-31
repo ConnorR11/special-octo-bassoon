@@ -21,10 +21,11 @@ import {
 
 function Sidebar({ page, setPage, mobile, setMobile }) {
   const [openFolders, setOpenFolders] = useState({
-    sales: true,
+    sales: false,
+    marketing:false,
     installation: false,
     finance: false,
-    solar: true,
+    solar: false,
     customerService: false,
     documents: false,
     admin: false,
