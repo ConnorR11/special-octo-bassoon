@@ -4,13 +4,13 @@ import { Menu, RefreshCw } from "lucide-react"
 function Header({ page, setMobile, onRefresh }) {
   const pageTitle = {
     dashboard: "Dashboard",
-    contracts: "Sold contracts",
+    contracts: "Deals",
     epvs: "EPVS Calculator",
   }[page]
 
   const pageSubtitle = {
-    dashboard: "Overview of your sold customer contracts",
-    contracts: "Search and manage sold contracts",
+    dashboard: "Overview of your deals",
+    contracts: "Search and manage deals",
     epvs: "Build and review an EPVS calculation",
   }[page]
 

@@ -188,7 +188,7 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
 
             <NavItem
               icon={FileText}
-              label="Sold Contracts"
+              label="Deals"
               active={isActive("contracts")}
               onClick={() =>
                 navigate("contracts")

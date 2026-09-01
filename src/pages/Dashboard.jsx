@@ -33,7 +33,7 @@ function Dashboard({
       <div className="stats">
         <Stat
           icon={<FileText size={20} />}
-          label="Sold contracts"
+          label="Deals"
           value={contracts.length}
         />
 

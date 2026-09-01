@@ -13,7 +13,7 @@ function ContractDrawer({ contract, close }) {
         <div className="drawer-head">
           <div>
             <span className="eyebrow">Contract</span>
-            <h2>{contract.contract_number || "Sold contract"}</h2>
+            <h2>{contract.contract_number || "Deals"}</h2>
           </div>
 
           <button onClick={close}>
