@@ -1,12 +1,15 @@
-import React, { useMemo, useState } from "react"
-import {
-  ChevronDown,
-  ChevronRight,
-} from "lucide-react"
-
+import React, { useMemo } from "react"
 import { money } from "../utils/formatters"
 
 function SalesBreakdown({ contracts = [] }) {
+  const startYear = 2020
+  const currentYear = new Date().getFullYear()
+
+  const years = Array.from(
+    { length: currentYear - startYear + 1 },
+    (_, index) => startYear + index
+  )
+
   const months = [
     "January",
     "February",
@@ -22,67 +25,110 @@ function SalesBreakdown({ contracts = [] }) {
     "December",
   ]
 
-  // Build the sales data automatically from whatever
-  // years exist in the database.
+  /*
+   * BUILD YEAR-ON-YEAR DATA
+   */
+
   const yearlyData = useMemo(() => {
-    const years = {}
+    return years.map((year) => {
 
-    contracts.forEach((contract) => {
-      if (!contract.sale_date) {
-        return
-      }
+      const monthlyTotals = months.map(
+        (month, monthIndex) => {
 
-      const date = new Date(contract.sale_date)
+          const value = contracts.reduce(
+            (sum, contract) => {
 
-      if (Number.isNaN(date.getTime())) {
-        return
-      }
+              if (!contract.sale_date) {
+                return sum
+              }
 
-      const year = date.getFullYear()
-      const month = date.getMonth()
-      const value = Number(contract.deal_value || 0)
+              const date = new Date(
+                `${contract.sale_date}T00:00:00`
+              )
 
-      if (!years[year]) {
-        years[year] = months.map((monthName) => ({
-          month: monthName,
-          value: 0,
-        }))
-      }
+              if (
+                Number.isNaN(date.getTime())
+              ) {
+                return sum
+              }
 
-      years[year][month].value += value
-    })
+              if (
+                date.getFullYear() !== year ||
+                date.getMonth() !== monthIndex
+              ) {
+                return sum
+              }
 
-    return Object.entries(years)
-      .map(([year, monthlyTotals]) => ({
-        year: Number(year),
+              return (
+                sum +
+                Number(
+                  contract.deal_value || 0
+                )
+              )
+            },
+            0
+          )
+
+          return {
+            month,
+            value,
+          }
+        }
+      )
+
+      const total = monthlyTotals.reduce(
+        (sum, month) =>
+          sum + month.value,
+        0
+      )
+
+      return {
+        year,
         monthlyTotals,
-        total: monthlyTotals.reduce(
-          (sum, item) => sum + item.value,
-          0
-        ),
-      }))
-      .sort((a, b) => b.year - a.year)
-  }, [contracts])
+        total,
+      }
+    })
+  }, [contracts, years])
 
-  // Open the most recent year by default
-  const [expandedYear, setExpandedYear] = useState(null)
 
-  React.useEffect(() => {
-    if (
-      expandedYear === null &&
-      yearlyData.length > 0
-    ) {
-      setExpandedYear(yearlyData[0].year)
+  /*
+   * ONLY SHOW YEARS THAT HAVE DATA
+   */
+
+  const activeYears = yearlyData.filter(
+    (year) => year.total > 0
+  )
+
+
+  /*
+   * MONTHLY COMPARISON
+   */
+
+  const comparisonData = months.map(
+    (month, monthIndex) => {
+
+      const values = {}
+
+      activeYears.forEach((yearData) => {
+        values[yearData.year] =
+          yearData.monthlyTotals[
+            monthIndex
+          ].value
+      })
+
+      return {
+        month,
+        values,
+      }
     }
-  }, [yearlyData, expandedYear])
+  )
 
-  function toggleYear(year) {
-    setExpandedYear(
-      expandedYear === year ? null : year
-    )
-  }
 
-  if (!yearlyData.length) {
+  /*
+   * IF THERE IS NO DATA
+   */
+
+  if (!activeYears.length) {
     return (
       <div className="empty">
         No sales data available.
@@ -90,107 +136,227 @@ function SalesBreakdown({ contracts = [] }) {
     )
   }
 
+
   return (
     <div className="sales-breakdown">
 
-      {yearlyData.map((yearData) => {
+      {/* YEAR TOTALS */}
 
-        const isExpanded =
-          expandedYear === yearData.year
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "120px repeat(auto-fit, minmax(90px, 1fr))",
+          gap: "10px",
+          padding: "12px 0",
+          borderBottom:
+            "1px solid #e5e6e8",
+          minWidth:
+            `${120 + activeYears.length * 100}px`,
+        }}
+      >
 
-        const max = Math.max(
-          ...yearData.monthlyTotals.map(
-            (item) => item.value
-          ),
-          1
-        )
+        <div>
+          <strong
+            style={{
+              fontSize: "10px",
+              color: "#888",
+            }}
+          >
+            Year
+          </strong>
+        </div>
 
-        return (
+        {activeYears.map((yearData) => (
+
           <div
-            className="sales-year"
             key={yearData.year}
+            style={{
+              textAlign: "right",
+            }}
           >
 
-            {/* YEAR */}
-
-            <button
-              type="button"
-              className="sales-year-header"
-              onClick={() =>
-                toggleYear(yearData.year)
-              }
+            <span
+              style={{
+                display: "block",
+                fontSize: "10px",
+                color: "#888",
+              }}
             >
+              {yearData.year}
+            </span>
 
-              <div className="sales-year-title">
+            <strong
+              style={{
+                display: "block",
+                fontSize: "13px",
+                marginTop: "3px",
+              }}
+            >
+              {money(yearData.total)}
+            </strong>
 
-                {isExpanded ? (
-                  <ChevronDown size={16} />
-                ) : (
-                  <ChevronRight size={16} />
-                )}
+          </div>
 
-                <strong>
-                  {yearData.year}
-                </strong>
+        ))}
 
-              </div>
-
-              <strong>
-                {money(yearData.total)}
-              </strong>
-
-            </button>
+      </div>
 
 
-            {/* MONTHS */}
+      {/* MONTHLY COMPARISON */}
 
-            {isExpanded && (
+      <div
+        style={{
+          overflowX: "auto",
+        }}
+      >
 
-              <div className="sales-year-months">
+        <div
+          style={{
+            minWidth:
+              `${120 + activeYears.length * 100}px`,
+          }}
+        >
 
-                {yearData.monthlyTotals.map(
-                  ({ month, value }) => (
+          {comparisonData.map(
+            ({ month, values }) => (
 
-                    <div
-                      className="bar-row"
-                      key={month}
-                    >
+              <div
+                key={month}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "120px repeat(" +
+                    activeYears.length +
+                    ", minmax(90px, 1fr))",
+                  gap: "10px",
+                  alignItems: "center",
+                  padding: "10px 0",
+                  borderBottom:
+                    "1px solid #f0f0f0",
+                }}
+              >
 
-                      <div>
+                {/* MONTH */}
 
-                        <span>
-                          {month}
+                <div>
+
+                  <span
+                    style={{
+                      fontSize: "10px",
+                      color: "#666",
+                    }}
+                  >
+                    {month}
+                  </span>
+
+                </div>
+
+
+                {/* YEAR VALUES */}
+
+                {activeYears.map(
+                  (yearData) => {
+
+                    const value =
+                      values[
+                        yearData.year
+                      ] || 0
+
+                    return (
+                      <div
+                        key={
+                          yearData.year
+                        }
+                        style={{
+                          textAlign: "right",
+                        }}
+                      >
+
+                        <span
+                          style={{
+                            fontSize: "10px",
+                            color:
+                              value > 0
+                                ? "#333"
+                                : "#bbb",
+                          }}
+                        >
+                          {money(value)}
                         </span>
 
-                        <b>
-                          {money(value)}
-                        </b>
-
                       </div>
-
-                      <div className="bar">
-
-                        <i
-                          style={{
-                            width:
-                              `${(value / max) * 100}%`,
-                          }}
-                        />
-
-                      </div>
-
-                    </div>
-
-                  )
+                    )
+                  }
                 )}
 
               </div>
 
+            )
+          )}
+
+
+          {/* TOTAL ROW */}
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "120px repeat(" +
+                activeYears.length +
+                ", minmax(90px, 1fr))",
+              gap: "10px",
+              padding:
+                "14px 0 8px",
+              marginTop: "4px",
+              borderTop:
+                "2px solid #e5e6e8",
+            }}
+          >
+
+            <div>
+
+              <strong
+                style={{
+                  fontSize: "10px",
+                }}
+              >
+                Total
+              </strong>
+
+            </div>
+
+            {activeYears.map(
+              (yearData) => (
+
+                <div
+                  key={yearData.year}
+                  style={{
+                    textAlign:
+                      "right",
+                  }}
+                >
+
+                  <strong
+                    style={{
+                      fontSize: "11px",
+                    }}
+                  >
+                    {money(
+                      yearData.total
+                    )}
+                  </strong>
+
+                </div>
+
+              )
             )}
 
           </div>
-        )
-      })}
+
+        </div>
+
+      </div>
 
     </div>
   )
