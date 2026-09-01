@@ -1,7 +1,6 @@
 import React from "react"
 import {
   FileText,
-  User,
   CalendarDays,
   PoundSterling,
   ChevronRight,
@@ -15,10 +14,14 @@ import {
 } from "../utils/formatters"
 
 function ContractsTable({
-  contracts = [],
+  contracts,
+  filtered,
   loading = false,
   setSelected,
 }) {
+  // Support either prop name
+  const rows = contracts ?? filtered ?? []
+
   if (loading) {
     return (
       <div className="contracts-table">
@@ -29,12 +32,16 @@ function ContractsTable({
     )
   }
 
-  if (!contracts.length) {
+  if (!rows.length) {
     return (
       <div className="contracts-table">
         <div className="table-empty">
           <FileText size={32} />
-          <strong>No contracts found</strong>
+
+          <strong>
+            No contracts found
+          </strong>
+
           <span>
             Try changing your search or filters.
           </span>
@@ -62,7 +69,7 @@ function ContractsTable({
 
       <div className="contracts-table-body">
 
-        {contracts.map((contract) => (
+        {rows.map((contract) => (
 
           <button
             key={contract.id}
@@ -77,7 +84,8 @@ function ContractsTable({
 
               <div className="customer-avatar">
                 {getInitials(
-                  contract.customer_name || "Customer"
+                  contract.customer_name ||
+                    "Customer"
                 )}
               </div>
 
@@ -89,7 +97,8 @@ function ContractsTable({
                 </strong>
 
                 <span>
-                  {contract.postcode || "No postcode"}
+                  {contract.postcode ||
+                    "No postcode"}
                 </span>
 
               </div>
@@ -112,9 +121,7 @@ function ContractsTable({
             {/* PRODUCT */}
 
             <div className="contract-product">
-
               {contract.product || "—"}
-
             </div>
 
             {/* SALE DATE */}
@@ -125,7 +132,9 @@ function ContractsTable({
 
               <span>
                 {contract.sale_date
-                  ? formatDate(contract.sale_date)
+                  ? formatDate(
+                      contract.sale_date
+                    )
                   : "—"}
               </span>
 
@@ -153,7 +162,8 @@ function ContractsTable({
 
               <span
                 className={`status-badge status-${String(
-                  contract.status || "unknown"
+                  contract.status ||
+                    "unknown"
                 )
                   .toLowerCase()
                   .replace(/\s+/g, "-")}`}
@@ -168,9 +178,7 @@ function ContractsTable({
             {/* ARROW */}
 
             <div className="contract-arrow">
-
               <ChevronRight size={18} />
-
             </div>
 
           </button>
