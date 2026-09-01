@@ -209,7 +209,13 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
 
             <NavItem
               icon={FileCheck}
-              label="ECOF"
+              label="Overstays"
+              disabled
+            />
+
+            <NavItem
+              icon={FileCheck}
+              label="ECOFs"
               disabled
             />
 
@@ -235,11 +241,11 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
 
 
           {/* ================================= */}
-          {/* SURVEY & INSTALLATION             */}
+          {/* Procurement*/}
           {/* ================================= */}
 
           <Folder
-            title="Survey & Installation"
+            title="Procurement"
             icon={Wrench}
             open={openFolders.installation}
             onClick={() =>
@@ -252,6 +258,39 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
               label="Surveys"
               disabled
             />
+
+            <NavItem
+              icon={CalendarDays}
+              label="Cover Calls"
+              disabled
+            />
+
+            <NavItem
+              icon={AlertTriangle}
+              label="Costing"
+              disabled
+            />
+
+            <NavItem
+              icon={AlertTriangle}
+              label="Ordering"
+              disabled
+            />
+
+          </Folder>
+
+          {/* ================================= */}
+          {/* INSTALLATION                      */}
+          {/* ================================= */}
+
+          <Folder
+            title="Survey & Installation"
+            icon={Wrench}
+            open={openFolders.installation}
+            onClick={() =>
+              toggleFolder("installation")
+            }
+          >
 
             <NavItem
               icon={CalendarDays}
