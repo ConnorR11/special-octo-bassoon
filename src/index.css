@@ -487,7 +487,7 @@ header p {
   border-radius: 5px;
 }
 
-/* =========================================================
+/* /* =========================================================
    CONTRACTS
    ========================================================= */
 
@@ -529,6 +529,352 @@ header p {
   color: #444;
 }
 
+/* =========================================================
+   CONTRACTS TABLE
+   ========================================================= */
+
+.contracts-table {
+  width: 100%;
+  background: #fff;
+  border: 1px solid #e5e6e8;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* Header */
+
+.contracts-table-header {
+  display: grid;
+  grid-template-columns:
+    minmax(220px, 2fr)
+    minmax(110px, 1fr)
+    minmax(120px, 1fr)
+    minmax(110px, 1fr)
+    minmax(100px, 1fr)
+    minmax(120px, 1fr)
+    35px;
+
+  gap: 16px;
+  align-items: center;
+
+  padding: 12px 18px;
+
+  background: #fafafa;
+  border-bottom: 1px solid #e5e6e8;
+
+  color: #898e96;
+
+  text-transform: uppercase;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+/* Body */
+
+.contracts-table-body {
+  width: 100%;
+}
+
+/* Row */
+
+.contracts-table-row {
+  display: grid;
+
+  grid-template-columns:
+    minmax(220px, 2fr)
+    minmax(110px, 1fr)
+    minmax(120px, 1fr)
+    minmax(110px, 1fr)
+    minmax(100px, 1fr)
+    minmax(120px, 1fr)
+    35px;
+
+  gap: 16px;
+  align-items: center;
+
+  width: 100%;
+  min-height: 68px;
+
+  padding: 10px 18px;
+
+  border: 0;
+  border-bottom: 1px solid #eee;
+
+  background: #fff;
+
+  text-align: left;
+  font: inherit;
+  color: #333;
+  font-size: 11px;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.contracts-table-row:last-child {
+  border-bottom: 0;
+}
+
+.contracts-table-row:hover {
+  background: #fafafa;
+}
+
+/* =========================================================
+   CUSTOMER
+   ========================================================= */
+
+.contract-customer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.customer-avatar {
+  width: 32px;
+  height: 32px;
+
+  flex: 0 0 32px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #eef1f5;
+  color: #4c5563;
+
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.customer-details {
+  min-width: 0;
+}
+
+.customer-details strong {
+  display: block;
+
+  color: #222;
+
+  font-size: 11px;
+  font-weight: 600;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.customer-details span {
+  display: block;
+
+  margin-top: 3px;
+
+  color: #8a8f97;
+
+  font-size: 9px;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* =========================================================
+   CONTRACT NUMBER
+   ========================================================= */
+
+.contract-number {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  color: #555;
+
+  min-width: 0;
+}
+
+.contract-number svg {
+  flex: 0 0 auto;
+  color: #8a8f97;
+}
+
+.contract-number span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* =========================================================
+   PRODUCT
+   ========================================================= */
+
+.contract-product {
+  color: #444;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* =========================================================
+   SALE DATE
+   ========================================================= */
+
+.contract-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  color: #555;
+
+  white-space: nowrap;
+}
+
+.contract-date svg {
+  color: #8a8f97;
+  flex: 0 0 auto;
+}
+
+/* =========================================================
+   VALUE
+   ========================================================= */
+
+.contract-value {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+
+  color: #222;
+
+  white-space: nowrap;
+}
+
+.contract-value svg {
+  color: #8a8f97;
+  flex: 0 0 auto;
+}
+
+.contract-value strong {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* =========================================================
+   STATUS
+   ========================================================= */
+
+.status-badge {
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  width: max-content;
+
+  border-radius: 20px;
+
+  padding: 5px 9px;
+
+  font-size: 9px;
+  font-weight: 500;
+
+  background: #eef0f2;
+  color: #555;
+
+  white-space: nowrap;
+}
+
+.status-badge.status-complete {
+  background: #e8f4ed;
+  color: #28734c;
+}
+
+.status-badge.status-ready-for-installation {
+  background: #eef0f8;
+  color: #46547d;
+}
+
+.status-badge.status-survey-booked {
+  background: #f6f0e5;
+  color: #80652e;
+}
+
+.status-badge.status-sold {
+  background: #e8f4ed;
+  color: #28734c;
+}
+
+/* =========================================================
+   ARROW
+   ========================================================= */
+
+.contract-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  color: #9a9ea5;
+}
+
+.contracts-table-row:hover .contract-arrow {
+  color: #333;
+}
+
+/* =========================================================
+   LOADING / EMPTY
+   ========================================================= */
+
+.table-loading {
+  padding: 40px;
+
+  text-align: center;
+
+  color: #858a92;
+
+  font-size: 12px;
+}
+
+.table-empty {
+  min-height: 220px;
+
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  padding: 35px;
+
+  text-align: center;
+
+  color: #858a92;
+}
+
+.table-empty svg {
+  margin-bottom: 5px;
+  color: #8a8f97;
+}
+
+.table-empty strong {
+  color: #333;
+  font-size: 13px;
+}
+
+.table-empty span {
+  font-size: 11px;
+}
+
+/* =========================================================
+   OLD TABLE COMPATIBILITY
+   ========================================================= */
+
 .table-card {
   overflow: hidden;
 }
@@ -536,83 +882,12 @@ header p {
 .table-head,
 .table-row {
   display: grid;
-  grid-template-columns: 2fr 1.2fr 1fr 1.2fr 1fr 1.2fr;
-  gap: 15px;
-  align-items: center;
-}
-
-.table-head {
-  padding: 12px 18px;
-  background: #fafafa;
-  border-bottom: 1px solid #e5e6e8;
-  color: #898e96;
-  text-transform: uppercase;
-  font-size: 9px;
-  letter-spacing: 0.06em;
-}
-
-.table-row {
-  width: 100%;
-  padding: 12px 18px;
-  border: 0;
-  border-bottom: 1px solid #eee;
-  background: #fff;
-  text-align: left;
-  font: inherit;
-  color: #333;
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.table-row:hover {
-  background: #fafafa;
 }
 
 .customer {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.customer b,
-.customer span {
-  display: block;
-}
-
-.customer span {
-  color: #8a8f97;
-  font-size: 9px;
-  margin-top: 3px;
-}
-
-/* =========================================================
-   STATUS PILLS
-   ========================================================= */
-
-.pill {
-  display: inline-flex;
-  width: max-content;
-  border-radius: 20px;
-  padding: 5px 8px;
-  font-size: 9px;
-  font-style: normal;
-  background: #eef0f2;
-  color: #555;
-}
-
-.pill.complete {
-  background: #e8f4ed;
-  color: #28734c;
-}
-
-.pill.ready_for_installation {
-  background: #eef0f8;
-  color: #46547d;
-}
-
-.pill.survey_booked {
-  background: #f6f0e5;
-  color: #80652e;
 }
 
 /* =========================================================
@@ -634,6 +909,23 @@ header p {
   text-align: center;
   color: #858a92;
   font-size: 12px;
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 900px) {
+
+  .contracts-table {
+    overflow-x: auto;
+  }
+
+  .contracts-table-header,
+  .contracts-table-row {
+    min-width: 850px;
+  }
+
 }
 
 /* =========================================================
