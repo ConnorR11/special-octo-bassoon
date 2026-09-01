@@ -29,9 +29,10 @@ function CustomerDetail({
   const [message, setMessage] = useState("")
 
   /*
-   * Keep the fields in sync if a different
+   * Keep fields in sync when a different
    * deal is selected.
    */
+
   useEffect(() => {
     if (!deal) return
 
@@ -82,32 +83,35 @@ function CustomerDetail({
       }
 
       /*
-       * Update Supabase and return the
-       * actual updated database row.
+       * Update Supabase.
+       *
+       * IMPORTANT:
+       * We deliberately do NOT use .select().single()
+       * here. The update itself is enough, and this avoids
+       * the "Cannot coerce the result to a single JSON object"
+       * error caused by RLS / returned rows.
        */
 
-      const {
-        data: updatedDeal,
-        error,
-      } = await supabase
+      const { error } = await supabase
         .from("deals")
         .update(updatedValues)
         .eq("id", deal.id)
-        .select()
-        .single()
 
       if (error) {
         throw error
       }
 
-      if (!updatedDeal) {
-        throw new Error(
-          "Supabase did not return the updated deal."
-        )
+      /*
+       * Build the updated deal locally.
+       */
+
+      const updatedDeal = {
+        ...deal,
+        ...updatedValues,
       }
 
       /*
-       * Update the parent React state.
+       * Tell App.jsx about the change.
        */
 
       if (onUpdated) {
@@ -167,6 +171,7 @@ function CustomerDetail({
 
           Back to Deals
         </button>
+
 
         <button
           type="button"
@@ -245,6 +250,7 @@ function CustomerDetail({
             >
               Customer
             </span>
+
 
             <h1
               style={{
