@@ -6,11 +6,12 @@ import EPVSCalculator from "./EPVSCalculator"
 
 import Sidebar from "./components/Sidebar"
 import Header from "./components/Header"
+import FitSheet from "./components/FitSheet"
 
 import Dashboard from "./pages/Dashboard"
 import Contracts from "./pages/Contracts"
 import CustomerDetail from "./pages/CustomerDetail"
-import FitSheet from "./pages/FitSheet"
+
 
 function App() {
   const [contracts, setContracts] = useState([])
