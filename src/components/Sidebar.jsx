@@ -21,7 +21,6 @@ import {
   Phone,
   Handshake,
   Trophy,
-  ClipboardList,
   AlertTriangle,
   Receipt,
   PanelsTopLeft,
@@ -34,18 +33,25 @@ import {
 } from "lucide-react"
 
 
-function Sidebar({ page, setPage, mobile, setMobile }) {
+function Sidebar({
+  page,
+  setPage,
+  mobile,
+  setMobile,
+}) {
 
-  const [openFolders, setOpenFolders] = useState({
-    sales: false,
-    marketing: false,
-    installation: false,
-    finance: false,
-    solar: false,
-    customerService: false,
-    documents: false,
-    admin: false,
-  })
+  const [openFolders, setOpenFolders] =
+    useState({
+      sales: false,
+      marketing: false,
+      installation: false,
+      finance: false,
+      solar: false,
+      customerService: false,
+      documents: false,
+      admin: false,
+      procurement: false,
+    })
 
 
   const toggleFolder = (folder) => {
@@ -62,7 +68,8 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
   }
 
 
-  const isActive = (pageName) => page === pageName
+  const isActive = (pageName) =>
+    page === pageName
 
 
   return (
@@ -107,20 +114,28 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
         <nav className="sidebar-nav">
 
 
-          {/* DASHBOARD */}
+          {/* ================================= */}
+          {/* DASHBOARD                         */}
+          {/* ================================= */}
 
           <button
             type="button"
             className={`sidebar-item ${
-              isActive("dashboard") ? "active" : ""
+              isActive("dashboard")
+                ? "active"
+                : ""
             }`}
-            onClick={() => navigate("dashboard")}
+            onClick={() =>
+              navigate("dashboard")
+            }
           >
+
             <LayoutDashboard size={18} />
 
             <span>
               Dashboard
             </span>
+
           </button>
 
 
@@ -134,7 +149,9 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
           <Folder
             title="Marketing"
             icon={Megaphone}
-            open={openFolders.marketing}
+            open={
+              openFolders.marketing
+            }
             onClick={() =>
               toggleFolder("marketing")
             }
@@ -180,14 +197,13 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
           <Folder
             title="Sales"
             icon={Target}
-            open={openFolders.sales}
+            open={
+              openFolders.sales
+            }
             onClick={() =>
               toggleFolder("sales")
             }
-            
           >
-
-            
 
             <NavItem
               icon={CalendarDays}
@@ -198,7 +214,9 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
             <NavItem
               icon={FileText}
               label="Deals"
-              active={isActive("contracts")}
+              active={
+                isActive("contracts")
+              }
               onClick={() =>
                 navigate("contracts")
               }
@@ -238,13 +256,15 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
 
 
           {/* ================================= */}
-          {/* Procurement*/}
+          {/* PROCUREMENT                        */}
           {/* ================================= */}
 
           <Folder
             title="Procurement"
             icon={Wrench}
-            open={openFolders.procurement}
+            open={
+              openFolders.procurement
+            }
             onClick={() =>
               toggleFolder("procurement")
             }
@@ -276,6 +296,7 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
 
           </Folder>
 
+
           {/* ================================= */}
           {/* INSTALLATIONS                     */}
           {/* ================================= */}
@@ -283,11 +304,27 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
           <Folder
             title="Installations"
             icon={Wrench}
-            open={openFolders.installation}
+            open={
+              openFolders.installation
+            }
             onClick={() =>
               toggleFolder("installation")
             }
           >
+
+            {/* FIT SHEET — FIRST OPTION */}
+
+            <NavItem
+              icon={ClipboardCheck}
+              label="Fit Sheet"
+              active={
+                isActive("fitsheet")
+              }
+              onClick={() =>
+                navigate("fitsheet")
+              }
+            />
+
 
             <NavItem
               icon={CalendarDays}
@@ -311,7 +348,9 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
           <Folder
             title="Finance"
             icon={PoundSterling}
-            open={openFolders.finance}
+            open={
+              openFolders.finance
+            }
             onClick={() =>
               toggleFolder("finance")
             }
@@ -345,7 +384,9 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
           <Folder
             title="Solar / EPVS"
             icon={Sun}
-            open={openFolders.solar}
+            open={
+              openFolders.solar
+            }
             onClick={() =>
               toggleFolder("solar")
             }
@@ -354,7 +395,9 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
             <NavItem
               icon={Calculator}
               label="EPVS Calculator"
-              active={isActive("epvs")}
+              active={
+                isActive("epvs")
+              }
               onClick={() =>
                 navigate("epvs")
               }
@@ -382,9 +425,13 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
           <Folder
             title="Customer Service"
             icon={Headphones}
-            open={openFolders.customerService}
+            open={
+              openFolders.customerService
+            }
             onClick={() =>
-              toggleFolder("customerService")
+              toggleFolder(
+                "customerService"
+              )
             }
           >
 
@@ -416,7 +463,9 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
           <Folder
             title="Documents"
             icon={Files}
-            open={openFolders.documents}
+            open={
+              openFolders.documents
+            }
             onClick={() =>
               toggleFolder("documents")
             }
@@ -450,7 +499,9 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
           <Folder
             title="Administration"
             icon={Settings}
-            open={openFolders.admin}
+            open={
+              openFolders.admin
+            }
             onClick={() =>
               toggleFolder("admin")
             }

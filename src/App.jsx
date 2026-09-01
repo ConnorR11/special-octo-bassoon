@@ -3,12 +3,14 @@ import React, { useEffect, useMemo, useState } from "react"
 import { supabase } from "./lib/supabase"
 
 import EPVSCalculator from "./EPVSCalculator"
+
 import Sidebar from "./components/Sidebar"
 import Header from "./components/Header"
 
 import Dashboard from "./pages/Dashboard"
 import Contracts from "./pages/Contracts"
 import CustomerDetail from "./pages/CustomerDetail"
+import FitSheet from "./pages/FitSheet"
 
 function App() {
   const [contracts, setContracts] = useState([])
@@ -28,14 +30,18 @@ function App() {
       setError(
         "Supabase is not configured. Check your environment variables."
       )
+
       setLoading(false)
       return
     }
 
-    const { data, error: supabaseError } = await supabase
-      .from("deals")
-      .select("*")
-      .order("sale_date", { ascending: false })
+    const { data, error: supabaseError } =
+      await supabase
+        .from("deals")
+        .select("*")
+        .order("sale_date", {
+          ascending: false,
+        })
 
     if (supabaseError) {
       setError(supabaseError.message)
@@ -51,46 +57,73 @@ function App() {
     loadContracts()
   }, [])
 
+  /*
+   * FILTER DEALS
+   */
+
   const filteredContracts = useMemo(() => {
-    const search = query.toLowerCase().trim()
+    const search =
+      query.toLowerCase().trim()
 
-    return contracts.filter((contract) => {
-      const searchableFields = [
-        contract.customer_name,
-        contract.postcode,
-        contract.product,
-        contract.salesperson,
-        contract.contract_number,
-        contract.phone,
-        contract.email,
-      ]
+    return contracts.filter(
+      (contract) => {
+        const searchableFields = [
+          contract.customer_name,
+          contract.postcode,
+          contract.product,
+          contract.salesperson,
+          contract.contract_number,
+          contract.phone,
+          contract.email,
+        ]
 
-      const matchesSearch =
-        !search ||
-        searchableFields.some((field) =>
-          String(field || "")
-            .toLowerCase()
-            .includes(search)
+        const matchesSearch =
+          !search ||
+          searchableFields.some(
+            (field) =>
+              String(field || "")
+                .toLowerCase()
+                .includes(search)
+          )
+
+        const matchesStatus =
+          status === "all" ||
+          contract.status === status
+
+        return (
+          matchesSearch &&
+          matchesStatus
         )
+      }
+    )
+  }, [
+    contracts,
+    query,
+    status,
+  ])
 
-      const matchesStatus =
-        status === "all" ||
-        contract.status === status
+  /*
+   * DASHBOARD TOTALS
+   */
 
-      return matchesSearch && matchesStatus
-    })
-  }, [contracts, query, status])
-
-  const totalValue = contracts.reduce(
-    (total, contract) =>
-      total + Number(contract.deal_value || 0),
-    0
-  )
+  const totalValue =
+    contracts.reduce(
+      (total, contract) =>
+        total +
+        Number(
+          contract.deal_value || 0
+        ),
+      0
+    )
 
   const averageValue =
     contracts.length > 0
       ? totalValue / contracts.length
       : 0
+
+  /*
+   * UPCOMING INSTALLATIONS
+   */
 
   const today = new Date()
     .toISOString()
@@ -100,33 +133,49 @@ function App() {
     contracts.filter(
       (contract) =>
         contract.installation_date &&
-        contract.installation_date >= today
+        contract.installation_date >=
+          today
     ).length
 
   /*
-   * When returning to the deals list
+   * BACK TO DEALS
    */
+
   function handleBackToDeals() {
     setSelected(null)
     setPage("contracts")
   }
 
   /*
-   * Update the local deal after saving.
-   *
-   * This means the salesperson change is immediately
-   * reflected in the CRM without reloading everything.
+   * DEAL UPDATED
    */
-  function handleDealUpdated(updatedDeal) {
-    setContracts((current) =>
-      current.map((contract) =>
-        contract.id === updatedDeal.id
-          ? updatedDeal
-          : contract
-      )
+
+  function handleDealUpdated(
+    updatedDeal
+  ) {
+    setContracts(
+      (current) =>
+        current.map(
+          (contract) =>
+            contract.id ===
+            updatedDeal.id
+              ? updatedDeal
+              : contract
+        )
     )
 
     setSelected(updatedDeal)
+  }
+
+  /*
+   * CHANGE PAGE
+   */
+
+  function handlePageChange(
+    newPage
+  ) {
+    setSelected(null)
+    setPage(newPage)
   }
 
   return (
@@ -134,10 +183,7 @@ function App() {
 
       <Sidebar
         page={page}
-        setPage={(newPage) => {
-          setSelected(null)
-          setPage(newPage)
-        }}
+        setPage={handlePageChange}
         mobile={mobile}
         setMobile={setMobile}
       />
@@ -145,55 +191,103 @@ function App() {
       <main>
 
         <Header
-          page={selected ? "customer" : page}
+          page={
+            selected
+              ? "customer"
+              : page
+          }
           setMobile={setMobile}
           onRefresh={loadContracts}
         />
 
-        {error && page !== "epvs" && (
-          <div className="error">
-            <b>Database error</b>
-            <span>{error}</span>
-          </div>
-        )}
+        {error &&
+          page !== "epvs" && (
+            <div className="error">
+              <b>
+                Database error
+              </b>
+
+              <span>
+                {error}
+              </span>
+            </div>
+          )}
+
+        {/*
+         * CUSTOMER DETAIL
+         */}
 
         {selected ? (
 
-          /*
-           * CUSTOMER / DEAL DETAIL PAGE
-           */
-
           <CustomerDetail
             deal={selected}
-            onBack={handleBackToDeals}
-            onUpdated={handleDealUpdated}
+            onBack={
+              handleBackToDeals
+            }
+            onUpdated={
+              handleDealUpdated
+            }
           />
 
-        ) : page === "dashboard" ? (
+        ) : page ===
+          "dashboard" ? (
+
+          /*
+           * DASHBOARD
+           */
 
           <Dashboard
             contracts={contracts}
             total={totalValue}
             avg={averageValue}
-            upcoming={upcomingInstallations}
+            upcoming={
+              upcomingInstallations
+            }
             loading={loading}
             setPage={setPage}
-            setSelected={setSelected}
+            setSelected={
+              setSelected
+            }
           />
 
-        ) : page === "contracts" ? (
+        ) : page ===
+          "contracts" ? (
+
+          /*
+           * DEALS
+           */
 
           <Contracts
-            filtered={filteredContracts}
+            filtered={
+              filteredContracts
+            }
             loading={loading}
             query={query}
             setQuery={setQuery}
             status={status}
             setStatus={setStatus}
-            setSelected={setSelected}
+            setSelected={
+              setSelected
+            }
+          />
+
+        ) : page ===
+          "fitsheet" ? (
+
+          /*
+           * FIT SHEET
+           */
+
+          <FitSheet
+            contracts={contracts}
+            loading={loading}
           />
 
         ) : (
+
+          /*
+           * EPVS
+           */
 
           <EPVSCalculator />
 
