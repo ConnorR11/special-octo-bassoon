@@ -161,7 +161,7 @@ function YearOnYearSalesChart({ contracts = [] }) {
 
         <ResponsiveContainer
           width="100%"
-          height={340}
+          height={680}
         >
 
           <LineChart
