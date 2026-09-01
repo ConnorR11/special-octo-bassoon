@@ -282,6 +282,7 @@ function App() {
           <FitSheet
             contracts={contracts}
             loading={loading}
+            setSelected={setSelected}
           />
 
         ) : (

@@ -11,6 +11,7 @@ import { money } from "../utils/formatters"
 function FitSheet({
   contracts = [],
   onSelectDeal,
+  setSelected,
 }) {
   const [weekOffset, setWeekOffset] =
     useState(0)
@@ -428,6 +429,7 @@ function FitSheet({
 
       <div
         className="card"
+        onClick={() => setSelected(contract)}
         style={{
           padding: 0,
           overflow: "auto",
