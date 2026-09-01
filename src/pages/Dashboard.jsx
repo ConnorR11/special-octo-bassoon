@@ -9,6 +9,7 @@ import {
 
 import Stat from "../components/Stat"
 import SalesChart from "../components/SalesChart"
+import YearOnYearSalesChart from "../components/YearOnYearSalesChart"
 import SalesBreakdown from "../components/SalesBreakdown"
 
 import {
@@ -63,6 +64,8 @@ function Dashboard({
       {/* SALES CHART */}
 
       <SalesChart contracts={contracts} />
+      
+      <YearOnYearSalesChart contracts={contracts} />
 
 
       {/* LOWER DASHBOARD */}
