@@ -1,11 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react"
+
 import { supabase } from "./lib/supabase"
+
 import EPVSCalculator from "./EPVSCalculator"
 import Sidebar from "./components/Sidebar"
 import Header from "./components/Header"
-import ContractDrawer from "./components/ContractDrawer"
+
 import Dashboard from "./pages/Dashboard"
 import Contracts from "./pages/Contracts"
+import CustomerDetail from "./pages/CustomerDetail"
 
 function App() {
   const [contracts, setContracts] = useState([])
@@ -65,44 +68,84 @@ function App() {
       const matchesSearch =
         !search ||
         searchableFields.some((field) =>
-          String(field || "").toLowerCase().includes(search)
+          String(field || "")
+            .toLowerCase()
+            .includes(search)
         )
 
       const matchesStatus =
-        status === "all" || contract.status === status
+        status === "all" ||
+        contract.status === status
 
       return matchesSearch && matchesStatus
     })
   }, [contracts, query, status])
 
   const totalValue = contracts.reduce(
-    (total, contract) => total + Number(contract.deal_value || 0),
+    (total, contract) =>
+      total + Number(contract.deal_value || 0),
     0
   )
 
   const averageValue =
-    contracts.length > 0 ? totalValue / contracts.length : 0
+    contracts.length > 0
+      ? totalValue / contracts.length
+      : 0
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = new Date()
+    .toISOString()
+    .slice(0, 10)
 
-  const upcomingInstallations = contracts.filter(
-    (contract) =>
-      contract.installation_date &&
-      contract.installation_date >= today
-  ).length
+  const upcomingInstallations =
+    contracts.filter(
+      (contract) =>
+        contract.installation_date &&
+        contract.installation_date >= today
+    ).length
+
+  /*
+   * When returning to the deals list
+   */
+  function handleBackToDeals() {
+    setSelected(null)
+    setPage("contracts")
+  }
+
+  /*
+   * Update the local deal after saving.
+   *
+   * This means the salesperson change is immediately
+   * reflected in the CRM without reloading everything.
+   */
+  function handleDealUpdated(updatedDeal) {
+    setContracts((current) =>
+      current.map((contract) =>
+        contract.id === updatedDeal.id
+          ? updatedDeal
+          : contract
+      )
+    )
+
+    setSelected(updatedDeal)
+  }
 
   return (
     <div className="app">
+
       <Sidebar
         page={page}
-        setPage={setPage}
+        setPage={(newPage) => {
+          setSelected(null)
+          setPage(newPage)
+        }}
         mobile={mobile}
         setMobile={setMobile}
       />
 
       <main>
+
         <Header
-          page={page}
+          page={selected ? "customer" : page}
           setMobile={setMobile}
           onRefresh={loadContracts}
         />
@@ -114,7 +157,20 @@ function App() {
           </div>
         )}
 
-        {page === "dashboard" ? (
+        {selected ? (
+
+          /*
+           * CUSTOMER / DEAL DETAIL PAGE
+           */
+
+          <CustomerDetail
+            deal={selected}
+            onBack={handleBackToDeals}
+            onUpdated={handleDealUpdated}
+          />
+
+        ) : page === "dashboard" ? (
+
           <Dashboard
             contracts={contracts}
             total={totalValue}
@@ -124,7 +180,9 @@ function App() {
             setPage={setPage}
             setSelected={setSelected}
           />
+
         ) : page === "contracts" ? (
+
           <Contracts
             filtered={filteredContracts}
             loading={loading}
@@ -134,17 +192,15 @@ function App() {
             setStatus={setStatus}
             setSelected={setSelected}
           />
+
         ) : (
+
           <EPVSCalculator />
+
         )}
+
       </main>
 
-      {selected && (
-        <ContractDrawer
-          contract={selected}
-          close={() => setSelected(null)}
-        />
-      )}
     </div>
   )
 }
