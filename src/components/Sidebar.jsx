@@ -284,7 +284,7 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
           {/* ================================= */}
 
           <Folder
-            title="Survey & Installation"
+            title="Installations"
             icon={Wrench}
             open={openFolders.installation}
             onClick={() =>
