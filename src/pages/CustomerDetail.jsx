@@ -1,14 +1,26 @@
 import React, { useState } from "react"
-import { ArrowLeft, Save } from "lucide-react"
+import {
+  ArrowLeft,
+  Save,
+  MapPin,
+  ExternalLink,
+} from "lucide-react"
 
 import { supabase } from "../lib/supabase"
 
 function CustomerDetail({
   deal,
   onBack,
+  onUpdated,
 }) {
   const [salesperson, setSalesperson] =
     useState(deal?.salesperson || "")
+
+  const [address, setAddress] =
+    useState(deal?.address || "")
+
+  const [postcode, setPostcode] =
+    useState(deal?.postcode || "")
 
   const [saving, setSaving] =
     useState(false)
@@ -20,16 +32,52 @@ function CustomerDetail({
     return null
   }
 
+  /*
+   * ADDRESS USED FOR MAP
+   */
+
+  const fullAddress = [
+    address,
+    postcode,
+  ]
+    .filter(Boolean)
+    .join(", ")
+
+  const mapsUrl = fullAddress
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+        fullAddress
+      )}`
+    : null
+
+  /*
+   * SAVE CHANGES
+   */
+
   async function handleSave() {
     setSaving(true)
     setMessage("")
 
     try {
+      const updatedSalesperson =
+        salesperson.trim()
+
+      const updatedAddress =
+        address.trim()
+
+      const updatedPostcode =
+        postcode.trim()
+
       const { error } = await supabase
         .from("deals")
         .update({
           salesperson:
-            salesperson.trim(),
+            updatedSalesperson,
+
+          address:
+            updatedAddress,
+
+          postcode:
+            updatedPostcode,
         })
         .eq("id", deal.id)
 
@@ -38,11 +86,20 @@ function CustomerDetail({
       }
 
       /*
-       * Keep the selected deal up to date
+       * Update the local deal
        */
 
-      deal.salesperson =
-        salesperson.trim()
+      const updatedDeal = {
+        ...deal,
+        salesperson:
+          updatedSalesperson,
+        address:
+          updatedAddress,
+        postcode:
+          updatedPostcode,
+      }
+
+      onUpdated?.(updatedDeal)
 
       setMessage(
         "Changes saved successfully."
@@ -73,7 +130,7 @@ function CustomerDetail({
           alignItems: "center",
           justifyContent:
             "space-between",
-          marginBottom: "24px",
+          marginBottom: "20px",
         }}
       >
 
@@ -138,18 +195,152 @@ function CustomerDetail({
 
       </div>
 
+
+      {/* MAP */}
+
+      {fullAddress && (
+        <div
+          className="card"
+          style={{
+            marginBottom:
+              "18px",
+            overflow:
+              "hidden",
+          }}
+        >
+
+          <div
+            style={{
+              height: "400px",
+              position:
+                "relative",
+              background:
+                "#eef0f2",
+            }}
+          >
+
+            <iframe
+              title="Customer location"
+              src={`https://www.google.com/maps?q=${encodeURIComponent(
+                fullAddress
+              )}&output=embed`}
+              width="100%"
+              height="100%"
+              style={{
+                border: 0,
+                display:
+                  "block",
+              }}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+
+            {/* ADDRESS OVERLAY */}
+
+            <div
+              style={{
+                position:
+                  "absolute",
+                left: "14px",
+                bottom: "14px",
+                background:
+                  "#fff",
+                borderRadius:
+                  "8px",
+                padding:
+                  "10px 12px",
+                boxShadow:
+                  "0 2px 8px rgba(0,0,0,0.15)",
+                display:
+                  "flex",
+                alignItems:
+                  "center",
+                gap: "8px",
+                maxWidth:
+                  "calc(100% - 28px)",
+              }}
+            >
+
+              <MapPin size={16} />
+
+              <div
+                style={{
+                  fontSize:
+                    "11px",
+                  fontWeight:
+                    600,
+                }}
+              >
+                {fullAddress}
+              </div>
+
+            </div>
+
+          </div>
+
+          <div
+            style={{
+              padding:
+                "10px 14px",
+              display:
+                "flex",
+              justifyContent:
+                "flex-end",
+              borderTop:
+                "1px solid #eee",
+            }}
+          >
+
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display:
+                  "flex",
+                alignItems:
+                  "center",
+                gap:
+                  "5px",
+                fontSize:
+                  "11px",
+                color:
+                  "#172554",
+                textDecoration:
+                  "none",
+                fontWeight:
+                  600,
+              }}
+            >
+
+              Open in Google Maps
+
+              <ExternalLink
+                size={13}
+              />
+
+            </a>
+
+          </div>
+
+        </div>
+      )}
+
+
       {/* CUSTOMER HEADER */}
 
       <div
         className="card"
         style={{
-          marginBottom: "18px",
+          marginBottom:
+            "18px",
         }}
       >
 
         <div
           style={{
-            padding: "24px",
+            padding:
+              "24px",
           }}
         >
 
@@ -157,8 +348,10 @@ function CustomerDetail({
             style={{
               display:
                 "block",
-              fontSize: "10px",
-              color: "#888",
+              fontSize:
+                "10px",
+              color:
+                "#888",
               textTransform:
                 "uppercase",
               letterSpacing:
@@ -173,7 +366,8 @@ function CustomerDetail({
           <h1
             style={{
               margin: 0,
-              fontSize: "24px",
+              fontSize:
+                "24px",
             }}
           >
             {deal.customer_name ||
@@ -184,24 +378,31 @@ function CustomerDetail({
             style={{
               marginTop:
                 "8px",
-              fontSize: "12px",
-              color: "#888",
+              fontSize:
+                "12px",
+              color:
+                "#888",
             }}
           >
+
             Contract{" "}
+
             <strong
               style={{
-                color: "#555",
+                color:
+                  "#555",
               }}
             >
               {deal.contract_number ||
                 "—"}
             </strong>
+
           </div>
 
         </div>
 
       </div>
+
 
       {/* DEAL INFORMATION */}
 
@@ -218,13 +419,14 @@ function CustomerDetail({
             </h2>
 
             <p>
-              Basic information
-              for this deal
+              Customer and deal
+              information
             </p>
 
           </div>
 
         </div>
+
 
         <div
           style={{
@@ -246,9 +448,12 @@ function CustomerDetail({
               style={{
                 display:
                   "block",
-                fontSize: "10px",
-                fontWeight: 600,
-                color: "#777",
+                fontSize:
+                  "10px",
+                fontWeight:
+                  600,
+                color:
+                  "#777",
                 marginBottom:
                   "6px",
               }}
@@ -276,6 +481,7 @@ function CustomerDetail({
 
           </div>
 
+
           {/* CONTRACT NUMBER */}
 
           <div
@@ -289,9 +495,12 @@ function CustomerDetail({
               style={{
                 display:
                   "block",
-                fontSize: "10px",
-                fontWeight: 600,
-                color: "#777",
+                fontSize:
+                  "10px",
+                fontWeight:
+                  600,
+                color:
+                  "#777",
                 marginBottom:
                   "6px",
               }}
@@ -319,6 +528,131 @@ function CustomerDetail({
 
           </div>
 
+
+          {/* ADDRESS */}
+
+          <div
+            style={{
+              marginBottom:
+                "18px",
+            }}
+          >
+
+            <label
+              htmlFor="address"
+              style={{
+                display:
+                  "block",
+                fontSize:
+                  "10px",
+                fontWeight:
+                  600,
+                color:
+                  "#777",
+                marginBottom:
+                  "6px",
+              }}
+            >
+              Address
+            </label>
+
+            <input
+              id="address"
+              type="text"
+              value={address}
+              onChange={(e) =>
+                setAddress(
+                  e.target.value
+                )
+              }
+              placeholder="Enter address"
+              style={{
+                width:
+                  "100%",
+                boxSizing:
+                  "border-box",
+                height:
+                  "40px",
+                padding:
+                  "0 12px",
+                border:
+                  "1px solid #d9dadd",
+                borderRadius:
+                  "7px",
+                outline:
+                  "none",
+                fontFamily:
+                  "inherit",
+                fontSize:
+                  "12px",
+              }}
+            />
+
+          </div>
+
+
+          {/* POSTCODE */}
+
+          <div
+            style={{
+              marginBottom:
+                "18px",
+            }}
+          >
+
+            <label
+              htmlFor="postcode"
+              style={{
+                display:
+                  "block",
+                fontSize:
+                  "10px",
+                fontWeight:
+                  600,
+                color:
+                  "#777",
+                marginBottom:
+                  "6px",
+              }}
+            >
+              Postcode
+            </label>
+
+            <input
+              id="postcode"
+              type="text"
+              value={postcode}
+              onChange={(e) =>
+                setPostcode(
+                  e.target.value
+                )
+              }
+              placeholder="Enter postcode"
+              style={{
+                width:
+                  "100%",
+                boxSizing:
+                  "border-box",
+                height:
+                  "40px",
+                padding:
+                  "0 12px",
+                border:
+                  "1px solid #d9dadd",
+                borderRadius:
+                  "7px",
+                outline:
+                  "none",
+                fontFamily:
+                  "inherit",
+                fontSize:
+                  "12px",
+              }}
+            />
+
+          </div>
+
+
           {/* SALESPERSON */}
 
           <div>
@@ -328,9 +662,12 @@ function CustomerDetail({
               style={{
                 display:
                   "block",
-                fontSize: "10px",
-                fontWeight: 600,
-                color: "#777",
+                fontSize:
+                  "10px",
+                fontWeight:
+                  600,
+                color:
+                  "#777",
                 marginBottom:
                   "6px",
               }}
@@ -349,17 +686,20 @@ function CustomerDetail({
               }
               placeholder="Enter salesperson"
               style={{
-                width: "100%",
+                width:
+                  "100%",
                 boxSizing:
                   "border-box",
-                height: "40px",
+                height:
+                  "40px",
                 padding:
                   "0 12px",
                 border:
                   "1px solid #d9dadd",
                 borderRadius:
                   "7px",
-                outline: "none",
+                outline:
+                  "none",
                 fontFamily:
                   "inherit",
                 fontSize:
@@ -368,6 +708,7 @@ function CustomerDetail({
             />
 
           </div>
+
 
           {/* SAVE MESSAGE */}
 
