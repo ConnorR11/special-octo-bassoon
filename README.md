@@ -1,6 +1,6 @@
 # Sold Contracts CRM — React
 
-React + Vite frontend for the Supabase `sold_contracts` table.
+React + Vite frontend for the Supabase `deals` table.
 
 ## 1. Install
 npm install
@@ -20,4 +20,4 @@ Open the local URL Vite gives you.
 ## 4. Build
 npm run build
 
-The app reads the `public.sold_contracts` table directly. It does not yet write to the database or connect to Pipedrive.
+The app reads the `public.deals` table directly. It does not yet write to the database or connect to Pipedrive.
