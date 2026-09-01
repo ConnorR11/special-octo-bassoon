@@ -1,3 +1,4 @@
+import { supabase } from "../lib/supabase"
 import { Search } from "lucide-react"
 import { formatDate, getInitials, money, statusLabel } from "../utils/formatters"
 
