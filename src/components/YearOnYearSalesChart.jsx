@@ -31,21 +31,40 @@ function YearOnYearSalesChart({ contracts = [] }) {
   ]
 
   /*
-   * CURRENT DATE
+   * TODAY
    */
 
-  const now = new Date()
+  const today = new Date()
 
-  const currentYear = now.getFullYear()
-  const currentMonth = now.getMonth()
+  const currentYear = today.getFullYear()
+  const currentMonth = today.getMonth()
+  const currentDay = today.getDate()
 
   /*
-   * Find all years from 2020 onwards
+   * Only display months up to
+   * the current month.
+   *
+   * Example:
+   *
+   * September 1st
+   * = January -> September
+   */
+
+  const visibleMonths = months.slice(
+    0,
+    currentMonth + 1
+  )
+
+  /*
+   * Find all years from 2020 onwards.
    */
 
   const years = useMemo(() => {
     const found = contracts
-      .filter((contract) => contract.sale_date)
+      .filter(
+        (contract) =>
+          contract.sale_date
+      )
       .map((contract) => {
         const date = new Date(
           `${contract.sale_date}T00:00:00`
@@ -53,13 +72,17 @@ function YearOnYearSalesChart({ contracts = [] }) {
 
         return date.getFullYear()
       })
-      .filter((year) => year >= 2020)
+      .filter(
+        (year) => year >= 2020
+      )
 
-    return [...new Set(found)].sort()
+    return [
+      ...new Set(found),
+    ].sort()
   }, [contracts])
 
   /*
-   * UNIQUE COLOUR FOR EACH YEAR
+   * COLOURS
    */
 
   const colours = [
@@ -78,56 +101,78 @@ function YearOnYearSalesChart({ contracts = [] }) {
   /*
    * BUILD MONTHLY SALES
    *
-   * IMPORTANT:
-   *
-   * Only contracts dated TODAY or earlier
-   * are included.
+   * ONLY SALES ON OR BEFORE TODAY
+   * ARE INCLUDED.
    */
 
   const monthlySales = useMemo(() => {
     const yearlyTotals = {}
 
     years.forEach((year) => {
-      yearlyTotals[year] = Array(12).fill(0)
+      yearlyTotals[year] =
+        Array(12).fill(0)
     })
-
-    /*
-     * Create today's date.
-     */
-
-    const today = new Date()
-
-    today.setHours(23, 59, 59, 999)
 
     contracts.forEach((contract) => {
       if (!contract.sale_date) {
         return
       }
 
+      /*
+       * Parse the sale date.
+       */
+
       const date = new Date(
         `${contract.sale_date}T00:00:00`
       )
 
+      const year =
+        date.getFullYear()
+
+      const month =
+        date.getMonth()
+
       /*
-       * Ignore anything after today.
+       * Ignore anything before 2020.
+       */
+
+      if (year < 2020) {
+        return
+      }
+
+      /*
+       * Ignore years that don't exist
+       * in our dataset.
+       */
+
+      if (!yearlyTotals[year]) {
+        return
+      }
+
+      /*
+       * IMPORTANT:
+       *
+       * Ignore any sale after TODAY.
+       *
+       * This means:
+       *
+       * Yesterday     = included
+       * Today         = included
+       * Tomorrow      = excluded
        */
 
       if (date > today) {
         return
       }
 
-      const year = date.getFullYear()
-      const month = date.getMonth()
-
-      if (
-        year < 2020 ||
-        !yearlyTotals[year]
-      ) {
-        return
-      }
+      /*
+       * Add the sale.
+       */
 
       yearlyTotals[year][month] +=
-        Number(contract.deal_value || 0)
+        Number(
+          contract.deal_value || 0
+        )
     })
 
     /*
@@ -143,8 +188,8 @@ function YearOnYearSalesChart({ contracts = [] }) {
           (value, monthIndex) => {
 
             /*
-             * For the current year,
-             * don't show future months.
+             * Don't calculate future
+             * months for the current year.
              */
 
             if (
@@ -167,24 +212,34 @@ function YearOnYearSalesChart({ contracts = [] }) {
     years,
     currentYear,
     currentMonth,
+    today,
   ])
 
   /*
-   * BUILD RECHARTS DATA
+   * BUILD CHART DATA
+   *
+   * IMPORTANT:
+   *
+   * We use visibleMonths rather than
+   * all 12 months.
+   *
+   * Therefore the X-axis itself stops
+   * at the current month.
    */
 
   const chartData = useMemo(() => {
-    return months.map(
-      (month, monthIndex) => {
+    return visibleMonths.map(
+      (month, index) => {
+
         const row = {
           month,
-          monthIndex,
+          monthIndex: index,
         }
 
         years.forEach((year) => {
           row[year] =
             monthlySales[year]?.[
-              monthIndex
+              index
             ] ?? null
         })
 
@@ -192,6 +247,7 @@ function YearOnYearSalesChart({ contracts = [] }) {
       }
     )
   }, [
+    visibleMonths,
     years,
     monthlySales,
   ])
@@ -199,27 +255,22 @@ function YearOnYearSalesChart({ contracts = [] }) {
   /*
    * YTD TOTALS
    *
-   * Every year is compared at the
-   * same point in the calendar year.
+   * Compare every year at the same
+   * point in the calendar.
    */
 
   const ytdTotals = useMemo(() => {
     return years.map((year) => {
+
       const values =
         monthlySales[year] || []
 
-      const lastMonth =
-        Math.min(
-          currentMonth,
-          11
-        )
-
-      const lastValue =
-        values[lastMonth]
+      const value =
+        values[currentMonth] || 0
 
       return {
         year,
-        value: lastValue || 0,
+        value,
       }
     })
   }, [
@@ -245,7 +296,8 @@ function YearOnYearSalesChart({ contracts = [] }) {
   const previousYTD =
     ytdTotals.find(
       (item) =>
-        item.year === currentYear - 1
+        item.year ===
+        currentYear - 1
     )?.value || 0
 
   /*
@@ -261,7 +313,7 @@ function YearOnYearSalesChart({ contracts = [] }) {
       : null
 
   /*
-   * AXIS NUMBER FORMAT
+   * AXIS FORMAT
    */
 
   function formatAxisValue(value) {
@@ -281,7 +333,7 @@ function YearOnYearSalesChart({ contracts = [] }) {
   }
 
   /*
-   * CUSTOM TOOLTIP
+   * TOOLTIP
    */
 
   function CustomTooltip({
@@ -304,15 +356,18 @@ function YearOnYearSalesChart({ contracts = [] }) {
           border:
             "1px solid #e5e7eb",
           borderRadius: "8px",
-          padding: "12px 14px",
+          padding:
+            "12px 14px",
           boxShadow:
             "0 4px 14px rgba(0,0,0,0.08)",
         }}
       >
+
         <strong
           style={{
             display: "block",
-            marginBottom: "8px",
+            marginBottom:
+              "8px",
             fontSize: "12px",
           }}
         >
@@ -322,8 +377,10 @@ function YearOnYearSalesChart({ contracts = [] }) {
         {payload
           .filter(
             (item) =>
-              item.value !== null &&
-              item.value !== undefined
+              item.value !==
+                null &&
+              item.value !==
+                undefined
           )
           .sort(
             (a, b) =>
@@ -332,23 +389,31 @@ function YearOnYearSalesChart({ contracts = [] }) {
           )
           .map((item) => (
             <div
-              key={item.dataKey}
+              key={
+                item.dataKey
+              }
               style={{
-                display: "flex",
+                display:
+                  "flex",
                 justifyContent:
                   "space-between",
                 gap: "30px",
-                fontSize: "11px",
-                marginTop: "4px",
+                fontSize:
+                  "11px",
+                marginTop:
+                  "4px",
               }}
             >
+
               <span
                 style={{
-                  color: item.color,
+                  color:
+                    item.color,
                   fontWeight:
                     Number(
                       item.dataKey
-                    ) === currentYear
+                    ) ===
+                    currentYear
                       ? 700
                       : 400,
                 }}
@@ -357,10 +422,14 @@ function YearOnYearSalesChart({ contracts = [] }) {
               </span>
 
               <strong>
-                {money(item.value)}
+                {money(
+                  item.value
+                )}
               </strong>
+
             </div>
           ))}
+
       </div>
     )
   }
@@ -373,26 +442,31 @@ function YearOnYearSalesChart({ contracts = [] }) {
       <div className="card-head">
 
         <div>
+
           <h2>
             Year-on-Year Sales
           </h2>
 
           <p>
-            Cumulative contract value by month
+            Cumulative contract value
+            by month
           </p>
+
         </div>
 
       </div>
 
-      {/* YTD SUMMARY */}
+      {/* SUMMARY */}
 
       <div
         style={{
-          display: "grid",
+          display:
+            "grid",
           gridTemplateColumns:
             "repeat(3, 1fr)",
           gap: "12px",
-          marginBottom: "20px",
+          marginBottom:
+            "20px",
         }}
       >
 
@@ -400,17 +474,25 @@ function YearOnYearSalesChart({ contracts = [] }) {
 
         <div
           style={{
-            padding: "14px",
-            background: "#fafafa",
-            borderRadius: "8px",
+            padding:
+              "14px",
+            background:
+              "#fafafa",
+            borderRadius:
+              "8px",
           }}
         >
+
           <span
             style={{
-              display: "block",
-              fontSize: "10px",
-              color: "#888",
-              marginBottom: "5px",
+              display:
+                "block",
+              fontSize:
+                "10px",
+              color:
+                "#888",
+              marginBottom:
+                "5px",
             }}
           >
             {currentYear} YTD
@@ -418,28 +500,40 @@ function YearOnYearSalesChart({ contracts = [] }) {
 
           <strong
             style={{
-              fontSize: "20px",
+              fontSize:
+                "20px",
             }}
           >
-            {money(currentYTD)}
+            {money(
+              currentYTD
+            )}
           </strong>
+
         </div>
 
         {/* PREVIOUS YEAR */}
 
         <div
           style={{
-            padding: "14px",
-            background: "#fafafa",
-            borderRadius: "8px",
+            padding:
+              "14px",
+            background:
+              "#fafafa",
+            borderRadius:
+              "8px",
           }}
         >
+
           <span
             style={{
-              display: "block",
-              fontSize: "10px",
-              color: "#888",
-              marginBottom: "5px",
+              display:
+                "block",
+              fontSize:
+                "10px",
+              color:
+                "#888",
+              marginBottom:
+                "5px",
             }}
           >
             {currentYear - 1} YTD
@@ -447,28 +541,40 @@ function YearOnYearSalesChart({ contracts = [] }) {
 
           <strong
             style={{
-              fontSize: "20px",
+              fontSize:
+                "20px",
             }}
           >
-            {money(previousYTD)}
+            {money(
+              previousYTD
+            )}
           </strong>
+
         </div>
 
-        {/* YOY CHANGE */}
+        {/* YOY */}
 
         <div
           style={{
-            padding: "14px",
-            background: "#fafafa",
-            borderRadius: "8px",
+            padding:
+              "14px",
+            background:
+              "#fafafa",
+            borderRadius:
+              "8px",
           }}
         >
+
           <span
             style={{
-              display: "block",
-              fontSize: "10px",
-              color: "#888",
-              marginBottom: "5px",
+              display:
+                "block",
+              fontSize:
+                "10px",
+              color:
+                "#888",
+              marginBottom:
+                "5px",
             }}
           >
             Year-on-year
@@ -476,23 +582,31 @@ function YearOnYearSalesChart({ contracts = [] }) {
 
           <strong
             style={{
-              fontSize: "20px",
+              fontSize:
+                "20px",
               color:
-                yoyChange === null
+                yoyChange ===
+                null
                   ? "#333"
-                  : yoyChange >= 0
+                  : yoyChange >=
+                    0
                   ? "#28734c"
                   : "#a33b3b",
             }}
           >
-            {yoyChange === null
+            {yoyChange ===
+            null
               ? "—"
               : `${
-                  yoyChange >= 0
+                  yoyChange >=
+                  0
                     ? "+"
                     : ""
-                }${yoyChange.toFixed(1)}%`}
+                }${yoyChange.toFixed(
+                  1
+                )}%`}
           </strong>
+
         </div>
 
       </div>
@@ -509,22 +623,18 @@ function YearOnYearSalesChart({ contracts = [] }) {
           <LineChart
             data={chartData}
             margin={{
-              top: 20,
+              top: 30,
               right: 30,
               left: 10,
               bottom: 20,
             }}
           >
 
-            {/* GRID */}
-
             <CartesianGrid
               strokeDasharray="3 3"
               vertical={false}
               stroke="#eeeeee"
             />
-
-            {/* X AXIS */}
 
             <XAxis
               dataKey="month"
@@ -534,8 +644,6 @@ function YearOnYearSalesChart({ contracts = [] }) {
                 fontSize: 11,
               }}
             />
-
-            {/* Y AXIS */}
 
             <YAxis
               axisLine={false}
@@ -552,20 +660,23 @@ function YearOnYearSalesChart({ contracts = [] }) {
 
             <ReferenceLine
               x={
-                months[currentMonth]
+                months[
+                  currentMonth
+                ]
               }
               stroke="#999"
               strokeDasharray="4 4"
               label={{
                 value:
-                  "Today",
-                position: "top",
-                fontSize: 10,
-                fill: "#777",
+                  `Today — ${currentDay}/${currentMonth + 1}`,
+                position:
+                  "top",
+                fontSize:
+                  10,
+                fill:
+                  "#777",
               }}
             />
-
-            {/* TOOLTIP */}
 
             <Tooltip
               content={
@@ -573,24 +684,30 @@ function YearOnYearSalesChart({ contracts = [] }) {
               }
             />
 
-            {/* LEGEND */}
-
             <Legend />
 
             {/* YEAR LINES */}
 
             {years.map(
-              (year, index) => {
+              (
+                year,
+                index
+              ) => {
 
                 const isCurrentYear =
-                  year === currentYear
+                  year ===
+                  currentYear
 
                 return (
                   <Line
                     key={year}
                     type="monotone"
-                    dataKey={year}
-                    name={String(year)}
+                    dataKey={
+                      year
+                    }
+                    name={String(
+                      year
+                    )}
                     stroke={
                       colours[
                         index %
@@ -620,7 +737,9 @@ function YearOnYearSalesChart({ contracts = [] }) {
                           ? 7
                           : 5,
                     }}
-                    connectNulls={false}
+                    connectNulls={
+                      false
+                    }
                   />
                 )
               }
