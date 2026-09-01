@@ -43,7 +43,7 @@ function App() {
           data,
           error: supabaseError,
         } = await supabase
-          .from("sold_contracts")
+          .from("deals")
           .select("*")
           .order("sale_date", {
             ascending: false,
