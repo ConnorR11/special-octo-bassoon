@@ -10,7 +10,6 @@ import { money } from "../utils/formatters"
 
 function FitSheet({
   contracts = [],
-  onSelectDeal,
   setSelected,
 }) {
   const [weekOffset, setWeekOffset] =
@@ -245,6 +244,18 @@ function FitSheet({
 
   /*
    * =========================================================
+   * OPEN CUSTOMER DETAIL
+   * =========================================================
+   */
+
+  function openDeal(deal) {
+    if (setSelected) {
+      setSelected(deal)
+    }
+  }
+
+  /*
+   * =========================================================
    * RENDER
    * =========================================================
    */
@@ -429,7 +440,6 @@ function FitSheet({
 
       <div
         className="card"
-        onClick={() => setSelected(contract)}
         style={{
           padding: 0,
           overflow: "auto",
@@ -676,7 +686,7 @@ function FitSheet({
                                 }
                                 type="button"
                                 onClick={() =>
-                                  onSelectDeal?.(
+                                  openDeal(
                                     deal
                                   )
                                 }
@@ -696,25 +706,29 @@ function FitSheet({
                                   marginBottom:
                                     "5px",
                                   cursor:
-                                    onSelectDeal
-                                      ? "pointer"
-                                      : "default",
+                                    "pointer",
                                   fontFamily:
                                     "inherit",
                                   transition:
-                                    "box-shadow 0.15s ease",
+                                    "box-shadow 0.15s ease, transform 0.15s ease",
                                 }}
                                 onMouseEnter={(
                                   e
                                 ) => {
                                   e.currentTarget.style.boxShadow =
                                     "0 2px 7px rgba(0,0,0,0.10)"
+
+                                  e.currentTarget.style.transform =
+                                    "translateY(-1px)"
                                 }}
                                 onMouseLeave={(
                                   e
                                 ) => {
                                   e.currentTarget.style.boxShadow =
                                     "none"
+
+                                  e.currentTarget.style.transform =
+                                    "translateY(0)"
                                 }}
                               >
 
