@@ -247,9 +247,9 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
           <Folder
             title="Procurement"
             icon={Wrench}
-            open={openFolders.installation}
+            open={openFolders.procurement}
             onClick={() =>
-              toggleFolder("installation")
+              toggleFolder("procurement")
             }
           >
 
@@ -280,7 +280,7 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
           </Folder>
 
           {/* ================================= */}
-          {/* INSTALLATION                      */}
+          {/* INSTALLATIONS                     */}
           {/* ================================= */}
 
           <Folder
