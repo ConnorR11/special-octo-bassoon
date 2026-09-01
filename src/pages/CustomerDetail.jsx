@@ -33,7 +33,7 @@ function CustomerDetail({
   }
 
   /*
-   * ADDRESS USED FOR MAP
+   * FULL ADDRESS
    */
 
   const fullAddress = [
@@ -42,6 +42,10 @@ function CustomerDetail({
   ]
     .filter(Boolean)
     .join(", ")
+
+  /*
+   * GOOGLE MAPS LINKS
+   */
 
   const mapsUrl = fullAddress
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
@@ -72,10 +76,8 @@ function CustomerDetail({
         .update({
           salesperson:
             updatedSalesperson,
-
           address:
             updatedAddress,
-
           postcode:
             updatedPostcode,
         })
@@ -84,10 +86,6 @@ function CustomerDetail({
       if (error) {
         throw error
       }
-
-      /*
-       * Update the local deal
-       */
 
       const updatedDeal = {
         ...deal,
@@ -122,7 +120,9 @@ function CustomerDetail({
   return (
     <section>
 
-      {/* HEADER */}
+      {/* =====================================================
+          PAGE HEADER
+          ===================================================== */}
 
       <div
         style={{
@@ -158,6 +158,7 @@ function CustomerDetail({
 
         </button>
 
+
         <button
           type="button"
           onClick={handleSave}
@@ -170,11 +171,13 @@ function CustomerDetail({
             padding:
               "9px 14px",
             border: 0,
-            borderRadius: "7px",
+            borderRadius:
+              "7px",
             background:
               "#172554",
             color: "#fff",
-            fontSize: "11px",
+            fontSize:
+              "11px",
             fontWeight: 600,
             cursor:
               saving
@@ -196,206 +199,313 @@ function CustomerDetail({
       </div>
 
 
-      {/* MAP */}
-
-      {fullAddress && (
-        <div
-          className="card"
-          style={{
-            marginBottom:
-              "18px",
-            overflow:
-              "hidden",
-          }}
-        >
-
-          <div
-            style={{
-              height: "400px",
-              position:
-                "relative",
-              background:
-                "#eef0f2",
-            }}
-          >
-
-            <iframe
-              title="Customer location"
-              src={`https://www.google.com/maps?q=${encodeURIComponent(
-                fullAddress
-              )}&output=embed`}
-              width="100%"
-              height="100%"
-              style={{
-                border: 0,
-                display:
-                  "block",
-              }}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            />
-
-            {/* ADDRESS OVERLAY */}
-
-            <div
-              style={{
-                position:
-                  "absolute",
-                left: "14px",
-                bottom: "14px",
-                background:
-                  "#fff",
-                borderRadius:
-                  "8px",
-                padding:
-                  "10px 12px",
-                boxShadow:
-                  "0 2px 8px rgba(0,0,0,0.15)",
-                display:
-                  "flex",
-                alignItems:
-                  "center",
-                gap: "8px",
-                maxWidth:
-                  "calc(100% - 28px)",
-              }}
-            >
-
-              <MapPin size={16} />
-
-              <div
-                style={{
-                  fontSize:
-                    "11px",
-                  fontWeight:
-                    600,
-                }}
-              >
-                {fullAddress}
-              </div>
-
-            </div>
-
-          </div>
-
-          <div
-            style={{
-              padding:
-                "10px 14px",
-              display:
-                "flex",
-              justifyContent:
-                "flex-end",
-              borderTop:
-                "1px solid #eee",
-            }}
-          >
-
-            <a
-              href={mapsUrl}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                display:
-                  "flex",
-                alignItems:
-                  "center",
-                gap:
-                  "5px",
-                fontSize:
-                  "11px",
-                color:
-                  "#172554",
-                textDecoration:
-                  "none",
-                fontWeight:
-                  600,
-              }}
-            >
-
-              Open in Google Maps
-
-              <ExternalLink
-                size={13}
-              />
-
-            </a>
-
-          </div>
-
-        </div>
-      )}
-
-
-      {/* CUSTOMER HEADER */}
+      {/* =====================================================
+          CUSTOMER + MAP
+          ===================================================== */}
 
       <div
         className="card"
         style={{
           marginBottom:
             "18px",
+          overflow:
+            "hidden",
         }}
       >
 
         <div
           style={{
-            padding:
-              "24px",
+            display: "grid",
+            gridTemplateColumns:
+              "minmax(260px, 0.8fr) minmax(450px, 1.7fr)",
+            minHeight:
+              "360px",
           }}
         >
 
-          <span
-            style={{
-              display:
-                "block",
-              fontSize:
-                "10px",
-              color:
-                "#888",
-              textTransform:
-                "uppercase",
-              letterSpacing:
-                "0.06em",
-              marginBottom:
-                "7px",
-            }}
-          >
-            Customer
-          </span>
-
-          <h1
-            style={{
-              margin: 0,
-              fontSize:
-                "24px",
-            }}
-          >
-            {deal.customer_name ||
-              "Unnamed customer"}
-          </h1>
+          {/* CUSTOMER INFORMATION */}
 
           <div
             style={{
-              marginTop:
-                "8px",
-              fontSize:
-                "12px",
-              color:
-                "#888",
+              padding:
+                "30px",
+              display: "flex",
+              flexDirection:
+                "column",
+              justifyContent:
+                "center",
             }}
           >
 
-            Contract{" "}
-
-            <strong
+            <span
               style={{
+                display:
+                  "block",
+                fontSize:
+                  "10px",
                 color:
-                  "#555",
+                  "#888",
+                textTransform:
+                  "uppercase",
+                letterSpacing:
+                  "0.08em",
+                marginBottom:
+                  "8px",
               }}
             >
-              {deal.contract_number ||
-                "—"}
-            </strong>
+              Customer
+            </span>
+
+
+            <h1
+              style={{
+                margin: 0,
+                fontSize:
+                  "26px",
+                lineHeight:
+                  "1.2",
+                color:
+                  "#222",
+              }}
+            >
+              {deal.customer_name ||
+                "Unnamed customer"}
+            </h1>
+
+
+            {/* CONTRACT */}
+
+            <div
+              style={{
+                marginTop:
+                  "14px",
+                display: "flex",
+                alignItems:
+                  "center",
+                gap: "7px",
+              }}
+            >
+
+              <span
+                style={{
+                  fontSize:
+                    "11px",
+                  color:
+                    "#888",
+                }}
+              >
+                Contract
+              </span>
+
+              <strong
+                style={{
+                  fontSize:
+                    "12px",
+                  color:
+                    "#444",
+                }}
+              >
+                {deal.contract_number ||
+                  "—"}
+              </strong>
+
+            </div>
+
+
+            {/* ADDRESS */}
+
+            {fullAddress && (
+              <div
+                style={{
+                  marginTop:
+                    "24px",
+                  display: "flex",
+                  gap: "9px",
+                  alignItems:
+                    "flex-start",
+                }}
+              >
+
+                <MapPin
+                  size={17}
+                  style={{
+                    marginTop:
+                      "1px",
+                    flexShrink: 0,
+                    color:
+                      "#172554",
+                  }}
+                />
+
+                <div>
+
+                  <span
+                    style={{
+                      display:
+                        "block",
+                      fontSize:
+                        "10px",
+                      color:
+                        "#888",
+                      textTransform:
+                        "uppercase",
+                      letterSpacing:
+                        "0.05em",
+                      marginBottom:
+                        "4px",
+                    }}
+                  >
+                    Address
+                  </span>
+
+                  <span
+                    style={{
+                      display:
+                        "block",
+                      fontSize:
+                        "12px",
+                      color:
+                        "#444",
+                      lineHeight:
+                        "1.5",
+                    }}
+                  >
+                    {fullAddress}
+                  </span>
+
+                </div>
+
+              </div>
+            )}
+
+
+            {/* GOOGLE MAPS BUTTON */}
+
+            {mapsUrl && (
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display:
+                    "inline-flex",
+                  alignItems:
+                    "center",
+                  gap:
+                    "6px",
+                  width:
+                    "fit-content",
+                  marginTop:
+                    "22px",
+                  padding:
+                    "8px 11px",
+                  border:
+                    "1px solid #dddfe3",
+                  borderRadius:
+                    "7px",
+                  color:
+                    "#172554",
+                  background:
+                    "#fff",
+                  textDecoration:
+                    "none",
+                  fontSize:
+                    "10px",
+                  fontWeight:
+                    600,
+                }}
+              >
+
+                <MapPin size={13} />
+
+                Open in Google Maps
+
+                <ExternalLink
+                  size={12}
+                />
+
+              </a>
+            )}
+
+          </div>
+
+
+          {/* MAP */}
+
+          <div
+            style={{
+              minHeight:
+                "360px",
+              background:
+                "#eef0f2",
+            }}
+          >
+
+            {fullAddress ? (
+
+              <iframe
+                title="Customer location"
+                src={`https://www.google.com/maps?q=${encodeURIComponent(
+                  fullAddress
+                )}&output=embed`}
+                width="100%"
+                height="100%"
+                style={{
+                  border: 0,
+                  display:
+                    "block",
+                  minHeight:
+                    "360px",
+                }}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+
+            ) : (
+
+              <div
+                style={{
+                  height:
+                    "100%",
+                  minHeight:
+                    "360px",
+                  display:
+                    "flex",
+                  alignItems:
+                    "center",
+                  justifyContent:
+                    "center",
+                  color:
+                    "#999",
+                  fontSize:
+                    "12px",
+                }}
+              >
+
+                <div
+                  style={{
+                    textAlign:
+                      "center",
+                  }}
+                >
+
+                  <MapPin
+                    size={28}
+                    style={{
+                      marginBottom:
+                        "8px",
+                    }}
+                  />
+
+                  <div>
+                    No address available
+                  </div>
+
+                </div>
+
+              </div>
+
+            )}
 
           </div>
 
@@ -404,7 +514,9 @@ function CustomerDetail({
       </div>
 
 
-      {/* DEAL INFORMATION */}
+      {/* =====================================================
+          DEAL INFORMATION
+          ===================================================== */}
 
       <div className="card">
 
