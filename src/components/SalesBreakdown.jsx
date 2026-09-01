@@ -1,4 +1,9 @@
-import React from "react"
+import React, { useMemo, useState } from "react"
+import {
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react"
+
 import { money } from "../utils/formatters"
 
 function SalesBreakdown({ contracts = [] }) {
@@ -17,166 +22,175 @@ function SalesBreakdown({ contracts = [] }) {
     "December",
   ]
 
-  // Find every year represented in the deals
-  const years = [
-    ...new Set(
-      contracts
-        .filter((contract) => contract.sale_date)
-        .map((contract) =>
-          new Date(contract.sale_date).getFullYear()
-        )
-    ),
-  ].sort((a, b) => b - a)
+  // Build the sales data automatically from whatever
+  // years exist in the database.
+  const yearlyData = useMemo(() => {
+    const years = {}
+
+    contracts.forEach((contract) => {
+      if (!contract.sale_date) {
+        return
+      }
+
+      const date = new Date(contract.sale_date)
+
+      if (Number.isNaN(date.getTime())) {
+        return
+      }
+
+      const year = date.getFullYear()
+      const month = date.getMonth()
+      const value = Number(contract.deal_value || 0)
+
+      if (!years[year]) {
+        years[year] = months.map((monthName) => ({
+          month: monthName,
+          value: 0,
+        }))
+      }
+
+      years[year][month].value += value
+    })
+
+    return Object.entries(years)
+      .map(([year, monthlyTotals]) => ({
+        year: Number(year),
+        monthlyTotals,
+        total: monthlyTotals.reduce(
+          (sum, item) => sum + item.value,
+          0
+        ),
+      }))
+      .sort((a, b) => b.year - a.year)
+  }, [contracts])
+
+  // Open the most recent year by default
+  const [expandedYear, setExpandedYear] = useState(null)
+
+  React.useEffect(() => {
+    if (
+      expandedYear === null &&
+      yearlyData.length > 0
+    ) {
+      setExpandedYear(yearlyData[0].year)
+    }
+  }, [yearlyData, expandedYear])
+
+  function toggleYear(year) {
+    setExpandedYear(
+      expandedYear === year ? null : year
+    )
+  }
+
+  if (!yearlyData.length) {
+    return (
+      <div className="empty">
+        No sales data available.
+      </div>
+    )
+  }
 
   return (
     <div className="sales-breakdown">
 
-      {years.map((year) => {
+      {yearlyData.map((yearData) => {
 
-        const monthlyTotals = months.map(
-          (month, monthIndex) => {
-
-            const value = contracts
-              .filter((contract) => {
-                if (!contract.sale_date) {
-                  return false
-                }
-
-                const date = new Date(
-                  contract.sale_date
-                )
-
-                return (
-                  date.getFullYear() === year &&
-                  date.getMonth() === monthIndex
-                )
-              })
-              .reduce(
-                (sum, contract) =>
-                  sum +
-                  Number(
-                    contract.deal_value || 0
-                  ),
-                0
-              )
-
-            return {
-              month,
-              value,
-            }
-          }
-        )
+        const isExpanded =
+          expandedYear === yearData.year
 
         const max = Math.max(
-          ...monthlyTotals.map(
+          ...yearData.monthlyTotals.map(
             (item) => item.value
           ),
           1
         )
 
-        const total = monthlyTotals.reduce(
-          (sum, item) =>
-            sum + item.value,
-          0
-        )
-
         return (
           <div
             className="sales-year"
-            key={year}
+            key={yearData.year}
           >
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent:
-                  "space-between",
-                alignItems: "flex-start",
-                marginBottom: "20px",
-              }}
+            {/* YEAR */}
+
+            <button
+              type="button"
+              className="sales-year-header"
+              onClick={() =>
+                toggleYear(yearData.year)
+              }
             >
 
-              <div>
+              <div className="sales-year-title">
 
-                <h3
-                  style={{
-                    margin: 0,
-                    fontSize: "16px",
-                  }}
-                >
-                  {year}
-                </h3>
+                {isExpanded ? (
+                  <ChevronDown size={16} />
+                ) : (
+                  <ChevronRight size={16} />
+                )}
 
-                <span
-                  style={{
-                    display: "block",
-                    color: "#888",
-                    fontSize: "10px",
-                    marginTop: "4px",
-                  }}
-                >
-                  Annual sales
-                </span>
-
-                <strong
-                  style={{
-                    display: "block",
-                    fontSize: "20px",
-                    marginTop: "4px",
-                  }}
-                >
-                  {money(total)}
+                <strong>
+                  {yearData.year}
                 </strong>
 
               </div>
 
-            </div>
+              <strong>
+                {money(yearData.total)}
+              </strong>
 
-            {monthlyTotals.map(
-              ({ month, value }) => (
+            </button>
 
-                <div
-                  className="bar-row"
-                  key={month}
-                >
 
-                  <div>
+            {/* MONTHS */}
 
-                    <span>
-                      {month}
-                    </span>
+            {isExpanded && (
 
-                    <b>
-                      {money(value)}
-                    </b>
+              <div className="sales-year-months">
 
-                  </div>
+                {yearData.monthlyTotals.map(
+                  ({ month, value }) => (
 
-                  <div className="bar">
+                    <div
+                      className="bar-row"
+                      key={month}
+                    >
 
-                    <i
-                      style={{
-                        width:
-                          `${(value / max) * 100}%`,
-                      }}
-                    />
+                      <div>
 
-                  </div>
+                        <span>
+                          {month}
+                        </span>
 
-                </div>
+                        <b>
+                          {money(value)}
+                        </b>
 
-              )
+                      </div>
+
+                      <div className="bar">
+
+                        <i
+                          style={{
+                            width:
+                              `${(value / max) * 100}%`,
+                          }}
+                        />
+
+                      </div>
+
+                    </div>
+
+                  )
+                )}
+
+              </div>
+
             )}
 
           </div>
         )
       })}
-
-      {years.length === 0 && (
-        <div className="empty">
-          No sales data available.
-        </div>
-      )}
 
     </div>
   )
