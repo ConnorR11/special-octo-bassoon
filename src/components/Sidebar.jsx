@@ -184,7 +184,16 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
             onClick={() =>
               toggleFolder("sales")
             }
+            
           >
+
+            
+
+            <NavItem
+              icon={CalendarDays}
+              label="Appointments"
+              disabled
+            />
 
             <NavItem
               icon={FileText}
@@ -193,18 +202,6 @@ function Sidebar({ page, setPage, mobile, setMobile }) {
               onClick={() =>
                 navigate("contracts")
               }
-            />
-
-            <NavItem
-              icon={ClipboardList}
-              label="Leads To Issue"
-              disabled
-            />
-
-            <NavItem
-              icon={CalendarDays}
-              label="Booked Leads"
-              disabled
             />
 
             <NavItem
