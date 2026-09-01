@@ -48,6 +48,28 @@ function YearOnYearSalesChart({ contracts = [] }) {
     return [...new Set(found)].sort()
   }, [contracts])
 
+  /*
+   * Current year
+   */
+
+  const currentYear = new Date().getFullYear()
+
+  /*
+   * Colours for each year
+   */
+
+  const colours = [
+    "#2563eb", // Blue
+    "#16a34a", // Green
+    "#dc2626", // Red
+    "#9333ea", // Purple
+    "#ea580c", // Orange
+    "#0891b2", // Cyan
+    "#db2777", // Pink
+    "#ca8a04", // Yellow
+    "#4f46e5", // Indigo
+    "#059669", // Emerald
+  ]
 
   /*
    * Build monthly running totals
@@ -83,7 +105,6 @@ function YearOnYearSalesChart({ contracts = [] }) {
         Number(contract.deal_value || 0)
     })
 
-
     /*
      * Convert monthly sales into
      * cumulative running totals
@@ -98,7 +119,6 @@ function YearOnYearSalesChart({ contracts = [] }) {
           return runningTotal
         })
     })
-
 
     /*
      * Recharts data
@@ -120,7 +140,6 @@ function YearOnYearSalesChart({ contracts = [] }) {
     )
   }, [contracts, years])
 
-
   return (
     <div className="card sales-chart">
 
@@ -137,7 +156,6 @@ function YearOnYearSalesChart({ contracts = [] }) {
         </div>
 
       </div>
-
 
       <div className="chart-container">
 
@@ -192,19 +210,35 @@ function YearOnYearSalesChart({ contracts = [] }) {
 
             <Legend />
 
-            {years.map((year) => (
-              <Line
-                key={year}
-                type="monotone"
-                dataKey={year}
-                name={String(year)}
-                strokeWidth={2}
-                dot={false}
-                activeDot={{
-                  r: 5,
-                }}
-              />
-            ))}
+            {years.map((year, index) => {
+              const isCurrentYear =
+                year === currentYear
+
+              return (
+                <Line
+                  key={year}
+                  type="monotone"
+                  dataKey={year}
+                  name={String(year)}
+                  stroke={
+                    colours[
+                      index %
+                        colours.length
+                    ]
+                  }
+                  strokeWidth={
+                    isCurrentYear ? 4 : 1.5
+                  }
+                  dot={false}
+                  activeDot={{
+                    r: isCurrentYear ? 7 : 5,
+                  }}
+                  opacity={
+                    isCurrentYear ? 1 : 0.65
+                  }
+                />
+              )
+            })}
 
           </LineChart>
 
