@@ -119,7 +119,7 @@ function Appointments({
         request =
           request.or(
             [
-              `customer_name.ilike.%${search}%`,
+              `name.ilike.%${search}%`,
               `postcode.ilike.%${search}%`,
               `salesperson.ilike.%${search}%`,
               `phone.ilike.%${search}%`,
@@ -756,7 +756,7 @@ function Appointments({
                     }}
                   >
 
-                    {appointment.customer_name ||
+                    {appointment.name ||
                       "Unnamed customer"}
 
                   </div>
