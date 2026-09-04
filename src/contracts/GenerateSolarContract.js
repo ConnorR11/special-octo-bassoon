@@ -31,6 +31,7 @@ function AppointmentDetail({
   )
 
   const [saving, setSaving] = useState(false)
+
   const [error, setError] = useState("")
 
   // =========================================================
@@ -63,7 +64,7 @@ function AppointmentDetail({
     const date = new Date(value)
 
     if (Number.isNaN(date.getTime())) {
-      return String(value)
+      return value
     }
 
     return date.toLocaleString("en-GB", {
@@ -84,10 +85,8 @@ function AppointmentDetail({
       return
     }
 
-    const appointmentRowId =
-      appointment?.appointment_row_id
-
-    if (!appointmentRowId) {
+    // Make sure we have the appointment row ID
+    if (!appointment?.appointment_row_id) {
       setError(
         "This appointment does not have an appointment_row_id."
       )
@@ -104,7 +103,7 @@ function AppointmentDetail({
       // =======================================================
 
       const {
-        data: updatedRows,
+        data,
         error: updateError,
       } = await supabase
         .from("appointments")
@@ -113,7 +112,7 @@ function AppointmentDetail({
         })
         .eq(
           "appointment_row_id",
-          appointmentRowId
+          appointment.appointment_row_id
         )
         .select()
 
@@ -121,16 +120,10 @@ function AppointmentDetail({
         throw updateError
       }
 
-      // =======================================================
-      // MAKE SURE A ROW WAS ACTUALLY UPDATED
-      // =======================================================
-
-      if (
-        !updatedRows ||
-        updatedRows.length === 0
-      ) {
+      // If nothing came back, Supabase didn't update a row
+      if (!data || data.length === 0) {
         throw new Error(
-          "No appointment was updated. This normally means the appointment_row_id does not match the appointments table, or the UPDATE policy is not enabled in Supabase."
+          "No appointment was updated. Check that appointment_row_id matches a row in the appointments table."
         )
       }
 
@@ -138,14 +131,13 @@ function AppointmentDetail({
       // UPDATED APPOINTMENT
       // =======================================================
 
-      const updatedAppointment =
-        updatedRows[0]
+      const updatedAppointment = data[0]
 
-      // =======================================================
-      // UPDATE PARENT COMPONENT
-      // =======================================================
-
+      // Update parent
       onUpdated?.(updatedAppointment)
+
+      // Close modal
+      setShowResult(false)
 
       // =======================================================
       // SOLAR CONTRACT
@@ -158,7 +150,7 @@ function AppointmentDetail({
         isSolar
       ) {
         try {
-          GenerateSolarContract({
+          await GenerateSolarContract({
             appointment: updatedAppointment,
             epvsCalculation,
           })
@@ -168,23 +160,11 @@ function AppointmentDetail({
             contractError
           )
 
-          // The appointment HAS been saved.
-          // The contract is a separate operation.
           setError(
             "Appointment was saved as Sold, but the solar contract could not be generated."
           )
-
-          setSaving(false)
-          return
         }
       }
-
-      // =======================================================
-      // SUCCESS
-      // =======================================================
-
-      setShowResult(false)
-      setError("")
     } catch (err) {
       console.error(
         "Error updating appointment:",
@@ -253,9 +233,7 @@ function AppointmentDetail({
   return (
     <section>
 
-      {/* =====================================================
-          HERO
-      ===================================================== */}
+      {/* HERO */}
 
       <div
         style={{
@@ -296,7 +274,7 @@ function AppointmentDetail({
               fontWeight: 600,
             }}
           >
-            {appointment.rep_allocated ||
+            {appointment.salesperson ||
               appointment.name ||
               "Appointment"}
           </span>
@@ -394,9 +372,7 @@ function AppointmentDetail({
         </div>
       </div>
 
-      {/* =====================================================
-          MAP
-      ===================================================== */}
+      {/* MAP */}
 
       <div
         style={{
@@ -438,9 +414,7 @@ function AppointmentDetail({
         )}
       </div>
 
-      {/* =====================================================
-          INFORMATION
-      ===================================================== */}
+      {/* INFORMATION */}
 
       <div
         style={{
@@ -451,9 +425,6 @@ function AppointmentDetail({
           marginTop: "18px",
         }}
       >
-
-        {/* CUSTOMER */}
-
         <InfoCard
           title="Customer"
           icon={UserRound}
@@ -465,11 +436,9 @@ function AppointmentDetail({
 
           <InfoRow
             label="Phone"
-            value={
-              appointment.phone_number_1
-            }
+            value={appointment.phone}
             icon={
-              appointment.phone_number_1
+              appointment.phone
                 ? Phone
                 : null
             }
@@ -477,11 +446,9 @@ function AppointmentDetail({
 
           <InfoRow
             label="Email"
-            value={
-              appointment.email_address
-            }
+            value={appointment.email}
             icon={
-              appointment.email_address
+              appointment.email
                 ? Mail
                 : null
             }
@@ -497,8 +464,6 @@ function AppointmentDetail({
             }
           />
         </InfoCard>
-
-        {/* APPOINTMENT */}
 
         <InfoCard
           title="Appointment"
@@ -528,12 +493,10 @@ function AppointmentDetail({
           <InfoRow
             label="Salesperson"
             value={
-              appointment.rep_allocated
+              appointment.salesperson
             }
           />
         </InfoCard>
-
-        {/* RESULT */}
 
         <InfoCard
           title="Result"
@@ -583,9 +546,7 @@ function AppointmentDetail({
         </InfoCard>
       </div>
 
-      {/* =====================================================
-          EPVS
-      ===================================================== */}
+      {/* EPVS */}
 
       {isSolar && (
         <div
@@ -629,17 +590,14 @@ function AppointmentDetail({
         </div>
       )}
 
-      {/* =====================================================
-          RESULT MODAL
-      ===================================================== */}
+      {/* RESULT MODAL */}
 
       {showResult && (
         <div
           style={{
             position: "fixed",
             inset: 0,
-            background:
-              "rgba(0,0,0,0.35)",
+            background: "rgba(0,0,0,0.35)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -658,9 +616,6 @@ function AppointmentDetail({
               overflow: "hidden",
             }}
           >
-
-            {/* HEADER */}
-
             <div
               style={{
                 padding: "18px 20px",
@@ -693,25 +648,19 @@ function AppointmentDetail({
 
               <button
                 type="button"
-                onClick={() => {
-                  if (!saving) {
-                    setShowResult(false)
-                  }
-                }}
+                onClick={() =>
+                  setShowResult(false)
+                }
                 style={{
                   border: 0,
                   background: "transparent",
-                  cursor: saving
-                    ? "default"
-                    : "pointer",
+                  cursor: "pointer",
                   color: "#888",
                 }}
               >
                 <X size={18} />
               </button>
             </div>
-
-            {/* BODY */}
 
             <div
               style={{
@@ -725,8 +674,7 @@ function AppointmentDetail({
                   fontWeight: 700,
                   color: "#555",
                   marginBottom: "7px",
-                  textTransform:
-                    "uppercase",
+                  textTransform: "uppercase",
                 }}
               >
                 Result
@@ -734,11 +682,8 @@ function AppointmentDetail({
 
               <select
                 value={result}
-                disabled={saving}
                 onChange={(e) =>
-                  setResult(
-                    e.target.value
-                  )
+                  setResult(e.target.value)
                 }
                 style={{
                   width: "100%",
@@ -777,8 +722,6 @@ function AppointmentDetail({
                 </option>
               </select>
 
-              {/* SOLAR CONTRACT MESSAGE */}
-
               {result
                 .toLowerCase()
                 .trim() === "sold" &&
@@ -793,14 +736,11 @@ function AppointmentDetail({
                       fontSize: "10px",
                     }}
                   >
-                    Saving as Sold will
-                    generate the solar
-                    contract PDF
+                    Saving as Sold will generate
+                    the solar contract PDF
                     automatically.
                   </div>
                 )}
-
-              {/* ERROR */}
 
               {error && (
                 <div
@@ -818,8 +758,6 @@ function AppointmentDetail({
               )}
             </div>
 
-            {/* FOOTER */}
-
             <div
               style={{
                 padding: "14px 20px",
@@ -831,7 +769,6 @@ function AppointmentDetail({
             >
               <button
                 type="button"
-                disabled={saving}
                 onClick={() =>
                   setShowResult(false)
                 }
@@ -842,9 +779,7 @@ function AppointmentDetail({
                     "1px solid #dddfe3",
                   borderRadius: "7px",
                   background: "#fff",
-                  cursor: saving
-                    ? "default"
-                    : "pointer",
+                  cursor: "pointer",
                   fontFamily: "inherit",
                   fontSize: "11px",
                 }}
@@ -854,9 +789,7 @@ function AppointmentDetail({
 
               <button
                 type="button"
-                disabled={
-                  !result || saving
-                }
+                disabled={!result || saving}
                 onClick={saveResult}
                 style={{
                   height: "36px",
@@ -971,6 +904,7 @@ function InfoRow({
         }}
       >
         {Icon && <Icon size={11} />}
+
         {label}
       </span>
 
