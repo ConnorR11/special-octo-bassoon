@@ -11,8 +11,6 @@ import {
   PoundSterling,
 } from "lucide-react"
 
-import AnnualBreakdown from "./components/EPVS/AnnualBreakdown"
-
 const money = (value) =>
   new Intl.NumberFormat("en-GB", {
     style: "currency",
@@ -130,16 +128,6 @@ export default function EPVSCalculator({
 }) {
   const [step, setStep] = useState(0)
 
-  /*
-   * ---------------------------------------------------------
-   * INITIAL DATA
-   * ---------------------------------------------------------
-   *
-   * Customer information comes from the appointment.
-   * Everything else uses the standard EPVS starting values.
-   * ---------------------------------------------------------
-   */
-
   const appointmentInitial = useMemo(() => {
     return {
       ...initial,
@@ -157,10 +145,6 @@ export default function EPVSCalculator({
 
   const [data, setData] =
     useState(appointmentInitial)
-
-  /*
-   * If the appointment changes, refresh the customer fields.
-   */
 
   useEffect(() => {
     setData((current) => ({
@@ -190,11 +174,9 @@ export default function EPVSCalculator({
     }))
   }
 
-  /*
-   * ---------------------------------------------------------
-   * CALCULATIONS
-   * ---------------------------------------------------------
-   */
+  // =========================================================
+  // CALCULATIONS
+  // =========================================================
 
   const results = useMemo(() => {
     const systemSize =
@@ -331,6 +313,50 @@ export default function EPVSCalculator({
           ) / annualSaving
         : null
 
+    // =======================================================
+    // 30 YEAR BREAKDOWN
+    // =======================================================
+
+    const systemCost =
+      Number(data.systemCost || 0)
+
+    const thirtyYearBreakdown = []
+
+    let cumulativeSavings = 0
+    let cumulativeCashflow = 0
+
+    for (let year = 1; year <= 30; year++) {
+      const annualSavings =
+        Number(annualSaving || 0)
+
+      cumulativeSavings += annualSavings
+
+      const annualCashflow =
+        annualSavings
+
+      cumulativeCashflow =
+        cumulativeSavings -
+        systemCost
+
+      thirtyYearBreakdown.push({
+        year,
+        annualSaving: annualSavings,
+        cumulativeSavings,
+        systemCost,
+        cumulativeCashflow,
+        paidBack:
+          cumulativeSavings >=
+          systemCost,
+      })
+    }
+
+    const thirtyYearSavings =
+      cumulativeSavings
+
+    const thirtyYearProfit =
+      thirtyYearSavings -
+      systemCost
+
     return {
       systemSize,
       generation,
@@ -346,17 +372,17 @@ export default function EPVSCalculator({
       monthlyPayment,
       financeAmount,
       simplePayback,
+
+      // 30 YEAR DATA
+      thirtyYearBreakdown,
+      thirtyYearSavings,
+      thirtyYearProfit,
     }
   }, [data])
 
-  /*
-   * ---------------------------------------------------------
-   * SEND CALCULATION TO APPOINTMENT DETAIL
-   * ---------------------------------------------------------
-   *
-   * This is what allows AppointmentDetail to generate the PDF
-   * when the appointment is resulted as Sold.
-   */
+  // =========================================================
+  // SEND CALCULATION TO APPOINTMENT DETAIL
+  // =========================================================
 
   useEffect(() => {
     onCalculationChange?.({
@@ -873,7 +899,7 @@ export default function EPVSCalculator({
               data={data}
             />
 
-            <AnnualBreakdown
+            <ThirtyYearBreakdown
               results={results}
             />
           </>
@@ -929,7 +955,9 @@ export default function EPVSCalculator({
   )
 }
 
-/* CARD */
+/* =========================================================
+   CARD
+========================================================= */
 
 function Card({
   title,
@@ -955,7 +983,9 @@ function Card({
   )
 }
 
-/* RESULTS */
+/* =========================================================
+   RESULTS
+========================================================= */
 
 function Results({ results, data }) {
   const cards = [
@@ -1072,7 +1102,174 @@ function Results({ results, data }) {
   )
 }
 
-/* STYLES */
+/* =========================================================
+   30 YEAR BREAKDOWN
+========================================================= */
+
+function ThirtyYearBreakdown({
+  results,
+}) {
+  if (
+    !results?.thirtyYearBreakdown
+  ) {
+    return null
+  }
+
+  return (
+    <div
+      className="card"
+      style={{
+        marginBottom: 20,
+      }}
+    >
+      <div className="card-head">
+        <div>
+          <h2>
+            30 Year Projection
+          </h2>
+
+          <p>
+            Estimated savings and cumulative
+            return over the system lifetime.
+          </p>
+        </div>
+
+        <div style={styles.thirtyYearSummary}>
+          <div>
+            <span>
+              30 year savings
+            </span>
+
+            <strong>
+              {money(
+                results.thirtyYearSavings
+              )}
+            </strong>
+          </div>
+
+          <div>
+            <span>
+              30 year return
+            </span>
+
+            <strong>
+              {money(
+                results.thirtyYearProfit
+              )}
+            </strong>
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          overflowX: "auto",
+        }}
+      >
+        <table
+          style={{
+            width: "100%",
+            borderCollapse:
+              "collapse",
+            fontSize: 12,
+          }}
+        >
+          <thead>
+            <tr>
+              <th style={styles.th}>
+                Year
+              </th>
+
+              <th
+                style={{
+                  ...styles.th,
+                  textAlign: "right",
+                }}
+              >
+                Annual saving
+              </th>
+
+              <th
+                style={{
+                  ...styles.th,
+                  textAlign: "right",
+                }}
+              >
+                Cumulative saving
+              </th>
+
+              <th
+                style={{
+                  ...styles.th,
+                  textAlign: "right",
+                }}
+              >
+                Cumulative return
+              </th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {results.thirtyYearBreakdown.map(
+              (row) => (
+                <tr key={row.year}>
+                  <td
+                    style={
+                      styles.td
+                    }
+                  >
+                    Year {row.year}
+                  </td>
+
+                  <td
+                    style={{
+                      ...styles.td,
+                      textAlign:
+                        "right",
+                    }}
+                  >
+                    {money(
+                      row.annualSaving
+                    )}
+                  </td>
+
+                  <td
+                    style={{
+                      ...styles.td,
+                      textAlign:
+                        "right",
+                    }}
+                  >
+                    {money(
+                      row.cumulativeSavings
+                    )}
+                  </td>
+
+                  <td
+                    style={{
+                      ...styles.td,
+                      textAlign:
+                        "right",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {money(
+                      row.cumulativeCashflow
+                    )}
+                  </td>
+                </tr>
+              )
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+/* =========================================================
+   STYLES
+========================================================= */
 
 const styles = {
   wrapper: {
@@ -1207,5 +1404,27 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: 7,
+  },
+
+  thirtyYearSummary: {
+    display: "flex",
+    gap: 24,
+  },
+
+  th: {
+    padding: "9px 10px",
+    borderBottom:
+      "2px solid #e5e7eb",
+    textAlign: "left",
+    fontSize: 11,
+    color: "#64748b",
+    fontWeight: 700,
+  },
+
+  td: {
+    padding: "8px 10px",
+    borderBottom:
+      "1px solid #eef0f3",
+    color: "#334155",
   },
 }
