@@ -15,7 +15,7 @@ import {
 
 import { supabase } from "../lib/supabase"
 import EPVSCalculator from "../EPVSCalculator"
-import { GenerateSolarContract } from "../contracts-temp/GenerateSolarContract"
+import { GenerateSolarContract } from "../contracts/GenerateSolarContract"
 
 function AppointmentDetail({
   appointment,
