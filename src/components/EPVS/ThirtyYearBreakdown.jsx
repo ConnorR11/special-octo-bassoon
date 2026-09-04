@@ -1,4 +1,4 @@
-import React, { useMemo } from "react"
+import React from "react"
 
 const money = (value) =>
   new Intl.NumberFormat("en-GB", {
@@ -15,254 +15,19 @@ const number = (value) =>
   })
 
 export default function ThirtyYearBreakdown({
-  results,
-  data,
+  thirtyYearProjection,
 }) {
-  const projection = useMemo(() => {
-    const rows = []
+  if (!thirtyYearProjection) {
+    return null
+  }
 
-    let cumulativePosition = 0
-
-    const systemCost =
-      Number(data.systemCost || 0)
-
-    const annualConsumption =
-      Number(data.annualConsumption || 0)
-
-    const importRate =
-      Number(data.importRate || 0)
-
-    const exportRate =
-      Number(data.exportRate || 0)
-
-    /*
-     * First-year values come directly from the calculator.
-     */
-    const firstYearGeneration =
-      Number(results.generation || 0)
-
-    const firstYearSolar =
-      Number(results.solarSelfConsumption || 0)
-
-    const firstYearBattery =
-      Number(results.batteryContribution || 0)
-
-    const firstYearExport =
-      Number(results.exportKwh || 0)
-
-    /*
-     * Annual electricity price escalation.
-     *
-     * This is currently a modelling assumption and can later
-     * be replaced by the exact EPVS tariff escalation logic.
-     */
-    const annualRateIncrease = 0.03
-
-    /*
-     * Solar degradation.
-     *
-     * Current preliminary model assumes 0.4% degradation
-     * per year after year one.
-     */
-    const annualDegradation = 0.004
-
-    /*
-     * First-year grid bill before installation.
-     */
-    const firstYearBill =
-      annualConsumption * importRate
-
-    for (let year = 1; year <= 30; year++) {
-      /*
-       * Generation decreases as the panels age.
-       */
-      const generation =
-        firstYearGeneration *
-        Math.pow(
-          1 - annualDegradation,
-          year - 1
-        )
-
-      /*
-       * Maintain the same proportions between solar,
-       * battery and export as the calculator's first-year
-       * result.
-       */
-      const solar =
-        firstYearGeneration > 0
-          ? generation *
-            (firstYearSolar /
-              firstYearGeneration)
-          : 0
-
-      const battery =
-        firstYearGeneration > 0
-          ? generation *
-            (firstYearBattery /
-              firstYearGeneration)
-          : 0
-
-      const exportKwh =
-        Math.max(
-          0,
-          generation -
-            solar -
-            battery
-        )
-
-      /*
-       * Electricity prices increase over time.
-       */
-      const importRateYear =
-        importRate *
-        Math.pow(
-          1 + annualRateIncrease,
-          year - 1
-        )
-
-      const exportRateYear =
-        exportRate *
-        Math.pow(
-          1 + annualRateIncrease,
-          year - 1
-        )
-
-      /*
-       * Financial benefits.
-       */
-      const solarBenefit =
-        solar * importRateYear
-
-      const batteryBenefit =
-        battery * importRateYear
-
-      const exportBenefit =
-        exportKwh * exportRateYear
-
-      const annualBenefit =
-        solarBenefit +
-        batteryBenefit +
-        exportBenefit
-
-      /*
-       * Finance payment.
-       *
-       * Current calculator assumes the full system cost
-       * is paid in year one.
-       */
-      const yearlyPayment =
-        year === 1
-          ? systemCost -
-            Number(data.deposit || 0)
-          : 0
-
-      const netAnnualBenefit =
-        annualBenefit -
-        yearlyPayment
-
-      cumulativePosition +=
-        netAnnualBenefit
-
-      /*
-       * Electricity bill before installation.
-       */
-      const billPreInstall =
-        annualConsumption *
-        importRateYear
-
-      /*
-       * Approximate bill after installation.
-       *
-       * This represents the remaining imported electricity
-       * after solar and battery reduction.
-       */
-      const gridReduction =
-        solar + battery
-
-      const remainingGrid =
-        Math.max(
-          0,
-          annualConsumption -
-            gridReduction
-        )
-
-      const billPostInstall =
-        remainingGrid *
-        importRateYear
-
-      rows.push({
-        year,
-        generation,
-        solar,
-        battery,
-        exportKwh,
-        annualBenefit,
-        yearlyPayment,
-        netAnnualBenefit,
-        cumulativePosition,
-        billPreInstall,
-        billPostInstall,
-      })
-    }
-
-    return rows
-  }, [results, data])
-
-  const totals = projection.reduce(
-    (total, row) => {
-      total.generation += row.generation
-      total.solar += row.solar
-      total.battery += row.battery
-      total.exportKwh += row.exportKwh
-      total.annualBenefit +=
-        row.annualBenefit
-      total.yearlyPayment +=
-        row.yearlyPayment
-      total.netAnnualBenefit +=
-        row.netAnnualBenefit
-
-      total.billPreInstall +=
-        row.billPreInstall
-
-      total.billPostInstall +=
-        row.billPostInstall
-
-      return total
-    },
-    {
-      generation: 0,
-      solar: 0,
-      battery: 0,
-      exportKwh: 0,
-      annualBenefit: 0,
-      yearlyPayment: 0,
-      netAnnualBenefit: 0,
-      billPreInstall: 0,
-      billPostInstall: 0,
-    }
-  )
-
-  /*
-   * Find the first year where cumulative position
-   * becomes positive.
-   */
-  const paybackRow =
-    projection.find(
-      (row) =>
-        row.cumulativePosition >= 0
-    )
-
-  const paybackPeriod =
-    paybackRow
-      ? paybackRow.year
-      : null
-
-  const totalNetSavings =
-    totals.netAnnualBenefit
-
-  const totalNetReturn =
-    totalNetSavings -
-    Number(data.systemCost || 0)
+  const {
+    rows = [],
+    totals = {},
+    paybackPeriod,
+    totalNetSavings,
+    totalNetReturn,
+  } = thirtyYearProjection
 
   return (
     <div
@@ -270,10 +35,6 @@ export default function ThirtyYearBreakdown({
         marginTop: 24,
       }}
     >
-      {/* =====================================================
-          HEADER
-          ===================================================== */}
-
       <div
         className="card"
         style={{
@@ -293,8 +54,7 @@ export default function ThirtyYearBreakdown({
 
         <p
           style={{
-            margin:
-              "14px 0 0",
+            margin: "14px 0 0",
             fontSize: 12,
             lineHeight: 1.7,
             color: "#475569",
@@ -310,10 +70,6 @@ export default function ThirtyYearBreakdown({
         </p>
       </div>
 
-      {/* =====================================================
-          SUMMARY CARDS
-          ===================================================== */}
-
       <div
         style={{
           display: "grid",
@@ -326,7 +82,7 @@ export default function ThirtyYearBreakdown({
         <SummaryCard
           label="First year total benefit"
           value={money(
-            projection[0]?.annualBenefit
+            rows[0]?.annualBenefit
           )}
         />
 
@@ -354,10 +110,6 @@ export default function ThirtyYearBreakdown({
         />
       </div>
 
-      {/* =====================================================
-          TABLE
-          ===================================================== */}
-
       <div
         className="card"
         style={{
@@ -374,26 +126,17 @@ export default function ThirtyYearBreakdown({
             style={{
               width: "100%",
               minWidth: 1050,
-              borderCollapse:
-                "collapse",
+              borderCollapse: "collapse",
               fontSize: 11,
             }}
           >
             <thead>
               <tr>
                 <HeaderCell>YR</HeaderCell>
-                <HeaderCell>
-                  GENERATION
-                </HeaderCell>
-                <HeaderCell>
-                  SOLAR
-                </HeaderCell>
-                <HeaderCell>
-                  BATTERY
-                </HeaderCell>
-                <HeaderCell>
-                  EXPORT
-                </HeaderCell>
+                <HeaderCell>GENERATION</HeaderCell>
+                <HeaderCell>SOLAR</HeaderCell>
+                <HeaderCell>BATTERY</HeaderCell>
+                <HeaderCell>EXPORT</HeaderCell>
                 <HeaderCell green>
                   ANNUAL
                   <br />
@@ -428,147 +171,107 @@ export default function ThirtyYearBreakdown({
             </thead>
 
             <tbody>
-              {projection.map(
-                (row) => (
-                  <tr
-                    key={row.year}
+              {rows.map((row) => (
+                <tr key={row.year}>
+                  <BodyCell>
+                    {row.year}
+                  </BodyCell>
+
+                  <BodyCell>
+                    {number(
+                      row.generation
+                    )}
+                  </BodyCell>
+
+                  <BodyCell>
+                    {money(row.solar)}
+                  </BodyCell>
+
+                  <BodyCell>
+                    {money(row.battery)}
+                  </BodyCell>
+
+                  <BodyCell>
+                    {money(row.exportKwh)}
+                  </BodyCell>
+
+                  <BodyCell green>
+                    {money(
+                      row.annualBenefit
+                    )}
+                  </BodyCell>
+
+                  <BodyCell>
+                    {row.yearlyPayment > 0
+                      ? `-${money(
+                          row.yearlyPayment
+                        )}`
+                      : money(0)}
+                  </BodyCell>
+
+                  <BodyCell
+                    negative={
+                      row.netAnnualBenefit < 0
+                    }
                   >
-                    <BodyCell>
-                      {row.year}
-                    </BodyCell>
+                    {money(
+                      row.netAnnualBenefit
+                    )}
+                  </BodyCell>
 
-                    <BodyCell>
-                      {number(
-                        row.generation
-                      )}
-                    </BodyCell>
-
-                    <BodyCell>
-                      {money(
-                        row.solar
-                      )}
-                    </BodyCell>
-
-                    <BodyCell>
-                      {money(
-                        row.battery
-                      )}
-                    </BodyCell>
-
-                    <BodyCell>
-                      {money(
-                        row.exportKwh
-                      )}
-                    </BodyCell>
-
-                    <BodyCell
-                      green
-                    >
-                      {money(
-                        row.annualBenefit
-                      )}
-                    </BodyCell>
-
-                    <BodyCell>
-                      {row.yearlyPayment >
+                  <BodyCell
+                    green={
+                      row.cumulativePosition >=
                       0
-                        ? `-${money(
-                            row.yearlyPayment
-                          )}`
-                        : money(0)}
-                    </BodyCell>
+                    }
+                    negative={
+                      row.cumulativePosition < 0
+                    }
+                  >
+                    {money(
+                      row.cumulativePosition
+                    )}
+                  </BodyCell>
 
-                    <BodyCell
-                      negative={
-                        row.netAnnualBenefit <
-                        0
-                      }
-                    >
-                      {money(
-                        row.netAnnualBenefit
-                      )}
-                    </BodyCell>
+                  <BodyCell>
+                    {money(
+                      row.billPreInstall
+                    )}
+                  </BodyCell>
 
-                    <BodyCell
-                      green={
-                        row.cumulativePosition >=
-                        0
-                      }
-                      negative={
-                        row.cumulativePosition <
-                        0
-                      }
-                    >
-                      {money(
-                        row.cumulativePosition
-                      )}
-                    </BodyCell>
-
-                    <BodyCell>
-                      {money(
-                        row.billPreInstall
-                      )}
-                    </BodyCell>
-
-                    <BodyCell>
-                      {money(
-                        row.billPostInstall
-                      )}
-                    </BodyCell>
-                  </tr>
-                )
-              )}
-
-              {/* =================================================
-                  TOTALS
-                  ================================================= */}
+                  <BodyCell>
+                    {money(
+                      row.billPostInstall
+                    )}
+                  </BodyCell>
+                </tr>
+              ))}
 
               <tr>
                 <td
                   style={{
                     ...totalCell,
-                    textAlign:
-                      "left",
+                    textAlign: "left",
                   }}
                 >
                   TOTALS
                 </td>
 
-                <td
-                  style={
-                    totalCell
-                  }
-                >
+                <td style={totalCell}>
                   {number(
                     totals.generation
                   )}
                 </td>
 
-                <td
-                  style={
-                    totalCell
-                  }
-                >
-                  {money(
-                    totals.solar
-                  )}
+                <td style={totalCell}>
+                  {money(totals.solar)}
                 </td>
 
-                <td
-                  style={
-                    totalCell
-                  }
-                >
-                  {money(
-                    totals.battery
-                  )}
+                <td style={totalCell}>
+                  {money(totals.battery)}
                 </td>
 
-                <td
-                  style={
-                    totalCell
-                  }
-                >
+                <td style={totalCell}>
                   {money(
                     totals.exportKwh
                   )}
@@ -577,8 +280,7 @@ export default function ThirtyYearBreakdown({
                 <td
                   style={{
                     ...totalCell,
-                    background:
-                      "#299d48",
+                    background: "#299d48",
                   }}
                 >
                   {money(
@@ -586,21 +288,13 @@ export default function ThirtyYearBreakdown({
                   )}
                 </td>
 
-                <td
-                  style={
-                    totalCell
-                  }
-                >
+                <td style={totalCell}>
                   {money(
                     -totals.yearlyPayment
                   )}
                 </td>
 
-                <td
-                  style={
-                    totalCell
-                  }
-                >
+                <td style={totalCell}>
                   {money(
                     totals.netAnnualBenefit
                   )}
@@ -609,32 +303,22 @@ export default function ThirtyYearBreakdown({
                 <td
                   style={{
                     ...totalCell,
-                    background:
-                      "#299d48",
+                    background: "#299d48",
                   }}
                 >
                   {money(
-                    projection[29]
-                      ?.cumulativePosition ||
-                      0
+                    rows[29]
+                      ?.cumulativePosition || 0
                   )}
                 </td>
 
-                <td
-                  style={
-                    totalCell
-                  }
-                >
+                <td style={totalCell}>
                   {money(
                     totals.billPreInstall
                   )}
                 </td>
 
-                <td
-                  style={
-                    totalCell
-                  }
-                >
+                <td style={totalCell}>
                   {money(
                     totals.billPostInstall
                   )}
@@ -647,10 +331,6 @@ export default function ThirtyYearBreakdown({
     </div>
   )
 }
-
-/* =========================================================
-   SUMMARY CARD
-   ========================================================= */
 
 function SummaryCard({
   label,
@@ -688,10 +368,6 @@ function SummaryCard({
   )
 }
 
-/* =========================================================
-   TABLE CELLS
-   ========================================================= */
-
 function HeaderCell({
   children,
   green = false,
@@ -703,8 +379,7 @@ function HeaderCell({
           ? "#299d48"
           : "#575757",
         color: "#fff",
-        border:
-          "1px solid #222",
+        border: "1px solid #222",
         padding: "8px 6px",
         textAlign: "center",
         fontWeight: 700,
@@ -739,12 +414,10 @@ function BodyCell({
       style={{
         background,
         color,
-        border:
-          "1px solid #222",
+        border: "1px solid #222",
         padding: "6px 7px",
         textAlign: "right",
-        whiteSpace:
-          "nowrap",
+        whiteSpace: "nowrap",
       }}
     >
       {children}

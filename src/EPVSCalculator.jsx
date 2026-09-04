@@ -11,6 +11,9 @@ import {
   PoundSterling,
 } from "lucide-react"
 
+import AnnualBreakdown from "./components/EPVS/AnnualBreakdown"
+import ThirtyYearBreakdown from "./components/EPVS/ThirtyYearBreakdown"
+
 const money = (value) =>
   new Intl.NumberFormat("en-GB", {
     style: "currency",
@@ -174,9 +177,11 @@ export default function EPVSCalculator({
     }))
   }
 
-  // =========================================================
-  // CALCULATIONS
-  // =========================================================
+  /*
+   * =========================================================
+   * CALCULATIONS
+   * =========================================================
+   */
 
   const results = useMemo(() => {
     const systemSize =
@@ -313,50 +318,6 @@ export default function EPVSCalculator({
           ) / annualSaving
         : null
 
-    // =======================================================
-    // 30 YEAR BREAKDOWN
-    // =======================================================
-
-    const systemCost =
-      Number(data.systemCost || 0)
-
-    const thirtyYearBreakdown = []
-
-    let cumulativeSavings = 0
-    let cumulativeCashflow = 0
-
-    for (let year = 1; year <= 30; year++) {
-      const annualSavings =
-        Number(annualSaving || 0)
-
-      cumulativeSavings += annualSavings
-
-      const annualCashflow =
-        annualSavings
-
-      cumulativeCashflow =
-        cumulativeSavings -
-        systemCost
-
-      thirtyYearBreakdown.push({
-        year,
-        annualSaving: annualSavings,
-        cumulativeSavings,
-        systemCost,
-        cumulativeCashflow,
-        paidBack:
-          cumulativeSavings >=
-          systemCost,
-      })
-    }
-
-    const thirtyYearSavings =
-      cumulativeSavings
-
-    const thirtyYearProfit =
-      thirtyYearSavings -
-      systemCost
-
     return {
       systemSize,
       generation,
@@ -372,26 +333,223 @@ export default function EPVSCalculator({
       monthlyPayment,
       financeAmount,
       simplePayback,
-
-      // 30 YEAR DATA
-      thirtyYearBreakdown,
-      thirtyYearSavings,
-      thirtyYearProfit,
     }
   }, [data])
 
-  // =========================================================
-  // SEND CALCULATION TO APPOINTMENT DETAIL
-  // =========================================================
+  /*
+   * =========================================================
+   * 30 YEAR CALCULATION
+   * =========================================================
+   *
+   * This is calculated here as actual data rather than relying
+   * on the ThirtyYearBreakdown component to calculate it.
+   *
+   * This means AppointmentDetail and the PDF can both use it.
+   */
+
+  const thirtyYearProjection = useMemo(() => {
+    const rows = []
+
+    let cumulativePosition = 0
+
+    const systemCost =
+      Number(data.systemCost || 0)
+
+    const deposit =
+      Number(data.deposit || 0)
+
+    const annualConsumption =
+      Number(data.annualConsumption || 0)
+
+    const importRate =
+      Number(data.importRate || 0)
+
+    const exportRate =
+      Number(data.exportRate || 0)
+
+    const firstYearGeneration =
+      Number(results.generation || 0)
+
+    const firstYearSolar =
+      Number(results.solarSelfConsumption || 0)
+
+    const firstYearBattery =
+      Number(results.batteryContribution || 0)
+
+    const annualRateIncrease = 0.03
+
+    const annualDegradation = 0.004
+
+    for (let year = 1; year <= 30; year++) {
+      const generation =
+        firstYearGeneration *
+        Math.pow(
+          1 - annualDegradation,
+          year - 1
+        )
+
+      const solar =
+        firstYearGeneration > 0
+          ? generation *
+            (firstYearSolar /
+              firstYearGeneration)
+          : 0
+
+      const battery =
+        firstYearGeneration > 0
+          ? generation *
+            (firstYearBattery /
+              firstYearGeneration)
+          : 0
+
+      const exportKwh =
+        Math.max(
+          0,
+          generation -
+            solar -
+            battery
+        )
+
+      const importRateYear =
+        importRate *
+        Math.pow(
+          1 + annualRateIncrease,
+          year - 1
+        )
+
+      const exportRateYear =
+        exportRate *
+        Math.pow(
+          1 + annualRateIncrease,
+          year - 1
+        )
+
+      const solarBenefit =
+        solar * importRateYear
+
+      const batteryBenefit =
+        battery * importRateYear
+
+      const exportBenefit =
+        exportKwh * exportRateYear
+
+      const annualBenefit =
+        solarBenefit +
+        batteryBenefit +
+        exportBenefit
+
+      const yearlyPayment =
+        year === 1
+          ? systemCost - deposit
+          : 0
+
+      const netAnnualBenefit =
+        annualBenefit -
+        yearlyPayment
+
+      cumulativePosition +=
+        netAnnualBenefit
+
+      const billPreInstall =
+        annualConsumption *
+        importRateYear
+
+      const gridReduction =
+        solar + battery
+
+      const remainingGrid =
+        Math.max(
+          0,
+          annualConsumption -
+            gridReduction
+        )
+
+      const billPostInstall =
+        remainingGrid *
+        importRateYear
+
+      rows.push({
+        year,
+        generation,
+        solar,
+        battery,
+        exportKwh,
+        annualBenefit,
+        yearlyPayment,
+        netAnnualBenefit,
+        cumulativePosition,
+        billPreInstall,
+        billPostInstall,
+      })
+    }
+
+    const totals = rows.reduce(
+      (total, row) => {
+        total.generation += row.generation
+        total.solar += row.solar
+        total.battery += row.battery
+        total.exportKwh += row.exportKwh
+        total.annualBenefit +=
+          row.annualBenefit
+        total.yearlyPayment +=
+          row.yearlyPayment
+        total.netAnnualBenefit +=
+          row.netAnnualBenefit
+        total.billPreInstall +=
+          row.billPreInstall
+        total.billPostInstall +=
+          row.billPostInstall
+
+        return total
+      },
+      {
+        generation: 0,
+        solar: 0,
+        battery: 0,
+        exportKwh: 0,
+        annualBenefit: 0,
+        yearlyPayment: 0,
+        netAnnualBenefit: 0,
+        billPreInstall: 0,
+        billPostInstall: 0,
+      }
+    )
+
+    const paybackRow =
+      rows.find(
+        (row) =>
+          row.cumulativePosition >= 0
+      )
+
+    return {
+      rows,
+      totals,
+      paybackPeriod:
+        paybackRow?.year || null,
+      totalNetSavings:
+        totals.netAnnualBenefit,
+      totalNetReturn:
+        totals.netAnnualBenefit -
+        systemCost,
+    }
+  }, [data, results])
+
+  /*
+   * =========================================================
+   * SEND EVERYTHING TO APPOINTMENT DETAIL
+   * =========================================================
+   */
 
   useEffect(() => {
     onCalculationChange?.({
       data,
       results,
+      thirtyYearProjection,
     })
   }, [
     data,
     results,
+    thirtyYearProjection,
     onCalculationChange,
   ])
 
@@ -418,8 +576,6 @@ export default function EPVSCalculator({
   return (
     <section>
       <div style={styles.wrapper}>
-
-        {/* STEP NAVIGATION */}
 
         <div style={styles.stepper}>
           {steps.map((item, index) => {
@@ -472,8 +628,6 @@ export default function EPVSCalculator({
           })}
         </div>
 
-        {/* CUSTOMER */}
-
         {step === 0 && (
           <Card
             title="Customer details"
@@ -515,8 +669,6 @@ export default function EPVSCalculator({
             </div>
           </Card>
         )}
-
-        {/* PROPERTY */}
 
         {step === 1 && (
           <Card
@@ -571,8 +723,6 @@ export default function EPVSCalculator({
             </div>
           </Card>
         )}
-
-        {/* SOLAR PV */}
 
         {step === 2 && (
           <Card
@@ -658,8 +808,6 @@ export default function EPVSCalculator({
           </Card>
         )}
 
-        {/* BATTERY */}
-
         {step === 3 && (
           <Card
             title="Battery"
@@ -700,8 +848,6 @@ export default function EPVSCalculator({
           </Card>
         )}
 
-        {/* INVERTER */}
-
         {step === 4 && (
           <Card
             title="Inverter"
@@ -726,8 +872,6 @@ export default function EPVSCalculator({
             </div>
           </Card>
         )}
-
-        {/* ELECTRICITY */}
 
         {step === 5 && (
           <Card
@@ -781,8 +925,6 @@ export default function EPVSCalculator({
           </Card>
         )}
 
-        {/* TARIFF */}
-
         {step === 6 && (
           <Card
             title="Tariff"
@@ -801,32 +943,16 @@ export default function EPVSCalculator({
                     )
                   }
                 >
-                  <option>
-                    Standard
-                  </option>
-
-                  <option>
-                    Overnight Charging
-                  </option>
-
-                  <option>
-                    Standard Flux
-                  </option>
-
-                  <option>
-                    Intelligent Flux
-                  </option>
-
-                  <option>
-                    Octopus Cosy
-                  </option>
+                  <option>Standard</option>
+                  <option>Overnight Charging</option>
+                  <option>Standard Flux</option>
+                  <option>Intelligent Flux</option>
+                  <option>Octopus Cosy</option>
                 </select>
               </label>
             </div>
           </Card>
         )}
-
-        {/* FINANCE */}
 
         {step === 7 && (
           <Card
@@ -890,8 +1016,6 @@ export default function EPVSCalculator({
           </Card>
         )}
 
-        {/* RESULTS */}
-
         {step === 8 && (
           <>
             <Results
@@ -899,13 +1023,15 @@ export default function EPVSCalculator({
               data={data}
             />
 
-            <ThirtyYearBreakdown
+            <AnnualBreakdown
               results={results}
+            />
+
+            <ThirtyYearBreakdown
+              thirtyYearProjection={thirtyYearProjection}
             />
           </>
         )}
-
-        {/* FOOTER */}
 
         <div style={styles.footer}>
           <button
@@ -955,10 +1081,6 @@ export default function EPVSCalculator({
   )
 }
 
-/* =========================================================
-   CARD
-========================================================= */
-
 function Card({
   title,
   subtitle,
@@ -983,75 +1105,48 @@ function Card({
   )
 }
 
-/* =========================================================
-   RESULTS
-========================================================= */
-
 function Results({ results, data }) {
   const cards = [
     [
       "System size",
-      `${results.systemSize.toFixed(
-        2
-      )} kWp`,
+      `${results.systemSize.toFixed(2)} kWp`,
     ],
-
     [
       "Estimated generation",
       `${Math.round(
         results.generation
-      ).toLocaleString(
-        "en-GB"
-      )} kWh`,
+      ).toLocaleString("en-GB")} kWh`,
     ],
-
     [
       "Solar self-consumption",
       `${Math.round(
         results.solarSelfConsumption
-      ).toLocaleString(
-        "en-GB"
-      )} kWh`,
+      ).toLocaleString("en-GB")} kWh`,
     ],
-
     [
       "Battery contribution",
       `${Math.round(
         results.batteryContribution
-      ).toLocaleString(
-        "en-GB"
-      )} kWh`,
+      ).toLocaleString("en-GB")} kWh`,
     ],
-
     [
       "Estimated export",
       `${Math.round(
         results.exportKwh
-      ).toLocaleString(
-        "en-GB"
-      )} kWh`,
+      ).toLocaleString("en-GB")} kWh`,
     ],
-
     [
       "Annual saving",
-      money(
-        results.annualSaving
-      ),
+      money(results.annualSaving),
     ],
-
     [
       "Monthly finance",
-      money(
-        results.monthlyPayment
-      ),
+      money(results.monthlyPayment),
     ],
-
     [
       "Simple payback",
       results.simplePayback
-        ? `${results.simplePayback.toFixed(
-            1
-          )} years`
+        ? `${results.simplePayback.toFixed(1)} years`
         : "—",
     ],
   ]
@@ -1065,9 +1160,7 @@ function Results({ results, data }) {
     >
       <div className="card-head">
         <div>
-          <h2>
-            EPVS calculation results
-          </h2>
+          <h2>EPVS calculation results</h2>
 
           <p>
             {data.customerName ||
@@ -1084,192 +1177,19 @@ function Results({ results, data }) {
       </div>
 
       <div style={styles.resultGrid}>
-        {cards.map(
-          ([label, value]) => (
-            <div
-              key={label}
-              style={
-                styles.resultCard
-              }
-            >
-              <span>{label}</span>
-              <strong>{value}</strong>
-            </div>
-          )
-        )}
+        {cards.map(([label, value]) => (
+          <div
+            key={label}
+            style={styles.resultCard}
+          >
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </div>
+        ))}
       </div>
     </div>
   )
 }
-
-/* =========================================================
-   30 YEAR BREAKDOWN
-========================================================= */
-
-function ThirtyYearBreakdown({
-  results,
-}) {
-  if (
-    !results?.thirtyYearBreakdown
-  ) {
-    return null
-  }
-
-  return (
-    <div
-      className="card"
-      style={{
-        marginBottom: 20,
-      }}
-    >
-      <div className="card-head">
-        <div>
-          <h2>
-            30 Year Projection
-          </h2>
-
-          <p>
-            Estimated savings and cumulative
-            return over the system lifetime.
-          </p>
-        </div>
-
-        <div style={styles.thirtyYearSummary}>
-          <div>
-            <span>
-              30 year savings
-            </span>
-
-            <strong>
-              {money(
-                results.thirtyYearSavings
-              )}
-            </strong>
-          </div>
-
-          <div>
-            <span>
-              30 year return
-            </span>
-
-            <strong>
-              {money(
-                results.thirtyYearProfit
-              )}
-            </strong>
-          </div>
-        </div>
-      </div>
-
-      <div
-        style={{
-          overflowX: "auto",
-        }}
-      >
-        <table
-          style={{
-            width: "100%",
-            borderCollapse:
-              "collapse",
-            fontSize: 12,
-          }}
-        >
-          <thead>
-            <tr>
-              <th style={styles.th}>
-                Year
-              </th>
-
-              <th
-                style={{
-                  ...styles.th,
-                  textAlign: "right",
-                }}
-              >
-                Annual saving
-              </th>
-
-              <th
-                style={{
-                  ...styles.th,
-                  textAlign: "right",
-                }}
-              >
-                Cumulative saving
-              </th>
-
-              <th
-                style={{
-                  ...styles.th,
-                  textAlign: "right",
-                }}
-              >
-                Cumulative return
-              </th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {results.thirtyYearBreakdown.map(
-              (row) => (
-                <tr key={row.year}>
-                  <td
-                    style={
-                      styles.td
-                    }
-                  >
-                    Year {row.year}
-                  </td>
-
-                  <td
-                    style={{
-                      ...styles.td,
-                      textAlign:
-                        "right",
-                    }}
-                  >
-                    {money(
-                      row.annualSaving
-                    )}
-                  </td>
-
-                  <td
-                    style={{
-                      ...styles.td,
-                      textAlign:
-                        "right",
-                    }}
-                  >
-                    {money(
-                      row.cumulativeSavings
-                    )}
-                  </td>
-
-                  <td
-                    style={{
-                      ...styles.td,
-                      textAlign:
-                        "right",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {money(
-                      row.cumulativeCashflow
-                    )}
-                  </td>
-                </tr>
-              )
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-/* =========================================================
-   STYLES
-========================================================= */
 
 const styles = {
   wrapper: {
@@ -1368,8 +1288,7 @@ const styles = {
   },
 
   secondary: {
-    border:
-      "1px solid #d7dee8",
+    border: "1px solid #d7dee8",
     background: "white",
     color: "#334155",
     borderRadius: 8,
@@ -1397,34 +1316,11 @@ const styles = {
   },
 
   resultCard: {
-    border:
-      "1px solid #e5e7eb",
+    border: "1px solid #e5e7eb",
     borderRadius: 10,
     padding: 16,
     display: "flex",
     flexDirection: "column",
     gap: 7,
-  },
-
-  thirtyYearSummary: {
-    display: "flex",
-    gap: 24,
-  },
-
-  th: {
-    padding: "9px 10px",
-    borderBottom:
-      "2px solid #e5e7eb",
-    textAlign: "left",
-    fontSize: 11,
-    color: "#64748b",
-    fontWeight: 700,
-  },
-
-  td: {
-    padding: "8px 10px",
-    borderBottom:
-      "1px solid #eef0f3",
-    color: "#334155",
   },
 }

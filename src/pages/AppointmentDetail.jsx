@@ -15,6 +15,7 @@ import {
 
 import { supabase } from "../lib/supabase"
 import EPVSCalculator from "../EPVSCalculator"
+import ThirtyYearBreakdown from "../components/EPVS/ThirtyYearBreakdown"
 import { GenerateSolarContract } from "../contracts/GenerateSolarContract"
 
 function AppointmentDetail({
@@ -34,6 +35,14 @@ function AppointmentDetail({
 
   const [error, setError] = useState("")
 
+  /*
+   * This contains BOTH:
+   *
+   * epvsCalculation.data
+   * epvsCalculation.results
+   *
+   * The 30-year breakdown uses both of these.
+   */
   const [epvsCalculation, setEpvsCalculation] =
     useState(null)
 
@@ -83,6 +92,7 @@ function AppointmentDetail({
       setError(
         "This appointment does not have an appointment_row_id."
       )
+
       return
     }
 
@@ -136,8 +146,33 @@ function AppointmentDetail({
           .trim() === "sold" &&
         isSolar
       ) {
+        /*
+         * Make sure we actually have the EPVS calculation
+         * before attempting to generate the solar contract.
+         */
+        if (!epvsCalculation) {
+          throw new Error(
+            "The appointment was saved as Sold, but no EPVS calculation is available. Please complete the EPVS calculation before generating the solar contract."
+          )
+        }
+
         try {
-          GenerateSolarContract({
+          /*
+           * IMPORTANT:
+           *
+           * We now pass the entire EPVS calculation object.
+           *
+           * This contains:
+           *
+           * {
+           *   data: {...},
+           *   results: {...}
+           * }
+           *
+           * GenerateSolarContract can therefore use the same
+           * calculation that is displayed on screen.
+           */
+          await GenerateSolarContract({
             appointment: updatedAppointment,
             epvsCalculation,
           })
@@ -151,12 +186,14 @@ function AppointmentDetail({
             "Appointment was saved as Sold, but the solar contract could not be generated."
           )
 
-          setSaving(false)
           return
         }
       }
 
-      // Close modal after everything has succeeded
+      // =======================================================
+      // CLOSE MODAL
+      // =======================================================
+
       setShowResult(false)
     } catch (err) {
       console.error(
@@ -226,7 +263,9 @@ function AppointmentDetail({
   return (
     <section>
 
-      {/* HERO */}
+      {/* =====================================================
+          HERO
+          ===================================================== */}
 
       <div
         style={{
@@ -365,7 +404,9 @@ function AppointmentDetail({
         </div>
       </div>
 
-      {/* MAP */}
+      {/* =====================================================
+          MAP
+          ===================================================== */}
 
       <div
         style={{
@@ -407,7 +448,9 @@ function AppointmentDetail({
         )}
       </div>
 
-      {/* INFORMATION */}
+      {/* =====================================================
+          INFORMATION
+          ===================================================== */}
 
       <div
         style={{
@@ -539,7 +582,9 @@ function AppointmentDetail({
         </InfoCard>
       </div>
 
-      {/* EPVS */}
+      {/* =====================================================
+          EPVS CALCULATOR
+          ===================================================== */}
 
       {isSolar && (
         <div
@@ -580,10 +625,31 @@ function AppointmentDetail({
               setEpvsCalculation
             }
           />
+
+          {/* =================================================
+              30 YEAR BREAKDOWN
+
+              This is deliberately OUTSIDE the calculator
+              itself so it appears in the appointment detail.
+              ================================================= */}
+
+          {epvsCalculation?.results &&
+            epvsCalculation?.data && (
+              <ThirtyYearBreakdown
+                results={
+                  epvsCalculation.results
+                }
+                data={
+                  epvsCalculation.data
+                }
+              />
+            )}
         </div>
       )}
 
-      {/* RESULT MODAL */}
+      {/* =====================================================
+          RESULT MODAL
+          ===================================================== */}
 
       {showResult && (
         <div
@@ -729,9 +795,21 @@ function AppointmentDetail({
                       fontSize: "10px",
                     }}
                   >
-                    Saving as Sold will generate
-                    the solar contract PDF
-                    automatically.
+                    {epvsCalculation ? (
+                      <>
+                        Saving as Sold will generate
+                        the solar contract PDF using
+                        the completed EPVS calculation,
+                        including the 30-year benefit
+                        projection.
+                      </>
+                    ) : (
+                      <>
+                        Please complete the EPVS
+                        calculation before saving this
+                        appointment as Sold.
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -782,7 +860,15 @@ function AppointmentDetail({
 
               <button
                 type="button"
-                disabled={!result || saving}
+                disabled={
+                  !result ||
+                  saving ||
+                  (result
+                    .toLowerCase()
+                    .trim() === "sold" &&
+                    isSolar &&
+                    !epvsCalculation)
+                }
                 onClick={saveResult}
                 style={{
                   height: "36px",
@@ -792,11 +878,27 @@ function AppointmentDetail({
                   background: "#172554",
                   color: "#fff",
                   cursor:
-                    result && !saving
+                    result &&
+                    !saving &&
+                    !(
+                      result
+                        .toLowerCase()
+                        .trim() === "sold" &&
+                      isSolar &&
+                      !epvsCalculation
+                    )
                       ? "pointer"
                       : "default",
                   opacity:
-                    result && !saving
+                    result &&
+                    !saving &&
+                    !(
+                      result
+                        .toLowerCase()
+                        .trim() === "sold" &&
+                      isSolar &&
+                      !epvsCalculation
+                    )
                       ? 1
                       : 0.5,
                   fontFamily: "inherit",
