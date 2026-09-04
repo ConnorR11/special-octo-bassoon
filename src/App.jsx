@@ -16,9 +16,11 @@ import Dashboard from "./pages/Dashboard"
 import Contracts from "./pages/Contracts"
 import CustomerDetail from "./pages/CustomerDetail"
 import Appointments from "./pages/Appointments"
+import AppointmentDetail from "./pages/AppointmentDetail"
 
 
 function App() {
+
   /*
    * =========================================================
    * DEALS
@@ -75,9 +77,7 @@ function App() {
    * =========================================================
    * SELECTED APPOINTMENT
    *
-   * Kept separate from selected deal.
-   * This will allow us to build AppointmentDetail
-   * independently from CustomerDetail.
+   * This is kept completely separate from deals.
    * =========================================================
    */
 
@@ -94,15 +94,18 @@ function App() {
    */
 
   async function loadContracts() {
+
     setLoading(true)
     setError("")
 
     if (!supabase) {
+
       setError(
         "Supabase is not configured. Check your environment variables."
       )
 
       setLoading(false)
+
       return
     }
 
@@ -117,12 +120,15 @@ function App() {
       })
 
     if (supabaseError) {
+
       setError(
         supabaseError.message
       )
 
       setContracts([])
+
     } else {
+
       setContracts(
         data || []
       )
@@ -151,6 +157,7 @@ function App() {
 
   const filteredContracts =
     useMemo(() => {
+
       const search =
         query
           .toLowerCase()
@@ -158,6 +165,7 @@ function App() {
 
       return contracts.filter(
         (contract) => {
+
           const searchableFields = [
             contract.customer_name,
             contract.postcode,
@@ -190,6 +198,7 @@ function App() {
           )
         }
       )
+
     }, [
       contracts,
       query,
@@ -253,6 +262,7 @@ function App() {
    */
 
   function handleBackToDeals() {
+
     setSelected(null)
 
     setPage(
@@ -270,6 +280,7 @@ function App() {
   function handleDealUpdated(
     updatedDeal
   ) {
+
     setContracts(
       (current) =>
         current.map(
@@ -289,21 +300,22 @@ function App() {
 
   /*
    * =========================================================
-   * CHANGE PAGE
-   *
-   * Clear both selected records whenever
-   * the user navigates somewhere else.
+   * GENERAL PAGE NAVIGATION
    * =========================================================
    */
 
   function handlePageChange(
     newPage
   ) {
+
+    /*
+     * Whenever the user uses the sidebar,
+     * close any open detail view.
+     */
+
     setSelected(null)
 
-    setSelectedAppointment(
-      null
-    )
+    setSelectedAppointment(null)
 
     setPage(newPage)
   }
@@ -311,22 +323,32 @@ function App() {
 
   /*
    * =========================================================
-   * SELECT APPOINTMENT
+   * APPOINTMENT SELECT
    *
-   * For now this stores the appointment.
-   *
-   * Next we can create:
-   *
-   * AppointmentDetail.jsx
-   *
-   * and render it here.
+   * This is called by the Appointments page
+   * when a row is clicked.
    * =========================================================
    */
 
   function handleAppointmentSelect(
     appointment
   ) {
+
+    console.log(
+      "Opening appointment:",
+      appointment
+    )
+
+    /*
+     * Make absolutely sure a deal isn't
+     * still selected.
+     */
+
     setSelected(null)
+
+    /*
+     * Store the complete appointment record.
+     */
 
     setSelectedAppointment(
       appointment
@@ -341,9 +363,8 @@ function App() {
    */
 
   function handleBackToAppointments() {
-    setSelectedAppointment(
-      null
-    )
+
+    setSelectedAppointment(null)
 
     setPage(
       "appointments"
@@ -353,7 +374,7 @@ function App() {
 
   /*
    * =========================================================
-   * HEADER PAGE NAME
+   * HEADER PAGE
    * =========================================================
    */
 
@@ -372,6 +393,7 @@ function App() {
    */
 
   return (
+
     <div className="app">
 
       {/* =====================================================
@@ -409,6 +431,7 @@ function App() {
 
         {error &&
           page !== "epvs" && (
+
             <div className="error">
 
               <b>
@@ -424,10 +447,37 @@ function App() {
 
 
         {/* =================================================
-            CUSTOMER DETAIL
+            APPOINTMENT DETAIL
+            =================================================
+            
+            IMPORTANT:
+            This is checked BEFORE the normal page routing.
+            
+            Therefore:
+            
+            selectedAppointment
+                    ↓
+            AppointmentDetail
+            
+            rather than going back to Appointments.
             ================================================= */}
 
-        {selected ? (
+        {selectedAppointment ? (
+
+          <AppointmentDetail
+            appointment={
+              selectedAppointment
+            }
+            onBack={
+              handleBackToAppointments
+            }
+          />
+
+        ) : selected ? (
+
+          /* =================================================
+             CUSTOMER / DEAL DETAIL
+             ================================================= */
 
           <CustomerDetail
             deal={selected}
@@ -438,107 +488,6 @@ function App() {
               handleDealUpdated
             }
           />
-
-        ) : selectedAppointment ? (
-
-          /*
-           * =================================================
-           * APPOINTMENT DETAIL
-           *
-           * TEMPORARY PLACEHOLDER
-           *
-           * Once we create AppointmentDetail.jsx,
-           * this is the only section we need to replace.
-           * =================================================
-           */
-
-          <section>
-
-            <div
-              className="card"
-              style={{
-                padding:
-                  "30px",
-              }}
-            >
-
-              <button
-                type="button"
-                onClick={
-                  handleBackToAppointments
-                }
-                style={{
-                  border: 0,
-                  background:
-                    "transparent",
-                  cursor:
-                    "pointer",
-                  padding: 0,
-                  marginBottom:
-                    "20px",
-                  fontSize:
-                    "11px",
-                  color:
-                    "#172554",
-                }}
-              >
-                ← Back to appointments
-              </button>
-
-
-              <h1
-                style={{
-                  margin: 0,
-                  fontSize:
-                    "24px",
-                }}
-              >
-                {selectedAppointment.customer_name ||
-                  "Appointment"}
-              </h1>
-
-
-              <p
-                style={{
-                  fontSize:
-                    "12px",
-                  color:
-                    "#888",
-                }}
-              >
-                Appointment detail view
-              </p>
-
-
-              <div
-                style={{
-                  marginTop:
-                    "20px",
-                  padding:
-                    "15px",
-                  background:
-                    "#f7f7f8",
-                  borderRadius:
-                    "7px",
-                  fontSize:
-                    "11px",
-                  color:
-                    "#555",
-                }}
-              >
-
-                <strong>
-                  Appointment ID:
-                </strong>{" "}
-
-                {selectedAppointment.id ||
-                  "—"}
-
-              </div>
-
-            </div>
-
-          </section>
 
         ) : page ===
           "dashboard" ? (
