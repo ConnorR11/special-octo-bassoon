@@ -27,7 +27,16 @@ export default function ThirtyYearBreakdown({
     paybackPeriod,
     totalNetSavings,
     totalNetReturn,
+    annualInflation = 0.076,
+    annualDegradation = 0.004,
+    projectionYears = 30,
   } = thirtyYearProjection
+
+  const inflationPercentage =
+    annualInflation * 100
+
+  const degradationPercentage =
+    annualDegradation * 100
 
   return (
     <div
@@ -49,7 +58,7 @@ export default function ThirtyYearBreakdown({
             color: "#475569",
           }}
         >
-          30 Year Benefit Breakdown Based on Consumption
+          {projectionYears} Year Benefit Breakdown Based on Consumption
         </h2>
 
         <p
@@ -63,10 +72,19 @@ export default function ThirtyYearBreakdown({
           The estimated savings below are based on the
           customer's annual electricity consumption and
           the assumptions entered into the EPVS calculator.
-          They are provided for illustration and are not a
-          guarantee of performance. Replacement,
-          maintenance and cleaning costs are not currently
-          included in this preliminary model.
+          Electricity prices are assumed to increase by{" "}
+          <strong>
+            {inflationPercentage.toFixed(1)}% per year
+          </strong>
+          , while solar generation is assumed to degrade
+          by{" "}
+          <strong>
+            {degradationPercentage.toFixed(1)}% per year
+          </strong>
+          . These figures are provided for illustration
+          and are not a guarantee of performance.
+          Replacement, maintenance and cleaning costs are
+          not currently included in this preliminary model.
         </p>
       </div>
 
@@ -132,36 +150,56 @@ export default function ThirtyYearBreakdown({
           >
             <thead>
               <tr>
-                <HeaderCell>YR</HeaderCell>
-                <HeaderCell>GENERATION</HeaderCell>
-                <HeaderCell>SOLAR</HeaderCell>
-                <HeaderCell>BATTERY</HeaderCell>
-                <HeaderCell>EXPORT</HeaderCell>
+                <HeaderCell>
+                  YR
+                </HeaderCell>
+
+                <HeaderCell>
+                  GENERATION
+                </HeaderCell>
+
+                <HeaderCell>
+                  SOLAR
+                </HeaderCell>
+
+                <HeaderCell>
+                  BATTERY
+                </HeaderCell>
+
+                <HeaderCell>
+                  EXPORT
+                </HeaderCell>
+
                 <HeaderCell green>
                   ANNUAL
                   <br />
                   BENEFIT
                 </HeaderCell>
+
                 <HeaderCell>
                   YEARLY
                   <br />
                   PAYMENTS
                 </HeaderCell>
+
                 <HeaderCell>
                   NET ANNUAL
                   <br />
                   BENEFIT
                 </HeaderCell>
+
                 <HeaderCell green>
                   NET
                   <br />
                   POSITION
                 </HeaderCell>
+
                 <HeaderCell>
                   BILL PRE
                   <br />
                   INSTALL
                 </HeaderCell>
+
                 <HeaderCell>
                   BILL POST
                   <br />
@@ -184,15 +222,24 @@ export default function ThirtyYearBreakdown({
                   </BodyCell>
 
                   <BodyCell>
-                    {money(row.solar)}
+                    {number(
+                      row.solar
+                    )}{" "}
+                    kWh
                   </BodyCell>
 
                   <BodyCell>
-                    {money(row.battery)}
+                    {number(
+                      row.battery
+                    )}{" "}
+                    kWh
                   </BodyCell>
 
                   <BodyCell>
-                    {money(row.exportKwh)}
+                    {number(
+                      row.exportKwh
+                    )}{" "}
+                    kWh
                   </BodyCell>
 
                   <BodyCell green>
@@ -264,17 +311,24 @@ export default function ThirtyYearBreakdown({
                 </td>
 
                 <td style={totalCell}>
-                  {money(totals.solar)}
+                  {number(
+                    totals.solar
+                  )}{" "}
+                  kWh
                 </td>
 
                 <td style={totalCell}>
-                  {money(totals.battery)}
+                  {number(
+                    totals.battery
+                  )}{" "}
+                  kWh
                 </td>
 
                 <td style={totalCell}>
-                  {money(
+                  {number(
                     totals.exportKwh
-                  )}
+                  )}{" "}
+                  kWh
                 </td>
 
                 <td
@@ -307,8 +361,10 @@ export default function ThirtyYearBreakdown({
                   }}
                 >
                   {money(
-                    rows[29]
-                      ?.cumulativePosition || 0
+                    rows[
+                      rows.length - 1
+                    ]?.cumulativePosition ||
+                      0
                   )}
                 </td>
 

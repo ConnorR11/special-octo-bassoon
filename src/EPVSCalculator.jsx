@@ -1,1326 +1,436 @@
-import React, { useEffect, useMemo, useState } from "react"
-
-import {
-  ArrowLeft,
-  ArrowRight,
-  RotateCcw,
-  CheckCircle2,
-  Zap,
-  Battery,
-  Home,
-  PoundSterling,
-} from "lucide-react"
-
-import AnnualBreakdown from "./components/EPVS/AnnualBreakdown"
-import ThirtyYearBreakdown from "./components/EPVS/ThirtyYearBreakdown"
+import React from "react"
 
 const money = (value) =>
   new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency: "GBP",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(Number(value || 0))
 
-const steps = [
-  { title: "Customer", icon: Home },
-  { title: "Property", icon: Home },
-  { title: "Solar PV", icon: Zap },
-  { title: "Battery", icon: Battery },
-  { title: "Inverter", icon: Zap },
-  { title: "Electricity", icon: Zap },
-  { title: "Tariff", icon: PoundSterling },
-  { title: "Finance", icon: PoundSterling },
-  { title: "Results", icon: CheckCircle2 },
-]
+const number = (value) =>
+  Number(value || 0).toLocaleString("en-GB", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
 
-const initial = {
-  customerName: "",
-  address: "",
-  postcode: "",
-
-  annualConsumption: 4000,
-
-  existingSolar: false,
-  existingGeneration: 0,
-
-  panelWattage: 415,
-  panelCount: 10,
-  orientation: 0,
-  pitch: 30,
-  shading: 1,
-
-  batteryCapacity: 10,
-  batteryEnabled: true,
-
-  inverterCapacity: 5,
-
-  importRate: 0.28,
-  exportRate: 0.15,
-
-  tariff: "Standard",
-
-  systemCost: 12000,
-  deposit: 0,
-  financeTerm: 10,
-  financeRate: 7.9,
-}
-
-function Input({
-  label,
-  value,
-  onChange,
-  type = "text",
-  step,
-  min,
-  max,
+export default function ThirtyYearBreakdown({
+  thirtyYearProjection,
 }) {
+  if (!thirtyYearProjection) {
+    return null
+  }
+
+  const {
+    rows = [],
+    totals = {},
+    paybackPeriod,
+    totalNetSavings,
+    totalNetReturn,
+  } = thirtyYearProjection
+
   return (
-    <label style={styles.field}>
-      <span>{label}</span>
-
-      <input
-        type={type}
-        value={value}
-        step={step}
-        min={min}
-        max={max}
-        onChange={(event) => {
-          const value =
-            type === "number"
-              ? Number(event.target.value)
-              : event.target.value
-
-          onChange(value)
-        }}
-      />
-    </label>
-  )
-}
-
-function Toggle({ label, value, onChange }) {
-  return (
-    <label style={styles.toggleRow}>
-      <span>{label}</span>
-
-      <button
-        type="button"
-        onClick={() => onChange(!value)}
+    <div
+      style={{
+        marginTop: 24,
+      }}
+    >
+      <div
+        className="card"
         style={{
-          ...styles.toggle,
-          background: value
-            ? "#172554"
-            : "#d1d5db",
+          padding: 20,
+          marginBottom: 14,
         }}
       >
-        <span
+        <h2
           style={{
-            ...styles.toggleKnob,
-            transform: value
-              ? "translateX(20px)"
-              : "translateX(0)",
+            margin: 0,
+            fontSize: 20,
+            color: "#475569",
           }}
+        >
+          30 Year Benefit Breakdown Based on Consumption
+        </h2>
+
+        <p
+          style={{
+            margin: "14px 0 0",
+            fontSize: 12,
+            lineHeight: 1.7,
+            color: "#475569",
+          }}
+        >
+          The estimated savings below are based on the
+          customer's annual electricity consumption and
+          the assumptions entered into the EPVS calculator.
+          They are provided for illustration and are not a
+          guarantee of performance. Replacement,
+          maintenance and cleaning costs are not currently
+          included in this preliminary model.
+        </p>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(4, minmax(0, 1fr))",
+          gap: 14,
+          marginBottom: 14,
+        }}
+      >
+        <SummaryCard
+          label="First year total benefit"
+          value={money(
+            rows[0]?.annualBenefit
+          )}
         />
-      </button>
-    </label>
-  )
-}
 
-export default function EPVSCalculator({
-  appointment,
-  onCalculationChange,
-}) {
-  const [step, setStep] = useState(0)
-
-  const appointmentInitial = useMemo(() => {
-    return {
-      ...initial,
-
-      customerName:
-        appointment?.name || "",
-
-      address:
-        appointment?.address || "",
-
-      postcode:
-        appointment?.postcode || "",
-    }
-  }, [appointment])
-
-  const [data, setData] =
-    useState(appointmentInitial)
-
-  useEffect(() => {
-    setData((current) => ({
-      ...current,
-
-      customerName:
-        appointment?.name ||
-        current.customerName ||
-        "",
-
-      address:
-        appointment?.address ||
-        current.address ||
-        "",
-
-      postcode:
-        appointment?.postcode ||
-        current.postcode ||
-        "",
-    }))
-  }, [appointment])
-
-  const update = (key, value) => {
-    setData((current) => ({
-      ...current,
-      [key]: value,
-    }))
-  }
-
-  /*
-   * =========================================================
-   * CALCULATIONS
-   * =========================================================
-   */
-
-  const results = useMemo(() => {
-    const systemSize =
-      (Number(data.panelWattage || 0) *
-        Number(data.panelCount || 0)) /
-      1000
-
-    const baseYield = 950
-
-    const orientationFactor = Math.max(
-      0.65,
-      1 -
-        (Math.abs(
-          Number(data.orientation || 0)
-        ) /
-          180) *
-          0.18
-    )
-
-    const pitchFactor = Math.max(
-      0.88,
-      1 -
-        Math.abs(
-          Number(data.pitch || 30) - 35
-        ) *
-          0.004
-    )
-
-    const generation =
-      systemSize *
-      baseYield *
-      orientationFactor *
-      pitchFactor *
-      Number(data.shading || 1)
-
-    const solarSelfConsumption =
-      Math.min(
-        generation,
-        Number(
-          data.annualConsumption || 0
-        ) * 0.375
-      )
-
-    const remainingGeneration =
-      Math.max(
-        0,
-        generation -
-          solarSelfConsumption
-      )
-
-    const batteryContribution =
-      data.batteryEnabled
-        ? Math.min(
-            remainingGeneration,
-            Number(
-              data.annualConsumption || 0
-            ) * 0.25,
-            Number(
-              data.batteryCapacity || 0
-            ) * 180
-          )
-        : 0
-
-    const exportKwh =
-      Math.max(
-        0,
-        generation -
-          solarSelfConsumption -
-          batteryContribution
-      )
-
-    const gridReduction =
-      solarSelfConsumption +
-      batteryContribution
-
-    const solarBenefit =
-      solarSelfConsumption *
-      Number(data.importRate || 0)
-
-    const batterySelfConsumptionBenefit =
-      batteryContribution *
-      Number(data.importRate || 0)
-
-    const forceChargeBenefit = 0
-
-    const exportBenefit =
-      exportKwh *
-      Number(data.exportRate || 0)
-
-    const annualSaving =
-      solarBenefit +
-      batterySelfConsumptionBenefit +
-      forceChargeBenefit +
-      exportBenefit
-
-    const financeAmount =
-      Math.max(
-        0,
-        Number(data.systemCost || 0) -
-          Number(data.deposit || 0)
-      )
-
-    const monthlyRate =
-      Number(data.financeRate || 0) /
-      100 /
-      12
-
-    const months =
-      Number(data.financeTerm || 0) *
-      12
-
-    const monthlyPayment =
-      financeAmount > 0 &&
-      monthlyRate > 0 &&
-      months > 0
-        ? financeAmount *
-          (monthlyRate *
-            Math.pow(
-              1 + monthlyRate,
-              months
-            )) /
-          (Math.pow(
-            1 + monthlyRate,
-            months
-          ) - 1)
-        : months > 0
-        ? financeAmount / months
-        : 0
-
-    const simplePayback =
-      annualSaving > 0
-        ? Number(
-            data.systemCost || 0
-          ) / annualSaving
-        : null
-
-    return {
-      systemSize,
-      generation,
-      solarSelfConsumption,
-      batteryContribution,
-      exportKwh,
-      gridReduction,
-      solarBenefit,
-      batterySelfConsumptionBenefit,
-      forceChargeBenefit,
-      exportBenefit,
-      annualSaving,
-      monthlyPayment,
-      financeAmount,
-      simplePayback,
-    }
-  }, [data])
-
-  /*
-   * =========================================================
-   * 30 YEAR CALCULATION
-   * =========================================================
-   *
-   * This is calculated here as actual data rather than relying
-   * on the ThirtyYearBreakdown component to calculate it.
-   *
-   * This means AppointmentDetail and the PDF can both use it.
-   */
-
-  const thirtyYearProjection = useMemo(() => {
-    const rows = []
-
-    let cumulativePosition = 0
-
-    const systemCost =
-      Number(data.systemCost || 0)
-
-    const deposit =
-      Number(data.deposit || 0)
-
-    const annualConsumption =
-      Number(data.annualConsumption || 0)
-
-    const importRate =
-      Number(data.importRate || 0)
-
-    const exportRate =
-      Number(data.exportRate || 0)
-
-    const firstYearGeneration =
-      Number(results.generation || 0)
-
-    const firstYearSolar =
-      Number(results.solarSelfConsumption || 0)
-
-    const firstYearBattery =
-      Number(results.batteryContribution || 0)
-
-    const annualRateIncrease = 0.03
-
-    const annualDegradation = 0.004
-
-    for (let year = 1; year <= 30; year++) {
-      const generation =
-        firstYearGeneration *
-        Math.pow(
-          1 - annualDegradation,
-          year - 1
-        )
-
-      const solar =
-        firstYearGeneration > 0
-          ? generation *
-            (firstYearSolar /
-              firstYearGeneration)
-          : 0
-
-      const battery =
-        firstYearGeneration > 0
-          ? generation *
-            (firstYearBattery /
-              firstYearGeneration)
-          : 0
-
-      const exportKwh =
-        Math.max(
-          0,
-          generation -
-            solar -
-            battery
-        )
-
-      const importRateYear =
-        importRate *
-        Math.pow(
-          1 + annualRateIncrease,
-          year - 1
-        )
-
-      const exportRateYear =
-        exportRate *
-        Math.pow(
-          1 + annualRateIncrease,
-          year - 1
-        )
-
-      const solarBenefit =
-        solar * importRateYear
-
-      const batteryBenefit =
-        battery * importRateYear
-
-      const exportBenefit =
-        exportKwh * exportRateYear
-
-      const annualBenefit =
-        solarBenefit +
-        batteryBenefit +
-        exportBenefit
-
-      const yearlyPayment =
-        year === 1
-          ? systemCost - deposit
-          : 0
-
-      const netAnnualBenefit =
-        annualBenefit -
-        yearlyPayment
-
-      cumulativePosition +=
-        netAnnualBenefit
-
-      const billPreInstall =
-        annualConsumption *
-        importRateYear
-
-      const gridReduction =
-        solar + battery
-
-      const remainingGrid =
-        Math.max(
-          0,
-          annualConsumption -
-            gridReduction
-        )
-
-      const billPostInstall =
-        remainingGrid *
-        importRateYear
-
-      rows.push({
-        year,
-        generation,
-        solar,
-        battery,
-        exportKwh,
-        annualBenefit,
-        yearlyPayment,
-        netAnnualBenefit,
-        cumulativePosition,
-        billPreInstall,
-        billPostInstall,
-      })
-    }
-
-    const totals = rows.reduce(
-      (total, row) => {
-        total.generation += row.generation
-        total.solar += row.solar
-        total.battery += row.battery
-        total.exportKwh += row.exportKwh
-        total.annualBenefit +=
-          row.annualBenefit
-        total.yearlyPayment +=
-          row.yearlyPayment
-        total.netAnnualBenefit +=
-          row.netAnnualBenefit
-        total.billPreInstall +=
-          row.billPreInstall
-        total.billPostInstall +=
-          row.billPostInstall
-
-        return total
-      },
-      {
-        generation: 0,
-        solar: 0,
-        battery: 0,
-        exportKwh: 0,
-        annualBenefit: 0,
-        yearlyPayment: 0,
-        netAnnualBenefit: 0,
-        billPreInstall: 0,
-        billPostInstall: 0,
-      }
-    )
-
-    const paybackRow =
-      rows.find(
-        (row) =>
-          row.cumulativePosition >= 0
-      )
-
-    return {
-      rows,
-      totals,
-      paybackPeriod:
-        paybackRow?.year || null,
-      totalNetSavings:
-        totals.netAnnualBenefit,
-      totalNetReturn:
-        totals.netAnnualBenefit -
-        systemCost,
-    }
-  }, [data, results])
-
-  /*
-   * =========================================================
-   * SEND EVERYTHING TO APPOINTMENT DETAIL
-   * =========================================================
-   */
-
-  useEffect(() => {
-    onCalculationChange?.({
-      data,
-      results,
-      thirtyYearProjection,
-    })
-  }, [
-    data,
-    results,
-    thirtyYearProjection,
-    onCalculationChange,
-  ])
-
-  const next = () => {
-    setStep((current) =>
-      Math.min(
-        steps.length - 1,
-        current + 1
-      )
-    )
-  }
-
-  const back = () => {
-    setStep((current) =>
-      Math.max(0, current - 1)
-    )
-  }
-
-  const reset = () => {
-    setData(appointmentInitial)
-    setStep(0)
-  }
-
-  return (
-    <section>
-      <div style={styles.wrapper}>
-
-        <div style={styles.stepper}>
-          {steps.map((item, index) => {
-            const Icon = item.icon
-
-            const active =
-              index === step
-
-            const complete =
-              index < step
-
-            return (
-              <button
-                key={item.title}
-                type="button"
-                onClick={() => {
-                  if (index <= step) {
-                    setStep(index)
-                  }
-                }}
-                style={{
-                  ...styles.step,
-                  opacity:
-                    index > step
-                      ? 0.5
-                      : 1,
-                }}
-              >
-                <div
-                  style={{
-                    ...styles.stepCircle,
-                    background:
-                      active || complete
-                        ? "#172554"
-                        : "#eef2f7",
-                    color:
-                      active || complete
-                        ? "white"
-                        : "#64748b",
-                  }}
-                >
-                  <Icon size={16} />
-                </div>
-
-                <span>
-                  {item.title}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-
-        {step === 0 && (
-          <Card
-            title="Customer details"
-            subtitle="Start the EPVS calculation with the customer and property information."
-          >
-            <div style={styles.grid}>
-              <Input
-                label="Customer name"
-                value={data.customerName}
-                onChange={(value) =>
-                  update(
-                    "customerName",
-                    value
-                  )
-                }
-              />
-
-              <Input
-                label="Postcode"
-                value={data.postcode}
-                onChange={(value) =>
-                  update(
-                    "postcode",
-                    value
-                  )
-                }
-              />
-
-              <Input
-                label="Address"
-                value={data.address}
-                onChange={(value) =>
-                  update(
-                    "address",
-                    value
-                  )
-                }
-              />
-            </div>
-          </Card>
-        )}
-
-        {step === 1 && (
-          <Card
-            title="Property"
-            subtitle="Property and existing-system assumptions."
-          >
-            <div style={styles.grid}>
-              <Input
-                label="Annual electricity consumption (kWh)"
-                type="number"
-                value={
-                  data.annualConsumption
-                }
-                onChange={(value) =>
-                  update(
-                    "annualConsumption",
-                    value
-                  )
-                }
-                min={0}
-              />
-
-              <Toggle
-                label="Existing solar PV"
-                value={
-                  data.existingSolar
-                }
-                onChange={(value) =>
-                  update(
-                    "existingSolar",
-                    value
-                  )
-                }
-              />
-
-              {data.existingSolar && (
-                <Input
-                  label="Existing annual generation (kWh)"
-                  type="number"
-                  value={
-                    data.existingGeneration
-                  }
-                  onChange={(value) =>
-                    update(
-                      "existingGeneration",
-                      value
-                    )
-                  }
-                  min={0}
-                />
-              )}
-            </div>
-          </Card>
-        )}
-
-        {step === 2 && (
-          <Card
-            title="Solar PV"
-            subtitle="Configure the proposed PV array."
-          >
-            <div style={styles.grid}>
-              <Input
-                label="Panel wattage (W)"
-                type="number"
-                value={
-                  data.panelWattage
-                }
-                onChange={(value) =>
-                  update(
-                    "panelWattage",
-                    value
-                  )
-                }
-                min={1}
-              />
-
-              <Input
-                label="Number of panels"
-                type="number"
-                value={
-                  data.panelCount
-                }
-                onChange={(value) =>
-                  update(
-                    "panelCount",
-                    value
-                  )
-                }
-                min={1}
-              />
-
-              <Input
-                label="Orientation from south (°)"
-                type="number"
-                value={
-                  data.orientation
-                }
-                onChange={(value) =>
-                  update(
-                    "orientation",
-                    value
-                  )
-                }
-                min={-180}
-                max={180}
-              />
-
-              <Input
-                label="Pitch (°)"
-                type="number"
-                value={data.pitch}
-                onChange={(value) =>
-                  update(
-                    "pitch",
-                    value
-                  )
-                }
-                min={0}
-                max={90}
-              />
-
-              <Input
-                label="Shading factor"
-                type="number"
-                value={data.shading}
-                onChange={(value) =>
-                  update(
-                    "shading",
-                    value
-                  )
-                }
-                step={0.01}
-                min={0}
-                max={1}
-              />
-            </div>
-          </Card>
-        )}
-
-        {step === 3 && (
-          <Card
-            title="Battery"
-            subtitle="Configure the proposed battery."
-          >
-            <div style={styles.grid}>
-              <Toggle
-                label="Battery included"
-                value={
-                  data.batteryEnabled
-                }
-                onChange={(value) =>
-                  update(
-                    "batteryEnabled",
-                    value
-                  )
-                }
-              />
-
-              {data.batteryEnabled && (
-                <Input
-                  label="Battery capacity (kWh)"
-                  type="number"
-                  value={
-                    data.batteryCapacity
-                  }
-                  onChange={(value) =>
-                    update(
-                      "batteryCapacity",
-                      value
-                    )
-                  }
-                  min={0}
-                  step={0.1}
-                />
-              )}
-            </div>
-          </Card>
-        )}
-
-        {step === 4 && (
-          <Card
-            title="Inverter"
-            subtitle="Configure the inverter capacity."
-          >
-            <div style={styles.grid}>
-              <Input
-                label="Inverter capacity (kW)"
-                type="number"
-                value={
-                  data.inverterCapacity
-                }
-                onChange={(value) =>
-                  update(
-                    "inverterCapacity",
-                    value
-                  )
-                }
-                min={0}
-                step={0.1}
-              />
-            </div>
-          </Card>
-        )}
-
-        {step === 5 && (
-          <Card
-            title="Electricity"
-            subtitle="Current electricity assumptions."
-          >
-            <div style={styles.grid}>
-              <Input
-                label="Annual consumption (kWh)"
-                type="number"
-                value={
-                  data.annualConsumption
-                }
-                onChange={(value) =>
-                  update(
-                    "annualConsumption",
-                    value
-                  )
-                }
-                min={0}
-              />
-
-              <Input
-                label="Import rate (£/kWh)"
-                type="number"
-                value={data.importRate}
-                onChange={(value) =>
-                  update(
-                    "importRate",
-                    value
-                  )
-                }
-                min={0}
-                step={0.001}
-              />
-
-              <Input
-                label="Export rate (£/kWh)"
-                type="number"
-                value={data.exportRate}
-                onChange={(value) =>
-                  update(
-                    "exportRate",
-                    value
-                  )
-                }
-                min={0}
-                step={0.001}
-              />
-            </div>
-          </Card>
-        )}
-
-        {step === 6 && (
-          <Card
-            title="Tariff"
-            subtitle="Select the tariff model."
-          >
-            <div style={styles.grid}>
-              <label style={styles.field}>
-                <span>Tariff</span>
-
-                <select
-                  value={data.tariff}
-                  onChange={(event) =>
-                    update(
-                      "tariff",
-                      event.target.value
-                    )
-                  }
-                >
-                  <option>Standard</option>
-                  <option>Overnight Charging</option>
-                  <option>Standard Flux</option>
-                  <option>Intelligent Flux</option>
-                  <option>Octopus Cosy</option>
-                </select>
-              </label>
-            </div>
-          </Card>
-        )}
-
-        {step === 7 && (
-          <Card
-            title="Finance"
-            subtitle="System cost and finance assumptions."
-          >
-            <div style={styles.grid}>
-              <Input
-                label="System cost (£)"
-                type="number"
-                value={data.systemCost}
-                onChange={(value) =>
-                  update(
-                    "systemCost",
-                    value
-                  )
-                }
-                min={0}
-              />
-
-              <Input
-                label="Deposit (£)"
-                type="number"
-                value={data.deposit}
-                onChange={(value) =>
-                  update(
-                    "deposit",
-                    value
-                  )
-                }
-                min={0}
-              />
-
-              <Input
-                label="Finance term (years)"
-                type="number"
-                value={data.financeTerm}
-                onChange={(value) =>
-                  update(
-                    "financeTerm",
-                    value
-                  )
-                }
-                min={1}
-              />
-
-              <Input
-                label="Interest rate (%)"
-                type="number"
-                value={data.financeRate}
-                onChange={(value) =>
-                  update(
-                    "financeRate",
-                    value
-                  )
-                }
-                min={0}
-                step={0.1}
-              />
-            </div>
-          </Card>
-        )}
-
-        {step === 8 && (
-          <>
-            <Results
-              results={results}
-              data={data}
-            />
-
-            <AnnualBreakdown
-              results={results}
-            />
-
-            <ThirtyYearBreakdown
-              thirtyYearProjection={thirtyYearProjection}
-            />
-          </>
-        )}
-
-        <div style={styles.footer}>
-          <button
-            type="button"
-            onClick={reset}
-            style={styles.secondary}
-          >
-            <RotateCcw size={16} />
-            Reset
-          </button>
-
-          <div
+        <SummaryCard
+          label="Payback period"
+          value={
+            paybackPeriod
+              ? `${paybackPeriod} years`
+              : "Not achieved"
+          }
+        />
+
+        <SummaryCard
+          label="Total net savings"
+          value={money(
+            totalNetSavings
+          )}
+        />
+
+        <SummaryCard
+          label="Total net return"
+          value={money(
+            totalNetReturn
+          )}
+        />
+      </div>
+
+      <div
+        className="card"
+        style={{
+          padding: 0,
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            overflowX: "auto",
+          }}
+        >
+          <table
             style={{
-              display: "flex",
-              gap: 10,
+              width: "100%",
+              minWidth: 1050,
+              borderCollapse: "collapse",
+              fontSize: 11,
             }}
           >
-            <button
-              type="button"
-              onClick={back}
-              disabled={step === 0}
-              style={{
-                ...styles.secondary,
-                opacity:
-                  step === 0 ? 0.5 : 1,
-              }}
-            >
-              <ArrowLeft size={16} />
-              Back
-            </button>
+            <thead>
+              <tr>
+                <HeaderCell>YR</HeaderCell>
+                <HeaderCell>GENERATION</HeaderCell>
+                <HeaderCell>SOLAR</HeaderCell>
+                <HeaderCell>BATTERY</HeaderCell>
+                <HeaderCell>EXPORT</HeaderCell>
+                <HeaderCell green>
+                  ANNUAL
+                  <br />
+                  BENEFIT
+                </HeaderCell>
+                <HeaderCell>
+                  YEARLY
+                  <br />
+                  PAYMENTS
+                </HeaderCell>
+                <HeaderCell>
+                  NET ANNUAL
+                  <br />
+                  BENEFIT
+                </HeaderCell>
+                <HeaderCell green>
+                  NET
+                  <br />
+                  POSITION
+                </HeaderCell>
+                <HeaderCell>
+                  BILL PRE
+                  <br />
+                  INSTALL
+                </HeaderCell>
+                <HeaderCell>
+                  BILL POST
+                  <br />
+                  INSTALL
+                </HeaderCell>
+              </tr>
+            </thead>
 
-            {step <
-              steps.length - 1 && (
-              <button
-                type="button"
-                onClick={next}
-                style={styles.primary}
-              >
-                Next
-                <ArrowRight size={16} />
-              </button>
-            )}
-          </div>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.year}>
+                  <BodyCell>
+                    {row.year}
+                  </BodyCell>
+
+                  <BodyCell>
+                    {number(
+                      row.generation
+                    )}
+                  </BodyCell>
+
+                  <BodyCell>
+                    {money(row.solar)}
+                  </BodyCell>
+
+                  <BodyCell>
+                    {money(row.battery)}
+                  </BodyCell>
+
+                  <BodyCell>
+                    {money(row.exportKwh)}
+                  </BodyCell>
+
+                  <BodyCell green>
+                    {money(
+                      row.annualBenefit
+                    )}
+                  </BodyCell>
+
+                  <BodyCell>
+                    {row.yearlyPayment > 0
+                      ? `-${money(
+                          row.yearlyPayment
+                        )}`
+                      : money(0)}
+                  </BodyCell>
+
+                  <BodyCell
+                    negative={
+                      row.netAnnualBenefit < 0
+                    }
+                  >
+                    {money(
+                      row.netAnnualBenefit
+                    )}
+                  </BodyCell>
+
+                  <BodyCell
+                    green={
+                      row.cumulativePosition >=
+                      0
+                    }
+                    negative={
+                      row.cumulativePosition < 0
+                    }
+                  >
+                    {money(
+                      row.cumulativePosition
+                    )}
+                  </BodyCell>
+
+                  <BodyCell>
+                    {money(
+                      row.billPreInstall
+                    )}
+                  </BodyCell>
+
+                  <BodyCell>
+                    {money(
+                      row.billPostInstall
+                    )}
+                  </BodyCell>
+                </tr>
+              ))}
+
+              <tr>
+                <td
+                  style={{
+                    ...totalCell,
+                    textAlign: "left",
+                  }}
+                >
+                  TOTALS
+                </td>
+
+                <td style={totalCell}>
+                  {number(
+                    totals.generation
+                  )}
+                </td>
+
+                <td style={totalCell}>
+                  {money(totals.solar)}
+                </td>
+
+                <td style={totalCell}>
+                  {money(totals.battery)}
+                </td>
+
+                <td style={totalCell}>
+                  {money(
+                    totals.exportKwh
+                  )}
+                </td>
+
+                <td
+                  style={{
+                    ...totalCell,
+                    background: "#299d48",
+                  }}
+                >
+                  {money(
+                    totals.annualBenefit
+                  )}
+                </td>
+
+                <td style={totalCell}>
+                  {money(
+                    -totals.yearlyPayment
+                  )}
+                </td>
+
+                <td style={totalCell}>
+                  {money(
+                    totals.netAnnualBenefit
+                  )}
+                </td>
+
+                <td
+                  style={{
+                    ...totalCell,
+                    background: "#299d48",
+                  }}
+                >
+                  {money(
+                    rows[29]
+                      ?.cumulativePosition || 0
+                  )}
+                </td>
+
+                <td style={totalCell}>
+                  {money(
+                    totals.billPreInstall
+                  )}
+                </td>
+
+                <td style={totalCell}>
+                  {money(
+                    totals.billPostInstall
+                  )}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
-    </section>
+    </div>
   )
 }
 
-function Card({
-  title,
-  subtitle,
-  children,
+function SummaryCard({
+  label,
+  value,
 }) {
   return (
     <div
-      className="card"
       style={{
-        marginBottom: 20,
+        background: "#299d48",
+        color: "#fff",
+        borderRadius: 8,
+        padding: "13px 15px",
+        textAlign: "center",
       }}
     >
-      <div className="card-head">
-        <div>
-          <h2>{title}</h2>
-          <p>{subtitle}</p>
-        </div>
+      <div
+        style={{
+          fontSize: 12,
+          fontWeight: 600,
+        }}
+      >
+        {label}:
       </div>
 
-      {children}
+      <div
+        style={{
+          marginTop: 4,
+          fontSize: 15,
+          fontWeight: 700,
+        }}
+      >
+        {value}
+      </div>
     </div>
   )
 }
 
-function Results({ results, data }) {
-  const cards = [
-    [
-      "System size",
-      `${results.systemSize.toFixed(2)} kWp`,
-    ],
-    [
-      "Estimated generation",
-      `${Math.round(
-        results.generation
-      ).toLocaleString("en-GB")} kWh`,
-    ],
-    [
-      "Solar self-consumption",
-      `${Math.round(
-        results.solarSelfConsumption
-      ).toLocaleString("en-GB")} kWh`,
-    ],
-    [
-      "Battery contribution",
-      `${Math.round(
-        results.batteryContribution
-      ).toLocaleString("en-GB")} kWh`,
-    ],
-    [
-      "Estimated export",
-      `${Math.round(
-        results.exportKwh
-      ).toLocaleString("en-GB")} kWh`,
-    ],
-    [
-      "Annual saving",
-      money(results.annualSaving),
-    ],
-    [
-      "Monthly finance",
-      money(results.monthlyPayment),
-    ],
-    [
-      "Simple payback",
-      results.simplePayback
-        ? `${results.simplePayback.toFixed(1)} years`
-        : "—",
-    ],
-  ]
+function HeaderCell({
+  children,
+  green = false,
+}) {
+  return (
+    <th
+      style={{
+        background: green
+          ? "#299d48"
+          : "#575757",
+        color: "#fff",
+        border: "1px solid #222",
+        padding: "8px 6px",
+        textAlign: "center",
+        fontWeight: 700,
+        fontSize: 10,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </th>
+  )
+}
+
+function BodyCell({
+  children,
+  green = false,
+  negative = false,
+}) {
+  let background = "#fff"
+  let color = "#333"
+
+  if (green) {
+    background = "#e8f5eb"
+    color = "#26783a"
+  }
+
+  if (negative) {
+    color = "#ff0000"
+  }
 
   return (
-    <div
-      className="card"
+    <td
       style={{
-        marginBottom: 20,
+        background,
+        color,
+        border: "1px solid #222",
+        padding: "6px 7px",
+        textAlign: "right",
+        whiteSpace: "nowrap",
       }}
     >
-      <div className="card-head">
-        <div>
-          <h2>EPVS calculation results</h2>
-
-          <p>
-            {data.customerName ||
-              "New calculation"}{" "}
-            ·{" "}
-            {data.postcode ||
-              "No postcode entered"}
-          </p>
-        </div>
-
-        <div style={styles.badge}>
-          Preliminary model
-        </div>
-      </div>
-
-      <div style={styles.resultGrid}>
-        {cards.map(([label, value]) => (
-          <div
-            key={label}
-            style={styles.resultCard}
-          >
-            <span>{label}</span>
-            <strong>{value}</strong>
-          </div>
-        ))}
-      </div>
-    </div>
+      {children}
+    </td>
   )
 }
 
-const styles = {
-  wrapper: {
-    maxWidth: 1200,
-    margin: "0 auto",
-  },
-
-  stepper: {
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(9, minmax(70px, 1fr))",
-    gap: 8,
-    marginBottom: 20,
-    overflowX: "auto",
-    paddingBottom: 5,
-  },
-
-  step: {
-    border: 0,
-    background: "transparent",
-    cursor: "pointer",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: 7,
-    color: "#334155",
-    fontSize: 12,
-    whiteSpace: "nowrap",
-  },
-
-  stepCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: "50%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  grid: {
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(2, minmax(0, 1fr))",
-    gap: 18,
-  },
-
-  field: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 7,
-  },
-
-  toggleRow: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    minHeight: 42,
-  },
-
-  toggle: {
-    border: 0,
-    width: 44,
-    height: 24,
-    borderRadius: 20,
-    padding: 2,
-    cursor: "pointer",
-  },
-
-  toggleKnob: {
-    display: "block",
-    width: 20,
-    height: 20,
-    background: "white",
-    borderRadius: "50%",
-    transition: "transform .15s",
-  },
-
-  footer: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 10,
-  },
-
-  primary: {
-    border: 0,
-    background: "#172554",
-    color: "white",
-    borderRadius: 8,
-    padding: "11px 16px",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-
-  secondary: {
-    border: "1px solid #d7dee8",
-    background: "white",
-    color: "#334155",
-    borderRadius: 8,
-    padding: "10px 14px",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    cursor: "pointer",
-  },
-
-  badge: {
-    background: "#fff7ed",
-    color: "#9a3412",
-    borderRadius: 999,
-    padding: "6px 10px",
-    fontSize: 12,
-    fontWeight: 600,
-  },
-
-  resultGrid: {
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(4, minmax(0, 1fr))",
-    gap: 12,
-  },
-
-  resultCard: {
-    border: "1px solid #e5e7eb",
-    borderRadius: 10,
-    padding: 16,
-    display: "flex",
-    flexDirection: "column",
-    gap: 7,
-  },
+const totalCell = {
+  background: "#575757",
+  color: "#fff",
+  border: "1px solid #222",
+  padding: "10px 7px",
+  textAlign: "right",
+  fontWeight: 700,
+  whiteSpace: "nowrap",
 }
