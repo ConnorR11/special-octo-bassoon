@@ -43,9 +43,6 @@ function AppointmentDetail({
    * =========================================================
    * EPVS CALCULATION
    * =========================================================
-   *
-   * The calculator continuously sends its current data and
-   * results back here.
    */
 
   const [
@@ -601,10 +598,6 @@ function AppointmentDetail({
 
       epvsRows.forEach(
         ([label, value], index) => {
-          /*
-           * Start a new page if necessary.
-           */
-
           if (
             y >
             pdf.internal.pageSize.getHeight() -
@@ -750,7 +743,9 @@ function AppointmentDetail({
       )
 
       pdf.text(
-        `Appointment ${appointment.appointment_row_id || ""}`,
+        `Appointment ${
+          appointment.appointment_row_id || ""
+        }`,
         20,
         height - 9
       )
@@ -801,10 +796,32 @@ function AppointmentDetail({
       return
     }
 
+    if (
+      !appointment?.appointment_row_id
+    ) {
+      setError(
+        "This appointment does not have an appointment_row_id."
+      )
+      return
+    }
+
     setSaving(true)
     setError("")
 
     try {
+      /*
+       * IMPORTANT:
+       *
+       * The appointments table uses appointment_row_id
+       * as the identifier.
+       *
+       * We deliberately do NOT use .single() here because
+       * Supabase can return an empty/multiple result and
+       * .single() then throws:
+       *
+       * "Cannot coerce the result to a single JSON object"
+       */
+
       const {
         data,
         error: updateError,
@@ -814,29 +831,49 @@ function AppointmentDetail({
           result,
         })
         .eq(
-            "appointment_row_id",
-            appointment.appointment_row_id
+          "appointment_row_id",
+          appointment.appointment_row_id
         )
         .select()
-        .single()
 
       if (updateError) {
         throw updateError
       }
 
       /*
-       * Update the appointment first.
+       * Make sure a row was actually updated.
        */
 
-      onUpdated?.(data)
+      if (
+        !data ||
+        data.length === 0
+      ) {
+        throw new Error(
+          "No appointment was updated. Check that appointment_row_id matches a row in the appointments table."
+        )
+      }
+
+      /*
+       * There should normally only be one row.
+       */
+
+      const updatedAppointment =
+        data[0]
+
+      /*
+       * Update the parent/UI.
+       */
+
+      onUpdated?.(
+        updatedAppointment
+      )
 
       setShowResult(false)
 
       /*
-       * If the appointment was sold, generate the PDF.
-       *
-       * We deliberately do this AFTER Supabase confirms the
-       * result has been saved.
+       * If the appointment was sold,
+       * generate the PDF after the database
+       * update has completed successfully.
        */
 
       if (
@@ -844,11 +881,6 @@ function AppointmentDetail({
           .toLowerCase()
           .trim() === "sold"
       ) {
-        /*
-         * Give React a moment to finish updating the UI/state
-         * before creating the document.
-         */
-
         setTimeout(() => {
           generateSoldPdf()
         }, 100)
