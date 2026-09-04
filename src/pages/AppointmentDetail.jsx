@@ -750,7 +750,7 @@ function AppointmentDetail({
       )
 
       pdf.text(
-        `Appointment ${appointment.id || ""}`,
+        `Appointment ${appointment_row_id || ""}`,
         20,
         height - 9
       )
@@ -815,7 +815,7 @@ function AppointmentDetail({
         })
         .eq(
           "id",
-          appointment.id
+          appointment_row_id
         )
         .select()
         .single()
