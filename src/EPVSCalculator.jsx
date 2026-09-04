@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 
 import {
   ArrowLeft,
@@ -13,37 +13,12 @@ import {
 
 import AnnualBreakdown from "./components/EPVS/AnnualBreakdown"
 
-
-/* =========================================================
-   FORMATTERS
-   ========================================================= */
-
 const money = (value) =>
   new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency: "GBP",
     maximumFractionDigits: 0,
   }).format(Number(value || 0))
-
-
-const moneyExact = (value) =>
-  new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(Number(value || 0))
-
-
-const number = (value) =>
-  Math.round(Number(value || 0)).toLocaleString(
-    "en-GB"
-  )
-
-
-/* =========================================================
-   STEPS
-   ========================================================= */
 
 const steps = [
   { title: "Customer", icon: Home },
@@ -56,11 +31,6 @@ const steps = [
   { title: "Finance", icon: PoundSterling },
   { title: "Results", icon: CheckCircle2 },
 ]
-
-
-/* =========================================================
-   INITIAL DATA
-   ========================================================= */
 
 const initial = {
   customerName: "",
@@ -86,12 +56,6 @@ const initial = {
   importRate: 0.28,
   exportRate: 0.15,
 
-  /*
-   * These assumptions drive the 30-year projection.
-   */
-  energyPriceInflation: 7,
-  generationDegradation: 0.5,
-
   tariff: "Standard",
 
   systemCost: 12000,
@@ -99,11 +63,6 @@ const initial = {
   financeTerm: 10,
   financeRate: 7.9,
 }
-
-
-/* =========================================================
-   INPUT
-   ========================================================= */
 
 function Input({
   label,
@@ -137,25 +96,14 @@ function Input({
   )
 }
 
-
-/* =========================================================
-   TOGGLE
-   ========================================================= */
-
-function Toggle({
-  label,
-  value,
-  onChange,
-}) {
+function Toggle({ label, value, onChange }) {
   return (
     <label style={styles.toggleRow}>
       <span>{label}</span>
 
       <button
         type="button"
-        onClick={() =>
-          onChange(!value)
-        }
+        onClick={() => onChange(!value)}
         style={{
           ...styles.toggle,
           background: value
@@ -176,92 +124,111 @@ function Toggle({
   )
 }
 
+export default function EPVSCalculator({
+  appointment,
+  onCalculationChange,
+}) {
+  const [step, setStep] = useState(0)
 
-/* =========================================================
-   MAIN CALCULATOR
-   ========================================================= */
+  /*
+   * ---------------------------------------------------------
+   * INITIAL DATA
+   * ---------------------------------------------------------
+   *
+   * Customer information comes from the appointment.
+   * Everything else uses the standard EPVS starting values.
+   * ---------------------------------------------------------
+   */
 
-export default function EPVSCalculator() {
+  const appointmentInitial = useMemo(() => {
+    return {
+      ...initial,
 
-  const [step, setStep] =
-    useState(0)
+      customerName:
+        appointment?.name || "",
+
+      address:
+        appointment?.address || "",
+
+      postcode:
+        appointment?.postcode || "",
+    }
+  }, [appointment])
 
   const [data, setData] =
-    useState(initial)
+    useState(appointmentInitial)
 
+  /*
+   * If the appointment changes, refresh the customer fields.
+   */
 
-  const update = (
-    key,
-    value
-  ) => {
+  useEffect(() => {
+    setData((current) => ({
+      ...current,
+
+      customerName:
+        appointment?.name ||
+        current.customerName ||
+        "",
+
+      address:
+        appointment?.address ||
+        current.address ||
+        "",
+
+      postcode:
+        appointment?.postcode ||
+        current.postcode ||
+        "",
+    }))
+  }, [appointment])
+
+  const update = (key, value) => {
     setData((current) => ({
       ...current,
       [key]: value,
     }))
   }
 
-
-  /* =======================================================
-     BASE CALCULATION
-     ======================================================= */
+  /*
+   * ---------------------------------------------------------
+   * CALCULATIONS
+   * ---------------------------------------------------------
+   */
 
   const results = useMemo(() => {
-
     const systemSize =
-      (Number(
-        data.panelWattage || 0
-      ) *
-        Number(
-          data.panelCount || 0
-        )) /
+      (Number(data.panelWattage || 0) *
+        Number(data.panelCount || 0)) /
       1000
-
 
     const baseYield = 950
 
+    const orientationFactor = Math.max(
+      0.65,
+      1 -
+        (Math.abs(
+          Number(data.orientation || 0)
+        ) /
+          180) *
+          0.18
+    )
 
-    const orientationFactor =
-      Math.max(
-        0.65,
-        1 -
-          (
-            Math.abs(
-              Number(
-                data.orientation || 0
-              )
-            ) /
-            180
-          ) *
-            0.18
-      )
-
-
-    const pitchFactor =
-      Math.max(
-        0.88,
-        1 -
-          Math.abs(
-            Number(
-              data.pitch || 30
-            ) - 35
-          ) *
-            0.004
-      )
-
+    const pitchFactor = Math.max(
+      0.88,
+      1 -
+        Math.abs(
+          Number(data.pitch || 30) - 35
+        ) *
+          0.004
+    )
 
     const generation =
       systemSize *
       baseYield *
       orientationFactor *
       pitchFactor *
-      Number(
-        data.shading || 1
-      )
-
-
-    /*
-     * Solar electricity used directly.
-     */
+      Number(data.shading || 1)
 
     const solarSelfConsumption =
       Math.min(
@@ -271,22 +238,12 @@ export default function EPVSCalculator() {
         ) * 0.375
       )
 
-
-    /*
-     * Generation remaining after direct solar.
-     */
-
     const remainingGeneration =
       Math.max(
         0,
         generation -
           solarSelfConsumption
       )
-
-
-    /*
-     * Battery.
-     */
 
     const batteryContribution =
       data.batteryEnabled
@@ -301,11 +258,6 @@ export default function EPVSCalculator() {
           )
         : 0
 
-
-    /*
-     * Export.
-     */
-
     const exportKwh =
       Math.max(
         0,
@@ -314,43 +266,23 @@ export default function EPVSCalculator() {
           batteryContribution
       )
 
-
-    /*
-     * Grid reduction.
-     */
-
     const gridReduction =
       solarSelfConsumption +
       batteryContribution
 
-
-    /*
-     * Financial benefit.
-     */
-
     const solarBenefit =
       solarSelfConsumption *
-      Number(
-        data.importRate || 0
-      )
-
+      Number(data.importRate || 0)
 
     const batterySelfConsumptionBenefit =
       batteryContribution *
-      Number(
-        data.importRate || 0
-      )
-
+      Number(data.importRate || 0)
 
     const forceChargeBenefit = 0
 
-
     const exportBenefit =
       exportKwh *
-      Number(
-        data.exportRate || 0
-      )
-
+      Number(data.exportRate || 0)
 
     const annualSaving =
       solarBenefit +
@@ -358,454 +290,84 @@ export default function EPVSCalculator() {
       forceChargeBenefit +
       exportBenefit
 
-
-    /* =====================================================
-       FINANCE
-       ===================================================== */
-
     const financeAmount =
       Math.max(
         0,
-        Number(
-          data.systemCost || 0
-        ) -
-          Number(
-            data.deposit || 0
-          )
+        Number(data.systemCost || 0) -
+          Number(data.deposit || 0)
       )
 
-
     const monthlyRate =
-      Number(
-        data.financeRate || 0
-      ) /
+      Number(data.financeRate || 0) /
       100 /
       12
 
-
     const months =
-      Number(
-        data.financeTerm || 0
-      ) * 12
-
+      Number(data.financeTerm || 0) *
+      12
 
     const monthlyPayment =
       financeAmount > 0 &&
       monthlyRate > 0 &&
       months > 0
         ? financeAmount *
-          (
-            monthlyRate *
+          (monthlyRate *
             Math.pow(
               1 + monthlyRate,
               months
-            )
-          ) /
-          (
-            Math.pow(
-              1 + monthlyRate,
-              months
-            ) - 1
-          )
+            )) /
+          (Math.pow(
+            1 + monthlyRate,
+            months
+          ) - 1)
         : months > 0
-        ? financeAmount /
-          months
+        ? financeAmount / months
         : 0
-
-
-    const yearlyPayment =
-      monthlyPayment * 12
-
 
     const simplePayback =
       annualSaving > 0
         ? Number(
             data.systemCost || 0
-          ) /
-          annualSaving
+          ) / annualSaving
         : null
-
-
-    /* =====================================================
-       30 YEAR PROJECTION
-       ===================================================== */
-
-    const years = []
-
-
-    let cumulativePosition =
-      -financeAmount
-
-
-    for (
-      let year = 1;
-      year <= 30;
-      year++
-    ) {
-
-      /*
-       * Solar generation degrades every year.
-       */
-
-      const degradation =
-        Math.pow(
-          1 -
-            Number(
-              data.generationDegradation || 0
-            ) /
-              100,
-          year - 1
-        )
-
-
-      const yearGeneration =
-        generation *
-        degradation
-
-
-      /*
-       * Electricity prices increase over time.
-       */
-
-      const priceInflation =
-        Math.pow(
-          1 +
-            Number(
-              data.energyPriceInflation || 0
-            ) /
-              100,
-          year - 1
-        )
-
-
-      const yearImportRate =
-        Number(
-          data.importRate || 0
-        ) *
-        priceInflation
-
-
-      const yearExportRate =
-        Number(
-          data.exportRate || 0
-        ) *
-        priceInflation
-
-
-      /*
-       * Direct solar.
-       */
-
-      const yearSolarSelfConsumption =
-        Math.min(
-          yearGeneration,
-          Number(
-            data.annualConsumption || 0
-          ) * 0.375
-        )
-
-
-      /*
-       * Battery.
-       */
-
-      const yearRemainingGeneration =
-        Math.max(
-          0,
-          yearGeneration -
-            yearSolarSelfConsumption
-        )
-
-
-      const yearBatteryContribution =
-        data.batteryEnabled
-          ? Math.min(
-              yearRemainingGeneration,
-              Number(
-                data.annualConsumption || 0
-              ) * 0.25,
-              Number(
-                data.batteryCapacity || 0
-              ) * 180
-            )
-          : 0
-
-
-      /*
-       * Export.
-       */
-
-      const yearExportKwh =
-        Math.max(
-          0,
-          yearGeneration -
-            yearSolarSelfConsumption -
-            yearBatteryContribution
-        )
-
-
-      /*
-       * Financial benefits.
-       */
-
-      const yearSolarBenefit =
-        yearSolarSelfConsumption *
-        yearImportRate
-
-
-      const yearBatteryBenefit =
-        yearBatteryContribution *
-        yearImportRate
-
-
-      const yearForceChargeBenefit =
-        0
-
-
-      const yearExportBenefit =
-        yearExportKwh *
-        yearExportRate
-
-
-      const yearAnnualBenefit =
-        yearSolarBenefit +
-        yearBatteryBenefit +
-        yearForceChargeBenefit +
-        yearExportBenefit
-
-
-      /*
-       * Finance payment.
-       *
-       * Payments only continue during the finance term.
-       */
-
-      const yearPayment =
-        year <=
-        Number(
-          data.financeTerm || 0
-        )
-          ? yearlyPayment
-          : 0
-
-
-      /*
-       * Net annual benefit.
-       */
-
-      const netAnnualBenefit =
-        yearAnnualBenefit -
-        yearPayment
-
-
-      /*
-       * Cumulative position.
-       */
-
-      cumulativePosition +=
-        netAnnualBenefit
-
-
-      /*
-       * Pre-install bill.
-       *
-       * This represents the customer's estimated
-       * electricity bill without the proposed system.
-       */
-
-      const billPreInstall =
-        Number(
-          data.annualConsumption || 0
-        ) *
-        yearImportRate
-
-
-      /*
-       * Post-install bill.
-       */
-
-      const billPostInstall =
-        Math.max(
-          0,
-          billPreInstall -
-            yearAnnualBenefit
-        )
-
-
-      years.push({
-        year,
-
-        generation:
-          yearGeneration,
-
-        solar:
-          yearSolarBenefit,
-
-        battery:
-          yearBatteryBenefit,
-
-        export:
-          yearExportBenefit,
-
-        annualBenefit:
-          yearAnnualBenefit,
-
-        yearlyPayment:
-          yearPayment,
-
-        netAnnualBenefit,
-
-        netPosition:
-          cumulativePosition,
-
-        billPreInstall,
-
-        billPostInstall,
-      })
-    }
-
-
-    /*
-     * Total values.
-     */
-
-    const totalAnnualBenefit =
-      years.reduce(
-        (total, row) =>
-          total +
-          row.annualBenefit,
-        0
-      )
-
-
-    const totalPayments =
-      years.reduce(
-        (total, row) =>
-          total +
-          row.yearlyPayment,
-        0
-      )
-
-
-    const totalNetSavings =
-      years.reduce(
-        (total, row) =>
-          total +
-          row.netAnnualBenefit,
-        0
-      )
-
-
-    const totalSolar =
-      years.reduce(
-        (total, row) =>
-          total +
-          row.solar,
-        0
-      )
-
-
-    const totalBattery =
-      years.reduce(
-        (total, row) =>
-          total +
-          row.battery,
-        0
-      )
-
-
-    const totalExport =
-      years.reduce(
-        (total, row) =>
-          total +
-          row.export,
-        0
-      )
-
-
-    const totalGeneration =
-      years.reduce(
-        (total, row) =>
-          total +
-          row.generation,
-        0
-      )
-
-
-    /*
-     * Payback year.
-     */
-
-    const paybackRow =
-      years.find(
-        (row) =>
-          row.netPosition >= 0
-      )
-
-
-    const paybackPeriod =
-      paybackRow
-        ? paybackRow.year
-        : null
-
 
     return {
-
       systemSize,
-
       generation,
-
       solarSelfConsumption,
-
       batteryContribution,
-
       exportKwh,
-
       gridReduction,
-
       solarBenefit,
-
       batterySelfConsumptionBenefit,
-
       forceChargeBenefit,
-
       exportBenefit,
-
       annualSaving,
-
       monthlyPayment,
-
-      yearlyPayment,
-
       financeAmount,
-
       simplePayback,
-
-      years,
-
-      totalAnnualBenefit,
-
-      totalPayments,
-
-      totalNetSavings,
-
-      totalSolar,
-
-      totalBattery,
-
-      totalExport,
-
-      totalGeneration,
-
-      paybackPeriod,
     }
-
   }, [data])
 
+  /*
+   * ---------------------------------------------------------
+   * SEND CALCULATION TO APPOINTMENT DETAIL
+   * ---------------------------------------------------------
+   *
+   * This is what allows AppointmentDetail to generate the PDF
+   * when the appointment is resulted as Sold.
+   */
 
-  /* =======================================================
-     NAVIGATION
-     ======================================================= */
+  useEffect(() => {
+    onCalculationChange?.({
+      data,
+      results,
+    })
+  }, [
+    data,
+    results,
+    onCalculationChange,
+  ])
 
   const next = () => {
     setStep((current) =>
@@ -816,126 +378,85 @@ export default function EPVSCalculator() {
     )
   }
 
-
   const back = () => {
     setStep((current) =>
-      Math.max(
-        0,
-        current - 1
-      )
+      Math.max(0, current - 1)
     )
   }
 
-
   const reset = () => {
-    setData(initial)
+    setData(appointmentInitial)
     setStep(0)
   }
 
-
-  /* =======================================================
-     RENDER
-     ======================================================= */
-
   return (
     <section>
-
       <div style={styles.wrapper}>
 
-        {/* =================================================
-            STEP NAVIGATION
-            ================================================= */}
+        {/* STEP NAVIGATION */}
 
         <div style={styles.stepper}>
+          {steps.map((item, index) => {
+            const Icon = item.icon
 
-          {steps.map(
-            (item, index) => {
+            const active =
+              index === step
 
-              const Icon =
-                item.icon
+            const complete =
+              index < step
 
-              const active =
-                index === step
-
-              const complete =
-                index < step
-
-              return (
-                <button
-                  key={
-                    item.title
+            return (
+              <button
+                key={item.title}
+                type="button"
+                onClick={() => {
+                  if (index <= step) {
+                    setStep(index)
                   }
-                  type="button"
-                  onClick={() => {
-                    if (
-                      index <= step
-                    ) {
-                      setStep(
-                        index
-                      )
-                    }
-                  }}
+                }}
+                style={{
+                  ...styles.step,
+                  opacity:
+                    index > step
+                      ? 0.5
+                      : 1,
+                }}
+              >
+                <div
                   style={{
-                    ...styles.step,
-                    opacity:
-                      index > step
-                        ? 0.5
-                        : 1,
+                    ...styles.stepCircle,
+                    background:
+                      active || complete
+                        ? "#172554"
+                        : "#eef2f7",
+                    color:
+                      active || complete
+                        ? "white"
+                        : "#64748b",
                   }}
                 >
+                  <Icon size={16} />
+                </div>
 
-                  <div
-                    style={{
-                      ...styles.stepCircle,
-                      background:
-                        active ||
-                        complete
-                          ? "#172554"
-                          : "#eef2f7",
-                      color:
-                        active ||
-                        complete
-                          ? "white"
-                          : "#64748b",
-                    }}
-                  >
-                    <Icon
-                      size={16}
-                    />
-                  </div>
-
-                  <span>
-                    {item.title}
-                  </span>
-
-                </button>
-              )
-            }
-          )}
-
+                <span>
+                  {item.title}
+                </span>
+              </button>
+            )
+          })}
         </div>
 
-
-        {/* =================================================
-            CUSTOMER
-            ================================================= */}
+        {/* CUSTOMER */}
 
         {step === 0 && (
-
           <Card
             title="Customer details"
             subtitle="Start the EPVS calculation with the customer and property information."
           >
-
-            <div
-              style={styles.grid}
-            >
-
+            <div style={styles.grid}>
               <Input
                 label="Customer name"
-                value={
-                  data.customerName
-                }
+                value={data.customerName}
                 onChange={(value) =>
                   update(
                     "customerName",
@@ -946,9 +467,7 @@ export default function EPVSCalculator() {
 
               <Input
                 label="Postcode"
-                value={
-                  data.postcode
-                }
+                value={data.postcode}
                 onChange={(value) =>
                   update(
                     "postcode",
@@ -959,9 +478,7 @@ export default function EPVSCalculator() {
 
               <Input
                 label="Address"
-                value={
-                  data.address
-                }
+                value={data.address}
                 onChange={(value) =>
                   update(
                     "address",
@@ -969,29 +486,18 @@ export default function EPVSCalculator() {
                   )
                 }
               />
-
             </div>
-
           </Card>
-
         )}
 
-
-        {/* =================================================
-            PROPERTY
-            ================================================= */}
+        {/* PROPERTY */}
 
         {step === 1 && (
-
           <Card
             title="Property"
             subtitle="Property and existing-system assumptions."
           >
-
-            <div
-              style={styles.grid}
-            >
-
+            <div style={styles.grid}>
               <Input
                 label="Annual electricity consumption (kWh)"
                 type="number"
@@ -1021,7 +527,6 @@ export default function EPVSCalculator() {
               />
 
               {data.existingSolar && (
-
                 <Input
                   label="Existing annual generation (kWh)"
                   type="number"
@@ -1036,31 +541,19 @@ export default function EPVSCalculator() {
                   }
                   min={0}
                 />
-
               )}
-
             </div>
-
           </Card>
-
         )}
 
-
-        {/* =================================================
-            SOLAR PV
-            ================================================= */}
+        {/* SOLAR PV */}
 
         {step === 2 && (
-
           <Card
             title="Solar PV"
             subtitle="Configure the proposed PV array."
           >
-
-            <div
-              style={styles.grid}
-            >
-
+            <div style={styles.grid}>
               <Input
                 label="Panel wattage (W)"
                 type="number"
@@ -1110,9 +603,7 @@ export default function EPVSCalculator() {
               <Input
                 label="Pitch (°)"
                 type="number"
-                value={
-                  data.pitch
-                }
+                value={data.pitch}
                 onChange={(value) =>
                   update(
                     "pitch",
@@ -1126,9 +617,7 @@ export default function EPVSCalculator() {
               <Input
                 label="Shading factor"
                 type="number"
-                value={
-                  data.shading
-                }
+                value={data.shading}
                 onChange={(value) =>
                   update(
                     "shading",
@@ -1139,29 +628,18 @@ export default function EPVSCalculator() {
                 min={0}
                 max={1}
               />
-
             </div>
-
           </Card>
-
         )}
 
-
-        {/* =================================================
-            BATTERY
-            ================================================= */}
+        {/* BATTERY */}
 
         {step === 3 && (
-
           <Card
             title="Battery"
             subtitle="Configure the proposed battery."
           >
-
-            <div
-              style={styles.grid}
-            >
-
+            <div style={styles.grid}>
               <Toggle
                 label="Battery included"
                 value={
@@ -1176,7 +654,6 @@ export default function EPVSCalculator() {
               />
 
               {data.batteryEnabled && (
-
                 <Input
                   label="Battery capacity (kWh)"
                   type="number"
@@ -1192,31 +669,19 @@ export default function EPVSCalculator() {
                   min={0}
                   step={0.1}
                 />
-
               )}
-
             </div>
-
           </Card>
-
         )}
 
-
-        {/* =================================================
-            INVERTER
-            ================================================= */}
+        {/* INVERTER */}
 
         {step === 4 && (
-
           <Card
             title="Inverter"
             subtitle="Configure the inverter capacity."
           >
-
-            <div
-              style={styles.grid}
-            >
-
+            <div style={styles.grid}>
               <Input
                 label="Inverter capacity (kW)"
                 type="number"
@@ -1232,29 +697,18 @@ export default function EPVSCalculator() {
                 min={0}
                 step={0.1}
               />
-
             </div>
-
           </Card>
-
         )}
 
-
-        {/* =================================================
-            ELECTRICITY
-            ================================================= */}
+        {/* ELECTRICITY */}
 
         {step === 5 && (
-
           <Card
             title="Electricity"
-            subtitle="Current electricity assumptions and long-term projection assumptions."
+            subtitle="Current electricity assumptions."
           >
-
-            <div
-              style={styles.grid}
-            >
-
+            <div style={styles.grid}>
               <Input
                 label="Annual consumption (kWh)"
                 type="number"
@@ -1273,9 +727,7 @@ export default function EPVSCalculator() {
               <Input
                 label="Import rate (£/kWh)"
                 type="number"
-                value={
-                  data.importRate
-                }
+                value={data.importRate}
                 onChange={(value) =>
                   update(
                     "importRate",
@@ -1289,9 +741,7 @@ export default function EPVSCalculator() {
               <Input
                 label="Export rate (£/kWh)"
                 type="number"
-                value={
-                  data.exportRate
-                }
+                value={data.exportRate}
                 onChange={(value) =>
                   update(
                     "exportRate",
@@ -1301,76 +751,23 @@ export default function EPVSCalculator() {
                 min={0}
                 step={0.001}
               />
-
-              <Input
-                label="Energy price inflation (% per year)"
-                type="number"
-                value={
-                  data.energyPriceInflation
-                }
-                onChange={(value) =>
-                  update(
-                    "energyPriceInflation",
-                    value
-                  )
-                }
-                min={0}
-                step={0.1}
-              />
-
-              <Input
-                label="Solar generation degradation (% per year)"
-                type="number"
-                value={
-                  data.generationDegradation
-                }
-                onChange={(value) =>
-                  update(
-                    "generationDegradation",
-                    value
-                  )
-                }
-                min={0}
-                max={10}
-                step={0.1}
-              />
-
             </div>
-
           </Card>
-
         )}
 
-
-        {/* =================================================
-            TARIFF
-            ================================================= */}
+        {/* TARIFF */}
 
         {step === 6 && (
-
           <Card
             title="Tariff"
             subtitle="Select the tariff model."
           >
-
-            <div
-              style={styles.grid}
-            >
-
-              <label
-                style={
-                  styles.field
-                }
-              >
-
-                <span>
-                  Tariff
-                </span>
+            <div style={styles.grid}>
+              <label style={styles.field}>
+                <span>Tariff</span>
 
                 <select
-                  value={
-                    data.tariff
-                  }
+                  value={data.tariff}
                   onChange={(event) =>
                     update(
                       "tariff",
@@ -1378,7 +775,6 @@ export default function EPVSCalculator() {
                     )
                   }
                 >
-
                   <option>
                     Standard
                   </option>
@@ -1398,39 +794,24 @@ export default function EPVSCalculator() {
                   <option>
                     Octopus Cosy
                   </option>
-
                 </select>
-
               </label>
-
             </div>
-
           </Card>
-
         )}
 
-
-        {/* =================================================
-            FINANCE
-            ================================================= */}
+        {/* FINANCE */}
 
         {step === 7 && (
-
           <Card
             title="Finance"
             subtitle="System cost and finance assumptions."
           >
-
-            <div
-              style={styles.grid}
-            >
-
+            <div style={styles.grid}>
               <Input
                 label="System cost (£)"
                 type="number"
-                value={
-                  data.systemCost
-                }
+                value={data.systemCost}
                 onChange={(value) =>
                   update(
                     "systemCost",
@@ -1443,9 +824,7 @@ export default function EPVSCalculator() {
               <Input
                 label="Deposit (£)"
                 type="number"
-                value={
-                  data.deposit
-                }
+                value={data.deposit}
                 onChange={(value) =>
                   update(
                     "deposit",
@@ -1458,9 +837,7 @@ export default function EPVSCalculator() {
               <Input
                 label="Finance term (years)"
                 type="number"
-                value={
-                  data.financeTerm
-                }
+                value={data.financeTerm}
                 onChange={(value) =>
                   update(
                     "financeTerm",
@@ -1473,9 +850,7 @@ export default function EPVSCalculator() {
               <Input
                 label="Interest rate (%)"
                 type="number"
-                value={
-                  data.financeRate
-                }
+                value={data.financeRate}
                 onChange={(value) =>
                   update(
                     "financeRate",
@@ -1485,62 +860,36 @@ export default function EPVSCalculator() {
                 min={0}
                 step={0.1}
               />
-
             </div>
-
           </Card>
-
         )}
 
-
-        {/* =================================================
-            RESULTS
-            ================================================= */}
+        {/* RESULTS */}
 
         {step === 8 && (
-
           <>
-
             <Results
               results={results}
               data={data}
             />
 
-            <ThirtyYearBreakdown
-              results={results}
-            />
-
             <AnnualBreakdown
               results={results}
             />
-
           </>
-
         )}
 
+        {/* FOOTER */}
 
-        {/* =================================================
-            FOOTER
-            ================================================= */}
-
-        <div
-          style={styles.footer}
-        >
-
+        <div style={styles.footer}>
           <button
             type="button"
             onClick={reset}
-            style={
-              styles.secondary
-            }
+            style={styles.secondary}
           >
-            <RotateCcw
-              size={16}
-            />
-
+            <RotateCcw size={16} />
             Reset
           </button>
-
 
           <div
             style={{
@@ -1548,111 +897,68 @@ export default function EPVSCalculator() {
               gap: 10,
             }}
           >
-
             <button
               type="button"
               onClick={back}
-              disabled={
-                step === 0
-              }
-              style={
-                styles.secondary
-              }
+              disabled={step === 0}
+              style={{
+                ...styles.secondary,
+                opacity:
+                  step === 0 ? 0.5 : 1,
+              }}
             >
-              <ArrowLeft
-                size={16}
-              />
-
+              <ArrowLeft size={16} />
               Back
             </button>
 
-
             {step <
               steps.length - 1 && (
-
               <button
                 type="button"
                 onClick={next}
-                style={
-                  styles.primary
-                }
+                style={styles.primary}
               >
                 Next
-
-                <ArrowRight
-                  size={16}
-                />
+                <ArrowRight size={16} />
               </button>
-
             )}
-
           </div>
-
         </div>
-
       </div>
-
     </section>
   )
 }
 
-
-/* =========================================================
-   CARD
-   ========================================================= */
+/* CARD */
 
 function Card({
   title,
   subtitle,
   children,
 }) {
-
   return (
-
     <div
       className="card"
       style={{
         marginBottom: 20,
       }}
     >
-
-      <div
-        className="card-head"
-      >
-
+      <div className="card-head">
         <div>
-
-          <h2>
-            {title}
-          </h2>
-
-          <p>
-            {subtitle}
-          </p>
-
+          <h2>{title}</h2>
+          <p>{subtitle}</p>
         </div>
-
       </div>
 
       {children}
-
     </div>
-
   )
 }
 
+/* RESULTS */
 
-/* =========================================================
-   RESULTS
-   ========================================================= */
-
-function Results({
-  results,
-  data,
-}) {
-
+function Results({ results, data }) {
   const cards = [
-
     [
       "System size",
       `${results.systemSize.toFixed(
@@ -1662,29 +968,37 @@ function Results({
 
     [
       "Estimated generation",
-      `${number(
+      `${Math.round(
         results.generation
+      ).toLocaleString(
+        "en-GB"
       )} kWh`,
     ],
 
     [
       "Solar self-consumption",
-      `${number(
+      `${Math.round(
         results.solarSelfConsumption
+      ).toLocaleString(
+        "en-GB"
       )} kWh`,
     ],
 
     [
       "Battery contribution",
-      `${number(
+      `${Math.round(
         results.batteryContribution
+      ).toLocaleString(
+        "en-GB"
       )} kWh`,
     ],
 
     [
       "Estimated export",
-      `${number(
+      `${Math.round(
         results.exportKwh
+      ).toLocaleString(
+        "en-GB"
       )} kWh`,
     ],
 
@@ -1710,701 +1024,61 @@ function Results({
           )} years`
         : "—",
     ],
-
   ]
 
-
   return (
-
     <div
       className="card"
       style={{
         marginBottom: 20,
       }}
     >
-
-      <div
-        className="card-head"
-      >
-
+      <div className="card-head">
         <div>
-
           <h2>
             EPVS calculation results
           </h2>
 
           <p>
-
             {data.customerName ||
-              "New calculation"}
-
-            {" · "}
-
+              "New calculation"}{" "}
+            ·{" "}
             {data.postcode ||
               "No postcode entered"}
-
           </p>
-
         </div>
 
-
-        <div
-          style={
-            styles.badge
-          }
-        >
+        <div style={styles.badge}>
           Preliminary model
         </div>
-
       </div>
 
-
-      <div
-        style={
-          styles.resultGrid
-        }
-      >
-
+      <div style={styles.resultGrid}>
         {cards.map(
           ([label, value]) => (
-
             <div
               key={label}
               style={
                 styles.resultCard
               }
             >
-
-              <span>
-                {label}
-              </span>
-
-              <strong>
-                {value}
-              </strong>
-
+              <span>{label}</span>
+              <strong>{value}</strong>
             </div>
-
           )
         )}
-
       </div>
-
     </div>
-
   )
 }
 
-
-/* =========================================================
-   30 YEAR BREAKDOWN
-   ========================================================= */
-
-function ThirtyYearBreakdown({
-  results,
-}) {
-
-  const years =
-    results?.years || []
-
-
-  return (
-
-    <div
-      className="card"
-      style={{
-        marginBottom: 20,
-        padding: 0,
-        overflow: "hidden",
-      }}
-    >
-
-      {/* ===================================================
-          HEADER
-          =================================================== */}
-
-      <div
-        style={{
-          padding:
-            "22px 20px 16px",
-        }}
-      >
-
-        <h2
-          style={{
-            margin: 0,
-            fontSize: 21,
-            color: "#475569",
-          }}
-        >
-          30 Year Benefit Breakdown Based on Consumption
-        </h2>
-
-        <p
-          style={{
-            margin:
-              "12px 0 0",
-            fontSize: 13,
-            lineHeight: 1.6,
-            color: "#475569",
-          }}
-        >
-          The estimated savings shown below are based on
-          the current electricity consumption and the
-          assumptions entered into the calculator. The
-          projection includes generation degradation,
-          electricity price inflation and finance payments.
-          These figures are illustrative and should not be
-          treated as a guarantee of performance.
-        </p>
-
-      </div>
-
-
-      {/* ===================================================
-          SUMMARY BOXES
-          =================================================== */}
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "repeat(4, minmax(0, 1fr))",
-          gap: 16,
-          padding:
-            "4px 28px 20px",
-        }}
-      >
-
-        <SummaryBox
-          label="First year total benefit"
-          value={
-            moneyExact(
-              years[0]?.annualBenefit || 0
-            )
-          }
-        />
-
-        <SummaryBox
-          label="Payback period"
-          value={
-            results.paybackPeriod
-              ? `${results.paybackPeriod} years`
-              : "Not reached"
-          }
-        />
-
-        <SummaryBox
-          label="Total net savings"
-          value={
-            moneyExact(
-              results.totalNetSavings
-            )
-          }
-        />
-
-        <SummaryBox
-          label="Total net return"
-          value={
-            moneyExact(
-              results.years?.[29]
-                ?.netPosition || 0
-            )
-          }
-        />
-
-      </div>
-
-
-      {/* ===================================================
-          TABLE
-          =================================================== */}
-
-      <div
-        style={{
-          width: "100%",
-          overflowX: "auto",
-        }}
-      >
-
-        <table
-          style={{
-            width: "100%",
-            minWidth: 1100,
-            borderCollapse:
-              "collapse",
-            fontSize: 11,
-          }}
-        >
-
-          <thead>
-
-            <tr>
-
-              <TableHeader>
-                YR
-              </TableHeader>
-
-              <TableHeader>
-                GENERATION
-              </TableHeader>
-
-              <TableHeader>
-                SOLAR
-              </TableHeader>
-
-              <TableHeader>
-                BATTERY
-              </TableHeader>
-
-              <TableHeader>
-                EXPORT
-              </TableHeader>
-
-              <TableHeader
-                green
-              >
-                ANNUAL
-                <br />
-                BENEFIT
-              </TableHeader>
-
-              <TableHeader>
-                YEARLY
-                <br />
-                PAYMENTS
-              </TableHeader>
-
-              <TableHeader>
-                NET ANNUAL
-                <br />
-                BENEFIT
-              </TableHeader>
-
-              <TableHeader
-                green
-              >
-                NET
-                <br />
-                POSITION
-              </TableHeader>
-
-              <TableHeader>
-                BILL PRE
-                <br />
-                INSTALL
-              </TableHeader>
-
-              <TableHeader>
-                BILL POST
-                <br />
-                INSTALL
-              </TableHeader>
-
-            </tr>
-
-          </thead>
-
-
-          <tbody>
-
-            {years.map(
-              (row) => (
-
-                <tr
-                  key={
-                    row.year
-                  }
-                >
-
-                  <TableCell
-                    align="center"
-                  >
-                    {row.year}
-                  </TableCell>
-
-                  <TableCell>
-                    {number(
-                      row.generation
-                    )}
-                  </TableCell>
-
-                  <TableCell>
-                    {moneyExact(
-                      row.solar
-                    )}
-                  </TableCell>
-
-                  <TableCell>
-                    {moneyExact(
-                      row.battery
-                    )}
-                  </TableCell>
-
-                  <TableCell>
-                    {moneyExact(
-                      row.export
-                    )}
-                  </TableCell>
-
-                  <TableCell
-                    bold
-                  >
-                    {moneyExact(
-                      row.annualBenefit
-                    )}
-                  </TableCell>
-
-                  <TableCell
-                    negative={
-                      row.yearlyPayment >
-                      0
-                    }
-                  >
-                    {row.yearlyPayment >
-                    0
-                      ? `-${moneyExact(
-                          row.yearlyPayment
-                        )}`
-                      : moneyExact(
-                          0
-                        )}
-                  </TableCell>
-
-                  <TableCell
-                    negative={
-                      row.netAnnualBenefit <
-                      0
-                    }
-                  >
-                    {moneyExact(
-                      row.netAnnualBenefit
-                    )}
-                  </TableCell>
-
-                  <TableCell
-                    bold
-                    negative={
-                      row.netPosition <
-                      0
-                    }
-                  >
-                    {moneyExact(
-                      row.netPosition
-                    )}
-                  </TableCell>
-
-                  <TableCell>
-                    {moneyExact(
-                      row.billPreInstall
-                    )}
-                  </TableCell>
-
-                  <TableCell>
-                    {moneyExact(
-                      row.billPostInstall
-                    )}
-                  </TableCell>
-
-                </tr>
-
-              )
-            )}
-
-
-            {/* =============================================
-                TOTALS
-                ============================================= */}
-
-            <tr>
-
-              <td
-                colSpan={1}
-                style={
-                  styles.totalCell
-                }
-              >
-                TOTALS
-              </td>
-
-              <td
-                style={
-                  styles.totalCell
-                }
-              >
-                {number(
-                  results.totalGeneration
-                )}
-              </td>
-
-              <td
-                style={
-                  styles.totalCell
-                }
-              >
-                {moneyExact(
-                  results.totalSolar
-                )}
-              </td>
-
-              <td
-                style={
-                  styles.totalCell
-                }
-              >
-                {moneyExact(
-                  results.totalBattery
-                )}
-              </td>
-
-              <td
-                style={
-                  styles.totalCell
-                }
-              >
-                {moneyExact(
-                  results.totalExport
-                )}
-              </td>
-
-              <td
-                style={
-                  styles.totalCellGreen
-                }
-              >
-                {moneyExact(
-                  results.totalAnnualBenefit
-                )}
-              </td>
-
-              <td
-                style={
-                  styles.totalCell
-                }
-              >
-                {results.totalPayments >
-                0
-                  ? `-${moneyExact(
-                      results.totalPayments
-                    )}`
-                  : moneyExact(
-                      0
-                    )}
-              </td>
-
-              <td
-                style={
-                  styles.totalCell
-                }
-              >
-                {moneyExact(
-                  results.totalNetSavings
-                )}
-              </td>
-
-              <td
-                style={
-                  styles.totalCellGreen
-                }
-              >
-                {moneyExact(
-                  results.years?.[29]
-                    ?.netPosition || 0
-                )}
-              </td>
-
-              <td
-                style={
-                  styles.totalCell
-                }
-              >
-                {moneyExact(
-                  results.years.reduce(
-                    (
-                      total,
-                      row
-                    ) =>
-                      total +
-                      row.billPreInstall,
-                    0
-                  )
-                )}
-              </td>
-
-              <td
-                style={
-                  styles.totalCell
-                }
-              >
-                {moneyExact(
-                  results.years.reduce(
-                    (
-                      total,
-                      row
-                    ) =>
-                      total +
-                      row.billPostInstall,
-                    0
-                  )
-                )}
-              </td>
-
-            </tr>
-
-          </tbody>
-
-        </table>
-
-      </div>
-
-    </div>
-
-  )
-}
-
-
-/* =========================================================
-   SUMMARY BOX
-   ========================================================= */
-
-function SummaryBox({
-  label,
-  value,
-}) {
-
-  return (
-
-    <div
-      style={{
-        background:
-          "#2fa34a",
-        color: "#fff",
-        borderRadius: 7,
-        minHeight: 54,
-        display: "flex",
-        flexDirection:
-          "column",
-        alignItems: "center",
-        justifyContent:
-          "center",
-        padding:
-          "8px 12px",
-        textAlign: "center",
-      }}
-    >
-
-      <span
-        style={{
-          fontSize: 12,
-          fontWeight: 500,
-        }}
-      >
-        {label}
-      </span>
-
-      <strong
-        style={{
-          fontSize: 15,
-          marginTop: 3,
-        }}
-      >
-        {value}
-      </strong>
-
-    </div>
-
-  )
-}
-
-
-/* =========================================================
-   TABLE HEADER
-   ========================================================= */
-
-function TableHeader({
-  children,
-  green = false,
-}) {
-
-  return (
-
-    <th
-      style={{
-        padding:
-          "8px 7px",
-        border:
-          "1px solid #222",
-        background:
-          green
-            ? "#2fa34a"
-            : "#555",
-        color: "#fff",
-        fontSize: 10,
-        fontWeight: 700,
-        textAlign:
-          "center",
-        whiteSpace:
-          "nowrap",
-      }}
-    >
-      {children}
-    </th>
-
-  )
-}
-
-
-/* =========================================================
-   TABLE CELL
-   ========================================================= */
-
-function TableCell({
-  children,
-  align = "right",
-  bold = false,
-  negative = false,
-}) {
-
-  return (
-
-    <td
-      style={{
-        padding:
-          "6px 8px",
-        border:
-          "1px solid #222",
-        textAlign: align,
-        whiteSpace:
-          "nowrap",
-        fontSize: 10,
-        fontWeight:
-          bold ? 600 : 400,
-        color:
-          negative
-            ? "#ff0000"
-            : "#334155",
-        background:
-          "#fff",
-      }}
-    >
-      {children}
-    </td>
-
-  )
-}
-
-
-/* =========================================================
-   STYLES
-   ========================================================= */
+/* STYLES */
 
 const styles = {
-
   wrapper: {
     maxWidth: 1200,
     margin: "0 auto",
   },
-
 
   stepper: {
     display: "grid",
@@ -2416,23 +1090,18 @@ const styles = {
     paddingBottom: 5,
   },
 
-
   step: {
     border: 0,
-    background:
-      "transparent",
+    background: "transparent",
     cursor: "pointer",
     display: "flex",
-    flexDirection:
-      "column",
+    flexDirection: "column",
     alignItems: "center",
     gap: 7,
     color: "#334155",
     fontSize: 12,
-    whiteSpace:
-      "nowrap",
+    whiteSpace: "nowrap",
   },
-
 
   stepCircle: {
     width: 34,
@@ -2440,10 +1109,8 @@ const styles = {
     borderRadius: "50%",
     display: "flex",
     alignItems: "center",
-    justifyContent:
-      "center",
+    justifyContent: "center",
   },
-
 
   grid: {
     display: "grid",
@@ -2452,23 +1119,18 @@ const styles = {
     gap: 18,
   },
 
-
   field: {
     display: "flex",
-    flexDirection:
-      "column",
+    flexDirection: "column",
     gap: 7,
   },
-
 
   toggleRow: {
     display: "flex",
     alignItems: "center",
-    justifyContent:
-      "space-between",
+    justifyContent: "space-between",
     minHeight: 42,
   },
-
 
   toggle: {
     border: 0,
@@ -2479,43 +1141,34 @@ const styles = {
     cursor: "pointer",
   },
 
-
   toggleKnob: {
     display: "block",
     width: 20,
     height: 20,
     background: "white",
     borderRadius: "50%",
-    transition:
-      "transform .15s",
+    transition: "transform .15s",
   },
-
 
   footer: {
     display: "flex",
-    justifyContent:
-      "space-between",
+    justifyContent: "space-between",
     alignItems: "center",
     marginTop: 10,
   },
-
 
   primary: {
     border: 0,
     background: "#172554",
     color: "white",
     borderRadius: 8,
-    padding:
-      "11px 16px",
-    display:
-      "inline-flex",
-    alignItems:
-      "center",
+    padding: "11px 16px",
+    display: "inline-flex",
+    alignItems: "center",
     gap: 8,
     cursor: "pointer",
     fontWeight: 600,
   },
-
 
   secondary: {
     border:
@@ -2523,28 +1176,21 @@ const styles = {
     background: "white",
     color: "#334155",
     borderRadius: 8,
-    padding:
-      "10px 14px",
-    display:
-      "inline-flex",
-    alignItems:
-      "center",
+    padding: "10px 14px",
+    display: "inline-flex",
+    alignItems: "center",
     gap: 8,
     cursor: "pointer",
   },
 
-
   badge: {
-    background:
-      "#fff7ed",
+    background: "#fff7ed",
     color: "#9a3412",
     borderRadius: 999,
-    padding:
-      "6px 10px",
+    padding: "6px 10px",
     fontSize: 12,
     fontWeight: 600,
   },
-
 
   resultGrid: {
     display: "grid",
@@ -2553,48 +1199,13 @@ const styles = {
     gap: 12,
   },
 
-
   resultCard: {
     border:
       "1px solid #e5e7eb",
     borderRadius: 10,
     padding: 16,
     display: "flex",
-    flexDirection:
-      "column",
+    flexDirection: "column",
     gap: 7,
   },
-
-
-  totalCell: {
-    padding:
-      "10px 8px",
-    border:
-      "1px solid #222",
-    background:
-      "#555",
-    color: "#fff",
-    fontWeight: 700,
-    fontSize: 10,
-    textAlign: "right",
-    whiteSpace:
-      "nowrap",
-  },
-
-
-  totalCellGreen: {
-    padding:
-      "10px 8px",
-    border:
-      "1px solid #222",
-    background:
-      "#2fa34a",
-    color: "#fff",
-    fontWeight: 700,
-    fontSize: 10,
-    textAlign: "right",
-    whiteSpace:
-      "nowrap",
-  },
-
 }
