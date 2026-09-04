@@ -15,7 +15,7 @@ import {
 
 import { supabase } from "../lib/supabase"
 import EPVSCalculator from "../EPVSCalculator"
-import { generateSolarContract } from "../contracts/GenerateSolarContract"
+import { GenerateSolarContract } from "./contracts/GenerateSolarContract"
 
 function AppointmentDetail({
   appointment,
@@ -34,14 +34,8 @@ function AppointmentDetail({
 
   const [error, setError] = useState("")
 
-  // =========================================================
-  // EPVS CALCULATION
-  // =========================================================
-
-  const [
-    epvsCalculation,
-    setEpvsCalculation,
-  ] = useState(null)
+  const [epvsCalculation, setEpvsCalculation] =
+    useState(null)
 
   // =========================================================
   // SOLAR CHECK
@@ -64,7 +58,7 @@ function AppointmentDetail({
     const date = new Date(value)
 
     if (Number.isNaN(date.getTime())) {
-      return value
+      return String(value)
     }
 
     return date.toLocaleString("en-GB", {
@@ -85,12 +79,10 @@ function AppointmentDetail({
       return
     }
 
-    // Make sure we have the appointment row ID
     if (!appointment?.appointment_row_id) {
       setError(
         "This appointment does not have an appointment_row_id."
       )
-
       return
     }
 
@@ -120,7 +112,6 @@ function AppointmentDetail({
         throw updateError
       }
 
-      // If nothing came back, Supabase didn't update a row
       if (!data || data.length === 0) {
         throw new Error(
           "No appointment was updated. Check that appointment_row_id matches a row in the appointments table."
@@ -133,11 +124,7 @@ function AppointmentDetail({
 
       const updatedAppointment = data[0]
 
-      // Update parent
       onUpdated?.(updatedAppointment)
-
-      // Close modal
-      setShowResult(false)
 
       // =======================================================
       // SOLAR CONTRACT
@@ -150,7 +137,7 @@ function AppointmentDetail({
         isSolar
       ) {
         try {
-          await generateSolarContract({
+          GenerateSolarContract({
             appointment: updatedAppointment,
             epvsCalculation,
           })
@@ -163,8 +150,14 @@ function AppointmentDetail({
           setError(
             "Appointment was saved as Sold, but the solar contract could not be generated."
           )
+
+          setSaving(false)
+          return
         }
       }
+
+      // Close modal after everything has succeeded
+      setShowResult(false)
     } catch (err) {
       console.error(
         "Error updating appointment:",
