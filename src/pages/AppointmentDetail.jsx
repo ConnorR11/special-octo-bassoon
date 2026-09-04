@@ -43,7 +43,7 @@ function AppointmentDetail({
    */
 
   const isSolar =
-    String(appointment?.jobtype || "")
+    String(appointment?.job_type || "")
       .toLowerCase()
       .trim() === "solar"
 
@@ -429,7 +429,7 @@ function AppointmentDetail({
 
           <InfoRow
             label="Job type"
-            value={appointment.jobtype}
+            value={appointment.job_type}
           />
 
           <InfoRow
