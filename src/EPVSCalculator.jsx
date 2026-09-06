@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 
 import AnnualBreakdown from "./components/EPVS/AnnualBreakdown"
+import ThirtyYearBreakdown from "./components/EPVS/ThirtyYearBreakdown"
 
 const money = (value) =>
   new Intl.NumberFormat("en-GB", {
@@ -504,229 +505,193 @@ export default function EPVSCalculator({
    * =========================================================
    * 30 YEAR CALCULATION
    * =========================================================
+   *
+   * EPVS uses three inflation scenarios for the long-term
+   * presentation: 0%, 3.8% and 7.6%.
+   *
+   * The UI component expects all three scenarios to be returned
+   * under `thirtyYearProjection.scenarios`.
    */
 
   const thirtyYearProjection =
     useMemo(() => {
-      const rows = []
-
-      let cumulativePosition = 0
-
       const systemCost =
-        Number(
-          data.systemCost || 0
-        )
+        Number(data.systemCost || 0)
 
       const deposit =
-        Number(
-          data.deposit || 0
-        )
+        Number(data.deposit || 0)
 
       const annualConsumption =
-        Number(
-          data.annualConsumption ||
-            0
-        )
+        Number(data.annualConsumption || 0)
 
       const importRate =
-        Number(
-          data.importRate || 0
-        )
+        Number(data.importRate || 0)
 
       const exportRate =
-        Number(
-          data.exportRate || 0
-        )
+        Number(data.exportRate || 0)
 
       const firstYearGeneration =
-        Number(
-          results.generation || 0
-        )
+        Number(results.generation || 0)
 
       const firstYearSolar =
-        Number(
-          results.solarSelfConsumption ||
-            0
-        )
+        Number(results.solarSelfConsumption || 0)
 
       const firstYearBattery =
-        Number(
-          results.batteryContribution ||
-            0
-        )
+        Number(results.batteryContribution || 0)
 
-      const annualRateIncrease =
-        0.076
+      const annualDegradation = 0.004
 
-      const annualDegradation =
-        0.004
+      const inflationScenarios = [
+        {
+          key: "noInflation",
+          label: "0% inflation",
+          rate: 0,
+        },
+        {
+          key: "midpointInflation",
+          label: "3.8% inflation",
+          rate: 0.038,
+        },
+        {
+          key: "averageInflation",
+          label: "7.6% inflation",
+          rate: 0.076,
+        },
+      ]
 
-      for (
-        let year = 1;
-        year <= 30;
-        year++
-      ) {
-        const generation =
-          firstYearGeneration *
-          Math.pow(
-            1 -
-              annualDegradation,
-            year - 1
-          )
+      const buildScenario = (inflationRate) => {
+        const rows = []
+        let cumulativePosition = 0
 
-        const solar =
-          firstYearGeneration > 0
-            ? generation *
-              (firstYearSolar /
-                firstYearGeneration)
-            : 0
+        for (let year = 1; year <= 30; year++) {
+          const generation =
+            firstYearGeneration *
+            Math.pow(
+              1 - annualDegradation,
+              year - 1
+            )
 
-        const battery =
-          firstYearGeneration > 0
-            ? generation *
-              (firstYearBattery /
-                firstYearGeneration)
-            : 0
+          const solar =
+            firstYearGeneration > 0
+              ? generation *
+                (firstYearSolar / firstYearGeneration)
+              : 0
 
-        const exportKwh =
-          Math.max(
+          const battery =
+            firstYearGeneration > 0
+              ? generation *
+                (firstYearBattery / firstYearGeneration)
+              : 0
+
+          const exportKwh = Math.max(
             0,
-            generation -
-              solar -
-              battery
+            generation - solar - battery
           )
 
-        const importRateYear =
-          importRate *
-          Math.pow(
-            1 +
-              annualRateIncrease,
-            year - 1
-          )
+          const inflationMultiplier =
+            Math.pow(
+              1 + inflationRate,
+              year - 1
+            )
 
-        const exportRateYear =
-          exportRate *
-          Math.pow(
-            1 +
-              annualRateIncrease,
-            year - 1
-          )
+          const importRateYear =
+            importRate * inflationMultiplier
 
-        const solarBenefit =
-          solar *
-          importRateYear
+          const exportRateYear =
+            exportRate * inflationMultiplier
 
-        const batteryBenefit =
-          battery *
-          importRateYear
+          const solarBenefit =
+            solar * importRateYear
 
-        const exportBenefit =
-          exportKwh *
-          exportRateYear
+          const batteryBenefit =
+            battery * importRateYear
 
-        const annualBenefit =
-          solarBenefit +
-          batteryBenefit +
-          exportBenefit
+          const exportBenefit =
+            exportKwh * exportRateYear
 
-        /*
-         * Cash:
-         * pay the remaining balance in year 1.
-         *
-         * Finance:
-         * the actual finance payment is
-         * deliberately kept out of this
-         * simple 30-year benefit model.
-         *
-         * This preserves the existing
-         * EPVS-style payback calculation.
-         */
+          const forceChargeBenefit = 0
 
-        const yearlyPayment =
-          year === 1
-            ? systemCost -
-              deposit
-            : 0
+          const annualBenefit =
+            solarBenefit +
+            batteryBenefit +
+            forceChargeBenefit +
+            exportBenefit
 
-        const netAnnualBenefit =
-          annualBenefit -
-          yearlyPayment
+          /*
+           * The capital cost is applied in year 1.
+           * The deposit is paid separately, so the remaining
+           * system balance is the year-one payment represented
+           * in the long-term cash position.
+           */
+          const yearlyPayment =
+            year === 1
+              ? Math.max(
+                  0,
+                  systemCost - deposit
+                )
+              : 0
 
-        cumulativePosition +=
-          netAnnualBenefit
+          const netAnnualBenefit =
+            annualBenefit - yearlyPayment
 
-        const billPreInstall =
-          annualConsumption *
-          importRateYear
+          cumulativePosition +=
+            netAnnualBenefit
 
-        const gridReduction =
-          solar + battery
+          const billPreInstall =
+            annualConsumption *
+            importRateYear
 
-        const remainingGrid =
-          Math.max(
+          const gridReduction =
+            solar + battery
+
+          const remainingGrid = Math.max(
             0,
-            annualConsumption -
-              gridReduction
+            annualConsumption - gridReduction
           )
 
-        const billPostInstall =
-          remainingGrid *
-          importRateYear
+          const billPostInstall =
+            remainingGrid * importRateYear
 
-        rows.push({
-          year,
+          const annualSaving =
+            annualBenefit
 
-          generation,
+          rows.push({
+            year,
+            generation,
+            solar,
+            battery,
+            exportKwh,
+            solarBenefit,
+            batteryBenefit,
+            forceChargeBenefit,
+            exportBenefit,
+            annualBenefit,
+            annualSaving,
+            yearlyPayment,
+            netAnnualBenefit,
+            cumulativePosition,
+            billPreInstall,
+            billPostInstall,
+            importRateYear,
+            exportRateYear,
+          })
+        }
 
-          solar,
-
-          battery,
-
-          exportKwh,
-
-          annualBenefit,
-
-          yearlyPayment,
-
-          netAnnualBenefit,
-
-          cumulativePosition,
-
-          billPreInstall,
-
-          billPostInstall,
-        })
-      }
-
-      const totals =
-        rows.reduce(
+        const totals = rows.reduce(
           (total, row) => {
-            total.generation +=
-              row.generation
-
-            total.solar +=
-              row.solar
-
-            total.battery +=
-              row.battery
-
-            total.exportKwh +=
-              row.exportKwh
-
-            total.annualBenefit +=
-              row.annualBenefit
-
-            total.yearlyPayment +=
-              row.yearlyPayment
-
-            total.netAnnualBenefit +=
-              row.netAnnualBenefit
-
-            total.billPreInstall +=
-              row.billPreInstall
-
-            total.billPostInstall +=
-              row.billPostInstall
+            total.generation += row.generation
+            total.solar += row.solar
+            total.battery += row.battery
+            total.exportKwh += row.exportKwh
+            total.solarBenefit += row.solarBenefit
+            total.batteryBenefit += row.batteryBenefit
+            total.forceChargeBenefit += row.forceChargeBenefit
+            total.exportBenefit += row.exportBenefit
+            total.annualBenefit += row.annualBenefit
+            total.yearlyPayment += row.yearlyPayment
+            total.netAnnualBenefit += row.netAnnualBenefit
+            total.billPreInstall += row.billPreInstall
+            total.billPostInstall += row.billPostInstall
 
             return total
           },
@@ -735,6 +700,10 @@ export default function EPVSCalculator({
             solar: 0,
             battery: 0,
             exportKwh: 0,
+            solarBenefit: 0,
+            batteryBenefit: 0,
+            forceChargeBenefit: 0,
+            exportBenefit: 0,
             annualBenefit: 0,
             yearlyPayment: 0,
             netAnnualBenefit: 0,
@@ -743,28 +712,37 @@ export default function EPVSCalculator({
           }
         )
 
-      const paybackRow =
-        rows.find(
-          (row) =>
-            row.cumulativePosition >=
-            0
-        )
+        const paybackRow =
+          rows.find(
+            (row) =>
+              row.cumulativePosition >= 0
+          )
+
+        return {
+          inflationRate,
+          rows,
+          totals,
+          paybackPeriod:
+            paybackRow?.year || null,
+          totalNetSavings:
+            totals.netAnnualBenefit,
+          finalNetPosition:
+            rows[rows.length - 1]?.cumulativePosition || 0,
+          totalNetReturn:
+            totals.netAnnualBenefit - systemCost,
+        }
+      }
+
+      const scenarios = {}
+
+      inflationScenarios.forEach((scenario) => {
+        scenarios[scenario.key] =
+          buildScenario(scenario.rate)
+      })
 
       return {
-        rows,
-
-        totals,
-
-        paybackPeriod:
-          paybackRow?.year ||
-          null,
-
-        totalNetSavings:
-          totals.netAnnualBenefit,
-
-        totalNetReturn:
-          totals.netAnnualBenefit -
-          systemCost,
+        inflationScenarios,
+        scenarios,
       }
     }, [data, results])
 
@@ -1792,6 +1770,12 @@ export default function EPVSCalculator({
 
             <AnnualBreakdown
               results={results}
+            />
+
+            <ThirtyYearBreakdown
+              thirtyYearProjection={
+                thirtyYearProjection
+              }
             />
           </>
         )}
