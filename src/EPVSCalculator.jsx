@@ -1,4 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+} from "react"
 
 import {
   ArrowLeft,
@@ -9,8 +13,6 @@ import {
   Battery,
   Home,
   PoundSterling,
-  Plus,
-  Trash2,
 } from "lucide-react"
 
 import AnnualBreakdown from "./components/EPVS/AnnualBreakdown"
@@ -20,63 +22,54 @@ const money = (value) =>
   new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency: "GBP",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 0,
   }).format(Number(value || 0))
 
-const wholeNumber = (value) =>
-  Math.round(Number(value || 0)).toLocaleString("en-GB")
-
-const decimalNumber = (value) =>
-  Number(value || 0).toLocaleString("en-GB", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-
 const steps = [
-  { title: "Customer", icon: Home },
-  { title: "Property", icon: Home },
-  { title: "Solar PV", icon: Zap },
-  { title: "Battery", icon: Battery },
-  { title: "Inverter", icon: Zap },
-  { title: "Electricity", icon: Zap },
-  { title: "Tariff", icon: PoundSterling },
-  { title: "Payment", icon: PoundSterling },
-  { title: "Results", icon: CheckCircle2 },
+  {
+    title: "Customer",
+    icon: Home,
+  },
+  {
+    title: "Property",
+    icon: Home,
+  },
+  {
+    title: "Solar PV",
+    icon: Zap,
+  },
+  {
+    title: "Battery",
+    icon: Battery,
+  },
+  {
+    title: "Inverter",
+    icon: Zap,
+  },
+  {
+    title: "Electricity",
+    icon: Zap,
+  },
+  {
+    title: "Tariff",
+    icon: PoundSterling,
+  },
+  {
+    title: "Finance",
+    icon: PoundSterling,
+  },
+  {
+    title: "Results",
+    icon: CheckCircle2,
+  },
 ]
 
-/*
- * ============================================================
- * DEFAULT ARRAY
- * ============================================================
- *
- * EPVS requires the following information for each roof/array:
- *
- * Number of modules
- * Module power
- * Total installed capacity
- * Orientation
- * Inclination
- * Irradiance / Kk
- * Shading factor
- *
- * We also capture number of strings because this is required
- * as part of the system design information.
- */
-
-const createArray = (number) => ({
-  id: number,
-  name: `Array ${number}`,
-
+const createArray = () => ({
+  panelCount: 0,
   panelWattage: 415,
-  panelCount: number === 1 ? 10 : 0,
-
-  strings: number === 1 ? 1 : 0,
-
   orientation: 0,
-  pitch: 35,
-
-  kk: 0,
+  pitch: 30,
+  irradiance: 0,
   shading: 1,
 })
 
@@ -90,13 +83,12 @@ const initial = {
   existingSolar: false,
   existingGeneration: 0,
 
+  numberOfArrays: 1,
+
   arrays: [
-    createArray(1),
-    createArray(2),
-    createArray(3),
-    createArray(4),
-    createArray(5),
-    createArray(6),
+    createArray(),
+    createArray(),
+    createArray(),
   ],
 
   batteryCapacity: 10,
@@ -104,21 +96,18 @@ const initial = {
 
   inverterCapacity: 5,
 
-  importRate: 0.25,
-  exportRate: 0.055,
+  importRate: 0.28,
+  exportRate: 0.15,
 
   tariff: "Standard",
 
-  systemCost: 12000,
-
   paymentMethod: "Cash",
 
+  systemCost: 12000,
   deposit: 0,
 
   financeTerm: 10,
   financeRate: 7.9,
-
-  panelDegradation: 0.00925,
 }
 
 function Input({
@@ -132,12 +121,7 @@ function Input({
   disabled = false,
 }) {
   return (
-    <label
-      style={{
-        ...styles.field,
-        opacity: disabled ? 0.55 : 1,
-      }}
-    >
+    <label style={styles.field}>
       <span>{label}</span>
 
       <input
@@ -148,36 +132,21 @@ function Input({
         max={max}
         disabled={disabled}
         onChange={(event) => {
-          const value =
+          const nextValue =
             type === "number"
               ? Number(event.target.value)
               : event.target.value
 
-          onChange(value)
+          onChange(nextValue)
+        }}
+        style={{
+          ...styles.input,
+          opacity: disabled ? 0.55 : 1,
+          background: disabled
+            ? "#f5f5f5"
+            : "#fff",
         }}
       />
-    </label>
-  )
-}
-
-function SelectInput({
-  label,
-  value,
-  onChange,
-  children,
-}) {
-  return (
-    <label style={styles.field}>
-      <span>{label}</span>
-
-      <select
-        value={value}
-        onChange={(event) =>
-          onChange(event.target.value)
-        }
-      >
-        {children}
-      </select>
     </label>
   )
 }
@@ -214,6 +183,29 @@ function Toggle({
   )
 }
 
+function SelectInput({
+  label,
+  value,
+  onChange,
+  children,
+}) {
+  return (
+    <label style={styles.field}>
+      <span>{label}</span>
+
+      <select
+        value={value}
+        onChange={(event) =>
+          onChange(event.target.value)
+        }
+        style={styles.input}
+      >
+        {children}
+      </select>
+    </label>
+  )
+}
+
 export default function EPVSCalculator({
   appointment,
   onCalculationChange,
@@ -238,12 +230,6 @@ export default function EPVSCalculator({
   const [data, setData] =
     useState(appointmentInitial)
 
-  /*
-   * ============================================================
-   * APPOINTMENT CHANGES
-   * ============================================================
-   */
-
   useEffect(() => {
     setData((current) => ({
       ...current,
@@ -265,12 +251,6 @@ export default function EPVSCalculator({
     }))
   }, [appointment])
 
-  /*
-   * ============================================================
-   * GENERAL UPDATE
-   * ============================================================
-   */
-
   const update = (key, value) => {
     setData((current) => ({
       ...current,
@@ -279,252 +259,218 @@ export default function EPVSCalculator({
   }
 
   /*
-   * ============================================================
-   * ARRAY UPDATE
-   * ============================================================
+   * =========================================================
+   * UPDATE ARRAY
+   * =========================================================
    */
 
   const updateArray = (
-    arrayId,
+    index,
     key,
     value
   ) => {
-    setData((current) => ({
-      ...current,
+    setData((current) => {
+      const arrays = [
+        ...(current.arrays || []),
+      ]
 
-      arrays: current.arrays.map(
-        (array) =>
-          array.id === arrayId
-            ? {
-                ...array,
-                [key]: value,
-              }
-            : array
-      ),
-    }))
+      arrays[index] = {
+        ...arrays[index],
+        [key]: value,
+      }
+
+      return {
+        ...current,
+        arrays,
+      }
+    })
   }
 
   /*
-   * ============================================================
+   * =========================================================
    * CALCULATIONS
-   * ============================================================
+   * =========================================================
+   *
+   * EPVS array calculation:
+   *
+   * System Size (kWp)
+   * =
+   * Panel Wattage × Panel Count / 1000
+   *
+   * Generation (kWh)
+   * =
+   * System Size × Irradiance/Kk × Shade Factor
+   *
+   * Total Generation
+   * =
+   * Sum of all active arrays
    */
 
   const results = useMemo(() => {
-    /*
-     * ----------------------------------------------------------
-     * ARRAY GENERATION
-     * ----------------------------------------------------------
-     *
-     * EPVS formula:
-     *
-     * Annual AC output (kWh)
-     * =
-     * kWp × Kk × SF
-     *
-     * This is deliberately calculated separately for every
-     * roof/array.
-     */
+    const numberOfArrays = Math.min(
+      3,
+      Math.max(
+        1,
+        Number(
+          data.numberOfArrays || 1
+        )
+      )
+    )
 
-    const calculatedArrays =
-      data.arrays.map((array) => {
+    const arrays = (
+      data.arrays || []
+    )
+      .slice(0, numberOfArrays)
+      .map((array, index) => {
         const panelCount =
-          Number(array.panelCount || 0)
+          Number(
+            array.panelCount || 0
+          )
 
         const panelWattage =
           Number(
             array.panelWattage || 0
           )
 
-        const strings =
-          Number(array.strings || 0)
+        const orientation =
+          Number(
+            array.orientation || 0
+          )
 
-        const kk =
-          Number(array.kk || 0)
+        const pitch =
+          Number(
+            array.pitch || 0
+          )
+
+        const irradiance =
+          Number(
+            array.irradiance || 0
+          )
 
         const shading =
-          Number(array.shading || 0)
+          Number(
+            array.shading ?? 1
+          )
 
         const systemSize =
           (panelCount *
             panelWattage) /
           1000
 
+        /*
+         * EPVS generation formula.
+         *
+         * Example:
+         *
+         * 3.04 kWp
+         * × 783 Kk
+         * × 0.96 SF
+         * =
+         * 2285.11 kWh
+         */
+
         const generation =
           systemSize *
-          kk *
+          irradiance *
           shading
 
         return {
-          ...array,
+          array: index + 1,
 
           panelCount,
           panelWattage,
-          strings,
-          kk,
-          shading,
 
           systemSize,
+
+          orientation,
+          pitch,
+
+          irradiance,
+          shading,
+
           generation,
         }
       })
 
-    /*
-     * Only arrays with panels are active.
-     */
-
-    const activeArrays =
-      calculatedArrays.filter(
-        (array) =>
-          array.panelCount > 0
+    const totalSystemSize =
+      arrays.reduce(
+        (total, array) =>
+          total +
+          array.systemSize,
+        0
       )
 
-    /*
-     * Total system size.
-     */
-
-    const systemSize =
-      activeArrays.reduce(
+    const totalGeneration =
+      arrays.reduce(
         (total, array) =>
-          total + array.systemSize,
+          total +
+          array.generation,
         0
       )
 
     /*
-     * Total generation.
+     * =======================================================
+     * CONSUMPTION / SELF-CONSUMPTION
+     * =======================================================
+     *
+     * This section continues to use the overall EPVS
+     * generation figure produced above.
      */
-
-    const generation =
-      activeArrays.reduce(
-        (total, array) =>
-          total + array.generation,
-        0
-      )
 
     const annualConsumption =
       Number(
         data.annualConsumption || 0
       )
 
-    /*
-     * ----------------------------------------------------------
-     * EPVS SELF-CONSUMPTION CAP
-     * ----------------------------------------------------------
-     *
-     * EPVS states:
-     *
-     * Solar only = max 75% of annual consumption
-     *
-     * Solar + battery = max 90% of annual consumption
-     */
+    const importRate =
+      Number(
+        data.importRate || 0
+      )
 
-    const selfConsumptionCap =
-      data.batteryEnabled
-        ? annualConsumption * 0.9
-        : annualConsumption * 0.75
-
-    /*
-     * ----------------------------------------------------------
-     * DIRECT SOLAR SELF-CONSUMPTION
-     * ----------------------------------------------------------
-     *
-     * This is a preliminary model.
-     *
-     * We estimate direct solar consumption at 37.5% of
-     * annual consumption, but never above the available
-     * generation or EPVS self-consumption cap.
-     */
-
-    const directSolarPotential =
-      annualConsumption * 0.375
+    const exportRate =
+      Number(
+        data.exportRate || 0
+      )
 
     const solarSelfConsumption =
       Math.min(
-        generation,
-        directSolarPotential,
-        selfConsumptionCap
+        totalGeneration,
+        annualConsumption *
+          0.375
       )
-
-    /*
-     * Remaining generation after direct use.
-     */
 
     const remainingGeneration =
       Math.max(
         0,
-        generation -
+        totalGeneration -
           solarSelfConsumption
       )
-
-    /*
-     * ----------------------------------------------------------
-     * BATTERY SELF-CONSUMPTION
-     * ----------------------------------------------------------
-     *
-     * Battery contribution is limited by:
-     *
-     * 1. Remaining solar generation
-     * 2. Remaining EPVS self-consumption capacity
-     * 3. Annual battery throughput assumption
-     *
-     * The 180 figure represents an indicative number of
-     * equivalent cycles per year.
-     */
-
-    const remainingSelfConsumptionCapacity =
-      Math.max(
-        0,
-        selfConsumptionCap -
-          solarSelfConsumption
-      )
-
-    const batteryAnnualThroughput =
-      Number(
-        data.batteryCapacity || 0
-      ) * 180
 
     const batteryContribution =
       data.batteryEnabled
         ? Math.min(
             remainingGeneration,
-            remainingSelfConsumptionCapacity,
-            batteryAnnualThroughput
+
+            annualConsumption *
+              0.25,
+
+            Number(
+              data.batteryCapacity || 0
+            ) * 180
           )
         : 0
-
-    /*
-     * ----------------------------------------------------------
-     * EXPORT
-     * ----------------------------------------------------------
-     */
 
     const exportKwh =
       Math.max(
         0,
-        generation -
+        totalGeneration -
           solarSelfConsumption -
           batteryContribution
       )
 
-    /*
-     * Total grid reduction.
-     */
-
     const gridReduction =
       solarSelfConsumption +
       batteryContribution
-
-    /*
-     * ----------------------------------------------------------
-     * FINANCIAL BENEFIT
-     * ----------------------------------------------------------
-     */
-
-    const importRate =
-      Number(data.importRate || 0)
-
-    const exportRate =
-      Number(data.exportRate || 0)
 
     const solarBenefit =
       solarSelfConsumption *
@@ -533,11 +479,6 @@ export default function EPVSCalculator({
     const batterySelfConsumptionBenefit =
       batteryContribution *
       importRate
-
-    /*
-     * Overnight charging is kept as a separate figure so it
-     * can be added later without changing the data structure.
-     */
 
     const forceChargeBenefit = 0
 
@@ -552,123 +493,69 @@ export default function EPVSCalculator({
       exportBenefit
 
     /*
-     * ----------------------------------------------------------
-     * PAYMENT / FINANCE
-     * ----------------------------------------------------------
+     * =======================================================
+     * FINANCE
+     * =======================================================
      */
 
     const systemCost =
-      Math.max(
-        0,
-        Number(data.systemCost || 0)
+      Number(
+        data.systemCost || 0
       )
 
     const deposit =
-      Math.min(
-        systemCost,
-        Math.max(
-          0,
-          Number(data.deposit || 0)
-        )
+      Number(
+        data.deposit || 0
       )
 
-    const paymentMethod =
-      data.paymentMethod === "Finance"
-        ? "Finance"
-        : "Cash"
-
     const financeAmount =
-      paymentMethod === "Finance"
-        ? Math.max(
-            0,
-            systemCost - deposit
-          )
-        : 0
-
-    const financeTerm =
-      paymentMethod === "Finance"
-        ? Math.max(
-            0,
-            Number(
-              data.financeTerm || 0
-            )
-          )
-        : 0
-
-    const financeRate =
-      paymentMethod === "Finance"
-        ? Math.max(
-            0,
-            Number(
-              data.financeRate || 0
-            )
-          )
-        : 0
-
-    const months =
-      financeTerm * 12
+      Math.max(
+        0,
+        systemCost - deposit
+      )
 
     const monthlyRate =
-      financeRate / 100 / 12
+      Number(
+        data.financeRate || 0
+      ) /
+      100 /
+      12
+
+    const months =
+      Number(
+        data.financeTerm || 0
+      ) * 12
 
     let monthlyPayment = 0
 
     if (
-      paymentMethod === "Finance" &&
-      financeAmount > 0 &&
-      months > 0
+      data.paymentMethod ===
+      "Finance"
     ) {
-      if (monthlyRate > 0) {
+      if (
+        financeAmount > 0 &&
+        monthlyRate > 0 &&
+        months > 0
+      ) {
         monthlyPayment =
           financeAmount *
-          (
-            monthlyRate *
+          (monthlyRate *
             Math.pow(
               1 + monthlyRate,
               months
-            )
-          ) /
-          (
-            Math.pow(
-              1 + monthlyRate,
-              months
-            ) - 1
-          )
-      } else {
+            )) /
+          (Math.pow(
+            1 + monthlyRate,
+            months
+          ) - 1)
+      } else if (
+        financeAmount > 0 &&
+        months > 0
+      ) {
         monthlyPayment =
           financeAmount / months
       }
     }
-
-    const totalFinanceRepayment =
-      paymentMethod === "Finance"
-        ? monthlyPayment * months
-        : 0
-
-    const totalCustomerPayment =
-      deposit +
-      totalFinanceRepayment
-
-    /*
-     * Cash customer:
-     *
-     * Total payment = system cost
-     *
-     * Finance customer:
-     *
-     * Total payment = deposit + all finance repayments
-     */
-
-    const cashPayment =
-      paymentMethod === "Cash"
-        ? systemCost
-        : 0
-
-    /*
-     * ----------------------------------------------------------
-     * SIMPLE PAYBACK
-     * ----------------------------------------------------------
-     */
 
     const simplePayback =
       annualSaving > 0
@@ -676,67 +563,51 @@ export default function EPVSCalculator({
           annualSaving
         : null
 
-    /*
-     * ----------------------------------------------------------
-     * RETURN EVERYTHING
-     * ----------------------------------------------------------
-     */
-
     return {
-      arrays: calculatedArrays,
-      activeArrays,
+      numberOfArrays,
 
-      systemSize,
-      generation,
+      arrays,
 
-      annualConsumption,
+      totalSystemSize,
 
-      selfConsumptionCap,
+      systemSize:
+        totalSystemSize,
+
+      generation:
+        totalGeneration,
+
+      totalGeneration,
 
       solarSelfConsumption,
+
       batteryContribution,
+
       exportKwh,
 
       gridReduction,
 
       solarBenefit,
+
       batterySelfConsumptionBenefit,
+
       forceChargeBenefit,
+
       exportBenefit,
 
       annualSaving,
 
-      systemCost,
-      deposit,
-
-      paymentMethod,
-
-      financeAmount,
-      financeTerm,
-      financeRate,
       monthlyPayment,
 
-      totalFinanceRepayment,
-      totalCustomerPayment,
-
-      cashPayment,
+      financeAmount,
 
       simplePayback,
     }
   }, [data])
 
   /*
-   * ============================================================
-   * 30 YEAR PROJECTION
-   * ============================================================
-   *
-   * This follows the EPVS guidance that multi-year projections
-   * should take panel degradation into account.
-   *
-   * The guide also says that if inflation is used, the source
-   * should be government-backed and multiple scenarios should
-   * be shown. For now this application uses a single projection
-   * using the configured rate.
+   * =========================================================
+   * 30 YEAR CALCULATION
+   * =========================================================
    */
 
   const thirtyYearProjection =
@@ -746,27 +617,30 @@ export default function EPVSCalculator({
       let cumulativePosition = 0
 
       const systemCost =
-        Number(data.systemCost || 0)
+        Number(
+          data.systemCost || 0
+        )
 
       const deposit =
-        Math.min(
-          systemCost,
-          Math.max(
-            0,
-            Number(data.deposit || 0)
-          )
+        Number(
+          data.deposit || 0
         )
 
       const annualConsumption =
         Number(
-          data.annualConsumption || 0
+          data.annualConsumption ||
+            0
         )
 
       const importRate =
-        Number(data.importRate || 0)
+        Number(
+          data.importRate || 0
+        )
 
       const exportRate =
-        Number(data.exportRate || 0)
+        Number(
+          data.exportRate || 0
+        )
 
       const firstYearGeneration =
         Number(
@@ -786,76 +660,42 @@ export default function EPVSCalculator({
         )
 
       /*
-       * EPVS calculator example uses 0.925% degradation.
-       *
-       * We make this editable rather than hard coding it into
-       * every calculation.
-       */
-
-      const annualDegradation =
-        Math.max(
-          0,
-          Number(
-            data.panelDegradation || 0
-          )
-        )
-
-      /*
-       * Current electricity price escalation assumption.
-       *
-       * This is a projection assumption rather than an EPVS
-       * SAP input. It should be presented as illustrative.
+       * These are currently the assumptions used by the
+       * preliminary 30-year model.
        */
 
       const annualRateIncrease =
         0.076
+
+      const annualDegradation =
+        0.004
 
       for (
         let year = 1;
         year <= 30;
         year++
       ) {
-        /*
-         * ------------------------------------------------------
-         * GENERATION DEGRADATION
-         * ------------------------------------------------------
-         */
-
         const generation =
           firstYearGeneration *
           Math.pow(
-            1 - annualDegradation,
+            1 -
+              annualDegradation,
             year - 1
           )
-
-        /*
-         * Preserve the Year 1 proportions between:
-         *
-         * Solar self-consumption
-         * Battery self-consumption
-         */
 
         const solar =
           firstYearGeneration > 0
             ? generation *
-              (
-                firstYearSolar /
-                firstYearGeneration
-              )
+              (firstYearSolar /
+                firstYearGeneration)
             : 0
 
         const battery =
           firstYearGeneration > 0
             ? generation *
-              (
-                firstYearBattery /
-                firstYearGeneration
-              )
+              (firstYearBattery /
+                firstYearGeneration)
             : 0
-
-        /*
-         * Export is the remaining generation.
-         */
 
         const exportKwh =
           Math.max(
@@ -865,31 +705,21 @@ export default function EPVSCalculator({
               battery
           )
 
-        /*
-         * ------------------------------------------------------
-         * ENERGY PRICES
-         * ------------------------------------------------------
-         */
-
         const importRateYear =
           importRate *
           Math.pow(
-            1 + annualRateIncrease,
+            1 +
+              annualRateIncrease,
             year - 1
           )
 
         const exportRateYear =
           exportRate *
           Math.pow(
-            1 + annualRateIncrease,
+            1 +
+              annualRateIncrease,
             year - 1
           )
-
-        /*
-         * ------------------------------------------------------
-         * ANNUAL BENEFIT
-         * ------------------------------------------------------
-         */
 
         const solarBenefit =
           solar *
@@ -909,61 +739,20 @@ export default function EPVSCalculator({
           exportBenefit
 
         /*
-         * ------------------------------------------------------
-         * CUSTOMER PAYMENT
-         * ------------------------------------------------------
+         * Only apply the upfront system payment once.
          *
-         * CASH:
-         *
-         * Year 1:
-         * system cost - deposit
-         *
-         * FINANCE:
-         *
-         * Every month during the finance term:
-         * monthly payment
-         *
-         * We therefore use:
-         *
-         * monthly payment × 12
-         *
-         * for each finance year.
+         * Deposit is paid upfront, therefore the remaining
+         * system cost is used as the first-year payment.
          */
 
-        let yearlyPayment = 0
-
-        if (
-          data.paymentMethod ===
-          "Finance"
-        ) {
-          const financeTerm =
-            Number(
-              data.financeTerm || 0
-            )
-
-          if (year <= financeTerm) {
-            yearlyPayment =
-              Number(
-                results.monthlyPayment ||
-                  0
-              ) * 12
-          }
-        } else {
-          if (year === 1) {
-            yearlyPayment =
-              Math.max(
+        const yearlyPayment =
+          year === 1
+            ? Math.max(
                 0,
                 systemCost -
                   deposit
               )
-          }
-        }
-
-        /*
-         * ------------------------------------------------------
-         * NET BENEFIT
-         * ------------------------------------------------------
-         */
+            : 0
 
         const netAnnualBenefit =
           annualBenefit -
@@ -971,12 +760,6 @@ export default function EPVSCalculator({
 
         cumulativePosition +=
           netAnnualBenefit
-
-        /*
-         * ------------------------------------------------------
-         * ELECTRICITY BILL
-         * ------------------------------------------------------
-         */
 
         const billPreInstall =
           annualConsumption *
@@ -1002,7 +785,9 @@ export default function EPVSCalculator({
           generation,
 
           solar,
+
           battery,
+
           exportKwh,
 
           annualBenefit,
@@ -1014,15 +799,10 @@ export default function EPVSCalculator({
           cumulativePosition,
 
           billPreInstall,
+
           billPostInstall,
         })
       }
-
-      /*
-       * --------------------------------------------------------
-       * TOTALS
-       * --------------------------------------------------------
-       */
 
       const totals =
         rows.reduce(
@@ -1069,11 +849,6 @@ export default function EPVSCalculator({
           }
         )
 
-      /*
-       * Payback is the first year in which the cumulative
-       * position becomes positive.
-       */
-
       const paybackRow =
         rows.find(
           (row) =>
@@ -1081,40 +856,28 @@ export default function EPVSCalculator({
             0
         )
 
-      /*
-       * Total net savings represents the cumulative benefit
-       * after customer payments.
-       */
-
-      const totalNetSavings =
-        totals.netAnnualBenefit
-
       return {
         rows,
 
         totals,
 
         paybackPeriod:
-          paybackRow?.year || null,
+          paybackRow?.year ||
+          null,
 
-        totalNetSavings,
-
-        /*
-         * Keep this as the cumulative position after all
-         * customer payments. Do not subtract systemCost again
-         * because the cost has already been included in the
-         * yearly payments.
-         */
+        totalNetSavings:
+          totals.netAnnualBenefit,
 
         totalNetReturn:
-          totalNetSavings,
+          totals.netAnnualBenefit -
+          systemCost,
       }
     }, [data, results])
 
   /*
-   * ============================================================
+   * =========================================================
    * SEND CALCULATION TO APPOINTMENT DETAIL
-   * ============================================================
+   * =========================================================
    */
 
   useEffect(() => {
@@ -1131,9 +894,9 @@ export default function EPVSCalculator({
   ])
 
   /*
-   * ============================================================
+   * =========================================================
    * NAVIGATION
-   * ============================================================
+   * =========================================================
    */
 
   const next = () => {
@@ -1152,23 +915,25 @@ export default function EPVSCalculator({
   }
 
   const reset = () => {
-    setData(appointmentInitial)
+    setData(
+      appointmentInitial
+    )
+
     setStep(0)
   }
 
   /*
-   * ============================================================
+   * =========================================================
    * RENDER
-   * ============================================================
+   * =========================================================
    */
 
   return (
     <section>
       <div style={styles.wrapper}>
-
-        {/* =====================================================
+        {/* ===================================================
             STEPPER
-            ===================================================== */}
+            =================================================== */}
 
         <div style={styles.stepper}>
           {steps.map(
@@ -1208,7 +973,6 @@ export default function EPVSCalculator({
                         complete
                           ? "#172554"
                           : "#eef2f7",
-
                       color:
                         active ||
                         complete
@@ -1228,9 +992,9 @@ export default function EPVSCalculator({
           )}
         </div>
 
-        {/* =====================================================
+        {/* ===================================================
             CUSTOMER
-            ===================================================== */}
+            =================================================== */}
 
         {step === 0 && (
           <Card
@@ -1253,7 +1017,9 @@ export default function EPVSCalculator({
 
               <Input
                 label="Postcode"
-                value={data.postcode}
+                value={
+                  data.postcode
+                }
                 onChange={(value) =>
                   update(
                     "postcode",
@@ -1264,7 +1030,9 @@ export default function EPVSCalculator({
 
               <Input
                 label="Address"
-                value={data.address}
+                value={
+                  data.address
+                }
                 onChange={(value) =>
                   update(
                     "address",
@@ -1276,14 +1044,14 @@ export default function EPVSCalculator({
           </Card>
         )}
 
-        {/* =====================================================
+        {/* ===================================================
             PROPERTY
-            ===================================================== */}
+            =================================================== */}
 
         {step === 1 && (
           <Card
             title="Property"
-            subtitle="Property and existing system information."
+            subtitle="Property and existing-system assumptions."
           >
             <div style={styles.grid}>
               <Input
@@ -1334,337 +1102,405 @@ export default function EPVSCalculator({
           </Card>
         )}
 
-        {/* =====================================================
-            SOLAR PV / ARRAYS
-            ===================================================== */}
+        {/* ===================================================
+            SOLAR PV
+            =================================================== */}
 
         {step === 2 && (
           <Card
             title="Solar PV arrays"
             subtitle="Enter the EPVS information for each roof / array."
           >
+            {/* NUMBER OF ARRAYS */}
+
             <div
               style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 18,
+                maxWidth: 320,
+                marginBottom: 22,
               }}
             >
-              {data.arrays.map(
-                (array) => {
-                  const isActive =
-                    Number(
-                      array.panelCount ||
-                        0
-                    ) > 0
-
-                  const calculatedSize =
-                    (
-                      Number(
-                        array.panelWattage ||
-                          0
-                      ) *
-                      Number(
-                        array.panelCount ||
-                          0
+              <Input
+                label="Number of arrays"
+                type="number"
+                value={
+                  data.numberOfArrays
+                }
+                onChange={(value) => {
+                  const numberOfArrays =
+                    Math.min(
+                      3,
+                      Math.max(
+                        1,
+                        Number(
+                          value || 1
+                        )
                       )
-                    ) / 1000
-
-                  const calculatedGeneration =
-                    calculatedSize *
-                    Number(
-                      array.kk || 0
-                    ) *
-                    Number(
-                      array.shading || 0
                     )
 
-                  return (
-                    <div
-                      key={array.id}
-                      style={{
-                        border:
-                          "1px solid #e1e5ea",
-                        borderRadius: 10,
-                        padding: 16,
-                        background:
-                          isActive
-                            ? "#fff"
-                            : "#fafafa",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display:
-                            "flex",
-                          justifyContent:
-                            "space-between",
-                          alignItems:
-                            "center",
-                          marginBottom:
-                            14,
-                        }}
-                      >
-                        <div>
-                          <strong
-                            style={{
-                              fontSize: 14,
-                            }}
-                          >
-                            {array.name}
-                          </strong>
-
-                          <div
-                            style={{
-                              fontSize: 11,
-                              color:
-                                "#64748b",
-                              marginTop:
-                                3,
-                            }}
-                          >
-                            EPVS roof /
-                            array
-                          </div>
-                        </div>
-
-                        {isActive && (
-                          <div
-                            style={{
-                              background:
-                                "#e8f5eb",
-                              color:
-                                "#26783a",
-                              borderRadius:
-                                999,
-                              padding:
-                                "5px 9px",
-                              fontSize:
-                                11,
-                              fontWeight:
-                                700,
-                            }}
-                          >
-                            {calculatedSize.toFixed(
-                              2
-                            )}{" "}
-                            kWp ·{" "}
-                            {Math.round(
-                              calculatedGeneration
-                            ).toLocaleString(
-                              "en-GB"
-                            )}{" "}
-                            kWh
-                          </div>
-                        )}
-                      </div>
-
-                      <div
-                        style={
-                          styles.grid
-                        }
-                      >
-                        <Input
-                          label="Number of panels"
-                          type="number"
-                          value={
-                            array.panelCount
-                          }
-                          onChange={(
-                            value
-                          ) =>
-                            updateArray(
-                              array.id,
-                              "panelCount",
-                              value
-                            )
-                          }
-                          min={0}
-                        />
-
-                        <Input
-                          label="Panel wattage (Wp)"
-                          type="number"
-                          value={
-                            array.panelWattage
-                          }
-                          onChange={(
-                            value
-                          ) =>
-                            updateArray(
-                              array.id,
-                              "panelWattage",
-                              value
-                            )
-                          }
-                          min={1}
-                        />
-
-                        <Input
-                          label="Number of strings"
-                          type="number"
-                          value={
-                            array.strings
-                          }
-                          onChange={(
-                            value
-                          ) =>
-                            updateArray(
-                              array.id,
-                              "strings",
-                              value
-                            )
-                          }
-                          min={
-                            isActive
-                              ? 1
-                              : 0
-                          }
-                        />
-
-                        <Input
-                          label="Degrees from south (°)"
-                          type="number"
-                          value={
-                            array.orientation
-                          }
-                          onChange={(
-                            value
-                          ) =>
-                            updateArray(
-                              array.id,
-                              "orientation",
-                              value
-                            )
-                          }
-                          min={-180}
-                          max={180}
-                        />
-
-                        <Input
-                          label="Roof pitch / inclination (°)"
-                          type="number"
-                          value={
-                            array.pitch
-                          }
-                          onChange={(
-                            value
-                          ) =>
-                            updateArray(
-                              array.id,
-                              "pitch",
-                              value
-                            )
-                          }
-                          min={0}
-                          max={90}
-                        />
-
-                        <Input
-                          label="Irradiance / Kk figure"
-                          type="number"
-                          value={
-                            array.kk
-                          }
-                          onChange={(
-                            value
-                          ) =>
-                            updateArray(
-                              array.id,
-                              "kk",
-                              value
-                            )
-                          }
-                          min={0}
-                          step={1}
-                        />
-
-                        <Input
-                          label="Shade factor (SF)"
-                          type="number"
-                          value={
-                            array.shading
-                          }
-                          onChange={(
-                            value
-                          ) =>
-                            updateArray(
-                              array.id,
-                              "shading",
-                              value
-                            )
-                          }
-                          min={0}
-                          max={1}
-                          step={0.01}
-                        />
-
-                        <Input
-                          label="Calculated system size (kWp)"
-                          type="number"
-                          value={calculatedSize.toFixed(
-                            2
-                          )}
-                          disabled
-                          onChange={() => {}}
-                        />
-
-                        <Input
-                          label="Calculated generation (kWh)"
-                          type="number"
-                          value={calculatedGeneration.toFixed(
-                            2
-                          )}
-                          disabled
-                          onChange={() => {}}
-                        />
-                      </div>
-                    </div>
+                  update(
+                    "numberOfArrays",
+                    numberOfArrays
                   )
-                }
-              )}
-
-              {/* =================================================
-                  TOTAL ARRAY SUMMARY
-                  ================================================= */}
+                }}
+                min={1}
+                max={3}
+              />
 
               <div
                 style={{
-                  display: "grid",
-                  gridTemplateColumns:
-                    "repeat(3, minmax(0, 1fr))",
-                  gap: 12,
+                  marginTop: 6,
+                  fontSize: 11,
+                  color: "#64748b",
                 }}
               >
-                <SummaryMetric
-                  label="Active arrays"
-                  value={
-                    results.activeArrays
-                      .length
-                  }
-                />
-
-                <SummaryMetric
-                  label="Total system size"
-                  value={`${results.systemSize.toFixed(
-                    2
-                  )} kWp`}
-                />
-
-                <SummaryMetric
-                  label="Total annual generation"
-                  value={`${wholeNumber(
-                    results.generation
-                  )} kWh`}
-                />
+                Maximum 3 arrays.
               </div>
+            </div>
+
+            {/* ARRAY CARDS */}
+
+            <div
+              style={{
+                display: "flex",
+                flexDirection:
+                  "column",
+                gap: 18,
+              }}
+            >
+              {data.arrays
+                .slice(
+                  0,
+                  data.numberOfArrays
+                )
+                .map(
+                  (
+                    array,
+                    index
+                  ) => {
+                    const systemSize =
+                      (Number(
+                        array.panelWattage ||
+                          0
+                      ) *
+                        Number(
+                          array.panelCount ||
+                            0
+                        )) /
+                      1000
+
+                    const generation =
+                      systemSize *
+                      Number(
+                        array.irradiance ||
+                          0
+                      ) *
+                      Number(
+                        array.shading ??
+                          1
+                      )
+
+                    return (
+                      <div
+                        key={
+                          index
+                        }
+                        style={
+                          styles.arrayCard
+                        }
+                      >
+                        {/* ARRAY HEADER */}
+
+                        <div
+                          style={
+                            styles.arrayHeader
+                          }
+                        >
+                          <div>
+                            <h3
+                              style={{
+                                margin: 0,
+                                fontSize:
+                                  16,
+                                fontWeight:
+                                  700,
+                                color:
+                                  "#111827",
+                              }}
+                            >
+                              Array{" "}
+                              {index +
+                                1}
+                            </h3>
+
+                            <div
+                              style={{
+                                marginTop:
+                                  4,
+                                fontSize:
+                                  12,
+                                color:
+                                  "#64748b",
+                              }}
+                            >
+                              EPVS roof /
+                              array
+                            </div>
+                          </div>
+
+                          <div
+                            style={
+                              styles.arrayBadge
+                            }
+                          >
+                            {systemSize.toFixed(
+                              2
+                            )}{" "}
+                            kWp
+                            {" · "}
+                            {generation.toFixed(
+                              2
+                            )}{" "}
+                            kWh
+                          </div>
+                        </div>
+
+                        {/* ARRAY INPUTS */}
+
+                        <div
+                          style={
+                            styles.grid
+                          }
+                        >
+                          <Input
+                            label="Number of panels"
+                            type="number"
+                            value={
+                              array.panelCount
+                            }
+                            onChange={(
+                              value
+                            ) =>
+                              updateArray(
+                                index,
+                                "panelCount",
+                                value
+                              )
+                            }
+                            min={0}
+                          />
+
+                          <Input
+                            label="Panel wattage (Wp)"
+                            type="number"
+                            value={
+                              array.panelWattage
+                            }
+                            onChange={(
+                              value
+                            ) =>
+                              updateArray(
+                                index,
+                                "panelWattage",
+                                value
+                              )
+                            }
+                            min={0}
+                          />
+
+                          <Input
+                            label="Degrees from south (°)"
+                            type="number"
+                            value={
+                              array.orientation
+                            }
+                            onChange={(
+                              value
+                            ) =>
+                              updateArray(
+                                index,
+                                "orientation",
+                                value
+                              )
+                            }
+                            min={-180}
+                            max={180}
+                          />
+
+                          <Input
+                            label="Roof pitch / inclination (°)"
+                            type="number"
+                            value={
+                              array.pitch
+                            }
+                            onChange={(
+                              value
+                            ) =>
+                              updateArray(
+                                index,
+                                "pitch",
+                                value
+                              )
+                            }
+                            min={0}
+                            max={90}
+                          />
+
+                          <Input
+                            label="Irradiance / Kk figure"
+                            type="number"
+                            value={
+                              array.irradiance
+                            }
+                            onChange={(
+                              value
+                            ) =>
+                              updateArray(
+                                index,
+                                "irradiance",
+                                value
+                              )
+                            }
+                            min={0}
+                            step={0.01}
+                          />
+
+                          <Input
+                            label="Shade factor (SF)"
+                            type="number"
+                            value={
+                              array.shading
+                            }
+                            onChange={(
+                              value
+                            ) =>
+                              updateArray(
+                                index,
+                                "shading",
+                                value
+                              )
+                            }
+                            min={0}
+                            max={1}
+                            step={0.01}
+                          />
+
+                          {/* CALCULATED SYSTEM SIZE */}
+
+                          <div
+                            style={
+                              styles.field
+                            }
+                          >
+                            <span>
+                              Calculated system
+                              size (kWp)
+                            </span>
+
+                            <div
+                              style={
+                                styles.calculatedField
+                              }
+                            >
+                              {systemSize.toFixed(
+                                2
+                              )}
+                            </div>
+                          </div>
+
+                          {/* CALCULATED GENERATION */}
+
+                          <div
+                            style={
+                              styles.field
+                            }
+                          >
+                            <span>
+                              Calculated
+                              generation
+                              (kWh)
+                            </span>
+
+                            <div
+                              style={
+                                styles.calculatedField
+                              }
+                            >
+                              {generation.toFixed(
+                                2
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  }
+                )}
+            </div>
+
+            {/* TOTAL */}
+
+            <div
+              style={{
+                marginTop: 18,
+                padding: 16,
+                borderRadius: 10,
+                background:
+                  "#e8f5eb",
+                display: "flex",
+                justifyContent:
+                  "space-between",
+                alignItems:
+                  "center",
+                gap: 20,
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color:
+                      "#26783a",
+                    fontWeight:
+                      600,
+                  }}
+                >
+                  Total overall
+                  generation
+                </div>
+
+                <div
+                  style={{
+                    fontSize: 11,
+                    color:
+                      "#4b5563",
+                    marginTop: 3,
+                  }}
+                >
+                  Sum of all active
+                  EPVS arrays
+                </div>
+              </div>
+
+              <strong
+                style={{
+                  fontSize: 18,
+                  color:
+                    "#26783a",
+                }}
+              >
+                {Number(
+                  results.totalGeneration ||
+                    0
+                ).toFixed(2)}{" "}
+                kWh
+              </strong>
             </div>
           </Card>
         )}
 
-        {/* =====================================================
+        {/* ===================================================
             BATTERY
-            ===================================================== */}
+            =================================================== */}
 
         {step === 3 && (
           <Card
@@ -1706,9 +1542,9 @@ export default function EPVSCalculator({
           </Card>
         )}
 
-        {/* =====================================================
+        {/* ===================================================
             INVERTER
-            ===================================================== */}
+            =================================================== */}
 
         {step === 4 && (
           <Card
@@ -1735,18 +1571,18 @@ export default function EPVSCalculator({
           </Card>
         )}
 
-        {/* =====================================================
+        {/* ===================================================
             ELECTRICITY
-            ===================================================== */}
+            =================================================== */}
 
         {step === 5 && (
           <Card
             title="Electricity"
-            subtitle="Use the customer's current electricity consumption and unit rates."
+            subtitle="Current electricity assumptions."
           >
             <div style={styles.grid}>
               <Input
-                label="Annual consumption from bill (kWh)"
+                label="Annual consumption (kWh)"
                 type="number"
                 value={
                   data.annualConsumption
@@ -1761,7 +1597,7 @@ export default function EPVSCalculator({
               />
 
               <Input
-                label="Electricity unit rate (£/kWh)"
+                label="Import rate (£/kWh)"
                 type="number"
                 value={
                   data.importRate
@@ -1777,7 +1613,7 @@ export default function EPVSCalculator({
               />
 
               <Input
-                label="Export tariff rate (£/kWh)"
+                label="Export rate (£/kWh)"
                 type="number"
                 value={
                   data.exportRate
@@ -1791,59 +1627,13 @@ export default function EPVSCalculator({
                 min={0}
                 step={0.001}
               />
-
-              <Input
-                label="Panel degradation (% per year)"
-                type="number"
-                value={
-                  Number(
-                    data.panelDegradation ||
-                      0
-                  ) * 100
-                }
-                onChange={(value) =>
-                  update(
-                    "panelDegradation",
-                    Number(value || 0) /
-                      100
-                  )
-                }
-                min={0}
-                step={0.001}
-              />
-            </div>
-
-            <div
-              style={{
-                marginTop: 18,
-                padding: 14,
-                background: "#f8fafc",
-                border:
-                  "1px solid #e2e8f0",
-                borderRadius: 8,
-                fontSize: 11,
-                color: "#475569",
-                lineHeight: 1.6,
-              }}
-            >
-              <strong>
-                EPVS self-consumption cap:
-              </strong>{" "}
-              {wholeNumber(
-                results.selfConsumptionCap
-              )}{" "}
-              kWh/year (
-              {data.batteryEnabled
-                ? "90%"
-                : "75%"}{" "}
-              of current annual consumption).
             </div>
           </Card>
         )}
 
-        {/* =====================================================
+        {/* ===================================================
             TARIFF
-            ===================================================== */}
+            =================================================== */}
 
         {step === 6 && (
           <Card
@@ -1885,17 +1675,16 @@ export default function EPVSCalculator({
           </Card>
         )}
 
-        {/* =====================================================
-            PAYMENT
-            ===================================================== */}
+        {/* ===================================================
+            FINANCE
+            =================================================== */}
 
         {step === 7 && (
           <Card
-            title="Payment"
-            subtitle="Choose whether the customer is paying cash or using consumer finance."
+            title="Finance"
+            subtitle="System cost, deposit and payment method."
           >
             <div style={styles.grid}>
-
               <SelectInput
                 label="Payment method"
                 value={
@@ -1935,7 +1724,9 @@ export default function EPVSCalculator({
               <Input
                 label="Deposit (£)"
                 type="number"
-                value={data.deposit}
+                value={
+                  data.deposit
+                }
                 onChange={(value) =>
                   update(
                     "deposit",
@@ -1966,7 +1757,7 @@ export default function EPVSCalculator({
                   />
 
                   <Input
-                    label="Annual interest rate (%)"
+                    label="Interest rate (%)"
                     type="number"
                     value={
                       data.financeRate
@@ -1986,96 +1777,65 @@ export default function EPVSCalculator({
               )}
             </div>
 
-            {/* =================================================
-                PAYMENT SUMMARY
-                ================================================= */}
-
             <div
               style={{
-                marginTop: 20,
-                display: "grid",
-                gridTemplateColumns:
-                  "repeat(3, minmax(0, 1fr))",
-                gap: 12,
+                marginTop: 18,
+                padding: 14,
+                background:
+                  "#f8fafc",
+                borderRadius: 8,
+                fontSize: 12,
+                color:
+                  "#475569",
               }}
             >
-              <SummaryMetric
-                label="System cost"
-                value={money(
-                  results.systemCost
-                )}
-              />
-
-              <SummaryMetric
-                label="Deposit"
-                value={money(
-                  results.deposit
-                )}
-              />
-
               {data.paymentMethod ===
-              "Finance" ? (
-                <SummaryMetric
-                  label="Finance amount"
-                  value={money(
-                    results.financeAmount
-                  )}
-                />
-              ) : (
-                <SummaryMetric
-                  label="Balance"
-                  value={money(
-                    Math.max(
-                      0,
-                      results.systemCost -
-                        results.deposit
-                    )
-                  )}
-                />
-              )}
-
-              {data.paymentMethod ===
-                "Finance" && (
+              "Cash" ? (
                 <>
-                  <SummaryMetric
-                    label="Monthly repayment"
-                    value={money(
-                      results.monthlyPayment
-                    )}
-                  />
+                  <strong>
+                    Cash payment
+                  </strong>
 
-                  <SummaryMetric
-                    label="Total finance repayment"
-                    value={money(
-                      results.totalFinanceRepayment
-                    )}
-                  />
-
-                  <SummaryMetric
-                    label="Total customer payment"
-                    value={money(
-                      results.totalCustomerPayment
-                    )}
-                  />
+                  <div
+                    style={{
+                      marginTop: 4,
+                    }}
+                  >
+                    A deposit can be
+                    taken, but no
+                    finance term or
+                    interest rate is
+                    required.
+                  </div>
                 </>
-              )}
+              ) : (
+                <>
+                  <strong>
+                    Finance
+                  </strong>
 
-              {data.paymentMethod ===
-                "Cash" && (
-                <SummaryMetric
-                  label="Total customer payment"
-                  value={money(
-                    results.cashPayment
-                  )}
-                />
+                  <div
+                    style={{
+                      marginTop: 4,
+                    }}
+                  >
+                    The deposit is
+                    deducted from the
+                    system cost and
+                    the remaining
+                    balance is financed
+                    over the selected
+                    term.
+                  </div>
+                </>
               )}
             </div>
           </Card>
         )}
 
-        {/* =====================================================
+        {/* ===================================================
             RESULTS
-            ===================================================== */}
+            =================================================== */}
 
         {step === 8 && (
           <>
@@ -2098,9 +1858,9 @@ export default function EPVSCalculator({
           </>
         )}
 
-        {/* =====================================================
+        {/* ===================================================
             FOOTER
-            ===================================================== */}
+            =================================================== */}
 
         <div style={styles.footer}>
           <button
@@ -2125,7 +1885,9 @@ export default function EPVSCalculator({
               style={{
                 ...styles.secondary,
                 opacity:
-                  step === 0 ? 0.5 : 1,
+                  step === 0
+                    ? 0.5
+                    : 1,
               }}
             >
               <ArrowLeft size={16} />
@@ -2137,10 +1899,14 @@ export default function EPVSCalculator({
               <button
                 type="button"
                 onClick={next}
-                style={styles.primary}
+                style={
+                  styles.primary
+                }
               >
                 Next
-                <ArrowRight size={16} />
+                <ArrowRight
+                  size={16}
+                />
               </button>
             )}
           </div>
@@ -2151,9 +1917,9 @@ export default function EPVSCalculator({
 }
 
 /*
- * ============================================================
+ * ===========================================================
  * CARD
- * ============================================================
+ * ===========================================================
  */
 
 function Card({
@@ -2182,51 +1948,9 @@ function Card({
 }
 
 /*
- * ============================================================
- * SUMMARY METRIC
- * ============================================================
- */
-
-function SummaryMetric({
-  label,
-  value,
-}) {
-  return (
-    <div
-      style={{
-        border:
-          "1px solid #e2e8f0",
-        borderRadius: 8,
-        padding: 14,
-        background: "#f8fafc",
-      }}
-    >
-      <div
-        style={{
-          fontSize: 10,
-          color: "#64748b",
-          marginBottom: 5,
-        }}
-      >
-        {label}
-      </div>
-
-      <strong
-        style={{
-          fontSize: 15,
-          color: "#172554",
-        }}
-      >
-        {value}
-      </strong>
-    </div>
-  )
-}
-
-/*
- * ============================================================
+ * ===========================================================
  * RESULTS
- * ============================================================
+ * ===========================================================
  */
 
 function Results({
@@ -2235,37 +1959,50 @@ function Results({
 }) {
   const cards = [
     [
+      "Number of arrays",
+      results.numberOfArrays,
+    ],
+
+    [
       "System size",
-      `${results.systemSize.toFixed(
+      `${results.totalSystemSize.toFixed(
         2
       )} kWp`,
     ],
 
     [
       "Estimated generation",
-      `${wholeNumber(
-        results.generation
+      `${Math.round(
+        results.totalGeneration
+      ).toLocaleString(
+        "en-GB"
       )} kWh`,
     ],
 
     [
       "Solar self-consumption",
-      `${wholeNumber(
+      `${Math.round(
         results.solarSelfConsumption
+      ).toLocaleString(
+        "en-GB"
       )} kWh`,
     ],
 
     [
       "Battery contribution",
-      `${wholeNumber(
+      `${Math.round(
         results.batteryContribution
+      ).toLocaleString(
+        "en-GB"
       )} kWh`,
     ],
 
     [
       "Estimated export",
-      `${wholeNumber(
+      `${Math.round(
         results.exportKwh
+      ).toLocaleString(
+        "en-GB"
       )} kWh`,
     ],
 
@@ -2277,18 +2014,17 @@ function Results({
     ],
 
     [
-      "Payment method",
-      data.paymentMethod,
-    ],
+      data.paymentMethod ===
+      "Finance"
+        ? "Monthly finance"
+        : "Payment method",
 
-    [
-      "Monthly finance",
       data.paymentMethod ===
       "Finance"
         ? money(
             results.monthlyPayment
           )
-        : "N/A",
+        : "Cash",
     ],
 
     [
@@ -2311,7 +2047,8 @@ function Results({
       <div className="card-head">
         <div>
           <h2>
-            EPVS calculation results
+            EPVS calculation
+            results
           </h2>
 
           <p>
@@ -2323,12 +2060,121 @@ function Results({
           </p>
         </div>
 
-        <div style={styles.badge}>
-          EPVS model
+        <div
+          style={styles.badge}
+        >
+          Preliminary model
         </div>
       </div>
 
-      <div style={styles.resultGrid}>
+      {/* ARRAY SUMMARY */}
+
+      {results.arrays &&
+        results.arrays.length >
+          0 && (
+          <div
+            style={{
+              marginBottom: 14,
+              padding: 14,
+              background:
+                "#f8fafc",
+              borderRadius: 10,
+              border:
+                "1px solid #e5e7eb",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color:
+                  "#475569",
+                marginBottom: 10,
+              }}
+            >
+              EPVS array
+              generation
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(3, minmax(0, 1fr))",
+                gap: 10,
+              }}
+            >
+              {results.arrays.map(
+                (array) => (
+                  <div
+                    key={
+                      array.array
+                    }
+                    style={{
+                      background:
+                        "#fff",
+                      border:
+                        "1px solid #e5e7eb",
+                      borderRadius: 8,
+                      padding: 10,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color:
+                          "#64748b",
+                      }}
+                    >
+                      Array{" "}
+                      {
+                        array.array
+                      }
+                    </div>
+
+                    <strong
+                      style={{
+                        display:
+                          "block",
+                        marginTop: 4,
+                        fontSize: 14,
+                        color:
+                          "#26783a",
+                      }}
+                    >
+                      {array.generation.toFixed(
+                        2
+                      )}{" "}
+                      kWh
+                    </strong>
+
+                    <div
+                      style={{
+                        marginTop: 3,
+                        fontSize: 10,
+                        color:
+                          "#64748b",
+                      }}
+                    >
+                      {
+                        array.systemSize.toFixed(
+                          2
+                        )
+                      }{" "}
+                      kWp
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        )}
+
+      <div
+        style={
+          styles.resultGrid
+        }
+      >
         {cards.map(
           ([label, value]) => (
             <div
@@ -2337,7 +2183,9 @@ function Results({
                 styles.resultCard
               }
             >
-              <span>{label}</span>
+              <span>
+                {label}
+              </span>
 
               <strong>
                 {value}
@@ -2346,33 +2194,14 @@ function Results({
           )
         )}
       </div>
-
-      <div
-        style={{
-          marginTop: 18,
-          padding: 12,
-          background: "#f8fafc",
-          border:
-            "1px solid #e2e8f0",
-          borderRadius: 8,
-          fontSize: 10,
-          lineHeight: 1.6,
-          color: "#475569",
-        }}
-      >
-        Generation is calculated per roof /
-        array using the EPVS formula of kWp ×
-        Kk × shade factor. Self-consumption is
-        capped according to the EPVS methodology.
-      </div>
     </div>
   )
 }
 
 /*
- * ============================================================
+ * ===========================================================
  * STYLES
- * ============================================================
+ * ===========================================================
  */
 
 const styles = {
@@ -2393,15 +2222,18 @@ const styles = {
 
   step: {
     border: 0,
-    background: "transparent",
+    background:
+      "transparent",
     cursor: "pointer",
     display: "flex",
-    flexDirection: "column",
+    flexDirection:
+      "column",
     alignItems: "center",
     gap: 7,
     color: "#334155",
     fontSize: 12,
-    whiteSpace: "nowrap",
+    whiteSpace:
+      "nowrap",
   },
 
   stepCircle: {
@@ -2409,8 +2241,10 @@ const styles = {
     height: 34,
     borderRadius: "50%",
     display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems:
+      "center",
+    justifyContent:
+      "center",
   },
 
   grid: {
@@ -2422,14 +2256,56 @@ const styles = {
 
   field: {
     display: "flex",
-    flexDirection: "column",
+    flexDirection:
+      "column",
     gap: 7,
+  },
+
+  input: {
+    width: "100%",
+    height: 38,
+    boxSizing:
+      "border-box",
+    border:
+      "1px solid #cfd6df",
+    borderRadius: 7,
+    padding:
+      "0 10px",
+    fontFamily:
+      "inherit",
+    fontSize: 13,
+    color: "#111827",
+    background:
+      "#fff",
+  },
+
+  calculatedField: {
+    width: "100%",
+    height: 38,
+    boxSizing:
+      "border-box",
+    border:
+      "1px solid #e5e7eb",
+    borderRadius: 7,
+    padding:
+      "0 10px",
+    display: "flex",
+    alignItems:
+      "center",
+    fontFamily:
+      "inherit",
+    fontSize: 13,
+    color: "#888",
+    background:
+      "#f7f7f7",
   },
 
   toggleRow: {
     display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
+    alignItems:
+      "center",
+    justifyContent:
+      "space-between",
     minHeight: 42,
   },
 
@@ -2446,8 +2322,10 @@ const styles = {
     display: "block",
     width: 20,
     height: 20,
-    background: "white",
-    borderRadius: "50%",
+    background:
+      "white",
+    borderRadius:
+      "50%",
     transition:
       "transform .15s",
   },
@@ -2456,18 +2334,23 @@ const styles = {
     display: "flex",
     justifyContent:
       "space-between",
-    alignItems: "center",
+    alignItems:
+      "center",
     marginTop: 10,
   },
 
   primary: {
     border: 0,
-    background: "#172554",
+    background:
+      "#172554",
     color: "white",
     borderRadius: 8,
-    padding: "11px 16px",
-    display: "inline-flex",
-    alignItems: "center",
+    padding:
+      "11px 16px",
+    display:
+      "inline-flex",
+    alignItems:
+      "center",
     gap: 8,
     cursor: "pointer",
     fontWeight: 600,
@@ -2479,18 +2362,24 @@ const styles = {
     background: "white",
     color: "#334155",
     borderRadius: 8,
-    padding: "10px 14px",
-    display: "inline-flex",
-    alignItems: "center",
+    padding:
+      "10px 14px",
+    display:
+      "inline-flex",
+    alignItems:
+      "center",
     gap: 8,
     cursor: "pointer",
   },
 
   badge: {
-    background: "#e8f5eb",
-    color: "#26783a",
-    borderRadius: 999,
-    padding: "6px 10px",
+    background:
+      "#fff7ed",
+    color: "#9a3412",
+    borderRadius:
+      999,
+    padding:
+      "6px 10px",
     fontSize: 12,
     fontWeight: 600,
   },
@@ -2498,7 +2387,7 @@ const styles = {
   resultGrid: {
     display: "grid",
     gridTemplateColumns:
-      "repeat(3, minmax(0, 1fr))",
+      "repeat(4, minmax(0, 1fr))",
     gap: 12,
   },
 
@@ -2508,7 +2397,41 @@ const styles = {
     borderRadius: 10,
     padding: 16,
     display: "flex",
-    flexDirection: "column",
+    flexDirection:
+      "column",
     gap: 7,
+  },
+
+  arrayCard: {
+    border:
+      "1px solid #dbe2ea",
+    borderRadius: 12,
+    padding: 20,
+    background:
+      "#fff",
+  },
+
+  arrayHeader: {
+    display: "flex",
+    alignItems:
+      "center",
+    justifyContent:
+      "space-between",
+    gap: 20,
+    marginBottom: 18,
+  },
+
+  arrayBadge: {
+    background:
+      "#e8f5eb",
+    color: "#26783a",
+    borderRadius:
+      999,
+    padding:
+      "7px 11px",
+    fontSize: 12,
+    fontWeight: 700,
+    whiteSpace:
+      "nowrap",
   },
 }
