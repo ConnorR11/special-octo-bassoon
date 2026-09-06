@@ -23,7 +23,8 @@ function AppointmentDetail({
   onBack,
   onUpdated,
 }) {
-  const [showResult, setShowResult] = useState(false)
+  const [showResult, setShowResult] =
+    useState(false)
 
   const [result, setResult] = useState(
     appointment?.result ||
@@ -31,33 +32,43 @@ function AppointmentDetail({
       ""
   )
 
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState("")
+  const [saving, setSaving] =
+    useState(false)
+
+  const [error, setError] =
+    useState("")
 
   /*
-   * Stores the complete EPVS calculation.
+   * Contains:
    *
-   * {
-   *   data,
-   *   results,
-   *   thirtyYearProjection
-   * }
+   * epvsCalculation.data
+   * epvsCalculation.results
+   * epvsCalculation.thirtyYearProjection
    */
-  const [epvsCalculation, setEpvsCalculation] =
-    useState(null)
 
-  // =========================================================
-  // SOLAR CHECK
-  // =========================================================
+  const [
+    epvsCalculation,
+    setEpvsCalculation,
+  ] = useState(null)
+
+  /*
+   * =========================================================
+   * SOLAR CHECK
+   * =========================================================
+   */
 
   const isSolar =
-    String(appointment?.job_type || "")
+    String(
+      appointment?.job_type || ""
+    )
       .toLowerCase()
       .trim() === "solar"
 
-  // =========================================================
-  // DATE
-  // =========================================================
+  /*
+   * =========================================================
+   * DATE
+   * =========================================================
+   */
 
   function formatDate(value) {
     if (!value) {
@@ -66,29 +77,40 @@ function AppointmentDetail({
 
     const date = new Date(value)
 
-    if (Number.isNaN(date.getTime())) {
+    if (
+      Number.isNaN(
+        date.getTime()
+      )
+    ) {
       return String(value)
     }
 
-    return date.toLocaleString("en-GB", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
+    return date.toLocaleString(
+      "en-GB",
+      {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }
+    )
   }
 
-  // =========================================================
-  // SAVE RESULT
-  // =========================================================
+  /*
+   * =========================================================
+   * SAVE RESULT
+   * =========================================================
+   */
 
   async function saveResult() {
     if (!result) {
       return
     }
 
-    if (!appointment?.appointment_row_id) {
+    if (
+      !appointment?.appointment_row_id
+    ) {
       setError(
         "This appointment does not have an appointment_row_id."
       )
@@ -100,10 +122,6 @@ function AppointmentDetail({
     setError("")
 
     try {
-      // =======================================================
-      // UPDATE APPOINTMENT
-      // =======================================================
-
       const {
         data,
         error: updateError,
@@ -122,23 +140,27 @@ function AppointmentDetail({
         throw updateError
       }
 
-      if (!data || data.length === 0) {
+      if (
+        !data ||
+        data.length === 0
+      ) {
         throw new Error(
           "No appointment was updated. Check that appointment_row_id matches a row in the appointments table."
         )
       }
 
-      // =======================================================
-      // UPDATED APPOINTMENT
-      // =======================================================
+      const updatedAppointment =
+        data[0]
 
-      const updatedAppointment = data[0]
+      onUpdated?.(
+        updatedAppointment
+      )
 
-      onUpdated?.(updatedAppointment)
-
-      // =======================================================
-      // SOLAR CONTRACT
-      // =======================================================
+      /*
+       * =======================================================
+       * SOLAR CONTRACT
+       * =======================================================
+       */
 
       if (
         String(result)
@@ -154,10 +176,14 @@ function AppointmentDetail({
 
         try {
           await GenerateSolarContract({
-            appointment: updatedAppointment,
+            appointment:
+              updatedAppointment,
+
             epvsCalculation,
           })
-        } catch (contractError) {
+        } catch (
+          contractError
+        ) {
           console.error(
             "Error generating solar contract:",
             contractError
@@ -187,22 +213,29 @@ function AppointmentDetail({
     }
   }
 
-  // =========================================================
-  // MAP
-  // =========================================================
+  /*
+   * =========================================================
+   * MAP
+   * =========================================================
+   */
 
   const mapQuery =
     appointment?.postcode || ""
 
-  // =========================================================
-  // RESULT COLOUR
-  // =========================================================
+  /*
+   * =========================================================
+   * RESULT STYLE
+   * =========================================================
+   */
 
   function getResultStyle() {
-    const value = String(result || "")
-      .toLowerCase()
+    const value =
+      String(result || "")
+        .toLowerCase()
 
-    if (value.includes("sold")) {
+    if (
+      value.includes("sold")
+    ) {
       return {
         background: "#e8f4e2",
         color: "#315b28",
@@ -210,7 +243,9 @@ function AppointmentDetail({
     }
 
     if (
-      value.includes("cancel") ||
+      value.includes(
+        "cancel"
+      ) ||
       value.includes("lost")
     ) {
       return {
@@ -225,38 +260,47 @@ function AppointmentDetail({
     }
   }
 
-  // =========================================================
-  // NO APPOINTMENT
-  // =========================================================
+  /*
+   * =========================================================
+   * NO APPOINTMENT
+   * =========================================================
+   */
 
   if (!appointment) {
     return null
   }
 
-  // =========================================================
-  // RENDER
-  // =========================================================
+  /*
+   * =========================================================
+   * RENDER
+   * =========================================================
+   */
 
   return (
     <section>
+
       {/* =====================================================
           HERO
           ===================================================== */}
 
       <div
         style={{
-          margin: "-24px -24px 0",
-          background: "#002d49",
+          margin:
+            "-24px -24px 0",
+          background:
+            "#002d49",
           color: "#fff",
-          padding: "10px 28px 24px",
+          padding:
+            "10px 28px 24px",
         }}
       >
         <div
           style={{
             display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            marginBottom: "18px",
+            alignItems:
+              "center",
+            gap: 8,
+            marginBottom: 18,
           }}
         >
           <button
@@ -264,21 +308,28 @@ function AppointmentDetail({
             onClick={onBack}
             style={{
               border: 0,
-              background: "transparent",
-              color: "#dce8ef",
-              cursor: "pointer",
-              padding: "4px",
+              background:
+                "transparent",
+              color:
+                "#dce8ef",
+              cursor:
+                "pointer",
+              padding: 4,
               display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              alignItems:
+                "center",
+              justifyContent:
+                "center",
             }}
           >
-            <ArrowLeft size={17} />
+            <ArrowLeft
+              size={17}
+            />
           </button>
 
           <span
             style={{
-              fontSize: "12px",
+              fontSize: 12,
               fontWeight: 600,
             }}
           >
@@ -291,16 +342,18 @@ function AppointmentDetail({
         <div
           style={{
             display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: "20px",
+            alignItems:
+              "flex-start",
+            justifyContent:
+              "space-between",
+            gap: 20,
           }}
         >
           <div>
             <h1
               style={{
                 margin: 0,
-                fontSize: "24px",
+                fontSize: 24,
                 lineHeight: 1.2,
                 fontWeight: 700,
               }}
@@ -311,9 +364,10 @@ function AppointmentDetail({
 
             <div
               style={{
-                marginTop: "5px",
-                fontSize: "13px",
-                color: "#c9d8e1",
+                marginTop: 5,
+                fontSize: 13,
+                color:
+                  "#c9d8e1",
               }}
             >
               {formatDate(
@@ -325,7 +379,7 @@ function AppointmentDetail({
           <div
             style={{
               display: "flex",
-              gap: "8px",
+              gap: 8,
               flexShrink: 0,
             }}
           >
@@ -337,21 +391,28 @@ function AppointmentDetail({
               }}
               style={{
                 display: "flex",
-                alignItems: "center",
-                gap: "7px",
-                height: "40px",
-                padding: "0 15px",
+                alignItems:
+                  "center",
+                gap: 7,
+                height: 40,
+                padding:
+                  "0 15px",
                 border: "none",
-                borderRadius: "8px",
-                background: "#2499ed",
+                borderRadius: 8,
+                background:
+                  "#2499ed",
                 color: "#fff",
-                cursor: "pointer",
-                fontFamily: "inherit",
-                fontSize: "12px",
+                cursor:
+                  "pointer",
+                fontFamily:
+                  "inherit",
+                fontSize: 12,
                 fontWeight: 700,
               }}
             >
-              <Plus size={17} />
+              <Plus
+                size={17}
+              />
               Result
             </button>
 
@@ -359,21 +420,29 @@ function AppointmentDetail({
               type="button"
               style={{
                 display: "flex",
-                alignItems: "center",
-                gap: "7px",
-                height: "40px",
-                padding: "0 15px",
-                border: "1px solid #557287",
-                borderRadius: "8px",
-                background: "#173f59",
+                alignItems:
+                  "center",
+                gap: 7,
+                height: 40,
+                padding:
+                  "0 15px",
+                border:
+                  "1px solid #557287",
+                borderRadius: 8,
+                background:
+                  "#173f59",
                 color: "#fff",
-                cursor: "pointer",
-                fontFamily: "inherit",
-                fontSize: "12px",
+                cursor:
+                  "pointer",
+                fontFamily:
+                  "inherit",
+                fontSize: 12,
                 fontWeight: 600,
               }}
             >
-              <Pencil size={15} />
+              <Pencil
+                size={15}
+              />
               Edit
             </button>
           </div>
@@ -386,12 +455,14 @@ function AppointmentDetail({
 
       <div
         style={{
-          marginTop: "8px",
-          borderRadius: "10px",
+          marginTop: 8,
+          borderRadius: 10,
           overflow: "hidden",
-          border: "1px solid #dfe2e5",
-          background: "#eef1f3",
-          height: "275px",
+          border:
+            "1px solid #dfe2e5",
+          background:
+            "#eef1f3",
+          height: 275,
         }}
       >
         {mapQuery ? (
@@ -401,7 +472,8 @@ function AppointmentDetail({
             height="100%"
             style={{
               border: 0,
-              display: "block",
+              display:
+                "block",
             }}
             loading="lazy"
             src={`https://www.google.com/maps?q=${encodeURIComponent(
@@ -413,13 +485,16 @@ function AppointmentDetail({
             style={{
               height: "100%",
               display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              alignItems:
+                "center",
+              justifyContent:
+                "center",
               color: "#888",
-              fontSize: "12px",
+              fontSize: 12,
             }}
           >
-            No postcode available
+            No postcode
+            available
           </div>
         )}
       </div>
@@ -433,8 +508,8 @@ function AppointmentDetail({
           display: "grid",
           gridTemplateColumns:
             "repeat(3, minmax(0, 1fr))",
-          gap: "14px",
-          marginTop: "18px",
+          gap: 14,
+          marginTop: 18,
         }}
       >
         <InfoCard
@@ -443,12 +518,16 @@ function AppointmentDetail({
         >
           <InfoRow
             label="Name"
-            value={appointment.name}
+            value={
+              appointment.name
+            }
           />
 
           <InfoRow
             label="Phone"
-            value={appointment.phone}
+            value={
+              appointment.phone
+            }
             icon={
               appointment.phone
                 ? Phone
@@ -458,7 +537,9 @@ function AppointmentDetail({
 
           <InfoRow
             label="Email"
-            value={appointment.email}
+            value={
+              appointment.email
+            }
             icon={
               appointment.email
                 ? Mail
@@ -468,7 +549,9 @@ function AppointmentDetail({
 
           <InfoRow
             label="Postcode"
-            value={appointment.postcode}
+            value={
+              appointment.postcode
+            }
             icon={
               appointment.postcode
                 ? MapPin
@@ -490,7 +573,9 @@ function AppointmentDetail({
 
           <InfoRow
             label="Job type"
-            value={appointment.job_type}
+            value={
+              appointment.job_type
+            }
           />
 
           <InfoRow
@@ -517,14 +602,16 @@ function AppointmentDetail({
           <div
             style={{
               display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "10px",
+              alignItems:
+                "center",
+              justifyContent:
+                "space-between",
+              gap: 10,
             }}
           >
             <span
               style={{
-                fontSize: "10px",
+                fontSize: 10,
                 color: "#888",
               }}
             >
@@ -534,10 +621,12 @@ function AppointmentDetail({
             {result ? (
               <span
                 style={{
-                  display: "inline-block",
-                  padding: "5px 9px",
-                  borderRadius: "6px",
-                  fontSize: "10px",
+                  display:
+                    "inline-block",
+                  padding:
+                    "5px 9px",
+                  borderRadius: 6,
+                  fontSize: 10,
                   fontWeight: 700,
                   ...getResultStyle(),
                 }}
@@ -547,7 +636,7 @@ function AppointmentDetail({
             ) : (
               <span
                 style={{
-                  fontSize: "10px",
+                  fontSize: 10,
                   color: "#aaa",
                 }}
               >
@@ -565,18 +654,18 @@ function AppointmentDetail({
       {isSolar && (
         <div
           style={{
-            marginTop: "24px",
+            marginTop: 24,
           }}
         >
           <div
             style={{
-              marginBottom: "12px",
+              marginBottom: 12,
             }}
           >
             <h2
               style={{
                 margin: 0,
-                fontSize: "18px",
+                fontSize: 18,
                 color: "#222",
               }}
             >
@@ -585,18 +674,23 @@ function AppointmentDetail({
 
             <p
               style={{
-                margin: "5px 0 0",
-                fontSize: "11px",
+                margin:
+                  "5px 0 0",
+                fontSize: 11,
                 color: "#888",
               }}
             >
-              Complete the EPVS calculation for
-              this solar appointment.
+              Complete the EPVS
+              calculation for
+              this solar
+              appointment.
             </p>
           </div>
 
           <EPVSCalculator
-            appointment={appointment}
+            appointment={
+              appointment
+            }
             onCalculationChange={
               setEpvsCalculation
             }
@@ -604,16 +698,14 @@ function AppointmentDetail({
 
           {/* =================================================
               30 YEAR BREAKDOWN
+
+              IMPORTANT:
+              Pass the actual thirtyYearProjection object.
               ================================================= */}
 
-          {epvsCalculation?.thirtyYearProjection && (
+          {epvsCalculation
+            ?.thirtyYearProjection && (
             <ThirtyYearBreakdown
-              results={
-                epvsCalculation.results
-              }
-              data={
-                epvsCalculation.data
-              }
               thirtyYearProjection={
                 epvsCalculation.thirtyYearProjection
               }
@@ -629,41 +721,50 @@ function AppointmentDetail({
       {showResult && (
         <div
           style={{
-            position: "fixed",
+            position:
+              "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.35)",
+            background:
+              "rgba(0,0,0,0.35)",
             display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            alignItems:
+              "center",
+            justifyContent:
+              "center",
             zIndex: 1000,
-            padding: "20px",
+            padding: 20,
           }}
         >
           <div
             style={{
               width: "100%",
-              maxWidth: "440px",
+              maxWidth: 440,
               background: "#fff",
-              borderRadius: "10px",
+              borderRadius: 10,
               boxShadow:
                 "0 15px 50px rgba(0,0,0,0.20)",
-              overflow: "hidden",
+              overflow:
+                "hidden",
             }}
           >
             <div
               style={{
-                padding: "18px 20px",
-                borderBottom: "1px solid #eee",
+                padding:
+                  "18px 20px",
+                borderBottom:
+                  "1px solid #eee",
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
+                alignItems:
+                  "center",
+                justifyContent:
+                  "space-between",
               }}
             >
               <div>
                 <h2
                   style={{
                     margin: 0,
-                    fontSize: "16px",
+                    fontSize: 16,
                   }}
                 >
                   Result appointment
@@ -671,8 +772,9 @@ function AppointmentDetail({
 
                 <p
                   style={{
-                    margin: "4px 0 0",
-                    fontSize: "10px",
+                    margin:
+                      "4px 0 0",
+                    fontSize: 10,
                     color: "#888",
                   }}
                 >
@@ -683,32 +785,41 @@ function AppointmentDetail({
               <button
                 type="button"
                 onClick={() =>
-                  setShowResult(false)
+                  setShowResult(
+                    false
+                  )
                 }
                 style={{
                   border: 0,
-                  background: "transparent",
-                  cursor: "pointer",
-                  color: "#888",
+                  background:
+                    "transparent",
+                  cursor:
+                    "pointer",
+                  color:
+                    "#888",
                 }}
               >
-                <X size={18} />
+                <X
+                  size={18}
+                />
               </button>
             </div>
 
             <div
               style={{
-                padding: "20px",
+                padding: 20,
               }}
             >
               <label
                 style={{
-                  display: "block",
-                  fontSize: "10px",
+                  display:
+                    "block",
+                  fontSize: 10,
                   fontWeight: 700,
                   color: "#555",
-                  marginBottom: "7px",
-                  textTransform: "uppercase",
+                  marginBottom: 7,
+                  textTransform:
+                    "uppercase",
                 }}
               >
                 Result
@@ -717,18 +828,23 @@ function AppointmentDetail({
               <select
                 value={result}
                 onChange={(e) =>
-                  setResult(e.target.value)
+                  setResult(
+                    e.target.value
+                  )
                 }
                 style={{
                   width: "100%",
-                  height: "40px",
+                  height: 40,
                   border:
                     "1px solid #d9dadd",
-                  borderRadius: "7px",
-                  padding: "0 10px",
-                  fontFamily: "inherit",
-                  fontSize: "12px",
-                  background: "#fff",
+                  borderRadius: 7,
+                  padding:
+                    "0 10px",
+                  fontFamily:
+                    "inherit",
+                  fontSize: 12,
+                  background:
+                    "#fff",
                 }}
               >
                 <option value="">
@@ -758,31 +874,46 @@ function AppointmentDetail({
 
               {result
                 .toLowerCase()
-                .trim() === "sold" &&
+                .trim() ===
+                "sold" &&
                 isSolar && (
                   <div
                     style={{
-                      marginTop: "12px",
-                      padding: "10px",
-                      background: "#eef7ff",
-                      borderRadius: "6px",
-                      color: "#245579",
-                      fontSize: "10px",
+                      marginTop: 12,
+                      padding: 10,
+                      background:
+                        "#eef7ff",
+                      borderRadius: 6,
+                      color:
+                        "#245579",
+                      fontSize: 10,
                     }}
                   >
                     {epvsCalculation ? (
                       <>
-                        Saving as Sold will generate
-                        the solar contract PDF using
-                        the completed EPVS calculation,
-                        including the 30-year benefit
+                        Saving as Sold
+                        will generate
+                        the solar
+                        contract PDF
+                        using the
+                        completed
+                        EPVS
+                        calculation,
+                        including
+                        the 30-year
+                        benefit
                         projection.
                       </>
                     ) : (
                       <>
-                        Please complete the EPVS
-                        calculation before saving this
-                        appointment as Sold.
+                        Please
+                        complete the
+                        EPVS
+                        calculation
+                        before
+                        saving this
+                        appointment
+                        as Sold.
                       </>
                     )}
                   </div>
@@ -791,12 +922,14 @@ function AppointmentDetail({
               {error && (
                 <div
                   style={{
-                    marginTop: "12px",
-                    padding: "10px",
-                    background: "#fbeaea",
-                    borderRadius: "6px",
-                    color: "#8b3333",
-                    fontSize: "10px",
+                    marginTop: 12,
+                    padding: 10,
+                    background:
+                      "#fbeaea",
+                    borderRadius: 6,
+                    color:
+                      "#8b3333",
+                    fontSize: 10,
                   }}
                 >
                   {error}
@@ -806,28 +939,37 @@ function AppointmentDetail({
 
             <div
               style={{
-                padding: "14px 20px",
-                borderTop: "1px solid #eee",
+                padding:
+                  "14px 20px",
+                borderTop:
+                  "1px solid #eee",
                 display: "flex",
-                justifyContent: "flex-end",
-                gap: "8px",
+                justifyContent:
+                  "flex-end",
+                gap: 8,
               }}
             >
               <button
                 type="button"
                 onClick={() =>
-                  setShowResult(false)
+                  setShowResult(
+                    false
+                  )
                 }
                 style={{
-                  height: "36px",
-                  padding: "0 13px",
+                  height: 36,
+                  padding:
+                    "0 13px",
                   border:
                     "1px solid #dddfe3",
-                  borderRadius: "7px",
-                  background: "#fff",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  fontSize: "11px",
+                  borderRadius: 7,
+                  background:
+                    "#fff",
+                  cursor:
+                    "pointer",
+                  fontFamily:
+                    "inherit",
+                  fontSize: 11,
                 }}
               >
                 Cancel
@@ -840,17 +982,22 @@ function AppointmentDetail({
                   saving ||
                   (result
                     .toLowerCase()
-                    .trim() === "sold" &&
+                    .trim() ===
+                    "sold" &&
                     isSolar &&
                     !epvsCalculation)
                 }
-                onClick={saveResult}
+                onClick={
+                  saveResult
+                }
                 style={{
-                  height: "36px",
-                  padding: "0 15px",
+                  height: 36,
+                  padding:
+                    "0 15px",
                   border: 0,
-                  borderRadius: "7px",
-                  background: "#172554",
+                  borderRadius: 7,
+                  background:
+                    "#172554",
                   color: "#fff",
                   cursor:
                     result &&
@@ -858,7 +1005,8 @@ function AppointmentDetail({
                     !(
                       result
                         .toLowerCase()
-                        .trim() === "sold" &&
+                        .trim() ===
+                        "sold" &&
                       isSolar &&
                       !epvsCalculation
                     )
@@ -870,14 +1018,16 @@ function AppointmentDetail({
                     !(
                       result
                         .toLowerCase()
-                        .trim() === "sold" &&
+                        .trim() ===
+                        "sold" &&
                       isSolar &&
                       !epvsCalculation
                     )
                       ? 1
                       : 0.5,
-                  fontFamily: "inherit",
-                  fontSize: "11px",
+                  fontFamily:
+                    "inherit",
+                  fontSize: 11,
                   fontWeight: 600,
                 }}
               >
@@ -893,9 +1043,11 @@ function AppointmentDetail({
   )
 }
 
-// =========================================================
-// INFO CARD
-// =========================================================
+/*
+ * =========================================================
+ * INFO CARD
+ * =========================================================
+ */
 
 function InfoCard({
   title,
@@ -906,15 +1058,16 @@ function InfoCard({
     <div
       className="card"
       style={{
-        padding: "16px",
+        padding: 16,
       }}
     >
       <div
         style={{
           display: "flex",
-          alignItems: "center",
-          gap: "7px",
-          marginBottom: "14px",
+          alignItems:
+            "center",
+          gap: 7,
+          marginBottom: 14,
         }}
       >
         <Icon
@@ -925,7 +1078,7 @@ function InfoCard({
         <h3
           style={{
             margin: 0,
-            fontSize: "12px",
+            fontSize: 12,
             fontWeight: 700,
           }}
         >
@@ -936,8 +1089,9 @@ function InfoCard({
       <div
         style={{
           display: "flex",
-          flexDirection: "column",
-          gap: "10px",
+          flexDirection:
+            "column",
+          gap: 10,
         }}
       >
         {children}
@@ -946,9 +1100,11 @@ function InfoCard({
   )
 }
 
-// =========================================================
-// INFO ROW
-// =========================================================
+/*
+ * =========================================================
+ * INFO ROW
+ * =========================================================
+ */
 
 function InfoRow({
   label,
@@ -959,34 +1115,43 @@ function InfoRow({
     <div
       style={{
         display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        gap: "12px",
+        justifyContent:
+          "space-between",
+        alignItems:
+          "center",
+        gap: 12,
       }}
     >
       <span
         style={{
-          fontSize: "9px",
+          fontSize: 9,
           color: "#999",
           display: "flex",
-          alignItems: "center",
-          gap: "4px",
+          alignItems:
+            "center",
+          gap: 4,
         }}
       >
-        {Icon && <Icon size={11} />}
+        {Icon && (
+          <Icon size={11} />
+        )}
 
         {label}
       </span>
 
       <span
         style={{
-          fontSize: "10px",
+          fontSize: 10,
           color: "#333",
           fontWeight: 500,
-          textAlign: "right",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
+          textAlign:
+            "right",
+          overflow:
+            "hidden",
+          textOverflow:
+            "ellipsis",
+          whiteSpace:
+            "nowrap",
         }}
       >
         {value || "—"}
