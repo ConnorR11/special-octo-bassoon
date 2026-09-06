@@ -15,7 +15,6 @@ import {
 
 import { supabase } from "../lib/supabase"
 import EPVSCalculator from "../EPVSCalculator"
-import ThirtyYearBreakdown from "../components/EPVS/ThirtyYearBreakdown"
 import { GenerateSolarContract } from "../contracts/GenerateSolarContract"
 
 function AppointmentDetail({
@@ -36,12 +35,23 @@ function AppointmentDetail({
   const [error, setError] = useState("")
 
   /*
-   * This contains BOTH:
+   * =========================================================
+   * EPVS CALCULATION
+   * =========================================================
    *
-   * epvsCalculation.data
-   * epvsCalculation.results
+   * EPVSCalculator returns:
    *
-   * The 30-year breakdown uses both of these.
+   * {
+   *   data,
+   *   results,
+   *   thirtyYearProjection
+   * }
+   *
+   * We keep the complete object here so that:
+   *
+   * 1. The appointment detail can display the calculation.
+   * 2. The 30-year projection can be displayed.
+   * 3. The solar contract can use the exact same calculation.
    */
   const [epvsCalculation, setEpvsCalculation] =
     useState(null)
@@ -147,8 +157,8 @@ function AppointmentDetail({
         isSolar
       ) {
         /*
-         * Make sure we actually have the EPVS calculation
-         * before attempting to generate the solar contract.
+         * The solar contract requires the completed
+         * EPVS calculation.
          */
         if (!epvsCalculation) {
           throw new Error(
@@ -158,19 +168,18 @@ function AppointmentDetail({
 
         try {
           /*
-           * IMPORTANT:
-           *
-           * We now pass the entire EPVS calculation object.
+           * Pass the complete EPVS calculation.
            *
            * This contains:
            *
            * {
            *   data: {...},
-           *   results: {...}
+           *   results: {...},
+           *   thirtyYearProjection: {...}
            * }
            *
-           * GenerateSolarContract can therefore use the same
-           * calculation that is displayed on screen.
+           * Therefore the contract can use the exact same
+           * figures displayed in the appointment.
            */
           await GenerateSolarContract({
             appointment: updatedAppointment,
@@ -262,7 +271,6 @@ function AppointmentDetail({
 
   return (
     <section>
-
       {/* =====================================================
           HERO
           ===================================================== */}
@@ -625,25 +633,6 @@ function AppointmentDetail({
               setEpvsCalculation
             }
           />
-
-          {/* =================================================
-              30 YEAR BREAKDOWN
-
-              This is deliberately OUTSIDE the calculator
-              itself so it appears in the appointment detail.
-              ================================================= */}
-
-          {epvsCalculation?.results &&
-            epvsCalculation?.data && (
-              <ThirtyYearBreakdown
-                results={
-                  epvsCalculation.results
-                }
-                data={
-                  epvsCalculation.data
-                }
-              />
-            )}
         </div>
       )}
 
@@ -781,6 +770,10 @@ function AppointmentDetail({
                 </option>
               </select>
 
+              {/* =================================================
+                  SOLAR SOLD MESSAGE
+                  ================================================= */}
+
               {result
                 .toLowerCase()
                 .trim() === "sold" &&
@@ -813,6 +806,10 @@ function AppointmentDetail({
                   </div>
                 )}
 
+              {/* =================================================
+                  ERROR
+                  ================================================= */}
+
               {error && (
                 <div
                   style={{
@@ -828,6 +825,10 @@ function AppointmentDetail({
                 </div>
               )}
             </div>
+
+            {/* =================================================
+                MODAL FOOTER
+                ================================================= */}
 
             <div
               style={{
