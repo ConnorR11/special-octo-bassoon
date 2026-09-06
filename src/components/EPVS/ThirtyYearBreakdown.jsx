@@ -1,4 +1,7 @@
-import React from "react"
+import React, {
+  useMemo,
+  useState,
+} from "react"
 
 const money = (value) =>
   new Intl.NumberFormat("en-GB", {
@@ -17,12 +20,31 @@ const number = (value) =>
     }
   )
 
+const percent = (value) =>
+  `${(
+    Number(value || 0) * 100
+  ).toFixed(1)}%`
+
 export default function ThirtyYearBreakdown({
   thirtyYearProjection,
-  results,
-  data,
 }) {
+  const [selectedScenario, setSelectedScenario] =
+    useState("averageInflation")
+
   if (!thirtyYearProjection) {
+    return null
+  }
+
+  const {
+    scenarios = {},
+    inflationScenarios = [],
+  } = thirtyYearProjection
+
+  const scenario =
+    scenarios[selectedScenario] ||
+    scenarios.averageInflation
+
+  if (!scenario) {
     return null
   }
 
@@ -30,18 +52,18 @@ export default function ThirtyYearBreakdown({
     rows = [],
     totals = {},
     paybackPeriod,
-    scenarios = {},
-    finance = {},
-  } = thirtyYearProjection
+    totalNetSavings,
+    finalNetPosition,
+  } = scenario
 
-  const noInflation =
-    scenarios.none
+  const selectedInflation =
+    scenario.inflationRate || 0
 
-  const midpoint =
-    scenarios.midpoint
+  const firstYear =
+    rows[0] || {}
 
-  const average =
-    scenarios.average
+  const lastYear =
+    rows[rows.length - 1] || {}
 
   return (
     <div
@@ -49,9 +71,9 @@ export default function ThirtyYearBreakdown({
         marginTop: 24,
       }}
     >
-      {/* =====================================================
-          INTRODUCTION
-      ===================================================== */}
+      {/* =================================================
+          INTRO
+      ================================================= */}
 
       <div
         className="card"
@@ -67,7 +89,7 @@ export default function ThirtyYearBreakdown({
             color: "#475569",
           }}
         >
-          30 Year Benefit Projection
+          30 Year Benefit Breakdown
         </h2>
 
         <p
@@ -78,13 +100,13 @@ export default function ThirtyYearBreakdown({
             color: "#475569",
           }}
         >
-          The following figures are illustrative
-          projections based on the customer's
-          current electricity consumption and
-          the assumptions entered into the EPVS
-          calculator. They take account of solar
-          panel degradation and different
-          electricity price inflation scenarios.
+          The extended projections are
+          illustrative estimates based on
+          the customer's current electricity
+          consumption, the entered EPVS
+          generation figures, panel
+          degradation and the selected
+          inflation scenario.
         </p>
 
         <p
@@ -95,169 +117,182 @@ export default function ThirtyYearBreakdown({
             color: "#475569",
           }}
         >
-          The 7.6% scenario is the average
-          inflation scenario used for the detailed
-          projection below. The 3.8% scenario is
-          the midpoint between 0% and 7.6%.
+          EPVS guidance states that where
+          inflation is used, consumers should
+          be shown multiple scenarios. This
+          calculator therefore shows 0%,
+          midpoint inflation and the 7.6%
+          average inflation scenario.
         </p>
+      </div>
 
+      {/* =================================================
+          SCENARIO SELECTOR
+      ================================================= */}
+
+      <div
+        className="card"
+        style={{
+          padding: 18,
+          marginBottom: 14,
+        }}
+      >
         <div
           style={{
-            marginTop: 14,
-            padding: 12,
-            background: "#fff7ed",
-            borderRadius: 8,
-            color: "#9a3412",
-            fontSize: 11,
-            lineHeight: 1.6,
+            display: "flex",
+            justifyContent:
+              "space-between",
+            alignItems: "center",
+            gap: 20,
+            flexWrap: "wrap",
           }}
         >
-          <strong>
-            Important:
-          </strong>{" "}
-          These figures are estimates for
-          illustrative purposes only and are not
-          a guarantee of performance or future
-          electricity prices.
+          <div>
+            <h3
+              style={{
+                margin: 0,
+                color: "#334155",
+                fontSize: 16,
+              }}
+            >
+              Inflation scenario
+            </h3>
+
+            <p
+              style={{
+                margin: "5px 0 0",
+                color: "#64748b",
+                fontSize: 11,
+              }}
+            >
+              Select the scenario displayed
+              in the detailed projection.
+            </p>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
+          >
+            {inflationScenarios.map(
+              (item) => {
+                const active =
+                  item.key ===
+                  selectedScenario
+
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() =>
+                      setSelectedScenario(
+                        item.key
+                      )
+                    }
+                    style={{
+                      border: active
+                        ? "1px solid #172554"
+                        : "1px solid #d7dee8",
+
+                      background: active
+                        ? "#172554"
+                        : "#fff",
+
+                      color: active
+                        ? "#fff"
+                        : "#334155",
+
+                      borderRadius: 8,
+                      padding:
+                        "9px 13px",
+                      cursor: "pointer",
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                )
+              }
+            )}
+          </div>
         </div>
       </div>
 
-      {/* =====================================================
-          INFLATION SCENARIOS
-      ===================================================== */}
+      {/* =================================================
+          SCENARIO SUMMARIES
+      ================================================= */}
 
       <div
         style={{
           display: "grid",
           gridTemplateColumns:
             "repeat(3, minmax(0, 1fr))",
-          gap: 14,
+          gap: 12,
           marginBottom: 14,
         }}
       >
         <ScenarioCard
-          label="0% Inflation"
+          title="0% inflation"
           scenario={
-            noInflation
+            scenarios.noInflation
+          }
+          active={
+            selectedScenario ===
+            "noInflation"
           }
         />
 
         <ScenarioCard
-          label="3.8% Inflation"
+          title="3.8% inflation"
           scenario={
-            midpoint
+            scenarios.midpointInflation
+          }
+          active={
+            selectedScenario ===
+            "midpointInflation"
           }
         />
 
         <ScenarioCard
-          label="7.6% Inflation"
+          title="7.6% inflation"
           scenario={
-            average
+            scenarios.averageInflation
           }
-          primary
+          active={
+            selectedScenario ===
+            "averageInflation"
+          }
         />
       </div>
 
-      {/* =====================================================
-          FINANCE SUMMARY
-      ===================================================== */}
-
-      {finance.totalContractValue >
-        0 && (
-        <div
-          className="card"
-          style={{
-            padding: 20,
-            marginBottom: 14,
-          }}
-        >
-          <h3
-            style={{
-              margin: 0,
-              fontSize: 15,
-              color: "#475569",
-            }}
-          >
-            Finance
-          </h3>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(4, minmax(0, 1fr))",
-              gap: 14,
-              marginTop: 14,
-            }}
-          >
-            <FinanceCard
-              label="System cost"
-              value={money(
-                finance.systemCost
-              )}
-            />
-
-            <FinanceCard
-              label="Deposit"
-              value={money(
-                finance.deposit
-              )}
-            />
-
-            <FinanceCard
-              label="Monthly repayment"
-              value={money(
-                finance.monthlyPayment
-              )}
-            />
-
-            <FinanceCard
-              label="Total contract value"
-              value={money(
-                finance.totalContractValue
-              )}
-            />
-          </div>
-
-          {finance.totalFinanceInterest >
-            0 && (
-            <p
-              style={{
-                margin:
-                  "12px 0 0",
-                fontSize: 11,
-                color: "#64748b",
-              }}
-            >
-              Total finance interest:
-              {" "}
-              <strong>
-                {money(
-                  finance.totalFinanceInterest
-                )}
-              </strong>
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* =====================================================
-          DETAILED SUMMARY
-      ===================================================== */}
+      {/* =================================================
+          SELECTED SCENARIO SUMMARY
+      ================================================= */}
 
       <div
         style={{
           display: "grid",
           gridTemplateColumns:
-            "repeat(4, minmax(0, 1fr))",
-          gap: 14,
+            "repeat(5, minmax(0, 1fr))",
+          gap: 12,
           marginBottom: 14,
         }}
       >
         <SummaryCard
+          label="Inflation"
+          value={percent(
+            selectedInflation
+          )}
+        />
+
+        <SummaryCard
           label="First year benefit"
           value={money(
-            rows[0]?.annualBenefit
+            firstYear.annualBenefit
           )}
         />
 
@@ -271,155 +306,72 @@ export default function ThirtyYearBreakdown({
         />
 
         <SummaryCard
-          label="30 year net benefit"
+          label="30 year net savings"
           value={money(
-            average?.totalNetSavings
+            totalNetSavings
           )}
         />
 
         <SummaryCard
-          label="Year 30 net position"
+          label="Final net position"
           value={money(
-            rows[29]
-              ?.cumulativePosition
+            finalNetPosition
           )}
         />
       </div>
 
-      {/* =====================================================
-          SCENARIO COMPARISON
-      ===================================================== */}
+      {/* =================================================
+          FINANCE INFORMATION
+      ================================================= */}
 
       <div
         className="card"
         style={{
-          padding: 20,
+          padding: 16,
           marginBottom: 14,
         }}
       >
-        <h3
-          style={{
-            margin: 0,
-            fontSize: 15,
-            color: "#475569",
-          }}
-        >
-          Inflation Scenario Comparison
-        </h3>
-
         <div
           style={{
-            overflowX: "auto",
-            marginTop: 14,
+            display: "grid",
+            gridTemplateColumns:
+              "repeat(4, 1fr)",
+            gap: 12,
           }}
         >
-          <table
-            style={{
-              width: "100%",
-              borderCollapse:
-                "collapse",
-              fontSize: 12,
-            }}
-          >
-            <thead>
-              <tr>
-                <HeaderCell>
-                  SCENARIO
-                </HeaderCell>
+          <MiniMetric
+            label="Total finance payments"
+            value={money(
+              totals.financePayment
+            )}
+          />
 
-                <HeaderCell>
-                  INFLATION
-                </HeaderCell>
+          <MiniMetric
+            label="Replacement costs"
+            value={money(
+              totals.replacementPayment
+            )}
+          />
 
-                <HeaderCell>
-                  YEAR 1
-                  <br />
-                  BENEFIT
-                </HeaderCell>
+          <MiniMetric
+            label="Total yearly payments"
+            value={money(
+              totals.yearlyPayment
+            )}
+          />
 
-                <HeaderCell>
-                  30 YEAR
-                  <br />
-                  BENEFIT
-                </HeaderCell>
-
-                <HeaderCell>
-                  PAYBACK
-                </HeaderCell>
-
-                <HeaderCell green>
-                  YEAR 30
-                  <br />
-                  NET POSITION
-                </HeaderCell>
-              </tr>
-            </thead>
-
-            <tbody>
-              <ScenarioRow
-                label="No inflation"
-                scenario={
-                  noInflation
-                }
-              />
-
-              <ScenarioRow
-                label="Midpoint"
-                scenario={
-                  midpoint
-                }
-              />
-
-              <ScenarioRow
-                label="Average"
-                scenario={
-                  average
-                }
-                green
-              />
-            </tbody>
-          </table>
+          <MiniMetric
+            label="Total annual benefits"
+            value={money(
+              totals.annualBenefit
+            )}
+          />
         </div>
       </div>
 
-      {/* =====================================================
-          DETAILED 7.6% TABLE
-      ===================================================== */}
-
-      <div
-        className="card"
-        style={{
-          padding: 20,
-          marginBottom: 14,
-        }}
-      >
-        <h3
-          style={{
-            margin: 0,
-            fontSize: 15,
-            color: "#475569",
-          }}
-        >
-          Detailed 30 Year Projection —
-          7.6% Inflation Scenario
-        </h3>
-
-        <p
-          style={{
-            margin:
-              "10px 0 0",
-            fontSize: 11,
-            color: "#64748b",
-            lineHeight: 1.6,
-          }}
-        >
-          Electricity and export rates are
-          increased by 7.6% per year for this
-          illustrative scenario, while solar
-          generation reduces annually in line
-          with the degradation assumption.
-        </p>
-      </div>
+      {/* =================================================
+          TABLE
+      ================================================= */}
 
       <div
         className="card"
@@ -436,7 +388,7 @@ export default function ThirtyYearBreakdown({
           <table
             style={{
               width: "100%",
-              minWidth: 1200,
+              minWidth: 1450,
               borderCollapse:
                 "collapse",
               fontSize: 11,
@@ -450,22 +402,30 @@ export default function ThirtyYearBreakdown({
 
                 <HeaderCell>
                   GENERATION
+                  <br />
+                  kWh
                 </HeaderCell>
 
                 <HeaderCell>
                   SOLAR
+                  <br />
+                  BENEFIT
                 </HeaderCell>
 
                 <HeaderCell>
                   BATTERY
+                  <br />
+                  BENEFIT
                 </HeaderCell>
 
                 <HeaderCell>
                   EXPORT
+                  <br />
+                  BENEFIT
                 </HeaderCell>
 
                 <HeaderCell green>
-                  ANNUAL
+                  TOTAL ANNUAL
                   <br />
                   BENEFIT
                 </HeaderCell>
@@ -473,7 +433,7 @@ export default function ThirtyYearBreakdown({
                 <HeaderCell>
                   REPLACEMENT
                   <br />
-                  COSTS
+                  COST
                 </HeaderCell>
 
                 <HeaderCell>
@@ -505,129 +465,130 @@ export default function ThirtyYearBreakdown({
                   <br />
                   INSTALL
                 </HeaderCell>
+
+                <HeaderCell>
+                  IMPORT
+                  <br />
+                  RATE
+                </HeaderCell>
               </tr>
             </thead>
 
             <tbody>
-              {rows.map(
-                (row) => (
-                  <tr
-                    key={
-                      row.year
+              {rows.map((row) => (
+                <tr key={row.year}>
+                  <BodyCell>
+                    {row.year}
+                  </BodyCell>
+
+                  <BodyCell>
+                    {number(
+                      row.generation
+                    )}
+                  </BodyCell>
+
+                  <BodyCell>
+                    {money(
+                      row.solarBenefit
+                    )}
+                  </BodyCell>
+
+                  <BodyCell>
+                    {money(
+                      row.batteryBenefit
+                    )}
+                  </BodyCell>
+
+                  <BodyCell>
+                    {money(
+                      row.exportBenefit
+                    )}
+                  </BodyCell>
+
+                  <BodyCell green>
+                    {money(
+                      row.annualBenefit
+                    )}
+                  </BodyCell>
+
+                  <BodyCell>
+                    {row.replacementPayment >
+                    0
+                      ? `-${money(
+                          row.replacementPayment
+                        )}`
+                      : money(0)}
+                  </BodyCell>
+
+                  <BodyCell>
+                    {row.financePayment >
+                    0
+                      ? `-${money(
+                          row.financePayment
+                        )}`
+                      : money(0)}
+                  </BodyCell>
+
+                  <BodyCell
+                    negative={
+                      row.netAnnualBenefit <
+                      0
                     }
                   >
-                    <BodyCell>
-                      {row.year}
-                    </BodyCell>
+                    {money(
+                      row.netAnnualBenefit
+                    )}
+                  </BodyCell>
 
-                    <BodyCell>
-                      {number(
-                        row.generation
-                      )}
-                    </BodyCell>
-
-                    <BodyCell>
-                      {money(
-                        row.solarBenefit
-                      )}
-                    </BodyCell>
-
-                    <BodyCell>
-                      {money(
-                        row.batteryBenefit
-                      )}
-                    </BodyCell>
-
-                    <BodyCell>
-                      {money(
-                        row.exportBenefit
-                      )}
-                    </BodyCell>
-
-                    <BodyCell green>
-                      {money(
-                        row.annualBenefit
-                      )}
-                    </BodyCell>
-
-                    <BodyCell>
-                      {row.replacementCost >
+                  <BodyCell
+                    green={
+                      row.cumulativePosition >=
                       0
-                        ? `-${money(
-                            row.replacementCost
-                          )}`
-                        : money(
-                            0
-                          )}
-                    </BodyCell>
-
-                    <BodyCell>
-                      {row.yearlyPayment >
+                    }
+                    negative={
+                      row.cumulativePosition <
                       0
-                        ? `-${money(
-                            row.yearlyPayment
-                          )}`
-                        : money(
-                            0
-                          )}
-                    </BodyCell>
+                    }
+                  >
+                    {money(
+                      row.cumulativePosition
+                    )}
+                  </BodyCell>
 
-                    <BodyCell
-                      negative={
-                        row.netAnnualBenefit <
-                        0
-                      }
-                    >
-                      {money(
-                        row.netAnnualBenefit
-                      )}
-                    </BodyCell>
+                  <BodyCell>
+                    {money(
+                      row.billPreInstall
+                    )}
+                  </BodyCell>
 
-                    <BodyCell
-                      green={
-                        row.cumulativePosition >=
-                        0
-                      }
-                      negative={
-                        row.cumulativePosition <
-                        0
-                      }
-                    >
-                      {money(
-                        row.cumulativePosition
-                      )}
-                    </BodyCell>
+                  <BodyCell>
+                    {money(
+                      row.billPostInstall
+                    )}
+                  </BodyCell>
 
-                    <BodyCell>
-                      {money(
-                        row.billPreInstall
-                      )}
-                    </BodyCell>
+                  <BodyCell>
+                    {row.importRate.toFixed(
+                      3
+                    )}
+                  </BodyCell>
+                </tr>
+              ))}
 
-                    <BodyCell>
-                      {money(
-                        row.billPostInstall
-                      )}
-                    </BodyCell>
-                  </tr>
-                )
-              )}
+              {/* TOTALS */}
 
               <tr>
                 <td
                   style={{
                     ...totalCell,
-                    textAlign:
-                      "left",
+                    textAlign: "left",
                   }}
                 >
                   TOTALS
                 </td>
 
                 <td
-                  style={
-                    totalCell
-                  }
+                  style={totalCell}
                 >
                   {number(
                     totals.generation
@@ -635,32 +596,26 @@ export default function ThirtyYearBreakdown({
                 </td>
 
                 <td
-                  style={
-                    totalCell
-                  }
+                  style={totalCell}
                 >
                   {money(
-                    totals.solar
+                    totals.solarBenefit
                   )}
                 </td>
 
                 <td
-                  style={
-                    totalCell
-                  }
+                  style={totalCell}
                 >
                   {money(
-                    totals.battery
+                    totals.batteryBenefit
                   )}
                 </td>
 
                 <td
-                  style={
-                    totalCell
-                  }
+                  style={totalCell}
                 >
                   {money(
-                    totals.exportKwh
+                    totals.exportBenefit
                   )}
                 </td>
 
@@ -677,29 +632,23 @@ export default function ThirtyYearBreakdown({
                 </td>
 
                 <td
-                  style={
-                    totalCell
-                  }
+                  style={totalCell}
                 >
                   {money(
-                    totals.replacementCost
+                    -totals.replacementPayment
                   )}
                 </td>
 
                 <td
-                  style={
-                    totalCell
-                  }
+                  style={totalCell}
                 >
                   {money(
-                    totals.yearlyPayment
+                    -totals.financePayment
                   )}
                 </td>
 
                 <td
-                  style={
-                    totalCell
-                  }
+                  style={totalCell}
                 >
                   {money(
                     totals.netAnnualBenefit
@@ -714,16 +663,13 @@ export default function ThirtyYearBreakdown({
                   }}
                 >
                   {money(
-                    rows[29]
-                      ?.cumulativePosition ||
+                    lastYear.cumulativePosition ||
                       0
                   )}
                 </td>
 
                 <td
-                  style={
-                    totalCell
-                  }
+                  style={totalCell}
                 >
                   {money(
                     totals.billPreInstall
@@ -731,13 +677,17 @@ export default function ThirtyYearBreakdown({
                 </td>
 
                 <td
-                  style={
-                    totalCell
-                  }
+                  style={totalCell}
                 >
                   {money(
                     totals.billPostInstall
                   )}
+                </td>
+
+                <td
+                  style={totalCell}
+                >
+                  —
                 </td>
               </tr>
             </tbody>
@@ -745,63 +695,58 @@ export default function ThirtyYearBreakdown({
         </div>
       </div>
 
-      {/* =====================================================
-          EPVS DISCLAIMER
-      ===================================================== */}
+      {/* =================================================
+          DISCLAIMER
+      ================================================= */}
 
       <div
         style={{
           marginTop: 14,
-          padding: 16,
+          padding: 15,
           background: "#f8fafc",
-          borderRadius: 8,
+          border:
+            "1px solid #dbe3ec",
+          borderRadius: 9,
           fontSize: 11,
-          lineHeight: 1.7,
+          lineHeight: 1.6,
           color: "#475569",
         }}
       >
         <strong>
-          Predicted Energy Performance and
-          Energy Saving
+          Illustrative projection
         </strong>
 
         <p
           style={{
             margin:
-              "8px 0 0",
+              "6px 0 0",
           }}
         >
-          The performance of Solar PV systems is
-          impossible to predict with certainty
-          due to the variability in the amount
-          of solar radiation from location to
-          location and from year to year. This
-          estimate is based upon the assumptions
-          entered into this preliminary model and
-          should be considered guidance only. It
-          should not be considered a guarantee of
-          performance.
-        </p>
-
-        <p
-          style={{
-            margin:
-              "8px 0 0",
-          }}
-        >
-          Inflation assumptions are illustrative
-          only. Future electricity prices cannot
-          be predicted with certainty.
+          These extended projections are
+          illustrative estimates and should
+          not be considered a guarantee of
+          performance or savings. Inflation
+          assumptions are scenarios rather
+          than predictions. Actual electricity
+          prices, generation, consumption,
+          degradation and export payments may
+          differ.
         </p>
       </div>
     </div>
   )
 }
 
+/*
+ * =========================================================
+ * SCENARIO CARD
+ * =========================================================
+ */
+
 function ScenarioCard({
-  label,
+  title,
   scenario,
-  primary = false,
+  active,
 }) {
   if (!scenario) {
     return null
@@ -810,88 +755,73 @@ function ScenarioCard({
   return (
     <div
       style={{
-        background: primary
-          ? "#299d48"
-          : "#575757",
-        color: "#fff",
+        border: active
+          ? "2px solid #172554"
+          : "1px solid #d7dee8",
+
         borderRadius: 10,
-        padding: 18,
+        padding: 15,
+        background: active
+          ? "#f8fafc"
+          : "#fff",
       }}
     >
       <div
         style={{
-          fontSize: 13,
+          fontSize: 12,
           fontWeight: 700,
+          color: "#334155",
         }}
       >
-        {label}
-      </div>
-
-      <div
-        style={{
-          marginTop: 5,
-          fontSize: 11,
-          opacity: 0.9,
-        }}
-      >
-        Estimated 30 year net benefit
+        {title}
       </div>
 
       <div
         style={{
           marginTop: 8,
-          fontSize: 22,
+          fontSize: 18,
           fontWeight: 700,
+          color: "#172554",
         }}
       >
         {money(
-          scenario.totalNetSavings
+          scenario.finalNetPosition
         )}
+      </div>
+
+      <div
+        style={{
+          marginTop: 4,
+          fontSize: 10,
+          color: "#64748b",
+        }}
+      >
+        Final net position
       </div>
 
       <div
         style={{
           marginTop: 10,
           fontSize: 11,
-          opacity: 0.9,
+          color: "#475569",
         }}
       >
         Payback:{" "}
-        {scenario.paybackPeriod
-          ? `${scenario.paybackPeriod} years`
-          : "Not achieved"}
+        <strong>
+          {scenario.paybackPeriod
+            ? `${scenario.paybackPeriod} years`
+            : "Not achieved"}
+        </strong>
       </div>
     </div>
   )
 }
 
-function FinanceCard({
-  label,
-  value,
-}) {
-  return (
-    <div>
-      <div
-        style={{
-          fontSize: 10,
-          color: "#64748b",
-          marginBottom: 4,
-        }}
-      >
-        {label}
-      </div>
-
-      <strong
-        style={{
-          fontSize: 15,
-          color: "#172554",
-        }}
-      >
-        {value}
-      </strong>
-    </div>
-  )
-}
+/*
+ * =========================================================
+ * SUMMARY CARD
+ * =========================================================
+ */
 
 function SummaryCard({
   label,
@@ -903,18 +833,17 @@ function SummaryCard({
         background: "#299d48",
         color: "#fff",
         borderRadius: 8,
-        padding:
-          "13px 15px",
+        padding: "13px 15px",
         textAlign: "center",
       }}
     >
       <div
         style={{
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: 600,
         }}
       >
-        {label}:
+        {label}
       </div>
 
       <div
@@ -930,65 +859,53 @@ function SummaryCard({
   )
 }
 
-function ScenarioRow({
+/*
+ * =========================================================
+ * MINI METRIC
+ * =========================================================
+ */
+
+function MiniMetric({
   label,
-  scenario,
-  green = false,
+  value,
 }) {
-  if (!scenario) {
-    return null
-  }
-
   return (
-    <tr>
-      <BodyCell>
-        {label}
-      </BodyCell>
-
-      <BodyCell>
-        {(
-          scenario.inflationRate *
-          100
-        ).toFixed(1)}
-        %
-      </BodyCell>
-
-      <BodyCell>
-        {money(
-          scenario.rows?.[0]
-            ?.annualBenefit
-        )}
-      </BodyCell>
-
-      <BodyCell>
-        {money(
-          scenario.totalNetSavings
-        )}
-      </BodyCell>
-
-      <BodyCell>
-        {scenario.paybackPeriod
-          ? `${scenario.paybackPeriod} years`
-          : "Not achieved"}
-      </BodyCell>
-
-      <BodyCell
-        green={green}
-        negative={
-          !green &&
-          (scenario.rows?.[29]
-            ?.cumulativePosition ||
-            0) < 0
-        }
+    <div
+      style={{
+        padding: 10,
+        border:
+          "1px solid #e5e7eb",
+        borderRadius: 8,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 10,
+          color: "#64748b",
+        }}
       >
-        {money(
-          scenario.rows?.[29]
-            ?.cumulativePosition
-        )}
-      </BodyCell>
-    </tr>
+        {label}
+      </div>
+
+      <div
+        style={{
+          marginTop: 4,
+          fontSize: 14,
+          fontWeight: 700,
+          color: "#334155",
+        }}
+      >
+        {value}
+      </div>
+    </div>
   )
 }
+
+/*
+ * =========================================================
+ * TABLE CELLS
+ * =========================================================
+ */
 
 function HeaderCell({
   children,
@@ -1000,15 +917,21 @@ function HeaderCell({
         background: green
           ? "#299d48"
           : "#575757",
+
         color: "#fff",
+
         border:
           "1px solid #222",
+
         padding:
           "8px 6px",
-        textAlign:
-          "center",
+
+        textAlign: "center",
+
         fontWeight: 700,
+
         fontSize: 10,
+
         whiteSpace:
           "nowrap",
       }}
@@ -1040,12 +963,16 @@ function BodyCell({
       style={{
         background,
         color,
+
         border:
           "1px solid #222",
+
         padding:
           "6px 7px",
+
         textAlign:
           "right",
+
         whiteSpace:
           "nowrap",
       }}
@@ -1060,11 +987,8 @@ const totalCell = {
   color: "#fff",
   border:
     "1px solid #222",
-  padding:
-    "10px 7px",
-  textAlign:
-    "right",
+  padding: "10px 7px",
+  textAlign: "right",
   fontWeight: 700,
-  whiteSpace:
-    "nowrap",
+  whiteSpace: "nowrap",
 }
