@@ -1152,7 +1152,7 @@ export default function EPVSCalculator({
                             }}
                           >
                             {calculated
-                              ? `${calculated.systemSize.toFixed(
+                              ? `${Number(calculated.systemSize || 0).toFixed(
                                   2
                                 )} kWp · ${Math.round(
                                   calculated.generation
@@ -1286,7 +1286,7 @@ export default function EPVSCalculator({
                             type="number"
                             value={
                               calculated
-                                ? calculated.systemSize.toFixed(
+                                ? Number(calculated.systemSize || 0).toFixed(
                                     2
                                   )
                                 : "0.00"
@@ -1299,7 +1299,7 @@ export default function EPVSCalculator({
                             type="number"
                             value={
                               calculated
-                                ? calculated.generation.toFixed(
+                                ? Number(calculated.generation || 0).toFixed(
                                     2
                                   )
                                 : "0.00"
@@ -1367,7 +1367,7 @@ export default function EPVSCalculator({
                     "#26783a",
                 }}
               >
-                {results.generation.toFixed(
+                {Number(results.generation || 0).toFixed(
                   2
                 )}{" "}
                 kWh
@@ -1898,7 +1898,7 @@ function Results({
   const cards = [
     [
       "System size",
-      `${results.systemSize.toFixed(
+      `${Number(results.systemSize || 0).toFixed(
         2
       )} kWp`,
     ],
@@ -1959,7 +1959,7 @@ function Results({
     [
       "Simple payback",
       results.simplePayback
-        ? `${results.simplePayback.toFixed(
+        ? `${Number(results.simplePayback || 0).toFixed(
             1
           )} years`
         : "—",
