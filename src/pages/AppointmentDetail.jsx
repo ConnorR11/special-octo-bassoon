@@ -15,6 +15,7 @@ import {
 
 import { supabase } from "../lib/supabase"
 import EPVSCalculator from "../EPVSCalculator"
+import ThirtyYearBreakdown from "../components/EPVS/ThirtyYearBreakdown"
 import { GenerateSolarContract } from "../contracts/GenerateSolarContract"
 
 function AppointmentDetail({
@@ -31,27 +32,16 @@ function AppointmentDetail({
   )
 
   const [saving, setSaving] = useState(false)
-
   const [error, setError] = useState("")
 
   /*
-   * =========================================================
-   * EPVS CALCULATION
-   * =========================================================
-   *
-   * EPVSCalculator returns:
+   * Stores the complete EPVS calculation.
    *
    * {
    *   data,
    *   results,
    *   thirtyYearProjection
    * }
-   *
-   * We keep the complete object here so that:
-   *
-   * 1. The appointment detail can display the calculation.
-   * 2. The 30-year projection can be displayed.
-   * 3. The solar contract can use the exact same calculation.
    */
   const [epvsCalculation, setEpvsCalculation] =
     useState(null)
@@ -120,7 +110,7 @@ function AppointmentDetail({
       } = await supabase
         .from("appointments")
         .update({
-          result: result,
+          result,
         })
         .eq(
           "appointment_row_id",
@@ -156,10 +146,6 @@ function AppointmentDetail({
           .trim() === "sold" &&
         isSolar
       ) {
-        /*
-         * The solar contract requires the completed
-         * EPVS calculation.
-         */
         if (!epvsCalculation) {
           throw new Error(
             "The appointment was saved as Sold, but no EPVS calculation is available. Please complete the EPVS calculation before generating the solar contract."
@@ -167,20 +153,6 @@ function AppointmentDetail({
         }
 
         try {
-          /*
-           * Pass the complete EPVS calculation.
-           *
-           * This contains:
-           *
-           * {
-           *   data: {...},
-           *   results: {...},
-           *   thirtyYearProjection: {...}
-           * }
-           *
-           * Therefore the contract can use the exact same
-           * figures displayed in the appointment.
-           */
           await GenerateSolarContract({
             appointment: updatedAppointment,
             epvsCalculation,
@@ -198,10 +170,6 @@ function AppointmentDetail({
           return
         }
       }
-
-      // =======================================================
-      // CLOSE MODAL
-      // =======================================================
 
       setShowResult(false)
     } catch (err) {
@@ -633,6 +601,24 @@ function AppointmentDetail({
               setEpvsCalculation
             }
           />
+
+          {/* =================================================
+              30 YEAR BREAKDOWN
+              ================================================= */}
+
+          {epvsCalculation?.thirtyYearProjection && (
+            <ThirtyYearBreakdown
+              results={
+                epvsCalculation.results
+              }
+              data={
+                epvsCalculation.data
+              }
+              thirtyYearProjection={
+                epvsCalculation.thirtyYearProjection
+              }
+            />
+          )}
         </div>
       )}
 
@@ -770,10 +756,6 @@ function AppointmentDetail({
                 </option>
               </select>
 
-              {/* =================================================
-                  SOLAR SOLD MESSAGE
-                  ================================================= */}
-
               {result
                 .toLowerCase()
                 .trim() === "sold" &&
@@ -806,10 +788,6 @@ function AppointmentDetail({
                   </div>
                 )}
 
-              {/* =================================================
-                  ERROR
-                  ================================================= */}
-
               {error && (
                 <div
                   style={{
@@ -825,10 +803,6 @@ function AppointmentDetail({
                 </div>
               )}
             </div>
-
-            {/* =================================================
-                MODAL FOOTER
-                ================================================= */}
 
             <div
               style={{
