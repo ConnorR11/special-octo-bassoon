@@ -568,7 +568,7 @@ function Appointments({
 
                   </div>
 
-                  {appointment.phone && (
+                  {appointment.phone_number_1 && (
 
                     <div
                       style={{
@@ -582,7 +582,7 @@ function Appointments({
                     >
 
                       {
-                        appointment.phone
+                        appointment.phone_number_1
                       }
 
                     </div>
