@@ -77,7 +77,7 @@ function Appointments({
           [
             `name.ilike.%${search}%`,
             `postcode.ilike.%${search}%`,
-            `salesperson.ilike.%${search}%`,
+            `rep_allocated.ilike.%${search}%`,
             `phone.ilike.%${search}%`,
             `email.ilike.%${search}%`,
           ].join(",")
@@ -341,7 +341,7 @@ function Appointments({
                 e.target.value
               )
             }
-            placeholder="Search customer, postcode, phone, email or salesperson..."
+            placeholder="Search customer, postcode, phone, email or sales rep..."
             style={{
               width: "100%",
               boxSizing:
@@ -440,7 +440,7 @@ function Appointments({
           </div>
 
           <div>
-            Salesperson
+            Sales Rep
           </div>
 
           <div>
@@ -646,7 +646,7 @@ function Appointments({
                 </div>
 
 
-                {/* SALESPERSON */}
+                {/* SALES REP */}
 
                 <div
                   style={{
@@ -657,7 +657,7 @@ function Appointments({
                   }}
                 >
 
-                  {appointment.salesperson ||
+                  {appointment.red_allocated ||
                     "—"}
 
                 </div>

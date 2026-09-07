@@ -308,7 +308,7 @@ function AppointmentDetail({
               fontWeight: 600,
             }}
           >
-            {appointment.salesperson ||
+            {appointment.rep_allocated ||
               appointment.name ||
               "Appointment"}
           </span>
@@ -529,9 +529,9 @@ function AppointmentDetail({
           />
 
           <InfoRow
-            label="Salesperson"
+            label="Sales Rep"
             value={
-              appointment.salesperson
+              appointment.rep_allocated
             }
           />
         </InfoCard>
