@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { postcode, address } = req.body || {}
+    const { postcode } = req.body || {}
 
     if (!postcode) {
       return res.status(400).json({
@@ -20,18 +20,82 @@ export default async function handler(req, res) {
       .trim()
       .toUpperCase()
 
-    const suppliedAddress = String(address || "")
-      .trim()
-      .toLowerCase()
-
     /*
      * ============================================================
-     * CONSTANTS
+     * 1. POSTCODE -> GSP REGION
+     * ============================================================
+     *
+     * Octopus provides a public postcode lookup endpoint.
+     *
+     * Example:
+     *
+     * G21 1XD -> _N
+     *
+     * No API key is required.
      * ============================================================
      */
 
-    const GRAPHQL_URL =
-      "https://api.octopus.energy/v1/graphql/"
+    const gspResponse = await fetch(
+      `https://api.octopus.energy/v1/industry/grid-supply-points/?postcode=${encodeURIComponent(
+        cleanPostcode
+      )}`
+    )
+
+    if (!gspResponse.ok) {
+      throw new Error(
+        `Octopus GSP lookup returned HTTP ${gspResponse.status}`
+      )
+    }
+
+    const gspData = await gspResponse.json()
+
+    /*
+     * The endpoint returns the matching GSP group.
+     *
+     * Depending on the API response shape, handle the common
+     * formats rather than assuming one exact structure.
+     */
+
+    let gspGroup =
+      gspData?.results?.[0]?.group_id ||
+      gspData?.results?.[0]?.gsp_group_id ||
+      gspData?.results?.[0]?.gspGroupId ||
+      gspData?.group_id ||
+      gspData?.gsp_group_id ||
+      gspData?.gspGroupId
+
+    /*
+     * Some versions of the endpoint may return a list of
+     * groups directly.
+     */
+
+    if (!gspGroup && Array.isArray(gspData)) {
+      gspGroup =
+        gspData?.[0]?.group_id ||
+        gspData?.[0]?.gsp_group_id ||
+        gspData?.[0]?.gspGroupId
+    }
+
+    if (!gspGroup) {
+      throw new Error(
+        `Unable to determine the electricity region for ${cleanPostcode}`
+      )
+    }
+
+    /*
+     * Normalise "_N" -> "N"
+     */
+
+    const gsp = String(gspGroup)
+      .trim()
+      .toUpperCase()
+      .replace(/^_/, "")
+
+    /*
+     * ============================================================
+     * 2. CURRENT FLUX PRODUCT CODES
+     * ============================================================
+     */
 
     const IMPORT_PRODUCT =
       "FLUX-IMPORT-23-02-14"
@@ -40,143 +104,169 @@ export default async function handler(req, res) {
       "FLUX-EXPORT-23-02-14"
 
     /*
+     * Flux regional tariff codes use:
+     *
+     * E-1R-FLUX-IMPORT-23-02-14-N
+     *
+     * NOT:
+     *
+     * E-1R-FLUX-IMPORT-23-02-14_N
+     */
+
+    const importTariffCode =
+      `E-1R-${IMPORT_PRODUCT}-${gsp}`
+
+    const exportTariffCode =
+      `E-1R-${EXPORT_PRODUCT}-${gsp}`
+
+    /*
      * ============================================================
-     * HELPERS
+     * 3. TARIFF ENDPOINTS
      * ============================================================
      */
 
-    async function graphql(query, variables) {
-      const response = await fetch(GRAPHQL_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          query,
-          variables,
-        }),
-      })
+    const importBase =
+      `https://api.octopus.energy/v1/products/${IMPORT_PRODUCT}/electricity-tariffs/${importTariffCode}`
 
-      if (!response.ok) {
-        throw new Error(
-          `Octopus GraphQL returned HTTP ${response.status}`
-        )
-      }
+    const exportBase =
+      `https://api.octopus.energy/v1/products/${EXPORT_PRODUCT}/electricity-tariffs/${exportTariffCode}`
 
-      const data = await response.json()
+    /*
+     * ============================================================
+     * 4. FETCH HELPER
+     * ============================================================
+     */
 
-      if (data.errors?.length) {
-        const message =
-          data.errors[0]?.message ||
-          data.errors[0]?.extensions?.errorDescription ||
-          "Octopus GraphQL returned an error"
-
-        throw new Error(message)
-      }
-
-      return data.data
-    }
-
-    async function fetchJson(url, label) {
-      if (!url) {
-        throw new Error(`${label}: URL was undefined`)
-      }
-
+    async function fetchJson(url, description) {
       const response = await fetch(url)
 
       if (!response.ok) {
+        const text = await response.text()
+
         throw new Error(
-          `${label} returned HTTP ${response.status}`
+          `${description} returned HTTP ${response.status}: ${text.slice(
+            0,
+            300
+          )}`
         )
       }
 
       return response.json()
     }
 
-    function normaliseText(value) {
-      return String(value || "")
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, "")
+    /*
+     * ============================================================
+     * 5. GET RATE HISTORY
+     * ============================================================
+     *
+     * We deliberately request a generous date window so the
+     * current active rate and its time-band periods are returned.
+     * ============================================================
+     */
+
+    const now = new Date()
+
+    const periodFrom = new Date(
+      now.getTime() - 24 * 60 * 60 * 1000
+    ).toISOString()
+
+    const periodTo = new Date(
+      now.getTime() + 48 * 60 * 60 * 1000
+    ).toISOString()
+
+    const periodQuery =
+      `?period_from=${encodeURIComponent(
+        periodFrom
+      )}&period_to=${encodeURIComponent(periodTo)}`
+
+    const importRatesUrl =
+      `${importBase}/standard-unit-rates/${periodQuery}`
+
+    const exportRatesUrl =
+      `${exportBase}/standard-unit-rates/${periodQuery}`
+
+    const importStandingUrl =
+      `${importBase}/standing-charges/`
+
+    /*
+     * Fetch import/export rates and standing charge.
+     */
+
+    const [
+      importRatesData,
+      exportRatesData,
+      standingData,
+    ] = await Promise.all([
+      fetchJson(
+        importRatesUrl,
+        "Flux import rates"
+      ),
+
+      fetchJson(
+        exportRatesUrl,
+        "Flux export rates"
+      ),
+
+      fetchJson(
+        importStandingUrl,
+        "Flux standing charge"
+      ),
+    ])
+
+    const importRates =
+      importRatesData?.results || []
+
+    const exportRates =
+      exportRatesData?.results || []
+
+    const standingRates =
+      standingData?.results || []
+
+    if (!importRates.length) {
+      throw new Error(
+        "Octopus returned no Flux import rates"
+      )
     }
 
-    function findAddressMatch(addresses, suppliedAddress) {
-      if (!addresses.length) {
-        return null
-      }
-
-      /*
-       * If there is only one address for the postcode,
-       * there is no ambiguity.
-       */
-
-      if (addresses.length === 1) {
-        return addresses[0]
-      }
-
-      /*
-       * Try to match the address supplied by the calculator.
-       */
-
-      if (suppliedAddress) {
-        const search = normaliseText(suppliedAddress)
-
-        const scored = addresses
-          .map((item) => {
-            const display = normaliseText(
-              [
-                item.primaryName,
-                item.secondaryName,
-                item.street1,
-                item.street2,
-                item.locality1,
-                item.locality2,
-                item.town,
-                item.postcode,
-                item.display,
-              ]
-                .filter(Boolean)
-                .join(" ")
-            )
-
-            let score = 0
-
-            if (display.includes(search)) {
-              score += 100
-            }
-
-            const searchParts = search
-              .split(/[^a-z0-9]+/)
-              .filter(Boolean)
-
-            for (const part of searchParts) {
-              if (part.length >= 2 && display.includes(part)) {
-                score += 1
-              }
-            }
-
-            return {
-              item,
-              score,
-            }
-          })
-          .sort((a, b) => b.score - a.score)
-
-        if (scored[0]?.score > 0) {
-          return scored[0].item
-        }
-      }
-
-      return null
+    if (!exportRates.length) {
+      throw new Error(
+        "Octopus returned no Flux export rates"
+      )
     }
 
-    function getActiveRate(rates) {
-      if (!Array.isArray(rates) || !rates.length) {
-        return null
-      }
+    /*
+     * ============================================================
+     * 6. RATE SELECTION
+     * ============================================================
+     *
+     * Flux uses recurring time bands:
+     *
+     * 02:00 - 05:00   Off-peak
+     * 05:00 - 16:00   Day
+     * 16:00 - 19:00   Peak
+     * 19:00 - 02:00   Day
+     *
+     * We identify the rate by the London local time of the
+     * rate's valid_from timestamp.
+     * ============================================================
+     */
 
-      const now = Date.now()
+    function getLondonHour(dateString) {
+      const date = new Date(dateString)
 
-      const active = rates.filter((rate) => {
+      return Number(
+        new Intl.DateTimeFormat("en-GB", {
+          timeZone: "Europe/London",
+          hour: "2-digit",
+          hourCycle: "h23",
+        }).format(date)
+      )
+    }
+
+    function getCurrentRate(rates) {
+      const timestamp = Date.now()
+
+      const active = rates.find((rate) => {
         const from = rate.valid_from
           ? new Date(rate.valid_from).getTime()
           : -Infinity
@@ -185,487 +275,226 @@ export default async function handler(req, res) {
           ? new Date(rate.valid_to).getTime()
           : Infinity
 
-        return now >= from && now < to
+        return (
+          timestamp >= from &&
+          timestamp < to
+        )
       })
 
-      if (active.length) {
-        return active[0]
-      }
-
-      /*
-       * Fallback to the most recent rate.
-       */
-
-      return [...rates].sort(
-        (a, b) =>
-          new Date(b.valid_from || 0).getTime() -
-          new Date(a.valid_from || 0).getTime()
-      )[0]
+      return active || null
     }
 
-    function valueIncVat(rate) {
-      if (!rate) {
-        return null
-      }
-
-      const value =
-        rate.value_inc_vat ??
-        rate.value ??
-        null
-
-      return value == null
-        ? null
-        : Number(value)
-    }
-
-    /*
-     * ============================================================
-     * 1. RESOLVE PROPERTY → UPRN → GSP
-     * ============================================================
-     *
-     * Octopus provides addressUprns() and addressMeterpoints()
-     * specifically for this purpose.
-     *
-     * addressMeterpoints() returns gspGroupId such as "_J".
-     * ============================================================
-     */
-
-    const addressQuery = `
-      query AddressUprns(
-        $postcode: String!,
-        $electricityOnly: Boolean,
-        $first: Int
-      ) {
-        addressUprns(
-          postcode: $postcode,
-          electricityOnly: $electricityOnly,
-          first: $first
-        ) {
-          edges {
-            node {
-              uprn
-              display
-              primaryName
-              secondaryName
-              street1
-              street2
-              locality1
-              locality2
-              town
-              postcode
-            }
-          }
-          totalCount
-          edgeCount
-        }
-      }
-    `
-
-    const addressData = await graphql(addressQuery, {
-      postcode: cleanPostcode,
-      electricityOnly: true,
-      first: 100,
-    })
-
-    const addressEdges =
-      addressData?.addressUprns?.edges || []
-
-    const addresses = addressEdges
-      .map((edge) => edge?.node)
-      .filter(Boolean)
-
-    if (!addresses.length) {
-      throw new Error(
-        `No electricity address was found for ${cleanPostcode}`
-      )
-    }
-
-    const selectedAddress = findAddressMatch(
-      addresses,
-      suppliedAddress
-    )
-
-    if (!selectedAddress) {
-      throw new Error(
-        `More than one property was found for ${cleanPostcode}. Please enter the customer's full address so the correct electricity region can be identified.`
-      )
-    }
-
-    if (!selectedAddress.uprn) {
-      throw new Error(
-        "Octopus did not return a UPRN for the selected address"
-      )
-    }
-
-    /*
-     * ------------------------------------------------------------
-     * Get meter point / GSP
-     * ------------------------------------------------------------
-     */
-
-    const meterPointQuery = `
-      query AddressMeterpoints(
-        $uprn: String!,
-        $postcode: String!
-      ) {
-        addressMeterpoints(
-          uprn: $uprn,
-          postcode: $postcode
-        ) {
-          electricityMeterPoints {
-            mpan
-            gspGroupId
-            profileClass
-            measurementClass
-            domesticConsumerIndicator
-            energyDirection
-          }
-        }
-      }
-    `
-
-    const meterPointData = await graphql(
-      meterPointQuery,
-      {
-        uprn: String(selectedAddress.uprn),
-        postcode: cleanPostcode,
-      }
-    )
-
-    const meterPoints =
-      meterPointData?.addressMeterpoints
-        ?.electricityMeterPoints || []
-
-    /*
-     * Prefer import meter points.
-     */
-
-    const importMeterPoint =
-      meterPoints.find(
-        (meter) =>
-          String(meter.energyDirection || "").toUpperCase() ===
-          "I"
-      ) ||
-      meterPoints[0]
-
-    const gspGroupId =
-      importMeterPoint?.gspGroupId || null
-
-    if (!gspGroupId) {
-      throw new Error(
-        "Octopus could not determine the electricity region for this address"
-      )
-    }
-
-    /*
-     * ============================================================
-     * 2. BUILD THE CURRENT FLUX TARIFF URLS
-     * ============================================================
-     *
-     * Flux uses one tariff per GSP region.
-     *
-     * Example:
-     *
-     * E-1R-FLUX-IMPORT-23-02-14-J
-     * E-1R-FLUX-EXPORT-23-02-14-J
-     * ============================================================
-     */
-
-    const gsp = String(gspGroupId)
-      .trim()
-      .toUpperCase()
-
-    const importTariffCode =
-      `E-1R-${IMPORT_PRODUCT}${gsp}`
-
-    const exportTariffCode =
-      `E-1R-${EXPORT_PRODUCT}${gsp}`
-
-    const importBaseUrl =
-      `https://api.octopus.energy/v1/products/${IMPORT_PRODUCT}/electricity-tariffs/${importTariffCode}`
-
-    const exportBaseUrl =
-      `https://api.octopus.energy/v1/products/${EXPORT_PRODUCT}/electricity-tariffs/${exportTariffCode}`
-
-    /*
-     * ============================================================
-     * 3. GET CURRENT IMPORT RATES
-     * ============================================================
-     */
-
-    const importRatesUrl =
-      `${importBaseUrl}/standard-unit-rates/`
-
-    const importStandingUrl =
-      `${importBaseUrl}/standing-charges/`
-
-    const importRatesData =
-      await fetchJson(
-        importRatesUrl,
-        "Octopus Flux import rates"
-      )
-
-    const importStandingData =
-      await fetchJson(
-        importStandingUrl,
-        "Octopus Flux import standing charge"
-      )
-
-    /*
-     * ============================================================
-     * 4. GET CURRENT EXPORT RATES
-     * ============================================================
-     */
-
-    const exportRatesUrl =
-      `${exportBaseUrl}/standard-unit-rates/`
-
-    const exportStandingUrl =
-      `${exportBaseUrl}/standing-charges/`
-
-    const exportRatesData =
-      await fetchJson(
-        exportRatesUrl,
-        "Octopus Flux export rates"
-      )
-
-    /*
-     * ============================================================
-     * 5. FIND CURRENT RATES
-     * ============================================================
-     */
-
-    const importRates =
-      importRatesData?.results || []
-
-    const exportRates =
-      exportRatesData?.results || []
-
-    if (!importRates.length) {
-      throw new Error(
-        "Octopus returned no current Flux import rates"
-      )
-    }
-
-    if (!exportRates.length) {
-      throw new Error(
-        "Octopus returned no current Flux export rates"
-      )
-    }
-
-    /*
-     * Flux has recurring time bands:
-     *
-     * 02:00–05:00 = off-peak
-     * 05:00–16:00 = day
-     * 16:00–19:00 = peak
-     * 19:00–02:00 = day
-     *
-     * The actual API gives us half-hourly/current rate periods.
-     * We therefore find the rate applicable to a representative
-     * time in each band.
-     */
-
-    function getLondonDateTimeForBand(
-      hour,
-      minute = 0
-    ) {
-      const now = new Date()
-
-      const londonParts = new Intl.DateTimeFormat(
-        "en-GB",
-        {
-          timeZone: "Europe/London",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-        }
-      ).formatToParts(now)
-
-      const parts = {}
-
-      for (const part of londonParts) {
-        if (part.type !== "literal") {
-          parts[part.type] = part.value
-        }
-      }
-
-      /*
-       * Start with a UTC date and then search the returned
-       * rate periods by London local clock time.
-       *
-       * We don't need to construct a local Date here.
-       * Instead we use the rate timestamps and compare their
-       * Europe/London hour/minute.
-       */
-
-      return {
-        year: Number(parts.year),
-        month: Number(parts.month),
-        day: Number(parts.day),
-        hour,
-        minute,
-      }
-    }
-
-    function rateForLondonTime(
+    function findRateForBand(
       rates,
-      targetHour,
-      targetMinute = 0
+      band
     ) {
-      const target = getLondonDateTimeForBand(
-        targetHour,
-        targetMinute
-      )
+      /*
+       * Find a rate whose validity begins in the
+       * relevant Flux time band.
+       */
 
-      const candidates = rates.filter((rate) => {
+      const matches = rates.filter((rate) => {
         if (!rate.valid_from) {
           return false
         }
 
-        const date = new Date(rate.valid_from)
+        const hour = getLondonHour(
+          rate.valid_from
+        )
 
-        const localParts =
-          new Intl.DateTimeFormat(
-            "en-GB",
-            {
-              timeZone: "Europe/London",
-              year: "numeric",
-              month: "2-digit",
-              day: "2-digit",
-              hour: "2-digit",
-              minute: "2-digit",
-              hourCycle: "h23",
-            }
-          ).formatToParts(date)
-
-        const p = {}
-
-        for (const part of localParts) {
-          if (part.type !== "literal") {
-            p[part.type] = part.value
-          }
+        if (band === "offPeak") {
+          return hour >= 2 && hour < 5
         }
 
+        if (band === "peak") {
+          return hour >= 16 && hour < 19
+        }
+
+        /*
+         * Day:
+         * 05:00-16:00
+         * 19:00-02:00
+         */
+
         return (
-          Number(p.year) === target.year &&
-          Number(p.month) === target.month &&
-          Number(p.day) === target.day &&
-          Number(p.hour) === target.hour &&
-          Number(p.minute) === target.minute
+          (hour >= 5 && hour < 16) ||
+          hour >= 19 ||
+          hour < 2
         )
       })
 
-      return getActiveRate(candidates)
+      /*
+       * Prefer the rate that is currently active.
+       */
+
+      const current = getCurrentRate(
+        matches
+      )
+
+      if (current) {
+        return current
+      }
+
+      /*
+       * Otherwise use the newest matching rate.
+       */
+
+      return [...matches].sort(
+        (a, b) =>
+          new Date(
+            b.valid_from || 0
+          ).getTime() -
+          new Date(
+            a.valid_from || 0
+          ).getTime()
+      )[0] || null
     }
 
-    /*
-     * Representative times:
-     *
-     * Day       = 12:00
-     * Off-peak  = 03:00
-     * Peak      = 17:00
-     */
+    const dayImport =
+      findRateForBand(
+        importRates,
+        "day"
+      )
 
-    const importDayRate =
-      rateForLondonTime(importRates, 12, 0)
+    const offPeakImport =
+      findRateForBand(
+        importRates,
+        "offPeak"
+      )
 
-    const importOffPeakRate =
-      rateForLondonTime(importRates, 3, 0)
+    const peakImport =
+      findRateForBand(
+        importRates,
+        "peak"
+      )
 
-    const importPeakRate =
-      rateForLondonTime(importRates, 17, 0)
+    const dayExport =
+      findRateForBand(
+        exportRates,
+        "day"
+      )
 
-    const exportDayRate =
-      rateForLondonTime(exportRates, 12, 0)
+    const offPeakExport =
+      findRateForBand(
+        exportRates,
+        "offPeak"
+      )
 
-    const exportOffPeakRate =
-      rateForLondonTime(exportRates, 3, 0)
-
-    const exportPeakRate =
-      rateForLondonTime(exportRates, 17, 0)
-
-    /*
-     * If the exact representative half-hour wasn't returned,
-     * fall back to the currently active/latest rate.
-     */
-
-    const finalImportDay =
-      importDayRate ||
-      getActiveRate(importRates)
-
-    const finalImportOffPeak =
-      importOffPeakRate ||
-      getActiveRate(importRates)
-
-    const finalImportPeak =
-      importPeakRate ||
-      getActiveRate(importRates)
-
-    const finalExportDay =
-      exportDayRate ||
-      getActiveRate(exportRates)
-
-    const finalExportOffPeak =
-      exportOffPeakRate ||
-      getActiveRate(exportRates)
-
-    const finalExportPeak =
-      exportPeakRate ||
-      getActiveRate(exportRates)
+    const peakExport =
+      findRateForBand(
+        exportRates,
+        "peak"
+      )
 
     /*
      * ============================================================
-     * 6. STANDING CHARGE
+     * 7. STANDING CHARGE
      * ============================================================
      */
 
-    const importStandingRates =
-      importStandingData?.results || []
+    function getActiveStandingCharge(
+      rates
+    ) {
+      const timestamp = Date.now()
 
-    const exportStandingRates =
-      exportStandingData?.results || []
+      const active = rates.find(
+        (rate) => {
+          const from = rate.valid_from
+            ? new Date(
+                rate.valid_from
+              ).getTime()
+            : -Infinity
 
-    const standingRate =
-      getActiveRate(importStandingRates) ||
-      getActiveRate(exportStandingRates)
+          const to = rate.valid_to
+            ? new Date(
+                rate.valid_to
+              ).getTime()
+            : Infinity
+
+          return (
+            timestamp >= from &&
+            timestamp < to
+          )
+        }
+      )
+
+      return (
+        active ||
+        [...rates].sort(
+          (a, b) =>
+            new Date(
+              b.valid_from || 0
+            ).getTime() -
+            new Date(
+              a.valid_from || 0
+            ).getTime()
+        )[0] ||
+        null
+      )
+    }
+
+    const standing =
+      getActiveStandingCharge(
+        standingRates
+      )
 
     /*
      * ============================================================
-     * 7. VALIDATE
+     * 8. CONVERT TO NUMBERS
      * ============================================================
      */
 
-    const result = {
-      dayImport: valueIncVat(finalImportDay),
-      offPeakImport: valueIncVat(finalImportOffPeak),
-      peakImport: valueIncVat(finalImportPeak),
+    function rateValue(rate) {
+      if (!rate) {
+        return null
+      }
 
-      dayExport: valueIncVat(finalExportDay),
-      offPeakExport: valueIncVat(finalExportOffPeak),
-      peakExport: valueIncVat(finalExportPeak),
+      return Number(
+        rate.value_inc_vat ??
+          rate.value ??
+          NaN
+      )
+    }
+
+    const rates = {
+      dayImport: rateValue(dayImport),
+      offPeakImport: rateValue(
+        offPeakImport
+      ),
+      peakImport: rateValue(
+        peakImport
+      ),
+
+      dayExport: rateValue(dayExport),
+      offPeakExport: rateValue(
+        offPeakExport
+      ),
+      peakExport: rateValue(
+        peakExport
+      ),
 
       standingCharge:
-        standingRate
-          ? Number(
-              standingRate.value_inc_vat ??
-                standingRate.value ??
-                0
-            )
-          : null,
+        rateValue(standing),
     }
 
-    const missing = Object.entries(result)
+    /*
+     * ============================================================
+     * 9. VALIDATION
+     * ============================================================
+     */
+
+    const missing = Object.entries(
+      rates
+    )
       .filter(
         ([, value]) =>
-          value == null ||
-          !Number.isFinite(Number(value))
+          !Number.isFinite(value)
       )
       .map(([key]) => key)
 
     if (missing.length) {
       throw new Error(
-        `Octopus Flux returned incomplete rates: ${missing.join(
+        `Flux rates were incomplete. Missing: ${missing.join(
           ", "
         )}`
       )
@@ -673,7 +502,7 @@ export default async function handler(req, res) {
 
     /*
      * ============================================================
-     * 8. RETURN
+     * 10. RETURN TO REACT
      * ============================================================
      */
 
@@ -682,20 +511,7 @@ export default async function handler(req, res) {
 
       postcode: cleanPostcode,
 
-      address: {
-        uprn: selectedAddress.uprn,
-        display: selectedAddress.display,
-        primaryName: selectedAddress.primaryName,
-        secondaryName: selectedAddress.secondaryName,
-        street1: selectedAddress.street1,
-        street2: selectedAddress.street2,
-        locality1: selectedAddress.locality1,
-        locality2: selectedAddress.locality2,
-        town: selectedAddress.town,
-        postcode: selectedAddress.postcode,
-      },
-
-      gspGroupId: gsp,
+      gspGroupId: `_${gsp}`,
 
       product: {
         import: IMPORT_PRODUCT,
@@ -707,25 +523,20 @@ export default async function handler(req, res) {
         export: exportTariffCode,
       },
 
-      rates: {
-        dayImport: result.dayImport,
-        offPeakImport: result.offPeakImport,
-        peakImport: result.peakImport,
+      rates,
 
-        dayExport: result.dayExport,
-        offPeakExport: result.offPeakExport,
-        peakExport: result.peakExport,
-
-        standingCharge: result.standingCharge,
-      },
-
-      retrievedAt: new Date().toISOString(),
+      retrievedAt:
+        new Date().toISOString(),
     })
   } catch (error) {
-    console.error("Octopus Flux API error:", error)
+    console.error(
+      "Octopus Flux API error:",
+      error
+    )
 
     return res.status(500).json({
       success: false,
+
       error:
         error?.message ||
         "Unable to retrieve Octopus Flux rates",
