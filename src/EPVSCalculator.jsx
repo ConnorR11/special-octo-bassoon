@@ -63,9 +63,9 @@ const initial = {
 
   inverterCapacity: 5,
 
-  importRate: 0.28,
-  exportRate: 0.15,
-  standingCharge: 0.30,
+  importRate: 28,
+  exportRate: 15,
+  standingCharge: 30,
 
   tariff: "Standard",
 
@@ -372,25 +372,25 @@ export default function EPVSCalculator({
      * =======================================================
      */
 
+    const importRatePence =
+      Number(data.importRate || 0)
+
+    const exportRatePence =
+      Number(data.exportRate || 0)
+
     const solarBenefit =
       solarSelfConsumption *
-      Number(
-        data.importRate || 0
-      )
+      (importRatePence / 100)
 
     const batterySelfConsumptionBenefit =
       batteryContribution *
-      Number(
-        data.importRate || 0
-      )
+      (importRatePence / 100)
 
     const forceChargeBenefit = 0
 
     const exportBenefit =
       exportKwh *
-      Number(
-        data.exportRate || 0
-      )
+      (exportRatePence / 100)
 
     const annualSaving =
       solarBenefit +
@@ -600,13 +600,13 @@ export default function EPVSCalculator({
             exportRate * inflationMultiplier
 
           const solarBenefit =
-            solar * importRateYear
+            solar * (importRateYear / 100)
 
           const batteryBenefit =
-            battery * importRateYear
+            battery * (importRateYear / 100)
 
           const exportBenefit =
-            exportKwh * exportRateYear
+            exportKwh * (exportRateYear / 100)
 
           const forceChargeBenefit = 0
 
@@ -638,7 +638,7 @@ export default function EPVSCalculator({
 
           const billPreInstall =
             annualConsumption *
-            importRateYear
+            (importRateYear / 100)
 
           const gridReduction =
             solar + battery
@@ -649,7 +649,8 @@ export default function EPVSCalculator({
           )
 
           const billPostInstall =
-            remainingGrid * importRateYear
+            remainingGrid *
+            (importRateYear / 100)
 
           const annualSaving =
             annualBenefit
@@ -909,24 +910,24 @@ export default function EPVSCalculator({
                   <Input
                     label="Current import rate (p/kWh)"
                     type="number"
-                    value={Number(data.importRate || 0) * 100}
-                    onChange={(value) => update("importRate", Number(value || 0) / 100)}
+                    value={data.importRate}
+                    onChange={(value) => update("importRate", value)}
                     min={0}
                     step={0.01}
                   />
                   <Input
                     label="Current export rate (p/kWh)"
                     type="number"
-                    value={Number(data.exportRate || 0) * 100}
-                    onChange={(value) => update("exportRate", Number(value || 0) / 100)}
+                    value={data.exportRate}
+                    onChange={(value) => update("exportRate", value)}
                     min={0}
                     step={0.01}
                   />
                   <Input
                     label="Current standing charge (p/day)"
                     type="number"
-                    value={Number(data.standingCharge || 0) * 100}
-                    onChange={(value) => update("standingCharge", Number(value || 0) / 100)}
+                    value={data.standingCharge}
+                    onChange={(value) => update("standingCharge", value)}
                     min={0}
                     step={0.01}
                   />
