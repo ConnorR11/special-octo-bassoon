@@ -1,8 +1,4 @@
-import React, {
-  useEffect,
-  useMemo,
-  useState,
-} from "react"
+import React, { useEffect, useMemo, useState } from "react"
 
 import {
   ArrowLeft,
@@ -26,30 +22,12 @@ const money = (value) =>
   }).format(Number(value || 0))
 
 const steps = [
-  {
-    title: "Customer",
-    icon: Home,
-  },
-  {
-    title: "Solar PV",
-    icon: Zap,
-  },
-  {
-    title: "Battery & Inverter",
-    icon: Battery,
-  },
-  {
-    title: "Tariff",
-    icon: PoundSterling,
-  },
-  {
-    title: "Finance",
-    icon: PoundSterling,
-  },
-  {
-    title: "Results",
-    icon: CheckCircle2,
-  },
+  { title: "Customer", icon: Home },
+  { title: "Solar PV", icon: Zap },
+  { title: "Battery & Inverter", icon: Battery },
+  { title: "Tariff", icon: PoundSterling },
+  { title: "Finance", icon: PoundSterling },
+  { title: "Results", icon: CheckCircle2 },
 ]
 
 const createArray = () => ({
@@ -68,17 +46,6 @@ const initial = {
 
   annualConsumption: 4000,
 
-  /*
-   * CURRENT CUSTOMER TARIFF
-   *
-   * Stored as pence.
-   *
-   * These are NOT the proposed Flux rates.
-   */
-  importRate: 28,
-  exportRate: 15,
-  standingCharge: 30,
-
   existingSolar: false,
   existingGeneration: 0,
 
@@ -90,47 +57,27 @@ const initial = {
     createArray(),
   ],
 
-  /*
-   * Battery configuration.
-   *
-   * 0 = no battery.
-   */
-  batteryCapacity: 0,
+  batteryCapacity: "",
 
-  /*
-   * Inverter capacity.
-   *
-   * Empty until selected.
-   */
   inverterCapacity: "",
 
-  /*
-   * Proposed tariff.
-   */
+  importRate: 28,
+  exportRate: 15,
+  standingCharge: 30,
+
   tariff: "Standard Flux",
 
-  /*
-   * Flux rates.
-   *
-   * Stored as pence.
-   */
   fluxDayImport: 24.96,
   fluxDayExport: 9.55,
-
   fluxImport: 14.98,
   fluxExport: 4.42,
-
   fluxPeakImport: 34.94,
   fluxPeakExport: 27.19,
-
   fluxStandingCharge: 62.83,
-
-  /*
-   * API information.
-   */
-  fluxGspGroupId: "",
-  fluxTariffCode: "",
-  fluxRetrievedAt: "",
+  fluxRatesRetrievedAt: "",
+  fluxGsp: "",
+  fluxImportTariffCode: "",
+  fluxExportTariffCode: "",
 
   paymentMethod: "Finance",
 
@@ -150,6 +97,7 @@ function Input({
   min,
   max,
   disabled = false,
+  readOnly = false,
 }) {
   return (
     <label style={styles.field}>
@@ -162,48 +110,21 @@ function Input({
         min={min}
         max={max}
         disabled={disabled}
+        readOnly={readOnly}
         onChange={(event) => {
-          const nextValue =
+          const value =
             type === "number"
-              ? event.target.value === ""
-                ? ""
-                : Number(event.target.value)
+              ? Number(event.target.value)
               : event.target.value
 
-          onChange(nextValue)
+          onChange(value)
         }}
       />
     </label>
   )
 }
 
-function Select({
-  label,
-  value,
-  onChange,
-  children,
-}) {
-  return (
-    <label style={styles.field}>
-      <span>{label}</span>
-
-      <select
-        value={value}
-        onChange={(event) =>
-          onChange(event.target.value)
-        }
-      >
-        {children}
-      </select>
-    </label>
-  )
-}
-
-function Toggle({
-  label,
-  value,
-  onChange,
-}) {
+function Toggle({ label, value, onChange }) {
   return (
     <label style={styles.toggleRow}>
       <span>{label}</span>
@@ -236,12 +157,8 @@ export default function EPVSCalculator({
   onCalculationChange,
 }) {
   const [step, setStep] = useState(0)
-
-  const [loadingFluxRates, setLoadingFluxRates] =
-    useState(false)
-
-  const [fluxRateError, setFluxRateError] =
-    useState("")
+  const [loadingFluxRates, setLoadingFluxRates] = useState(false)
+  const [fluxRateError, setFluxRateError] = useState("")
 
   const appointmentInitial = useMemo(() => {
     return {
@@ -282,14 +199,60 @@ export default function EPVSCalculator({
     }))
   }, [appointment])
 
-  const update = (
-    key,
-    value
-  ) => {
+  const update = (key, value) => {
     setData((current) => ({
       ...current,
       [key]: value,
     }))
+  }
+
+  const getCurrentFluxRates = async () => {
+    const postcode = String(data.postcode || "").trim()
+
+    if (!postcode) {
+      setFluxRateError("Enter the customer postcode first.")
+      return
+    }
+
+    setLoadingFluxRates(true)
+    setFluxRateError("")
+
+    try {
+      const response = await fetch("/api/octopus-flux", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ postcode }),
+      })
+
+      const payload = await response.json()
+
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Unable to retrieve Octopus Flux rates.")
+      }
+
+      setData((current) => ({
+        ...current,
+        tariff: "Standard Flux",
+        fluxDayImport: Number(payload.rates.fluxDayImport),
+        fluxDayExport: Number(payload.rates.fluxDayExport),
+        fluxImport: Number(payload.rates.fluxImport),
+        fluxExport: Number(payload.rates.fluxExport),
+        fluxPeakImport: Number(payload.rates.fluxPeakImport),
+        fluxPeakExport: Number(payload.rates.fluxPeakExport),
+        fluxStandingCharge: Number(payload.rates.fluxStandingCharge),
+        fluxRatesRetrievedAt: payload.retrievedAt || new Date().toISOString(),
+        fluxGsp: payload.gsp || "",
+        fluxImportTariffCode: payload.importTariffCode || "",
+        fluxExportTariffCode: payload.exportTariffCode || "",
+      }))
+    } catch (error) {
+      console.error("Flux rate lookup failed", error)
+      setFluxRateError(error?.message || "Unable to retrieve Octopus Flux rates.")
+    } finally {
+      setLoadingFluxRates(false)
+    }
   }
 
   const updateArray = (
@@ -298,9 +261,7 @@ export default function EPVSCalculator({
     value
   ) => {
     setData((current) => {
-      const arrays = [
-        ...current.arrays,
-      ]
+      const arrays = [...current.arrays]
 
       arrays[index] = {
         ...arrays[index],
@@ -315,151 +276,19 @@ export default function EPVSCalculator({
   }
 
   /*
-   * ============================================================
-   * OCTOPUS FLUX API
-   * ============================================================
-   */
-
-  const getCurrentFluxRates =
-    async () => {
-      if (
-        !data.postcode?.trim()
-      ) {
-        setFluxRateError(
-          "Please enter a postcode before retrieving Flux rates."
-        )
-
-        return
-      }
-
-      setLoadingFluxRates(true)
-      setFluxRateError("")
-
-      try {
-        const response =
-          await fetch(
-            "/api/octopus-flux",
-            {
-              method: "POST",
-
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
-
-              body: JSON.stringify({
-                postcode:
-                  data.postcode,
-
-                address:
-                  data.address,
-              }),
-            }
-          )
-
-        const result =
-          await response.json()
-
-        if (
-          !response.ok ||
-          !result.success
-        ) {
-          throw new Error(
-            result.error ||
-              "Unable to retrieve Flux rates."
-          )
-        }
-
-        const rates =
-          result.rates || {}
-
-        /*
-         * Update the calculator with the API values.
-         *
-         * The values remain editable afterwards.
-         */
-
-        setData((current) => ({
-          ...current,
-
-          fluxDayImport:
-            Number(
-              rates.dayImport ||
-                0
-            ),
-
-          /*
-           * Export rates may not be available from every
-           * REST product response in exactly the same form.
-           *
-           * Keep the existing manually entered values when
-           * an export value wasn't returned.
-           */
-          fluxImport:
-            Number(
-              rates.fluxImport ||
-                current.fluxImport ||
-                0
-            ),
-
-          fluxPeakImport:
-            Number(
-              rates.peakImport ||
-                current.fluxPeakImport ||
-                0
-            ),
-
-          fluxStandingCharge:
-            Number(
-              rates.standingCharge ||
-                current.fluxStandingCharge ||
-                0
-            ),
-
-          fluxGspGroupId:
-            result.gspGroupId ||
-            "",
-
-          fluxTariffCode:
-            result.tariff?.code ||
-            "",
-
-          fluxRetrievedAt:
-            result.retrievedAt ||
-            "",
-        }))
-      } catch (error) {
-        console.error(
-          "Flux rate error:",
-          error
-        )
-
-        setFluxRateError(
-          error?.message ||
-            "Unable to retrieve Flux rates."
-        )
-      } finally {
-        setLoadingFluxRates(false)
-      }
-    }
-
-  /*
-   * ============================================================
+   * =========================================================
    * CALCULATIONS
-   * ============================================================
+   * =========================================================
    */
 
   const results = useMemo(() => {
-    const numberOfArrays =
-      Math.min(
-        3,
-        Math.max(
-          1,
-          Number(
-            data.numberOfArrays || 1
-          )
-        )
+    const numberOfArrays = Math.min(
+      3,
+      Math.max(
+        1,
+        Number(data.numberOfArrays || 1)
       )
+    )
 
     const activeArrays =
       data.arrays.slice(
@@ -468,33 +297,36 @@ export default function EPVSCalculator({
       )
 
     /*
-     * ----------------------------------------------------------
-     * ARRAY GENERATION
-     * ----------------------------------------------------------
+     * EPVS ARRAY GENERATION
+     *
+     * Each array is calculated independently:
+     *
+     * System size =
+     * panel wattage × panel count / 1000
+     *
+     * Generation =
+     * system size × irradiance × shade factor
+     *
+     * The irradiance / Kk figure is entered
+     * separately for each roof/array.
      */
 
     const calculatedArrays =
       activeArrays.map(
-        (
-          array,
-          index
-        ) => {
+        (array, index) => {
           const panelWattage =
             Number(
-              array.panelWattage ||
-                0
+              array.panelWattage || 0
             )
 
           const panelCount =
             Number(
-              array.panelCount ||
-                0
+              array.panelCount || 0
             )
 
           const irradiance =
             Number(
-              array.irradiance ||
-                0
+              array.irradiance || 0
             )
 
           const shading =
@@ -515,8 +347,7 @@ export default function EPVSCalculator({
           return {
             ...array,
 
-            arrayNumber:
-              index + 1,
+            arrayNumber: index + 1,
 
             systemSize,
 
@@ -527,10 +358,7 @@ export default function EPVSCalculator({
 
     const systemSize =
       calculatedArrays.reduce(
-        (
-          total,
-          array
-        ) =>
+        (total, array) =>
           total +
           array.systemSize,
         0
@@ -538,32 +366,22 @@ export default function EPVSCalculator({
 
     const generation =
       calculatedArrays.reduce(
-        (
-          total,
-          array
-        ) =>
+        (total, array) =>
           total +
           array.generation,
         0
       )
 
     /*
-     * ----------------------------------------------------------
-     * ELECTRICITY
-     * ----------------------------------------------------------
+     * =======================================================
+     * SELF CONSUMPTION
+     * =======================================================
      */
 
     const annualConsumption =
       Number(
-        data.annualConsumption ||
-          0
+        data.annualConsumption || 0
       )
-
-    /*
-     * EPVS preliminary solar self-consumption cap.
-     *
-     * 37.5% of annual grid consumption.
-     */
 
     const solarSelfConsumption =
       Math.min(
@@ -580,27 +398,22 @@ export default function EPVSCalculator({
       )
 
     /*
-     * ----------------------------------------------------------
+     * =======================================================
      * BATTERY
-     * ----------------------------------------------------------
+     * =======================================================
      */
 
-    const batteryCapacity =
-      Number(
-        data.batteryCapacity ||
-          0
-      )
-
     const batteryContribution =
-      batteryCapacity > 0
+      Number(data.batteryCapacity || 0) > 0
         ? Math.min(
             remainingGeneration,
 
             annualConsumption *
               0.25,
 
-            batteryCapacity *
-              180
+            Number(
+              data.batteryCapacity || 0
+            ) * 180
           )
         : 0
 
@@ -617,36 +430,30 @@ export default function EPVSCalculator({
       batteryContribution
 
     /*
-     * ----------------------------------------------------------
-     * CURRENT TARIFF BENEFIT
-     * ----------------------------------------------------------
-     *
-     * Current rates are stored in pence.
+     * =======================================================
+     * FINANCIAL BENEFIT
+     * =======================================================
      */
 
-    const currentImportRate =
-      Number(
-        data.importRate || 0
-      ) / 100
+    const importRatePence =
+      Number(data.importRate || 0)
 
-    const currentExportRate =
-      Number(
-        data.exportRate || 0
-      ) / 100
+    const exportRatePence =
+      Number(data.exportRate || 0)
 
     const solarBenefit =
       solarSelfConsumption *
-      currentImportRate
+      (importRatePence / 100)
 
     const batterySelfConsumptionBenefit =
       batteryContribution *
-      currentImportRate
+      (importRatePence / 100)
 
     const forceChargeBenefit = 0
 
     const exportBenefit =
       exportKwh *
-      currentExportRate
+      (exportRatePence / 100)
 
     const annualSaving =
       solarBenefit +
@@ -655,9 +462,9 @@ export default function EPVSCalculator({
       exportBenefit
 
     /*
-     * ----------------------------------------------------------
+     * =======================================================
      * FINANCE
-     * ----------------------------------------------------------
+     * =======================================================
      */
 
     const systemCost =
@@ -694,24 +501,24 @@ export default function EPVSCalculator({
 
     const monthlyPayment =
       data.paymentMethod ===
-        "Finance" &&
+      "Finance" &&
       financeAmount > 0 &&
+      monthlyRate > 0 &&
       months > 0
-        ? monthlyRate > 0
-          ? financeAmount *
-            (monthlyRate *
-              Math.pow(
-                1 +
-                  monthlyRate,
-                months
-              )) /
-            (Math.pow(
-              1 +
-                monthlyRate,
+        ? financeAmount *
+          (monthlyRate *
+            Math.pow(
+              1 + monthlyRate,
               months
-            ) - 1)
-          : financeAmount /
+            )) /
+          (Math.pow(
+            1 + monthlyRate,
             months
+          ) - 1)
+        : data.paymentMethod ===
+            "Finance" &&
+          months > 0
+        ? financeAmount / months
         : 0
 
     const simplePayback =
@@ -757,66 +564,44 @@ export default function EPVSCalculator({
   }, [data])
 
   /*
-   * ============================================================
-   * 30 YEAR PROJECTION
-   * ============================================================
+   * =========================================================
+   * 30 YEAR CALCULATION
+   * =========================================================
+   *
+   * EPVS uses three inflation scenarios for the long-term
+   * presentation: 0%, 3.8% and 7.6%.
+   *
+   * The UI component expects all three scenarios to be returned
+   * under `thirtyYearProjection.scenarios`.
    */
 
   const thirtyYearProjection =
     useMemo(() => {
       const systemCost =
-        Number(
-          data.systemCost || 0
-        )
+        Number(data.systemCost || 0)
 
       const deposit =
-        Number(
-          data.deposit || 0
-        )
+        Number(data.deposit || 0)
 
       const annualConsumption =
-        Number(
-          data.annualConsumption ||
-            0
-        )
+        Number(data.annualConsumption || 0)
 
       const importRate =
-        Number(
-          data.importRate || 0
-        ) / 100
+        Number(data.importRate || 0)
 
       const exportRate =
-        Number(
-          data.exportRate || 0
-        ) / 100
+        Number(data.exportRate || 0)
 
       const firstYearGeneration =
-        Number(
-          results.generation || 0
-        )
+        Number(results.generation || 0)
 
       const firstYearSolar =
-        Number(
-          results.solarSelfConsumption ||
-            0
-        )
+        Number(results.solarSelfConsumption || 0)
 
       const firstYearBattery =
-        Number(
-          results.batteryContribution ||
-            0
-        )
+        Number(results.batteryContribution || 0)
 
-      /*
-       * Existing preliminary model degradation.
-       *
-       * This should be replaced with the manufacturer
-       * degradation figure when the full EPVS engine is
-       * implemented.
-       */
-
-      const annualDegradation =
-        0.004
+      const annualDegradation = 0.004
 
       const inflationScenarios = [
         {
@@ -836,293 +621,204 @@ export default function EPVSCalculator({
         },
       ]
 
-      const buildScenario =
-        (inflationRate) => {
-          const rows = []
+      const buildScenario = (inflationRate) => {
+        const rows = []
+        let cumulativePosition = 0
 
-          let cumulativePosition =
-            0
-
-          for (
-            let year = 1;
-            year <= 30;
-            year++
-          ) {
-            const generation =
-              firstYearGeneration *
-              Math.pow(
-                1 -
-                  annualDegradation,
-                year - 1
-              )
-
-            const solar =
-              firstYearGeneration >
-              0
-                ? generation *
-                  (firstYearSolar /
-                    firstYearGeneration)
-                : 0
-
-            const battery =
-              firstYearGeneration >
-              0
-                ? generation *
-                  (firstYearBattery /
-                    firstYearGeneration)
-                : 0
-
-            const exportKwh =
-              Math.max(
-                0,
-                generation -
-                  solar -
-                  battery
-              )
-
-            const inflationMultiplier =
-              Math.pow(
-                1 +
-                  inflationRate,
-                year - 1
-              )
-
-            const importRateYear =
-              importRate *
-              inflationMultiplier
-
-            const exportRateYear =
-              exportRate *
-              inflationMultiplier
-
-            const solarBenefit =
-              solar *
-              importRateYear
-
-            const batteryBenefit =
-              battery *
-              importRateYear
-
-            const exportBenefit =
-              exportKwh *
-              exportRateYear
-
-            const forceChargeBenefit =
-              0
-
-            const annualBenefit =
-              solarBenefit +
-              batteryBenefit +
-              forceChargeBenefit +
-              exportBenefit
-
-            const yearlyPayment =
-              year === 1
-                ? Math.max(
-                    0,
-                    systemCost -
-                      deposit
-                  )
-                : 0
-
-            const netAnnualBenefit =
-              annualBenefit -
-              yearlyPayment
-
-            cumulativePosition +=
-              netAnnualBenefit
-
-            const billPreInstall =
-              annualConsumption *
-              importRateYear
-
-            const gridReduction =
-              solar +
-              battery
-
-            const remainingGrid =
-              Math.max(
-                0,
-                annualConsumption -
-                  gridReduction
-              )
-
-            const billPostInstall =
-              remainingGrid *
-              importRateYear
-
-            rows.push({
-              year,
-
-              generation,
-
-              solar,
-
-              battery,
-
-              exportKwh,
-
-              solarBenefit,
-
-              batteryBenefit,
-
-              forceChargeBenefit,
-
-              exportBenefit,
-
-              annualBenefit,
-
-              annualSaving:
-                annualBenefit,
-
-              yearlyPayment,
-
-              netAnnualBenefit,
-
-              cumulativePosition,
-
-              billPreInstall,
-
-              billPostInstall,
-
-              importRateYear,
-
-              exportRateYear,
-            })
-          }
-
-          const totals =
-            rows.reduce(
-              (
-                total,
-                row
-              ) => {
-                total.generation +=
-                  row.generation
-
-                total.solar +=
-                  row.solar
-
-                total.battery +=
-                  row.battery
-
-                total.exportKwh +=
-                  row.exportKwh
-
-                total.solarBenefit +=
-                  row.solarBenefit
-
-                total.batteryBenefit +=
-                  row.batteryBenefit
-
-                total.forceChargeBenefit +=
-                  row.forceChargeBenefit
-
-                total.exportBenefit +=
-                  row.exportBenefit
-
-                total.annualBenefit +=
-                  row.annualBenefit
-
-                total.yearlyPayment +=
-                  row.yearlyPayment
-
-                total.netAnnualBenefit +=
-                  row.netAnnualBenefit
-
-                total.billPreInstall +=
-                  row.billPreInstall
-
-                total.billPostInstall +=
-                  row.billPostInstall
-
-                return total
-              },
-              {
-                generation: 0,
-                solar: 0,
-                battery: 0,
-                exportKwh: 0,
-                solarBenefit: 0,
-                batteryBenefit: 0,
-                forceChargeBenefit: 0,
-                exportBenefit: 0,
-                annualBenefit: 0,
-                yearlyPayment: 0,
-                netAnnualBenefit: 0,
-                billPreInstall: 0,
-                billPostInstall: 0,
-              }
+        for (let year = 1; year <= 30; year++) {
+          const generation =
+            firstYearGeneration *
+            Math.pow(
+              1 - annualDegradation,
+              year - 1
             )
 
-          const paybackRow =
-            rows.find(
-              (row) =>
-                row.cumulativePosition >=
-                0
+          const solar =
+            firstYearGeneration > 0
+              ? generation *
+                (firstYearSolar / firstYearGeneration)
+              : 0
+
+          const battery =
+            firstYearGeneration > 0
+              ? generation *
+                (firstYearBattery / firstYearGeneration)
+              : 0
+
+          const exportKwh = Math.max(
+            0,
+            generation - solar - battery
+          )
+
+          const inflationMultiplier =
+            Math.pow(
+              1 + inflationRate,
+              year - 1
             )
 
-          return {
-            inflationRate,
+          const importRateYear =
+            importRate * inflationMultiplier
 
-            rows,
+          const exportRateYear =
+            exportRate * inflationMultiplier
 
-            totals,
+          const solarBenefit =
+            solar * (importRateYear / 100)
 
-            paybackPeriod:
-              paybackRow?.year ||
-              null,
+          const batteryBenefit =
+            battery * (importRateYear / 100)
 
-            totalNetSavings:
-              totals.netAnnualBenefit,
+          const exportBenefit =
+            exportKwh * (exportRateYear / 100)
 
-            finalNetPosition:
-              rows[
-                rows.length - 1
-              ]?.cumulativePosition ||
-              0,
+          const forceChargeBenefit = 0
 
-            totalNetReturn:
-              totals.netAnnualBenefit -
-              systemCost,
-          }
+          const annualBenefit =
+            solarBenefit +
+            batteryBenefit +
+            forceChargeBenefit +
+            exportBenefit
+
+          /*
+           * The capital cost is applied in year 1.
+           * The deposit is paid separately, so the remaining
+           * system balance is the year-one payment represented
+           * in the long-term cash position.
+           */
+          const yearlyPayment =
+            year === 1
+              ? Math.max(
+                  0,
+                  systemCost - deposit
+                )
+              : 0
+
+          const netAnnualBenefit =
+            annualBenefit - yearlyPayment
+
+          cumulativePosition +=
+            netAnnualBenefit
+
+          const billPreInstall =
+            annualConsumption *
+            (importRateYear / 100)
+
+          const gridReduction =
+            solar + battery
+
+          const remainingGrid = Math.max(
+            0,
+            annualConsumption - gridReduction
+          )
+
+          const billPostInstall =
+            remainingGrid *
+            (importRateYear / 100)
+
+          const annualSaving =
+            annualBenefit
+
+          rows.push({
+            year,
+            generation,
+            solar,
+            battery,
+            exportKwh,
+            solarBenefit,
+            batteryBenefit,
+            forceChargeBenefit,
+            exportBenefit,
+            annualBenefit,
+            annualSaving,
+            yearlyPayment,
+            netAnnualBenefit,
+            cumulativePosition,
+            billPreInstall,
+            billPostInstall,
+            importRateYear,
+            exportRateYear,
+          })
         }
+
+        const totals = rows.reduce(
+          (total, row) => {
+            total.generation += row.generation
+            total.solar += row.solar
+            total.battery += row.battery
+            total.exportKwh += row.exportKwh
+            total.solarBenefit += row.solarBenefit
+            total.batteryBenefit += row.batteryBenefit
+            total.forceChargeBenefit += row.forceChargeBenefit
+            total.exportBenefit += row.exportBenefit
+            total.annualBenefit += row.annualBenefit
+            total.yearlyPayment += row.yearlyPayment
+            total.netAnnualBenefit += row.netAnnualBenefit
+            total.billPreInstall += row.billPreInstall
+            total.billPostInstall += row.billPostInstall
+
+            return total
+          },
+          {
+            generation: 0,
+            solar: 0,
+            battery: 0,
+            exportKwh: 0,
+            solarBenefit: 0,
+            batteryBenefit: 0,
+            forceChargeBenefit: 0,
+            exportBenefit: 0,
+            annualBenefit: 0,
+            yearlyPayment: 0,
+            netAnnualBenefit: 0,
+            billPreInstall: 0,
+            billPostInstall: 0,
+          }
+        )
+
+        const paybackRow =
+          rows.find(
+            (row) =>
+              row.cumulativePosition >= 0
+          )
+
+        return {
+          inflationRate,
+          rows,
+          totals,
+          paybackPeriod:
+            paybackRow?.year || null,
+          totalNetSavings:
+            totals.netAnnualBenefit,
+          finalNetPosition:
+            rows[rows.length - 1]?.cumulativePosition || 0,
+          totalNetReturn:
+            totals.netAnnualBenefit - systemCost,
+        }
+      }
 
       const scenarios = {}
 
-      inflationScenarios.forEach(
-        (scenario) => {
-          scenarios[
-            scenario.key
-          ] =
-            buildScenario(
-              scenario.rate
-            )
-        }
-      )
+      inflationScenarios.forEach((scenario) => {
+        scenarios[scenario.key] =
+          buildScenario(scenario.rate)
+      })
 
       return {
         inflationScenarios,
-
         scenarios,
       }
-    }, [
-      data,
-      results,
-    ])
+    }, [data, results])
 
   /*
-   * ============================================================
+   * =========================================================
    * SEND CALCULATION TO APPOINTMENT DETAIL
-   * ============================================================
+   * =========================================================
    */
 
   useEffect(() => {
     onCalculationChange?.({
       data,
-
       results,
-
       thirtyYearProjection,
     })
   }, [
@@ -1151,12 +847,7 @@ export default function EPVSCalculator({
   }
 
   const reset = () => {
-    setData(
-      appointmentInitial
-    )
-
-    setFluxRateError("")
-
+    setData(appointmentInitial)
     setStep(0)
   }
 
@@ -1164,9 +855,9 @@ export default function EPVSCalculator({
     <section>
       <div style={styles.wrapper}>
 
-        {/* =====================================================
+        {/* =================================================
             STEPPER
-            ===================================================== */}
+            ================================================= */}
 
         <div style={styles.stepper}>
           {steps.map(
@@ -1198,7 +889,6 @@ export default function EPVSCalculator({
                   }}
                   style={{
                     ...styles.step,
-
                     opacity:
                       index >
                       step
@@ -1209,13 +899,11 @@ export default function EPVSCalculator({
                   <div
                     style={{
                       ...styles.stepCircle,
-
                       background:
                         active ||
                         complete
                           ? "#172554"
                           : "#eef2f7",
-
                       color:
                         active ||
                         complete
@@ -1229,9 +917,7 @@ export default function EPVSCalculator({
                   </div>
 
                   <span>
-                    {
-                      item.title
-                    }
+                    {item.title}
                   </span>
                 </button>
               )
@@ -1239,189 +925,115 @@ export default function EPVSCalculator({
           )}
         </div>
 
-        {/* =====================================================
-            CUSTOMER
-            ===================================================== */}
+        {/* =================================================
+            CUSTOMER & ENERGY
+            ================================================= */}
 
         {step === 0 && (
           <Card
             title="Customer"
-            subtitle="Customer, property and current electricity information."
+            subtitle="Customer details, electricity usage and existing solar PV."
           >
-            <div
-              style={
-                styles.grid
-              }
-            >
-              <Input
-                label="Customer name"
-                value={
-                  data.customerName
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "customerName",
-                    value
-                  )
-                }
-              />
-
-              <Input
-                label="Postcode"
-                value={
-                  data.postcode
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "postcode",
-                    value
-                  )
-                }
-              />
-
-              <Input
-                label="Address"
-                value={
-                  data.address
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "address",
-                    value
-                  )
-                }
-              />
-
-              <Input
-                label="Annual electricity consumption (kWh)"
-                type="number"
-                value={
-                  data.annualConsumption
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "annualConsumption",
-                    value
-                  )
-                }
-                min={0}
-              />
-
-              <Input
-                label="Current import rate (p/kWh)"
-                type="number"
-                value={
-                  data.importRate
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "importRate",
-                    value
-                  )
-                }
-                min={0}
-                step={0.01}
-              />
-
-              <Input
-                label="Current export rate (p/kWh)"
-                type="number"
-                value={
-                  data.exportRate
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "exportRate",
-                    value
-                  )
-                }
-                min={0}
-                step={0.01}
-              />
-
-              <Input
-                label="Current standing charge (p/day)"
-                type="number"
-                value={
-                  data.standingCharge
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "standingCharge",
-                    value
-                  )
-                }
-                min={0}
-                step={0.01}
-              />
-
-              <div
-                style={{
-                  gridColumn:
-                    "1 / -1",
-                }}
-              >
-                <Toggle
-                  label="Existing solar PV"
-                  value={
-                    data.existingSolar
-                  }
-                  onChange={(
-                    value
-                  ) =>
-                    update(
-                      "existingSolar",
-                      value
-                    )
-                  }
-                />
+            <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+              <div>
+                <h3 style={{ margin: "0 0 14px", fontSize: 15, color: "#172554" }}>
+                  Customer details
+                </h3>
+                <div style={styles.grid}>
+                  <Input
+                    label="Customer name"
+                    value={data.customerName}
+                    onChange={(value) => update("customerName", value)}
+                  />
+                  <Input
+                    label="Postcode"
+                    value={data.postcode}
+                    onChange={(value) => update("postcode", value)}
+                  />
+                  <Input
+                    label="Address"
+                    value={data.address}
+                    onChange={(value) => update("address", value)}
+                  />
+                </div>
               </div>
 
-              {data.existingSolar && (
-                <Input
-                  label="Existing annual generation (kWh)"
-                  type="number"
-                  value={
-                    data.existingGeneration
-                  }
-                  onChange={(
-                    value
-                  ) =>
-                    update(
-                      "existingGeneration",
-                      value
-                    )
-                  }
-                  min={0}
-                />
-              )}
+              <div>
+                <h3 style={{ margin: "0 0 14px", fontSize: 15, color: "#172554" }}>
+                  Electricity
+                </h3>
+                <div style={styles.grid}>
+                  <Input
+                    label="Annual electricity consumption (kWh)"
+                    type="number"
+                    value={data.annualConsumption}
+                    onChange={(value) => update("annualConsumption", value)}
+                    min={0}
+                  />
+                  <Input
+                    label="Current import rate (p/kWh)"
+                    type="number"
+                    value={data.importRate}
+                    onChange={(value) => update("importRate", value)}
+                    min={0}
+                    step={0.01}
+                  />
+                  <Input
+                    label="Current export rate (p/kWh)"
+                    type="number"
+                    value={data.exportRate}
+                    onChange={(value) => update("exportRate", value)}
+                    min={0}
+                    step={0.01}
+                  />
+                  <Input
+                    label="Current standing charge (p/day)"
+                    type="number"
+                    value={data.standingCharge}
+                    onChange={(value) => update("standingCharge", value)}
+                    min={0}
+                    step={0.01}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <h3 style={{ margin: "0 0 14px", fontSize: 15, color: "#172554" }}>
+                  Existing solar PV
+                </h3>
+                <div style={styles.grid}>
+                  <Toggle
+                    label="Existing solar PV"
+                    value={data.existingSolar}
+                    onChange={(value) => update("existingSolar", value)}
+                  />
+                  {data.existingSolar && (
+                    <Input
+                      label="Existing annual generation (kWh)"
+                      type="number"
+                      value={data.existingGeneration}
+                      onChange={(value) => update("existingGeneration", value)}
+                      min={0}
+                    />
+                  )}
+                </div>
+              </div>
             </div>
           </Card>
         )}
 
-        {/* =====================================================
+        {/* =================================================
             SOLAR PV
-            ===================================================== */}
+            ================================================= */}
 
         {step === 1 && (
           <Card
-            title="Solar PV"
-            subtitle="Configure each proposed roof / solar array."
+            title="Solar PV arrays"
+            subtitle="Enter the EPVS information for each roof / array."
           >
+
+            {/* NUMBER OF ARRAYS */}
+
             <div
               style={{
                 marginBottom: 22,
@@ -1453,10 +1065,8 @@ export default function EPVSCalculator({
                         3,
                         Math.max(
                           1,
-                          Number(
-                            value ||
-                              1
-                          )
+                          value ||
+                            1
                         )
                       )
                     )
@@ -1477,8 +1087,14 @@ export default function EPVSCalculator({
                 }}
               >
                 Maximum 3 arrays.
+                Add an array when
+                the panels are split
+                across different
+                roof orientations.
               </p>
             </div>
+
+            {/* ARRAYS */}
 
             <div
               style={{
@@ -1549,7 +1165,8 @@ export default function EPVSCalculator({
                                   "#64748b",
                               }}
                             >
-                              EPVS roof / array
+                              EPVS roof /
+                              array
                             </p>
                           </div>
 
@@ -1569,14 +1186,10 @@ export default function EPVSCalculator({
                             }}
                           >
                             {calculated
-                              ? `${Number(
-                                  calculated.systemSize ||
-                                    0
-                                ).toFixed(
+                              ? `${Number(calculated.systemSize || 0).toFixed(
                                   2
                                 )} kWp · ${Math.round(
-                                  calculated.generation ||
-                                    0
+                                  calculated.generation
                                 ).toLocaleString(
                                   "en-GB"
                                 )} kWh`
@@ -1704,13 +1317,10 @@ export default function EPVSCalculator({
 
                           <Input
                             label="Calculated system size (kWp)"
-                            type="text"
+                            type="number"
                             value={
                               calculated
-                                ? Number(
-                                    calculated.systemSize ||
-                                      0
-                                  ).toFixed(
+                                ? Number(calculated.systemSize || 0).toFixed(
                                     2
                                   )
                                 : "0.00"
@@ -1720,13 +1330,10 @@ export default function EPVSCalculator({
 
                           <Input
                             label="Calculated generation (kWh)"
-                            type="text"
+                            type="number"
                             value={
                               calculated
-                                ? Number(
-                                    calculated.generation ||
-                                      0
-                                  ).toFixed(
+                                ? Number(calculated.generation || 0).toFixed(
                                     2
                                   )
                                 : "0.00"
@@ -1739,6 +1346,8 @@ export default function EPVSCalculator({
                   }
                 )}
             </div>
+
+            {/* TOTAL */}
 
             <div
               style={{
@@ -1764,7 +1373,8 @@ export default function EPVSCalculator({
                       "#315b28",
                   }}
                 >
-                  Total generation
+                  Total overall
+                  generation
                 </div>
 
                 <div
@@ -1775,9 +1385,7 @@ export default function EPVSCalculator({
                       "#4d7047",
                   }}
                 >
-                  {
-                    results.numberOfArrays
-                  }{" "}
+                  {results.numberOfArrays}{" "}
                   array
                   {results.numberOfArrays !==
                   1
@@ -1793,10 +1401,7 @@ export default function EPVSCalculator({
                     "#26783a",
                 }}
               >
-                {Number(
-                  results.generation ||
-                    0
-                ).toFixed(
+                {Number(results.generation || 0).toFixed(
                   2
                 )}{" "}
                 kWh
@@ -1805,831 +1410,405 @@ export default function EPVSCalculator({
           </Card>
         )}
 
-        {/* =====================================================
+        {/* =================================================
             BATTERY & INVERTER
-            ===================================================== */}
+            ================================================= */}
 
         {step === 2 && (
-          <Card
-            title="Battery & inverter"
-            subtitle="Configure the proposed storage and inverter."
-          >
-            <div
-              style={
-                styles.grid
-              }
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <Card
+              title="Battery"
+              subtitle="Configure the proposed battery."
             >
-              <Select
-                label="Battery configuration"
-                value={
-                  String(
-                    data.batteryCapacity
-                  )
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "batteryCapacity",
-                    Number(
-                      value
-                    )
-                  )
-                }
-              >
-                <option value="0">
-                  No battery
-                </option>
+              <div style={styles.grid}>
+                <label style={styles.field}>
+                  <span>Battery configuration</span>
 
-                <option value="5.12">
-                  1 × 5.12 kWh
-                </option>
-
-                <option value="10.24">
-                  2 × 5.12 kWh
-                </option>
-
-                <option value="15.36">
-                  3 × 5.12 kWh
-                </option>
-
-                <option value="9.4">
-                  1 × 9.4 kWh
-                </option>
-
-                <option value="18.8">
-                  2 × 9.4 kWh
-                </option>
-
-                <option value="28.2">
-                  3 × 9.4 kWh
-                </option>
-              </Select>
-
-              <Select
-                label="Inverter capacity"
-                value={
-                  String(
-                    data.inverterCapacity
-                  )
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "inverterCapacity",
-                    value
-                  )
-                }
-              >
-                <option value="">
-                  Select inverter
-                </option>
-
-                <option value="3.7">
-                  3.7 kW
-                </option>
-
-                <option value="6">
-                  6 kW
-                </option>
-
-                <option value="7">
-                  7 kW
-                </option>
-
-                <option value="10">
-                  10 kW
-                </option>
-              </Select>
-            </div>
-
-            <div
-              style={{
-                marginTop: 20,
-                padding: 16,
-                background:
-                  "#f8fafc",
-                border:
-                  "1px solid #e2e8f0",
-                borderRadius: 10,
-              }}
-            >
-              <strong>
-                Selected system
-              </strong>
-
-              <div
-                style={{
-                  marginTop: 8,
-                  display:
-                    "flex",
-                  gap: 20,
-                  flexWrap:
-                    "wrap",
-                  fontSize: 13,
-                  color:
-                    "#475569",
-                }}
-              >
-                <span>
-                  Battery:{" "}
-                  <strong>
-                    {Number(
-                      data.batteryCapacity ||
-                        0
-                    ) > 0
-                      ? `${data.batteryCapacity} kWh`
-                      : "None"}
-                  </strong>
-                </span>
-
-                <span>
-                  Inverter:{" "}
-                  <strong>
-                    {data.inverterCapacity
-                      ? `${data.inverterCapacity} kW`
-                      : "Not selected"}
-                  </strong>
-                </span>
+                  <select
+                    value={data.batteryCapacity}
+                    onChange={(event) =>
+                      update(
+                        "batteryCapacity",
+                        event.target.value === ""
+                          ? ""
+                          : Number(event.target.value)
+                      )
+                    }
+                  >
+                    <option value="">Select battery</option>
+                    <option value={0}>No battery</option>
+                    <option value={5.12}>1 × 5.12 kWh</option>
+                    <option value={10.24}>2 × 5.12 kWh</option>
+                    <option value={15.36}>3 × 5.12 kWh</option>
+                    <option value={9.4}>1 × 9.4 kWh</option>
+                    <option value={18.8}>2 × 9.4 kWh</option>
+                    <option value={28.2}>3 × 9.4 kWh</option>
+                  </select>
+                </label>
               </div>
-            </div>
-          </Card>
+            </Card>
+
+            <Card
+              title="Inverter"
+              subtitle="Configure the inverter capacity."
+            >
+              <div style={styles.grid}>
+                <label style={styles.field}>
+                  <span>Inverter capacity (kW)</span>
+
+                  <select
+                    value={data.inverterCapacity}
+                    onChange={(event) =>
+                      update(
+                        "inverterCapacity",
+                        event.target.value === ""
+                          ? ""
+                          : Number(event.target.value)
+                      )
+                    }
+                  >
+                    <option value="">Select inverter</option>
+                    <option value={3.7}>3.7 kW</option>
+                    <option value={6}>6 kW</option>
+                    <option value={7}>7 kW</option>
+                    <option value={10}>10 kW</option>
+                  </select>
+                </label>
+              </div>
+            </Card>
+          </div>
         )}
 
-        {/* =====================================================
+        {/* =================================================
             TARIFF
-            ===================================================== */}
+            ================================================= */}
 
         {step === 3 && (
           <Card
-            title="Tariff"
-            subtitle="Current customer tariff and proposed Octopus Flux tariff."
+            title="New Octopus Standard Flux"
+            subtitle="Enter the current Flux rates from the Octopus Energy website."
           >
-            {/* CURRENT TARIFF */}
-
             <div
               style={{
-                padding: 18,
-                background:
-                  "#f8fafc",
-                border:
-                  "1px solid #e2e8f0",
-                borderRadius: 10,
-                marginBottom: 20,
-              }}
-            >
-              <h3
-                style={{
-                  margin:
-                    "0 0 5px",
-                  fontSize: 15,
-                }}
-              >
-                Current tariff
-              </h3>
-
-              <p
-                style={{
-                  margin:
-                    "0 0 16px",
-                  fontSize: 12,
-                  color:
-                    "#64748b",
-                }}
-              >
-                Used as the customer's pre-installation baseline.
-              </p>
-
-              <div
-                style={
-                  styles.grid
-                }
-              >
-                <Input
-                  label="Current import rate (p/kWh)"
-                  type="number"
-                  value={
-                    data.importRate
-                  }
-                  onChange={(
-                    value
-                  ) =>
-                    update(
-                      "importRate",
-                      value
-                    )
-                  }
-                  min={0}
-                  step={0.01}
-                />
-
-                <Input
-                  label="Current export rate (p/kWh)"
-                  type="number"
-                  value={
-                    data.exportRate
-                  }
-                  onChange={(
-                    value
-                  ) =>
-                    update(
-                      "exportRate",
-                      value
-                    )
-                  }
-                  min={0}
-                  step={0.01}
-                />
-
-                <Input
-                  label="Current standing charge (p/day)"
-                  type="number"
-                  value={
-                    data.standingCharge
-                  }
-                  onChange={(
-                    value
-                  ) =>
-                    update(
-                      "standingCharge",
-                      value
-                    )
-                  }
-                  min={0}
-                  step={0.01}
-                />
-              </div>
-            </div>
-
-            {/* PROPOSED TARIFF */}
-
-            <div
-              style={{
-                padding: 18,
-                background:
-                  "white",
-                border:
-                  "1px solid #dbe3ec",
+                marginBottom: 18,
+                padding: 16,
+                background: "#f8fafc",
+                border: "1px solid #e2e8f0",
                 borderRadius: 10,
               }}
             >
               <div
                 style={{
-                  display:
-                    "flex",
-                  justifyContent:
-                    "space-between",
-                  alignItems:
-                    "flex-start",
-                  gap: 15,
-                  marginBottom:
-                    18,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 16,
+                  flexWrap: "wrap",
                 }}
               >
                 <div>
-                  <h3
-                    style={{
-                      margin:
-                        "0 0 5px",
-                      fontSize: 15,
-                    }}
-                  >
-                    Proposed tariff
-                  </h3>
-
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: 12,
-                      color:
-                        "#64748b",
-                    }}
-                  >
-                    Octopus Flux rates used after installation.
-                  </p>
+                  <div style={{ fontWeight: 700, color: "#172554", marginBottom: 5 }}>
+                    Get current Octopus Flux rates
+                  </div>
+                  <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.5 }}>
+                    Uses the customer postcode to identify the electricity region and retrieves the current Flux import and export rates from Octopus.
+                  </div>
                 </div>
 
-                <Select
-                  label=""
-                  value={
-                    data.tariff
-                  }
-                  onChange={(
-                    value
-                  ) =>
-                    update(
-                      "tariff",
-                      value
-                    )
-                  }
+                <button
+                  type="button"
+                  onClick={getCurrentFluxRates}
+                  disabled={loadingFluxRates}
+                  style={{
+                    ...styles.primary,
+                    opacity: loadingFluxRates ? 0.65 : 1,
+                    whiteSpace: "nowrap",
+                  }}
                 >
-                  <option>
-                    Standard Flux
-                  </option>
-
-                  <option>
-                    Intelligent Flux
-                  </option>
-
-                  <option>
-                    Standard
-                  </option>
-
-                  <option>
-                    Overnight Charging
-                  </option>
-
-                  <option>
-                    Octopus Cosy
-                  </option>
-                </Select>
+                  <RotateCcw size={15} />
+                  {loadingFluxRates ? "Getting rates…" : "Get current rates"}
+                </button>
               </div>
 
-              {data.tariff ===
-                "Standard Flux" && (
-                <>
-                  <div
-                    style={{
-                      padding:
-                        14,
-                      background:
-                        "#eef4ff",
-                      border:
-                        "1px solid #cbd8f0",
-                      borderRadius:
-                        9,
-                      marginBottom:
-                        18,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display:
-                          "flex",
-                        justifyContent:
-                          "space-between",
-                        alignItems:
-                          "center",
-                        gap: 15,
-                        flexWrap:
-                          "wrap",
-                      }}
-                    >
-                      <div>
-                        <strong>
-                          Octopus Flux
-                        </strong>
-
-                        <p
-                          style={{
-                            margin:
-                              "5px 0 0",
-                            fontSize:
-                              12,
-                            color:
-                              "#64748b",
-                          }}
-                        >
-                          Retrieve the current regional Flux tariff from Octopus.
-                        </p>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={
-                          getCurrentFluxRates
-                        }
-                        disabled={
-                          loadingFluxRates
-                        }
-                        style={{
-                          ...styles.primary,
-
-                          opacity:
-                            loadingFluxRates
-                              ? 0.6
-                              : 1,
-
-                          cursor:
-                            loadingFluxRates
-                              ? "default"
-                              : "pointer",
-                        }}
-                      >
-                        {loadingFluxRates
-                          ? "Getting current rates..."
-                          : "Get current Flux rates"}
-                      </button>
-                    </div>
-
-                    {data.fluxGspGroupId && (
-                      <div
-                        style={{
-                          marginTop:
-                            12,
-                          fontSize:
-                            12,
-                          color:
-                            "#475569",
-                        }}
-                      >
-                        <strong>
-                          GSP region:
-                        </strong>{" "}
-                        {
-                          data.fluxGspGroupId
-                        }
-                      </div>
-                    )}
-
-                    {data.fluxTariffCode && (
-                      <div
-                        style={{
-                          marginTop:
-                            4,
-                          fontSize:
-                            12,
-                          color:
-                            "#475569",
-                        }}
-                      >
-                        <strong>
-                          Tariff:
-                        </strong>{" "}
-                        {
-                          data.fluxTariffCode
-                        }
-                      </div>
-                    )}
-
-                    {data.fluxRetrievedAt && (
-                      <div
-                        style={{
-                          marginTop:
-                            4,
-                          fontSize:
-                            12,
-                          color:
-                            "#64748b",
-                        }}
-                      >
-                        Rates retrieved:{" "}
-                        {new Date(
-                          data.fluxRetrievedAt
-                        ).toLocaleString(
-                          "en-GB"
-                        )}
-                      </div>
-                    )}
-
-                    {fluxRateError && (
-                      <div
-                        style={{
-                          marginTop:
-                            12,
-                          padding:
-                            10,
-                          background:
-                            "#fff1f2",
-                          border:
-                            "1px solid #fecdd3",
-                          color:
-                            "#be123c",
-                          borderRadius:
-                            7,
-                          fontSize:
-                            12,
-                        }}
-                      >
-                        {
-                          fluxRateError
-                        }
-                      </div>
-                    )}
-                  </div>
-
-                  <div
-                    style={{
-                      overflowX:
-                        "auto",
-                    }}
-                  >
-                    <table
-                      style={{
-                        width:
-                          "100%",
-                        borderCollapse:
-                          "collapse",
-                        fontSize:
-                          13,
-                      }}
-                    >
-                      <thead>
-                        <tr>
-                          <th
-                            style={
-                              styles.tableHeader
-                            }
-                          >
-                            Rate
-                          </th>
-
-                          <th
-                            style={
-                              styles.tableHeader
-                            }
-                          >
-                            Import (p/kWh)
-                          </th>
-
-                          <th
-                            style={
-                              styles.tableHeader
-                            }
-                          >
-                            Export (p/kWh)
-                          </th>
-                        </tr>
-                      </thead>
-
-                      <tbody>
-                        <tr>
-                          <td
-                            style={
-                              styles.tableCell
-                            }
-                          >
-                            Day
-                          </td>
-
-                          <td
-                            style={
-                              styles.tableCell
-                            }
-                          >
-                            <input
-                              type="number"
-                              value={
-                                data.fluxDayImport
-                              }
-                              step="0.01"
-                              min="0"
-                              onChange={(
-                                event
-                              ) =>
-                                update(
-                                  "fluxDayImport",
-                                  Number(
-                                    event
-                                      .target
-                                      .value
-                                  )
-                                )
-                              }
-                            />
-                          </td>
-
-                          <td
-                            style={
-                              styles.tableCell
-                            }
-                          >
-                            <input
-                              type="number"
-                              value={
-                                data.fluxDayExport
-                              }
-                              step="0.01"
-                              min="0"
-                              onChange={(
-                                event
-                              ) =>
-                                update(
-                                  "fluxDayExport",
-                                  Number(
-                                    event
-                                      .target
-                                      .value
-                                  )
-                                )
-                              }
-                            />
-                          </td>
-                        </tr>
-
-                        <tr>
-                          <td
-                            style={
-                              styles.tableCell
-                            }
-                          >
-                            Flux / Off-peak
-                          </td>
-
-                          <td
-                            style={
-                              styles.tableCell
-                            }
-                          >
-                            <input
-                              type="number"
-                              value={
-                                data.fluxImport
-                              }
-                              step="0.01"
-                              min="0"
-                              onChange={(
-                                event
-                              ) =>
-                                update(
-                                  "fluxImport",
-                                  Number(
-                                    event
-                                      .target
-                                      .value
-                                  )
-                                )
-                              }
-                            />
-                          </td>
-
-                          <td
-                            style={
-                              styles.tableCell
-                            }
-                          >
-                            <input
-                              type="number"
-                              value={
-                                data.fluxExport
-                              }
-                              step="0.01"
-                              min="0"
-                              onChange={(
-                                event
-                              ) =>
-                                update(
-                                  "fluxExport",
-                                  Number(
-                                    event
-                                      .target
-                                      .value
-                                  )
-                                )
-                              }
-                            />
-                          </td>
-                        </tr>
-
-                        <tr>
-                          <td
-                            style={
-                              styles.tableCell
-                            }
-                          >
-                            Peak
-                          </td>
-
-                          <td
-                            style={
-                              styles.tableCell
-                            }
-                          >
-                            <input
-                              type="number"
-                              value={
-                                data.fluxPeakImport
-                              }
-                              step="0.01"
-                              min="0"
-                              onChange={(
-                                event
-                              ) =>
-                                update(
-                                  "fluxPeakImport",
-                                  Number(
-                                    event
-                                      .target
-                                      .value
-                                  )
-                                )
-                              }
-                            />
-                          </td>
-
-                          <td
-                            style={
-                              styles.tableCell
-                            }
-                          >
-                            <input
-                              type="number"
-                              value={
-                                data.fluxPeakExport
-                              }
-                              step="0.01"
-                              min="0"
-                              onChange={(
-                                event
-                              ) =>
-                                update(
-                                  "fluxPeakExport",
-                                  Number(
-                                    event
-                                      .target
-                                      .value
-                                  )
-                                )
-                              }
-                            />
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div
-                    style={{
-                      marginTop:
-                        18,
-                      maxWidth:
-                        350,
-                    }}
-                  >
-                    <Input
-                      label="Flux standing charge (p/day)"
-                      type="number"
-                      value={
-                        data.fluxStandingCharge
-                      }
-                      onChange={(
-                        value
-                      ) =>
-                        update(
-                          "fluxStandingCharge",
-                          value
-                        )
-                      }
-                      min={0}
-                      step={0.01}
-                    />
-                  </div>
-
-                  <p
-                    style={{
-                      margin:
-                        "15px 0 0",
-                      fontSize:
-                        12,
-                      color:
-                        "#64748b",
-                    }}
-                  >
-                    Flux normally has a cheap overnight period and a higher peak period. The rates retrieved from Octopus remain editable so the sales rep can override them when required.
-                  </p>
-                </>
+              {data.fluxRatesRetrievedAt && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    paddingTop: 12,
+                    borderTop: "1px solid #e2e8f0",
+                    display: "flex",
+                    gap: 14,
+                    flexWrap: "wrap",
+                    fontSize: 11,
+                    color: "#64748b",
+                  }}
+                >
+                  <span>
+                    Retrieved {new Date(data.fluxRatesRetrievedAt).toLocaleString("en-GB")}
+                  </span>
+                  {data.fluxGsp && <span>GSP: {data.fluxGsp}</span>}
+                </div>
               )}
+
+              {fluxRateError && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    background: "#fef2f2",
+                    border: "1px solid #fecaca",
+                    color: "#b91c1c",
+                    fontSize: 12,
+                  }}
+                >
+                  {fluxRateError}
+                </div>
+              )}
+
+              <div
+                style={{
+                  marginTop: 12,
+                  fontSize: 11,
+                  color: "#64748b",
+                }}
+              >
+                Octopus Flux uses three daily periods: 02:00–05:00 off-peak, 05:00–16:00 and 19:00–02:00 standard, and 16:00–19:00 peak. Rates remain editable below after the API lookup.
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1.2fr 1fr 1fr",
+                border: "1px solid #dbe3ec",
+                borderRadius: 10,
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  background: "#f8fafc",
+                  padding: "13px 16px",
+                  fontWeight: 700,
+                  fontSize: 12,
+                  borderBottom: "1px solid #dbe3ec",
+                }}
+              >
+                Rate
+              </div>
+
+              <div
+                style={{
+                  background: "#e2e2e2",
+                  padding: "13px 16px",
+                  fontWeight: 700,
+                  fontSize: 12,
+                  textAlign: "center",
+                  borderBottom: "1px solid #dbe3ec",
+                  borderLeft: "1px solid #dbe3ec",
+                }}
+              >
+                Import
+              </div>
+
+              <div
+                style={{
+                  background: "#e2e2e2",
+                  padding: "13px 16px",
+                  fontWeight: 700,
+                  fontSize: 12,
+                  textAlign: "center",
+                  borderBottom: "1px solid #dbe3ec",
+                  borderLeft: "1px solid #dbe3ec",
+                }}
+              >
+                Export
+              </div>
+
+              <div
+                style={{
+                  padding: 12,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  borderBottom: "1px solid #dbe3ec",
+                }}
+              >
+                Day Rate (p/kWh)
+              </div>
+
+              <div style={{ padding: 8, borderBottom: "1px solid #dbe3ec", borderLeft: "1px solid #dbe3ec" }}>
+                <Input
+                  label=""
+                  type="number"
+                  value={data.fluxDayImport}
+                  readOnly
+                  onChange={(value) => update("fluxDayImport", value)}
+                  min={0}
+                  step={0.01}
+                />
+              </div>
+
+              <div style={{ padding: 8, borderBottom: "1px solid #dbe3ec", borderLeft: "1px solid #dbe3ec" }}>
+                <Input
+                  label=""
+                  type="number"
+                  value={data.fluxDayExport}
+                  readOnly
+                  onChange={(value) => update("fluxDayExport", value)}
+                  min={0}
+                  step={0.01}
+                />
+              </div>
+
+              <div
+                style={{
+                  padding: 12,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  borderBottom: "1px solid #dbe3ec",
+                }}
+              >
+                Flux Rate (p/kWh)
+              </div>
+
+              <div style={{ padding: 8, borderBottom: "1px solid #dbe3ec", borderLeft: "1px solid #dbe3ec" }}>
+                <Input
+                  label=""
+                  type="number"
+                  value={data.fluxImport}
+                  readOnly
+                  onChange={(value) => update("fluxImport", value)}
+                  min={0}
+                  step={0.01}
+                />
+              </div>
+
+              <div style={{ padding: 8, borderBottom: "1px solid #dbe3ec", borderLeft: "1px solid #dbe3ec" }}>
+                <Input
+                  label=""
+                  type="number"
+                  value={data.fluxExport}
+                  readOnly
+                  onChange={(value) => update("fluxExport", value)}
+                  min={0}
+                  step={0.01}
+                />
+              </div>
+
+              <div
+                style={{
+                  padding: 12,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  borderBottom: "1px solid #dbe3ec",
+                }}
+              >
+                Peak Rate (p/kWh)
+              </div>
+
+              <div style={{ padding: 8, borderBottom: "1px solid #dbe3ec", borderLeft: "1px solid #dbe3ec" }}>
+                <Input
+                  label=""
+                  type="number"
+                  value={data.fluxPeakImport}
+                  readOnly
+                  onChange={(value) => update("fluxPeakImport", value)}
+                  min={0}
+                  step={0.01}
+                />
+              </div>
+
+              <div style={{ padding: 8, borderBottom: "1px solid #dbe3ec", borderLeft: "1px solid #dbe3ec" }}>
+                <Input
+                  label=""
+                  type="number"
+                  value={data.fluxPeakExport}
+                  readOnly
+                  onChange={(value) => update("fluxPeakExport", value)}
+                  min={0}
+                  step={0.01}
+                />
+              </div>
+
+              <div
+                style={{
+                  padding: 12,
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                Standing Charge (p/day)
+              </div>
+
+              <div
+                style={{
+                  padding: 8,
+                  gridColumn: "span 2",
+                  borderLeft: "1px solid #dbe3ec",
+                }}
+              >
+                <Input
+                  label=""
+                  type="number"
+                  value={data.fluxStandingCharge}
+                  readOnly
+                  onChange={(value) =>
+                    update("fluxStandingCharge", value)
+                  }
+                  min={0}
+                  step={0.01}
+                />
+              </div>
             </div>
           </Card>
         )}
 
-        {/* =====================================================
+        {/* =================================================
             FINANCE
-            ===================================================== */}
+            ================================================= */}
 
         {step === 4 && (
           <Card
-            title="Finance"
-            subtitle="Configure the customer's payment method."
+            title="Payment"
+            subtitle="Choose how the customer is paying for the system."
           >
             <div
-              style={
-                styles.grid
-              }
+              style={styles.grid}
             >
-              <Select
-                label="Payment method"
-                value={
-                  data.paymentMethod
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "paymentMethod",
-                    value
-                  )
+
+              <label
+                style={
+                  styles.field
                 }
               >
-                <option value="Finance">
-                  Finance
-                </option>
+                <span>
+                  Payment method
+                </span>
 
-                <option value="Cash">
-                  Cash
-                </option>
-              </Select>
+                <select
+                  value={
+                    data.paymentMethod
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    update(
+                      "paymentMethod",
+                      event.target
+                        .value
+                    )
+                  }
+                >
+                  <option value="Finance">
+                    Finance
+                  </option>
+
+                  <option value="Cash">
+                    Cash
+                  </option>
+                </select>
+              </label>
 
               <Input
                 label="System cost (£)"
@@ -2707,35 +1886,31 @@ export default function EPVSCalculator({
 
               <div
                 style={{
-                  padding:
-                    15,
+                  padding: 15,
                   background:
                     "#f8fafc",
                   border:
                     "1px solid #e2e8f0",
-                  borderRadius:
-                    9,
+                  borderRadius: 9,
                 }}
               >
                 <div
                   style={{
-                    fontSize:
-                      11,
+                    fontSize: 11,
                     color:
                       "#64748b",
                   }}
                 >
-                  Amount after deposit
+                  Amount after
+                  deposit
                 </div>
 
                 <strong
                   style={{
                     display:
                       "block",
-                    marginTop:
-                      5,
-                    fontSize:
-                      18,
+                    marginTop: 5,
+                    fontSize: 18,
                     color:
                       "#172554",
                   }}
@@ -2759,23 +1934,19 @@ export default function EPVSCalculator({
           </Card>
         )}
 
-        {/* =====================================================
+        {/* =================================================
             RESULTS
-            ===================================================== */}
+            ================================================= */}
 
         {step === 5 && (
           <>
             <Results
-              results={
-                results
-              }
+              results={results}
               data={data}
             />
 
             <AnnualBreakdown
-              results={
-                results
-              }
+              results={results}
             />
 
             <ThirtyYearBreakdown
@@ -2786,14 +1957,12 @@ export default function EPVSCalculator({
           </>
         )}
 
-        {/* =====================================================
+        {/* =================================================
             FOOTER
-            ===================================================== */}
+            ================================================= */}
 
         <div
-          style={
-            styles.footer
-          }
+          style={styles.footer}
         >
           <button
             type="button"
@@ -2817,15 +1986,12 @@ export default function EPVSCalculator({
           >
             <button
               type="button"
-              onClick={
-                back
-              }
+              onClick={back}
               disabled={
                 step === 0
               }
               style={{
                 ...styles.secondary,
-
                 opacity:
                   step === 0
                     ? 0.5
@@ -2843,9 +2009,7 @@ export default function EPVSCalculator({
                 1 && (
               <button
                 type="button"
-                onClick={
-                  next
-                }
+                onClick={next}
                 style={
                   styles.primary
                 }
@@ -2864,9 +2028,9 @@ export default function EPVSCalculator({
 }
 
 /*
- * ============================================================
+ * =========================================================
  * CARD
- * ============================================================
+ * =========================================================
  */
 
 function Card({
@@ -2878,17 +2042,14 @@ function Card({
     <div
       className="card"
       style={{
-        marginBottom:
-          20,
+        marginBottom: 20,
       }}
     >
       <div
         className="card-head"
       >
         <div>
-          <h2>
-            {title}
-          </h2>
+          <h2>{title}</h2>
 
           <p>
             {subtitle}
@@ -2902,9 +2063,9 @@ function Card({
 }
 
 /*
- * ============================================================
+ * =========================================================
  * RESULTS
- * ============================================================
+ * =========================================================
  */
 
 function Results({
@@ -2914,17 +2075,15 @@ function Results({
   const cards = [
     [
       "System size",
-      `${Number(
-        results.systemSize ||
-          0
-      ).toFixed(2)} kWp`,
+      `${Number(results.systemSize || 0).toFixed(
+        2
+      )} kWp`,
     ],
 
     [
       "Estimated generation",
       `${Math.round(
-        results.generation ||
-          0
+        results.generation
       ).toLocaleString(
         "en-GB"
       )} kWh`,
@@ -2933,8 +2092,7 @@ function Results({
     [
       "Solar self-consumption",
       `${Math.round(
-        results.solarSelfConsumption ||
-          0
+        results.solarSelfConsumption
       ).toLocaleString(
         "en-GB"
       )} kWh`,
@@ -2943,8 +2101,7 @@ function Results({
     [
       "Battery contribution",
       `${Math.round(
-        results.batteryContribution ||
-          0
+        results.batteryContribution
       ).toLocaleString(
         "en-GB"
       )} kWh`,
@@ -2953,8 +2110,7 @@ function Results({
     [
       "Estimated export",
       `${Math.round(
-        results.exportKwh ||
-          0
+        results.exportKwh
       ).toLocaleString(
         "en-GB"
       )} kWh`,
@@ -2980,9 +2136,7 @@ function Results({
     [
       "Simple payback",
       results.simplePayback
-        ? `${Number(
-            results.simplePayback
-          ).toFixed(
+        ? `${Number(results.simplePayback || 0).toFixed(
             1
           )} years`
         : "—",
@@ -2993,8 +2147,7 @@ function Results({
     <div
       className="card"
       style={{
-        marginBottom:
-          20,
+        marginBottom: 20,
       }}
     >
       <div
@@ -3002,7 +2155,8 @@ function Results({
       >
         <div>
           <h2>
-            EPVS calculation results
+            EPVS calculation
+            results
           </h2>
 
           <p>
@@ -3052,9 +2206,9 @@ function Results({
 }
 
 /*
- * ============================================================
+ * =========================================================
  * STYLES
- * ============================================================
+ * =========================================================
  */
 
 const styles = {
@@ -3065,248 +2219,165 @@ const styles = {
 
   stepper: {
     display: "grid",
-
     gridTemplateColumns:
-      "repeat(6, minmax(90px, 1fr))",
-
+      "repeat(6, minmax(70px, 1fr))",
     gap: 8,
-
     marginBottom: 20,
-
     overflowX: "auto",
-
     paddingBottom: 5,
   },
 
   step: {
     border: 0,
-
     background:
       "transparent",
-
     cursor: "pointer",
-
     display: "flex",
-
     flexDirection:
       "column",
-
     alignItems:
       "center",
-
     gap: 7,
-
     color:
       "#334155",
-
     fontSize: 12,
-
     whiteSpace:
       "nowrap",
   },
 
   stepCircle: {
     width: 34,
-
     height: 34,
-
     borderRadius:
       "50%",
-
     display: "flex",
-
     alignItems:
       "center",
-
     justifyContent:
       "center",
   },
 
   grid: {
     display: "grid",
-
     gridTemplateColumns:
       "repeat(2, minmax(0, 1fr))",
-
     gap: 18,
   },
 
   field: {
     display: "flex",
-
     flexDirection:
       "column",
-
     gap: 7,
   },
 
   toggleRow: {
     display: "flex",
-
     alignItems:
       "center",
-
     justifyContent:
       "space-between",
-
     minHeight: 42,
   },
 
   toggle: {
     border: 0,
-
     width: 44,
-
     height: 24,
-
-    borderRadius: 20,
-
+    borderRadius:
+      20,
     padding: 2,
-
-    cursor: "pointer",
+    cursor:
+      "pointer",
   },
 
   toggleKnob: {
-    display: "block",
-
+    display:
+      "block",
     width: 20,
-
     height: 20,
-
     background:
       "white",
-
     borderRadius:
       "50%",
-
     transition:
       "transform .15s",
   },
 
   footer: {
     display: "flex",
-
     justifyContent:
       "space-between",
-
     alignItems:
       "center",
-
     marginTop: 10,
   },
 
   primary: {
     border: 0,
-
     background:
       "#172554",
-
     color: "white",
-
     borderRadius: 8,
-
     padding:
       "11px 16px",
-
     display:
       "inline-flex",
-
     alignItems:
       "center",
-
     gap: 8,
-
-    cursor: "pointer",
-
+    cursor:
+      "pointer",
     fontWeight: 600,
   },
 
   secondary: {
     border:
       "1px solid #d7dee8",
-
     background:
       "white",
-
     color:
       "#334155",
-
     borderRadius: 8,
-
     padding:
       "10px 14px",
-
     display:
       "inline-flex",
-
     alignItems:
       "center",
-
     gap: 8,
-
-    cursor: "pointer",
+    cursor:
+      "pointer",
   },
 
   badge: {
     background:
       "#fff7ed",
-
     color:
       "#9a3412",
-
     borderRadius:
       999,
-
     padding:
       "6px 10px",
-
     fontSize: 12,
-
     fontWeight: 600,
   },
 
   resultGrid: {
     display: "grid",
-
     gridTemplateColumns:
       "repeat(4, minmax(0, 1fr))",
-
     gap: 12,
   },
 
   resultCard: {
     border:
       "1px solid #e5e7eb",
-
     borderRadius: 10,
-
     padding: 16,
-
     display: "flex",
-
     flexDirection:
       "column",
-
     gap: 7,
-  },
-
-  tableHeader: {
-    textAlign:
-      "left",
-
-    padding: 10,
-
-    borderBottom:
-      "1px solid #dbe3ec",
-
-    background:
-      "#f8fafc",
-  },
-
-  tableCell: {
-    padding: 10,
-
-    borderBottom:
-      "1px solid #e5e7eb",
   },
 }
