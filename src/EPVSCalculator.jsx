@@ -907,28 +907,28 @@ export default function EPVSCalculator({
                     min={0}
                   />
                   <Input
-                    label="Current import rate (£/kWh)"
+                    label="Current import rate (p/kWh)"
                     type="number"
-                    value={data.importRate}
-                    onChange={(value) => update("importRate", value)}
+                    value={Number(data.importRate || 0) * 100}
+                    onChange={(value) => update("importRate", Number(value || 0) / 100)}
                     min={0}
-                    step={0.001}
+                    step={0.01}
                   />
                   <Input
-                    label="Current export rate (£/kWh)"
+                    label="Current export rate (p/kWh)"
                     type="number"
-                    value={data.exportRate}
-                    onChange={(value) => update("exportRate", value)}
+                    value={Number(data.exportRate || 0) * 100}
+                    onChange={(value) => update("exportRate", Number(value || 0) / 100)}
                     min={0}
-                    step={0.001}
+                    step={0.01}
                   />
                   <Input
-                    label="Current standing charge (£/day)"
+                    label="Current standing charge (p/day)"
                     type="number"
-                    value={data.standingCharge}
-                    onChange={(value) => update("standingCharge", value)}
+                    value={Number(data.standingCharge || 0) * 100}
+                    onChange={(value) => update("standingCharge", Number(value || 0) / 100)}
                     min={0}
-                    step={0.001}
+                    step={0.01}
                   />
                 </div>
               </div>
