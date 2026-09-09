@@ -23,11 +23,9 @@ const money = (value) =>
 
 const steps = [
   { title: "Customer", icon: Home },
-  { title: "Property", icon: Home },
   { title: "Solar PV", icon: Zap },
   { title: "Battery", icon: Battery },
   { title: "Inverter", icon: Zap },
-  { title: "Electricity", icon: Zap },
   { title: "Tariff", icon: PoundSterling },
   { title: "Finance", icon: PoundSterling },
   { title: "Results", icon: CheckCircle2 },
@@ -67,6 +65,7 @@ const initial = {
 
   importRate: 0.28,
   exportRate: 0.15,
+  standingCharge: 0.30,
 
   tariff: "Standard",
 
@@ -863,127 +862,98 @@ export default function EPVSCalculator({
         </div>
 
         {/* =================================================
-            CUSTOMER
+            CUSTOMER & ENERGY
             ================================================= */}
 
         {step === 0 && (
           <Card
-            title="Customer details"
-            subtitle="Start the EPVS calculation with the customer and property information."
+            title="Customer"
+            subtitle="Customer details, electricity usage and existing solar PV."
           >
-            <div
-              style={styles.grid}
-            >
-              <Input
-                label="Customer name"
-                value={
-                  data.customerName
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "customerName",
-                    value
-                  )
-                }
-              />
+            <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+              <div>
+                <h3 style={{ margin: "0 0 14px", fontSize: 15, color: "#172554" }}>
+                  Customer details
+                </h3>
+                <div style={styles.grid}>
+                  <Input
+                    label="Customer name"
+                    value={data.customerName}
+                    onChange={(value) => update("customerName", value)}
+                  />
+                  <Input
+                    label="Postcode"
+                    value={data.postcode}
+                    onChange={(value) => update("postcode", value)}
+                  />
+                  <Input
+                    label="Address"
+                    value={data.address}
+                    onChange={(value) => update("address", value)}
+                  />
+                </div>
+              </div>
 
-              <Input
-                label="Postcode"
-                value={
-                  data.postcode
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "postcode",
-                    value
-                  )
-                }
-              />
+              <div>
+                <h3 style={{ margin: "0 0 14px", fontSize: 15, color: "#172554" }}>
+                  Electricity
+                </h3>
+                <div style={styles.grid}>
+                  <Input
+                    label="Annual electricity consumption (kWh)"
+                    type="number"
+                    value={data.annualConsumption}
+                    onChange={(value) => update("annualConsumption", value)}
+                    min={0}
+                  />
+                  <Input
+                    label="Current import rate (£/kWh)"
+                    type="number"
+                    value={data.importRate}
+                    onChange={(value) => update("importRate", value)}
+                    min={0}
+                    step={0.001}
+                  />
+                  <Input
+                    label="Current export rate (£/kWh)"
+                    type="number"
+                    value={data.exportRate}
+                    onChange={(value) => update("exportRate", value)}
+                    min={0}
+                    step={0.001}
+                  />
+                  <Input
+                    label="Current standing charge (£/day)"
+                    type="number"
+                    value={data.standingCharge}
+                    onChange={(value) => update("standingCharge", value)}
+                    min={0}
+                    step={0.001}
+                  />
+                </div>
+              </div>
 
-              <Input
-                label="Address"
-                value={
-                  data.address
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "address",
-                    value
-                  )
-                }
-              />
-            </div>
-          </Card>
-        )}
-
-        {/* =================================================
-            PROPERTY
-            ================================================= */}
-
-        {step === 1 && (
-          <Card
-            title="Property"
-            subtitle="Property and existing-system assumptions."
-          >
-            <div
-              style={styles.grid}
-            >
-              <Input
-                label="Annual electricity consumption (kWh)"
-                type="number"
-                value={
-                  data.annualConsumption
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "annualConsumption",
-                    value
-                  )
-                }
-                min={0}
-              />
-
-              <Toggle
-                label="Existing solar PV"
-                value={
-                  data.existingSolar
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "existingSolar",
-                    value
-                  )
-                }
-              />
-
-              {data.existingSolar && (
-                <Input
-                  label="Existing annual generation (kWh)"
-                  type="number"
-                  value={
-                    data.existingGeneration
-                  }
-                  onChange={(
-                    value
-                  ) =>
-                    update(
-                      "existingGeneration",
-                      value
-                    )
-                  }
-                  min={0}
-                />
-              )}
+              <div>
+                <h3 style={{ margin: "0 0 14px", fontSize: 15, color: "#172554" }}>
+                  Existing solar PV
+                </h3>
+                <div style={styles.grid}>
+                  <Toggle
+                    label="Existing solar PV"
+                    value={data.existingSolar}
+                    onChange={(value) => update("existingSolar", value)}
+                  />
+                  {data.existingSolar && (
+                    <Input
+                      label="Existing annual generation (kWh)"
+                      type="number"
+                      value={data.existingGeneration}
+                      onChange={(value) => update("existingGeneration", value)}
+                      min={0}
+                    />
+                  )}
+                </div>
+              </div>
             </div>
           </Card>
         )}
@@ -992,7 +962,7 @@ export default function EPVSCalculator({
             SOLAR PV
             ================================================= */}
 
-        {step === 2 && (
+        {step === 1 && (
           <Card
             title="Solar PV arrays"
             subtitle="Enter the EPVS information for each roof / array."
@@ -1380,7 +1350,7 @@ export default function EPVSCalculator({
             BATTERY
             ================================================= */}
 
-        {step === 3 && (
+        {step === 2 && (
           <Card
             title="Battery"
             subtitle="Configure the proposed battery."
@@ -1430,7 +1400,7 @@ export default function EPVSCalculator({
             INVERTER
             ================================================= */}
 
-        {step === 4 && (
+        {step === 3 && (
           <Card
             title="Inverter"
             subtitle="Configure the inverter capacity."
@@ -1460,78 +1430,10 @@ export default function EPVSCalculator({
         )}
 
         {/* =================================================
-            ELECTRICITY
-            ================================================= */}
-
-        {step === 5 && (
-          <Card
-            title="Electricity"
-            subtitle="Current electricity assumptions."
-          >
-            <div
-              style={styles.grid}
-            >
-              <Input
-                label="Annual consumption (kWh)"
-                type="number"
-                value={
-                  data.annualConsumption
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "annualConsumption",
-                    value
-                  )
-                }
-                min={0}
-              />
-
-              <Input
-                label="Import rate (£/kWh)"
-                type="number"
-                value={
-                  data.importRate
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "importRate",
-                    value
-                  )
-                }
-                min={0}
-                step={0.001}
-              />
-
-              <Input
-                label="Export rate (£/kWh)"
-                type="number"
-                value={
-                  data.exportRate
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "exportRate",
-                    value
-                  )
-                }
-                min={0}
-                step={0.001}
-              />
-            </div>
-          </Card>
-        )}
-
-        {/* =================================================
             TARIFF
             ================================================= */}
 
-        {step === 6 && (
+        {step === 4 && (
           <Card
             title="Tariff"
             subtitle="Select the tariff model."
@@ -1591,7 +1493,7 @@ export default function EPVSCalculator({
             FINANCE
             ================================================= */}
 
-        {step === 7 && (
+        {step === 5 && (
           <Card
             title="Payment"
             subtitle="Choose how the customer is paying for the system."
@@ -1761,7 +1663,7 @@ export default function EPVSCalculator({
             RESULTS
             ================================================= */}
 
-        {step === 8 && (
+        {step === 6 && (
           <>
             <Results
               results={results}
@@ -2043,7 +1945,7 @@ const styles = {
   stepper: {
     display: "grid",
     gridTemplateColumns:
-      "repeat(9, minmax(70px, 1fr))",
+      "repeat(7, minmax(70px, 1fr))",
     gap: 8,
     marginBottom: 20,
     overflowX: "auto",
