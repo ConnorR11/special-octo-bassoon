@@ -65,7 +65,15 @@ const initial = {
   exportRate: 15,
   standingCharge: 30,
 
-  tariff: "Standard",
+  tariff: "Standard Flux",
+
+  fluxDayImport: 24.96,
+  fluxDayExport: 9.55,
+  fluxImport: 14.98,
+  fluxExport: 4.42,
+  fluxPeakImport: 34.94,
+  fluxPeakExport: 27.19,
+  fluxStandingCharge: 62.83,
 
   paymentMethod: "Finance",
 
@@ -1420,56 +1428,203 @@ export default function EPVSCalculator({
 
         {step === 3 && (
           <Card
-            title="Tariff"
-            subtitle="Select the tariff model."
+            title="New Octopus Standard Flux"
+            subtitle="Enter the current Flux rates from the Octopus Energy website."
           >
             <div
-              style={styles.grid}
+              style={{
+                marginBottom: 18,
+                padding: 14,
+                background: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                borderRadius: 10,
+                fontSize: 12,
+                color: "#475569",
+              }}
             >
-              <label
-                style={
-                  styles.field
-                }
+              Octopus Flux uses three import and export price periods.
+              The rates are flexible and can change, so the sales rep can
+              update them for each calculation. Octopus states that the
+              cheap period is 02:00–05:00 and the peak period is
+              16:00–19:00. 
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1.2fr 1fr 1fr",
+                border: "1px solid #dbe3ec",
+                borderRadius: 10,
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  background: "#f8fafc",
+                  padding: "13px 16px",
+                  fontWeight: 700,
+                  fontSize: 12,
+                  borderBottom: "1px solid #dbe3ec",
+                }}
               >
-                <span>
-                  Tariff
-                </span>
+                Rate
+              </div>
 
-                <select
-                  value={
-                    data.tariff
+              <div
+                style={{
+                  background: "#e2e2e2",
+                  padding: "13px 16px",
+                  fontWeight: 700,
+                  fontSize: 12,
+                  textAlign: "center",
+                  borderBottom: "1px solid #dbe3ec",
+                  borderLeft: "1px solid #dbe3ec",
+                }}
+              >
+                Import
+              </div>
+
+              <div
+                style={{
+                  background: "#e2e2e2",
+                  padding: "13px 16px",
+                  fontWeight: 700,
+                  fontSize: 12,
+                  textAlign: "center",
+                  borderBottom: "1px solid #dbe3ec",
+                  borderLeft: "1px solid #dbe3ec",
+                }}
+              >
+                Export
+              </div>
+
+              <div
+                style={{
+                  padding: 12,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  borderBottom: "1px solid #dbe3ec",
+                }}
+              >
+                Day Rate (p/kWh)
+              </div>
+
+              <div style={{ padding: 8, borderBottom: "1px solid #dbe3ec", borderLeft: "1px solid #dbe3ec" }}>
+                <Input
+                  label=""
+                  type="number"
+                  value={data.fluxDayImport}
+                  onChange={(value) => update("fluxDayImport", value)}
+                  min={0}
+                  step={0.01}
+                />
+              </div>
+
+              <div style={{ padding: 8, borderBottom: "1px solid #dbe3ec", borderLeft: "1px solid #dbe3ec" }}>
+                <Input
+                  label=""
+                  type="number"
+                  value={data.fluxDayExport}
+                  onChange={(value) => update("fluxDayExport", value)}
+                  min={0}
+                  step={0.01}
+                />
+              </div>
+
+              <div
+                style={{
+                  padding: 12,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  borderBottom: "1px solid #dbe3ec",
+                }}
+              >
+                Flux Rate (p/kWh)
+              </div>
+
+              <div style={{ padding: 8, borderBottom: "1px solid #dbe3ec", borderLeft: "1px solid #dbe3ec" }}>
+                <Input
+                  label=""
+                  type="number"
+                  value={data.fluxImport}
+                  onChange={(value) => update("fluxImport", value)}
+                  min={0}
+                  step={0.01}
+                />
+              </div>
+
+              <div style={{ padding: 8, borderBottom: "1px solid #dbe3ec", borderLeft: "1px solid #dbe3ec" }}>
+                <Input
+                  label=""
+                  type="number"
+                  value={data.fluxExport}
+                  onChange={(value) => update("fluxExport", value)}
+                  min={0}
+                  step={0.01}
+                />
+              </div>
+
+              <div
+                style={{
+                  padding: 12,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  borderBottom: "1px solid #dbe3ec",
+                }}
+              >
+                Peak Rate (p/kWh)
+              </div>
+
+              <div style={{ padding: 8, borderBottom: "1px solid #dbe3ec", borderLeft: "1px solid #dbe3ec" }}>
+                <Input
+                  label=""
+                  type="number"
+                  value={data.fluxPeakImport}
+                  onChange={(value) => update("fluxPeakImport", value)}
+                  min={0}
+                  step={0.01}
+                />
+              </div>
+
+              <div style={{ padding: 8, borderBottom: "1px solid #dbe3ec", borderLeft: "1px solid #dbe3ec" }}>
+                <Input
+                  label=""
+                  type="number"
+                  value={data.fluxPeakExport}
+                  onChange={(value) => update("fluxPeakExport", value)}
+                  min={0}
+                  step={0.01}
+                />
+              </div>
+
+              <div
+                style={{
+                  padding: 12,
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                Standing Charge (p/day)
+              </div>
+
+              <div
+                style={{
+                  padding: 8,
+                  gridColumn: "span 2",
+                  borderLeft: "1px solid #dbe3ec",
+                }}
+              >
+                <Input
+                  label=""
+                  type="number"
+                  value={data.fluxStandingCharge}
+                  onChange={(value) =>
+                    update("fluxStandingCharge", value)
                   }
-                  onChange={(
-                    event
-                  ) =>
-                    update(
-                      "tariff",
-                      event.target
-                        .value
-                    )
-                  }
-                >
-                  <option>
-                    Standard
-                  </option>
-
-                  <option>
-                    Overnight Charging
-                  </option>
-
-                  <option>
-                    Standard Flux
-                  </option>
-
-                  <option>
-                    Intelligent Flux
-                  </option>
-
-                  <option>
-                    Octopus Cosy
-                  </option>
-                </select>
-              </label>
+                  min={0}
+                  step={0.01}
+                />
+              </div>
             </div>
           </Card>
         )}
