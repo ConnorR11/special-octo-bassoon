@@ -248,16 +248,14 @@ export default function ThirtyYearBreakdown({
                 <tr key={row.year}>
                   <BodyCell>{row.year}</BodyCell>
                   <BodyCell>{number(row.generation)}</BodyCell>
-                  <BodyCell>{number(row.solar)}</BodyCell>
-                  <BodyCell>{number(row.battery)}</BodyCell>
-                  <BodyCell>{number(row.exportKwh)}</BodyCell>
+                  <BodyCell>{money(row.solarBenefit)}</BodyCell>
+                  <BodyCell>{money(row.batteryBenefit)}</BodyCell>
+                  <BodyCell>{money(row.exportBenefit)}</BodyCell>
                   <BodyCell green>
                     {money(row.annualBenefit)}
                   </BodyCell>
                   <BodyCell>
-                    {safeNumber(row.yearlyPayment) > 0
-                      ? `-${money(row.yearlyPayment)}`
-                      : money(0)}
+                    {money(row.yearlyPayment)}
                   </BodyCell>
                   <BodyCell negative={safeNumber(row.netAnnualBenefit) < 0}>
                     {money(row.netAnnualBenefit)}
@@ -282,13 +280,13 @@ export default function ThirtyYearBreakdown({
                     {number(totals.generation)}
                   </td>
                   <td style={totalCell}>
-                    {number(totals.solar)}
+                    {money(totals.solarBenefit)}
                   </td>
                   <td style={totalCell}>
-                    {number(totals.battery)}
+                    {money(totals.batteryBenefit)}
                   </td>
                   <td style={totalCell}>
-                    {number(totals.exportKwh)}
+                    {money(totals.exportBenefit)}
                   </td>
                   <td
                     style={{
@@ -299,7 +297,7 @@ export default function ThirtyYearBreakdown({
                     {money(totals.annualBenefit)}
                   </td>
                   <td style={totalCell}>
-                    {money(-safeNumber(totals.yearlyPayment))}
+                    {money(totals.yearlyPayment)}
                   </td>
                   <td style={totalCell}>
                     {money(totals.netAnnualBenefit)}
