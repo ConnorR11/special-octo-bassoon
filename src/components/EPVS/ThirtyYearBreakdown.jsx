@@ -54,9 +54,11 @@ export default function ThirtyYearBreakdown({
   const rows = Array.isArray(scenario.rows) ? scenario.rows : []
   const totals = scenario.totals || {}
 
-  const firstYearBenefit = safeNumber(
-    rows[0]?.annualBenefit
-  )
+  const firstYearBenefit = rows[0]
+    ? safeNumber(rows[0].solarBenefit) +
+      safeNumber(rows[0].batteryBenefit) +
+      safeNumber(rows[0].exportBenefit)
+    : 0
 
   const paybackPeriod = scenario.paybackPeriod
   const totalNetSavings = safeNumber(
@@ -252,7 +254,11 @@ export default function ThirtyYearBreakdown({
                   <BodyCell>{money(row.batteryBenefit)}</BodyCell>
                   <BodyCell>{money(row.exportBenefit)}</BodyCell>
                   <BodyCell green>
-                    {money(row.annualBenefit)}
+                    {money(
+                      safeNumber(row.solarBenefit) +
+                        safeNumber(row.batteryBenefit) +
+                        safeNumber(row.exportBenefit)
+                    )}
                   </BodyCell>
                   <BodyCell>
                     {money(row.yearlyPayment)}
@@ -294,7 +300,11 @@ export default function ThirtyYearBreakdown({
                       background: "#299d48",
                     }}
                   >
-                    {money(totals.annualBenefit)}
+                    {money(
+                      safeNumber(totals.solarBenefit) +
+                        safeNumber(totals.batteryBenefit) +
+                        safeNumber(totals.exportBenefit)
+                    )}
                   </td>
                   <td style={totalCell}>
                     {money(totals.yearlyPayment)}
