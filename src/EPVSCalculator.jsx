@@ -79,6 +79,16 @@ const initial = {
   fluxImportTariffCode: "",
   fluxExportTariffCode: "",
 
+  // EPVS modelling assumptions. Manufacturer values should be used where known.
+  inverterEuEfficiency: 97,
+  batteryDoD: 95,
+  batteryRTE: 94,
+  batteryDegradation: 2.5,
+  batteryWarrantyYears: 10,
+  solarDegradation: 0.4,
+  solarWarrantyYears: 30,
+  existingSolarSelfConsumption: 50,
+
   paymentMethod: "Finance",
 
   systemCost: 12000,
@@ -150,6 +160,357 @@ function Toggle({ label, value, onChange }) {
       </button>
     </label>
   )
+}
+
+
+const SAP_ZONES = [
+  { code: "1", name: "London", sunshine: 4.27 },
+  { code: "2", name: "Brighton", sunshine: 4.44 },
+  { code: "3", name: "Southampton", sunshine: 4.67 },
+  { code: "4", name: "Plymouth", sunshine: 4.75 },
+  { code: "5E", name: "Bristol", sunshine: 4.54 },
+  { code: "5W", name: "Cardiff", sunshine: 4.31 },
+  { code: "6", name: "Birmingham", sunshine: 4.11 },
+  { code: "7E", name: "Manchester", sunshine: 3.75 },
+  { code: "7W", name: "Chester", sunshine: 4.31 },
+  { code: "8E", name: "Carlisle", sunshine: 3.89 },
+  { code: "8S", name: "Dumfries", sunshine: 3.59 },
+  { code: "9E", name: "Newcastle", sunshine: 4.25 },
+  { code: "9S", name: "Edinburgh", sunshine: 3.97 },
+  { code: "10", name: "Middlesbrough", sunshine: 3.82 },
+  { code: "11", name: "Sheffield", sunshine: 4.07 },
+  { code: "12", name: "Norwich", sunshine: 4.41 },
+  { code: "13", name: "Aberystwyth", sunshine: 4.05 },
+  { code: "14", name: "Glasgow", sunshine: 3.38 },
+  { code: "15", name: "Dundee", sunshine: 4.00 },
+  { code: "16", name: "Aberdeen", sunshine: 3.97 },
+  { code: "17", name: "Inverness", sunshine: 3.42 },
+  { code: "18", name: "Stornoway", sunshine: 3.44 },
+  { code: "19", name: "Kirkwall", sunshine: 3.32 },
+  { code: "20", name: "Lerwick", sunshine: 3.17 },
+  { code: "21", name: "Belfast", sunshine: 3.50 },
+]
+
+function inferSapZone(postcode) {
+  const outward = String(postcode || "").trim().toUpperCase().split(/\s+/)[0]
+  if (/^(G|PA)/.test(outward)) return "14"
+  if (/^DD/.test(outward)) return "15"
+  if (/^AB/.test(outward)) return "16"
+  if (/^IV/.test(outward)) return "17"
+  if (/^HS/.test(outward)) return "18"
+  if (/^KW/.test(outward)) return "19"
+  if (/^ZE/.test(outward)) return "20"
+  if (/^EH/.test(outward)) return "9S"
+  if (/^DG/.test(outward)) return "8S"
+  if (/^CA/.test(outward)) return "8E"
+  if (/^NE/.test(outward)) return "9E"
+  if (/^TS/.test(outward)) return "10"
+  if (/^S/.test(outward)) return "11"
+  if (/^NR/.test(outward)) return "12"
+  if (/^(SY23|SY24|SY25)/.test(outward)) return "13"
+  if (/^BT/.test(outward)) return "21"
+  if (/^CH/.test(outward)) return "7W"
+  if (/^(M|OL)/.test(outward)) return "7E"
+  if (/^(B|CV)/.test(outward)) return "6"
+  if (/^CF/.test(outward)) return "5W"
+  if (/^BS/.test(outward)) return "5E"
+  if (/^PL/.test(outward)) return "4"
+  if (/^SO/.test(outward)) return "3"
+  if (/^BN/.test(outward)) return "2"
+  if (/^(E|EC|N|NW|SE|SW|W|WC)/.test(outward)) return "1"
+  return "14"
+}
+
+function getSapZone(postcode, selectedZone) {
+  const code = selectedZone || inferSapZone(postcode)
+  return SAP_ZONES.find((zone) => zone.code === code) || SAP_ZONES.find((zone) => zone.code === "14")
+}
+
+function fluxProfileForConsumption(consumption) {
+  const kwh = Number(consumption || 0)
+  if (kwh < 2000) return { day: 0.61, flux: 0.15, peak: 0.24 }
+  if (kwh < 3000) return { day: 0.63, flux: 0.12, peak: 0.25 }
+  if (kwh < 4000) return { day: 0.64, flux: 0.10, peak: 0.26 }
+  if (kwh < 5000) return { day: 0.63, flux: 0.09, peak: 0.28 }
+  if (kwh < 6000) return { day: 0.63, flux: 0.08, peak: 0.29 }
+  if (kwh < 7000) return { day: 0.62, flux: 0.08, peak: 0.30 }
+  if (kwh < 8000) return { day: 0.61, flux: 0.08, peak: 0.31 }
+  if (kwh < 9000) return { day: 0.53, flux: 0.15, peak: 0.32 }
+  if (kwh < 10000) return { day: 0.54, flux: 0.18, peak: 0.28 }
+  if (kwh < 11000) return { day: 0.54, flux: 0.20, peak: 0.26 }
+  if (kwh < 12000) return { day: 0.54, flux: 0.21, peak: 0.25 }
+  if (kwh < 13000) return { day: 0.54, flux: 0.22, peak: 0.24 }
+  if (kwh < 14000) return { day: 0.54, flux: 0.23, peak: 0.23 }
+  if (kwh < 15000) return { day: 0.54, flux: 0.24, peak: 0.22 }
+  return { day: 0.54, flux: 0.25, peak: 0.21 }
+}
+
+const nonNegative = (value) => Math.max(0, Number(value || 0))
+
+function monthlyPaymentForYear(data) {
+  const systemCost = Number(data.systemCost || 0)
+  const deposit = Number(data.deposit || 0)
+  const financeAmount = Math.max(0, systemCost - deposit)
+  const months = Math.max(0, Number(data.financeTerm || 0) * 12)
+  if (financeAmount <= 0 || months <= 0) return 0
+  const monthlyRate = Number(data.financeRate || 0) / 100 / 12
+  if (monthlyRate <= 0) return financeAmount / months
+  return financeAmount * (
+    (monthlyRate * Math.pow(1 + monthlyRate, months)) /
+    (Math.pow(1 + monthlyRate, months) - 1)
+  )
+}
+
+function calculateStandardFluxYear({
+  generation,
+  annualConsumption,
+  inverterCapacity,
+  inverterEuEfficiency,
+  batteryCapacity,
+  batteryDoD,
+  batteryRTE,
+  currentImportPence,
+  currentExportPence,
+  currentStandingPence,
+  fluxDayImport,
+  fluxDayExport,
+  fluxImport,
+  fluxExport,
+  fluxPeakImport,
+  fluxPeakExport,
+  fluxStandingCharge,
+  sunshineHours,
+  existingGeneration,
+  existingSolarSelfConsumption,
+}) {
+  const gen = nonNegative(generation)
+  const consumption = nonNegative(annualConsumption)
+  const inverter = nonNegative(inverterCapacity)
+  const euEfficiency = nonNegative(inverterEuEfficiency) / 100
+  const battery = nonNegative(batteryCapacity)
+  const dod = nonNegative(batteryDoD) / 100
+  const rte = nonNegative(batteryRTE) / 100
+  const sunshine = nonNegative(sunshineHours)
+  const profile = fluxProfileForConsumption(consumption)
+
+  const currentImport = nonNegative(currentImportPence) / 100
+  const currentExport = nonNegative(currentExportPence) / 100
+  const currentStanding = nonNegative(currentStandingPence) / 100
+
+  const dayImport = nonNegative(fluxDayImport) / 100
+  const dayExport = nonNegative(fluxDayExport) / 100
+  const newFluxImport = nonNegative(fluxImport) / 100
+  const peakImport = nonNegative(fluxPeakImport) / 100
+  const newPeakExport = nonNegative(fluxPeakExport) / 100
+  const newStanding = nonNegative(fluxStandingCharge) / 100
+
+  const existingGen = nonNegative(existingGeneration)
+  const existingScPct = nonNegative(existingSolarSelfConsumption) / 100
+  const existingExportKwh = existingGen * Math.max(0, 1 - existingScPct)
+
+  // EPVS global inverter capacities.
+  const inverterSolarSCCapacity = inverter * euEfficiency * sunshine * 337
+  const inverterBatterySCCapacity = inverter * sunshine * 337
+  const inverterExportCapacity = inverter * sunshine * 365
+  const inverterFluxCapacity = inverter * 3 * 365
+
+  // Standard Flux current-grid-consumption solar SC baseline.
+  const cappedSolarSC = Math.min(
+    inverterSolarSCCapacity,
+    gen > 0 ? gen * Math.min(0.75, (consumption * 0.375) / gen) : 0
+  )
+
+  const peakSolarSC = Math.min(
+    cappedSolarSC,
+    consumption * 0.75 * profile.peak * (1 / 3)
+  )
+  const daySolarSC = nonNegative(cappedSolarSC - peakSolarSC)
+
+  // Existing solar contribution, where applicable.
+  const existingGenerationSC = existingGen * Math.min(
+    Math.max(0, 0.9 - existingScPct),
+    existingGen > 0 ? (consumption * 0.9) / existingGen : 0
+  )
+
+  // EPVS battery capacities include DoD, RTE and annualised cannibalism.
+  const cannibalism = battery * 3.25
+  const batterySCCapacity = nonNegative(
+    battery * dod * rte * 337 - cannibalism
+  )
+  const batteryDemandCapacity = nonNegative(
+    consumption * 0.9 - existingGenerationSC
+  )
+
+  const cappedBatterySC = Math.min(
+    nonNegative(inverterBatterySCCapacity - cappedSolarSC),
+    batterySCCapacity,
+    nonNegative(gen * 0.9 - cappedSolarSC),
+    batteryDemandCapacity + nonNegative(existingGen - existingGenerationSC)
+  )
+
+  // Standard Flux battery SC is allocated Peak first, then Day, then Flux.
+  const reducedPeakBatteryGC = consumption * 0.9 * profile.peak
+  const reducedDayBatteryGC = consumption * 0.9 * profile.day
+
+  const peakBatterySC = Math.min(
+    cappedBatterySC,
+    nonNegative(reducedPeakBatteryGC - peakSolarSC)
+  )
+  const dayBatterySC = Math.min(
+    nonNegative(cappedBatterySC - peakBatterySC),
+    nonNegative(reducedDayBatteryGC - daySolarSC)
+  )
+  const fluxBatterySC = nonNegative(
+    cappedBatterySC - peakBatterySC - dayBatterySC
+  )
+
+  const solarBenefit = cappedSolarSC * currentImport
+  const batterySelfConsumptionBenefit =
+    (peakBatterySC + dayBatterySC + fluxBatterySC) * currentImport
+
+  // Standard Flux force-charge capacity.
+  const fcBatteryCapacity = nonNegative(
+    battery * dod * rte * 365 - cannibalism
+  )
+
+  const fluxImportCapacity = Math.min(
+    nonNegative(fcBatteryCapacity - cappedBatterySC),
+    nonNegative(inverterFluxCapacity - consumption * profile.flux)
+  )
+
+  const peakExportCapacity = Math.min(
+    fluxImportCapacity,
+    nonNegative(inverterFluxCapacity - consumption * profile.peak)
+  )
+
+  const peakDemandAfterSC = Math.min(
+    nonNegative(fluxImportCapacity - peakExportCapacity),
+    nonNegative(
+      consumption * profile.peak - peakSolarSC - peakBatterySC
+    )
+  )
+
+  const dayDemandAfterSC = Math.min(
+    nonNegative(
+      fluxImportCapacity - peakExportCapacity - peakDemandAfterSC
+    ),
+    nonNegative(
+      consumption * profile.day - daySolarSC - dayBatterySC
+    )
+  )
+
+  const fluxDemandAfterSC = Math.min(
+    nonNegative(
+      fluxImportCapacity - peakExportCapacity - peakDemandAfterSC - dayDemandAfterSC
+    ),
+    nonNegative(consumption * profile.flux - fluxBatterySC)
+  )
+
+  const fluxExportCostToCharge = fluxImportCapacity * newFluxImport
+  const fluxDemandCostToCharge =
+    (peakDemandAfterSC + dayDemandAfterSC + fluxDemandAfterSC) * newFluxImport
+
+  const peakExportBenefit =
+    peakExportCapacity * newPeakExport - fluxExportCostToCharge
+
+  const peakDemandSavings =
+    peakDemandAfterSC * (currentImport - newFluxImport)
+  const dayDemandSavings =
+    dayDemandAfterSC * (currentImport - dayImport)
+  const fluxDemandSavings =
+    fluxDemandAfterSC * (currentImport - newFluxImport)
+
+  const forceChargeBenefit =
+    peakDemandSavings + dayDemandSavings + fluxDemandSavings
+
+  // Residual solar export plus the peak force-charge export.
+  const cappedExportKwh = Math.min(
+    nonNegative(inverterExportCapacity - cappedSolarSC - cappedBatterySC),
+    nonNegative(
+      gen + existingExportKwh - cappedSolarSC - cappedBatterySC
+    )
+  )
+
+  const residualExportBenefit =
+    cappedExportKwh * dayExport - existingExportKwh * currentExport
+
+  const exportBenefit = residualExportBenefit + peakExportBenefit
+  const exportKwh = cappedExportKwh + peakExportCapacity
+
+  const unmetPeakKwh = nonNegative(
+    consumption * profile.peak -
+    peakSolarSC -
+    peakBatterySC -
+    peakDemandAfterSC
+  )
+  const unmetDayKwh = nonNegative(
+    consumption * profile.day -
+    daySolarSC -
+    dayBatterySC -
+    dayDemandAfterSC
+  )
+  const unmetFluxKwh = nonNegative(
+    consumption * profile.flux -
+    fluxBatterySC -
+    fluxDemandAfterSC
+  )
+
+  // EPVS bill before/after installation.
+  const billPreInstall =
+    consumption * currentImport +
+    currentStanding * 365 -
+    existingExportKwh * currentExport
+
+  const billPostInstall =
+    unmetPeakKwh * peakImport +
+    unmetDayKwh * dayImport +
+    unmetFluxKwh * newFluxImport +
+    fluxExportCostToCharge +
+    fluxDemandCostToCharge +
+    newStanding * 365
+
+  const annualSaving = billPreInstall - billPostInstall
+
+  return {
+    profile,
+    inverterSolarSCCapacity,
+    inverterBatterySCCapacity,
+    inverterExportCapacity,
+    inverterFluxCapacity,
+    cappedSolarSC,
+    peakSolarSC,
+    daySolarSC,
+    cappedBatterySC,
+    peakBatterySC,
+    dayBatterySC,
+    fluxBatterySC,
+    batterySCCapacity,
+    fcBatteryCapacity,
+    fluxImportCapacity,
+    peakExportCapacity,
+    peakDemandAfterSC,
+    dayDemandAfterSC,
+    fluxDemandAfterSC,
+    fluxExportCostToCharge,
+    fluxDemandCostToCharge,
+    peakDemandSavings,
+    dayDemandSavings,
+    fluxDemandSavings,
+    peakExportBenefit,
+    residualExportBenefit,
+    solarBenefit,
+    batterySelfConsumptionBenefit,
+    forceChargeBenefit,
+    exportBenefit,
+    cappedExportKwh,
+    exportKwh,
+    unmetPeakKwh,
+    unmetDayKwh,
+    unmetFluxKwh,
+    billPreInstall,
+    billPostInstall,
+    annualSaving,
+  }
 }
 
 export default function EPVSCalculator({
@@ -286,530 +647,305 @@ export default function EPVSCalculator({
   const results = useMemo(() => {
     const numberOfArrays = Math.min(
       3,
-      Math.max(
-        1,
-        Number(data.numberOfArrays || 1)
-      )
+      Math.max(1, Number(data.numberOfArrays || 1))
     )
 
-    const activeArrays =
-      data.arrays.slice(
-        0,
-        numberOfArrays
-      )
+    const activeArrays = data.arrays.slice(0, numberOfArrays)
 
-    /*
-     * EPVS ARRAY GENERATION
-     *
-     * Each array is calculated independently:
-     *
-     * System size =
-     * panel wattage × panel count / 1000
-     *
-     * Generation =
-     * system size × irradiance × shade factor
-     *
-     * The irradiance / Kk figure is entered
-     * separately for each roof/array.
-     */
+    const calculatedArrays = activeArrays.map((array, index) => {
+      const panelWattage = Number(array.panelWattage || 0)
+      const panelCount = Number(array.panelCount || 0)
+      const irradiance = Number(array.irradiance || 0)
+      const shading = Number(array.shading || 0)
+      const systemSize = (panelWattage * panelCount) / 1000
+      const generation = systemSize * irradiance * shading
 
-    const calculatedArrays =
-      activeArrays.map(
-        (array, index) => {
-          const panelWattage =
-            Number(
-              array.panelWattage || 0
-            )
-
-          const panelCount =
-            Number(
-              array.panelCount || 0
-            )
-
-          const irradiance =
-            Number(
-              array.irradiance || 0
-            )
-
-          const shading =
-            Number(
-              array.shading || 0
-            )
-
-          const systemSize =
-            (panelWattage *
-              panelCount) /
-            1000
-
-          const generation =
-            systemSize *
-            irradiance *
-            shading
-
-          return {
-            ...array,
-
-            arrayNumber: index + 1,
-
-            systemSize,
-
-            generation,
-          }
-        }
-      )
-
-    const systemSize =
-      calculatedArrays.reduce(
-        (total, array) =>
-          total +
-          array.systemSize,
-        0
-      )
-
-    const generation =
-      calculatedArrays.reduce(
-        (total, array) =>
-          total +
-          array.generation,
-        0
-      )
-
-    /*
-     * =======================================================
-     * SELF CONSUMPTION
-     * =======================================================
-     */
-
-    const annualConsumption =
-      Number(
-        data.annualConsumption || 0
-      )
-
-    const solarSelfConsumption =
-      Math.min(
+      return {
+        ...array,
+        arrayNumber: index + 1,
+        systemSize,
         generation,
-        annualConsumption *
-          0.375
-      )
+      }
+    })
 
-    const remainingGeneration =
-      Math.max(
-        0,
-        generation -
-          solarSelfConsumption
-      )
+    const systemSize = calculatedArrays.reduce(
+      (total, array) => total + array.systemSize,
+      0
+    )
+    const generation = calculatedArrays.reduce(
+      (total, array) => total + array.generation,
+      0
+    )
 
-    /*
-     * =======================================================
-     * BATTERY
-     * =======================================================
-     */
+    const sapZone = getSapZone(data.postcode, data.sapZone)
 
-    const batteryContribution =
-      Number(data.batteryCapacity || 0) > 0
-        ? Math.min(
-            remainingGeneration,
-
-            annualConsumption *
-              0.25,
-
-            Number(
-              data.batteryCapacity || 0
-            ) * 180
-          )
-        : 0
-
-    const exportKwh =
-      Math.max(
-        0,
-        generation -
-          solarSelfConsumption -
-          batteryContribution
-      )
-
-    const gridReduction =
-      solarSelfConsumption +
-      batteryContribution
-
-    /*
-     * =======================================================
-     * FINANCIAL BENEFIT
-     * =======================================================
-     */
-
-    const importRatePence =
-      Number(data.importRate || 0)
-
-    const exportRatePence =
-      Number(data.exportRate || 0)
-
-    const solarBenefit =
-      solarSelfConsumption *
-      (importRatePence / 100)
-
-    const batterySelfConsumptionBenefit =
-      batteryContribution *
-      (importRatePence / 100)
-
-    const forceChargeBenefit = 0
-
-    const exportBenefit =
-      exportKwh *
-      (exportRatePence / 100)
-
-    const annualSaving =
-      solarBenefit +
-      batterySelfConsumptionBenefit +
-      forceChargeBenefit +
-      exportBenefit
-
-    /*
-     * =======================================================
-     * FINANCE
-     * =======================================================
-     */
-
-    const systemCost =
-      Number(
-        data.systemCost || 0
-      )
-
-    const deposit =
-      Number(
-        data.deposit || 0
-      )
+    const model = calculateStandardFluxYear({
+      generation,
+      annualConsumption: Number(data.annualConsumption || 0),
+      inverterCapacity: Number(data.inverterCapacity || 0),
+      inverterEuEfficiency: Number(data.inverterEuEfficiency || 0),
+      batteryCapacity: Number(data.batteryCapacity || 0),
+      batteryDoD: Number(data.batteryDoD || 0),
+      batteryRTE: Number(data.batteryRTE || 0),
+      currentImportPence: Number(data.importRate || 0),
+      currentExportPence: Number(data.exportRate || 0),
+      currentStandingPence: Number(data.standingCharge || 0),
+      fluxDayImport: Number(data.fluxDayImport || 0),
+      fluxDayExport: Number(data.fluxDayExport || 0),
+      fluxImport: Number(data.fluxImport || 0),
+      fluxExport: Number(data.fluxExport || 0),
+      fluxPeakImport: Number(data.fluxPeakImport || 0),
+      fluxPeakExport: Number(data.fluxPeakExport || 0),
+      fluxStandingCharge: Number(data.fluxStandingCharge || 0),
+      sunshineHours: sapZone.sunshine,
+      existingGeneration: data.existingSolar
+        ? Number(data.existingGeneration || 0)
+        : 0,
+      existingSolarSelfConsumption: data.existingSolar
+        ? Number(data.existingSolarSelfConsumption || 0)
+        : 0,
+    })
 
     const financeAmount =
-      data.paymentMethod ===
-      "Finance"
+      data.paymentMethod === "Finance"
         ? Math.max(
             0,
-            systemCost -
-              deposit
+            Number(data.systemCost || 0) - Number(data.deposit || 0)
           )
         : 0
-
-    const monthlyRate =
-      Number(
-        data.financeRate || 0
-      ) /
-      100 /
-      12
-
-    const months =
-      Number(
-        data.financeTerm || 0
-      ) * 12
-
-    const monthlyPayment =
-      data.paymentMethod ===
-      "Finance" &&
-      financeAmount > 0 &&
-      monthlyRate > 0 &&
-      months > 0
-        ? financeAmount *
-          (monthlyRate *
-            Math.pow(
-              1 + monthlyRate,
-              months
-            )) /
-          (Math.pow(
-            1 + monthlyRate,
-            months
-          ) - 1)
-        : data.paymentMethod ===
-            "Finance" &&
-          months > 0
-        ? financeAmount / months
-        : 0
-
-    const simplePayback =
-      annualSaving > 0
-        ? systemCost /
-          annualSaving
-        : null
+    const months = Number(data.financeTerm || 0) * 12
+    const monthlyPayment = monthlyPaymentForYear(data)
+    const totalContractValue =
+      data.paymentMethod === "Finance"
+        ? Number(data.deposit || 0) + monthlyPayment * months
+        : Number(data.systemCost || 0)
 
     return {
       numberOfArrays,
-
-      arrays:
-        calculatedArrays,
-
+      arrays: calculatedArrays,
       systemSize,
-
       generation,
-
-      solarSelfConsumption,
-
-      batteryContribution,
-
-      exportKwh,
-
-      gridReduction,
-
-      solarBenefit,
-
-      batterySelfConsumptionBenefit,
-
-      forceChargeBenefit,
-
-      exportBenefit,
-
-      annualSaving,
-
+      solarSelfConsumption: model.cappedSolarSC,
+      batteryContribution: model.cappedBatterySC,
+      exportKwh: model.exportKwh,
+      gridReduction:
+        model.cappedSolarSC +
+        model.cappedBatterySC +
+        model.peakDemandAfterSC +
+        model.dayDemandAfterSC +
+        model.fluxDemandAfterSC,
+      solarBenefit: model.solarBenefit,
+      batterySelfConsumptionBenefit: model.batterySelfConsumptionBenefit,
+      forceChargeBenefit: model.forceChargeBenefit,
+      exportBenefit: model.exportBenefit,
+      annualSaving: model.annualSaving,
       monthlyPayment,
-
       financeAmount,
-
-      simplePayback,
+      totalContractValue,
+      simplePayback:
+        model.annualSaving > 0
+          ? totalContractValue / model.annualSaving
+          : null,
+      billPreInstall: model.billPreInstall,
+      billPostInstall: model.billPostInstall,
+      model,
+      sapZone,
+      profile: model.profile,
     }
   }, [data])
 
-  /*
-   * =========================================================
-   * 30 YEAR CALCULATION
-   * =========================================================
-   *
-   * EPVS uses three inflation scenarios for the long-term
-   * presentation: 0%, 3.8% and 7.6%.
-   *
-   * The UI component expects all three scenarios to be returned
-   * under `thirtyYearProjection.scenarios`.
-   */
+  const thirtyYearProjection = useMemo(() => {
+    const systemCost = Number(data.systemCost || 0)
+    const deposit = Number(data.deposit || 0)
+    const panelDegradation = Math.max(0, Number(data.solarDegradation || 0) / 100)
+    const panelWarrantyYears = Math.max(1, Number(data.solarWarrantyYears || 30))
+    const batteryDegradation = Math.max(0, Number(data.batteryDegradation || 0) / 100)
+    const batteryWarrantyYears = Math.max(1, Number(data.batteryWarrantyYears || 10))
 
-  const thirtyYearProjection =
-    useMemo(() => {
-      const systemCost =
-        Number(data.systemCost || 0)
+    const inflationScenarios = [
+      { key: "noInflation", label: "0% inflation", rate: 0 },
+      { key: "midpointInflation", label: "3.8% inflation", rate: 0.038 },
+      { key: "averageInflation", label: "7.6% inflation", rate: 0.076 },
+    ]
 
-      const deposit =
-        Number(data.deposit || 0)
+    const buildScenario = (inflationRate) => {
+      const rows = []
+      let cumulativePosition = 0
 
-      const annualConsumption =
-        Number(data.annualConsumption || 0)
+      for (let year = 1; year <= 30 && year <= panelWarrantyYears; year++) {
+        const solarFactor = Math.pow(1 - panelDegradation, year - 1)
+        const generation = Number(results.generation || 0) * solarFactor
 
-      const importRate =
-        Number(data.importRate || 0)
+        const existingGeneration = data.existingSolar
+          ? Number(data.existingGeneration || 0) * Math.pow(1 - 0.00925, year - 1)
+          : 0
 
-      const exportRate =
-        Number(data.exportRate || 0)
+        const batteryYear = (year - 1) % batteryWarrantyYears
+        const batteryFactor = Math.max(0, 1 - batteryDegradation * batteryYear)
+        const batteryCapacity = Number(data.batteryCapacity || 0) * batteryFactor
 
-      const firstYearGeneration =
-        Number(results.generation || 0)
+        const inflationMultiplier = Math.pow(1 + inflationRate, year - 1)
 
-      const firstYearSolar =
-        Number(results.solarSelfConsumption || 0)
+        const currentImportPence = Number(data.importRate || 0) * inflationMultiplier
+        const currentExportPence = Number(data.exportRate || 0)
+        const fluxDayImport = Number(data.fluxDayImport || 0) * inflationMultiplier
+        const fluxDayExport = Number(data.fluxDayExport || 0) * inflationMultiplier
+        const fluxImport = Number(data.fluxImport || 0) * inflationMultiplier
+        const fluxExport = Number(data.fluxExport || 0) * inflationMultiplier
+        const fluxPeakImport = Number(data.fluxPeakImport || 0) * inflationMultiplier
+        const fluxPeakExport = Number(data.fluxPeakExport || 0) * inflationMultiplier
 
-      const firstYearBattery =
-        Number(results.batteryContribution || 0)
+        const yearModel = calculateStandardFluxYear({
+          generation,
+          annualConsumption: Number(data.annualConsumption || 0),
+          inverterCapacity: Number(data.inverterCapacity || 0),
+          inverterEuEfficiency: Number(data.inverterEuEfficiency || 0),
+          batteryCapacity,
+          batteryDoD: Number(data.batteryDoD || 0),
+          batteryRTE: Number(data.batteryRTE || 0),
+          currentImportPence,
+          currentExportPence,
+          currentStandingPence: Number(data.standingCharge || 0),
+          fluxDayImport,
+          fluxDayExport,
+          fluxImport,
+          fluxExport,
+          fluxPeakImport,
+          fluxPeakExport,
+          fluxStandingCharge: Number(data.fluxStandingCharge || 0),
+          sunshineHours: getSapZone(data.postcode, data.sapZone).sunshine,
+          existingGeneration,
+          existingSolarSelfConsumption: data.existingSolar
+            ? Number(data.existingSolarSelfConsumption || 0)
+            : 0,
+        })
 
-      const annualDegradation = 0.004
+        const financeAnnualPayment =
+          data.paymentMethod === "Finance" && year <= Number(data.financeTerm || 0)
+            ? monthlyPaymentForYear(data) * 12
+            : 0
 
-      const inflationScenarios = [
-        {
-          key: "noInflation",
-          label: "0% inflation",
-          rate: 0,
-        },
-        {
-          key: "midpointInflation",
-          label: "3.8% inflation",
-          rate: 0.038,
-        },
-        {
-          key: "averageInflation",
-          label: "7.6% inflation",
-          rate: 0.076,
-        },
-      ]
-
-      const buildScenario = (inflationRate) => {
-        const rows = []
-        let cumulativePosition = 0
-
-        for (let year = 1; year <= 30; year++) {
-          const generation =
-            firstYearGeneration *
-            Math.pow(
-              1 - annualDegradation,
-              year - 1
-            )
-
-          const solar =
-            firstYearGeneration > 0
-              ? generation *
-                (firstYearSolar / firstYearGeneration)
+        const yearlyPayment =
+          data.paymentMethod === "Finance"
+            ? financeAnnualPayment + (year === 1 ? deposit : 0)
+            : year === 1
+              ? Math.max(0, systemCost - deposit)
               : 0
 
-          const battery =
-            firstYearGeneration > 0
-              ? generation *
-                (firstYearBattery / firstYearGeneration)
-              : 0
+        const netAnnualBenefit = yearModel.annualSaving - yearlyPayment
+        cumulativePosition += netAnnualBenefit
 
-          const exportKwh = Math.max(
-            0,
-            generation - solar - battery
-          )
-
-          const inflationMultiplier =
-            Math.pow(
-              1 + inflationRate,
-              year - 1
-            )
-
-          const importRateYear =
-            importRate * inflationMultiplier
-
-          const exportRateYear =
-            exportRate * inflationMultiplier
-
-          const solarBenefit =
-            solar * (importRateYear / 100)
-
-          const batteryBenefit =
-            battery * (importRateYear / 100)
-
-          const exportBenefit =
-            exportKwh * (exportRateYear / 100)
-
-          const forceChargeBenefit = 0
-
-          const annualBenefit =
-            solarBenefit +
-            batteryBenefit +
-            forceChargeBenefit +
-            exportBenefit
-
-          /*
-           * The capital cost is applied in year 1.
-           * The deposit is paid separately, so the remaining
-           * system balance is the year-one payment represented
-           * in the long-term cash position.
-           */
-          const yearlyPayment =
-            year === 1
-              ? Math.max(
-                  0,
-                  systemCost - deposit
-                )
-              : 0
-
-          const netAnnualBenefit =
-            annualBenefit - yearlyPayment
-
-          cumulativePosition +=
-            netAnnualBenefit
-
-          const billPreInstall =
-            annualConsumption *
-            (importRateYear / 100)
-
-          const gridReduction =
-            solar + battery
-
-          const remainingGrid = Math.max(
-            0,
-            annualConsumption - gridReduction
-          )
-
-          const billPostInstall =
-            remainingGrid *
-            (importRateYear / 100)
-
-          const annualSaving =
-            annualBenefit
-
-          rows.push({
-            year,
-            generation,
-            solar,
-            battery,
-            exportKwh,
-            solarBenefit,
-            batteryBenefit,
-            forceChargeBenefit,
-            exportBenefit,
-            annualBenefit,
-            annualSaving,
-            yearlyPayment,
-            netAnnualBenefit,
-            cumulativePosition,
-            billPreInstall,
-            billPostInstall,
-            importRateYear,
-            exportRateYear,
-          })
-        }
-
-        const totals = rows.reduce(
-          (total, row) => {
-            total.generation += row.generation
-            total.solar += row.solar
-            total.battery += row.battery
-            total.exportKwh += row.exportKwh
-            total.solarBenefit += row.solarBenefit
-            total.batteryBenefit += row.batteryBenefit
-            total.forceChargeBenefit += row.forceChargeBenefit
-            total.exportBenefit += row.exportBenefit
-            total.annualBenefit += row.annualBenefit
-            total.yearlyPayment += row.yearlyPayment
-            total.netAnnualBenefit += row.netAnnualBenefit
-            total.billPreInstall += row.billPreInstall
-            total.billPostInstall += row.billPostInstall
-
-            return total
-          },
-          {
-            generation: 0,
-            solar: 0,
-            battery: 0,
-            exportKwh: 0,
-            solarBenefit: 0,
-            batteryBenefit: 0,
-            forceChargeBenefit: 0,
-            exportBenefit: 0,
-            annualBenefit: 0,
-            yearlyPayment: 0,
-            netAnnualBenefit: 0,
-            billPreInstall: 0,
-            billPostInstall: 0,
-          }
-        )
-
-        const paybackRow =
-          rows.find(
-            (row) =>
-              row.cumulativePosition >= 0
-          )
-
-        return {
-          inflationRate,
-          rows,
-          totals,
-          paybackPeriod:
-            paybackRow?.year || null,
-          totalNetSavings:
-            totals.netAnnualBenefit,
-          finalNetPosition:
-            rows[rows.length - 1]?.cumulativePosition || 0,
-          totalNetReturn:
-            totals.netAnnualBenefit - systemCost,
-        }
+        rows.push({
+          year,
+          generation,
+          solar: yearModel.solarBenefit,
+          battery:
+            yearModel.batterySelfConsumptionBenefit +
+            yearModel.forceChargeBenefit,
+          exportKwh: yearModel.exportKwh,
+          exportBenefit: yearModel.exportBenefit,
+          solarBenefit: yearModel.solarBenefit,
+          batteryBenefit:
+            yearModel.batterySelfConsumptionBenefit +
+            yearModel.forceChargeBenefit,
+          batterySelfConsumptionBenefit: yearModel.batterySelfConsumptionBenefit,
+          forceChargeBenefit: yearModel.forceChargeBenefit,
+          annualBenefit: yearModel.annualSaving,
+          annualSaving: yearModel.annualSaving,
+          yearlyPayment: -yearlyPayment,
+          payment: yearlyPayment,
+          netAnnualBenefit,
+          cumulativePosition,
+          billPreInstall: yearModel.billPreInstall,
+          billPostInstall: yearModel.billPostInstall,
+          solarSelfConsumptionKwh: yearModel.cappedSolarSC,
+          batterySelfConsumptionKwh: yearModel.cappedBatterySC,
+          peakSolarSC: yearModel.peakSolarSC,
+          daySolarSC: yearModel.daySolarSC,
+          peakBatterySC: yearModel.peakBatterySC,
+          dayBatterySC: yearModel.dayBatterySC,
+          fluxBatterySC: yearModel.fluxBatterySC,
+          peakDemandAfterSC: yearModel.peakDemandAfterSC,
+          dayDemandAfterSC: yearModel.dayDemandAfterSC,
+          fluxDemandAfterSC: yearModel.fluxDemandAfterSC,
+          peakExportCapacity: yearModel.peakExportCapacity,
+          fluxImportCapacity: yearModel.fluxImportCapacity,
+          importRateYear: currentImportPence,
+          fluxDayImportYear: fluxDayImport,
+          fluxImportYear: fluxImport,
+          fluxPeakImportYear: fluxPeakImport,
+          exportRateYear: fluxDayExport,
+          fluxDayExportYear: fluxDayExport,
+          billSaving: yearModel.annualSaving,
+        })
       }
 
-      const scenarios = {}
+      const totals = rows.reduce(
+        (total, row) => {
+          total.generation += row.generation
+          total.solar += row.solar
+          total.battery += row.battery
+          total.exportKwh += row.exportKwh
+          total.solarBenefit += row.solarBenefit
+          total.batteryBenefit += row.batteryBenefit
+          total.forceChargeBenefit += row.forceChargeBenefit
+          total.exportBenefit += row.exportBenefit
+          total.annualBenefit += row.annualBenefit
+          total.yearlyPayment += row.yearlyPayment
+          total.payment += row.payment
+          total.netAnnualBenefit += row.netAnnualBenefit
+          total.billPreInstall += row.billPreInstall
+          total.billPostInstall += row.billPostInstall
+          return total
+        },
+        {
+          generation: 0,
+          solar: 0,
+          battery: 0,
+          exportKwh: 0,
+          solarBenefit: 0,
+          batteryBenefit: 0,
+          forceChargeBenefit: 0,
+          exportBenefit: 0,
+          annualBenefit: 0,
+          yearlyPayment: 0,
+          payment: 0,
+          netAnnualBenefit: 0,
+          billPreInstall: 0,
+          billPostInstall: 0,
+        }
+      )
 
-      inflationScenarios.forEach((scenario) => {
-        scenarios[scenario.key] =
-          buildScenario(scenario.rate)
-      })
+      const paybackRow = rows.find((row) => row.cumulativePosition >= 0)
 
       return {
-        inflationScenarios,
-        scenarios,
+        inflationRate,
+        rows,
+        totals,
+        paybackPeriod: paybackRow?.year || null,
+        totalNetSavings: totals.netAnnualBenefit,
+        finalNetPosition: rows[rows.length - 1]?.cumulativePosition || 0,
+        totalNetReturn: totals.netAnnualBenefit,
+        totalContractValue:
+          data.paymentMethod === "Finance"
+            ? Number(data.deposit || 0) +
+              monthlyPaymentForYear(data) *
+                Number(data.financeTerm || 0) *
+                12
+            : systemCost,
       }
-    }, [data, results])
+    }
+
+    const scenarios = {}
+    inflationScenarios.forEach((scenario) => {
+      scenarios[scenario.key] = buildScenario(scenario.rate)
+    })
+
+    return {
+      inflationScenarios,
+      scenarios,
+    }
+  }, [data, results])
 
   /*
    * =========================================================
@@ -1016,6 +1152,17 @@ export default function EPVSCalculator({
                       value={data.existingGeneration}
                       onChange={(value) => update("existingGeneration", value)}
                       min={0}
+                    />
+                  )}
+                  {data.existingSolar && (
+                    <Input
+                      label="Existing solar self-consumption (%)"
+                      type="number"
+                      value={data.existingSolarSelfConsumption}
+                      onChange={(value) => update("existingSolarSelfConsumption", value)}
+                      min={0}
+                      max={100}
+                      step={1}
                     />
                   )}
                 </div>
@@ -1409,6 +1556,31 @@ export default function EPVSCalculator({
                 kWh
               </strong>
             </div>
+
+            <div style={{ marginTop: 18, padding: 16, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10 }}>
+              <h3 style={{ margin: "0 0 12px", fontSize: 14, color: "#172554" }}>EPVS panel assumptions</h3>
+              <div style={styles.grid}>
+                <Input
+                  label="Annual panel degradation (%)"
+                  type="number"
+                  value={data.solarDegradation}
+                  onChange={(value) => update("solarDegradation", value)}
+                  min={0}
+                  max={10}
+                  step={0.01}
+                />
+                <Input
+                  label="Panel performance warranty (years)"
+                  type="number"
+                  value={data.solarWarrantyYears}
+                  onChange={(value) => update("solarWarrantyYears", value)}
+                  min={1}
+                  max={40}
+                  step={1}
+                />
+              </div>
+              <p style={{ margin: "10px 0 0", fontSize: 11, color: "#64748b" }}>Enter manufacturer figures where available. The projection is limited to the stated performance warranty.</p>
+            </div>
           </Card>
         )}
 
@@ -1474,6 +1646,27 @@ export default function EPVSCalculator({
                     <option value={6}>6 kW</option>
                     <option value={7}>7 kW</option>
                     <option value={10}>10 kW</option>
+                  </select>
+                </label>
+              </div>
+            </Card>
+
+            <Card
+              title="EPVS battery & inverter assumptions"
+              subtitle="Manufacturer figures are preferred; EPVS defaults are shown where manufacturer data is unavailable."
+            >
+              <div style={styles.grid}>
+                <Input label="Battery DoD (%)" type="number" value={data.batteryDoD} onChange={(value) => update("batteryDoD", value)} min={0} max={100} step={1} />
+                <Input label="Battery round-trip efficiency (%)" type="number" value={data.batteryRTE} onChange={(value) => update("batteryRTE", value)} min={0} max={100} step={1} />
+                <Input label="Battery degradation (% / year)" type="number" value={data.batteryDegradation} onChange={(value) => update("batteryDegradation", value)} min={0} max={20} step={0.1} />
+                <Input label="Battery warranty (years)" type="number" value={data.batteryWarrantyYears} onChange={(value) => update("batteryWarrantyYears", value)} min={1} max={30} step={1} />
+                <Input label="Inverter EU efficiency (%)" type="number" value={data.inverterEuEfficiency} onChange={(value) => update("inverterEuEfficiency", value)} min={0} max={100} step={0.1} />
+                <label style={styles.field}>
+                  <span>EPVS SAP region</span>
+                  <select value={data.sapZone || inferSapZone(data.postcode)} onChange={(event) => update("sapZone", event.target.value)}>
+                    {SAP_ZONES.map((zone) => (
+                      <option key={zone.code} value={zone.code}>Zone {zone.code} - {zone.name} ({zone.sunshine.toFixed(2)} h/day)</option>
+                    ))}
                   </select>
                 </label>
               </div>
@@ -1575,7 +1768,7 @@ export default function EPVSCalculator({
                   color: "#64748b",
                 }}
               >
-                Octopus Flux uses three daily periods: 02:00–05:00 off-peak, 05:00–16:00 and 19:00–02:00 standard, and 16:00–19:00 peak. Rates remain editable below after the API lookup.
+                Octopus Flux uses three daily periods: 02:00–05:00 off-peak, 05:00–16:00 and 19:00–02:00 standard, and 16:00–19:00 peak. Rates are retrieved automatically from Octopus and are locked to prevent accidental changes.
               </div>
             </div>
 
@@ -2175,7 +2368,7 @@ function Results({
             styles.badge
           }
         >
-          Preliminary model
+          EPVS methodology model
         </div>
       </div>
 
