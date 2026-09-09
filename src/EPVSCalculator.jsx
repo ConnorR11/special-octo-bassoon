@@ -57,8 +57,7 @@ const initial = {
     createArray(),
   ],
 
-  batteryCapacity: 10,
-  batteryEnabled: true,
+  batteryCapacity: "",
 
   inverterCapacity: "",
 
@@ -340,7 +339,7 @@ export default function EPVSCalculator({
      */
 
     const batteryContribution =
-      data.batteryEnabled
+      Number(data.batteryCapacity || 0) > 0
         ? Math.min(
             remainingGeneration,
 
@@ -1357,26 +1356,30 @@ export default function EPVSCalculator({
               subtitle="Configure the proposed battery."
             >
               <div style={styles.grid}>
-                <Toggle
-                  label="Battery included"
-                  value={data.batteryEnabled}
-                  onChange={(value) =>
-                    update("batteryEnabled", value)
-                  }
-                />
+                <label style={styles.field}>
+                  <span>Battery configuration</span>
 
-                {data.batteryEnabled && (
-                  <Input
-                    label="Battery capacity (kWh)"
-                    type="number"
+                  <select
                     value={data.batteryCapacity}
-                    onChange={(value) =>
-                      update("batteryCapacity", value)
+                    onChange={(event) =>
+                      update(
+                        "batteryCapacity",
+                        event.target.value === ""
+                          ? ""
+                          : Number(event.target.value)
+                      )
                     }
-                    min={0}
-                    step={0.1}
-                  />
-                )}
+                  >
+                    <option value="">Select battery</option>
+                    <option value={0}>No battery</option>
+                    <option value={5.12}>1 × 5.12 kWh</option>
+                    <option value={10.24}>2 × 5.12 kWh</option>
+                    <option value={15.36}>3 × 5.12 kWh</option>
+                    <option value={9.4}>1 × 9.4 kWh</option>
+                    <option value={18.8}>2 × 9.4 kWh</option>
+                    <option value={28.2}>3 × 9.4 kWh</option>
+                  </select>
+                </label>
               </div>
             </Card>
 
