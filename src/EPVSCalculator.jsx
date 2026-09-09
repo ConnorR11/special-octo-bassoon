@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { supabase } from "./lib/supabase"
+import { getEpvsZone, getIrradiance } from "./epvsIrradianceData"
 
 import {
   ArrowLeft,
@@ -633,6 +634,51 @@ export default function EPVSCalculator({
       }
     })
   }
+
+  // Keep each array's EPVS Kk / irradiance figure in sync automatically
+  // with the customer's postcode, roof pitch and orientation. The workbook
+  // supports 3 installed arrays in this CRM; the hardware configuration is
+  // intentionally capped at 3.
+  useEffect(() => {
+    const zone = getEpvsZone(data.postcode)
+    if (!zone) return
+
+    setData((current) => {
+      let changed = false
+
+      const arrays = current.arrays.map((array) => {
+        const kk = getIrradiance(
+          zone,
+          array.pitch,
+          array.orientation
+        )
+
+        const roundedKk = Number(kk.toFixed(2))
+
+        if (Number(array.irradiance || 0) === roundedKk) {
+          return array
+        }
+
+        changed = true
+        return {
+          ...array,
+          irradiance: roundedKk,
+        }
+      })
+
+      return changed
+        ? { ...current, arrays }
+        : current
+    })
+  }, [
+    data.postcode,
+    JSON.stringify(
+      data.arrays.map((array) => ({
+        pitch: array.pitch,
+        orientation: array.orientation,
+      }))
+    ),
+  ])
 
   /*
    * =========================================================
@@ -1459,22 +1505,12 @@ export default function EPVSCalculator({
                           />
 
                           <Input
-                            label="Irradiance / Kk figure"
+                            label="Irradiance / Kk figure (EPVS)"
                             type="number"
                             value={
                               array.irradiance
                             }
-                            onChange={(
-                              value
-                            ) =>
-                              updateArray(
-                                index,
-                                "irradiance",
-                                value
-                              )
-                            }
-                            min={0}
-                            step={0.01}
+                            disabled
                           />
 
                           <Input
