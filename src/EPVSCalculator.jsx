@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { supabase } from "./lib/supabase"
-import { getEpvsZone, getIrradiance } from "./epvsIrradianceData"
 
 import {
   ArrowLeft,
@@ -46,7 +45,7 @@ const initial = {
   address: "",
   postcode: "",
 
-  annualConsumption: 4000,
+  annualConsumption: "",
 
   existingSolar: false,
   existingGeneration: 0,
@@ -63,9 +62,9 @@ const initial = {
 
   inverterCapacity: "",
 
-  importRate: 28,
-  exportRate: 15,
-  standingCharge: 30,
+  importRate: "",
+  exportRate: "",
+  standingCharge: "",
 
   tariff: "Standard Flux",
 
@@ -117,7 +116,7 @@ function Input({
 
       <input
         type={type}
-        value={value}
+        value={value ?? ""}
         step={step}
         min={min}
         max={max}
@@ -635,51 +634,6 @@ export default function EPVSCalculator({
     })
   }
 
-  // Keep each array's EPVS Kk / irradiance figure in sync automatically
-  // with the customer's postcode, roof pitch and orientation. The workbook
-  // supports 3 installed arrays in this CRM; the hardware configuration is
-  // intentionally capped at 3.
-  useEffect(() => {
-    const zone = getEpvsZone(data.postcode)
-    if (!zone) return
-
-    setData((current) => {
-      let changed = false
-
-      const arrays = current.arrays.map((array) => {
-        const kk = getIrradiance(
-          zone,
-          array.pitch,
-          array.orientation
-        )
-
-        const roundedKk = Number(kk.toFixed(2))
-
-        if (Number(array.irradiance || 0) === roundedKk) {
-          return array
-        }
-
-        changed = true
-        return {
-          ...array,
-          irradiance: roundedKk,
-        }
-      })
-
-      return changed
-        ? { ...current, arrays }
-        : current
-    })
-  }, [
-    data.postcode,
-    JSON.stringify(
-      data.arrays.map((array) => ({
-        pitch: array.pitch,
-        orientation: array.orientation,
-      }))
-    ),
-  ])
-
   /*
    * =========================================================
    * CALCULATIONS
@@ -1009,6 +963,13 @@ export default function EPVSCalculator({
   ])
 
   const saveCalculation = async () => {
+    if (!hasRequiredEnergyInputs) {
+      setSaveError(
+        "Please enter annual electricity consumption, current import rate, current export rate and current standing charge before saving the calculation."
+      )
+      return
+    }
+
     const appointmentRowId = appointment?.appointment_row_id
 
     if (!appointmentRowId) {
@@ -1045,7 +1006,21 @@ export default function EPVSCalculator({
     }
   }
 
+  const hasRequiredEnergyInputs =
+    String(data.annualConsumption ?? "").trim() !== "" &&
+    String(data.importRate ?? "").trim() !== "" &&
+    String(data.exportRate ?? "").trim() !== "" &&
+    String(data.standingCharge ?? "").trim() !== ""
+
   const next = () => {
+    if (step === 0 && !hasRequiredEnergyInputs) {
+      setSaveError(
+        "Please enter annual electricity consumption, current import rate, current export rate and current standing charge before continuing."
+      )
+      return
+    }
+
+    setSaveError("")
     setStep((current) =>
       Math.min(
         steps.length - 1,
@@ -1212,6 +1187,18 @@ export default function EPVSCalculator({
                     step={0.01}
                   />
                 </div>
+
+                {!hasRequiredEnergyInputs && (
+                  <div
+                    style={{
+                      marginTop: 10,
+                      fontSize: 12,
+                      color: "#b45309",
+                    }}
+                  >
+                    Enter all four electricity values before continuing to the calculation.
+                  </div>
+                )}
               </div>
 
               <div>
@@ -1505,12 +1492,22 @@ export default function EPVSCalculator({
                           />
 
                           <Input
-                            label="Irradiance / Kk figure (EPVS)"
+                            label="Irradiance / Kk figure"
                             type="number"
                             value={
                               array.irradiance
                             }
-                            disabled
+                            onChange={(
+                              value
+                            ) =>
+                              updateArray(
+                                index,
+                                "irradiance",
+                                value
+                              )
+                            }
+                            min={0}
+                            step={0.01}
                           />
 
                           <Input
@@ -2245,11 +2242,11 @@ export default function EPVSCalculator({
           <button
             type="button"
             onClick={saveCalculation}
-            disabled={savingCalculation}
+            disabled={savingCalculation || !hasRequiredEnergyInputs}
             style={{
               ...styles.primary,
-              opacity: savingCalculation ? 0.65 : 1,
-              cursor: savingCalculation ? "default" : "pointer",
+              opacity: savingCalculation || !hasRequiredEnergyInputs ? 0.65 : 1,
+              cursor: savingCalculation || !hasRequiredEnergyInputs ? "default" : "pointer",
             }}
           >
             {savingCalculation ? "Saving..." : "Save calculation"}
