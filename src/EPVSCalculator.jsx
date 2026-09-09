@@ -60,7 +60,7 @@ const initial = {
   batteryCapacity: 10,
   batteryEnabled: true,
 
-  inverterCapacity: 5,
+  inverterCapacity: "",
 
   importRate: 28,
   exportRate: 15,
@@ -1385,16 +1385,27 @@ export default function EPVSCalculator({
               subtitle="Configure the inverter capacity."
             >
               <div style={styles.grid}>
-                <Input
-                  label="Inverter capacity (kW)"
-                  type="number"
-                  value={data.inverterCapacity}
-                  onChange={(value) =>
-                    update("inverterCapacity", value)
-                  }
-                  min={0}
-                  step={0.1}
-                />
+                <label style={styles.field}>
+                  <span>Inverter capacity (kW)</span>
+
+                  <select
+                    value={data.inverterCapacity}
+                    onChange={(event) =>
+                      update(
+                        "inverterCapacity",
+                        event.target.value === ""
+                          ? ""
+                          : Number(event.target.value)
+                      )
+                    }
+                  >
+                    <option value="">Select inverter</option>
+                    <option value={3.7}>3.7 kW</option>
+                    <option value={6}>6 kW</option>
+                    <option value={7}>7 kW</option>
+                    <option value={10}>10 kW</option>
+                  </select>
+                </label>
               </div>
             </Card>
           </div>
