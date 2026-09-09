@@ -235,17 +235,19 @@ export default function EPVSCalculator({
       setData((current) => ({
         ...current,
         tariff: "Standard Flux",
-        fluxDayImport: Number(payload.rates.fluxDayImport),
-        fluxDayExport: Number(payload.rates.fluxDayExport),
-        fluxImport: Number(payload.rates.fluxImport),
-        fluxExport: Number(payload.rates.fluxExport),
-        fluxPeakImport: Number(payload.rates.fluxPeakImport),
-        fluxPeakExport: Number(payload.rates.fluxPeakExport),
-        fluxStandingCharge: Number(payload.rates.fluxStandingCharge),
+        // The API returns dayImport/offPeakImport/peakImport,
+        // while the calculator stores them as fluxDayImport/fluxImport/fluxPeakImport.
+        fluxDayImport: Number(payload.rates?.dayImport ?? current.fluxDayImport),
+        fluxDayExport: Number(payload.rates?.dayExport ?? current.fluxDayExport),
+        fluxImport: Number(payload.rates?.offPeakImport ?? current.fluxImport),
+        fluxExport: Number(payload.rates?.offPeakExport ?? current.fluxExport),
+        fluxPeakImport: Number(payload.rates?.peakImport ?? current.fluxPeakImport),
+        fluxPeakExport: Number(payload.rates?.peakExport ?? current.fluxPeakExport),
+        fluxStandingCharge: Number(payload.rates?.standingCharge ?? current.fluxStandingCharge),
         fluxRatesRetrievedAt: payload.retrievedAt || new Date().toISOString(),
-        fluxGsp: payload.gsp || "",
-        fluxImportTariffCode: payload.importTariffCode || "",
-        fluxExportTariffCode: payload.exportTariffCode || "",
+        fluxGsp: payload.gspGroupId || current.fluxGsp || "",
+        fluxImportTariffCode: payload.tariff?.import || current.fluxImportTariffCode || "",
+        fluxExportTariffCode: payload.tariff?.export || current.fluxExportTariffCode || "",
       }))
     } catch (error) {
       console.error("Flux rate lookup failed", error)
