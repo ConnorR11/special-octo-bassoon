@@ -222,12 +222,12 @@ export default function ThirtyYearBreakdown({
                   <br />
                   PAYMENTS
                 </HeaderCell>
-                <HeaderCell>
+                <HeaderCell minWidth={92}>
                   NET ANNUAL
                   <br />
                   BENEFIT
                 </HeaderCell>
-                <HeaderCell green>
+                <HeaderCell green minWidth={88}>
                   NET
                   <br />
                   POSITION
@@ -246,36 +246,57 @@ export default function ThirtyYearBreakdown({
             </thead>
 
             <tbody>
-              {rows.map((row) => (
-                <tr key={row.year}>
-                  <BodyCell>{row.year}</BodyCell>
-                  <BodyCell>{number(row.generation)}</BodyCell>
-                  <BodyCell>{money(row.solarBenefit)}</BodyCell>
-                  <BodyCell>{money(row.batteryBenefit)}</BodyCell>
-                  <BodyCell>{money(row.exportBenefit)}</BodyCell>
-                  <BodyCell green>
-                    {money(
-                      safeNumber(row.solarBenefit) +
-                        safeNumber(row.batteryBenefit) +
-                        safeNumber(row.exportBenefit)
-                    )}
-                  </BodyCell>
-                  <BodyCell>
-                    {money(row.yearlyPayment)}
-                  </BodyCell>
-                  <BodyCell negative={safeNumber(row.netAnnualBenefit) < 0}>
-                    {money(row.netAnnualBenefit)}
-                  </BodyCell>
-                  <BodyCell
-                    green={safeNumber(row.cumulativePosition) >= 0}
-                    negative={safeNumber(row.cumulativePosition) < 0}
-                  >
-                    {money(row.cumulativePosition)}
-                  </BodyCell>
-                  <BodyCell>{money(row.billPreInstall)}</BodyCell>
-                  <BodyCell>{money(row.billPostInstall)}</BodyCell>
-                </tr>
-              ))}
+              {rows.map((row, index) => {
+                const annualBenefit =
+                  safeNumber(row.solarBenefit) +
+                  safeNumber(row.batteryBenefit) +
+                  safeNumber(row.exportBenefit)
+
+                const yearlyPayment = safeNumber(row.yearlyPayment)
+                const netAnnualBenefit = annualBenefit + yearlyPayment
+
+                const cumulativePosition = rows
+                  .slice(0, index + 1)
+                  .reduce((sum, currentRow) => {
+                    const currentAnnualBenefit =
+                      safeNumber(currentRow.solarBenefit) +
+                      safeNumber(currentRow.batteryBenefit) +
+                      safeNumber(currentRow.exportBenefit)
+
+                    return (
+                      sum +
+                      currentAnnualBenefit +
+                      safeNumber(currentRow.yearlyPayment)
+                    )
+                  }, 0)
+
+                return (
+                  <tr key={row.year}>
+                    <BodyCell>{row.year}</BodyCell>
+                    <BodyCell>{number(row.generation)}</BodyCell>
+                    <BodyCell>{money(row.solarBenefit)}</BodyCell>
+                    <BodyCell>{money(row.batteryBenefit)}</BodyCell>
+                    <BodyCell>{money(row.exportBenefit)}</BodyCell>
+                    <BodyCell green>
+                      {money(annualBenefit)}
+                    </BodyCell>
+                    <BodyCell>
+                      {money(yearlyPayment)}
+                    </BodyCell>
+                    <BodyCell negative={netAnnualBenefit < 0}>
+                      {money(netAnnualBenefit)}
+                    </BodyCell>
+                    <BodyCell
+                      green={cumulativePosition >= 0}
+                      negative={cumulativePosition < 0}
+                    >
+                      {money(cumulativePosition)}
+                    </BodyCell>
+                    <BodyCell>{money(row.billPreInstall)}</BodyCell>
+                    <BodyCell>{money(row.billPostInstall)}</BodyCell>
+                  </tr>
+                )
+              })}
 
               {rows.length > 0 && (
                 <tr>
@@ -310,7 +331,20 @@ export default function ThirtyYearBreakdown({
                     {money(totals.yearlyPayment)}
                   </td>
                   <td style={totalCell}>
-                    {money(totals.netAnnualBenefit)}
+                    {money(
+                      rows.reduce((sum, row) => {
+                        const annualBenefit =
+                          safeNumber(row.solarBenefit) +
+                          safeNumber(row.batteryBenefit) +
+                          safeNumber(row.exportBenefit)
+
+                        return (
+                          sum +
+                          annualBenefit +
+                          safeNumber(row.yearlyPayment)
+                        )
+                      }, 0)
+                    )}
                   </td>
                   <td
                     style={{
@@ -319,7 +353,18 @@ export default function ThirtyYearBreakdown({
                     }}
                   >
                     {money(
-                      rows[rows.length - 1]?.cumulativePosition
+                      rows.reduce((sum, row) => {
+                        const annualBenefit =
+                          safeNumber(row.solarBenefit) +
+                          safeNumber(row.batteryBenefit) +
+                          safeNumber(row.exportBenefit)
+
+                        return (
+                          sum +
+                          annualBenefit +
+                          safeNumber(row.yearlyPayment)
+                        )
+                      }, 0)
                     )}
                   </td>
                   <td style={totalCell}>
@@ -365,7 +410,7 @@ function SummaryCard({ label, value }) {
   )
 }
 
-function HeaderCell({ children, green = false }) {
+function HeaderCell({ children, green = false, minWidth }) {
   return (
     <th
       style={{
@@ -377,6 +422,7 @@ function HeaderCell({ children, green = false }) {
         fontWeight: 700,
         fontSize: 10,
         whiteSpace: "nowrap",
+        minWidth: minWidth || undefined,
       }}
     >
       {children}
