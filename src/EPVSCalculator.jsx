@@ -24,8 +24,7 @@ const money = (value) =>
 const steps = [
   { title: "Customer", icon: Home },
   { title: "Solar PV", icon: Zap },
-  { title: "Battery", icon: Battery },
-  { title: "Inverter", icon: Zap },
+  { title: "Battery & Inverter", icon: Battery },
   { title: "Tariff", icon: PoundSterling },
   { title: "Finance", icon: PoundSterling },
   { title: "Results", icon: CheckCircle2 },
@@ -1348,93 +1347,64 @@ export default function EPVSCalculator({
         )}
 
         {/* =================================================
-            BATTERY
+            BATTERY & INVERTER
             ================================================= */}
 
         {step === 2 && (
-          <Card
-            title="Battery"
-            subtitle="Configure the proposed battery."
-          >
-            <div
-              style={styles.grid}
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <Card
+              title="Battery"
+              subtitle="Configure the proposed battery."
             >
-              <Toggle
-                label="Battery included"
-                value={
-                  data.batteryEnabled
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "batteryEnabled",
-                    value
-                  )
-                }
-              />
-
-              {data.batteryEnabled && (
-                <Input
-                  label="Battery capacity (kWh)"
-                  type="number"
-                  value={
-                    data.batteryCapacity
+              <div style={styles.grid}>
+                <Toggle
+                  label="Battery included"
+                  value={data.batteryEnabled}
+                  onChange={(value) =>
+                    update("batteryEnabled", value)
                   }
-                  onChange={(
-                    value
-                  ) =>
-                    update(
-                      "batteryCapacity",
-                      value
-                    )
+                />
+
+                {data.batteryEnabled && (
+                  <Input
+                    label="Battery capacity (kWh)"
+                    type="number"
+                    value={data.batteryCapacity}
+                    onChange={(value) =>
+                      update("batteryCapacity", value)
+                    }
+                    min={0}
+                    step={0.1}
+                  />
+                )}
+              </div>
+            </Card>
+
+            <Card
+              title="Inverter"
+              subtitle="Configure the inverter capacity."
+            >
+              <div style={styles.grid}>
+                <Input
+                  label="Inverter capacity (kW)"
+                  type="number"
+                  value={data.inverterCapacity}
+                  onChange={(value) =>
+                    update("inverterCapacity", value)
                   }
                   min={0}
                   step={0.1}
                 />
-              )}
-            </div>
-          </Card>
-        )}
-
-        {/* =================================================
-            INVERTER
-            ================================================= */}
-
-        {step === 3 && (
-          <Card
-            title="Inverter"
-            subtitle="Configure the inverter capacity."
-          >
-            <div
-              style={styles.grid}
-            >
-              <Input
-                label="Inverter capacity (kW)"
-                type="number"
-                value={
-                  data.inverterCapacity
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "inverterCapacity",
-                    value
-                  )
-                }
-                min={0}
-                step={0.1}
-              />
-            </div>
-          </Card>
+              </div>
+            </Card>
+          </div>
         )}
 
         {/* =================================================
             TARIFF
             ================================================= */}
 
-        {step === 4 && (
+        {step === 3 && (
           <Card
             title="Tariff"
             subtitle="Select the tariff model."
@@ -1494,7 +1464,7 @@ export default function EPVSCalculator({
             FINANCE
             ================================================= */}
 
-        {step === 5 && (
+        {step === 4 && (
           <Card
             title="Payment"
             subtitle="Choose how the customer is paying for the system."
@@ -1664,7 +1634,7 @@ export default function EPVSCalculator({
             RESULTS
             ================================================= */}
 
-        {step === 6 && (
+        {step === 5 && (
           <>
             <Results
               results={results}
@@ -1946,7 +1916,7 @@ const styles = {
   stepper: {
     display: "grid",
     gridTemplateColumns:
-      "repeat(7, minmax(70px, 1fr))",
+      "repeat(6, minmax(70px, 1fr))",
     gap: 8,
     marginBottom: 20,
     overflowX: "auto",
