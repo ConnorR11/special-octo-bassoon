@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react"
+import { supabase } from "./lib/supabase"
 
 import {
   ArrowLeft,
@@ -520,19 +521,31 @@ export default function EPVSCalculator({
   const [step, setStep] = useState(0)
   const [loadingFluxRates, setLoadingFluxRates] = useState(false)
   const [fluxRateError, setFluxRateError] = useState("")
+  const [savingCalculation, setSavingCalculation] = useState(false)
+  const [saveMessage, setSaveMessage] = useState("")
+  const [saveError, setSaveError] = useState("")
 
   const appointmentInitial = useMemo(() => {
+    const saved = appointment?.epvs_calculation?.data || {}
+
     return {
       ...initial,
+      ...saved,
 
       customerName:
-        appointment?.name || "",
+        saved.customerName ||
+        appointment?.name ||
+        "",
 
       address:
-        appointment?.address || "",
+        saved.address ||
+        appointment?.address ||
+        "",
 
       postcode:
-        appointment?.postcode || "",
+        saved.postcode ||
+        appointment?.postcode ||
+        "",
     }
   }, [appointment])
 
@@ -540,25 +553,8 @@ export default function EPVSCalculator({
     useState(appointmentInitial)
 
   useEffect(() => {
-    setData((current) => ({
-      ...current,
-
-      customerName:
-        appointment?.name ||
-        current.customerName ||
-        "",
-
-      address:
-        appointment?.address ||
-        current.address ||
-        "",
-
-      postcode:
-        appointment?.postcode ||
-        current.postcode ||
-        "",
-    }))
-  }, [appointment])
+    setData(appointmentInitial)
+  }, [appointmentInitial])
 
   const update = (key, value) => {
     setData((current) => ({
@@ -965,6 +961,43 @@ export default function EPVSCalculator({
     thirtyYearProjection,
     onCalculationChange,
   ])
+
+  const saveCalculation = async () => {
+    const appointmentRowId = appointment?.appointment_row_id
+
+    if (!appointmentRowId) {
+      setSaveError("This appointment does not have an appointment ID, so the calculation cannot be saved.")
+      return
+    }
+
+    setSavingCalculation(true)
+    setSaveMessage("")
+    setSaveError("")
+
+    try {
+      const payload = {
+        version: 1,
+        savedAt: new Date().toISOString(),
+        data,
+        results,
+        thirtyYearProjection,
+      }
+
+      const { error } = await supabase
+        .from("appointments")
+        .update({ epvs_calculation: payload })
+        .eq("appointment_row_id", appointmentRowId)
+
+      if (error) throw error
+
+      setSaveMessage(`Saved ${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`)
+    } catch (err) {
+      console.error("Error saving EPVS calculation:", err)
+      setSaveError(err?.message || "Unable to save EPVS calculation.")
+    } finally {
+      setSavingCalculation(false)
+    }
+  }
 
   const next = () => {
     setStep((current) =>
@@ -2157,8 +2190,35 @@ export default function EPVSCalculator({
             ================================================= */}
 
         <div
-          style={styles.footer}
+          style={{
+            ...styles.footer,
+            flexWrap: "wrap",
+          }}
         >
+          <div
+            style={{
+              marginRight: "auto",
+              fontSize: 11,
+              color: saveError ? "#b42318" : "#299d48",
+              fontWeight: 600,
+            }}
+          >
+            {saveError || saveMessage}
+          </div>
+
+          <button
+            type="button"
+            onClick={saveCalculation}
+            disabled={savingCalculation}
+            style={{
+              ...styles.primary,
+              opacity: savingCalculation ? 0.65 : 1,
+              cursor: savingCalculation ? "default" : "pointer",
+            }}
+          >
+            {savingCalculation ? "Saving..." : "Save calculation"}
+          </button>
+
           <button
             type="button"
             onClick={reset}
