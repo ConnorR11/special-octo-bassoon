@@ -142,25 +142,19 @@ function StatusTick({ value }) {
 
 function AppointmentRow({ appointment, onSelect }) {
   return (
-    <button
-      type="button"
-      className="mtv-appointment-row"
-      onClick={() => onSelect?.(appointment)}
-    >
-      <div className="mtv-cell mtv-name-cell" title={appointment.name || "Unnamed customer"}>
-        {display(appointment.name, "Unnamed customer")}
-      </div>
-      <div className="mtv-cell">{display(appointment.branch)}</div>
-      <div className="mtv-cell">{display(appointment.rep_allocated)}</div>
-      <div className="mtv-cell mtv-time-cell">{formatTime(appointment.appointment_date)}</div>
-      <div className="mtv-cell">{display(appointment.postcode)}</div>
-      <div className="mtv-cell">{display(appointment.product)}</div>
-      <div className="mtv-cell">{display(appointment.lead_source)}</div>
-      <div className="mtv-cell"><StatusTick value={Boolean(appointment.rep_confirmed_time)} /></div>
-      <div className="mtv-cell"><StatusTick value={Boolean(appointment.was_picked_up || appointment.pickup_rep)} /></div>
-      <div className="mtv-cell mtv-result-cell">{display(appointment.result)}</div>
-      <div className="mtv-cell">{appointment.epvs_calculation ? "✓" : "—"}</div>
-    </button>
+    <tr className="mtv-appointment-row" onClick={() => onSelect?.(appointment)}>
+      <td className="mtv-cell mtv-name-cell" title={appointment.name || "Unnamed customer"}>{display(appointment.name, "Unnamed customer")}</td>
+      <td className="mtv-cell">{display(appointment.branch)}</td>
+      <td className="mtv-cell">{display(appointment.rep_allocated)}</td>
+      <td className="mtv-cell mtv-time-cell">{formatTime(appointment.appointment_date)}</td>
+      <td className="mtv-cell">{display(appointment.postcode)}</td>
+      <td className="mtv-cell">{display(appointment.product)}</td>
+      <td className="mtv-cell">{display(appointment.lead_source)}</td>
+      <td className="mtv-cell mtv-status-cell"><StatusTick value={Boolean(appointment.rep_confirmed_time)} /></td>
+      <td className="mtv-cell mtv-status-cell"><StatusTick value={Boolean(appointment.was_picked_up || appointment.pickup_rep)} /></td>
+      <td className="mtv-cell mtv-result-cell">{display(appointment.result)}</td>
+      <td className="mtv-cell mtv-status-cell">{appointment.epvs_calculation ? "✓" : "—"}</td>
+    </tr>
   )
 }
 
@@ -183,28 +177,32 @@ function BranchSection({ branch, appointments, onSelect }) {
 
       {open && (
         <div className="mtv-table-scroll">
-          <div className="mtv-table">
-            <div className="mtv-table-header">
-              <span>NAME</span>
-              <span>BRANCH</span>
-              <span>REP</span>
-              <span>TIME</span>
-              <span>POSTCODE</span>
-              <span>MEASURE</span>
-              <span>LEAD SOURCE</span>
-              <span>REP</span>
-              <span>PICKUP</span>
-              <span>RESULT</span>
-              <span>SURVEY</span>
-            </div>
-            {sorted.map((appointment) => (
-              <AppointmentRow
-                key={appointment.appointment_row_id}
-                appointment={appointment}
-                onSelect={onSelect}
-              />
-            ))}
-          </div>
+          <table className="mtv-table">
+            <thead>
+              <tr className="mtv-table-header">
+                <th>NAME</th>
+                <th>BRANCH</th>
+                <th>REP</th>
+                <th>TIME</th>
+                <th>POSTCODE</th>
+                <th>MEASURE</th>
+                <th>LEAD SOURCE</th>
+                <th>REP</th>
+                <th>PICKUP</th>
+                <th>RESULT</th>
+                <th>SURVEY</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((appointment) => (
+                <AppointmentRow
+                  key={appointment.appointment_row_id}
+                  appointment={appointment}
+                  onSelect={onSelect}
+                />
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </section>
@@ -263,23 +261,6 @@ export default function MarketingTV({ onSelectAppointment }) {
     const interval = setInterval(() => loadAppointments(selectedDate), 60 * 1000)
     return () => clearInterval(interval)
   }, [selectedDate])
-
-  const grouped = useMemo(() => {
-    const groups = {}
-    appointments.forEach((appointment) => {
-      const branch = display(appointment.branch, "Unassigned")
-      if (!groups[branch]) groups[branch] = []
-      groups[branch].push(appointment)
-    })
-
-    return Object.entries(groups)
-      .sort(([a], [b]) => {
-        if (a === "Unassigned") return 1
-        if (b === "Unassigned") return -1
-        return a.localeCompare(b)
-      })
-      .map(([branch, rows]) => ({ branch, rows }))
-  }, [appointments])
 
   const today = formatDateForInput(new Date())
 
@@ -466,10 +447,10 @@ export default function MarketingTV({ onSelectAppointment }) {
           height: 2px;
           background: #2698ed;
         }
-        .mtv-content { padding: 8px 14px 18px; }
+        .mtv-content { padding: 10px 14px 18px; }
         .mtv-date-title {
           color: #2398ed;
-          font-size: 11px;
+          font-size: 14px;
           font-weight: 800;
           margin: 0 0 12px;
         }
@@ -491,7 +472,7 @@ export default function MarketingTV({ onSelectAppointment }) {
           cursor: pointer;
         }
         .mtv-refresh:disabled { opacity: .55; cursor: default; }
-        .mtv-branch-section { margin-top: 9px; }
+        .mtv-branch-section { margin-top: 12px; }
         .mtv-branch-title {
           width: 100%;
           display: flex;
@@ -501,7 +482,7 @@ export default function MarketingTV({ onSelectAppointment }) {
           background: transparent;
           color: #2398ed;
           text-align: left;
-          font-size: 17px;
+          font-size: 20px;
           font-weight: 800;
           padding: 0 0 5px;
           cursor: pointer;
@@ -512,67 +493,75 @@ export default function MarketingTV({ onSelectAppointment }) {
           color: #94a3b8;
           margin-left: 2px;
         }
-        .mtv-table-scroll { overflow-x: auto; }
-        .mtv-table {
-          /* All rows and the header use the same content-sized tracks.
-             This makes every column automatically size to the widest value
-             in that column while keeping the header perfectly aligned. */
-          --mtv-columns: max-content max-content max-content max-content max-content max-content max-content max-content max-content max-content max-content;
-          min-width: 100%;
-          width: max-content;
-        }
-        .mtv-table-header, .mtv-appointment-row {
-          display: grid;
-          grid-template-columns: var(--mtv-columns);
-          gap: 0;
-          align-items: center;
-          width: max-content;
-          min-width: 100%;
-          box-sizing: border-box;
-        }
-        .mtv-table-header > *,
-        .mtv-appointment-row > * {
-          min-width: 0;
-          padding-left: 4px;
-          padding-right: 6px;
-          box-sizing: border-box;
-        }
-        .mtv-table-header > :first-child,
-        .mtv-appointment-row > :first-child {
-          padding-left: 2px;
-        }
-        .mtv-table-header > :last-child,
-        .mtv-appointment-row > :last-child {
-          padding-right: 2px;
-        }
-        .mtv-table-header {
-          color: #64748b;
-          font-size: 7px;
-          font-weight: 800;
-          padding: 0 2px 5px;
-          border-bottom: 1px solid #e7eaee;
-        }
-        .mtv-appointment-row {
+        .mtv-table-scroll {
           width: 100%;
-          border: 0;
-          border-bottom: 1px solid #edf0f2;
+          overflow-x: auto;
+          border: 1px solid #e5e9ee;
+          border-radius: 6px;
           background: #fff;
-          padding: 5px 2px;
+        }
+        .mtv-table {
+          width: 100%;
+          min-width: 980px;
+          border-collapse: separate;
+          border-spacing: 0;
+          table-layout: auto;
+        }
+        .mtv-table-header th {
+          padding: 7px 10px;
+          background: #f7f9fb;
+          border-bottom: 1px solid #dfe5ea;
+          color: #64748b;
+          font-size: 9px;
+          font-weight: 800;
+          line-height: 1;
+          letter-spacing: .04em;
           text-align: left;
-          color: #172033;
-          font: inherit;
-          font-size: 10px;
+          white-space: nowrap;
+        }
+        .mtv-table-header th:first-child { padding-left: 12px; }
+        .mtv-table-header th:last-child { padding-right: 12px; }
+        .mtv-appointment-row {
           cursor: pointer;
         }
-        .mtv-appointment-row:nth-child(even) { background: #fafafa; }
-        .mtv-appointment-row:hover { background: #f2f8fd; }
-        .mtv-cell { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-        .mtv-name-cell { font-weight: 700; }
-        .mtv-time-cell { font-weight: 600; }
+        .mtv-appointment-row td {
+          padding: 8px 10px;
+          border-bottom: 1px solid #edf0f3;
+          color: #172033;
+          font-size: 13px;
+          line-height: 1.15;
+          white-space: nowrap;
+          vertical-align: middle;
+        }
+        .mtv-appointment-row td:first-child { padding-left: 12px; }
+        .mtv-appointment-row td:last-child { padding-right: 12px; }
+        .mtv-appointment-row:nth-child(even) td { background: #fbfcfd; }
+        .mtv-appointment-row:hover td { background: #eef7ff; }
+        .mtv-cell {
+          max-width: 280px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .mtv-name-cell {
+          font-weight: 700;
+          max-width: 240px;
+        }
+        .mtv-time-cell { font-weight: 700; }
         .mtv-result-cell { font-weight: 600; }
-        .mtv-tick, .mtv-cross { display: inline-flex; align-items: center; justify-content: center; }
-        .mtv-tick { color: #249cf1; }
-        .mtv-cross { color: #b7bdc5; }
+        .mtv-status-cell {
+          width: 1%;
+          text-align: center;
+        }
+        .mtv-tick, .mtv-cross {
+          display: inline-flex;
+          width: 20px;
+          height: 20px;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+        }
+        .mtv-tick { color: #249cf1; background: #eaf6ff; }
+        .mtv-cross { color: #b7bdc5; background: #f3f5f7; }
         .mtv-empty {
           padding: 70px 20px;
           text-align: center;
@@ -681,9 +670,7 @@ export default function MarketingTV({ onSelectAppointment }) {
             )}
           </div>
         ) : (
-          <div className="mtv-placeholder">
-            {activeTab === "handover" ? "Handover view coming soon" : "Sales Schedule coming soon"}
-          </div>
+          <div className="mtv-placeholder">Sales Schedule coming soon</div>
         )}
 
         {lastUpdated && (
