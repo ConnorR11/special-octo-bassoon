@@ -487,7 +487,7 @@ export default function MarketingTV({ onSelectAppointment }) {
           color: #64748b;
           border-radius: 5px;
           padding: 6px 9px;
-          font-size: 14px;
+          font-size: 10px;
           cursor: pointer;
         }
         .mtv-refresh:disabled { opacity: .55; cursor: default; }
@@ -507,16 +507,19 @@ export default function MarketingTV({ onSelectAppointment }) {
           cursor: pointer;
         }
         .mtv-branch-count {
-          font-size: 12px;
+          font-size: 10px;
           font-weight: 700;
           color: #94a3b8;
           margin-left: 2px;
         }
         .mtv-table-scroll { overflow-x: auto; }
         .mtv-table {
-          /* One shared grid definition keeps headers and rows perfectly aligned. */
-          --mtv-columns: 135px 115px 135px 52px 78px 100px 130px 42px 52px 90px 60px;
-          min-width: 989px;
+          /* All rows and the header use the same content-sized tracks.
+             This makes every column automatically size to the widest value
+             in that column while keeping the header perfectly aligned. */
+          --mtv-columns: max-content max-content max-content max-content max-content max-content max-content max-content max-content max-content max-content;
+          min-width: 100%;
+          width: max-content;
         }
         .mtv-table-header, .mtv-appointment-row {
           display: grid;
@@ -544,7 +547,7 @@ export default function MarketingTV({ onSelectAppointment }) {
         }
         .mtv-table-header {
           color: #64748b;
-          font-size: 10px;
+          font-size: 7px;
           font-weight: 800;
           padding: 0 2px 5px;
           border-bottom: 1px solid #e7eaee;
@@ -554,11 +557,11 @@ export default function MarketingTV({ onSelectAppointment }) {
           border: 0;
           border-bottom: 1px solid #edf0f2;
           background: #fff;
-          padding: 8px 2px;
+          padding: 5px 2px;
           text-align: left;
           color: #172033;
           font: inherit;
-          font-size: 14px;
+          font-size: 10px;
           cursor: pointer;
         }
         .mtv-appointment-row:nth-child(even) { background: #fafafa; }
