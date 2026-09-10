@@ -306,15 +306,26 @@ export default function MarketingTV({ onSelectAppointment }) {
           color: #172033;
           font-family: Inter, Arial, sans-serif;
         }
+        .mtv-top-card {
+          margin: 14px 18px 10px;
+          background: #fff;
+          border: 1px solid #dfe5ea;
+          border-radius: 10px;
+          overflow: hidden;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+        }
         .mtv-hero {
           background: #00304b;
           color: #fff;
-          min-height: 132px;
-          padding: 26px 48px 22px;
+          min-height: 128px;
+          padding: 24px 30px 22px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 28px;
+          gap: 34px;
+        }
+        .mtv-hero-title-block {
+          min-width: 0;
         }
         .mtv-hero h1 {
           margin: 0;
@@ -323,8 +334,14 @@ export default function MarketingTV({ onSelectAppointment }) {
           font-weight: 700;
           letter-spacing: -1.5px;
         }
+        .mtv-hero-date {
+          margin-top: 8px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #b8cfdb;
+        }
         .mtv-summary-wrap {
-          width: min(440px, 55vw);
+          width: min(500px, 52vw);
           font-size: 11px;
           background: rgba(255,255,255,.03);
           border-top: 1px solid rgba(255,255,255,.08);
@@ -373,16 +390,14 @@ export default function MarketingTV({ onSelectAppointment }) {
         }
         .mtv-summary-branch { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .mtv-controls-wrap {
-          padding: 12px 18px 0;
+          padding: 12px 18px;
+          background: #fff;
+          border-top: 1px solid #e6eaee;
         }
         .mtv-controls {
-          background: #fff;
-          border: 1px solid #e1e5ea;
-          border-radius: 8px;
-          padding: 12px 14px;
           display: flex;
           align-items: center;
-          justify-content: center;
+          justify-content: flex-start;
           gap: 10px;
         }
         .mtv-date-control {
@@ -395,6 +410,12 @@ export default function MarketingTV({ onSelectAppointment }) {
           background: #fff;
           color: #475569;
           font-size: 12px;
+        }
+        .mtv-date-label {
+          font-size: 11px;
+          font-weight: 700;
+          color: #64748b;
+          margin-right: 2px;
         }
         .mtv-date-control input {
           border: 0;
@@ -414,14 +435,14 @@ export default function MarketingTV({ onSelectAppointment }) {
           cursor: pointer;
         }
         .mtv-main {
-          margin: 8px 18px 24px;
+          margin: 0 18px 24px;
           background: #fff;
           border: 1px solid #e1e5ea;
           border-radius: 8px;
           overflow: hidden;
         }
         .mtv-tabs {
-          height: 40px;
+          height: 42px;
           display: flex;
           align-items: flex-end;
           gap: 28px;
@@ -592,35 +613,44 @@ export default function MarketingTV({ onSelectAppointment }) {
         }
         @media (max-width: 850px) {
           .marketing-tv-page { margin: -16px; }
-          .mtv-hero { padding: 22px 24px; align-items: flex-start; flex-direction: column; }
+          .mtv-top-card { margin: 10px 12px 8px; }
+          .mtv-hero { padding: 22px 22px; align-items: flex-start; flex-direction: column; gap: 18px; }
           .mtv-summary-wrap { width: 100%; }
+          .mtv-controls-wrap { padding: 11px 14px; }
+          .mtv-date-label { display: none; }
           .mtv-summary-title { display: none; }
         }
       `}</style>
 
-      <div className="mtv-hero">
-        <h1>Marketing TV</h1>
-        <SummaryTable appointments={appointments} />
-      </div>
+      <div className="mtv-top-card">
+        <div className="mtv-hero">
+          <div className="mtv-hero-title-block">
+            <h1>Marketing TV</h1>
+            <div className="mtv-hero-date">{formatDisplayDate(selectedDate)}</div>
+          </div>
+          <SummaryTable appointments={appointments} />
+        </div>
 
-      <div className="mtv-controls-wrap">
-        <div className="mtv-controls">
-          <label className="mtv-date-control">
-            <CalendarDays size={13} />
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(event) => setSelectedDate(event.target.value)}
-            />
-          </label>
-          <button
-            type="button"
-            className="mtv-today-button"
-            onClick={() => setSelectedDate(today)}
-          >
-            <Clock3 size={12} style={{ verticalAlign: "-2px", marginRight: 5 }} />
-            Today
-          </button>
+        <div className="mtv-controls-wrap">
+          <div className="mtv-controls">
+            <span className="mtv-date-label">Viewing date</span>
+            <label className="mtv-date-control">
+              <CalendarDays size={14} />
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(event) => setSelectedDate(event.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              className="mtv-today-button"
+              onClick={() => setSelectedDate(today)}
+            >
+              <Clock3 size={13} style={{ verticalAlign: "-2px", marginRight: 5 }} />
+              Today
+            </button>
+          </div>
         </div>
       </div>
 
