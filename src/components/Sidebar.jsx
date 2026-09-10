@@ -158,13 +158,13 @@ function Sidebar({
           >
 
             <NavItem
-              icon={LayoutDashboard}
-              label="Marketing TV"
+              icon={BarChart3}
+              label="Marketing Dashboard"
               active={
-                isActive("marketing-tv")
+                isActive("marketing-dashboard")
               }
               onClick={() =>
-                navigate("marketing-tv")
+                navigate("marketing-dashboard")
               }
             />
 
@@ -215,6 +215,17 @@ function Sidebar({
               toggleFolder("sales")
             }
           >
+
+            <NavItem
+              icon={LayoutDashboard}
+              label="Marketing TV"
+              active={
+                isActive("marketing-tv")
+              }
+              onClick={() =>
+                navigate("marketing-tv")
+              }
+            />
 
             <NavItem
               icon={CalendarDays}
