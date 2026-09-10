@@ -19,6 +19,9 @@ export default function SalesKPI() {
   const [startDate, setStartDate] = useState(DEFAULT_START)
   const [endDate, setEndDate] = useState(DEFAULT_END)
   const [rows, setRows] = useState([])
+  const [appointments, setAppointments] = useState([])
+  const [jobTypeFilter, setJobTypeFilter] = useState("all")
+  const [branchFilter, setBranchFilter] = useState("all")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [sortField, setSortField] = useState("h")
@@ -49,7 +52,7 @@ export default function SalesKPI() {
 
     const { data, error: supabaseError } = await supabase
       .from("appointments")
-      .select("rep_allocated, cps_h, cps_c, cps_p, cps_s")
+      .select("rep_allocated, cps_h, cps_c, cps_p, cps_s, job_type, branch")
       .gte("appointment_date", `${startDate}T00:00:00`)
       .lt("appointment_date", endExclusive.toISOString())
 
@@ -61,9 +64,31 @@ export default function SalesKPI() {
       return
     }
 
+    setAppointments(data || [])
+    setJobTypeFilter("all")
+    setBranchFilter("all")
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    loadKPI()
+  }, [])
+
+  const filteredAppointments = useMemo(() => {
+    return appointments.filter((appointment) => {
+      const jobTypeMatches =
+        jobTypeFilter === "all" || (appointment.job_type || "Unspecified") === jobTypeFilter
+      const branchMatches =
+        branchFilter === "all" || (appointment.branch || "Unspecified") === branchFilter
+
+      return jobTypeMatches && branchMatches
+    })
+  }, [appointments, jobTypeFilter, branchFilter])
+
+  useEffect(() => {
     const grouped = new Map()
 
-    ;(data || []).forEach((appointment) => {
+    filteredAppointments.forEach((appointment) => {
       const key = appointment.rep_allocated || "__unallocated__"
 
       if (!grouped.has(key)) {
@@ -85,12 +110,19 @@ export default function SalesKPI() {
     })
 
     setRows(Array.from(grouped.values()))
-    setLoading(false)
-  }
+  }, [filteredAppointments])
 
-  useEffect(() => {
-    loadKPI()
-  }, [])
+  const jobTypes = useMemo(() => {
+    return Array.from(
+      new Set(appointments.map((appointment) => appointment.job_type || "Unspecified"))
+    ).sort((a, b) => a.localeCompare(b))
+  }, [appointments])
+
+  const branches = useMemo(() => {
+    return Array.from(
+      new Set(appointments.map((appointment) => appointment.branch || "Unspecified"))
+    ).sort((a, b) => a.localeCompare(b))
+  }, [appointments])
 
   const sortedRows = useMemo(() => {
     return [...rows].sort((a, b) => {
@@ -157,11 +189,6 @@ export default function SalesKPI() {
         .sales-kpi-run { height:38px; padding:0 15px; border:0; border-radius:8px; background:#0877bd; color:#fff; font-weight:700; font-size:13px; cursor:pointer; display:inline-flex; align-items:center; gap:7px; }
         .sales-kpi-run:hover { background:#06659f; }
         .sales-kpi-run:disabled { opacity:.65; cursor:default; }
-        .sales-kpi-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin-bottom:24px; }
-        .sales-kpi-summary-card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:18px 20px; box-shadow:0 2px 8px rgba(15,23,42,.04); position:relative; overflow:hidden; }
-        .sales-kpi-summary-card::before { content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:#0877bd; }
-        .sales-kpi-summary-card span { display:block; color:#64748b; font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; margin-bottom:7px; }
-        .sales-kpi-summary-card strong { display:block; font-size:30px; line-height:1; letter-spacing:-.025em; }
         .sales-kpi-panel { background:#fff; border:1px solid #e2e8f0; border-radius:14px; box-shadow:0 2px 10px rgba(15,23,42,.05); overflow:hidden; }
         .sales-kpi-panel-header { padding:20px 22px; border-bottom:1px solid #e8edf2; display:flex; justify-content:space-between; align-items:center; gap:20px; }
         .sales-kpi-panel-title { display:flex; align-items:center; gap:11px; }
@@ -169,6 +196,12 @@ export default function SalesKPI() {
         .sales-kpi-panel-header h2 { margin:0; font-size:18px; font-weight:750; }
         .sales-kpi-panel-header p { margin:3px 0 0; color:#64748b; font-size:12px; }
         .sales-kpi-date-range { color:#64748b; font-size:12px; font-weight:600; white-space:nowrap; }
+        .sales-kpi-filter-bar { display:flex; align-items:center; gap:10px; padding:14px 22px; border-bottom:1px solid #e8edf2; background:#fff; }
+        .sales-kpi-filter-label { color:#64748b; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; margin-right:2px; }
+        .sales-kpi-filter-select { height:34px; min-width:150px; padding:0 30px 0 10px; border:1px solid #d7dee7; border-radius:8px; background:#fff; color:#0f172a; font:inherit; font-size:12px; outline:none; cursor:pointer; }
+        .sales-kpi-filter-select:focus { border-color:#0877bd; box-shadow:0 0 0 3px rgba(8,119,189,.10); }
+        .sales-kpi-filter-clear { height:34px; padding:0 11px; border:1px solid #d7dee7; border-radius:8px; background:#fff; color:#64748b; font-size:12px; font-weight:700; cursor:pointer; }
+        .sales-kpi-filter-clear:hover { color:#0877bd; border-color:#b8d8ea; }
         .sales-kpi-table-wrap { overflow-x:auto; }
         .sales-kpi-table { width:100%; border-collapse:collapse; font-size:13px; }
         .sales-kpi-table th { height:46px; padding:0 22px; text-align:left; background:#f8fafc; color:#64748b; font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; border-bottom:1px solid #e2e8f0; white-space:nowrap; user-select:none; }
@@ -189,16 +222,17 @@ export default function SalesKPI() {
         .sales-kpi-rep { display:flex; align-items:center; gap:9px; text-align:left; font-weight:650; }
         .sales-kpi-rep-dot { width:8px; height:8px; border-radius:50%; background:#0877bd; flex:0 0 auto; }
         .sales-kpi-table tr.unallocated .sales-kpi-rep-dot { background:#f59e0b; }
-        .sales-kpi-total td { height:56px; background:#f1f6fa; border-top:2px solid #d7e4ed; border-bottom:0; font-weight:800; color:#0f172a; }
-        .sales-kpi-total td:not(:first-child) { font-size:15px; }
+        .sales-kpi-total td { height:52px; background:#eef5f9; border-bottom:2px solid #d7e4ed; font-weight:800; color:#0f172a; }
+        .sales-kpi-total td:not(:first-child) { font-size:14px; }
+        .sales-kpi-total .sales-kpi-rep-dot { background:#0f172a; }
         .sales-kpi-coming-soon { color:#94a3b8 !important; font-style:italic; font-size:12px !important; white-space:nowrap; }
         .sales-kpi-empty { text-align:center !important; color:#64748b !important; padding:36px 20px !important; height:auto !important; }
         .sales-kpi-error { margin-bottom:18px; padding:12px 15px; border-radius:10px; background:#fef2f2; border:1px solid #fecaca; color:#991b1b; font-size:13px; }
         .sales-kpi-error strong { display:block; margin-bottom:2px; }
         .sales-kpi-spin { animation:sales-kpi-spin 1s linear infinite; }
         @keyframes sales-kpi-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-        @media (max-width:900px) { .sales-kpi-header{flex-direction:column;align-items:stretch}.sales-kpi-date-card{width:fit-content;max-width:100%;flex-wrap:wrap}.sales-kpi-summary{grid-template-columns:repeat(2,minmax(0,1fr))} }
-        @media (max-width:600px) { .sales-kpi-page{padding:20px 14px 30px}.sales-kpi-header h1{font-size:27px}.sales-kpi-date-card{width:100%;box-sizing:border-box}.sales-kpi-date-field{flex:1;min-width:135px}.sales-kpi-date-input input{min-width:0;width:100%}.sales-kpi-run{flex:1;justify-content:center}.sales-kpi-panel-header{align-items:flex-start;flex-direction:column}.sales-kpi-date-range{white-space:normal} }
+        @media (max-width:900px) { .sales-kpi-header{flex-direction:column;align-items:stretch}.sales-kpi-date-card{width:fit-content;max-width:100%;flex-wrap:wrap} }
+        @media (max-width:600px) { .sales-kpi-filter-bar{flex-wrap:wrap;padding:12px 14px}.sales-kpi-filter-select{flex:1;min-width:130px}.sales-kpi-page{padding:20px 14px 30px}.sales-kpi-header h1{font-size:27px}.sales-kpi-date-card{width:100%;box-sizing:border-box}.sales-kpi-date-field{flex:1;min-width:135px}.sales-kpi-date-input input{min-width:0;width:100%}.sales-kpi-run{flex:1;justify-content:center}.sales-kpi-panel-header{align-items:flex-start;flex-direction:column}.sales-kpi-date-range{white-space:normal} }
       `}</style>
 
       <div className="sales-kpi-page">
@@ -232,15 +266,6 @@ export default function SalesKPI() {
             </div>
           </header>
 
-          <section className="sales-kpi-summary">
-            {[['H', totals.h], ['C', totals.c], ['P', totals.p], ['S', totals.s]].map(([label, value]) => (
-              <div className="sales-kpi-summary-card" key={label}>
-                <span>{label}</span>
-                <strong>{formatNumber(value)}</strong>
-              </div>
-            ))}
-          </section>
-
           {error && <div className="sales-kpi-error"><strong>Unable to load Sales KPI</strong>{error}</div>}
 
           <section className="sales-kpi-panel">
@@ -249,10 +274,45 @@ export default function SalesKPI() {
                 <div className="sales-kpi-panel-icon"><Users size={17} /></div>
                 <div>
                   <h2>Performance by rep</h2>
-                  <p>{rows.length} reps · Counts are based on appointment date</p>
+                  <p>{rows.length} reps · {filteredAppointments.length} appointments · Counts are based on appointment date</p>
                 </div>
               </div>
               <div className="sales-kpi-date-range">{formatDate(startDate)} – {formatDate(endDate)}</div>
+            </div>
+
+            <div className="sales-kpi-filter-bar">
+              <span className="sales-kpi-filter-label">Filter</span>
+              <select
+                className="sales-kpi-filter-select"
+                value={jobTypeFilter}
+                onChange={(event) => setJobTypeFilter(event.target.value)}
+              >
+                <option value="all">All job types</option>
+                {jobTypes.map((jobType) => (
+                  <option key={jobType} value={jobType}>{jobType}</option>
+                ))}
+              </select>
+
+              <select
+                className="sales-kpi-filter-select"
+                value={branchFilter}
+                onChange={(event) => setBranchFilter(event.target.value)}
+              >
+                <option value="all">All branches</option>
+                {branches.map((branch) => (
+                  <option key={branch} value={branch}>{branch}</option>
+                ))}
+              </select>
+
+              {(jobTypeFilter !== "all" || branchFilter !== "all") && (
+                <button
+                  type="button"
+                  className="sales-kpi-filter-clear"
+                  onClick={() => { setJobTypeFilter("all"); setBranchFilter("all") }}
+                >
+                  Clear filters
+                </button>
+              )}
             </div>
 
             <div className="sales-kpi-table-wrap">
@@ -276,6 +336,23 @@ export default function SalesKPI() {
                   </tr>
                 </thead>
                 <tbody>
+                  {!loading && sortedRows.length > 0 && (
+                    <tr className="sales-kpi-total">
+                      <td>
+                        <div className="sales-kpi-rep">
+                          <span className="sales-kpi-rep-dot" />
+                          <span>Total</span>
+                        </div>
+                      </td>
+                      <td>{formatNumber(totals.h)}</td>
+                      <td>{formatNumber(totals.c)}</td>
+                      <td>{formatNumber(totals.p)}</td>
+                      <td>{formatNumber(totals.s)}</td>
+                      <td className="sales-kpi-coming-soon">Coming soon</td>
+                      <td>{totals.s > 0 ? totalConv.toFixed(1) : "—"}</td>
+                      <td>{totals.c > 0 ? `${(((totals.c - totals.p) / totals.c) * 100).toFixed(1)}%` : "—"}</td>
+                    </tr>
+                  )}
                   {loading && <tr><td colSpan="8" className="sales-kpi-empty">Loading Sales KPI…</td></tr>}
                   {!loading && sortedRows.length === 0 && <tr><td colSpan="8" className="sales-kpi-empty">No appointments found for this date range.</td></tr>}
                   {!loading && sortedRows.map((row) => (
@@ -291,9 +368,6 @@ export default function SalesKPI() {
                     </tr>
                   ))}
                 </tbody>
-                {!loading && sortedRows.length > 0 && (
-                  <tfoot><tr className="sales-kpi-total"><td>Total</td><td>{formatNumber(totals.h)}</td><td>{formatNumber(totals.c)}</td><td>{formatNumber(totals.p)}</td><td>{formatNumber(totals.s)}</td><td className="sales-kpi-coming-soon">Coming soon</td><td>{totals.s > 0 ? totalConv.toFixed(1) : "—"}</td><td>{totals.c > 0 ? `${(((totals.c - totals.p) / totals.c) * 100).toFixed(1)}%` : "—"}</td></tr></tfoot>
-                )}
               </table>
             </div>
           </section>
