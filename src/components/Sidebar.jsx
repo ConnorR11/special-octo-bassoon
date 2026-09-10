@@ -159,12 +159,12 @@ function Sidebar({
 
             <NavItem
               icon={LayoutDashboard}
-              label="Marketing Dashboard"
+              label="Marketing TV"
               active={
-                isActive("marketing-dashboard")
+                isActive("marketing-tv")
               }
               onClick={() =>
-                navigate("marketing-dashboard")
+                navigate("marketing-tv")
               }
             />
 

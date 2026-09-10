@@ -13,7 +13,7 @@ import Header from "./components/Header"
 import FitSheet from "./components/FitSheet"
 
 import Dashboard from "./pages/Dashboard"
-import MarketingDashboard from "./pages/MarketingDashboard"
+import MarketingTV from "./pages/MarketingTV"
 import Contracts from "./pages/Contracts"
 import CustomerDetail from "./pages/CustomerDetail"
 import Appointments from "./pages/Appointments"
