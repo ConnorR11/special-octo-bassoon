@@ -121,6 +121,9 @@ export default function SalesKPI() {
     [rows]
   )
 
+  const totalConv = totals.s > 0 ? totals.p / totals.s : 0
+  const totalBo = totals.c > 0 ? ((totals.c - totals.p) / totals.c) * 100 : 0
+
   function changeSort(field) {
     if (sortField === field) {
       setSortDirection((current) => (current === "desc" ? "asc" : "desc"))
@@ -174,13 +177,21 @@ export default function SalesKPI() {
         .sales-kpi-table th.sortable:hover { color:#0877bd; }
         .sales-kpi-sort { display:inline-flex; align-items:center; gap:4px; }
         .sales-kpi-table td { height:48px; padding:0 22px; border-bottom:1px solid #edf1f5; color:#1e293b; font-variant-numeric:tabular-nums; }
-        .sales-kpi-table tbody tr:hover { background:#f8fbfd; }
+        .sales-kpi-coming-soon {
+      color: #94a3b8 !important;
+      font-style: italic;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .sales-kpi-table tbody tr:hover { background:#f8fbfd; }
         .sales-kpi-table tbody tr.unallocated { background:#fffaf0; }
         .sales-kpi-rep { display:flex; align-items:center; gap:9px; text-align:left; font-weight:650; }
         .sales-kpi-rep-dot { width:8px; height:8px; border-radius:50%; background:#0877bd; flex:0 0 auto; }
         .sales-kpi-table tr.unallocated .sales-kpi-rep-dot { background:#f59e0b; }
         .sales-kpi-total td { height:56px; background:#f1f6fa; border-top:2px solid #d7e4ed; border-bottom:0; font-weight:800; color:#0f172a; }
         .sales-kpi-total td:not(:first-child) { font-size:15px; }
+        .sales-kpi-coming-soon { color:#94a3b8 !important; font-style:italic; font-size:12px !important; white-space:nowrap; }
         .sales-kpi-empty { text-align:center !important; color:#64748b !important; padding:36px 20px !important; height:auto !important; }
         .sales-kpi-error { margin-bottom:18px; padding:12px 15px; border-radius:10px; background:#fef2f2; border:1px solid #fecaca; color:#991b1b; font-size:13px; }
         .sales-kpi-error strong { display:block; margin-bottom:2px; }
@@ -259,11 +270,14 @@ export default function SalesKPI() {
                         <span className="sales-kpi-sort">{label}<SortIcon field={field} /></span>
                       </th>
                     ))}
+                    <th>Net</th>
+                    <th>Conv</th>
+                    <th>BO%</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {loading && <tr><td colSpan="5" className="sales-kpi-empty">Loading Sales KPI…</td></tr>}
-                  {!loading && sortedRows.length === 0 && <tr><td colSpan="5" className="sales-kpi-empty">No appointments found for this date range.</td></tr>}
+                  {loading && <tr><td colSpan="8" className="sales-kpi-empty">Loading Sales KPI…</td></tr>}
+                  {!loading && sortedRows.length === 0 && <tr><td colSpan="8" className="sales-kpi-empty">No appointments found for this date range.</td></tr>}
                   {!loading && sortedRows.map((row) => (
                     <tr key={row.key} className={row.key === "__unallocated__" ? "unallocated" : ""}>
                       <td><div className="sales-kpi-rep"><span className="sales-kpi-rep-dot" /><span>{row.rep_allocated}</span></div></td>
@@ -271,11 +285,14 @@ export default function SalesKPI() {
                       <td>{formatNumber(row.c)}</td>
                       <td>{formatNumber(row.p)}</td>
                       <td>{formatNumber(row.s)}</td>
+                      <td className="sales-kpi-coming-soon">Coming soon</td>
+                      <td>{row.s > 0 ? (row.p / row.s).toFixed(1) : "—"}</td>
+                      <td>{row.c > 0 ? `${(((row.c - row.p) / row.c) * 100).toFixed(1)}%` : "—"}</td>
                     </tr>
                   ))}
                 </tbody>
                 {!loading && sortedRows.length > 0 && (
-                  <tfoot><tr className="sales-kpi-total"><td>Total</td><td>{formatNumber(totals.h)}</td><td>{formatNumber(totals.c)}</td><td>{formatNumber(totals.p)}</td><td>{formatNumber(totals.s)}</td></tr></tfoot>
+                  <tfoot><tr className="sales-kpi-total"><td>Total</td><td>{formatNumber(totals.h)}</td><td>{formatNumber(totals.c)}</td><td>{formatNumber(totals.p)}</td><td>{formatNumber(totals.s)}</td><td className="sales-kpi-coming-soon">Coming soon</td><td>{totals.s > 0 ? totalConv.toFixed(1) : "—"}</td><td>{totals.c > 0 ? `${(((totals.c - totals.p) / totals.c) * 100).toFixed(1)}%` : "—"}</td></tr></tfoot>
                 )}
               </table>
             </div>
