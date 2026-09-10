@@ -219,7 +219,12 @@ function Sidebar({
             <NavItem
               icon={CalendarDays}
               label="Appointments"
-              disabled
+              active={
+                isActive("appointments")
+              }
+              onClick={() =>
+                navigate("appointments")
+              }
             />
 
             <NavItem
