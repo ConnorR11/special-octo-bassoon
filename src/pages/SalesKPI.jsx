@@ -226,7 +226,13 @@ export default function SalesKPI() {
         .sales-kpi-total td:not(:first-child) { font-size:14px; }
         .sales-kpi-total .sales-kpi-rep-dot { background:#0f172a; }
         .sales-kpi-coming-soon { color:#94a3b8 !important; font-style:italic; font-size:12px !important; white-space:nowrap; }
-        .sales-kpi-empty { text-align:center !important; color:#64748b !important; padding:36px 20px !important; height:auto !important; }
+        .sales-kpi-coming-soon {
+      color: #94a3b8 !important;
+      font-style: italic;
+      white-space: nowrap;
+    }
+
+    .sales-kpi-empty { text-align:center !important; color:#64748b !important; padding:36px 20px !important; height:auto !important; }
         .sales-kpi-error { margin-bottom:18px; padding:12px 15px; border-radius:10px; background:#fef2f2; border:1px solid #fecaca; color:#991b1b; font-size:13px; }
         .sales-kpi-error strong { display:block; margin-bottom:2px; }
         .sales-kpi-spin { animation:sales-kpi-spin 1s linear infinite; }
@@ -333,6 +339,12 @@ export default function SalesKPI() {
                     <th>Net</th>
                     <th>Conv</th>
                     <th>BO%</th>
+                    <th>AVG</th>
+                    <th>RPP</th>
+                    <th>Solid</th>
+                    <th>Drop Off</th>
+                    <th>Survey</th>
+                    <th>Sales</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -351,10 +363,16 @@ export default function SalesKPI() {
                       <td className="sales-kpi-coming-soon">Coming soon</td>
                       <td>{totals.s > 0 ? totalConv.toFixed(1) : "—"}</td>
                       <td>{totals.c > 0 ? `${(((totals.c - totals.p) / totals.c) * 100).toFixed(1)}%` : "—"}</td>
+                      <td className="sales-kpi-coming-soon">Coming soon</td>
+                      <td className="sales-kpi-coming-soon">Coming soon</td>
+                      <td className="sales-kpi-coming-soon">Coming soon</td>
+                      <td className="sales-kpi-coming-soon">Coming soon</td>
+                      <td className="sales-kpi-coming-soon">Coming soon</td>
+                      <td className="sales-kpi-coming-soon">Coming soon</td>
                     </tr>
                   )}
-                  {loading && <tr><td colSpan="8" className="sales-kpi-empty">Loading Sales KPI…</td></tr>}
-                  {!loading && sortedRows.length === 0 && <tr><td colSpan="8" className="sales-kpi-empty">No appointments found for this date range.</td></tr>}
+                  {loading && <tr><td colSpan="14" className="sales-kpi-empty">Loading Sales KPI…</td></tr>}
+                  {!loading && sortedRows.length === 0 && <tr><td colSpan="14" className="sales-kpi-empty">No appointments found for this date range.</td></tr>}
                   {!loading && sortedRows.map((row) => (
                     <tr key={row.key} className={row.key === "__unallocated__" ? "unallocated" : ""}>
                       <td><div className="sales-kpi-rep"><span className="sales-kpi-rep-dot" /><span>{row.rep_allocated}</span></div></td>
@@ -365,6 +383,12 @@ export default function SalesKPI() {
                       <td className="sales-kpi-coming-soon">Coming soon</td>
                       <td>{row.s > 0 ? (row.p / row.s).toFixed(1) : "—"}</td>
                       <td>{row.c > 0 ? `${(((row.c - row.p) / row.c) * 100).toFixed(1)}%` : "—"}</td>
+                      <td className="sales-kpi-coming-soon">Coming soon</td>
+                      <td className="sales-kpi-coming-soon">Coming soon</td>
+                      <td className="sales-kpi-coming-soon">Coming soon</td>
+                      <td className="sales-kpi-coming-soon">Coming soon</td>
+                      <td className="sales-kpi-coming-soon">Coming soon</td>
+                      <td className="sales-kpi-coming-soon">Coming soon</td>
                     </tr>
                   ))}
                 </tbody>
