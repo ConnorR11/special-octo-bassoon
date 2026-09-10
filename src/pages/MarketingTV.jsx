@@ -52,10 +52,6 @@ function getLondonDayBounds(dateString) {
     .split("-")
     .map(Number)
 
-  /*
-   * Use midday to determine the correct UK offset
-   * for the selected calendar day.
-   */
   const selectedNoonUtc = new Date(
     Date.UTC(
       year,
@@ -70,10 +66,6 @@ function getLondonDayBounds(dateString) {
   const selectedOffsetMinutes =
     getLondonOffsetMinutes(selectedNoonUtc)
 
-  /*
-   * Start of selected day in London,
-   * converted to UTC.
-   */
   const startUtc = new Date(
     Date.UTC(
       year,
@@ -88,9 +80,6 @@ function getLondonDayBounds(dateString) {
         1000
   )
 
-  /*
-   * Calculate the next calendar day.
-   */
   const nextDay = new Date(
     Date.UTC(
       year,
@@ -105,10 +94,6 @@ function getLondonDayBounds(dateString) {
   const nextOffsetMinutes =
     getLondonOffsetMinutes(nextDay)
 
-  /*
-   * Start of next day in London,
-   * converted to UTC.
-   */
   const endUtc = new Date(
     Date.UTC(
       nextDay.getUTCFullYear(),
@@ -130,15 +115,12 @@ function getLondonDayBounds(dateString) {
 }
 
 function formatDateForInput(date) {
-  const parts = new Intl.DateTimeFormat(
-    "en-GB",
-    {
-      timeZone: "Europe/London",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }
-  ).formatToParts(date)
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date)
 
   const values = {}
 
@@ -154,9 +136,7 @@ function formatDateForInput(date) {
 function formatDisplayDate(value) {
   if (!value) return "—"
 
-  const date = new Date(
-    `${value}T12:00:00`
-  )
+  const date = new Date(`${value}T12:00:00`)
 
   if (Number.isNaN(date.getTime())) {
     return value
@@ -196,40 +176,10 @@ function display(value, fallback = "—") {
   return text || fallback
 }
 
-function parseMoney(value) {
-  if (
-    value === null ||
-    value === undefined ||
-    value === ""
-  ) {
-    return 0
-  }
-
-  const cleaned = String(value).replace(
-    /[^0-9.-]/g,
-    ""
-  )
-
-  const number = Number(cleaned)
-
-  return Number.isFinite(number)
-    ? number
-    : 0
-}
-
-function money(value) {
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-    maximumFractionDigits: 0,
-  }).format(value || 0)
-}
-
 function countTrue(rows, field) {
   return rows.reduce(
     (total, row) =>
-      total +
-      (row[field] === true ? 1 : 0),
+      total + (row[field] === true ? 1 : 0),
     0
   )
 }
@@ -238,10 +188,7 @@ function sortBranches(rows) {
   return [
     ...new Set(
       rows.map((row) =>
-        display(
-          row.branch,
-          "Unassigned"
-        )
+        display(row.branch, "Unassigned")
       )
     ),
   ].sort((a, b) => {
@@ -264,34 +211,10 @@ function SummaryTable({ appointments }) {
 
   const total = useMemo(
     () => ({
-      h: countTrue(
-        appointments,
-        "cps_h"
-      ),
-
-      c: countTrue(
-        appointments,
-        "cps_c"
-      ),
-
-      p: countTrue(
-        appointments,
-        "cps_p"
-      ),
-
-      s: countTrue(
-        appointments,
-        "cps_s"
-      ),
-
-      value: appointments.reduce(
-        (sum, row) =>
-          sum +
-          parseMoney(
-            row.price_left
-          ),
-        0
-      ),
+      h: countTrue(appointments, "cps_h"),
+      c: countTrue(appointments, "cps_c"),
+      p: countTrue(appointments, "cps_p"),
+      s: countTrue(appointments, "cps_s"),
     }),
     [appointments]
   )
@@ -299,7 +222,7 @@ function SummaryTable({ appointments }) {
   return (
     <div className="mtv-summary-wrap">
       <div className="mtv-summary-title">
-        Branch
+        BRANCH
       </div>
 
       <div className="mtv-summary-grid mtv-summary-head">
@@ -307,7 +230,7 @@ function SummaryTable({ appointments }) {
         <span>C</span>
         <span>P</span>
         <span>S</span>
-        <span>£</span>
+        <span>VALUE</span>
       </div>
 
       <div className="mtv-summary-row mtv-summary-total">
@@ -318,21 +241,18 @@ function SummaryTable({ appointments }) {
           <span>{total.c}</span>
           <span>{total.p}</span>
           <span>{total.s}</span>
-          <span>
-            {money(total.value)}
-          </span>
+          <span>Coming soon</span>
         </div>
       </div>
 
       {branches.map((branch) => {
-        const rows =
-          appointments.filter(
-            (row) =>
-              display(
-                row.branch,
-                "Unassigned"
-              ) === branch
-          )
+        const rows = appointments.filter(
+          (row) =>
+            display(
+              row.branch,
+              "Unassigned"
+            ) === branch
+        )
 
         return (
           <div
@@ -345,45 +265,22 @@ function SummaryTable({ appointments }) {
 
             <div className="mtv-summary-values">
               <span>
-                {countTrue(
-                  rows,
-                  "cps_h"
-                )}
+                {countTrue(rows, "cps_h")}
               </span>
 
               <span>
-                {countTrue(
-                  rows,
-                  "cps_c"
-                )}
+                {countTrue(rows, "cps_c")}
               </span>
 
               <span>
-                {countTrue(
-                  rows,
-                  "cps_p"
-                )}
+                {countTrue(rows, "cps_p")}
               </span>
 
               <span>
-                {countTrue(
-                  rows,
-                  "cps_s"
-                )}
+                {countTrue(rows, "cps_s")}
               </span>
 
-              <span>
-                {money(
-                  rows.reduce(
-                    (sum, row) =>
-                      sum +
-                      parseMoney(
-                        row.price_left
-                      ),
-                    0
-                  )
-                )}
-              </span>
+              <span>Coming soon</span>
             </div>
           </div>
         )
@@ -563,7 +460,7 @@ function BranchSection({
           <table className="mtv-table">
             <thead>
               <tr className="mtv-table-header">
-                <th>NAME</th>
+                <th>CUSTOMER</th>
                 <th>BRANCH</th>
                 <th>REP</th>
                 <th>TIME</th>
@@ -650,10 +547,6 @@ export default function MarketingTV({
     setError("")
 
     try {
-      /*
-       * Convert the selected UK calendar date
-       * into exact UTC boundaries.
-       */
       const {
         start,
         end,
@@ -749,12 +642,12 @@ export default function MarketingTV({
        CPS C is TRUE
 
      Handover:
-       CPS C is anything other than TRUE.
+       CPS C is anything other than TRUE
 
-     This deliberately includes:
+     Therefore Handover includes:
        false
        null
-       ""
+       empty
        undefined
        any other non-true value
   */
@@ -903,53 +796,67 @@ export default function MarketingTV({
           background: rgba(255,255,255,.03);
           border-top: 1px solid rgba(255,255,255,.08);
           border-left: 1px solid rgba(255,255,255,.05);
+          border-radius: 6px;
+          overflow: hidden;
         }
 
         .mtv-summary-title {
           position: absolute;
-          margin-left: -44px;
-          margin-top: 3px;
+          margin-left: -58px;
+          margin-top: 8px;
           font-size: 10px;
+          font-weight: 800;
           color: #fff;
-          opacity: .9;
+          opacity: .95;
         }
 
         .mtv-summary-grid {
           display: grid;
-          grid-template-columns: repeat(4, 28px) minmax(75px, 1fr);
+          grid-template-columns: repeat(4, 28px) minmax(105px, 1fr);
           justify-content: end;
           gap: 4px;
           text-align: right;
         }
 
         .mtv-summary-head {
-          height: 18px;
+          height: 24px;
           align-items: center;
-          padding: 0 8px;
-          color: #cbd8df;
-          background: rgba(255,255,255,.035);
+          padding: 0 10px;
+          color: #d5e0e6;
+          background: rgba(255,255,255,.055);
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: .04em;
         }
 
         .mtv-summary-row {
           display: grid;
-          grid-template-columns: minmax(110px, 1fr) minmax(215px, 1fr);
+          grid-template-columns: minmax(120px, 1fr) minmax(225px, 1fr);
           gap: 10px;
           align-items: center;
-          min-height: 23px;
-          padding: 0 8px;
+          min-height: 25px;
+          padding: 0 10px;
           border-top: 1px solid rgba(255,255,255,.08);
         }
 
         .mtv-summary-total {
-          background: rgba(255,255,255,.045);
-          font-weight: 700;
+          background: rgba(255,255,255,.065);
+          font-weight: 800;
         }
 
         .mtv-summary-values {
           display: grid;
-          grid-template-columns: repeat(4, 28px) minmax(75px, 1fr);
+          grid-template-columns: repeat(4, 28px) minmax(105px, 1fr);
           gap: 4px;
           text-align: right;
+          align-items: center;
+        }
+
+        .mtv-summary-values span:last-child {
+          color: #b9cbd5;
+          font-size: 10px;
+          font-weight: 600;
+          white-space: nowrap;
         }
 
         .mtv-summary-branch {
