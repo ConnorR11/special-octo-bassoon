@@ -14,6 +14,7 @@ import FitSheet from "./components/FitSheet"
 
 import Dashboard from "./pages/Dashboard"
 import MarketingTV from "./pages/MarketingTV"
+import MarketingDashboard from "./pages/MarketingDashboard"
 import Contracts from "./pages/Contracts"
 import CustomerDetail from "./pages/CustomerDetail"
 import Appointments from "./pages/Appointments"
@@ -666,6 +667,13 @@ function App() {
             setSelected={
               setSelected
             }
+          />
+
+        ) : page ===
+          "marketing-tv" ? (
+
+          <MarketingTV
+            onSelectAppointment={handleAppointmentSelect}
           />
 
         ) : page ===
