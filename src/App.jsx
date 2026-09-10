@@ -18,9 +18,145 @@ import Contracts from "./pages/Contracts"
 import CustomerDetail from "./pages/CustomerDetail"
 import Appointments from "./pages/Appointments"
 import AppointmentDetail from "./pages/AppointmentDetail"
+import Login from "./pages/Login"
 
 
 function App() {
+
+  /*
+   * =========================================================
+   * AUTHENTICATION
+   * =========================================================
+   */
+
+  const [session, setSession] =
+    useState(null)
+
+  const [authLoading, setAuthLoading] =
+    useState(true)
+
+
+  /*
+   * =========================================================
+   * AUTH INITIALISATION
+   * =========================================================
+   */
+
+  useEffect(() => {
+
+    if (!supabase) {
+      setAuthLoading(false)
+      return
+    }
+
+    let mounted = true
+
+    async function loadSession() {
+
+      const {
+        data,
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (!mounted) {
+        return
+      }
+
+      if (sessionError) {
+        console.error(
+          "Error loading auth session:",
+          sessionError
+        )
+
+        setSession(null)
+
+      } else {
+
+        setSession(
+          data?.session || null
+        )
+      }
+
+      setAuthLoading(false)
+    }
+
+    loadSession()
+
+    const {
+      data: authListener,
+    } = supabase.auth.onAuthStateChange(
+      (_event, nextSession) => {
+
+        if (!mounted) {
+          return
+        }
+
+        setSession(
+          nextSession || null
+        )
+      }
+    )
+
+    return () => {
+
+      mounted = false
+
+      authListener?.subscription?.unsubscribe()
+    }
+
+  }, [])
+
+
+  /*
+   * =========================================================
+   * LOAD DEALS
+   * =========================================================
+   */
+
+  async function loadContracts() {
+
+    setLoading(true)
+    setError("")
+
+    if (!supabase) {
+
+      setError(
+        "Supabase is not configured. Check your environment variables."
+      )
+
+      setLoading(false)
+
+      return
+    }
+
+    const {
+      data,
+      error: supabaseError,
+    } = await supabase
+      .from("deals")
+      .select("*")
+      .order("sale_date", {
+        ascending: false,
+      })
+
+    if (supabaseError) {
+
+      setError(
+        supabaseError.message
+      )
+
+      setContracts([])
+
+    } else {
+
+      setContracts(
+        data || []
+      )
+    }
+
+    setLoading(false)
+  }
+
 
   /*
    * =========================================================
@@ -90,64 +226,19 @@ function App() {
 
   /*
    * =========================================================
-   * LOAD DEALS
-   * =========================================================
-   */
-
-  async function loadContracts() {
-
-    setLoading(true)
-    setError("")
-
-    if (!supabase) {
-
-      setError(
-        "Supabase is not configured. Check your environment variables."
-      )
-
-      setLoading(false)
-
-      return
-    }
-
-    const {
-      data,
-      error: supabaseError,
-    } = await supabase
-      .from("deals")
-      .select("*")
-      .order("sale_date", {
-        ascending: false,
-      })
-
-    if (supabaseError) {
-
-      setError(
-        supabaseError.message
-      )
-
-      setContracts([])
-
-    } else {
-
-      setContracts(
-        data || []
-      )
-    }
-
-    setLoading(false)
-  }
-
-
-  /*
-   * =========================================================
    * INITIAL LOAD
    * =========================================================
    */
 
   useEffect(() => {
+
+    if (!session) {
+      return
+    }
+
     loadContracts()
-  }, [])
+
+  }, [session])
 
 
   /*
@@ -363,6 +454,31 @@ function App() {
 
   /*
    * =========================================================
+   * SIGN OUT
+   * =========================================================
+   */
+
+  async function handleSignOut() {
+
+    if (!supabase) {
+      return
+    }
+
+    const {
+      error: signOutError,
+    } = await supabase.auth.signOut()
+
+    if (signOutError) {
+      console.error(
+        "Error signing out:",
+        signOutError
+      )
+    }
+  }
+
+
+  /*
+   * =========================================================
    * HEADER PAGE
    * =========================================================
    */
@@ -373,6 +489,47 @@ function App() {
       : selectedAppointment
         ? "appointment"
         : page
+
+
+  /*
+   * =========================================================
+   * AUTH LOADING
+   * =========================================================
+   */
+
+  if (authLoading) {
+
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#f5f7fa",
+          color: "#002d49",
+          fontFamily: "Inter, Arial, sans-serif",
+          fontSize: 14,
+        }}
+      >
+        Loading CRM...
+      </div>
+    )
+  }
+
+
+  /*
+   * =========================================================
+   * LOGIN
+   * =========================================================
+   */
+
+  if (!session) {
+
+    return (
+      <Login />
+    )
+  }
 
 
   /*
@@ -396,6 +553,43 @@ function App() {
 
 
       <main>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems: "center",
+            gap: 10,
+            padding: "10px 24px 0",
+            background: "#fff",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 12,
+              color: "#64748b",
+            }}
+          >
+            {session?.user?.email || "Signed in"}
+          </span>
+
+          <button
+            type="button"
+            onClick={handleSignOut}
+            style={{
+              border: "1px solid #d7dce2",
+              background: "#fff",
+              color: "#002d49",
+              borderRadius: 7,
+              padding: "6px 10px",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Sign out
+          </button>
+        </div>
 
         <Header
           page={headerPage}
