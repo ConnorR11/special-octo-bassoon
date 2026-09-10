@@ -454,9 +454,7 @@ export default function MarketingDashboard({ onSelectAppointment }) {
 
       const { data, error: supabaseError } = await supabase
         .from("appointments")
-        .select(
-          "id, name, phone, email, postcode, salesperson, canvasser, job_type, lead_source, submission_date, appointment_date, status, result, product, appointment_type"
-        )
+        .select("*")
         .gte("submission_date", start)
         .lt("submission_date", end)
         .order("submission_date", { ascending: false })
@@ -778,7 +776,7 @@ export default function MarketingDashboard({ onSelectAppointment }) {
 
               {filteredAppointments.map((appointment) => (
                 <AppointmentRow
-                  key={appointment_row_id || `${appointment.name}-${appointment.submission_date}`}
+                  key={appointment.appointment_row_id || `${appointment.name}-${appointment.submission_date}`}
                   appointment={appointment}
                   onClick={onSelectAppointment}
                 />
