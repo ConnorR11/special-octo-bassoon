@@ -19,6 +19,7 @@ import CustomerDetail from "./pages/CustomerDetail"
 import Appointments from "./pages/Appointments"
 import AppointmentDetail from "./pages/AppointmentDetail"
 import Login from "./pages/Login"
+import SalesKPI from "./pages/SalesKPI"
 
 
 function App() {
@@ -675,6 +676,11 @@ function App() {
             loading={loading}
             onSelectAppointment={handleAppointmentSelect}
           />
+
+        ) : page ===
+          "sales-kpi" ? (
+
+          <SalesKPI />
 
         ) : page ===
           "contracts" ? (

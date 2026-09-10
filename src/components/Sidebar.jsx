@@ -259,7 +259,12 @@ function Sidebar({
             <NavItem
               icon={Trophy}
               label="Sales KPI"
-              disabled
+              active={
+                isActive("sales-kpi")
+              }
+              onClick={() =>
+                navigate("sales-kpi")
+              }
             />
 
             <NavItem
