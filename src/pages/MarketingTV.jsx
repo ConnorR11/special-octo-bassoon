@@ -291,7 +291,7 @@ export default function MarketingTV({ onSelectAppointment }) {
     }
 
     if (activeTab === "handover") {
-      return appointments.filter((appointment) => appointment.cps_c !== true)
+      return appointments.filter((appointment) => appointment.cps_c === false)
     }
 
     return []
@@ -513,20 +513,26 @@ export default function MarketingTV({ onSelectAppointment }) {
           margin-left: 2px;
         }
         .mtv-table-scroll { overflow-x: auto; }
-        .mtv-table { min-width: 920px; }
+        .mtv-table {
+          /* One shared grid definition keeps headers and rows perfectly aligned. */
+          --mtv-columns: 135px 115px 135px 52px 78px 100px 130px 42px 52px 90px 60px;
+          min-width: 989px;
+        }
         .mtv-table-header, .mtv-appointment-row {
           display: grid;
-          /* Every column sizes itself to its content, with only a small amount of breathing room. */
-          grid-template-columns: max-content max-content max-content max-content max-content max-content max-content max-content max-content max-content max-content;
+          grid-template-columns: var(--mtv-columns);
           gap: 0;
           align-items: center;
           width: max-content;
           min-width: 100%;
+          box-sizing: border-box;
         }
         .mtv-table-header > *,
         .mtv-appointment-row > * {
+          min-width: 0;
           padding-left: 4px;
-          padding-right: 10px;
+          padding-right: 6px;
+          box-sizing: border-box;
         }
         .mtv-table-header > :first-child,
         .mtv-appointment-row > :first-child {
