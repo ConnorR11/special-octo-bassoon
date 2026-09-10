@@ -479,6 +479,7 @@ function App() {
           <MarketingDashboard
             contracts={contracts}
             loading={loading}
+            onSelectAppointment={handleAppointmentSelect}
           />
 
         ) : page ===
