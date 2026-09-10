@@ -115,7 +115,7 @@ function Sidebar({
 
 
           {/* ================================= */}
-          {/* DASHBOARD                         */}
+          {/* HOME                              */}
           {/* ================================= */}
 
           <button
@@ -133,7 +133,7 @@ function Sidebar({
             <LayoutDashboard size={18} />
 
             <span>
-              Dashboard
+              Home
             </span>
 
           </button>
@@ -159,12 +159,12 @@ function Sidebar({
 
             <NavItem
               icon={LayoutDashboard}
-              label="Dashboard"
+              label="Marketing Dashboard"
               active={
-                isActive("dashboard")
+                isActive("marketing-dashboard")
               }
               onClick={() =>
-                navigate("dashboard")
+                navigate("marketing-dashboard")
               }
             />
 

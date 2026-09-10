@@ -13,6 +13,7 @@ import Header from "./components/Header"
 import FitSheet from "./components/FitSheet"
 
 import Dashboard from "./pages/Dashboard"
+import MarketingDashboard from "./pages/MarketingDashboard"
 import Contracts from "./pages/Contracts"
 import CustomerDetail from "./pages/CustomerDetail"
 import Appointments from "./pages/Appointments"
@@ -324,9 +325,6 @@ function App() {
   /*
    * =========================================================
    * APPOINTMENT SELECT
-   *
-   * This is called by the Appointments page
-   * when a row is clicked.
    * =========================================================
    */
 
@@ -339,16 +337,7 @@ function App() {
       appointment
     )
 
-    /*
-     * Make absolutely sure a deal isn't
-     * still selected.
-     */
-
     setSelected(null)
-
-    /*
-     * Store the complete appointment record.
-     */
 
     setSelectedAppointment(
       appointment
@@ -396,10 +385,6 @@ function App() {
 
     <div className="app">
 
-      {/* =====================================================
-          SIDEBAR
-          ===================================================== */}
-
       <Sidebar
         page={page}
         setPage={
@@ -412,10 +397,6 @@ function App() {
 
       <main>
 
-        {/* =================================================
-            HEADER
-            ================================================= */}
-
         <Header
           page={headerPage}
           setMobile={setMobile}
@@ -424,10 +405,6 @@ function App() {
           }
         />
 
-
-        {/* =================================================
-            DATABASE ERROR
-            ================================================= */}
 
         {error &&
           page !== "epvs" && (
@@ -446,22 +423,6 @@ function App() {
           )}
 
 
-        {/* =================================================
-            APPOINTMENT DETAIL
-            =================================================
-            
-            IMPORTANT:
-            This is checked BEFORE the normal page routing.
-            
-            Therefore:
-            
-            selectedAppointment
-                    ↓
-            AppointmentDetail
-            
-            rather than going back to Appointments.
-            ================================================= */}
-
         {selectedAppointment ? (
 
           <AppointmentDetail
@@ -475,10 +436,6 @@ function App() {
 
         ) : selected ? (
 
-          /* =================================================
-             CUSTOMER / DEAL DETAIL
-             ================================================= */
-
           <CustomerDetail
             deal={selected}
             onBack={
@@ -491,10 +448,6 @@ function App() {
 
         ) : page ===
           "dashboard" ? (
-
-          /* =================================================
-             DASHBOARD
-             ================================================= */
 
           <Dashboard
             contracts={
@@ -521,11 +474,15 @@ function App() {
           />
 
         ) : page ===
-          "contracts" ? (
+          "marketing-dashboard" ? (
 
-          /* =================================================
-             DEALS
-             ================================================= */
+          <MarketingDashboard
+            contracts={contracts}
+            loading={loading}
+          />
+
+        ) : page ===
+          "contracts" ? (
 
           <Contracts
             filtered={
@@ -554,10 +511,6 @@ function App() {
         ) : page ===
           "appointments" ? (
 
-          /* =================================================
-             APPOINTMENTS
-             ================================================= */
-
           <Appointments
             onSelectAppointment={
               handleAppointmentSelect
@@ -566,10 +519,6 @@ function App() {
 
         ) : page ===
           "fitsheet" ? (
-
-          /* =================================================
-             FIT SHEET
-             ================================================= */
 
           <FitSheet
             contracts={
@@ -587,10 +536,6 @@ function App() {
           />
 
         ) : (
-
-          /* =================================================
-             EPVS
-             ================================================= */
 
           <EPVSCalculator />
 
