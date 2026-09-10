@@ -10,24 +10,9 @@ import {
 } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
-/*
- * =========================================================
- * DATE / TIME HELPERS
- * =========================================================
- *
- * All appointment dates are treated as UK time.
- *
- * This is important because Supabase stores appointment_date
- * as a timestamp, while the CRM is displaying appointments
- * based on a calendar date.
- *
- * During BST, for example:
- *
- * 10/09/2026 00:00 UK = 09/09/2026 23:00 UTC
- * 11/09/2026 00:00 UK = 10/09/2026 23:00 UTC
- *
- * The query therefore needs to use those UTC boundaries.
- */
+/* =========================================================
+   DATE / TIME HELPERS
+   ========================================================= */
 
 function getLondonOffsetMinutes(date) {
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -45,7 +30,9 @@ function getLondonOffsetMinutes(date) {
     return 0
   }
 
-  const match = offset.match(/GMT([+-])(\d{2}):?(\d{2})?/)
+  const match = offset.match(
+    /GMT([+-])(\d{2}):?(\d{2})?/
+  )
 
   if (!match) {
     return 0
@@ -60,37 +47,68 @@ function getLondonOffsetMinutes(date) {
   )
 }
 
-/*
- * Convert a YYYY-MM-DD calendar date into the UTC start/end
- * timestamps representing that entire day in London.
- */
 function getLondonDayBounds(dateString) {
   const [year, month, day] = dateString
     .split("-")
     .map(Number)
 
-  // Noon is used to determine the correct London offset
-  // for the selected calendar day.
+  /*
+   * Use midday to determine the correct UK offset
+   * for the selected calendar day.
+   */
   const selectedNoonUtc = new Date(
-    Date.UTC(year, month - 1, day, 12, 0, 0)
+    Date.UTC(
+      year,
+      month - 1,
+      day,
+      12,
+      0,
+      0
+    )
   )
 
   const selectedOffsetMinutes =
     getLondonOffsetMinutes(selectedNoonUtc)
 
+  /*
+   * Start of selected day in London,
+   * converted to UTC.
+   */
   const startUtc = new Date(
-    Date.UTC(year, month - 1, day, 0, 0, 0) -
-      selectedOffsetMinutes * 60 * 1000
+    Date.UTC(
+      year,
+      month - 1,
+      day,
+      0,
+      0,
+      0
+    ) -
+      selectedOffsetMinutes *
+        60 *
+        1000
   )
 
-  // Work out the next calendar day.
+  /*
+   * Calculate the next calendar day.
+   */
   const nextDay = new Date(
-    Date.UTC(year, month - 1, day + 1, 12, 0, 0)
+    Date.UTC(
+      year,
+      month - 1,
+      day + 1,
+      12,
+      0,
+      0
+    )
   )
 
   const nextOffsetMinutes =
     getLondonOffsetMinutes(nextDay)
 
+  /*
+   * Start of next day in London,
+   * converted to UTC.
+   */
   const endUtc = new Date(
     Date.UTC(
       nextDay.getUTCFullYear(),
@@ -100,7 +118,9 @@ function getLondonDayBounds(dateString) {
       0,
       0
     ) -
-      nextOffsetMinutes * 60 * 1000
+      nextOffsetMinutes *
+        60 *
+        1000
   )
 
   return {
@@ -110,12 +130,15 @@ function getLondonDayBounds(dateString) {
 }
 
 function formatDateForInput(date) {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/London",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date)
+  const parts = new Intl.DateTimeFormat(
+    "en-GB",
+    {
+      timeZone: "Europe/London",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }
+  ).formatToParts(date)
 
   const values = {}
 
@@ -131,7 +154,9 @@ function formatDateForInput(date) {
 function formatDisplayDate(value) {
   if (!value) return "—"
 
-  const date = new Date(`${value}T12:00:00`)
+  const date = new Date(
+    `${value}T12:00:00`
+  )
 
   if (Number.isNaN(date.getTime())) {
     return value
@@ -162,20 +187,34 @@ function formatTime(value) {
   return String(value).slice(0, 5)
 }
 
+/* =========================================================
+   GENERAL HELPERS
+   ========================================================= */
+
 function display(value, fallback = "—") {
   const text = String(value ?? "").trim()
   return text || fallback
 }
 
 function parseMoney(value) {
-  if (value === null || value === undefined || value === "") {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
     return 0
   }
 
-  const cleaned = String(value).replace(/[^0-9.-]/g, "")
+  const cleaned = String(value).replace(
+    /[^0-9.-]/g,
+    ""
+  )
+
   const number = Number(cleaned)
 
-  return Number.isFinite(number) ? number : 0
+  return Number.isFinite(number)
+    ? number
+    : 0
 }
 
 function money(value) {
@@ -189,7 +228,8 @@ function money(value) {
 function countTrue(rows, field) {
   return rows.reduce(
     (total, row) =>
-      total + (row[field] === true ? 1 : 0),
+      total +
+      (row[field] === true ? 1 : 0),
     0
   )
 }
@@ -198,7 +238,10 @@ function sortBranches(rows) {
   return [
     ...new Set(
       rows.map((row) =>
-        display(row.branch, "Unassigned")
+        display(
+          row.branch,
+          "Unassigned"
+        )
       )
     ),
   ].sort((a, b) => {
@@ -209,11 +252,9 @@ function sortBranches(rows) {
   })
 }
 
-/*
- * =========================================================
- * SUMMARY TABLE
- * =========================================================
- */
+/* =========================================================
+   SUMMARY TABLE
+   ========================================================= */
 
 function SummaryTable({ appointments }) {
   const branches = useMemo(
@@ -223,13 +264,32 @@ function SummaryTable({ appointments }) {
 
   const total = useMemo(
     () => ({
-      h: countTrue(appointments, "cps_h"),
-      c: countTrue(appointments, "cps_c"),
-      p: countTrue(appointments, "cps_p"),
-      s: countTrue(appointments, "cps_s"),
+      h: countTrue(
+        appointments,
+        "cps_h"
+      ),
+
+      c: countTrue(
+        appointments,
+        "cps_c"
+      ),
+
+      p: countTrue(
+        appointments,
+        "cps_p"
+      ),
+
+      s: countTrue(
+        appointments,
+        "cps_s"
+      ),
+
       value: appointments.reduce(
         (sum, row) =>
-          sum + parseMoney(row.price_left),
+          sum +
+          parseMoney(
+            row.price_left
+          ),
         0
       ),
     }),
@@ -258,18 +318,21 @@ function SummaryTable({ appointments }) {
           <span>{total.c}</span>
           <span>{total.p}</span>
           <span>{total.s}</span>
-          <span>{money(total.value)}</span>
+          <span>
+            {money(total.value)}
+          </span>
         </div>
       </div>
 
       {branches.map((branch) => {
-        const rows = appointments.filter(
-          (row) =>
-            display(
-              row.branch,
-              "Unassigned"
-            ) === branch
-        )
+        const rows =
+          appointments.filter(
+            (row) =>
+              display(
+                row.branch,
+                "Unassigned"
+              ) === branch
+          )
 
         return (
           <div
@@ -281,16 +344,42 @@ function SummaryTable({ appointments }) {
             </span>
 
             <div className="mtv-summary-values">
-              <span>{countTrue(rows, "cps_h")}</span>
-              <span>{countTrue(rows, "cps_c")}</span>
-              <span>{countTrue(rows, "cps_p")}</span>
-              <span>{countTrue(rows, "cps_s")}</span>
+              <span>
+                {countTrue(
+                  rows,
+                  "cps_h"
+                )}
+              </span>
+
+              <span>
+                {countTrue(
+                  rows,
+                  "cps_c"
+                )}
+              </span>
+
+              <span>
+                {countTrue(
+                  rows,
+                  "cps_p"
+                )}
+              </span>
+
+              <span>
+                {countTrue(
+                  rows,
+                  "cps_s"
+                )}
+              </span>
+
               <span>
                 {money(
                   rows.reduce(
                     (sum, row) =>
                       sum +
-                      parseMoney(row.price_left),
+                      parseMoney(
+                        row.price_left
+                      ),
                     0
                   )
                 )}
@@ -303,11 +392,9 @@ function SummaryTable({ appointments }) {
   )
 }
 
-/*
- * =========================================================
- * STATUS
- * =========================================================
- */
+/* =========================================================
+   STATUS
+   ========================================================= */
 
 function StatusTick({ value }) {
   if (value === true) {
@@ -325,11 +412,9 @@ function StatusTick({ value }) {
   )
 }
 
-/*
- * =========================================================
- * APPOINTMENT ROW
- * =========================================================
- */
+/* =========================================================
+   APPOINTMENT ROW
+   ========================================================= */
 
 function AppointmentRow({
   appointment,
@@ -338,7 +423,9 @@ function AppointmentRow({
   return (
     <tr
       className="mtv-appointment-row"
-      onClick={() => onSelect?.(appointment)}
+      onClick={() =>
+        onSelect?.(appointment)
+      }
     >
       <td
         className="mtv-cell mtv-name-cell"
@@ -354,7 +441,9 @@ function AppointmentRow({
       </td>
 
       <td className="mtv-cell">
-        {display(appointment.branch)}
+        {display(
+          appointment.branch
+        )}
       </td>
 
       <td className="mtv-cell">
@@ -370,11 +459,15 @@ function AppointmentRow({
       </td>
 
       <td className="mtv-cell">
-        {display(appointment.postcode)}
+        {display(
+          appointment.postcode
+        )}
       </td>
 
       <td className="mtv-cell">
-        {display(appointment.product)}
+        {display(
+          appointment.product
+        )}
       </td>
 
       <td className="mtv-cell">
@@ -401,7 +494,9 @@ function AppointmentRow({
       </td>
 
       <td className="mtv-cell mtv-result-cell">
-        {display(appointment.result)}
+        {display(
+          appointment.result
+        )}
       </td>
 
       <td className="mtv-cell mtv-status-cell">
@@ -413,32 +508,31 @@ function AppointmentRow({
   )
 }
 
-/*
- * =========================================================
- * BRANCH SECTION
- * =========================================================
- */
+/* =========================================================
+   BRANCH SECTION
+   ========================================================= */
 
 function BranchSection({
   branch,
   appointments,
   onSelect,
 }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] =
+    useState(true)
 
-  const sorted = [...appointments].sort(
-    (a, b) => {
-      const aTime = new Date(
-        a.appointment_date || 0
-      ).getTime()
+  const sorted = [
+    ...appointments,
+  ].sort((a, b) => {
+    const aTime = new Date(
+      a.appointment_date || 0
+    ).getTime()
 
-      const bTime = new Date(
-        b.appointment_date || 0
-      ).getTime()
+    const bTime = new Date(
+      b.appointment_date || 0
+    ).getTime()
 
-      return aTime - bTime
-    }
-  )
+    return aTime - bTime
+  })
 
   return (
     <section className="mtv-branch-section">
@@ -446,7 +540,9 @@ function BranchSection({
         type="button"
         className="mtv-branch-title"
         onClick={() =>
-          setOpen((value) => !value)
+          setOpen(
+            (value) => !value
+          )
         }
       >
         <span>{branch}</span>
@@ -488,8 +584,12 @@ function BranchSection({
                     key={
                       appointment.appointment_row_id
                     }
-                    appointment={appointment}
-                    onSelect={onSelect}
+                    appointment={
+                      appointment
+                    }
+                    onSelect={
+                      onSelect
+                    }
                   />
                 )
               )}
@@ -501,18 +601,18 @@ function BranchSection({
   )
 }
 
-/*
- * =========================================================
- * MAIN MARKETING TV
- * =========================================================
- */
+/* =========================================================
+   MAIN MARKETING TV
+   ========================================================= */
 
 export default function MarketingTV({
   onSelectAppointment,
 }) {
   const [selectedDate, setSelectedDate] =
     useState(
-      formatDateForInput(new Date())
+      formatDateForInput(
+        new Date()
+      )
     )
 
   const [appointments, setAppointments] =
@@ -530,11 +630,9 @@ export default function MarketingTV({
   const [lastUpdated, setLastUpdated] =
     useState(null)
 
-  /*
-   * =======================================================
-   * LOAD APPOINTMENTS
-   * =======================================================
-   */
+  /* =======================================================
+     LOAD APPOINTMENTS
+     ======================================================= */
 
   async function loadAppointments(
     date = selectedDate
@@ -553,24 +651,13 @@ export default function MarketingTV({
 
     try {
       /*
-       * IMPORTANT:
-       *
-       * Convert the selected UK calendar day into
-       * precise UTC boundaries before querying Supabase.
+       * Convert the selected UK calendar date
+       * into exact UTC boundaries.
        */
       const {
         start,
         end,
       } = getLondonDayBounds(date)
-
-      console.log(
-        "Marketing TV date query:",
-        {
-          selectedDate: date,
-          start,
-          end,
-        }
-      )
 
       const {
         data,
@@ -597,8 +684,13 @@ export default function MarketingTV({
         throw supabaseError
       }
 
-      setAppointments(data || [])
-      setLastUpdated(new Date())
+      setAppointments(
+        data || []
+      )
+
+      setLastUpdated(
+        new Date()
+      )
     } catch (err) {
       console.error(
         "Error loading Marketing TV appointments:",
@@ -616,109 +708,144 @@ export default function MarketingTV({
     }
   }
 
-  /*
-   * =======================================================
-   * LOAD WHEN DATE CHANGES
-   * =======================================================
-   */
+  /* =======================================================
+     LOAD WHEN DATE CHANGES
+     ======================================================= */
 
   useEffect(() => {
-    loadAppointments(selectedDate)
+    loadAppointments(
+      selectedDate
+    )
   }, [selectedDate])
 
-  /*
-   * =======================================================
-   * AUTO REFRESH
-   * =======================================================
-   */
+  /* =======================================================
+     AUTO REFRESH
+     ======================================================= */
 
   useEffect(() => {
-    const interval = setInterval(
-      () => {
-        loadAppointments(selectedDate)
-      },
-      60 * 1000
-    )
+    const interval =
+      setInterval(
+        () =>
+          loadAppointments(
+            selectedDate
+          ),
+        60 * 1000
+      )
 
-    return () => clearInterval(interval)
+    return () =>
+      clearInterval(interval)
   }, [selectedDate])
 
   const today =
-    formatDateForInput(new Date())
-
-  /*
-   * =======================================================
-   * TAB FILTERING
-   * =======================================================
-   *
-   * Mastersheet:
-   * CPS C completed
-   *
-   * Handover:
-   * CPS C not completed
-   */
-
-  const visibleAppointments = useMemo(() => {
-    if (activeTab === "mastersheet") {
-      return appointments.filter(
-        (appointment) =>
-          appointment.cps_c === true
-      )
-    }
-
-    if (activeTab === "handover") {
-      return appointments.filter(
-        (appointment) =>
-          appointment.cps_c === false
-      )
-    }
-
-    return []
-  }, [
-    appointments,
-    activeTab,
-  ])
-
-  /*
-   * =======================================================
-   * GROUP BY BRANCH
-   * =======================================================
-   */
-
-  const visibleGrouped = useMemo(() => {
-    const groups = {}
-
-    visibleAppointments.forEach(
-      (appointment) => {
-        const branch = display(
-          appointment.branch,
-          "Unassigned"
-        )
-
-        if (!groups[branch]) {
-          groups[branch] = []
-        }
-
-        groups[branch].push(
-          appointment
-        )
-      }
+    formatDateForInput(
+      new Date()
     )
 
-    return Object.entries(groups)
-      .sort(([a], [b]) => {
-        if (a === "Unassigned") return 1
-        if (b === "Unassigned") return -1
+  /* =======================================================
+     TAB FILTERING
+     =======================================================
 
-        return a.localeCompare(b)
-      })
-      .map(
-        ([branch, rows]) => ({
-          branch,
-          rows,
-        })
+     Mastersheet:
+       CPS C is TRUE
+
+     Handover:
+       CPS C is anything other than TRUE.
+
+     This deliberately includes:
+       false
+       null
+       ""
+       undefined
+       any other non-true value
+  */
+
+  const visibleAppointments =
+    useMemo(() => {
+      if (
+        activeTab ===
+        "mastersheet"
+      ) {
+        return appointments.filter(
+          (appointment) =>
+            appointment.cps_c ===
+            true
+        )
+      }
+
+      if (
+        activeTab ===
+        "handover"
+      ) {
+        return appointments.filter(
+          (appointment) =>
+            appointment.cps_c !==
+            true
+        )
+      }
+
+      return []
+    }, [
+      appointments,
+      activeTab,
+    ])
+
+  /* =======================================================
+     GROUP BY BRANCH
+     ======================================================= */
+
+  const visibleGrouped =
+    useMemo(() => {
+      const groups = {}
+
+      visibleAppointments.forEach(
+        (appointment) => {
+          const branch =
+            display(
+              appointment.branch,
+              "Unassigned"
+            )
+
+          if (!groups[branch]) {
+            groups[branch] = []
+          }
+
+          groups[branch].push(
+            appointment
+          )
+        }
       )
-  }, [visibleAppointments])
+
+      return Object.entries(
+        groups
+      )
+        .sort(
+          ([a], [b]) => {
+            if (
+              a ===
+              "Unassigned"
+            )
+              return 1
+
+            if (
+              b ===
+              "Unassigned"
+            )
+              return -1
+
+            return a.localeCompare(
+              b
+            )
+          }
+        )
+        .map(
+          ([branch, rows]) => ({
+            branch,
+            rows,
+          })
+        )
+    }, [
+      visibleAppointments,
+    ])
 
   return (
     <section className="marketing-tv-page">
@@ -1203,7 +1330,9 @@ export default function MarketingTV({
               type="button"
               className="mtv-today-button"
               onClick={() =>
-                setSelectedDate(today)
+                setSelectedDate(
+                  today
+                )
               }
             >
               <Clock3
@@ -1229,12 +1358,15 @@ export default function MarketingTV({
         <div className="mtv-tabs">
           <button
             className={`mtv-tab ${
-              activeTab === "mastersheet"
+              activeTab ===
+              "mastersheet"
                 ? "active"
                 : ""
             }`}
             onClick={() =>
-              setActiveTab("mastersheet")
+              setActiveTab(
+                "mastersheet"
+              )
             }
           >
             Mastersheet
@@ -1242,12 +1374,15 @@ export default function MarketingTV({
 
           <button
             className={`mtv-tab ${
-              activeTab === "handover"
+              activeTab ===
+              "handover"
                 ? "active"
                 : ""
             }`}
             onClick={() =>
-              setActiveTab("handover")
+              setActiveTab(
+                "handover"
+              )
             }
           >
             Handover
@@ -1270,8 +1405,10 @@ export default function MarketingTV({
           </button>
         </div>
 
-        {activeTab === "mastersheet" ||
-        activeTab === "handover" ? (
+        {activeTab ===
+          "mastersheet" ||
+        activeTab ===
+          "handover" ? (
           <div className="mtv-content">
             <div className="mtv-toolbar">
               <button
