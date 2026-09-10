@@ -466,7 +466,7 @@ export default function MarketingTV({ onSelectAppointment }) {
           height: 2px;
           background: #2698ed;
         }
-        .mtv-content { padding: 10px 18px 22px; }
+        .mtv-content { padding: 8px 14px 18px; }
         .mtv-date-title {
           color: #2398ed;
           font-size: 11px;
@@ -491,7 +491,7 @@ export default function MarketingTV({ onSelectAppointment }) {
           cursor: pointer;
         }
         .mtv-refresh:disabled { opacity: .55; cursor: default; }
-        .mtv-branch-section { margin-top: 12px; }
+        .mtv-branch-section { margin-top: 9px; }
         .mtv-branch-title {
           width: 100%;
           display: flex;
@@ -503,7 +503,7 @@ export default function MarketingTV({ onSelectAppointment }) {
           text-align: left;
           font-size: 17px;
           font-weight: 800;
-          padding: 0 0 7px;
+          padding: 0 0 5px;
           cursor: pointer;
         }
         .mtv-branch-count {
@@ -513,18 +513,18 @@ export default function MarketingTV({ onSelectAppointment }) {
           margin-left: 2px;
         }
         .mtv-table-scroll { overflow-x: auto; }
-        .mtv-table { min-width: 1080px; }
+        .mtv-table { min-width: 920px; }
         .mtv-table-header, .mtv-appointment-row {
           display: grid;
-          grid-template-columns: minmax(175px, 1.55fr) 58px minmax(105px, 1fr) 54px 72px minmax(85px, .9fr) minmax(105px, 1.05fr) 38px 48px minmax(85px, .9fr) 50px;
-          gap: 7px;
+          grid-template-columns: minmax(155px, 1.55fr) 52px minmax(90px, 1fr) 50px 66px minmax(75px, .9fr) minmax(95px, 1.05fr) 32px 40px minmax(75px, .9fr) 44px;
+          gap: 3px;
           align-items: center;
         }
         .mtv-table-header {
           color: #64748b;
           font-size: 7px;
           font-weight: 800;
-          padding: 0 4px 6px;
+          padding: 0 2px 5px;
           border-bottom: 1px solid #e7eaee;
         }
         .mtv-appointment-row {
@@ -532,11 +532,11 @@ export default function MarketingTV({ onSelectAppointment }) {
           border: 0;
           border-bottom: 1px solid #edf0f2;
           background: #fff;
-          padding: 7px 4px;
+          padding: 5px 2px;
           text-align: left;
           color: #172033;
           font: inherit;
-          font-size: 9px;
+          font-size: 10px;
           cursor: pointer;
         }
         .mtv-appointment-row:nth-child(even) { background: #fafafa; }
