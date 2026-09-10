@@ -283,6 +283,38 @@ export default function MarketingTV({ onSelectAppointment }) {
 
   const today = formatDateForInput(new Date())
 
+  // Mastersheet contains appointments where CPS C has been completed.
+  // Handover contains appointments where CPS C has not been completed.
+  const visibleAppointments = useMemo(() => {
+    if (activeTab === "mastersheet") {
+      return appointments.filter((appointment) => appointment.cps_c === true)
+    }
+
+    if (activeTab === "handover") {
+      return appointments.filter((appointment) => appointment.cps_c !== true)
+    }
+
+    return []
+  }, [appointments, activeTab])
+
+  const visibleGrouped = useMemo(() => {
+    const groups = {}
+
+    visibleAppointments.forEach((appointment) => {
+      const branch = display(appointment.branch, "Unassigned")
+      if (!groups[branch]) groups[branch] = []
+      groups[branch].push(appointment)
+    })
+
+    return Object.entries(groups)
+      .sort(([a], [b]) => {
+        if (a === "Unassigned") return 1
+        if (b === "Unassigned") return -1
+        return a.localeCompare(b)
+      })
+      .map(([branch, rows]) => ({ branch, rows }))
+  }, [visibleAppointments])
+
   return (
     <section className="marketing-tv-page">
       <style>{`
@@ -593,7 +625,7 @@ export default function MarketingTV({ onSelectAppointment }) {
           </button>
         </div>
 
-        {activeTab === "mastersheet" ? (
+        {activeTab === "mastersheet" || activeTab === "handover" ? (
           <div className="mtv-content">
             <div className="mtv-toolbar">
               <button type="button" className="mtv-refresh" onClick={() => loadAppointments()} disabled={loading}>
@@ -603,15 +635,17 @@ export default function MarketingTV({ onSelectAppointment }) {
             </div>
 
             <div className="mtv-date-title">
-              {loading ? "Loading..." : `${appointments.length} appointments · ${formatDisplayDate(selectedDate)}`}
+              {loading
+                ? "Loading..."
+                : `${visibleAppointments.length} appointments · ${formatDisplayDate(selectedDate)}`}
             </div>
 
             {loading ? (
               <div className="mtv-empty">Loading appointments...</div>
-            ) : grouped.length === 0 ? (
+            ) : visibleGrouped.length === 0 ? (
               <div className="mtv-empty">No appointments found for {formatDisplayDate(selectedDate)}.</div>
             ) : (
-              grouped.map(({ branch, rows }) => (
+              visibleGrouped.map(({ branch, rows }) => (
                 <BranchSection
                   key={branch}
                   branch={branch}
