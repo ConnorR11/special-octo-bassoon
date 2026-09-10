@@ -516,9 +516,25 @@ export default function MarketingTV({ onSelectAppointment }) {
         .mtv-table { min-width: 920px; }
         .mtv-table-header, .mtv-appointment-row {
           display: grid;
-          grid-template-columns: minmax(155px, 1.55fr) 52px minmax(90px, 1fr) 50px 66px minmax(75px, .9fr) minmax(95px, 1.05fr) 32px 40px minmax(75px, .9fr) 44px;
-          gap: 3px;
+          /* Every column sizes itself to its content, with only a small amount of breathing room. */
+          grid-template-columns: max-content max-content max-content max-content max-content max-content max-content max-content max-content max-content max-content;
+          gap: 0;
           align-items: center;
+          width: max-content;
+          min-width: 100%;
+        }
+        .mtv-table-header > *,
+        .mtv-appointment-row > * {
+          padding-left: 4px;
+          padding-right: 10px;
+        }
+        .mtv-table-header > :first-child,
+        .mtv-appointment-row > :first-child {
+          padding-left: 2px;
+        }
+        .mtv-table-header > :last-child,
+        .mtv-appointment-row > :last-child {
+          padding-right: 2px;
         }
         .mtv-table-header {
           color: #64748b;
