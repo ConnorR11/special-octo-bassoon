@@ -158,6 +158,17 @@ function Sidebar({
           >
 
             <NavItem
+              icon={LayoutDashboard}
+              label="Dashboard"
+              active={
+                isActive("dashboard")
+              }
+              onClick={() =>
+                navigate("dashboard")
+              }
+            />
+
+            <NavItem
               icon={Target}
               label="Leads"
               disabled
@@ -208,12 +219,7 @@ function Sidebar({
             <NavItem
               icon={CalendarDays}
               label="Appointments"
-              active={
-                isActive("appointments")
-              }
-              onClick={() =>
-                navigate("appointments")
-              }
+              disabled
             />
 
             <NavItem
