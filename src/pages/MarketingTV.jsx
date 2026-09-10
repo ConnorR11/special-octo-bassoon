@@ -487,7 +487,7 @@ export default function MarketingTV({ onSelectAppointment }) {
           color: #64748b;
           border-radius: 5px;
           padding: 6px 9px;
-          font-size: 10px;
+          font-size: 14px;
           cursor: pointer;
         }
         .mtv-refresh:disabled { opacity: .55; cursor: default; }
@@ -507,7 +507,7 @@ export default function MarketingTV({ onSelectAppointment }) {
           cursor: pointer;
         }
         .mtv-branch-count {
-          font-size: 10px;
+          font-size: 12px;
           font-weight: 700;
           color: #94a3b8;
           margin-left: 2px;
@@ -544,7 +544,7 @@ export default function MarketingTV({ onSelectAppointment }) {
         }
         .mtv-table-header {
           color: #64748b;
-          font-size: 7px;
+          font-size: 10px;
           font-weight: 800;
           padding: 0 2px 5px;
           border-bottom: 1px solid #e7eaee;
@@ -554,11 +554,11 @@ export default function MarketingTV({ onSelectAppointment }) {
           border: 0;
           border-bottom: 1px solid #edf0f2;
           background: #fff;
-          padding: 5px 2px;
+          padding: 8px 2px;
           text-align: left;
           color: #172033;
           font: inherit;
-          font-size: 10px;
+          font-size: 14px;
           cursor: pointer;
         }
         .mtv-appointment-row:nth-child(even) { background: #fafafa; }
