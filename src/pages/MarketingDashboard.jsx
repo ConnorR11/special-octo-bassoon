@@ -778,7 +778,7 @@ export default function MarketingDashboard({ onSelectAppointment }) {
 
               {filteredAppointments.map((appointment) => (
                 <AppointmentRow
-                  key={appointment.id || `${appointment.name}-${appointment.submission_date}`}
+                  key={appointment_row_id || `${appointment.name}-${appointment.submission_date}`}
                   appointment={appointment}
                   onClick={onSelectAppointment}
                 />
