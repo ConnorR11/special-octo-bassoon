@@ -172,6 +172,10 @@ function AppointmentRow({
     repNameByEmail[normaliseEmail(repEmail)] ||
     repEmail
 
+  const repConfirmed = Boolean(
+    appointment.rep_confirmed_time
+  )
+
   return (
     <tr
       className="mtv-appointment-row"
@@ -197,9 +201,14 @@ function AppointmentRow({
         {display(appointment.branch)}
       </td>
 
+      {/* REP NAME */}
       <td
-        className="mtv-cell"
-        title={display(repEmail)}
+        className={`mtv-cell ${
+          repConfirmed
+            ? "mtv-rep-confirmed"
+            : "mtv-rep-unconfirmed"
+        }`}
+        title={display(repName)}
       >
         {display(repName)}
       </td>
@@ -984,6 +993,22 @@ export default function MarketingTV({
 
         .mtv-status-cell{
           text-align:center
+        }
+
+        /*
+         * REP COLOUR
+         *
+         * Unconfirmed rep = orange
+         * Confirmed rep = blue
+         */
+        .mtv-rep-unconfirmed{
+          color:#f59e0b !important;
+          font-weight:700
+        }
+
+        .mtv-rep-confirmed{
+          color:#2398ed !important;
+          font-weight:700
         }
 
         .mtv-tick,
