@@ -78,7 +78,7 @@ function Appointments({
             `name.ilike.%${search}%`,
             `postcode.ilike.%${search}%`,
             `rep_allocated.ilike.%${search}%`,
-            `phone.ilike.%${search}%`,
+            `phone_number_1.ilike.%${search}%`,
             `email.ilike.%${search}%`,
           ].join(",")
         )
