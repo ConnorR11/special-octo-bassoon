@@ -41,9 +41,7 @@ function formatTime(value) {
 
   const timeMatch = text.match(/^(\d{2}):(\d{2})/)
 
-  return timeMatch
-    ? `${timeMatch[1]}:${timeMatch[2]}`
-    : text.slice(0, 5)
+  return timeMatch ? `${timeMatch[1]}:${timeMatch[2]}` : text.slice(0, 5)
 }
 
 function display(value, fallback = "—") {
@@ -62,13 +60,7 @@ function isTrueValue(value) {
   if (typeof value === "string") {
     const v = value.trim().toLowerCase()
 
-    return [
-      "true",
-      "t",
-      "1",
-      "yes",
-      "y",
-    ].includes(v)
+    return ["true", "t", "1", "yes", "y"].includes(v)
   }
 
   return typeof value === "number" && value === 1
@@ -76,9 +68,7 @@ function isTrueValue(value) {
 
 function countTrue(rows, field) {
   return rows.reduce(
-    (total, row) =>
-      total +
-      (isTrueValue(row[field]) ? 1 : 0),
+    (total, row) => total + (isTrueValue(row[field]) ? 1 : 0),
     0
   )
 }
@@ -86,12 +76,7 @@ function countTrue(rows, field) {
 function sortBranches(rows) {
   return [
     ...new Set(
-      rows.map(row =>
-        display(
-          row.branch,
-          "Unassigned"
-        )
-      )
+      rows.map((row) => display(row.branch, "Unassigned"))
     ),
   ].sort((a, b) => {
     if (a === "Unassigned") return 1
@@ -109,152 +94,70 @@ function SummaryTable({ appointments }) {
 
   return (
     <div className="mtv-summary-wrap">
-
       <div className="mtv-summary-header">
-
-        <div>
-          BRANCH
-        </div>
+        <div>BRANCH</div>
 
         <div className="mtv-summary-columns">
-
           <span>H</span>
           <span>C</span>
           <span>P</span>
           <span>S</span>
           <span>VALUE</span>
-
         </div>
-
       </div>
-
 
       <div className="mtv-summary-row mtv-summary-total">
-
-        <span>
-          Total
-        </span>
+        <span>Total</span>
 
         <div className="mtv-summary-values">
-
-          <span>
-            {countTrue(
-              appointments,
-              "cps_h"
-            )}
-          </span>
-
-          <span>
-            {countTrue(
-              appointments,
-              "cps_c"
-            )}
-          </span>
-
-          <span>
-            {countTrue(
-              appointments,
-              "cps_p"
-            )}
-          </span>
-
-          <span>
-            {countTrue(
-              appointments,
-              "cps_s"
-            )}
-          </span>
-
-          <span className="mtv-coming-soon">
-            Coming soon
-          </span>
-
+          <span>{countTrue(appointments, "cps_h")}</span>
+          <span>{countTrue(appointments, "cps_c")}</span>
+          <span>{countTrue(appointments, "cps_p")}</span>
+          <span>{countTrue(appointments, "cps_s")}</span>
+          <span className="mtv-coming-soon">Coming soon</span>
         </div>
-
       </div>
 
-
-      {branches.map(branch => {
-
-        const rows =
-          appointments.filter(
-            row =>
-              display(
-                row.branch,
-                "Unassigned"
-              ) === branch
-          )
+      {branches.map((branch) => {
+        const rows = appointments.filter(
+          (row) =>
+            display(row.branch, "Unassigned") === branch
+        )
 
         return (
-
           <div
             className="mtv-summary-row"
             key={branch}
           >
-
             <span className="mtv-summary-branch">
               {branch}
             </span>
 
             <div className="mtv-summary-values">
-
-              <span>
-                {countTrue(
-                  rows,
-                  "cps_h"
-                )}
-              </span>
-
-              <span>
-                {countTrue(
-                  rows,
-                  "cps_c"
-                )}
-              </span>
-
-              <span>
-                {countTrue(
-                  rows,
-                  "cps_p"
-                )}
-              </span>
-
-              <span>
-                {countTrue(
-                  rows,
-                  "cps_s"
-                )}
-              </span>
-
+              <span>{countTrue(rows, "cps_h")}</span>
+              <span>{countTrue(rows, "cps_c")}</span>
+              <span>{countTrue(rows, "cps_p")}</span>
+              <span>{countTrue(rows, "cps_s")}</span>
               <span className="mtv-coming-soon">
                 Coming soon
               </span>
-
             </div>
-
           </div>
-
         )
       })}
-
     </div>
   )
 }
 
 function StatusTick({ value }) {
-
   return value ? (
-
     <span className="mtv-tick">
       <Check size={13} />
     </span>
-
   ) : (
-
     <span className="mtv-cross">
       <X size={13} />
     </span>
-
   )
 }
 
@@ -263,24 +166,17 @@ function AppointmentRow({
   onSelect,
   repNameByEmail,
 }) {
-
-  const repEmail =
-    appointment.rep_allocated
+  const repEmail = appointment.rep_allocated
 
   const repName =
-    repNameByEmail[
-      normaliseEmail(repEmail)
-    ] || repEmail
+    repNameByEmail[normaliseEmail(repEmail)] ||
+    repEmail
 
   return (
-
     <tr
       className="mtv-appointment-row"
-      onClick={() =>
-        onSelect?.(appointment)
-      }
+      onClick={() => onSelect?.(appointment)}
     >
-
       <td
         className="mtv-cell mtv-name-cell"
         title={
@@ -294,30 +190,19 @@ function AppointmentRow({
         )}
       </td>
 
-
       <td
         className="mtv-cell"
-        title={
-          display(
-            appointment.branch
-          )
-        }
+        title={display(appointment.branch)}
       >
-        {display(
-          appointment.branch
-        )}
+        {display(appointment.branch)}
       </td>
 
-
       <td
         className="mtv-cell"
-        title={
-          display(repEmail)
-        }
+        title={display(repEmail)}
       >
         {display(repName)}
       </td>
-
 
       <td className="mtv-cell mtv-time-cell">
         {formatTime(
@@ -325,68 +210,44 @@ function AppointmentRow({
         )}
       </td>
 
-
       <td className="mtv-cell">
-        {display(
-          appointment.postcode
-        )}
+        {display(appointment.postcode)}
       </td>
 
-
       <td className="mtv-cell">
-        {display(
-          appointment.product
-        )}
+        {display(appointment.product)}
       </td>
 
-
       <td className="mtv-cell">
-        {display(
-          appointment.lead_source
-        )}
+        {display(appointment.lead_source)}
       </td>
-
 
       <td className="mtv-cell mtv-status-cell">
-
         <StatusTick
           value={Boolean(
             appointment.rep_confirmed_time
           )}
         />
-
       </td>
 
-
       <td className="mtv-cell mtv-status-cell">
-
         <StatusTick
           value={Boolean(
             appointment.was_picked_up ||
             appointment.pickup_rep
           )}
         />
-
       </td>
-
 
       <td className="mtv-cell mtv-result-cell">
-
-        {display(
-          appointment.result
-        )}
-
+        {display(appointment.result)}
       </td>
 
-
       <td className="mtv-cell mtv-status-cell">
-
         {appointment.epvs_calculation
           ? "✓"
           : "—"}
-
       </td>
-
     </tr>
   )
 }
@@ -397,39 +258,25 @@ function BranchSection({
   onSelect,
   repNameByEmail,
 }) {
+  const [open, setOpen] = useState(true)
 
-  const [open, setOpen] =
-    useState(true)
-
-  const sorted =
-    [...appointments].sort(
-      (a, b) =>
-        String(
-          a.appointment_date || ""
-        ).localeCompare(
-          String(
-            b.appointment_date || ""
-          )
-        )
-    )
+  const sorted = [...appointments].sort(
+    (a, b) =>
+      String(a.appointment_date || "").localeCompare(
+        String(b.appointment_date || "")
+      )
+  )
 
   return (
-
     <section className="mtv-branch-section">
-
       <button
         type="button"
         className="mtv-branch-title"
         onClick={() =>
-          setOpen(
-            value => !value
-          )
+          setOpen((value) => !value)
         }
       >
-
-        <span>
-          {branch}
-        </span>
+        <span>{branch}</span>
 
         <span className="mtv-branch-count">
           {appointments.length}
@@ -440,20 +287,13 @@ function BranchSection({
         ) : (
           <ChevronDown size={18} />
         )}
-
       </button>
 
-
       {open && (
-
         <div className="mtv-table-scroll">
-
           <table className="mtv-table">
-
             <thead>
-
               <tr className="mtv-table-header">
-
                 <th>NAME</th>
                 <th>BRANCH</th>
                 <th>REP</th>
@@ -465,43 +305,26 @@ function BranchSection({
                 <th>PICKUP</th>
                 <th>RESULT</th>
                 <th>SURVEY</th>
-
               </tr>
-
             </thead>
 
-
             <tbody>
-
-              {sorted.map(
-                appointment => (
-
-                  <AppointmentRow
-                    key={
-                      appointment.appointment_row_id
-                    }
-                    appointment={
-                      appointment
-                    }
-                    onSelect={
-                      onSelect
-                    }
-                    repNameByEmail={
-                      repNameByEmail
-                    }
-                  />
-
-                )
-              )}
-
+              {sorted.map((appointment) => (
+                <AppointmentRow
+                  key={
+                    appointment.appointment_row_id
+                  }
+                  appointment={appointment}
+                  onSelect={onSelect}
+                  repNameByEmail={
+                    repNameByEmail
+                  }
+                />
+              ))}
             </tbody>
-
           </table>
-
         </div>
-
       )}
-
     </section>
   )
 }
@@ -509,12 +332,9 @@ function BranchSection({
 export default function MarketingTV({
   onSelectAppointment,
 }) {
-
   const [selectedDate, setSelectedDate] =
     useState(
-      formatDateForInput(
-        new Date()
-      )
+      formatDateForInput(new Date())
     )
 
   const [appointments, setAppointments] =
@@ -535,13 +355,10 @@ export default function MarketingTV({
   const [lastUpdated, setLastUpdated] =
     useState(null)
 
-
   async function loadAppointments(
     date = selectedDate
   ) {
-
     if (!supabase) {
-
       setError(
         "Supabase is not configured. Check your environment variables."
       )
@@ -555,29 +372,24 @@ export default function MarketingTV({
     setError("")
 
     try {
-
-      const endDate =
-        new Date(
-          `${date}T00:00:00Z`
-        )
+      const endDate = new Date(
+        `${date}T00:00:00Z`
+      )
 
       endDate.setUTCDate(
         endDate.getUTCDate() + 1
       )
 
-      const nextDate =
-        `${endDate.getUTCFullYear()}-${String(
-          endDate.getUTCMonth() + 1
-        ).padStart(2, "0")}-${String(
-          endDate.getUTCDate()
-        ).padStart(2, "0")}`
-
+      const nextDate = `${endDate.getUTCFullYear()}-${String(
+        endDate.getUTCMonth() + 1
+      ).padStart(2, "0")}-${String(
+        endDate.getUTCDate()
+      ).padStart(2, "0")}`
 
       const [
         appointmentsResult,
         profilesResult,
       ] = await Promise.all([
-
         supabase
           .from("appointments")
           .select("*")
@@ -591,9 +403,7 @@ export default function MarketingTV({
           )
           .order(
             "appointment_date",
-            {
-              ascending: true,
-            }
+            { ascending: true }
           ),
 
         supabase
@@ -603,13 +413,9 @@ export default function MarketingTV({
           )
           .order(
             "full_name",
-            {
-              ascending: true,
-            }
+            { ascending: true }
           ),
-
       ])
-
 
       if (appointmentsResult.error) {
         throw appointmentsResult.error
@@ -619,7 +425,6 @@ export default function MarketingTV({
         throw profilesResult.error
       }
 
-
       setAppointments(
         appointmentsResult.data || []
       )
@@ -628,12 +433,8 @@ export default function MarketingTV({
         profilesResult.data || []
       )
 
-      setLastUpdated(
-        new Date()
-      )
-
+      setLastUpdated(new Date())
     } catch (err) {
-
       console.error(
         "Error loading Marketing TV appointments:",
         err
@@ -641,243 +442,137 @@ export default function MarketingTV({
 
       setError(
         err?.message ||
-        "Unable to load appointments."
+          "Unable to load appointments."
       )
 
       setAppointments([])
       setProfiles([])
-
     } finally {
-
       setLoading(false)
-
     }
   }
 
-
   useEffect(() => {
-
-<<<<<<< HEAD
-    loadAppointments(
-      selectedDate
-    )
-
+    loadAppointments(selectedDate)
   }, [selectedDate])
 
-
   useEffect(() => {
+    const interval = setInterval(() => {
+      loadAppointments(selectedDate)
+    }, 60000)
 
-    const interval =
-      setInterval(
-        () =>
-          loadAppointments(
-            selectedDate
-          ),
-        60000
-      )
-
-    return () =>
-      clearInterval(interval)
-
+    return () => clearInterval(interval)
   }, [selectedDate])
-
 
   const today =
-    formatDateForInput(
-      new Date()
-    )
+    formatDateForInput(new Date())
 
+  const repNameByEmail = useMemo(
+    () =>
+      profiles.reduce(
+        (map, profile) => {
+          const email =
+            normaliseEmail(
+              profile.email
+            )
 
-  const repNameByEmail =
-    useMemo(
-      () =>
-        profiles.reduce(
-          (map, profile) => {
+          const name =
+            String(
+              profile.full_name ?? ""
+            ).trim()
 
-            const email =
-              normaliseEmail(
-                profile.email
-              )
+          if (email && name) {
+            map[email] = name
+          }
 
-            const name =
-              String(
-                profile.full_name ?? ""
-              ).trim()
-
-            if (
-              email &&
-              name
-            ) {
-              map[email] = name
-            }
-
-            return map
-
-          },
-          {}
-        ),
-      [profiles]
-    )
-
+          return map
+        },
+        {}
+      ),
+    [profiles]
+  )
 
   /*
-    =========================================================
-    TAB FILTERING
-
-    MASTERSHEET
-
-    Show an appointment if:
-
-      cps_c = TRUE
-      OR
-      cps_s = TRUE
-
-    HANDOVER
-
-    Show an appointment only if:
-
-      cps_c = FALSE
-      AND
-      cps_s = FALSE
-
-    IMPORTANT:
-
-    We do NOT combine, remove or deduplicate
-    appointment records.
-
-    Each appointment is evaluated independently.
-    =========================================================
-  */
-
-  const visibleAppointments =
-    useMemo(() => {
-
-      if (
-        activeTab ===
-        "mastersheet"
-      ) {
-
-        return appointments.filter(
-          appointment =>
-            isTrueValue(
-              appointment.cps_c
-            ) ||
-            isTrueValue(
-              appointment.cps_s
-            )
-        )
-      }
-
-
-      if (
-        activeTab ===
-        "handover"
-      ) {
-
-        return appointments.filter(
-          appointment =>
-            !isTrueValue(
-              appointment.cps_c
-            ) &&
-            !isTrueValue(
-              appointment.cps_s
-            )
-        )
-      }
-
-
-      return []
-
-    }, [
-      appointments,
-      activeTab,
-    ])
-
-
-  const visibleGrouped =
-    useMemo(() => {
-
-      const groups = {}
-
-      visibleAppointments.forEach(
-        appointment => {
-
-          const branch =
-            display(
-              appointment.branch,
-              "Unassigned"
-            )
-
-          if (!groups[branch]) {
-            groups[branch] = []
-          }
-
-          groups[branch].push(
-            appointment
-          )
-
-        }
-      )
-
-
-      return Object.entries(
-        groups
-      )
-        .sort(
-          ([a], [b]) => {
-
-            if (
-              a ===
-              "Unassigned"
-            ) {
-              return 1
-            }
-
-            if (
-              b ===
-              "Unassigned"
-            ) {
-              return -1
-            }
-
-            return a.localeCompare(b)
-
-          }
-        )
-        .map(
-          ([branch, rows]) => ({
-            branch,
-            rows,
-          })
-        )
-
-    }, [
-      visibleAppointments,
-    ])
-=======
+   * MARKETING TV LOGIC
+   *
+   * Mastersheet:
+   * Show an appointment when C OR S is true.
+   *
+   * Handover:
+   * Show an appointment when neither C nor S is true.
+   *
+   * We deliberately do NOT remove duplicates.
+   * If two appointment records exist, both remain visible.
+   */
   const visibleAppointments = useMemo(() => {
     if (activeTab === "mastersheet") {
-      const eligible = appointments.filter(a => isTrueValue(a.cps_c) || isTrueValue(a.cps_s))
-      const seen = new Set()
-      return eligible.filter(appointment => {
-        const key = display(appointment.marketing_row_id, appointment.appointment_row_id)
-        if (seen.has(key)) return false
-        seen.add(key)
-        return true
-      })
+      return appointments.filter(
+        (appointment) =>
+          isTrueValue(
+            appointment.cps_c
+          ) ||
+          isTrueValue(
+            appointment.cps_s
+          )
+      )
     }
-    if (activeTab === "handover") return appointments.filter(a => !isTrueValue(a.cps_c) && !isTrueValue(a.cps_s))
-    return []
-  }, [appointments, activeTab])
->>>>>>> f2226bc248a4c8969cbfe35e282af8690662522b
 
+    if (activeTab === "handover") {
+      return appointments.filter(
+        (appointment) =>
+          !isTrueValue(
+            appointment.cps_c
+          ) &&
+          !isTrueValue(
+            appointment.cps_s
+          )
+      )
+    }
+
+    return []
+  }, [
+    appointments,
+    activeTab,
+  ])
+
+  const visibleGrouped = useMemo(() => {
+    const groups = {}
+
+    visibleAppointments.forEach(
+      (appointment) => {
+        const branch = display(
+          appointment.branch,
+          "Unassigned"
+        )
+
+        if (!groups[branch]) {
+          groups[branch] = []
+        }
+
+        groups[branch].push(
+          appointment
+        )
+      }
+    )
+
+    return Object.entries(groups)
+      .sort(([a], [b]) => {
+        if (a === "Unassigned") return 1
+        if (b === "Unassigned") return -1
+
+        return a.localeCompare(b)
+      })
+      .map(
+        ([branch, rows]) => ({
+          branch,
+          rows,
+        })
+      )
+  }, [visibleAppointments])
 
   return (
-
     <section className="marketing-tv-page">
-
       <style>{`
-
         .marketing-tv-page{
           margin:-24px;
           min-height:calc(100vh - 90px);
@@ -1344,7 +1039,6 @@ export default function MarketingTV({
         }
 
         @media(max-width:1100px){
-
           .mtv-hero{
             align-items:flex-start;
             flex-direction:column;
@@ -1354,11 +1048,9 @@ export default function MarketingTV({
           .mtv-summary-wrap{
             width:100%
           }
-
         }
 
         @media(max-width:850px){
-
           .marketing-tv-page{
             margin:-16px
           }
@@ -1386,118 +1078,78 @@ export default function MarketingTV({
           .mtv-table{
             min-width:900px
           }
-
         }
-
       `}</style>
 
-
       <div className="mtv-top-card">
-
         <div className="mtv-hero">
-
           <div className="mtv-hero-title-block">
-
-            <h1>
-              Marketing TV
-            </h1>
+            <h1>Marketing TV</h1>
 
             <div className="mtv-hero-date">
               {formatDisplayDate(
                 selectedDate
               )}
             </div>
-
           </div>
 
-
           <SummaryTable
-            appointments={
-              appointments
-            }
+            appointments={appointments}
           />
-
         </div>
 
-
         <div className="mtv-controls-wrap">
-
           <div className="mtv-controls">
-
             <span className="mtv-date-label">
               Viewing date
             </span>
 
-
             <label className="mtv-date-control">
-
-              <CalendarDays
-                size={14}
-              />
+              <CalendarDays size={14} />
 
               <input
                 type="date"
-                value={
-                  selectedDate
-                }
-                onChange={
-                  event =>
-                    setSelectedDate(
-                      event.target.value
-                    )
+                value={selectedDate}
+                onChange={(event) =>
+                  setSelectedDate(
+                    event.target.value
+                  )
                 }
               />
-
             </label>
-
 
             <button
               type="button"
               className="mtv-today-button"
               onClick={() =>
-                setSelectedDate(
-                  today
-                )
+                setSelectedDate(today)
               }
             >
-
               <Clock3
                 size={13}
                 style={{
-                  verticalAlign:
-                    "-2px",
+                  verticalAlign: "-2px",
                   marginRight: 5,
                 }}
               />
 
               Today
-
             </button>
-
           </div>
-
         </div>
-
       </div>
 
-
       {error && (
-
         <div className="mtv-error">
           {error}
         </div>
-
       )}
 
-
       <div className="mtv-main">
-
         <div className="mtv-tabs">
-
           <button
             className={`mtv-tab ${
-              activeTab ===
-              "mastersheet"
+              activeTab === "mastersheet"
                 ? "active"
                 : ""
             }`}
@@ -1510,23 +1162,18 @@ export default function MarketingTV({
             Mastersheet
           </button>
 
-
           <button
             className={`mtv-tab ${
-              activeTab ===
-              "handover"
+              activeTab === "handover"
                 ? "active"
                 : ""
             }`}
             onClick={() =>
-              setActiveTab(
-                "handover"
-              )
+              setActiveTab("handover")
             }
           >
             Handover
           </button>
-
 
           <button
             className={`mtv-tab ${
@@ -1543,96 +1190,59 @@ export default function MarketingTV({
           >
             Sales Schedule
           </button>
-
         </div>
 
-
-        {activeTab ===
-          "mastersheet" ||
-        activeTab ===
-          "handover" ? (
-
+        {activeTab === "mastersheet" ||
+        activeTab === "handover" ? (
           <div className="mtv-content">
-
             <div className="mtv-toolbar">
-
               <button
                 type="button"
                 className="mtv-refresh"
                 onClick={() =>
                   loadAppointments()
                 }
-                disabled={
-                  loading
-                }
+                disabled={loading}
               >
-
-                <RefreshCw
-                  size={12}
-                />
+                <RefreshCw size={12} />
 
                 {loading
                   ? "Loading"
                   : "Refresh"}
-
               </button>
-
             </div>
-
 
             <div className="mtv-date-title">
-
               {loading
-
                 ? "Loading..."
-
-                : `${
-                    visibleAppointments.length
-                  } appointments · ${
-                    formatDisplayDate(
-                      selectedDate
-                    )
-                  }`}
-
+                : `${visibleAppointments.length} appointments · ${formatDisplayDate(
+                    selectedDate
+                  )}`}
             </div>
 
-
             {loading ? (
-
               <div className="mtv-empty">
                 Loading appointments...
               </div>
-
             ) : visibleGrouped.length ===
               0 ? (
-
               <div className="mtv-empty">
-
-                No appointments found
-                for{" "}
-
+                No appointments found for{" "}
                 {formatDisplayDate(
                   selectedDate
                 )}
-
                 .
-
               </div>
-
             ) : (
-
               visibleGrouped.map(
                 ({
                   branch,
                   rows,
                 }) => (
-
                   <BranchSection
                     key={branch}
                     branch={branch}
-                    appointments={
-                      rows
-                    }
+                    appointments={rows}
                     onSelect={
                       onSelectAppointment
                     }
@@ -1640,29 +1250,19 @@ export default function MarketingTV({
                       repNameByEmail
                     }
                   />
-
                 )
               )
-
             )}
-
           </div>
-
         ) : (
-
           <div className="mtv-placeholder">
             Sales Schedule coming soon
           </div>
-
         )}
 
-
         {lastUpdated && (
-
           <div className="mtv-last-updated">
-
             Last updated{" "}
-
             {lastUpdated.toLocaleTimeString(
               "en-GB",
               {
@@ -1670,16 +1270,11 @@ export default function MarketingTV({
                 minute: "2-digit",
                 second: "2-digit",
               }
-            )}
-
-            {" "}· Auto-refreshes every 60 seconds
-
+            )}{" "}
+            · Auto-refreshes every 60 seconds
           </div>
-
         )}
-
       </div>
-
     </section>
   )
 }
