@@ -49,6 +49,10 @@ function display(value, fallback = "—") {
   return text || fallback
 }
 
+function normaliseEmail(value) {
+  return String(value ?? "").trim().toLowerCase()
+}
+
 function isTrueValue(value) {
   if (value === true) return true
   if (typeof value === "string") {
@@ -151,7 +155,12 @@ function StatusTick({ value }) {
   )
 }
 
-function AppointmentRow({ appointment, onSelect }) {
+function AppointmentRow({ appointment, onSelect, repNameByEmail }) {
+  const repEmail = appointment.rep_allocated
+  const repName =
+    repNameByEmail[normaliseEmail(repEmail)] ||
+    repEmail
+
   return (
     <tr
       className="mtv-appointment-row"
@@ -166,7 +175,9 @@ function AppointmentRow({ appointment, onSelect }) {
 
       <td className="mtv-cell">{display(appointment.branch)}</td>
 
-      <td className="mtv-cell">{display(appointment.rep_allocated)}</td>
+      <td className="mtv-cell" title={display(repEmail)}>
+        {display(repName)}
+      </td>
 
       <td className="mtv-cell mtv-time-cell">
         {formatTime(appointment.appointment_date)}
@@ -201,7 +212,7 @@ function AppointmentRow({ appointment, onSelect }) {
   )
 }
 
-function BranchSection({ branch, appointments, onSelect }) {
+function BranchSection({ branch, appointments, onSelect, repNameByEmail }) {
   const [open, setOpen] = useState(true)
 
   // ISO timestamps sort correctly as strings and require no timezone conversion.
@@ -247,6 +258,7 @@ function BranchSection({ branch, appointments, onSelect }) {
                   key={appointment.appointment_row_id}
                   appointment={appointment}
                   onSelect={onSelect}
+                  repNameByEmail={repNameByEmail}
                 />
               ))}
             </tbody>
@@ -262,6 +274,7 @@ export default function MarketingTV({ onSelectAppointment }) {
     formatDateForInput(new Date())
   )
   const [appointments, setAppointments] = useState([])
+  const [profiles, setProfiles] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [activeTab, setActiveTab] = useState("mastersheet")
@@ -292,21 +305,30 @@ export default function MarketingTV({ onSelectAppointment }) {
       const start = `${date}T00:00:00.000Z`
       const end = `${nextDate}T00:00:00.000Z`
 
-      const { data, error: supabaseError } = await supabase
-        .from("appointments")
-        .select("*")
-        .gte("appointment_date", start)
-        .lt("appointment_date", end)
-        .order("appointment_date", { ascending: true })
+      const [appointmentsResult, profilesResult] = await Promise.all([
+        supabase
+          .from("appointments")
+          .select("*")
+          .gte("appointment_date", start)
+          .lt("appointment_date", end)
+          .order("appointment_date", { ascending: true }),
+        supabase
+          .from("profiles")
+          .select("email, full_name")
+          .order("full_name", { ascending: true }),
+      ])
 
-      if (supabaseError) throw supabaseError
+      if (appointmentsResult.error) throw appointmentsResult.error
+      if (profilesResult.error) throw profilesResult.error
 
-      setAppointments(data || [])
+      setAppointments(appointmentsResult.data || [])
+      setProfiles(profilesResult.data || [])
       setLastUpdated(new Date())
     } catch (err) {
       console.error("Error loading Marketing TV appointments:", err)
       setError(err?.message || "Unable to load appointments.")
       setAppointments([])
+      setProfiles([])
     } finally {
       setLoading(false)
     }
@@ -325,6 +347,19 @@ export default function MarketingTV({ onSelectAppointment }) {
   }, [selectedDate])
 
   const today = formatDateForInput(new Date())
+
+  const repNameByEmail = useMemo(() => {
+    return profiles.reduce((map, profile) => {
+      const email = normaliseEmail(profile.email)
+      const name = String(profile.full_name ?? "").trim()
+
+      if (email && name) {
+        map[email] = name
+      }
+
+      return map
+    }, {})
+  }, [profiles])
 
   const visibleAppointments = useMemo(() => {
     if (activeTab === "mastersheet") {
@@ -372,10 +407,10 @@ export default function MarketingTV({ onSelectAppointment }) {
         }
 
         .mtv-top-card {
-          margin: 14px 18px 10px;
+          margin: 10px 14px 8px;
           background: #fff;
           border: 1px solid #dfe5ea;
-          border-radius: 10px;
+          border-radius: 8px;
           overflow: hidden;
           box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
         }
@@ -383,34 +418,34 @@ export default function MarketingTV({ onSelectAppointment }) {
         .mtv-hero {
           background: #00304b;
           color: #fff;
-          min-height: 128px;
-          padding: 24px 30px 22px;
+          min-height: 112px;
+          padding: 20px 24px 18px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 34px;
+          gap: 28px;
         }
 
         .mtv-hero-title-block { min-width: 0; }
 
         .mtv-hero h1 {
           margin: 0;
-          font-size: clamp(30px, 3.2vw, 52px);
+          font-size: clamp(28px, 3vw, 46px);
           line-height: 1;
           font-weight: 700;
           letter-spacing: -1.5px;
         }
 
         .mtv-hero-date {
-          margin-top: 8px;
-          font-size: 13px;
+          margin-top: 7px;
+          font-size: 12px;
           font-weight: 600;
           color: #b8cfdb;
         }
 
         .mtv-summary-wrap {
-          width: min(585px, 58vw);
-          font-size: 12px;
+          width: min(560px, 55vw);
+          font-size: 11px;
           background: rgba(255, 255, 255, .025);
           border-radius: 6px;
           overflow: hidden;
@@ -418,12 +453,12 @@ export default function MarketingTV({ onSelectAppointment }) {
 
         .mtv-summary-header {
           display: grid;
-          grid-template-columns: minmax(150px, 1fr) minmax(330px, 1fr);
+          grid-template-columns: minmax(140px, 1fr) minmax(315px, 1fr);
           align-items: center;
-          min-height: 28px;
-          padding: 0 10px;
+          min-height: 26px;
+          padding: 0 9px;
           color: #d7e3e9;
-          font-size: 11px;
+          font-size: 10px;
           font-weight: 800;
           letter-spacing: .05em;
         }
@@ -432,8 +467,8 @@ export default function MarketingTV({ onSelectAppointment }) {
 
         .mtv-summary-columns {
           display: grid;
-          grid-template-columns: repeat(4, 36px) minmax(115px, 1fr);
-          gap: 4px;
+          grid-template-columns: repeat(4, 34px) minmax(105px, 1fr);
+          gap: 3px;
           text-align: center;
         }
 
@@ -445,16 +480,16 @@ export default function MarketingTV({ onSelectAppointment }) {
 
         .mtv-summary-value-heading {
           justify-content: flex-end !important;
-          padding-right: 8px;
+          padding-right: 7px;
         }
 
         .mtv-summary-row {
           display: grid;
-          grid-template-columns: minmax(150px, 1fr) minmax(330px, 1fr);
-          gap: 10px;
+          grid-template-columns: minmax(140px, 1fr) minmax(315px, 1fr);
+          gap: 8px;
           align-items: center;
-          min-height: 28px;
-          padding: 0 10px;
+          min-height: 26px;
+          padding: 0 9px;
           border-top: 1px solid rgba(255, 255, 255, .08);
         }
 
@@ -465,8 +500,8 @@ export default function MarketingTV({ onSelectAppointment }) {
 
         .mtv-summary-values {
           display: grid;
-          grid-template-columns: repeat(4, 36px) minmax(115px, 1fr);
-          gap: 4px;
+          grid-template-columns: repeat(4, 34px) minmax(105px, 1fr);
+          gap: 3px;
           text-align: center;
         }
 
@@ -479,7 +514,7 @@ export default function MarketingTV({ onSelectAppointment }) {
 
         .mtv-summary-values span:last-child {
           justify-content: flex-end;
-          padding-right: 8px;
+          padding-right: 7px;
         }
 
         .mtv-summary-branch {
@@ -491,11 +526,11 @@ export default function MarketingTV({ onSelectAppointment }) {
         .mtv-coming-soon {
           color: #b9cbd4;
           font-weight: 600;
-          font-size: 11px;
+          font-size: 10px;
         }
 
         .mtv-controls-wrap {
-          padding: 12px 18px;
+          padding: 10px 14px;
           background: #fff;
           border-top: 1px solid #e6eaee;
         }
@@ -504,26 +539,26 @@ export default function MarketingTV({ onSelectAppointment }) {
           display: flex;
           align-items: center;
           justify-content: flex-start;
-          gap: 10px;
+          gap: 8px;
         }
 
         .mtv-date-control {
           display: inline-flex;
           align-items: center;
-          gap: 8px;
+          gap: 7px;
           border: 1px solid #e1e5ea;
           border-radius: 6px;
-          padding: 7px 10px;
+          padding: 6px 9px;
           background: #fff;
           color: #475569;
-          font-size: 12px;
+          font-size: 11px;
         }
 
         .mtv-date-label {
-          font-size: 11px;
+          font-size: 10px;
           font-weight: 700;
           color: #64748b;
-          margin-right: 2px;
+          margin-right: 1px;
         }
 
         .mtv-date-control input {
@@ -539,33 +574,33 @@ export default function MarketingTV({ onSelectAppointment }) {
           border-radius: 6px;
           background: #2d9bf0;
           color: #fff;
-          padding: 8px 30px;
-          font-size: 12px;
+          padding: 7px 24px;
+          font-size: 11px;
           font-weight: 700;
           cursor: pointer;
         }
 
         .mtv-main {
-          margin: 0 18px 24px;
+          margin: 0 14px 20px;
           background: #fff;
           border: 1px solid #e1e5ea;
-          border-radius: 8px;
+          border-radius: 7px;
           overflow: hidden;
         }
 
         .mtv-tabs {
-          height: 42px;
+          height: 38px;
           display: flex;
           align-items: flex-end;
-          gap: 28px;
-          padding: 0 18px;
+          gap: 24px;
+          padding: 0 16px;
           border-bottom: 1px solid #e5e7eb;
         }
 
         .mtv-tab {
           border: 0;
           background: transparent;
-          padding: 0 0 9px;
+          padding: 0 0 8px;
           font-size: 10px;
           color: #64748b;
           cursor: pointer;
@@ -587,93 +622,87 @@ export default function MarketingTV({ onSelectAppointment }) {
           background: #2698ed;
         }
 
-        .mtv-content { padding: 10px 14px 18px; }
+        .mtv-content { padding: 8px 10px 14px; }
 
         .mtv-date-title {
           color: #2398ed;
-          font-size: 14px;
+          font-size: 13px;
           font-weight: 800;
-          margin: 0 0 12px;
+          margin: 0 0 9px;
         }
 
         .mtv-toolbar {
           display: flex;
           justify-content: flex-end;
-          margin-bottom: 4px;
+          margin-bottom: 3px;
         }
 
         .mtv-refresh {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          gap: 5px;
           border: 1px solid #e2e6ea;
           background: #f8f9fa;
           color: #64748b;
           border-radius: 5px;
-          padding: 6px 9px;
-          font-size: 10px;
+          padding: 5px 8px;
+          font-size: 9px;
           cursor: pointer;
         }
 
         .mtv-refresh:disabled { opacity: .55; cursor: default; }
 
-        .mtv-branch-section { margin-top: 12px; }
+        .mtv-branch-section { margin-top: 10px; }
 
         .mtv-branch-title {
           width: 100%;
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 7px;
           border: 0;
           background: transparent;
           color: #2398ed;
           text-align: left;
-          font-size: 20px;
+          font-size: 18px;
           font-weight: 800;
-          padding: 0 0 5px;
+          padding: 0 0 4px;
           cursor: pointer;
         }
 
         .mtv-branch-count {
-          font-size: 10px;
+          font-size: 9px;
           font-weight: 700;
           color: #94a3b8;
-          margin-left: 2px;
+          margin-left: 1px;
         }
 
         .mtv-table-scroll {
           width: 100%;
           overflow-x: auto;
           border: 1px solid #e5e9ee;
-          border-radius: 6px;
+          border-radius: 5px;
           background: #fff;
         }
 
-        /*
-          Every branch has its own table, so the browser would normally
-          size each table's columns independently based on its contents.
-          Fixed column widths make every branch table use the exact same
-          column geometry, so headers and appointment data line up vertically.
-        */
         .mtv-table {
           width: 100%;
-          min-width: 980px;
+          min-width: 0;
           border-collapse: separate;
           border-spacing: 0;
           table-layout: fixed;
         }
 
         .mtv-table th:nth-child(1),
-        .mtv-table td:nth-child(1) { width: 18%; }
+        .mtv-table td:nth-child(1) { width: 16%; }
 
         .mtv-table th:nth-child(2),
-        .mtv-table td:nth-child(2) { width: 13%; }
+        .mtv-table td:nth-child(2) { width: 12%; }
 
         .mtv-table th:nth-child(3),
-        .mtv-table td:nth-child(3) { width: 20%; }
+        .mtv-table td:nth-child(3) { width: 19%; }
 
         .mtv-table th:nth-child(4),
-        .mtv-table td:nth-child(4) { width: 7%; }
+        .mtv-table td:nth-child(4) { width: 6%; }
 
         .mtv-table th:nth-child(5),
         .mtv-table td:nth-child(5) { width: 8%; }
@@ -691,60 +720,61 @@ export default function MarketingTV({ onSelectAppointment }) {
         .mtv-table td:nth-child(9) { width: 4%; }
 
         .mtv-table th:nth-child(10),
-        .mtv-table td:nth-child(10) { width: 4%; }
+        .mtv-table td:nth-child(10) { width: 6%; }
 
         .mtv-table th:nth-child(11),
-        .mtv-table td:nth-child(11) { width: 2%; }
+        .mtv-table td:nth-child(11) { width: 5%; }
 
         .mtv-table-header th {
-          padding: 7px 10px;
+          padding: 6px 8px;
           background: #f7f9fb;
           border-bottom: 1px solid #dfe5ea;
           color: #64748b;
-          font-size: 9px;
+          font-size: 8px;
           font-weight: 800;
           line-height: 1;
           letter-spacing: .04em;
           text-align: left;
           white-space: nowrap;
-        }
-
-        .mtv-table-header th:first-child { padding-left: 12px; }
-        .mtv-table-header th:last-child { padding-right: 12px; }
-        .mtv-appointment-row { cursor: pointer; }
-
-        .mtv-appointment-row td {
-          padding: 8px 10px;
-          border-bottom: 1px solid #edf0f3;
-          color: #172033;
-          font-size: 13px;
-          line-height: 1.15;
-          white-space: nowrap;
-          vertical-align: middle;
-        }
-
-        .mtv-appointment-row td:first-child { padding-left: 12px; }
-        .mtv-appointment-row td:last-child { padding-right: 12px; }
-        .mtv-appointment-row td:nth-child(even) { /* intentionally neutral */ }
-        .mtv-appointment-row:nth-child(even) td { background: #fbfcfd; }
-        .mtv-appointment-row:hover td { background: #eef7ff; }
-
-        .mtv-cell {
-          max-width: 280px;
           overflow: hidden;
           text-overflow: ellipsis;
         }
 
-        .mtv-name-cell { font-weight: 700; max-width: 240px; }
+        .mtv-table-header th:first-child { padding-left: 10px; }
+        .mtv-table-header th:last-child { padding-right: 10px; }
+        .mtv-appointment-row { cursor: pointer; }
+
+        .mtv-appointment-row td {
+          padding: 7px 8px;
+          border-bottom: 1px solid #edf0f3;
+          color: #172033;
+          font-size: 12px;
+          line-height: 1.15;
+          white-space: nowrap;
+          vertical-align: middle;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .mtv-appointment-row td:first-child { padding-left: 10px; }
+        .mtv-appointment-row td:last-child { padding-right: 10px; }
+        .mtv-appointment-row:nth-child(even) td { background: #fbfcfd; }
+        .mtv-appointment-row:hover td { background: #eef7ff; }
+
+        .mtv-cell {
+          max-width: none;
+        }
+
+        .mtv-name-cell { font-weight: 700; }
         .mtv-time-cell { font-weight: 700; }
         .mtv-result-cell { font-weight: 600; }
-        .mtv-status-cell { width: 1%; text-align: center; }
+        .mtv-status-cell { text-align: center; }
 
         .mtv-tick,
         .mtv-cross {
           display: inline-flex;
-          width: 20px;
-          height: 20px;
+          width: 18px;
+          height: 18px;
           align-items: center;
           justify-content: center;
           border-radius: 50%;
@@ -754,49 +784,57 @@ export default function MarketingTV({ onSelectAppointment }) {
         .mtv-cross { color: #b7bdc5; background: #f3f5f7; }
 
         .mtv-empty {
-          padding: 70px 20px;
+          padding: 60px 20px;
           text-align: center;
           color: #94a3b8;
-          font-size: 13px;
-        }
-
-        .mtv-error {
-          margin: 10px 18px 0;
-          padding: 10px 12px;
-          border: 1px solid #fecaca;
-          background: #fef2f2;
-          color: #991b1b;
-          border-radius: 7px;
           font-size: 12px;
         }
 
+        .mtv-error {
+          margin: 8px 14px 0;
+          padding: 9px 11px;
+          border: 1px solid #fecaca;
+          background: #fef2f2;
+          color: #991b1b;
+          border-radius: 6px;
+          font-size: 11px;
+        }
+
         .mtv-placeholder {
-          min-height: 400px;
+          min-height: 340px;
           display: flex;
           align-items: center;
           justify-content: center;
           color: #94a3b8;
-          font-size: 13px;
+          font-size: 12px;
         }
 
         .mtv-last-updated {
-          padding: 0 18px 18px;
+          padding: 0 14px 14px;
           color: #a1aab5;
-          font-size: 9px;
+          font-size: 8px;
+        }
+
+        @media (max-width: 1100px) {
+          .mtv-hero {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 16px;
+          }
+
+          .mtv-summary-wrap {
+            width: 100%;
+          }
         }
 
         @media (max-width: 850px) {
           .marketing-tv-page { margin: -16px; }
-          .mtv-top-card { margin: 10px 12px 8px; }
-          .mtv-hero {
-            padding: 22px 22px;
-            align-items: flex-start;
-            flex-direction: column;
-            gap: 18px;
-          }
-          .mtv-summary-wrap { width: 100%; }
-          .mtv-controls-wrap { padding: 11px 14px; }
+          .mtv-top-card { margin: 8px 10px 7px; }
+          .mtv-main { margin: 0 10px 16px; }
+          .mtv-hero { padding: 18px 18px; }
+          .mtv-controls-wrap { padding: 10px 12px; }
           .mtv-date-label { display: none; }
+          .mtv-table { min-width: 900px; }
         }
       `}</style>
 
@@ -899,6 +937,7 @@ export default function MarketingTV({ onSelectAppointment }) {
                   branch={branch}
                   appointments={rows}
                   onSelect={onSelectAppointment}
+                  repNameByEmail={repNameByEmail}
                 />
               ))
             )}
