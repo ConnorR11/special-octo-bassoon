@@ -64,21 +64,102 @@ function display(value, fallback = "—") {
 
 
 /* =========================================================
-   COUNT HELPERS
+   BOOLEAN HELPERS
 ========================================================= */
+
+/*
+  Supabase/Postgres normally returns boolean columns as:
+
+    true
+    false
+    null
+
+  However, depending on the database column type or how
+  the data has been imported, the value can sometimes be:
+
+    "true"
+    "TRUE"
+    "t"
+    "1"
+    1
+
+  This helper treats all of those as TRUE.
+
+  Everything else is FALSE.
+
+  This is important for the Marketing TV summary because
+  we want the counts to represent the actual TRUE values
+  regardless of how the database has represented them.
+*/
+
+function isTrueValue(value) {
+  if (value === true) return true
+
+  if (typeof value === "string") {
+    const normalised = value.trim().toLowerCase()
+
+    return (
+      normalised === "true" ||
+      normalised === "t" ||
+      normalised === "1" ||
+      normalised === "yes" ||
+      normalised === "y"
+    )
+  }
+
+  if (typeof value === "number") {
+    return value === 1
+  }
+
+  return false
+}
+
+
+/*
+  Count the number of TRUE values in a particular field.
+*/
 
 function countTrue(rows, field) {
   return rows.reduce(
-    (total, row) => total + (row[field] === true ? 1 : 0),
+    (total, row) =>
+      total + (isTrueValue(row[field]) ? 1 : 0),
     0
   )
 }
 
 
+/*
+  Handover needs the opposite logic.
+
+  Only a genuine TRUE value is excluded.
+
+  Therefore these all remain in Handover:
+
+    false
+    null
+    undefined
+    ""
+    0
+    "false"
+    "0"
+    etc.
+*/
+
+function isNotTrue(value) {
+  return !isTrueValue(value)
+}
+
+
+/* =========================================================
+   BRANCH HELPERS
+========================================================= */
+
 function sortBranches(rows) {
   return [
     ...new Set(
-      rows.map((row) => display(row.branch, "Unassigned"))
+      rows.map((row) =>
+        display(row.branch, "Unassigned")
+      )
     ),
   ].sort((a, b) => {
     if (a === "Unassigned") return 1
@@ -96,17 +177,18 @@ function sortBranches(rows) {
 /*
   IMPORTANT:
 
-  This summary is deliberately based on ALL appointments
-  loaded for the selected date.
+  The summary is ALWAYS based on ALL appointments loaded
+  for the selected date.
 
   It does NOT use visibleAppointments.
 
-  Therefore changing between:
-    - Mastersheet
-    - Handover
-    - Sales Schedule
+  Therefore:
 
-  will NOT change the numbers in this summary.
+    Mastersheet -> summary stays the same
+    Handover    -> summary stays the same
+    Sales       -> summary stays the same
+
+  The summary represents the whole day's appointments.
 */
 
 function SummaryTable({ appointments }) {
@@ -115,10 +197,14 @@ function SummaryTable({ appointments }) {
     [appointments]
   )
 
+
   return (
     <div className="mtv-summary-wrap">
 
-      {/* Header */}
+      {/* ===================================================
+          HEADER
+      =================================================== */}
+
       <div className="mtv-summary-header">
 
         <div className="mtv-summary-branch-heading">
@@ -126,19 +212,25 @@ function SummaryTable({ appointments }) {
         </div>
 
         <div className="mtv-summary-columns">
+
           <span>H</span>
           <span>C</span>
           <span>P</span>
           <span>S</span>
+
           <span className="mtv-summary-value-heading">
             VALUE
           </span>
+
         </div>
 
       </div>
 
 
-      {/* Total */}
+      {/* ===================================================
+          TOTAL
+      =================================================== */}
+
       <div className="mtv-summary-row mtv-summary-total">
 
         <span className="mtv-summary-branch">
@@ -172,13 +264,20 @@ function SummaryTable({ appointments }) {
       </div>
 
 
-      {/* Branch rows */}
+      {/* ===================================================
+          BRANCH ROWS
+      =================================================== */}
+
       {branches.map((branch) => {
 
         const rows = appointments.filter(
           (row) =>
-            display(row.branch, "Unassigned") === branch
+            display(
+              row.branch,
+              "Unassigned"
+            ) === branch
         )
+
 
         return (
           <div
@@ -192,22 +291,27 @@ function SummaryTable({ appointments }) {
 
             <div className="mtv-summary-values">
 
+              {/* CPS H */}
               <span>
                 {countTrue(rows, "cps_h")}
               </span>
 
+              {/* CPS C */}
               <span>
                 {countTrue(rows, "cps_c")}
               </span>
 
+              {/* CPS P */}
               <span>
                 {countTrue(rows, "cps_p")}
               </span>
 
+              {/* CPS S */}
               <span>
                 {countTrue(rows, "cps_s")}
               </span>
 
+              {/* VALUE */}
               <span className="mtv-coming-soon">
                 Coming soon
               </span>
@@ -248,16 +352,24 @@ function StatusTick({ value }) {
    APPOINTMENT ROW
 ========================================================= */
 
-function AppointmentRow({ appointment, onSelect }) {
+function AppointmentRow({
+  appointment,
+  onSelect,
+}) {
   return (
     <tr
       className="mtv-appointment-row"
-      onClick={() => onSelect?.(appointment)}
+      onClick={() =>
+        onSelect?.(appointment)
+      }
     >
 
       <td
         className="mtv-cell mtv-name-cell"
-        title={appointment.name || "Unnamed customer"}
+        title={
+          appointment.name ||
+          "Unnamed customer"
+        }
       >
         {display(
           appointment.name,
@@ -265,29 +377,46 @@ function AppointmentRow({ appointment, onSelect }) {
         )}
       </td>
 
+
       <td className="mtv-cell">
         {display(appointment.branch)}
       </td>
 
+
       <td className="mtv-cell">
-        {display(appointment.rep_allocated)}
+        {display(
+          appointment.rep_allocated
+        )}
       </td>
+
 
       <td className="mtv-cell mtv-time-cell">
-        {formatTime(appointment.appointment_date)}
+        {formatTime(
+          appointment.appointment_date
+        )}
       </td>
 
-      <td className="mtv-cell">
-        {display(appointment.postcode)}
-      </td>
 
       <td className="mtv-cell">
-        {display(appointment.product)}
+        {display(
+          appointment.postcode
+        )}
       </td>
 
+
       <td className="mtv-cell">
-        {display(appointment.lead_source)}
+        {display(
+          appointment.product
+        )}
       </td>
+
+
+      <td className="mtv-cell">
+        {display(
+          appointment.lead_source
+        )}
+      </td>
+
 
       <td className="mtv-cell mtv-status-cell">
         <StatusTick
@@ -296,6 +425,7 @@ function AppointmentRow({ appointment, onSelect }) {
           )}
         />
       </td>
+
 
       <td className="mtv-cell mtv-status-cell">
         <StatusTick
@@ -306,9 +436,13 @@ function AppointmentRow({ appointment, onSelect }) {
         />
       </td>
 
+
       <td className="mtv-cell mtv-result-cell">
-        {display(appointment.result)}
+        {display(
+          appointment.result
+        )}
       </td>
+
 
       <td className="mtv-cell mtv-status-cell">
         {appointment.epvs_calculation
@@ -332,8 +466,10 @@ function BranchSection({
 }) {
   const [open, setOpen] = useState(true)
 
+
   const sorted = [...appointments].sort(
     (a, b) => {
+
       const aTime = new Date(
         a.appointment_date || 0
       ).getTime()
@@ -346,6 +482,7 @@ function BranchSection({
     }
   )
 
+
   return (
     <section className="mtv-branch-section">
 
@@ -353,7 +490,9 @@ function BranchSection({
         type="button"
         className="mtv-branch-title"
         onClick={() =>
-          setOpen((value) => !value)
+          setOpen(
+            (value) => !value
+          )
         }
       >
 
@@ -399,17 +538,26 @@ function BranchSection({
 
             </thead>
 
+
             <tbody>
 
-              {sorted.map((appointment) => (
-                <AppointmentRow
-                  key={
-                    appointment.appointment_row_id
-                  }
-                  appointment={appointment}
-                  onSelect={onSelect}
-                />
-              ))}
+              {sorted.map(
+                (appointment) => (
+
+                  <AppointmentRow
+                    key={
+                      appointment.appointment_row_id
+                    }
+                    appointment={
+                      appointment
+                    }
+                    onSelect={
+                      onSelect
+                    }
+                  />
+
+                )
+              )}
 
             </tbody>
 
@@ -433,20 +581,27 @@ export default function MarketingTV({
 
   const [selectedDate, setSelectedDate] =
     useState(
-      formatDateForInput(new Date())
+      formatDateForInput(
+        new Date()
+      )
     )
+
 
   const [appointments, setAppointments] =
     useState([])
 
+
   const [loading, setLoading] =
     useState(true)
+
 
   const [error, setError] =
     useState("")
 
+
   const [activeTab, setActiveTab] =
     useState("mastersheet")
+
 
   const [lastUpdated, setLastUpdated] =
     useState(null)
@@ -479,19 +634,17 @@ export default function MarketingTV({
     try {
 
       /*
-        IMPORTANT:
+        Build the selected date range.
 
-        Keep both boundaries based on the selected
-        calendar date.
+        Example:
 
-        Previously the end date was converted with
-        toISOString(), which can shift the boundary
-        because of UTC conversion.
+          2026-09-11 00:00
+          to
+          2026-09-12 00:00
+
+        This avoids the UTC boundary problem caused by
+        using toISOString() on the end date.
       */
-
-      const startDate = new Date(
-        `${date}T00:00:00`
-      )
 
       const endDate = new Date(
         `${date}T00:00:00`
@@ -502,19 +655,15 @@ export default function MarketingTV({
       )
 
 
-      /*
-        Convert both to the same format.
-
-        This gives us:
-          selected date 00:00
-          next date 00:00
-      */
-
       const start =
         `${date}T00:00:00`
 
+
       const nextDate =
-        formatDateForInput(endDate)
+        formatDateForInput(
+          endDate
+        )
+
 
       const end =
         `${nextDate}T00:00:00`
@@ -552,9 +701,14 @@ export default function MarketingTV({
       }
 
 
-      setAppointments(data || [])
+      setAppointments(
+        data || []
+      )
 
-      setLastUpdated(new Date())
+
+      setLastUpdated(
+        new Date()
+      )
 
     } catch (err) {
 
@@ -563,10 +717,12 @@ export default function MarketingTV({
         err
       )
 
+
       setError(
         err?.message ||
         "Unable to load appointments."
       )
+
 
       setAppointments([])
 
@@ -584,7 +740,9 @@ export default function MarketingTV({
 
   useEffect(() => {
 
-    loadAppointments(selectedDate)
+    loadAppointments(
+      selectedDate
+    )
 
   }, [selectedDate])
 
@@ -595,11 +753,15 @@ export default function MarketingTV({
 
   useEffect(() => {
 
-    const interval = setInterval(
-      () =>
-        loadAppointments(selectedDate),
-      60 * 1000
-    )
+    const interval =
+      setInterval(
+        () =>
+          loadAppointments(
+            selectedDate
+          ),
+        60 * 1000
+      )
+
 
     return () =>
       clearInterval(interval)
@@ -612,118 +774,146 @@ export default function MarketingTV({
   ======================================================= */
 
   const today =
-    formatDateForInput(new Date())
+    formatDateForInput(
+      new Date()
+    )
 
 
   /* =======================================================
      TAB FILTERING
-  =======================================================
-
-     IMPORTANT:
-
-     The summary does NOT use this.
-
-     These filters only control what appears
-     in the main table.
   ======================================================= */
 
-  const visibleAppointments = useMemo(() => {
+  /*
+    Mastersheet:
 
-    if (activeTab === "mastersheet") {
+      ONLY appointments where cps_c IS TRUE.
 
-      return appointments.filter(
-        (appointment) =>
-          appointment.cps_c === true
-      )
-    }
+    Handover:
+
+      EVERY appointment where cps_c IS NOT TRUE.
+
+      This includes:
+
+        false
+        null
+        undefined
+        ""
+        0
+        "false"
+        "0"
+        etc.
+
+    The summary does NOT use either of these filters.
+  */
+
+  const visibleAppointments =
+    useMemo(() => {
+
+      if (
+        activeTab ===
+        "mastersheet"
+      ) {
+
+        return appointments.filter(
+          (appointment) =>
+            isTrueValue(
+              appointment.cps_c
+            )
+        )
+      }
 
 
-    if (activeTab === "handover") {
+      if (
+        activeTab ===
+        "handover"
+      ) {
 
-      /*
-        Deliberately use !== true.
-
-        This means Handover includes:
-
-          false
-          null
-          undefined
-          ""
-          0
-          any other value that isn't boolean true
-
-        So only a genuine boolean TRUE in cps_c
-        is excluded.
-      */
-
-      return appointments.filter(
-        (appointment) =>
-          appointment.cps_c !== true
-      )
-    }
+        return appointments.filter(
+          (appointment) =>
+            isNotTrue(
+              appointment.cps_c
+            )
+        )
+      }
 
 
-    return []
+      return []
 
-  }, [
-    appointments,
-    activeTab,
-  ])
+    }, [
+      appointments,
+      activeTab,
+    ])
 
 
   /* =======================================================
-     GROUP VISIBLE APPOINTMENTS BY BRANCH
+     GROUP BY BRANCH
   ======================================================= */
 
-  const visibleGrouped = useMemo(() => {
+  const visibleGrouped =
+    useMemo(() => {
 
-    const groups = {}
+      const groups = {}
 
 
-    visibleAppointments.forEach(
-      (appointment) => {
+      visibleAppointments.forEach(
+        (appointment) => {
 
-        const branch =
-          display(
-            appointment.branch,
-            "Unassigned"
+          const branch =
+            display(
+              appointment.branch,
+              "Unassigned"
+            )
+
+
+          if (!groups[branch]) {
+            groups[branch] = []
+          }
+
+
+          groups[branch].push(
+            appointment
           )
 
-
-        if (!groups[branch]) {
-          groups[branch] = []
         }
-
-
-        groups[branch].push(
-          appointment
-        )
-      }
-    )
-
-
-    return Object.entries(groups)
-
-      .sort(([a], [b]) => {
-
-        if (a === "Unassigned")
-          return 1
-
-        if (b === "Unassigned")
-          return -1
-
-        return a.localeCompare(b)
-
-      })
-
-      .map(
-        ([branch, rows]) => ({
-          branch,
-          rows,
-        })
       )
 
-  }, [visibleAppointments])
+
+      return Object.entries(
+        groups
+      )
+
+        .sort(
+          ([a], [b]) => {
+
+            if (
+              a === "Unassigned"
+            ) {
+              return 1
+            }
+
+
+            if (
+              b === "Unassigned"
+            ) {
+              return -1
+            }
+
+
+            return a.localeCompare(b)
+
+          }
+        )
+
+        .map(
+          ([branch, rows]) => ({
+            branch,
+            rows,
+          })
+        )
+
+    }, [
+      visibleAppointments,
+    ])
 
 
   /* =======================================================
@@ -741,10 +931,18 @@ export default function MarketingTV({
 
         .marketing-tv-page {
           margin: -24px;
-          min-height: calc(100vh - 90px);
+
+          min-height:
+            calc(100vh - 90px);
+
           background: #f5f6f8;
+
           color: #172033;
-          font-family: Inter, Arial, sans-serif;
+
+          font-family:
+            Inter,
+            Arial,
+            sans-serif;
         }
 
 
@@ -753,13 +951,22 @@ export default function MarketingTV({
         ================================================= */
 
         .mtv-top-card {
-          margin: 14px 18px 10px;
+
+          margin:
+            14px 18px 10px;
+
           background: #fff;
-          border: 1px solid #dfe5ea;
+
+          border:
+            1px solid #dfe5ea;
+
           border-radius: 10px;
+
           overflow: hidden;
+
           box-shadow:
-            0 1px 2px rgba(
+            0 1px 2px
+            rgba(
               15,
               23,
               42,
@@ -773,14 +980,22 @@ export default function MarketingTV({
         ================================================= */
 
         .mtv-hero {
+
           background: #00304b;
+
           color: #fff;
+
           min-height: 128px;
-          padding: 24px 30px 22px;
+
+          padding:
+            24px 30px 22px;
 
           display: flex;
+
           align-items: center;
-          justify-content: space-between;
+
+          justify-content:
+            space-between;
 
           gap: 34px;
         }
@@ -792,23 +1007,33 @@ export default function MarketingTV({
 
 
         .mtv-hero h1 {
+
           margin: 0;
+
           font-size:
             clamp(
               30px,
               3.2vw,
               52px
             );
+
           line-height: 1;
+
           font-weight: 700;
-          letter-spacing: -1.5px;
+
+          letter-spacing:
+            -1.5px;
         }
 
 
         .mtv-hero-date {
+
           margin-top: 8px;
+
           font-size: 13px;
+
           font-weight: 600;
+
           color: #b8cfdb;
         }
 
@@ -818,6 +1043,7 @@ export default function MarketingTV({
         ================================================= */
 
         .mtv-summary-wrap {
+
           width:
             min(
               585px,
@@ -835,11 +1061,13 @@ export default function MarketingTV({
             );
 
           border-radius: 6px;
+
           overflow: hidden;
         }
 
 
         .mtv-summary-header {
+
           display: grid;
 
           grid-template-columns:
@@ -856,8 +1084,11 @@ export default function MarketingTV({
           color: #d7e3e9;
 
           font-size: 11px;
+
           font-weight: 800;
-          letter-spacing: .05em;
+
+          letter-spacing:
+            .05em;
         }
 
 
@@ -867,6 +1098,7 @@ export default function MarketingTV({
 
 
         .mtv-summary-columns {
+
           display: grid;
 
           grid-template-columns:
@@ -880,19 +1112,26 @@ export default function MarketingTV({
 
 
         .mtv-summary-columns span {
+
           display: flex;
+
           align-items: center;
+
           justify-content: center;
         }
 
 
         .mtv-summary-value-heading {
-          justify-content: flex-end !important;
+
+          justify-content:
+            flex-end !important;
+
           padding-right: 8px;
         }
 
 
         .mtv-summary-row {
+
           display: grid;
 
           grid-template-columns:
@@ -920,6 +1159,7 @@ export default function MarketingTV({
 
 
         .mtv-summary-total {
+
           background:
             rgba(
               255,
@@ -933,6 +1173,7 @@ export default function MarketingTV({
 
 
         .mtv-summary-values {
+
           display: grid;
 
           grid-template-columns:
@@ -946,30 +1187,44 @@ export default function MarketingTV({
 
 
         .mtv-summary-values span {
+
           display: flex;
+
           align-items: center;
+
           justify-content: center;
 
           min-width: 0;
         }
 
 
-        .mtv-summary-values span:last-child {
-          justify-content: flex-end;
+        .mtv-summary-values
+        span:last-child {
+
+          justify-content:
+            flex-end;
+
           padding-right: 8px;
         }
 
 
         .mtv-summary-branch {
+
           white-space: nowrap;
+
           overflow: hidden;
-          text-overflow: ellipsis;
+
+          text-overflow:
+            ellipsis;
         }
 
 
         .mtv-coming-soon {
+
           color: #b9cbd4;
+
           font-weight: 600;
+
           font-size: 11px;
         }
 
@@ -979,24 +1234,36 @@ export default function MarketingTV({
         ================================================= */
 
         .mtv-controls-wrap {
-          padding: 12px 18px;
+
+          padding:
+            12px 18px;
+
           background: #fff;
+
           border-top:
             1px solid #e6eaee;
         }
 
 
         .mtv-controls {
+
           display: flex;
+
           align-items: center;
-          justify-content: flex-start;
+
+          justify-content:
+            flex-start;
+
           gap: 10px;
         }
 
 
         .mtv-date-control {
+
           display: inline-flex;
+
           align-items: center;
+
           gap: 8px;
 
           border:
@@ -1016,33 +1283,47 @@ export default function MarketingTV({
 
 
         .mtv-date-label {
+
           font-size: 11px;
+
           font-weight: 700;
+
           color: #64748b;
+
           margin-right: 2px;
         }
 
 
         .mtv-date-control input {
+
           border: 0;
+
           outline: 0;
+
           font: inherit;
+
           color: #475569;
-          background: transparent;
+
+          background:
+            transparent;
         }
 
 
         .mtv-today-button {
+
           border: 0;
+
           border-radius: 6px;
 
           background: #2d9bf0;
+
           color: #fff;
 
           padding:
             8px 30px;
 
           font-size: 12px;
+
           font-weight: 700;
 
           cursor: pointer;
@@ -1054,6 +1335,7 @@ export default function MarketingTV({
         ================================================= */
 
         .mtv-main {
+
           margin:
             0 18px 24px;
 
@@ -1073,10 +1355,13 @@ export default function MarketingTV({
         ================================================= */
 
         .mtv-tabs {
+
           height: 42px;
 
           display: flex;
-          align-items: flex-end;
+
+          align-items:
+            flex-end;
 
           gap: 28px;
 
@@ -1089,13 +1374,17 @@ export default function MarketingTV({
 
 
         .mtv-tab {
+
           border: 0;
-          background: transparent;
+
+          background:
+            transparent;
 
           padding:
             0 0 9px;
 
           font-size: 10px;
+
           color: #64748b;
 
           cursor: pointer;
@@ -1105,18 +1394,23 @@ export default function MarketingTV({
 
 
         .mtv-tab.active {
+
           color: #172033;
+
           font-weight: 700;
         }
 
 
         .mtv-tab.active:after {
+
           content: "";
 
           position: absolute;
 
           left: 0;
+
           right: 0;
+
           bottom: -1px;
 
           height: 2px;
@@ -1130,15 +1424,18 @@ export default function MarketingTV({
         ================================================= */
 
         .mtv-content {
+
           padding:
             10px 14px 18px;
         }
 
 
         .mtv-date-title {
+
           color: #2398ed;
 
           font-size: 14px;
+
           font-weight: 800;
 
           margin:
@@ -1147,15 +1444,20 @@ export default function MarketingTV({
 
 
         .mtv-toolbar {
+
           display: flex;
-          justify-content: flex-end;
+
+          justify-content:
+            flex-end;
 
           margin-bottom: 4px;
         }
 
 
         .mtv-refresh {
+
           display: inline-flex;
+
           align-items: center;
 
           gap: 6px;
@@ -1179,7 +1481,9 @@ export default function MarketingTV({
 
 
         .mtv-refresh:disabled {
+
           opacity: .55;
+
           cursor: default;
         }
 
@@ -1194,21 +1498,26 @@ export default function MarketingTV({
 
 
         .mtv-branch-title {
+
           width: 100%;
 
           display: flex;
+
           align-items: center;
 
           gap: 8px;
 
           border: 0;
-          background: transparent;
+
+          background:
+            transparent;
 
           color: #2398ed;
 
           text-align: left;
 
           font-size: 20px;
+
           font-weight: 800;
 
           padding:
@@ -1219,7 +1528,9 @@ export default function MarketingTV({
 
 
         .mtv-branch-count {
+
           font-size: 10px;
+
           font-weight: 700;
 
           color: #94a3b8;
@@ -1233,6 +1544,7 @@ export default function MarketingTV({
         ================================================= */
 
         .mtv-table-scroll {
+
           width: 100%;
 
           overflow-x: auto;
@@ -1247,6 +1559,7 @@ export default function MarketingTV({
 
 
         .mtv-table {
+
           width: 100%;
 
           min-width: 980px;
@@ -1261,6 +1574,7 @@ export default function MarketingTV({
 
 
         .mtv-table-header th {
+
           padding:
             7px 10px;
 
@@ -1272,11 +1586,13 @@ export default function MarketingTV({
           color: #64748b;
 
           font-size: 9px;
+
           font-weight: 800;
 
           line-height: 1;
 
-          letter-spacing: .04em;
+          letter-spacing:
+            .04em;
 
           text-align: left;
 
@@ -1284,22 +1600,28 @@ export default function MarketingTV({
         }
 
 
-        .mtv-table-header th:first-child {
+        .mtv-table-header
+        th:first-child {
+
           padding-left: 12px;
         }
 
 
-        .mtv-table-header th:last-child {
+        .mtv-table-header
+        th:last-child {
+
           padding-right: 12px;
         }
 
 
         .mtv-appointment-row {
+
           cursor: pointer;
         }
 
 
         .mtv-appointment-row td {
+
           padding:
             8px 10px;
 
@@ -1318,37 +1640,56 @@ export default function MarketingTV({
         }
 
 
-        .mtv-appointment-row td:first-child {
+        .mtv-appointment-row
+        td:first-child {
+
           padding-left: 12px;
         }
 
 
-        .mtv-appointment-row td:last-child {
+        .mtv-appointment-row
+        td:last-child {
+
           padding-right: 12px;
         }
 
 
-        .mtv-appointment-row:nth-child(even) td {
+        .mtv-appointment-row
+        td:nth-child(even) {
+
+          /* intentionally left neutral */
+        }
+
+
+        .mtv-appointment-row:nth-child(even)
+        td {
+
           background: #fbfcfd;
         }
 
 
-        .mtv-appointment-row:hover td {
+        .mtv-appointment-row:hover
+        td {
+
           background: #eef7ff;
         }
 
 
         .mtv-cell {
+
           max-width: 280px;
 
           overflow: hidden;
 
-          text-overflow: ellipsis;
+          text-overflow:
+            ellipsis;
         }
 
 
         .mtv-name-cell {
+
           font-weight: 700;
+
           max-width: 240px;
         }
 
@@ -1364,7 +1705,9 @@ export default function MarketingTV({
 
 
         .mtv-status-cell {
+
           width: 1%;
+
           text-align: center;
         }
 
@@ -1375,12 +1718,15 @@ export default function MarketingTV({
 
         .mtv-tick,
         .mtv-cross {
+
           display: inline-flex;
 
           width: 20px;
+
           height: 20px;
 
           align-items: center;
+
           justify-content: center;
 
           border-radius: 50%;
@@ -1388,13 +1734,17 @@ export default function MarketingTV({
 
 
         .mtv-tick {
+
           color: #249cf1;
+
           background: #eaf6ff;
         }
 
 
         .mtv-cross {
+
           color: #b7bdc5;
+
           background: #f3f5f7;
         }
 
@@ -1404,6 +1754,7 @@ export default function MarketingTV({
         ================================================= */
 
         .mtv-empty {
+
           padding:
             70px 20px;
 
@@ -1416,6 +1767,7 @@ export default function MarketingTV({
 
 
         .mtv-error {
+
           margin:
             10px 18px 0;
 
@@ -1436,10 +1788,13 @@ export default function MarketingTV({
 
 
         .mtv-placeholder {
+
           min-height: 400px;
 
           display: flex;
+
           align-items: center;
+
           justify-content: center;
 
           color: #94a3b8;
@@ -1449,6 +1804,7 @@ export default function MarketingTV({
 
 
         .mtv-last-updated {
+
           padding:
             0 18px 18px;
 
@@ -1465,23 +1821,28 @@ export default function MarketingTV({
         @media (max-width: 850px) {
 
           .marketing-tv-page {
+
             margin: -16px;
           }
 
 
           .mtv-top-card {
+
             margin:
               10px 12px 8px;
           }
 
 
           .mtv-hero {
+
             padding:
               22px 22px;
 
-            align-items: flex-start;
+            align-items:
+              flex-start;
 
-            flex-direction: column;
+            flex-direction:
+              column;
 
             gap: 18px;
           }
@@ -1493,6 +1854,7 @@ export default function MarketingTV({
 
 
           .mtv-controls-wrap {
+
             padding:
               11px 14px;
           }
@@ -1534,16 +1896,16 @@ export default function MarketingTV({
 
             IMPORTANT:
 
-            This receives `appointments`,
-            NOT `visibleAppointments`.
+            The summary receives ALL appointments.
 
-            Therefore the summary is independent
-            of the selected tab.
+            It does not receive visibleAppointments.
 
           */}
 
           <SummaryTable
-            appointments={appointments}
+            appointments={
+              appointments
+            }
           />
 
         </div>
@@ -1568,8 +1930,12 @@ export default function MarketingTV({
 
               <input
                 type="date"
-                value={selectedDate}
-                onChange={(event) =>
+                value={
+                  selectedDate
+                }
+                onChange={(
+                  event
+                ) =>
                   setSelectedDate(
                     event.target.value
                   )
@@ -1583,14 +1949,17 @@ export default function MarketingTV({
               type="button"
               className="mtv-today-button"
               onClick={() =>
-                setSelectedDate(today)
+                setSelectedDate(
+                  today
+                )
               }
             >
 
               <Clock3
                 size={13}
                 style={{
-                  verticalAlign: "-2px",
+                  verticalAlign:
+                    "-2px",
                   marginRight: 5,
                 }}
               />
@@ -1611,9 +1980,11 @@ export default function MarketingTV({
       ===================================================== */}
 
       {error && (
+
         <div className="mtv-error">
           {error}
         </div>
+
       )}
 
 
@@ -1632,7 +2003,8 @@ export default function MarketingTV({
 
           <button
             className={`mtv-tab ${
-              activeTab === "mastersheet"
+              activeTab ===
+              "mastersheet"
                 ? "active"
                 : ""
             }`}
@@ -1648,7 +2020,8 @@ export default function MarketingTV({
 
           <button
             className={`mtv-tab ${
-              activeTab === "handover"
+              activeTab ===
+              "handover"
                 ? "active"
                 : ""
             }`}
@@ -1664,7 +2037,8 @@ export default function MarketingTV({
 
           <button
             className={`mtv-tab ${
-              activeTab === "sales-schedule"
+              activeTab ===
+              "sales-schedule"
                 ? "active"
                 : ""
             }`}
@@ -1684,8 +2058,10 @@ export default function MarketingTV({
             MASTER / HANDOVER
         =================================================== */}
 
-        {activeTab === "mastersheet" ||
-        activeTab === "handover" ? (
+        {activeTab ===
+          "mastersheet" ||
+        activeTab ===
+          "handover" ? (
 
           <div className="mtv-content">
 
@@ -1702,10 +2078,14 @@ export default function MarketingTV({
                 onClick={() =>
                   loadAppointments()
                 }
-                disabled={loading}
+                disabled={
+                  loading
+                }
               >
 
-                <RefreshCw size={12} />
+                <RefreshCw
+                  size={12}
+                />
 
                 {loading
                   ? "Loading"
@@ -1723,10 +2103,16 @@ export default function MarketingTV({
             <div className="mtv-date-title">
 
               {loading
+
                 ? "Loading..."
-                : `${visibleAppointments.length} appointments · ${formatDisplayDate(
-                    selectedDate
-                  )}`}
+
+                : `${
+                    visibleAppointments.length
+                  } appointments · ${
+                    formatDisplayDate(
+                      selectedDate
+                    )
+                  }`}
 
             </div>
 
@@ -1742,14 +2128,20 @@ export default function MarketingTV({
               </div>
 
 
-            ) : visibleGrouped.length === 0 ? (
+            ) : visibleGrouped.length ===
+              0 ? (
 
               <div className="mtv-empty">
-                No appointments found for{" "}
+
+                No appointments found
+                for{" "}
+
                 {formatDisplayDate(
                   selectedDate
                 )}
+
                 .
+
               </div>
 
 
