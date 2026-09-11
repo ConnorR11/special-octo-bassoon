@@ -24,17 +24,6 @@ function display(value, fallback = "—") {
 }
 
 
-function getPermissionLabel(level) {
-  const value = Number(level)
-
-  if (value >= 4) return "Administrator"
-  if (value === 3) return "Management"
-  if (value === 2) return "Supervisor"
-
-  return "Sales Rep"
-}
-
-
 /* =========================================================
    USERS PAGE
 ========================================================= */
@@ -54,7 +43,7 @@ export default function Users() {
   const [showModal, setShowModal] = useState(false)
   const [editingUser, setEditingUser] = useState(null)
 
-  const [expandedUsers, setExpandedUsers] = useState({})
+  const [expandedManagers, setExpandedManagers] = useState({})
 
 
   /* =======================================================
@@ -81,11 +70,13 @@ export default function Users() {
   async function loadUsers() {
 
     if (!supabase) {
+
       setError(
         "Supabase is not configured. Check your environment variables."
       )
 
       setLoading(false)
+
       return
     }
 
@@ -143,21 +134,24 @@ export default function Users() {
 
 
   /* =======================================================
-     ACTIVE / INACTIVE FILTER
+     CURRENT ROLES
   ======================================================= */
 
-  const reportingUsers = useMemo(() => {
+  const roles = useMemo(() => {
 
-    return users.filter((user) => {
+    return [
+      ...new Set(
+        users
+          .map((user) =>
+            String(user.role ?? "").trim()
+          )
+          .filter(Boolean)
+      ),
+    ].sort((a, b) =>
+      a.localeCompare(b)
+    )
 
-      if (showInactive) {
-        return true
-      }
-
-      return user.active !== false
-    })
-
-  }, [users, showInactive])
+  }, [users])
 
 
   /* =======================================================
@@ -167,7 +161,9 @@ export default function Users() {
   const managers = useMemo(() => {
 
     return users
-      .filter((user) => user.active !== false)
+      .filter((user) =>
+        user.active !== false
+      )
       .sort((a, b) =>
         display(a.full_name)
           .localeCompare(
@@ -190,10 +186,10 @@ export default function Users() {
         .trim()
 
     if (!query) {
-      return reportingUsers
+      return users
     }
 
-    return reportingUsers.filter((user) => {
+    return users.filter((user) => {
 
       const managerName =
         users.find(
@@ -206,7 +202,6 @@ export default function Users() {
         user.role,
         user.branch,
         user.permission_level,
-        user.manager_id,
         managerName,
       ]
 
@@ -218,118 +213,30 @@ export default function Users() {
 
     })
 
-  }, [
-    reportingUsers,
-    search,
-    users,
-  ])
+  }, [users, search])
 
 
   /* =======================================================
-     MANAGER NAME
+     VISIBLE USERS
   ======================================================= */
 
-  function getManagerName(managerId) {
+  const visibleUsers = useMemo(() => {
 
-    if (!managerId) {
-      return "No manager"
-    }
+    return searchedUsers.filter((user) => {
 
-    const manager =
-      users.find(
-        (user) =>
-          user.id === managerId
-      )
+      if (showInactive) {
+        return true
+      }
 
-    return display(
-      manager?.full_name,
-      "Unknown manager"
-    )
-  }
+      return user.active !== false
+
+    })
+
+  }, [searchedUsers, showInactive])
 
 
   /* =======================================================
-     CHILDREN
-  ======================================================= */
-
-  function getChildren(managerId) {
-
-    return searchedUsers
-      .filter(
-        (user) =>
-          user.manager_id === managerId
-      )
-      .sort((a, b) =>
-        display(a.full_name)
-          .localeCompare(
-            display(b.full_name)
-          )
-      )
-  }
-
-
-  /* =======================================================
-     ROOT USERS
-     
-     A user is a root if:
-     
-     - They have no manager
-     - Their manager isn't currently visible
-     
-     This prevents people such as Colin/Ryan disappearing
-     when their manager relationship points to an inactive
-     or missing profile.
-  ======================================================= */
-
-  const rootUsers = useMemo(() => {
-
-    const visibleIds = new Set(
-      searchedUsers.map(
-        (user) => user.id
-      )
-    )
-
-    return searchedUsers
-      .filter((user) => {
-
-        if (!user.manager_id) {
-          return true
-        }
-
-        return !visibleIds.has(
-          user.manager_id
-        )
-
-      })
-      .sort((a, b) =>
-        display(a.full_name)
-          .localeCompare(
-            display(b.full_name)
-          )
-      )
-
-  }, [searchedUsers])
-
-
-  /* =======================================================
-     TOGGLE TREE NODE
-  ======================================================= */
-
-  function toggleExpanded(userId) {
-
-    setExpandedUsers((current) => ({
-      ...current,
-      [userId]:
-        current[userId] === false
-          ? true
-          : false,
-    }))
-
-  }
-
-
-  /* =======================================================
-     OPEN ADD USER
+     OPEN ADD
   ======================================================= */
 
   function openAddUser() {
@@ -346,7 +253,7 @@ export default function Users() {
 
 
   /* =======================================================
-     OPEN EDIT USER
+     OPEN EDIT
   ======================================================= */
 
   function openEditUser(user) {
@@ -354,6 +261,7 @@ export default function Users() {
     setEditingUser(user)
 
     setForm({
+
       auth_user_id:
         user.auth_user_id || "",
 
@@ -374,6 +282,7 @@ export default function Users() {
 
       active:
         user.active !== false,
+
     })
 
     setError("")
@@ -393,7 +302,9 @@ export default function Users() {
 
     setShowModal(false)
     setEditingUser(null)
-    setForm(emptyForm)
+    setForm({
+      ...emptyForm,
+    })
     setError("")
   }
 
@@ -433,6 +344,7 @@ export default function Users() {
     try {
 
       const payload = {
+
         auth_user_id:
           form.auth_user_id.trim() ||
           null,
@@ -457,6 +369,7 @@ export default function Users() {
 
         active:
           Boolean(form.active),
+
       }
 
 
@@ -544,225 +457,396 @@ export default function Users() {
 
 
   /* =======================================================
-     TREE NODE
+     MANAGER NAME
   ======================================================= */
 
-  function UserNode({
-    user,
-    level = 0,
-  }) {
+  function getManagerName(managerId) {
 
-    const children =
-      getChildren(user.id)
+    if (!managerId) {
+      return "No manager"
+    }
 
-    const hasChildren =
-      children.length > 0
+    const manager =
+      users.find(
+        (user) =>
+          user.id === managerId
+      )
 
-    const isExpanded =
-      expandedUsers[user.id] !== false
+    return display(
+      manager?.full_name,
+      "Unknown manager"
+    )
+  }
+
+
+  /* =======================================================
+     PERMISSION LABEL
+  ======================================================= */
+
+  function getPermissionLabel(level) {
+
+    const value =
+      Number(level)
+
+    if (value >= 4) {
+      return "Administrator"
+    }
+
+    if (value === 3) {
+      return "Management"
+    }
+
+    if (value === 2) {
+      return "Supervisor"
+    }
+
+    return "Standard"
+  }
+
+
+  /* =======================================================
+     TOGGLE MANAGER
+  ======================================================= */
+
+  function toggleManager(managerId) {
+
+    setExpandedManagers((current) => ({
+      ...current,
+      [managerId]:
+        !current[managerId],
+    }))
+
+  }
+
+
+  /* =======================================================
+     BUILD REPORTING TREE
+  ======================================================= */
+
+  const reportingTree = useMemo(() => {
+
+    /*
+      A manager is someone who has at least
+      one user reporting to them.
+
+      We use ALL users to establish the hierarchy,
+      not just visible users.
+
+      This is important because if an inactive
+      manager is hidden, their active staff still
+      need to retain their relationship.
+    */
+
+    const childrenMap = {}
+
+    users.forEach((user) => {
+
+      const managerId =
+        user.manager_id
+
+      if (!managerId) {
+        return
+      }
+
+      if (!childrenMap[managerId]) {
+        childrenMap[managerId] = []
+      }
+
+      childrenMap[managerId].push(user)
+
+    })
+
+
+    /*
+      Find top-level users.
+
+      These are users with no manager.
+    */
+
+    const topLevelUsers =
+      visibleUsers.filter(
+        (user) =>
+          !user.manager_id
+      )
+
+
+    /*
+      Find managers that have
+      visible direct reports.
+    */
+
+    const managerUsers =
+      users
+        .filter((user) => {
+
+          const reports =
+            childrenMap[user.id] || []
+
+          return reports.some(
+            (report) =>
+              visibleUsers.some(
+                (visible) =>
+                  visible.id === report.id
+              )
+          )
+
+        })
+        .filter((user) => {
+
+          /*
+            If inactive users are hidden,
+            do not show inactive managers.
+
+            However, active users reporting
+            to them remain visible as top-level
+            "unassigned" reporting groups.
+          */
+
+          if (!showInactive) {
+            return user.active !== false
+          }
+
+          return true
+
+        })
+        .filter((user) => {
+
+          /*
+            Search should also be respected.
+          */
+
+          return searchedUsers.some(
+            (searched) =>
+              searched.id === user.id
+          ) ||
+          (childrenMap[user.id] || [])
+            .some((child) =>
+              visibleUsers.some(
+                (visible) =>
+                  visible.id === child.id
+              )
+            )
+
+        })
+        .sort((a, b) =>
+          display(a.full_name)
+            .localeCompare(
+              display(b.full_name)
+            )
+        )
+
+
+    return {
+      childrenMap,
+      managerUsers,
+      topLevelUsers,
+    }
+
+  }, [
+    users,
+    visibleUsers,
+    searchedUsers,
+    showInactive,
+  ])
+
+
+  /* =======================================================
+     BRANCH GROUPING
+  ======================================================= */
+
+  function getBranchGroups(managerId) {
+
+    const reports =
+      reportingTree.childrenMap[managerId] || []
+
+    const visibleReports =
+      reports.filter((report) =>
+        visibleUsers.some(
+          (user) =>
+            user.id === report.id
+        )
+      )
+
+
+    const groups = {}
+
+    visibleReports.forEach((user) => {
+
+      const branch =
+        display(
+          user.branch,
+          "No branch"
+        )
+
+      if (!groups[branch]) {
+        groups[branch] = []
+      }
+
+      groups[branch].push(user)
+
+    })
+
+
+    return Object.entries(groups)
+      .sort(([branchA], [branchB]) =>
+        branchA.localeCompare(branchB)
+      )
+      .map(([branch, branchUsers]) => ({
+
+        branch,
+
+        users:
+          branchUsers.sort((a, b) =>
+            display(a.full_name)
+              .localeCompare(
+                display(b.full_name)
+              )
+          ),
+
+      }))
+
+  }
+
+
+  /* =======================================================
+     USER CARD
+  ======================================================= */
+
+  function UserCard({ user, compact = false }) {
 
     return (
 
-      <div className="tree-node-wrapper">
+      <div
+        className={[
+          "report-user-card",
+          user.active === false
+            ? "inactive"
+            : "",
+          compact
+            ? "compact"
+            : "",
+        ].join(" ")}
+      >
 
-        <div
-          className="tree-node"
-          style={{
-            marginLeft:
-              level * 28,
-          }}
-        >
+        <div className="report-user-avatar">
 
-          <div className="tree-node-main">
+          <UserRound size={17} />
 
-            {/* EXPAND */}
-
-            <button
-              type="button"
-              className={
-                hasChildren
-                  ? "tree-expand-button"
-                  : "tree-expand-button tree-expand-empty"
-              }
-              onClick={() => {
-
-                if (hasChildren) {
-                  toggleExpanded(
-                    user.id
-                  )
-                }
-
-              }}
-            >
-
-              {hasChildren ? (
-
-                isExpanded ? (
-                  <ChevronDown size={14} />
-                ) : (
-                  <ChevronRight size={14} />
-                )
-
-              ) : null}
-
-            </button>
+        </div>
 
 
-            {/* ICON */}
+        <div className="report-user-main">
 
-            <div className="tree-user-icon">
+          <div className="report-user-name">
 
-              <UserRound size={16} />
-
-            </div>
-
-
-            {/* INFORMATION */}
-
-            <div className="tree-user-information">
-
-              <div className="tree-user-name-row">
-
-                <span className="tree-user-name">
-                  {display(
-                    user.full_name,
-                    "Unnamed user"
-                  )}
-                </span>
-
-                {user.active === false && (
-
-                  <span className="tree-inactive-badge">
-                    Inactive
-                  </span>
-
-                )}
-
-              </div>
-
-
-              <div className="tree-user-meta">
-
-                <span className="tree-role">
-                  {display(
-                    user.role,
-                    getPermissionLabel(
-                      user.permission_level
-                    )
-                  )}
-                </span>
-
-                <span className="tree-separator">
-                  •
-                </span>
-
-                <span>
-                  {display(
-                    user.branch,
-                    "No branch"
-                  )}
-                </span>
-
-                <span className="tree-separator">
-                  •
-                </span>
-
-                <span>
-                  {getPermissionLabel(
-                    user.permission_level
-                  )}
-                </span>
-
-              </div>
-
-
-              <div className="tree-user-manager">
-
-                Reports to:{" "}
-
-                <strong>
-                  {getManagerName(
-                    user.manager_id
-                  )}
-                </strong>
-
-              </div>
-
-            </div>
-
-
-            {/* STATUS */}
-
-            <div className="tree-status">
-
-              {user.active !== false ? (
-
-                <span className="tree-active">
-
-                  <Check size={12} />
-
-                  Active
-
-                </span>
-
-              ) : (
-
-                <span className="tree-inactive">
-
-                  <X size={12} />
-
-                  Inactive
-
-                </span>
-
-              )}
-
-            </div>
-
-
-            {/* EDIT */}
-
-            <button
-              type="button"
-              className="tree-edit-button"
-              onClick={() =>
-                openEditUser(user)
-              }
-              title="Edit user"
-            >
-
-              <Pencil size={13} />
-
-            </button>
+            {display(
+              user.full_name,
+              "Unnamed user"
+            )}
 
           </div>
 
 
-          {/* CHILDREN */}
+          <div className="report-user-meta">
 
-          {hasChildren &&
-            isExpanded && (
+            <span>
+              {display(
+                user.role,
+                "No role"
+              )}
+            </span>
 
-              <div className="tree-children">
+            <span className="report-meta-divider">
+              •
+            </span>
 
-                {children.map((child) => (
+            <span>
+              {display(
+                user.branch,
+                "No branch"
+              )}
+            </span>
 
-                  <UserNode
-                    key={child.id}
-                    user={child}
-                    level={level + 1}
-                  />
+          </div>
 
-                ))}
 
-              </div>
+          {!compact && (
 
-            )}
+            <div className="report-user-details">
+
+              <span className="report-detail">
+
+                <strong>
+                  Permission
+                </strong>
+
+                {getPermissionLabel(
+                  user.permission_level
+                )}
+
+              </span>
+
+
+              <span className="report-detail">
+
+                <strong>
+                  Manager
+                </strong>
+
+                {getManagerName(
+                  user.manager_id
+                )}
+
+              </span>
+
+
+              <span
+                className={[
+                  "report-status",
+                  user.active === false
+                    ? "inactive"
+                    : "active",
+                ].join(" ")}
+              >
+
+                {user.active !== false ? (
+                  <>
+                    <Check size={11} />
+                    Active
+                  </>
+                ) : (
+                  <>
+                    <X size={11} />
+                    Inactive
+                  </>
+                )}
+
+              </span>
+
+            </div>
+
+          )}
 
         </div>
 
+
+        <button
+          type="button"
+          className="report-edit-button"
+          title="Edit user"
+          onClick={() =>
+            openEditUser(user)
+          }
+        >
+
+          <Pencil size={13} />
+
+        </button>
+
       </div>
+
     )
+
   }
 
 
@@ -793,7 +877,11 @@ export default function Users() {
             Arial,
             sans-serif;
 
-          padding: 24px;
+          padding:
+            24px;
+
+          box-sizing:
+            border-box;
         }
 
 
@@ -811,7 +899,8 @@ export default function Users() {
 
           gap: 20px;
 
-          margin-bottom: 20px;
+          margin-bottom:
+            20px;
         }
 
 
@@ -850,10 +939,6 @@ export default function Users() {
         }
 
 
-        /* =================================================
-           ADD
-        ================================================= */
-
         .users-add-button {
           display: inline-flex;
 
@@ -889,225 +974,6 @@ export default function Users() {
         }
 
 
-        /* =================================================
-           CARD
-        ================================================= */
-
-        .users-card {
-          background: #fff;
-
-          border:
-            1px solid #e1e5ea;
-
-          border-radius: 9px;
-
-          overflow: hidden;
-        }
-
-
-        /* =================================================
-           TOOLBAR
-        ================================================= */
-
-        .users-toolbar {
-          display: flex;
-
-          align-items: center;
-
-          justify-content:
-            space-between;
-
-          gap: 12px;
-
-          padding:
-            12px 14px;
-
-          border-bottom:
-            1px solid #e7eaee;
-
-          background: #fff;
-        }
-
-
-        .users-toolbar-left {
-          display: flex;
-
-          align-items: center;
-
-          gap: 10px;
-
-          flex-wrap: wrap;
-        }
-
-
-        /* =================================================
-           SEARCH
-        ================================================= */
-
-        .users-search {
-          display: flex;
-
-          align-items: center;
-
-          gap: 8px;
-
-          width: 300px;
-
-          max-width: 100%;
-
-          height: 34px;
-
-          padding:
-            0 10px;
-
-          border:
-            1px solid #dfe4e9;
-
-          border-radius: 6px;
-
-          background: #fff;
-
-          color: #94a3b8;
-
-          box-sizing: border-box;
-        }
-
-
-        .users-search input {
-          width: 100%;
-
-          border: 0;
-
-          outline: 0;
-
-          font-family: inherit;
-
-          font-size: 11px;
-
-          color: #172033;
-
-          background:
-            transparent;
-        }
-
-
-        /* =================================================
-           INACTIVE TOGGLE
-        ================================================= */
-
-        .reporting-tree-controls {
-          display: flex;
-
-          align-items: center;
-
-          gap: 9px;
-
-          height: 34px;
-
-          padding:
-            0 10px;
-
-          border:
-            1px solid #dfe4e9;
-
-          border-radius: 6px;
-
-          background: #f8fafb;
-
-          box-sizing: border-box;
-        }
-
-
-        .reporting-tree-control-label {
-          font-size: 10px;
-
-          font-weight: 700;
-
-          color: #596575;
-
-          white-space: nowrap;
-        }
-
-
-        .reporting-tree-switch {
-          position: relative;
-
-          width: 34px;
-
-          height: 19px;
-
-          flex-shrink: 0;
-        }
-
-
-        .reporting-tree-switch input {
-          opacity: 0;
-
-          width: 0;
-
-          height: 0;
-        }
-
-
-        .reporting-tree-slider {
-          position: absolute;
-
-          inset: 0;
-
-          border-radius: 20px;
-
-          background: #cbd2d9;
-
-          cursor: pointer;
-
-          transition:
-            .2s;
-        }
-
-
-        .reporting-tree-slider:before {
-          content: "";
-
-          position: absolute;
-
-          width: 15px;
-
-          height: 15px;
-
-          left: 2px;
-
-          top: 2px;
-
-          border-radius: 50%;
-
-          background: #fff;
-
-          transition:
-            .2s;
-
-          box-shadow:
-            0 1px 3px
-            rgba(0,0,0,.18);
-        }
-
-
-        .reporting-tree-switch input:checked
-        + .reporting-tree-slider {
-          background: #2499ed;
-        }
-
-
-        .reporting-tree-switch input:checked
-        + .reporting-tree-slider:before {
-          transform:
-            translateX(15px);
-        }
-
-
-        /* =================================================
-           REFRESH
-        ================================================= */
-
         .users-refresh {
           display: inline-flex;
 
@@ -1115,17 +981,17 @@ export default function Users() {
 
           gap: 6px;
 
-          height: 32px;
+          height: 38px;
 
           padding:
-            0 10px;
+            0 12px;
 
           border:
-            1px solid #e1e5e9;
+            1px solid #dfe4e8;
 
-          border-radius: 6px;
+          border-radius: 7px;
 
-          background: #f8f9fa;
+          background: #fff;
 
           color: #64748b;
 
@@ -1133,9 +999,14 @@ export default function Users() {
 
           font-size: 10px;
 
-          font-weight: 600;
+          font-weight: 700;
 
           cursor: pointer;
+        }
+
+
+        .users-refresh:hover {
+          background: #f8fafb;
         }
 
 
@@ -1143,356 +1014,6 @@ export default function Users() {
           opacity: .5;
 
           cursor: default;
-        }
-
-
-        /* =================================================
-           TREE
-        ================================================= */
-
-        .reporting-tree {
-          padding:
-            18px 20px 24px;
-        }
-
-
-        .tree-node-wrapper {
-          width: 100%;
-        }
-
-
-        .tree-node {
-          position: relative;
-        }
-
-
-        .tree-node-main {
-          min-height: 72px;
-
-          display: flex;
-
-          align-items: center;
-
-          gap: 10px;
-
-          padding:
-            10px 12px;
-
-          margin-bottom: 7px;
-
-          border:
-            1px solid #e2e7eb;
-
-          border-radius: 8px;
-
-          background: #fff;
-
-          box-shadow:
-            0 1px 2px
-            rgba(15,23,42,.03);
-
-          box-sizing: border-box;
-
-          transition:
-            .15s;
-        }
-
-
-        .tree-node-main:hover {
-          border-color: #cfd8df;
-
-          box-shadow:
-            0 3px 10px
-            rgba(15,23,42,.06);
-        }
-
-
-        .tree-expand-button {
-          width: 24px;
-
-          height: 24px;
-
-          display: inline-flex;
-
-          align-items: center;
-
-          justify-content: center;
-
-          flex-shrink: 0;
-
-          border: 0;
-
-          border-radius: 5px;
-
-          background: #f3f5f7;
-
-          color: #64748b;
-
-          cursor: pointer;
-        }
-
-
-        .tree-expand-button:hover {
-          background: #e9edf1;
-
-          color: #172033;
-        }
-
-
-        .tree-expand-empty {
-          background:
-            transparent;
-
-          cursor:
-            default;
-        }
-
-
-        .tree-user-icon {
-          width: 38px;
-
-          height: 38px;
-
-          display: flex;
-
-          align-items: center;
-
-          justify-content: center;
-
-          flex-shrink: 0;
-
-          border-radius: 8px;
-
-          background: #eef7ff;
-
-          color: #2499ed;
-        }
-
-
-        .tree-user-information {
-          min-width: 0;
-
-          flex: 1;
-        }
-
-
-        .tree-user-name-row {
-          display: flex;
-
-          align-items: center;
-
-          gap: 8px;
-
-          flex-wrap: wrap;
-        }
-
-
-        .tree-user-name {
-          font-size: 13px;
-
-          font-weight: 750;
-
-          color: #172033;
-        }
-
-
-        .tree-inactive-badge {
-          display: inline-flex;
-
-          align-items: center;
-
-          padding:
-            3px 6px;
-
-          border-radius: 4px;
-
-          background: #fef2f2;
-
-          color: #a06464;
-
-          font-size: 8px;
-
-          font-weight: 800;
-
-          text-transform:
-            uppercase;
-
-          letter-spacing:
-            .04em;
-        }
-
-
-        .tree-user-meta {
-          display: flex;
-
-          align-items: center;
-
-          gap: 7px;
-
-          margin-top: 4px;
-
-          color: #7b8794;
-
-          font-size: 10px;
-
-          flex-wrap: wrap;
-        }
-
-
-        .tree-role {
-          font-weight: 700;
-
-          color: #596575;
-        }
-
-
-        .tree-separator {
-          color: #c4cbd2;
-        }
-
-
-        .tree-user-manager {
-          margin-top: 5px;
-
-          color: #9aa3ad;
-
-          font-size: 9px;
-        }
-
-
-        .tree-user-manager strong {
-          color: #687585;
-
-          font-weight: 650;
-        }
-
-
-        /* =================================================
-           STATUS
-        ================================================= */
-
-        .tree-status {
-          flex-shrink: 0;
-
-          min-width: 62px;
-        }
-
-
-        .tree-active,
-        .tree-inactive {
-          display: inline-flex;
-
-          align-items: center;
-
-          gap: 4px;
-
-          font-size: 9px;
-
-          font-weight: 700;
-        }
-
-
-        .tree-active {
-          color: #34804a;
-        }
-
-
-        .tree-inactive {
-          color: #a06464;
-        }
-
-
-        /* =================================================
-           EDIT
-        ================================================= */
-
-        .tree-edit-button {
-          width: 30px;
-
-          height: 30px;
-
-          display: inline-flex;
-
-          align-items: center;
-
-          justify-content: center;
-
-          flex-shrink: 0;
-
-          border:
-            1px solid #e0e4e8;
-
-          border-radius: 6px;
-
-          background: #fff;
-
-          color: #64748b;
-
-          cursor: pointer;
-        }
-
-
-        .tree-edit-button:hover {
-          background: #f5f8fa;
-
-          color: #172033;
-
-          border-color:
-            #cfd7df;
-        }
-
-
-        /* =================================================
-           CHILDREN
-        ================================================= */
-
-        .tree-children {
-          position: relative;
-
-          margin-left: 18px;
-
-          padding-left: 28px;
-
-          border-left:
-            1px solid #dfe5ea;
-        }
-
-
-        .tree-children .tree-node-main {
-          position: relative;
-        }
-
-
-        .tree-children .tree-node-main:before {
-          content: "";
-
-          position: absolute;
-
-          left: -29px;
-
-          top: 50%;
-
-          width: 28px;
-
-          height: 1px;
-
-          background: #dfe5ea;
-        }
-
-
-        /* =================================================
-           EMPTY / LOADING
-        ================================================= */
-
-        .users-empty {
-          padding:
-            70px 20px;
-
-          text-align: center;
-
-          color: #94a3b8;
-
-          font-size: 12px;
         }
 
 
@@ -1521,6 +1042,805 @@ export default function Users() {
 
 
         /* =================================================
+           MAIN CARD
+        ================================================= */
+
+        .users-card {
+          background: #fff;
+
+          border:
+            1px solid #e1e5ea;
+
+          border-radius: 10px;
+
+          overflow: hidden;
+        }
+
+
+        /* =================================================
+           TOOLBAR
+        ================================================= */
+
+        .users-toolbar {
+          display: flex;
+
+          align-items: center;
+
+          justify-content:
+            space-between;
+
+          gap: 14px;
+
+          padding:
+            12px 14px;
+
+          border-bottom:
+            1px solid #e7eaee;
+        }
+
+
+        .users-toolbar-left {
+          display: flex;
+
+          align-items: center;
+
+          gap: 10px;
+
+          min-width: 0;
+
+          flex: 1;
+        }
+
+
+        .users-search {
+          display: flex;
+
+          align-items: center;
+
+          gap: 8px;
+
+          width: 300px;
+
+          max-width: 100%;
+
+          height: 34px;
+
+          padding:
+            0 10px;
+
+          border:
+            1px solid #dfe4e9;
+
+          border-radius: 6px;
+
+          background: #fff;
+
+          color: #94a3b8;
+
+          box-sizing:
+            border-box;
+        }
+
+
+        .users-search input {
+          width: 100%;
+
+          border: 0;
+
+          outline: 0;
+
+          font-family: inherit;
+
+          font-size: 11px;
+
+          color: #172033;
+
+          background:
+            transparent;
+        }
+
+
+        /* =================================================
+           INACTIVE TOGGLE
+        ================================================= */
+
+        .inactive-toggle {
+          display: inline-flex;
+
+          align-items: center;
+
+          gap: 8px;
+
+          height: 34px;
+
+          padding:
+            0 10px;
+
+          border:
+            1px solid #dfe4e9;
+
+          border-radius: 6px;
+
+          background: #fff;
+
+          color: #596575;
+
+          font-family: inherit;
+
+          font-size: 10px;
+
+          font-weight: 650;
+
+          cursor: pointer;
+
+          white-space:
+            nowrap;
+        }
+
+
+        .inactive-toggle:hover {
+          background: #f8fafb;
+        }
+
+
+        .inactive-toggle-dot {
+          width: 8px;
+
+          height: 8px;
+
+          border-radius: 50%;
+
+          background: #cbd2d9;
+
+          transition:
+            .2s;
+        }
+
+
+        .inactive-toggle.active
+        .inactive-toggle-dot {
+          background: #2499ed;
+        }
+
+
+        .inactive-toggle.active {
+          color: #2679b3;
+
+          border-color:
+            #c5e3f8;
+
+          background:
+            #f4faff;
+        }
+
+
+        .users-count {
+          color: #8a95a1;
+
+          font-size: 10px;
+
+          white-space:
+            nowrap;
+        }
+
+
+        /* =================================================
+           REPORTING TREE
+        ================================================= */
+
+        .reporting-tree {
+          padding:
+            18px;
+        }
+
+
+        .tree-manager {
+          border:
+            1px solid #e1e6eb;
+
+          border-radius: 9px;
+
+          background: #fff;
+
+          margin-bottom:
+            12px;
+
+          overflow: hidden;
+        }
+
+
+        .tree-manager:last-child {
+          margin-bottom: 0;
+        }
+
+
+        /* =================================================
+           MANAGER HEADER
+        ================================================= */
+
+        .tree-manager-header {
+          display: flex;
+
+          align-items: center;
+
+          gap: 12px;
+
+          width: 100%;
+
+          padding:
+            13px 14px;
+
+          box-sizing:
+            border-box;
+
+          border: 0;
+
+          background:
+            linear-gradient(
+              to right,
+              #f7fafc,
+              #ffffff
+            );
+
+          text-align: left;
+
+          cursor: pointer;
+        }
+
+
+        .tree-manager-header:hover {
+          background:
+            #f5f9fc;
+        }
+
+
+        .tree-expand {
+          width: 24px;
+
+          height: 24px;
+
+          display: flex;
+
+          align-items: center;
+
+          justify-content: center;
+
+          flex-shrink: 0;
+
+          border-radius: 5px;
+
+          color: #718096;
+        }
+
+
+        .tree-manager-avatar {
+          width: 36px;
+
+          height: 36px;
+
+          display: flex;
+
+          align-items: center;
+
+          justify-content: center;
+
+          flex-shrink: 0;
+
+          border-radius: 8px;
+
+          background:
+            #eaf5fd;
+
+          color:
+            #2679b3;
+        }
+
+
+        .tree-manager-info {
+          flex: 1;
+
+          min-width: 0;
+        }
+
+
+        .tree-manager-name {
+          font-size: 13px;
+
+          font-weight: 750;
+
+          color: #172033;
+
+          line-height: 1.2;
+        }
+
+
+        .tree-manager-meta {
+          display: flex;
+
+          align-items: center;
+
+          gap: 7px;
+
+          margin-top: 4px;
+
+          color: #7b8794;
+
+          font-size: 9px;
+        }
+
+
+        .tree-manager-role {
+          font-weight: 650;
+
+          color: #596575;
+        }
+
+
+        .tree-manager-branch {
+          color: #8a95a1;
+        }
+
+
+        .tree-manager-count {
+          display: inline-flex;
+
+          align-items: center;
+
+          justify-content: center;
+
+          min-width: 24px;
+
+          height: 22px;
+
+          padding:
+            0 7px;
+
+          border-radius: 12px;
+
+          background:
+            #eef7ff;
+
+          color:
+            #2679b3;
+
+          font-size: 9px;
+
+          font-weight: 750;
+        }
+
+
+        .tree-manager-edit {
+          width: 29px;
+
+          height: 29px;
+
+          display: flex;
+
+          align-items: center;
+
+          justify-content: center;
+
+          flex-shrink: 0;
+
+          border:
+            1px solid #e0e4e8;
+
+          border-radius: 6px;
+
+          background: #fff;
+
+          color: #64748b;
+
+          cursor: pointer;
+        }
+
+
+        .tree-manager-edit:hover {
+          background:
+            #f5f8fa;
+
+          color:
+            #172033;
+        }
+
+
+        /* =================================================
+           TREE CONTENT
+        ================================================= */
+
+        .tree-manager-content {
+          padding:
+            0 16px 16px 54px;
+
+          border-top:
+            1px solid #edf0f3;
+        }
+
+
+        .tree-branch {
+          margin-top:
+            14px;
+        }
+
+
+        .tree-branch-header {
+          display: flex;
+
+          align-items: center;
+
+          gap: 7px;
+
+          margin-bottom:
+            7px;
+
+          color: #687585;
+
+          font-size: 9px;
+
+          font-weight: 800;
+
+          letter-spacing:
+            .04em;
+
+          text-transform:
+            uppercase;
+        }
+
+
+        .tree-branch-line {
+          height: 1px;
+
+          flex: 1;
+
+          background:
+            #edf0f3;
+        }
+
+
+        .tree-branch-count {
+          color: #9aa4ae;
+
+          font-weight: 600;
+
+          letter-spacing: 0;
+
+          text-transform:
+            none;
+        }
+
+
+        /* =================================================
+           USER CARDS
+        ================================================= */
+
+        .report-user-list {
+          display: grid;
+
+          grid-template-columns:
+            repeat(
+              auto-fit,
+              minmax(
+                320px,
+                1fr
+              )
+            );
+
+          gap: 8px;
+        }
+
+
+        .report-user-card {
+          position: relative;
+
+          display: flex;
+
+          align-items: center;
+
+          gap: 10px;
+
+          min-width: 0;
+
+          padding:
+            10px 11px;
+
+          border:
+            1px solid #e6eaee;
+
+          border-radius: 7px;
+
+          background: #fff;
+
+          box-sizing:
+            border-box;
+        }
+
+
+        .report-user-card:hover {
+          border-color:
+            #d4e5ef;
+
+          background:
+            #fbfdfe;
+        }
+
+
+        .report-user-card.inactive {
+          opacity: .68;
+
+          background:
+            #fafafa;
+        }
+
+
+        .report-user-card.compact {
+          padding:
+            9px 10px;
+        }
+
+
+        .report-user-avatar {
+          width: 31px;
+
+          height: 31px;
+
+          display: flex;
+
+          align-items: center;
+
+          justify-content: center;
+
+          flex-shrink: 0;
+
+          border-radius: 7px;
+
+          background:
+            #f1f4f6;
+
+          color:
+            #667382;
+        }
+
+
+        .report-user-main {
+          flex: 1;
+
+          min-width: 0;
+        }
+
+
+        .report-user-name {
+          color:
+            #172033;
+
+          font-size: 11px;
+
+          font-weight: 750;
+
+          white-space:
+            nowrap;
+
+          overflow:
+            hidden;
+
+          text-overflow:
+            ellipsis;
+        }
+
+
+        .report-user-meta {
+          display: flex;
+
+          align-items: center;
+
+          gap: 5px;
+
+          margin-top: 3px;
+
+          color:
+            #7b8794;
+
+          font-size: 9px;
+
+          white-space:
+            nowrap;
+
+          overflow:
+            hidden;
+        }
+
+
+        .report-user-meta span:first-child {
+          overflow:
+            hidden;
+
+          text-overflow:
+            ellipsis;
+        }
+
+
+        .report-meta-divider {
+          color:
+            #c4cbd2;
+        }
+
+
+        .report-user-details {
+          display: flex;
+
+          align-items: center;
+
+          gap: 12px;
+
+          margin-top: 6px;
+
+          flex-wrap: wrap;
+        }
+
+
+        .report-detail {
+          display: flex;
+
+          align-items: center;
+
+          gap: 4px;
+
+          color:
+            #7b8794;
+
+          font-size: 8px;
+        }
+
+
+        .report-detail strong {
+          color:
+            #a0a9b3;
+
+          font-weight:
+            700;
+        }
+
+
+        .report-status {
+          display: inline-flex;
+
+          align-items: center;
+
+          gap: 3px;
+
+          font-size: 8px;
+
+          font-weight: 700;
+        }
+
+
+        .report-status.active {
+          color:
+            #34804a;
+        }
+
+
+        .report-status.inactive {
+          color:
+            #a06464;
+        }
+
+
+        .report-edit-button {
+          width: 28px;
+
+          height: 28px;
+
+          display: flex;
+
+          align-items: center;
+
+          justify-content: center;
+
+          flex-shrink: 0;
+
+          border:
+            1px solid #e0e4e8;
+
+          border-radius: 6px;
+
+          background:
+            #fff;
+
+          color:
+            #7b8794;
+
+          cursor: pointer;
+        }
+
+
+        .report-edit-button:hover {
+          color:
+            #172033;
+
+          background:
+            #f5f8fa;
+        }
+
+
+        /* =================================================
+           TOP LEVEL
+        ================================================= */
+
+        .tree-top-level {
+          margin-top:
+            14px;
+
+          padding-top:
+            14px;
+
+          border-top:
+            1px dashed #dfe5e9;
+        }
+
+
+        .tree-top-level-title {
+          margin-bottom:
+            8px;
+
+          color:
+            #687585;
+
+          font-size: 9px;
+
+          font-weight: 800;
+
+          letter-spacing:
+            .04em;
+
+          text-transform:
+            uppercase;
+        }
+
+
+        /* =================================================
+           EMPTY
+        ================================================= */
+
+        .users-empty {
+          padding:
+            70px 20px;
+
+          text-align:
+            center;
+
+          color:
+            #94a3b8;
+
+          font-size:
+            12px;
+        }
+
+
+        .users-empty-title {
+          color:
+            #64748b;
+
+          font-size:
+            13px;
+
+          font-weight:
+            700;
+
+          margin-bottom:
+            5px;
+        }
+
+
+        .users-empty-description {
+          color:
+            #9aa4ae;
+
+          font-size:
+            10px;
+        }
+
+
+        /* =================================================
            MODAL
         ================================================= */
 
@@ -1540,7 +1860,12 @@ export default function Users() {
           padding: 20px;
 
           background:
-            rgba(15, 23, 42, .38);
+            rgba(
+              15,
+              23,
+              42,
+              .38
+            );
         }
 
 
@@ -1549,15 +1874,26 @@ export default function Users() {
 
           max-width: 560px;
 
-          background: #fff;
+          max-height:
+            calc(100vh - 40px);
 
-          border-radius: 10px;
+          background:
+            #fff;
+
+          border-radius:
+            10px;
 
           box-shadow:
             0 20px 60px
-            rgba(0,0,0,.20);
+            rgba(
+              0,
+              0,
+              0,
+              .20
+            );
 
-          overflow: hidden;
+          overflow:
+            auto;
         }
 
 
@@ -1580,9 +1916,11 @@ export default function Users() {
         .users-modal-title {
           margin: 0;
 
-          font-size: 15px;
+          font-size:
+            15px;
 
-          font-weight: 750;
+          font-weight:
+            750;
         }
 
 
@@ -1590,9 +1928,11 @@ export default function Users() {
           margin:
             4px 0 0;
 
-          color: #8a95a1;
+          color:
+            #8a95a1;
 
-          font-size: 10px;
+          font-size:
+            10px;
         }
 
 
@@ -1611,16 +1951,20 @@ export default function Users() {
 
           border-radius: 6px;
 
-          background: transparent;
+          background:
+            transparent;
 
-          color: #8993a0;
+          color:
+            #8993a0;
 
-          cursor: pointer;
+          cursor:
+            pointer;
         }
 
 
         .users-modal-close:hover {
-          background: #f3f5f7;
+          background:
+            #f3f5f7;
         }
 
 
@@ -1631,10 +1975,17 @@ export default function Users() {
 
 
         .users-form-grid {
-          display: grid;
+          display:
+            grid;
 
           grid-template-columns:
-            repeat(2, minmax(0, 1fr));
+            repeat(
+              2,
+              minmax(
+                0,
+                1fr
+              )
+            );
 
           gap:
             15px;
@@ -1642,11 +1993,14 @@ export default function Users() {
 
 
         .users-form-field {
-          display: flex;
+          display:
+            flex;
 
-          flex-direction: column;
+          flex-direction:
+            column;
 
-          gap: 6px;
+          gap:
+            6px;
         }
 
 
@@ -1657,11 +2011,14 @@ export default function Users() {
 
 
         .users-form-label {
-          font-size: 9px;
+          font-size:
+            9px;
 
-          font-weight: 800;
+          font-weight:
+            800;
 
-          color: #687585;
+          color:
+            #687585;
 
           text-transform:
             uppercase;
@@ -1673,46 +2030,67 @@ export default function Users() {
 
         .users-form-input,
         .users-form-select {
-          width: 100%;
+          width:
+            100%;
 
-          height: 38px;
+          height:
+            38px;
 
-          box-sizing: border-box;
+          box-sizing:
+            border-box;
 
           border:
             1px solid #dce1e6;
 
-          border-radius: 6px;
+          border-radius:
+            6px;
 
           padding:
             0 10px;
 
-          background: #fff;
+          background:
+            #fff;
 
-          color: #172033;
+          color:
+            #172033;
 
-          font-family: inherit;
+          font-family:
+            inherit;
 
-          font-size: 11px;
+          font-size:
+            11px;
 
-          outline: none;
+          outline:
+            none;
         }
 
 
         .users-form-input:focus,
         .users-form-select:focus {
-          border-color: #2499ed;
+          border-color:
+            #2499ed;
 
           box-shadow:
             0 0 0 2px
-            rgba(36,153,237,.10);
+            rgba(
+              36,
+              153,
+              237,
+              .10
+            );
         }
 
 
-        .users-active-row {
-          display: flex;
+        /* =================================================
+           ACTIVE SWITCH
+        ================================================= */
 
-          align-items: center;
+        .users-active-row {
+          display:
+            flex;
+
+          align-items:
+            center;
 
           justify-content:
             space-between;
@@ -1723,7 +2101,8 @@ export default function Users() {
           border:
             1px solid #e1e5e9;
 
-          border-radius: 7px;
+          border-radius:
+            7px;
 
           grid-column:
             1 / -1;
@@ -1731,60 +2110,80 @@ export default function Users() {
 
 
         .users-active-text {
-          display: flex;
+          display:
+            flex;
 
-          flex-direction: column;
+          flex-direction:
+            column;
 
-          gap: 3px;
+          gap:
+            3px;
         }
 
 
         .users-active-title {
-          font-size: 11px;
+          font-size:
+            11px;
 
-          font-weight: 700;
+          font-weight:
+            700;
 
-          color: #273142;
+          color:
+            #273142;
         }
 
 
         .users-active-description {
-          font-size: 9px;
+          font-size:
+            9px;
 
-          color: #8a95a1;
+          color:
+            #8a95a1;
         }
 
 
         .users-switch {
-          position: relative;
+          position:
+            relative;
 
-          width: 38px;
+          width:
+            38px;
 
-          height: 21px;
+          height:
+            21px;
 
-          flex-shrink: 0;
+          flex-shrink:
+            0;
         }
 
 
         .users-switch input {
-          opacity: 0;
+          opacity:
+            0;
 
-          width: 0;
+          width:
+            0;
 
-          height: 0;
+          height:
+            0;
         }
 
 
         .users-slider {
-          position: absolute;
+          position:
+            absolute;
 
-          inset: 0;
+          inset:
+            0;
 
-          border-radius: 20px;
+          border-radius:
+            20px;
 
-          background: #cbd2d9;
+          background:
+            #cbd2d9;
 
-          cursor: pointer;
+          cursor:
+            pointer;
 
           transition:
             .2s;
@@ -1792,34 +2191,48 @@ export default function Users() {
 
 
         .users-slider:before {
-          content: "";
+          content:
+            "";
 
-          position: absolute;
+          position:
+            absolute;
 
-          width: 17px;
+          width:
+            17px;
 
-          height: 17px;
+          height:
+            17px;
 
-          left: 2px;
+          left:
+            2px;
 
-          top: 2px;
+          top:
+            2px;
 
-          border-radius: 50%;
+          border-radius:
+            50%;
 
-          background: #fff;
+          background:
+            #fff;
 
           transition:
             .2s;
 
           box-shadow:
             0 1px 3px
-            rgba(0,0,0,.18);
+            rgba(
+              0,
+              0,
+              0,
+              .18
+            );
         }
 
 
         .users-switch input:checked
         + .users-slider {
-          background: #2499ed;
+          background:
+            #2499ed;
         }
 
 
@@ -1835,14 +2248,17 @@ export default function Users() {
         ================================================= */
 
         .users-modal-footer {
-          display: flex;
+          display:
+            flex;
 
-          align-items: center;
+          align-items:
+            center;
 
           justify-content:
             flex-end;
 
-          gap: 8px;
+          gap:
+            8px;
 
           padding:
             13px 20px;
@@ -1854,20 +2270,26 @@ export default function Users() {
 
         .users-cancel-button,
         .users-save-button {
-          height: 36px;
+          height:
+            36px;
 
           padding:
             0 14px;
 
-          border-radius: 6px;
+          border-radius:
+            6px;
 
-          font-family: inherit;
+          font-family:
+            inherit;
 
-          font-size: 10px;
+          font-size:
+            10px;
 
-          font-weight: 700;
+          font-weight:
+            700;
 
-          cursor: pointer;
+          cursor:
+            pointer;
         }
 
 
@@ -1875,26 +2297,33 @@ export default function Users() {
           border:
             1px solid #dfe3e7;
 
-          background: #fff;
+          background:
+            #fff;
 
-          color: #596575;
+          color:
+            #596575;
         }
 
 
         .users-save-button {
-          border: 0;
+          border:
+            0;
 
-          background: #172554;
+          background:
+            #172554;
 
-          color: #fff;
+          color:
+            #fff;
         }
 
 
         .users-save-button:disabled,
         .users-cancel-button:disabled {
-          opacity: .5;
+          opacity:
+            .5;
 
-          cursor: default;
+          cursor:
+            default;
         }
 
 
@@ -1902,79 +2331,94 @@ export default function Users() {
            MOBILE
         ================================================= */
 
-        @media (max-width: 700px) {
+        @media (max-width: 800px) {
 
           .users-page {
-            padding: 16px;
+            padding:
+              16px;
           }
+
 
           .users-header {
-            align-items: stretch;
+            align-items:
+              stretch;
 
-            flex-direction: column;
+            flex-direction:
+              column;
           }
+
 
           .users-header-actions {
-            align-items: stretch;
-
-            flex-direction: column;
+            width:
+              100%;
           }
 
-          .users-add-button {
-            align-self: flex-start;
+
+          .users-add-button,
+          .users-refresh {
+            flex:
+              0 0 auto;
           }
+
 
           .users-toolbar {
-            align-items: stretch;
+            align-items:
+              stretch;
 
-            flex-direction: column;
+            flex-direction:
+              column;
           }
+
 
           .users-toolbar-left {
-            flex-direction: column;
+            flex-direction:
+              column;
 
-            align-items: stretch;
+            align-items:
+              stretch;
           }
+
 
           .users-search {
-            width: 100%;
+            width:
+              100%;
           }
 
-          .reporting-tree-controls {
-            width: fit-content;
+
+          .inactive-toggle {
+            justify-content:
+              center;
           }
 
-          .tree-node-main {
-            min-height: 66px;
 
+          .reporting-tree {
             padding:
-              8px;
+              12px;
           }
 
-          .tree-user-icon {
-            width: 32px;
 
-            height: 32px;
+          .tree-manager-content {
+            padding:
+              0 10px 12px 10px;
           }
 
-          .tree-status {
-            display: none;
+
+          .report-user-list {
+            grid-template-columns:
+              1fr;
           }
 
-          .tree-user-meta {
-            font-size: 9px;
-          }
 
           .users-form-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns:
+              1fr;
           }
 
-          .users-form-field.full {
-            grid-column: auto;
-          }
 
+          .users-form-field.full,
           .users-active-row {
-            grid-column: auto;
+            grid-column:
+              auto;
           }
 
         }
@@ -2003,6 +2447,22 @@ export default function Users() {
 
 
         <div className="users-header-actions">
+
+          <button
+            type="button"
+            className="users-refresh"
+            onClick={loadUsers}
+            disabled={loading}
+          >
+
+            <RefreshCw size={13} />
+
+            {loading
+              ? "Loading..."
+              : "Refresh"}
+
+          </button>
+
 
           <button
             type="button"
@@ -2035,7 +2495,7 @@ export default function Users() {
 
 
       {/* =====================================================
-          CARD
+          MAIN CARD
       ===================================================== */}
 
       <div className="users-card">
@@ -2049,16 +2509,13 @@ export default function Users() {
 
           <div className="users-toolbar-left">
 
-
-            {/* SEARCH */}
-
             <div className="users-search">
 
               <Search size={14} />
 
               <input
                 type="text"
-                placeholder="Search users..."
+                placeholder="Search users, roles, branches or managers..."
                 value={search}
                 onChange={(event) =>
                   setSearch(
@@ -2070,51 +2527,42 @@ export default function Users() {
             </div>
 
 
-            {/* SHOW INACTIVE */}
+            <button
+              type="button"
+              className={[
+                "inactive-toggle",
+                showInactive
+                  ? "active"
+                  : "",
+              ].join(" ")}
+              onClick={() =>
+                setShowInactive(
+                  (current) =>
+                    !current
+                )
+              }
+            >
 
-            <div className="reporting-tree-controls">
+              <span className="inactive-toggle-dot" />
 
-              <span className="reporting-tree-control-label">
-                Show inactive
-              </span>
+              {showInactive
+                ? "Showing inactive"
+                : "Show inactive"}
 
-              <label className="reporting-tree-switch">
-
-                <input
-                  type="checkbox"
-                  checked={showInactive}
-                  onChange={(event) =>
-                    setShowInactive(
-                      event.target.checked
-                    )
-                  }
-                />
-
-                <span className="reporting-tree-slider" />
-
-              </label>
-
-            </div>
+            </button>
 
           </div>
 
 
-          {/* REFRESH */}
+          <div className="users-count">
 
-          <button
-            type="button"
-            className="users-refresh"
-            onClick={loadUsers}
-            disabled={loading}
-          >
+            {visibleUsers.length}
+            {" "}
+            {visibleUsers.length === 1
+              ? "user"
+              : "users"}
 
-            <RefreshCw size={12} />
-
-            {loading
-              ? "Loading..."
-              : "Refresh"}
-
-          </button>
+          </div>
 
         </div>
 
@@ -2125,35 +2573,305 @@ export default function Users() {
 
         <div className="reporting-tree">
 
+
           {loading ? (
 
             <div className="users-empty">
+
               Loading users...
+
             </div>
 
-          ) : rootUsers.length === 0 ? (
+          ) : reportingTree.managerUsers.length === 0 &&
+            reportingTree.topLevelUsers.length === 0 ? (
 
             <div className="users-empty">
 
-              {search
-                ? "No users match your search."
-                : showInactive
-                  ? "No users found."
-                  : "No active users found."}
+              <div className="users-empty-title">
+                No users found
+              </div>
+
+              <div className="users-empty-description">
+
+                Try changing your search or
+                enabling inactive users.
+
+              </div>
 
             </div>
 
           ) : (
 
-            rootUsers.map((user) => (
+            <>
 
-              <UserNode
-                key={user.id}
-                user={user}
-                level={0}
-              />
+              {/* =================================================
+                  MANAGERS
+              ================================================= */}
 
-            ))
+              {reportingTree.managerUsers.map(
+                (manager) => {
+
+                  const branchGroups =
+                    getBranchGroups(
+                      manager.id
+                    )
+
+                  const reports =
+                    reportingTree.childrenMap[
+                      manager.id
+                    ] || []
+
+                  const visibleReports =
+                    reports.filter((report) =>
+                      visibleUsers.some(
+                        (user) =>
+                          user.id ===
+                          report.id
+                      )
+                    )
+
+
+                  const expanded =
+                    expandedManagers[
+                      manager.id
+                    ] !== false
+
+
+                  return (
+
+                    <div
+                      className="tree-manager"
+                      key={manager.id}
+                    >
+
+
+                      {/* MANAGER HEADER */}
+
+                      <div className="tree-manager-header">
+
+
+                        <button
+                          type="button"
+                          className="tree-expand"
+                          onClick={() =>
+                            toggleManager(
+                              manager.id
+                            )
+                          }
+                        >
+
+                          {expanded ? (
+                            <ChevronDown
+                              size={15}
+                            />
+                          ) : (
+                            <ChevronRight
+                              size={15}
+                            />
+                          )}
+
+                        </button>
+
+
+                        <div className="tree-manager-avatar">
+
+                          <UserRound size={18} />
+
+                        </div>
+
+
+                        <div
+                          className="tree-manager-info"
+                          onClick={() =>
+                            toggleManager(
+                              manager.id
+                            )
+                          }
+                        >
+
+                          <div className="tree-manager-name">
+
+                            {display(
+                              manager.full_name,
+                              "Unnamed user"
+                            )}
+
+                          </div>
+
+
+                          <div className="tree-manager-meta">
+
+                            <span className="tree-manager-role">
+
+                              {display(
+                                manager.role,
+                                "No role"
+                              )}
+
+                            </span>
+
+
+                            <span>
+                              •
+                            </span>
+
+
+                            <span className="tree-manager-branch">
+
+                              {display(
+                                manager.branch,
+                                "No branch"
+                              )}
+
+                            </span>
+
+                          </div>
+
+                        </div>
+
+
+                        <div className="tree-manager-count">
+
+                          {visibleReports.length}
+
+                        </div>
+
+
+                        <button
+                          type="button"
+                          className="tree-manager-edit"
+                          title="Edit manager"
+                          onClick={() =>
+                            openEditUser(
+                              manager
+                            )
+                          }
+                        >
+
+                          <Pencil size={13} />
+
+                        </button>
+
+                      </div>
+
+
+                      {/* MANAGER CONTENT */}
+
+                      {expanded && (
+
+                        <div className="tree-manager-content">
+
+                          {branchGroups.map(
+                            (group) => (
+
+                              <div
+                                className="tree-branch"
+                                key={
+                                  group.branch
+                                }
+                              >
+
+
+                                <div className="tree-branch-header">
+
+                                  <span>
+                                    {group.branch}
+                                  </span>
+
+                                  <span className="tree-branch-count">
+
+                                    {group.users.length}
+                                    {" "}
+                                    {group.users.length === 1
+                                      ? "user"
+                                      : "users"}
+
+                                  </span>
+
+                                  <span className="tree-branch-line" />
+
+                                </div>
+
+
+                                <div className="report-user-list">
+
+                                  {group.users.map(
+                                    (user) => (
+
+                                      <UserCard
+                                        key={
+                                          user.id
+                                        }
+                                        user={
+                                          user
+                                        }
+                                      />
+
+                                    )
+                                  )}
+
+                                </div>
+
+                              </div>
+
+                            )
+                          )}
+
+                        </div>
+
+                      )}
+
+                    </div>
+
+                  )
+
+                }
+              )}
+
+
+              {/* =================================================
+                  TOP LEVEL / NO MANAGER
+              ================================================= */}
+
+              {reportingTree.topLevelUsers.length > 0 && (
+
+                <div className="tree-top-level">
+
+                  <div className="tree-top-level-title">
+
+                    No manager / top level
+
+                  </div>
+
+
+                  <div className="report-user-list">
+
+                    {reportingTree.topLevelUsers
+                      .sort((a, b) =>
+                        display(
+                          a.full_name
+                        ).localeCompare(
+                          display(
+                            b.full_name
+                          )
+                        )
+                      )
+                      .map((user) => (
+
+                        <UserCard
+                          key={user.id}
+                          user={user}
+                        />
+
+                      ))}
+
+                  </div>
+
+                </div>
+
+              )}
+
+            </>
 
           )}
 
@@ -2201,6 +2919,7 @@ export default function Users() {
 
                 </h2>
 
+
                 <p className="users-modal-subtitle">
 
                   Manage the user's CRM access
@@ -2242,9 +2961,12 @@ export default function Users() {
                     Full name
                   </label>
 
+
                   <input
                     className="users-form-input"
-                    value={form.full_name}
+                    value={
+                      form.full_name
+                    }
                     onChange={(event) =>
                       updateForm(
                         "full_name",
@@ -2265,9 +2987,12 @@ export default function Users() {
                     Auth user ID
                   </label>
 
+
                   <input
                     className="users-form-input"
-                    value={form.auth_user_id}
+                    value={
+                      form.auth_user_id
+                    }
                     onChange={(event) =>
                       updateForm(
                         "auth_user_id",
@@ -2288,17 +3013,53 @@ export default function Users() {
                     Role
                   </label>
 
-                  <input
-                    className="users-form-input"
-                    value={form.role}
+
+                  <select
+                    className="users-form-select"
+                    value={
+                      form.role
+                    }
                     onChange={(event) =>
                       updateForm(
                         "role",
                         event.target.value
                       )
                     }
-                    placeholder="Sales Rep"
-                  />
+                  >
+
+                    <option value="">
+                      No role
+                    </option>
+
+
+                    {roles.map((role) => (
+
+                      <option
+                        key={role}
+                        value={role}
+                      >
+                        {role}
+                      </option>
+
+                    ))}
+
+
+                    {form.role &&
+                      !roles.includes(
+                        form.role
+                      ) && (
+
+                        <option
+                          value={
+                            form.role
+                          }
+                        >
+                          {form.role}
+                        </option>
+
+                      )}
+
+                  </select>
 
                 </div>
 
@@ -2311,9 +3072,12 @@ export default function Users() {
                     Branch
                   </label>
 
+
                   <input
                     className="users-form-input"
-                    value={form.branch}
+                    value={
+                      form.branch
+                    }
                     onChange={(event) =>
                       updateForm(
                         "branch",
@@ -2334,6 +3098,7 @@ export default function Users() {
                     Permission level
                   </label>
 
+
                   <select
                     className="users-form-select"
                     value={
@@ -2350,7 +3115,7 @@ export default function Users() {
                   >
 
                     <option value={1}>
-                      1 — Sales Rep
+                      1 — Standard
                     </option>
 
                     <option value={2}>
@@ -2378,6 +3143,7 @@ export default function Users() {
                     Manager
                   </label>
 
+
                   <select
                     className="users-form-select"
                     value={
@@ -2395,6 +3161,7 @@ export default function Users() {
                       No manager
                     </option>
 
+
                     {managers
                       .filter(
                         (manager) =>
@@ -2404,8 +3171,12 @@ export default function Users() {
                       .map((manager) => (
 
                         <option
-                          key={manager.id}
-                          value={manager.id}
+                          key={
+                            manager.id
+                          }
+                          value={
+                            manager.id
+                          }
                         >
 
                           {display(
@@ -2435,10 +3206,13 @@ export default function Users() {
                       Active user
                     </span>
 
+
                     <span className="users-active-description">
-                      Inactive users remain in the
-                      system but can be hidden from
-                      the reporting tree.
+
+                      Inactive users can remain
+                      in the system but should
+                      not have active CRM access.
+
                     </span>
 
                   </div>
@@ -2459,6 +3233,7 @@ export default function Users() {
                       }
                     />
 
+
                     <span className="users-slider" />
 
                   </label>
@@ -2475,7 +3250,8 @@ export default function Users() {
                     style={{
                       gridColumn:
                         "1 / -1",
-                      marginBottom: 0,
+                      marginBottom:
+                        0,
                     }}
                   >
 
@@ -2533,5 +3309,6 @@ export default function Users() {
       )}
 
     </section>
+
   )
 }
