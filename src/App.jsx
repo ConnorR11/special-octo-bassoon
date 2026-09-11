@@ -21,6 +21,7 @@ import Appointments from "./pages/Appointments"
 import AppointmentDetail from "./pages/AppointmentDetail"
 import Login from "./pages/Login"
 import SalesKPI from "./pages/SalesKPI"
+import Users from "./pages/Users"
 
 
 function App() {
@@ -65,6 +66,7 @@ function App() {
       }
 
       if (sessionError) {
+
         console.error(
           "Error loading auth session:",
           sessionError
@@ -471,6 +473,7 @@ function App() {
     } = await supabase.auth.signOut()
 
     if (signOutError) {
+
       console.error(
         "Error signing out:",
         signOutError
@@ -566,6 +569,7 @@ function App() {
             background: "#fff",
           }}
         >
+
           <span
             style={{
               fontSize: 12,
@@ -574,6 +578,7 @@ function App() {
           >
             {session?.user?.email || "Signed in"}
           </span>
+
 
           <button
             type="button"
@@ -591,7 +596,9 @@ function App() {
           >
             Sign out
           </button>
+
         </div>
+
 
         <Header
           page={headerPage}
@@ -673,22 +680,35 @@ function App() {
           "marketing-tv" ? (
 
           <MarketingTV
-            onSelectAppointment={handleAppointmentSelect}
+            onSelectAppointment={
+              handleAppointmentSelect
+            }
           />
 
         ) : page ===
           "marketing-dashboard" ? (
 
           <MarketingDashboard
-            contracts={contracts}
-            loading={loading}
-            onSelectAppointment={handleAppointmentSelect}
+            contracts={
+              contracts
+            }
+            loading={
+              loading
+            }
+            onSelectAppointment={
+              handleAppointmentSelect
+            }
           />
 
         ) : page ===
           "sales-kpi" ? (
 
           <SalesKPI />
+
+        ) : page ===
+          "user-management" ? (
+
+          <Users />
 
         ) : page ===
           "contracts" ? (
