@@ -542,8 +542,11 @@ function Sidebar({
             <NavItem
               icon={UserCog}
               label="Users"
-              disabled
-            />
+              active={isActive("users")}
+              onClick={() =>
+                navigate("users")
+                }
+              />
 
             <NavItem
               icon={Settings}
