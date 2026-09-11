@@ -689,12 +689,8 @@ function App() {
           "marketing-dashboard" ? (
 
           <MarketingDashboard
-            contracts={
-              contracts
-            }
-            loading={
-              loading
-            }
+            contracts={contracts}
+            loading={loading}
             onSelectAppointment={
               handleAppointmentSelect
             }
@@ -764,9 +760,36 @@ function App() {
             }
           />
 
-        ) : (
+        ) : page ===
+          "epvs" ? (
 
           <EPVSCalculator />
+
+        ) : (
+
+          <Dashboard
+            contracts={
+              contracts
+            }
+            total={
+              totalValue
+            }
+            avg={
+              averageValue
+            }
+            upcoming={
+              upcomingInstallations
+            }
+            loading={
+              loading
+            }
+            setPage={
+              handlePageChange
+            }
+            setSelected={
+              setSelected
+            }
+          />
 
         )}
 
