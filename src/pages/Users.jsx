@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react"
-
 import {
   Search,
   Plus,
@@ -9,7 +8,6 @@ import {
   ChevronDown,
   ChevronRight,
   RefreshCw,
-  SlidersHorizontal,
   UsersRound,
 } from "lucide-react"
 
@@ -26,8 +24,11 @@ function display(value, fallback = "—") {
 }
 
 
-function getPermissionLabel(level) {
+/* =========================================================
+   PERMISSION LABEL
+========================================================= */
 
+function getPermissionLabel(level) {
   const value = Number(level)
 
   if (value >= 4) {
@@ -55,13 +56,16 @@ function ReportingTreeNode({
   children,
   expandedUsers,
   toggleUser,
+  onEdit,
   depth = 0,
 }) {
 
-  const hasChildren = children.length > 0
+  const hasChildren =
+    children.length > 0
 
   const isExpanded =
     expandedUsers[user.id] !== false
+
 
   return (
     <div className="reporting-tree-node">
@@ -69,16 +73,23 @@ function ReportingTreeNode({
       <div
         className="reporting-tree-row"
         style={{
-          marginLeft: `${depth * 28}px`,
+          marginLeft:
+            `${depth * 28}px`,
         }}
       >
 
+        {/* CONNECTOR */}
+
         <div className="reporting-tree-connector">
+
           {depth > 0 && (
             <span className="tree-horizontal-line" />
           )}
+
         </div>
 
+
+        {/* EXPAND / COLLAPSE */}
 
         <button
           type="button"
@@ -88,9 +99,11 @@ function ReportingTreeNode({
               : "no-children"
           }`}
           onClick={() => {
+
             if (hasChildren) {
               toggleUser(user.id)
             }
+
           }}
           aria-label={
             hasChildren
@@ -110,28 +123,39 @@ function ReportingTreeNode({
         </button>
 
 
+        {/* USER CARD */}
+
         <div className="reporting-user-card">
 
           <div className="reporting-user-main">
 
+            {/* AVATAR */}
+
             <div className="reporting-avatar">
+
               {display(
                 user.full_name,
                 "?"
               )
                 .charAt(0)
                 .toUpperCase()}
+
             </div>
 
+
+            {/* DETAILS */}
 
             <div className="reporting-user-details">
 
               <div className="reporting-user-name">
+
                 {display(
                   user.full_name,
                   "Unnamed user"
                 )}
+
               </div>
+
 
               <div className="reporting-user-meta">
 
@@ -141,11 +165,12 @@ function ReportingTreeNode({
                   </span>
                 )}
 
-                {user.role && user.branch && (
-                  <span className="reporting-dot">
-                    •
-                  </span>
-                )}
+                {user.role &&
+                  user.branch && (
+                    <span className="reporting-dot">
+                      •
+                    </span>
+                  )}
 
                 {user.branch && (
                   <span>
@@ -160,30 +185,46 @@ function ReportingTreeNode({
           </div>
 
 
+          {/* RIGHT SIDE */}
+
           <div className="reporting-user-right">
 
             <span className="permission-badge">
+
               {getPermissionLabel(
                 user.permission_level
               )}
+
             </span>
 
 
-            {user.active !== false ? (
+            <span className="active-badge">
 
-              <span className="active-badge">
-                <Check size={11} />
-                Active
-              </span>
+              <Check size={11} />
 
-            ) : (
+              Active
 
-              <span className="inactive-badge">
-                <X size={11} />
-                Inactive
-              </span>
+            </span>
 
-            )}
+
+            {/* EDIT */}
+
+            <button
+              type="button"
+              className="reporting-edit-button"
+              title={
+                `Edit ${display(
+                  user.full_name
+                )}`
+              }
+              onClick={() =>
+                onEdit(user)
+              }
+            >
+
+              <Pencil size={12} />
+
+            </button>
 
           </div>
 
@@ -192,26 +233,42 @@ function ReportingTreeNode({
       </div>
 
 
-      {hasChildren && isExpanded && (
+      {/* CHILDREN */}
 
-        <div className="reporting-tree-children">
+      {hasChildren &&
+        isExpanded && (
 
-          {children.map((child) => (
+          <div className="reporting-tree-children">
 
-            <ReportingTreeNode
-              key={child.id}
-              user={child}
-              children={child.children}
-              expandedUsers={expandedUsers}
-              toggleUser={toggleUser}
-              depth={depth + 1}
-            />
+            {children.map(
+              (child) => (
 
-          ))}
+                <ReportingTreeNode
+                  key={child.id}
+                  user={child}
+                  children={
+                    child.children
+                  }
+                  expandedUsers={
+                    expandedUsers
+                  }
+                  toggleUser={
+                    toggleUser
+                  }
+                  onEdit={
+                    onEdit
+                  }
+                  depth={
+                    depth + 1
+                  }
+                />
 
-        </div>
+              )
+            )}
 
-      )}
+          </div>
+
+        )}
 
     </div>
   )
@@ -224,7 +281,8 @@ function ReportingTreeNode({
 
 export default function Users() {
 
-  const [users, setUsers] = useState([])
+  const [users, setUsers] =
+    useState([])
 
   const [loading, setLoading] =
     useState(true)
@@ -235,8 +293,28 @@ export default function Users() {
   const [error, setError] =
     useState("")
 
+
+  /* =======================================================
+     SEARCH / FILTERS
+  ======================================================= */
+
   const [search, setSearch] =
     useState("")
+
+  const [statusFilter, setStatusFilter] =
+    useState("all")
+
+  const [branchFilter, setBranchFilter] =
+    useState("all")
+
+  const [roleFilter, setRoleFilter] =
+    useState("all")
+
+  const [permissionFilter, setPermissionFilter] =
+    useState("all")
+
+  const [managerFilter, setManagerFilter] =
+    useState("all")
 
 
   /* =======================================================
@@ -245,23 +323,6 @@ export default function Users() {
 
   const [view, setView] =
     useState("table")
-
-
-  /* =======================================================
-     FILTERS
-  ======================================================= */
-
-  const [showFilters, setShowFilters] =
-    useState(false)
-
-  const [filters, setFilters] =
-    useState({
-      status: "all",
-      branch: "all",
-      role: "all",
-      permission: "all",
-      manager: "all",
-    })
 
 
   /* =======================================================
@@ -333,10 +394,13 @@ export default function Users() {
       } = await supabase
         .from("profiles")
         .select("*")
-        .order("full_name", {
-          ascending: true,
-          nullsFirst: false,
-        })
+        .order(
+          "full_name",
+          {
+            ascending: true,
+            nullsFirst: false,
+          }
+        )
 
 
       if (supabaseError) {
@@ -346,17 +410,6 @@ export default function Users() {
 
       setUsers(data || [])
 
-
-      /* Automatically expand the tree */
-
-      const expanded = {}
-
-      ;(data || []).forEach((user) => {
-        expanded[user.id] = true
-      })
-
-      setExpandedUsers(expanded)
-
     } catch (err) {
 
       console.error(
@@ -364,10 +417,12 @@ export default function Users() {
         err
       )
 
+
       setError(
         err?.message ||
         "Unable to load users."
       )
+
 
       setUsers([])
 
@@ -389,8 +444,50 @@ export default function Users() {
 
 
   /* =======================================================
-     MANAGERS
+     FILTER OPTIONS
   ======================================================= */
+
+  const branches = useMemo(() => {
+
+    return [
+      ...new Set(
+        users
+          .map(
+            (user) =>
+              String(
+                user.branch ?? ""
+              ).trim()
+          )
+          .filter(Boolean)
+      ),
+    ].sort(
+      (a, b) =>
+        a.localeCompare(b)
+    )
+
+  }, [users])
+
+
+  const roles = useMemo(() => {
+
+    return [
+      ...new Set(
+        users
+          .map(
+            (user) =>
+              String(
+                user.role ?? ""
+              ).trim()
+          )
+          .filter(Boolean)
+      ),
+    ].sort(
+      (a, b) =>
+        a.localeCompare(b)
+    )
+
+  }, [users])
+
 
   const managers = useMemo(() => {
 
@@ -399,104 +496,22 @@ export default function Users() {
         (user) =>
           user.active !== false
       )
-      .sort((a, b) =>
-        display(a.full_name)
-          .localeCompare(
-            display(b.full_name)
-          )
-      )
-
-  }, [users])
-
-
-  /* =======================================================
-     FILTER OPTIONS
-  ======================================================= */
-
-  const filterOptions = useMemo(() => {
-
-    const unique = (values) => {
-
-      return [
-        ...new Set(
-          values
-            .map((value) =>
-              String(
-                value ?? ""
-              ).trim()
+      .sort(
+        (a, b) =>
+          display(
+            a.full_name
+          ).localeCompare(
+            display(
+              b.full_name
             )
-            .filter(Boolean)
-        ),
-      ].sort((a, b) =>
-        a.localeCompare(b)
-      )
-
-    }
-
-
-    return {
-
-      branches: unique(
-        users.map(
-          (user) =>
-            user.branch
-        )
-      ),
-
-      roles: unique(
-        users.map(
-          (user) =>
-            user.role
-        )
-      ),
-
-      managers:
-        users
-          .filter(
-            (user) =>
-              user.active !== false
           )
-          .sort((a, b) =>
-            display(a.full_name)
-              .localeCompare(
-                display(b.full_name)
-              )
-          ),
-
-    }
+      )
 
   }, [users])
 
 
   /* =======================================================
-     MANAGER NAME
-  ======================================================= */
-
-  function getManagerName(
-    managerId
-  ) {
-
-    if (!managerId) {
-      return "No manager"
-    }
-
-
-    const manager =
-      users.find(
-        (user) =>
-          user.id === managerId
-      )
-
-
-    return display(
-      manager?.full_name,
-      "Unknown manager"
-    )
-  }
-
-
-  /* =======================================================
-     FILTER USERS
+     FILTERED USERS
   ======================================================= */
 
   const filteredUsers = useMemo(() => {
@@ -507,187 +522,195 @@ export default function Users() {
         .trim()
 
 
-    return users.filter((user) => {
+    return users.filter(
+      (user) => {
+
+        /* SEARCH */
+
+        if (query) {
+
+          const values = [
+            user.full_name,
+            user.role,
+            user.branch,
+            user.permission_level,
+            user.manager_id,
+          ]
 
 
-      /* SEARCH */
-
-      if (query) {
-
-        const values = [
-
-          user.full_name,
-
-          user.role,
-
-          user.branch,
-
-          user.permission_level,
-
-          user.manager_id,
-
-          getManagerName(
-            user.manager_id
-          ),
-
-        ]
+          const matchesSearch =
+            values.some(
+              (value) =>
+                String(
+                  value ?? ""
+                )
+                  .toLowerCase()
+                  .includes(
+                    query
+                  )
+            )
 
 
-        const matchesSearch =
-          values.some(
-            (value) =>
-              String(
-                value ?? ""
-              )
-                .toLowerCase()
-                .includes(query)
-          )
+          if (!matchesSearch) {
+            return false
+          }
 
-
-        if (!matchesSearch) {
-          return false
         }
+
+
+        /* STATUS */
+
+        if (
+          statusFilter !==
+          "all"
+        ) {
+
+          const isActive =
+            user.active !== false
+
+
+          if (
+            statusFilter ===
+              "active" &&
+            !isActive
+          ) {
+            return false
+          }
+
+
+          if (
+            statusFilter ===
+              "inactive" &&
+            isActive
+          ) {
+            return false
+          }
+
+        }
+
+
+        /* BRANCH */
+
+        if (
+          branchFilter !==
+          "all"
+        ) {
+
+          if (
+            display(
+              user.branch,
+              ""
+            ) !==
+            branchFilter
+          ) {
+            return false
+          }
+
+        }
+
+
+        /* ROLE */
+
+        if (
+          roleFilter !==
+          "all"
+        ) {
+
+          if (
+            display(
+              user.role,
+              ""
+            ) !==
+            roleFilter
+          ) {
+            return false
+          }
+
+        }
+
+
+        /* PERMISSION */
+
+        if (
+          permissionFilter !==
+          "all"
+        ) {
+
+          if (
+            Number(
+              user.permission_level
+            ) !==
+            Number(
+              permissionFilter
+            )
+          ) {
+            return false
+          }
+
+        }
+
+
+        /* MANAGER */
+
+        if (
+          managerFilter !==
+          "all"
+        ) {
+
+          if (
+            user.manager_id !==
+            managerFilter
+          ) {
+            return false
+          }
+
+        }
+
+
+        return true
       }
-
-
-      /* STATUS */
-
-      if (
-        filters.status !== "all" &&
-        filters.status !== (
-          user.active !== false
-            ? "active"
-            : "inactive"
-        )
-      ) {
-
-        return false
-      }
-
-
-      /* BRANCH */
-
-      if (
-        filters.branch !== "all" &&
-        user.branch !==
-          filters.branch
-      ) {
-
-        return false
-      }
-
-
-      /* ROLE */
-
-      if (
-        filters.role !== "all" &&
-        user.role !==
-          filters.role
-      ) {
-
-        return false
-      }
-
-
-      /* PERMISSION */
-
-      if (
-        filters.permission !== "all" &&
-        Number(
-          user.permission_level
-        ) !==
-          Number(
-            filters.permission
-          )
-      ) {
-
-        return false
-      }
-
-
-      /* MANAGER */
-
-      if (
-        filters.manager !== "all" &&
-        user.manager_id !==
-          filters.manager
-      ) {
-
-        return false
-      }
-
-
-      return true
-
-    })
+    )
 
   }, [
     users,
     search,
-    filters,
+    statusFilter,
+    branchFilter,
+    roleFilter,
+    permissionFilter,
+    managerFilter,
   ])
 
 
   /* =======================================================
-     ACTIVE FILTER COUNT
-  ======================================================= */
+     REPORTING TREE DATA
 
-  const activeFilterCount =
-    Object.values(filters)
-      .filter(
-        (value) =>
-          value !== "all"
-      )
-      .length
-
-
-  /* =======================================================
-     UPDATE FILTER
-  ======================================================= */
-
-  function updateFilter(
-    field,
-    value
-  ) {
-
-    setFilters(
-      (current) => ({
-        ...current,
-        [field]: value,
-      })
-    )
-
-  }
-
-
-  /* =======================================================
-     CLEAR FILTERS
-  ======================================================= */
-
-  function clearFilters() {
-
-    setFilters({
-      status: "all",
-      branch: "all",
-      role: "all",
-      permission: "all",
-      manager: "all",
-    })
-
-  }
-
-
-  /* =======================================================
-     TREE DATA
-  ======================================================= */
+     ONLY ACTIVE USERS ARE INCLUDED.
+======================================================= */
 
   const reportingTree =
     useMemo(() => {
 
+      /*
+        Start with active users only.
+
+        This is intentionally independent of
+        statusFilter because inactive users should
+        NEVER appear in the reporting tree.
+      */
+
+      const activeTreeUsers =
+        filteredUsers.filter(
+          (user) =>
+            user.active !== false
+        )
+
+
       const userMap =
         new Map()
 
-      filteredUsers.forEach(
+
+      activeTreeUsers.forEach(
         (user) => {
 
           userMap.set(
@@ -705,7 +728,7 @@ export default function Users() {
       const roots = []
 
 
-      filteredUsers.forEach(
+      activeTreeUsers.forEach(
         (user) => {
 
           const current =
@@ -715,9 +738,10 @@ export default function Users() {
 
 
           /*
-             If the manager is not in
-             the filtered results, this
-             person becomes a root.
+            If there is no manager,
+            OR the manager is inactive/not
+            present in the active tree,
+            this user becomes a root.
           */
 
           if (
@@ -774,6 +798,7 @@ export default function Users() {
 
 
         return nodes
+
       }
 
 
@@ -781,11 +806,13 @@ export default function Users() {
         roots
       )
 
-    }, [filteredUsers])
+    }, [
+      filteredUsers
+    ])
 
 
   /* =======================================================
-     TREE CONTROLS
+     TOGGLE TREE USER
   ======================================================= */
 
   function toggleUser(
@@ -795,23 +822,55 @@ export default function Users() {
     setExpandedUsers(
       (current) => ({
         ...current,
+
         [userId]:
-          current[userId] === false,
-    })
+          current[userId] ===
+          false,
+      })
     )
 
   }
 
+
+  /* =======================================================
+     EXPAND ALL
+  ======================================================= */
 
   function expandAll() {
 
     const expanded = {}
 
-    filteredUsers.forEach(
-      (user) => {
-        expanded[user.id] = true
-      }
+
+    function walk(nodes) {
+
+      nodes.forEach(
+        (node) => {
+
+          if (
+            node.children.length
+          ) {
+
+            expanded[
+              node.id
+            ] = true
+
+          }
+
+
+          walk(
+            node.children
+          )
+
+        }
+      )
+
+    }
+
+
+    walk(
+      reportingTree
     )
+
 
     setExpandedUsers(
       expanded
@@ -820,19 +879,70 @@ export default function Users() {
   }
 
 
+  /* =======================================================
+     COLLAPSE ALL
+  ======================================================= */
+
   function collapseAll() {
 
-    const expanded = {}
+    const collapsed = {}
 
-    filteredUsers.forEach(
-      (user) => {
-        expanded[user.id] = false
-      }
+
+    function walk(nodes) {
+
+      nodes.forEach(
+        (node) => {
+
+          if (
+            node.children.length
+          ) {
+
+            collapsed[
+              node.id
+            ] = false
+
+          }
+
+
+          walk(
+            node.children
+          )
+
+        }
+      )
+
+    }
+
+
+    walk(
+      reportingTree
     )
+
 
     setExpandedUsers(
-      expanded
+      collapsed
     )
+
+  }
+
+
+  /* =======================================================
+     CLEAR FILTERS
+  ======================================================= */
+
+  function clearFilters() {
+
+    setSearch("")
+
+    setStatusFilter("all")
+
+    setBranchFilter("all")
+
+    setRoleFilter("all")
+
+    setPermissionFilter("all")
+
+    setManagerFilter("all")
 
   }
 
@@ -852,6 +962,7 @@ export default function Users() {
     setError("")
 
     setShowModal(true)
+
   }
 
 
@@ -900,6 +1011,7 @@ export default function Users() {
     setError("")
 
     setShowModal(true)
+
   }
 
 
@@ -913,6 +1025,7 @@ export default function Users() {
       return
     }
 
+
     setShowModal(false)
 
     setEditingUser(null)
@@ -922,6 +1035,7 @@ export default function Users() {
     })
 
     setError("")
+
   }
 
 
@@ -1007,27 +1121,35 @@ export default function Users() {
       }
 
 
-      /* ===================================================
-         UPDATE
-      =================================================== */
+      /* UPDATE */
 
-      if (editingUser) {
+      if (
+        editingUser
+      ) {
 
         const {
           data,
-          error: updateError,
-        } = await supabase
-          .from("profiles")
-          .update(payload)
-          .eq(
-            "id",
-            editingUser.id
-          )
-          .select()
-          .single()
+          error:
+            updateError,
+        } =
+          await supabase
+            .from(
+              "profiles"
+            )
+            .update(
+              payload
+            )
+            .eq(
+              "id",
+              editingUser.id
+            )
+            .select()
+            .single()
 
 
-        if (updateError) {
+        if (
+          updateError
+        ) {
           throw updateError
         }
 
@@ -1046,23 +1168,29 @@ export default function Users() {
       }
 
 
-      /* ===================================================
-         INSERT
-      =================================================== */
+      /* INSERT */
 
       else {
 
         const {
           data,
-          error: insertError,
-        } = await supabase
-          .from("profiles")
-          .insert(payload)
-          .select()
-          .single()
+          error:
+            insertError,
+        } =
+          await supabase
+            .from(
+              "profiles"
+            )
+            .insert(
+              payload
+            )
+            .select()
+            .single()
 
 
-        if (insertError) {
+        if (
+          insertError
+        ) {
           throw insertError
         }
 
@@ -1079,12 +1207,15 @@ export default function Users() {
 
       closeModal()
 
-    } catch (err) {
+    } catch (
+      err
+    ) {
 
       console.error(
         "Error saving user:",
         err
       )
+
 
       setError(
         err?.message ||
@@ -1094,13 +1225,75 @@ export default function Users() {
     } finally {
 
       setSaving(false)
+
     }
+
   }
 
 
-  /* =========================================================
+  /* =======================================================
+     MANAGER NAME
+  ======================================================= */
+
+  function getManagerName(
+    managerId
+  ) {
+
+    if (!managerId) {
+      return "No manager"
+    }
+
+
+    const manager =
+      users.find(
+        (user) =>
+          user.id ===
+          managerId
+      )
+
+
+    return display(
+      manager?.full_name,
+      "Unknown manager"
+    )
+
+  }
+
+
+  /* =======================================================
+     ACTIVE COUNT
+  ======================================================= */
+
+  const activeCount =
+    users.filter(
+      (user) =>
+        user.active !== false
+    ).length
+
+
+  const inactiveCount =
+    users.filter(
+      (user) =>
+        user.active === false
+    ).length
+
+
+  /* =======================================================
+     FILTER ACTIVE
+  ======================================================= */
+
+  const filtersActive =
+    search.trim() !== "" ||
+    statusFilter !== "all" ||
+    branchFilter !== "all" ||
+    roleFilter !== "all" ||
+    permissionFilter !== "all" ||
+    managerFilter !== "all"
+
+
+  /* =======================================================
      RENDER
-  ========================================================= */
+  ======================================================= */
 
   return (
 
@@ -1233,6 +1426,109 @@ export default function Users() {
 
 
         /* =================================================
+           SUMMARY
+        ================================================= */
+
+        .users-summary {
+          display:
+            flex;
+
+          gap:
+            10px;
+
+          margin-bottom:
+            14px;
+        }
+
+
+        .users-summary-card {
+          display:
+            flex;
+
+          align-items:
+            center;
+
+          gap:
+            9px;
+
+          min-width:
+            115px;
+
+          padding:
+            9px 11px;
+
+          border:
+            1px solid #e1e5ea;
+
+          border-radius:
+            7px;
+
+          background:
+            #fff;
+        }
+
+
+        .users-summary-icon {
+          width:
+            27px;
+
+          height:
+            27px;
+
+          display:
+            flex;
+
+          align-items:
+            center;
+
+          justify-content:
+            center;
+
+          border-radius:
+            6px;
+
+          background:
+            #eef7ff;
+
+          color:
+            #2499ed;
+        }
+
+
+        .users-summary-number {
+          font-size:
+            14px;
+
+          line-height:
+            1;
+
+          font-weight:
+            800;
+
+          color:
+            #172033;
+        }
+
+
+        .users-summary-label {
+          margin-top:
+            3px;
+
+          font-size:
+            8px;
+
+          color:
+            #8993a0;
+
+          text-transform:
+            uppercase;
+
+          letter-spacing:
+            .04em;
+        }
+
+
+        /* =================================================
            CARD
         ================================================= */
 
@@ -1286,8 +1582,10 @@ export default function Users() {
           gap:
             8px;
 
-          min-width:
-            0;
+          flex-wrap:
+            wrap;
+
+          flex: 1;
         }
 
 
@@ -1302,7 +1600,7 @@ export default function Users() {
             8px;
 
           width:
-            300px;
+            280px;
 
           max-width:
             100%;
@@ -1351,18 +1649,76 @@ export default function Users() {
         }
 
 
-        .users-filter-button {
+        /* =================================================
+           FILTERS
+        ================================================= */
+
+        .users-filters {
           display:
-            inline-flex;
+            flex;
 
           align-items:
             center;
 
           gap:
+            7px;
+
+          padding:
+            10px 14px;
+
+          background:
+            #fafbfc;
+
+          border-bottom:
+            1px solid #edf0f3;
+
+          flex-wrap:
+            wrap;
+        }
+
+
+        .users-filter-select {
+          height:
+            32px;
+
+          padding:
+            0 27px 0 9px;
+
+          border:
+            1px solid #dfe4e9;
+
+          border-radius:
             6px;
 
+          background:
+            #fff;
+
+          color:
+            #4b5563;
+
+          font-family:
+            inherit;
+
+          font-size:
+            10px;
+
+          outline:
+            none;
+
+          cursor:
+            pointer;
+        }
+
+
+        .users-filter-select:focus {
+          border-color:
+            #2499ed;
+        }
+
+
+        .users-clear-filters {
           height:
-            34px;
+            32px;
 
           padding:
             0 10px;
@@ -1386,73 +1742,90 @@ export default function Users() {
             10px;
 
           font-weight:
-            650;
+            600;
 
           cursor:
             pointer;
         }
 
 
-        .users-filter-button:hover {
+        .users-clear-filters:hover {
           background:
-            #f8fafc;
+            #f3f6f8;
 
-          border-color:
-            #cfd6dd;
-        }
-
-
-        .users-filter-button.has-filters {
           color:
-            #2499ed;
-
-          border-color:
-            #b9ddf7;
-
-          background:
-            #f3faff;
+            #172033;
         }
 
 
-        .users-filter-count {
+        /* =================================================
+           VIEW SWITCHER
+        ================================================= */
+
+        .users-view-switcher {
           display:
             inline-flex;
 
           align-items:
             center;
 
-          justify-content:
-            center;
-
-          min-width:
-            17px;
-
-          height:
-            17px;
-
           padding:
-            0 4px;
+            2px;
+
+          border:
+            1px solid #dfe4e9;
 
           border-radius:
-            9px;
+            6px;
 
           background:
-            #2499ed;
+            #f5f7f8;
+        }
+
+
+        .users-view-button {
+          height:
+            28px;
+
+          padding:
+            0 10px;
+
+          border:
+            0;
+
+          border-radius:
+            4px;
+
+          background:
+            transparent;
 
           color:
-            #fff;
+            #7b8794;
+
+          font-family:
+            inherit;
 
           font-size:
             9px;
 
           font-weight:
-            800;
+            700;
+
+          cursor:
+            pointer;
         }
 
 
-        .filter-chevron-open {
-          transform:
-            rotate(180deg);
+        .users-view-button.active {
+          background:
+            #fff;
+
+          color:
+            #172033;
+
+          box-shadow:
+            0 1px 3px
+            rgba(0,0,0,.08);
         }
 
 
@@ -1504,235 +1877,6 @@ export default function Users() {
 
           cursor:
             default;
-        }
-
-
-        /* =================================================
-           VIEW SWITCHER
-        ================================================= */
-
-        .users-view-switcher {
-          display:
-            inline-flex;
-
-          align-items:
-            center;
-
-          gap:
-            2px;
-
-          padding:
-            3px;
-
-          border:
-            1px solid #dfe4e9;
-
-          border-radius:
-            7px;
-
-          background:
-            #f6f8fa;
-        }
-
-
-        .users-view-button {
-          display:
-            inline-flex;
-
-          align-items:
-            center;
-
-          gap:
-            6px;
-
-          height:
-            29px;
-
-          padding:
-            0 9px;
-
-          border:
-            0;
-
-          border-radius:
-            5px;
-
-          background:
-            transparent;
-
-          color:
-            #7b8794;
-
-          font-family:
-            inherit;
-
-          font-size:
-            9px;
-
-          font-weight:
-            700;
-
-          cursor:
-            pointer;
-        }
-
-
-        .users-view-button.active {
-          background:
-            #fff;
-
-          color:
-            #172033;
-
-          box-shadow:
-            0 1px 3px
-            rgba(0,0,0,.08);
-        }
-
-
-        /* =================================================
-           FILTER PANEL
-        ================================================= */
-
-        .users-filter-panel {
-          display:
-            flex;
-
-          align-items:
-            flex-end;
-
-          flex-wrap:
-            wrap;
-
-          gap:
-            10px;
-
-          padding:
-            12px 14px;
-
-          background:
-            #fafbfc;
-
-          border-bottom:
-            1px solid #e7eaee;
-        }
-
-
-        .users-filter-field {
-          display:
-            flex;
-
-          flex-direction:
-            column;
-
-          gap:
-            5px;
-
-          min-width:
-            145px;
-        }
-
-
-        .users-filter-field label {
-          color:
-            #718096;
-
-          font-size:
-            8px;
-
-          font-weight:
-            800;
-
-          text-transform:
-            uppercase;
-
-          letter-spacing:
-            .05em;
-        }
-
-
-        .users-filter-field select {
-          height:
-            32px;
-
-          min-width:
-            145px;
-
-          padding:
-            0 28px 0 9px;
-
-          border:
-            1px solid #dfe4e9;
-
-          border-radius:
-            6px;
-
-          background:
-            #fff;
-
-          color:
-            #273142;
-
-          font-family:
-            inherit;
-
-          font-size:
-            10px;
-
-          outline:
-            none;
-
-          cursor:
-            pointer;
-        }
-
-
-        .users-filter-field select:focus {
-          border-color:
-            #2499ed;
-
-          box-shadow:
-            0 0 0 2px
-            rgba(36,153,237,.08);
-        }
-
-
-        .users-clear-filters {
-          height:
-            32px;
-
-          padding:
-            0 10px;
-
-          border:
-            0;
-
-          background:
-            transparent;
-
-          color:
-            #64748b;
-
-          font-family:
-            inherit;
-
-          font-size:
-            10px;
-
-          font-weight:
-            650;
-
-          cursor:
-            pointer;
-        }
-
-
-        .users-clear-filters:hover {
-          color:
-            #172033;
-
-          text-decoration:
-            underline;
         }
 
 
@@ -1846,7 +1990,33 @@ export default function Users() {
            BADGES
         ================================================= */
 
-        .user-badge,
+        .user-badge {
+          display:
+            inline-flex;
+
+          align-items:
+            center;
+
+          padding:
+            4px 7px;
+
+          border-radius:
+            5px;
+
+          background:
+            #f1f4f6;
+
+          color:
+            #596575;
+
+          font-size:
+            9px;
+
+          font-weight:
+            700;
+        }
+
+
         .permission-badge {
           display:
             inline-flex;
@@ -1860,29 +2030,20 @@ export default function Users() {
           border-radius:
             5px;
 
-          font-size:
-            9px;
-
-          font-weight:
-            700;
-        }
-
-
-        .user-badge {
-          background:
-            #f1f4f6;
-
-          color:
-            #596575;
-        }
-
-
-        .permission-badge {
           background:
             #eef7ff;
 
           color:
             #2679b3;
+
+          font-size:
+            9px;
+
+          font-weight:
+            700;
+
+          white-space:
+            nowrap;
         }
 
 
@@ -1904,6 +2065,9 @@ export default function Users() {
 
           font-weight:
             700;
+
+          white-space:
+            nowrap;
         }
 
 
@@ -1929,7 +2093,7 @@ export default function Users() {
 
 
         /* =================================================
-           EDIT
+           EDIT BUTTON
         ================================================= */
 
         .user-edit-button {
@@ -1997,6 +2161,12 @@ export default function Users() {
            REPORTING TREE
         ================================================= */
 
+        .reporting-tree {
+          padding:
+            18px;
+        }
+
+
         .reporting-tree-header {
           display:
             flex;
@@ -2008,20 +2178,20 @@ export default function Users() {
             space-between;
 
           gap:
-            20px;
+            15px;
 
-          padding:
-            13px 16px;
+          margin-bottom:
+            18px;
+
+          padding-bottom:
+            13px;
 
           border-bottom:
-            1px solid #e7eaee;
-
-          background:
-            #fff;
+            1px solid #edf0f3;
         }
 
 
-        .reporting-tree-title {
+        .reporting-tree-heading {
           display:
             flex;
 
@@ -2030,21 +2200,18 @@ export default function Users() {
 
           gap:
             9px;
-
-          font-size:
-            11px;
-
-          font-weight:
-            750;
-
-          color:
-            #273142;
         }
 
 
-        .reporting-tree-title-icon {
+        .reporting-tree-heading-icon {
+          width:
+            32px;
+
+          height:
+            32px;
+
           display:
-            inline-flex;
+            flex;
 
           align-items:
             center;
@@ -2052,14 +2219,8 @@ export default function Users() {
           justify-content:
             center;
 
-          width:
-            27px;
-
-          height:
-            27px;
-
           border-radius:
-            6px;
+            7px;
 
           background:
             #eef7ff;
@@ -2069,12 +2230,36 @@ export default function Users() {
         }
 
 
+        .reporting-tree-title {
+          margin:
+            0;
+
+          font-size:
+            13px;
+
+          font-weight:
+            750;
+
+          color:
+            #172033;
+        }
+
+
+        .reporting-tree-subtitle {
+          margin:
+            3px 0 0;
+
+          font-size:
+            9px;
+
+          color:
+            #8a95a1;
+        }
+
+
         .reporting-tree-actions {
           display:
             flex;
-
-          align-items:
-            center;
 
           gap:
             6px;
@@ -2083,13 +2268,13 @@ export default function Users() {
 
         .reporting-tree-action {
           height:
-            28px;
+            29px;
 
           padding:
             0 9px;
 
           border:
-            1px solid #e0e5e9;
+            1px solid #e1e5e9;
 
           border-radius:
             5px;
@@ -2107,7 +2292,7 @@ export default function Users() {
             9px;
 
           font-weight:
-            650;
+            600;
 
           cursor:
             pointer;
@@ -2116,25 +2301,10 @@ export default function Users() {
 
         .reporting-tree-action:hover {
           background:
-            #f7f9fa;
+            #f6f8fa;
 
           color:
             #172033;
-        }
-
-
-        .reporting-tree-container {
-          padding:
-            18px 20px 24px;
-
-          min-height:
-            300px;
-
-          background:
-            #fbfcfd;
-
-          overflow-x:
-            auto;
         }
 
 
@@ -2155,22 +2325,58 @@ export default function Users() {
             center;
 
           min-height:
-            64px;
+            58px;
+
+          margin-bottom:
+            7px;
+        }
+
+
+        .reporting-tree-connector {
+          width:
+            20px;
+
+          height:
+            100%;
+
+          position:
+            relative;
+
+          flex-shrink:
+            0;
+        }
+
+
+        .tree-horizontal-line {
+          position:
+            absolute;
+
+          left:
+            0;
+
+          top:
+            50%;
+
+          width:
+            20px;
+
+          height:
+            1px;
+
+          background:
+            #d8dee4;
         }
 
 
         .reporting-tree-toggle {
           width:
-            25px;
+            26px;
 
           height:
-            25px;
-
-          flex-shrink:
-            0;
+            26px;
 
           display:
-            inline-flex;
+            flex;
 
           align-items:
             center;
@@ -2178,14 +2384,17 @@ export default function Users() {
           justify-content:
             center;
 
+          flex-shrink:
+            0;
+
           margin-right:
             7px;
 
           border:
-            1px solid #dfe5ea;
+            1px solid #dfe4e8;
 
           border-radius:
-            6px;
+            5px;
 
           background:
             #fff;
@@ -2200,7 +2409,10 @@ export default function Users() {
 
         .reporting-tree-toggle:hover {
           background:
-            #f3f7fa;
+            #f4f7f9;
+
+          color:
+            #172033;
         }
 
 
@@ -2216,49 +2428,13 @@ export default function Users() {
         }
 
 
-        .reporting-tree-connector {
-          position:
-            absolute;
-
-          left:
-            -17px;
-
-          top:
-            0;
-
-          bottom:
-            0;
-
-          width:
-            17px;
-
-          pointer-events:
-            none;
-        }
-
-
-        .tree-horizontal-line {
-          position:
-            absolute;
-
-          top:
-            50%;
-
-          left:
-            0;
-
-          width:
-            17px;
-
-          height:
-            1px;
-
-          background:
-            #d8dee4;
-        }
-
-
         .reporting-user-card {
+          min-width:
+            0;
+
+          flex:
+            1;
+
           display:
             flex;
 
@@ -2269,19 +2445,13 @@ export default function Users() {
             space-between;
 
           gap:
-            30px;
-
-          width:
-            min(720px, calc(100vw - 100px));
-
-          min-height:
-            54px;
+            15px;
 
           padding:
-            7px 11px;
+            9px 11px;
 
           border:
-            1px solid #e0e5e9;
+            1px solid #e1e5e9;
 
           border-radius:
             8px;
@@ -2289,18 +2459,17 @@ export default function Users() {
           background:
             #fff;
 
-          box-shadow:
-            0 1px 2px
-            rgba(15,23,42,.03);
+          transition:
+            .15s ease;
         }
 
 
         .reporting-user-card:hover {
           border-color:
-            #cdd8e1;
+            #cfd8df;
 
           box-shadow:
-            0 2px 5px
+            0 2px 8px
             rgba(15,23,42,.05);
         }
 
@@ -2327,9 +2496,6 @@ export default function Users() {
           height:
             34px;
 
-          flex-shrink:
-            0;
-
           display:
             flex;
 
@@ -2339,17 +2505,20 @@ export default function Users() {
           justify-content:
             center;
 
+          flex-shrink:
+            0;
+
           border-radius:
             50%;
 
           background:
-            #eaf4fc;
+            #eef7ff;
 
           color:
-            #2476a9;
+            #2499ed;
 
           font-size:
-            11px;
+            12px;
 
           font-weight:
             800;
@@ -2363,23 +2532,23 @@ export default function Users() {
 
 
         .reporting-user-name {
-          color:
-            #172033;
-
           font-size:
             11px;
 
           font-weight:
             750;
 
+          color:
+            #172033;
+
+          white-space:
+            nowrap;
+
           overflow:
             hidden;
 
           text-overflow:
             ellipsis;
-
-          white-space:
-            nowrap;
         }
 
 
@@ -2391,16 +2560,16 @@ export default function Users() {
             center;
 
           gap:
-            6px;
+            5px;
 
           margin-top:
             3px;
 
-          color:
-            #8994a0;
-
           font-size:
             9px;
+
+          color:
+            #8a95a1;
 
           white-space:
             nowrap;
@@ -2409,7 +2578,7 @@ export default function Users() {
 
         .reporting-dot {
           color:
-            #c1c8cf;
+            #c3cad1;
         }
 
 
@@ -2421,10 +2590,67 @@ export default function Users() {
             center;
 
           gap:
-            12px;
+            8px;
 
           flex-shrink:
             0;
+        }
+
+
+        .reporting-edit-button {
+          width:
+            27px;
+
+          height:
+            27px;
+
+          display:
+            inline-flex;
+
+          align-items:
+            center;
+
+          justify-content:
+            center;
+
+          flex-shrink:
+            0;
+
+          border:
+            1px solid #e0e5e9;
+
+          border-radius:
+            6px;
+
+          background:
+            #fff;
+
+          color:
+            #718096;
+
+          cursor:
+            pointer;
+
+          transition:
+            .15s ease;
+        }
+
+
+        .reporting-edit-button:hover {
+          background:
+            #f3faff;
+
+          border-color:
+            #b9ddf7;
+
+          color:
+            #2499ed;
+        }
+
+
+        .reporting-edit-button:active {
+          transform:
+            translateY(1px);
         }
 
 
@@ -2442,13 +2668,13 @@ export default function Users() {
             absolute;
 
           left:
-            11px;
+            47px;
 
           top:
             0;
 
           bottom:
-            20px;
+            24px;
 
           width:
             1px;
@@ -2523,6 +2749,12 @@ export default function Users() {
 
           max-width:
             560px;
+
+          max-height:
+            calc(100vh - 40px);
+
+          overflow-y:
+            auto;
 
           background:
             #fff;
@@ -2631,7 +2863,10 @@ export default function Users() {
             grid;
 
           grid-template-columns:
-            repeat(2, minmax(0, 1fr));
+            repeat(
+              2,
+              minmax(0,1fr)
+            );
 
           gap:
             15px;
@@ -2647,12 +2882,6 @@ export default function Users() {
 
           gap:
             6px;
-        }
-
-
-        .users-form-field.full {
-          grid-column:
-            1 / -1;
         }
 
 
@@ -2963,7 +3192,9 @@ export default function Users() {
            MOBILE
         ================================================= */
 
-        @media (max-width: 700px) {
+        @media (
+          max-width: 700px
+        ) {
 
           .users-page {
             padding:
@@ -2986,6 +3217,12 @@ export default function Users() {
           }
 
 
+          .users-summary {
+            overflow-x:
+              auto;
+          }
+
+
           .users-toolbar {
             align-items:
               stretch;
@@ -2996,11 +3233,8 @@ export default function Users() {
 
 
           .users-toolbar-left {
-            align-items:
-              stretch;
-
-            flex-direction:
-              column;
+            width:
+              100%;
           }
 
 
@@ -3010,13 +3244,7 @@ export default function Users() {
           }
 
 
-          .users-filter-button {
-            justify-content:
-              center;
-          }
-
-
-          .users-filter-panel {
+          .users-filters {
             align-items:
               stretch;
 
@@ -3025,8 +3253,8 @@ export default function Users() {
           }
 
 
-          .users-filter-field,
-          .users-filter-field select {
+          .users-filter-select,
+          .users-clear-filters {
             width:
               100%;
           }
@@ -3038,21 +3266,18 @@ export default function Users() {
           }
 
 
+          .reporting-tree {
+            padding:
+              12px;
+          }
+
+
           .reporting-tree-header {
             align-items:
               flex-start;
 
             flex-direction:
               column;
-          }
-
-
-          .reporting-user-card {
-            width:
-              calc(100vw - 110px);
-
-            min-width:
-              280px;
           }
 
 
@@ -3069,15 +3294,21 @@ export default function Users() {
           }
 
 
-          .users-form-grid {
-            grid-template-columns:
-              1fr;
+          .reporting-user-meta {
+            max-width:
+              180px;
+
+            overflow:
+              hidden;
+
+            text-overflow:
+              ellipsis;
           }
 
 
-          .users-form-field.full {
-            grid-column:
-              auto;
+          .users-form-grid {
+            grid-template-columns:
+              1fr;
           }
 
 
@@ -3114,7 +3345,9 @@ export default function Users() {
         <button
           type="button"
           className="users-add-button"
-          onClick={openAddUser}
+          onClick={
+            openAddUser
+          }
         >
 
           <Plus size={15} />
@@ -3127,16 +3360,99 @@ export default function Users() {
 
 
       {/* =====================================================
+          SUMMARY
+      ===================================================== */}
+
+      <div className="users-summary">
+
+        <div className="users-summary-card">
+
+          <div className="users-summary-icon">
+
+            <UsersRound
+              size={15}
+            />
+
+          </div>
+
+
+          <div>
+
+            <div className="users-summary-number">
+              {users.length}
+            </div>
+
+            <div className="users-summary-label">
+              Total users
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div className="users-summary-card">
+
+          <div className="users-summary-icon">
+
+            <Check size={15} />
+
+          </div>
+
+
+          <div>
+
+            <div className="users-summary-number">
+              {activeCount}
+            </div>
+
+            <div className="users-summary-label">
+              Active
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div className="users-summary-card">
+
+          <div className="users-summary-icon">
+
+            <X size={15} />
+
+          </div>
+
+
+          <div>
+
+            <div className="users-summary-number">
+              {inactiveCount}
+            </div>
+
+            <div className="users-summary-label">
+              Inactive
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      {/* =====================================================
           ERROR
       ===================================================== */}
 
-      {error && !showModal && (
+      {error &&
+        !showModal && (
 
-        <div className="users-error">
-          {error}
-        </div>
+          <div className="users-error">
+            {error}
+          </div>
 
-      )}
+        )}
 
 
       {/* =====================================================
@@ -3152,21 +3468,21 @@ export default function Users() {
 
         <div className="users-toolbar">
 
-
           <div className="users-toolbar-left">
-
-
-            {/* SEARCH */}
 
             <div className="users-search">
 
-              <Search size={14} />
+              <Search
+                size={14}
+              />
 
               <input
                 type="text"
                 placeholder="Search users..."
                 value={search}
-                onChange={(event) =>
+                onChange={(
+                  event
+                ) =>
                   setSearch(
                     event.target.value
                   )
@@ -3176,55 +3492,9 @@ export default function Users() {
             </div>
 
 
-            {/* FILTER BUTTON */}
-
-            <button
-              type="button"
-              className={`users-filter-button ${
-                activeFilterCount > 0
-                  ? "has-filters"
-                  : ""
-              }`}
-              onClick={() =>
-                setShowFilters(
-                  (current) =>
-                    !current
-                )
-              }
-            >
-
-              <SlidersHorizontal
-                size={13}
-              />
-
-              Filters
-
-
-              {activeFilterCount > 0 && (
-
-                <span className="users-filter-count">
-                  {activeFilterCount}
-                </span>
-
-              )}
-
-
-              <ChevronDown
-                size={13}
-                className={
-                  showFilters
-                    ? "filter-chevron-open"
-                    : ""
-                }
-              />
-
-            </button>
-
-
             {/* VIEW SWITCHER */}
 
             <div className="users-view-switcher">
-
 
               <button
                 type="button"
@@ -3237,13 +3507,7 @@ export default function Users() {
                   setView("table")
                 }
               >
-
-                <UsersRound
-                  size={12}
-                />
-
                 Table
-
               </button>
 
 
@@ -3258,13 +3522,7 @@ export default function Users() {
                   setView("tree")
                 }
               >
-
-                <ChevronDown
-                  size={12}
-                />
-
                 Reporting tree
-
               </button>
 
             </div>
@@ -3272,13 +3530,15 @@ export default function Users() {
           </div>
 
 
-          {/* REFRESH */}
-
           <button
             type="button"
             className="users-refresh"
-            onClick={loadUsers}
-            disabled={loading}
+            onClick={
+              loadUsers
+            }
+            disabled={
+              loading
+            }
           >
 
             <RefreshCw
@@ -3295,243 +3555,216 @@ export default function Users() {
 
 
         {/* ===================================================
-            FILTER PANEL
+            FILTERS
         =================================================== */}
 
-        {showFilters && (
+        <div className="users-filters">
 
-          <div className="users-filter-panel">
+          {/* STATUS */}
+
+          <select
+            className="users-filter-select"
+            value={
+              statusFilter
+            }
+            onChange={(
+              event
+            ) =>
+              setStatusFilter(
+                event.target.value
+              )
+            }
+          >
+
+            <option value="all">
+              All statuses
+            </option>
+
+            <option value="active">
+              Active only
+            </option>
+
+            <option value="inactive">
+              Inactive only
+            </option>
+
+          </select>
 
 
-            {/* STATUS */}
+          {/* BRANCH */}
 
-            <div className="users-filter-field">
+          <select
+            className="users-filter-select"
+            value={
+              branchFilter
+            }
+            onChange={(
+              event
+            ) =>
+              setBranchFilter(
+                event.target.value
+              )
+            }
+          >
 
-              <label>
-                Status
-              </label>
+            <option value="all">
+              All branches
+            </option>
 
-              <select
-                value={
-                  filters.status
-                }
-                onChange={(event) =>
-                  updateFilter(
-                    "status",
-                    event.target.value
-                  )
-                }
-              >
+            {branches.map(
+              (branch) => (
 
-                <option value="all">
-                  All statuses
+                <option
+                  key={branch}
+                  value={branch}
+                >
+                  {branch}
                 </option>
 
-                <option value="active">
-                  Active
-                </option>
-
-                <option value="inactive">
-                  Inactive
-                </option>
-
-              </select>
-
-            </div>
-
-
-            {/* BRANCH */}
-
-            <div className="users-filter-field">
-
-              <label>
-                Branch
-              </label>
-
-              <select
-                value={
-                  filters.branch
-                }
-                onChange={(event) =>
-                  updateFilter(
-                    "branch",
-                    event.target.value
-                  )
-                }
-              >
-
-                <option value="all">
-                  All branches
-                </option>
-
-                {filterOptions.branches.map(
-                  (branch) => (
-
-                    <option
-                      key={branch}
-                      value={branch}
-                    >
-                      {branch}
-                    </option>
-
-                  )
-                )}
-
-              </select>
-
-            </div>
-
-
-            {/* ROLE */}
-
-            <div className="users-filter-field">
-
-              <label>
-                Role
-              </label>
-
-              <select
-                value={
-                  filters.role
-                }
-                onChange={(event) =>
-                  updateFilter(
-                    "role",
-                    event.target.value
-                  )
-                }
-              >
-
-                <option value="all">
-                  All roles
-                </option>
-
-                {filterOptions.roles.map(
-                  (role) => (
-
-                    <option
-                      key={role}
-                      value={role}
-                    >
-                      {role}
-                    </option>
-
-                  )
-                )}
-
-              </select>
-
-            </div>
-
-
-            {/* PERMISSION */}
-
-            <div className="users-filter-field">
-
-              <label>
-                Permission
-              </label>
-
-              <select
-                value={
-                  filters.permission
-                }
-                onChange={(event) =>
-                  updateFilter(
-                    "permission",
-                    event.target.value
-                  )
-                }
-              >
-
-                <option value="all">
-                  All permissions
-                </option>
-
-                <option value="1">
-                  Standard
-                </option>
-
-                <option value="2">
-                  Supervisor
-                </option>
-
-                <option value="3">
-                  Management
-                </option>
-
-                <option value="4">
-                  Administrator
-                </option>
-
-              </select>
-
-            </div>
-
-
-            {/* MANAGER */}
-
-            <div className="users-filter-field">
-
-              <label>
-                Manager
-              </label>
-
-              <select
-                value={
-                  filters.manager
-                }
-                onChange={(event) =>
-                  updateFilter(
-                    "manager",
-                    event.target.value
-                  )
-                }
-              >
-
-                <option value="all">
-                  All managers
-                </option>
-
-                {filterOptions.managers.map(
-                  (manager) => (
-
-                    <option
-                      key={manager.id}
-                      value={manager.id}
-                    >
-                      {display(
-                        manager.full_name
-                      )}
-                    </option>
-
-                  )
-                )}
-
-              </select>
-
-            </div>
-
-
-            {/* CLEAR */}
-
-            {activeFilterCount > 0 && (
-
-              <button
-                type="button"
-                className="users-clear-filters"
-                onClick={
-                  clearFilters
-                }
-              >
-                Clear filters
-              </button>
-
+              )
             )}
 
-          </div>
+          </select>
 
-        )}
+
+          {/* ROLE */}
+
+          <select
+            className="users-filter-select"
+            value={
+              roleFilter
+            }
+            onChange={(
+              event
+            ) =>
+              setRoleFilter(
+                event.target.value
+              )
+            }
+          >
+
+            <option value="all">
+              All roles
+            </option>
+
+            {roles.map(
+              (role) => (
+
+                <option
+                  key={role}
+                  value={role}
+                >
+                  {role}
+                </option>
+
+              )
+            )}
+
+          </select>
+
+
+          {/* PERMISSION */}
+
+          <select
+            className="users-filter-select"
+            value={
+              permissionFilter
+            }
+            onChange={(
+              event
+            ) =>
+              setPermissionFilter(
+                event.target.value
+              )
+            }
+          >
+
+            <option value="all">
+              All permissions
+            </option>
+
+            <option value="1">
+              Standard
+            </option>
+
+            <option value="2">
+              Supervisor
+            </option>
+
+            <option value="3">
+              Management
+            </option>
+
+            <option value="4">
+              Administrator
+            </option>
+
+          </select>
+
+
+          {/* MANAGER */}
+
+          <select
+            className="users-filter-select"
+            value={
+              managerFilter
+            }
+            onChange={(
+              event
+            ) =>
+              setManagerFilter(
+                event.target.value
+              )
+            }
+          >
+
+            <option value="all">
+              All managers
+            </option>
+
+            <option value="">
+              No manager
+            </option>
+
+            {managers.map(
+              (manager) => (
+
+                <option
+                  key={
+                    manager.id
+                  }
+                  value={
+                    manager.id
+                  }
+                >
+                  {display(
+                    manager.full_name
+                  )}
+                </option>
+
+              )
+            )}
+
+          </select>
+
+
+          {/* CLEAR */}
+
+          {filtersActive && (
+
+            <button
+              type="button"
+              className="users-clear-filters"
+              onClick={
+                clearFilters
+              }
+            >
+              Clear filters
+            </button>
+
+          )}
+
+        </div>
 
 
         {/* ===================================================
@@ -3614,7 +3847,9 @@ export default function Users() {
                     (user) => (
 
                       <tr
-                        key={user.id}
+                        key={
+                          user.id
+                        }
                       >
 
                         <td>
@@ -3633,7 +3868,9 @@ export default function Users() {
 
                             <div className="user-id">
 
-                              {user.auth_user_id}
+                              {
+                                user.auth_user_id
+                              }
 
                             </div>
 
@@ -3762,21 +3999,35 @@ export default function Users() {
 
         {view === "tree" && (
 
-          <>
+          <div className="reporting-tree">
 
             <div className="reporting-tree-header">
 
-              <div className="reporting-tree-title">
+              <div className="reporting-tree-heading">
 
-                <span className="reporting-tree-title-icon">
+                <div className="reporting-tree-heading-icon">
 
                   <UsersRound
-                    size={14}
+                    size={16}
                   />
 
-                </span>
+                </div>
 
-                Reporting structure
+
+                <div>
+
+                  <h2 className="reporting-tree-title">
+                    Reporting structure
+                  </h2>
+
+                  <p className="reporting-tree-subtitle">
+                    Active users only
+                    {filteredUsers.length !==
+                      activeCount &&
+                      " • filters applied"}
+                  </p>
+
+                </div>
 
               </div>
 
@@ -3786,7 +4037,9 @@ export default function Users() {
                 <button
                   type="button"
                   className="reporting-tree-action"
-                  onClick={expandAll}
+                  onClick={
+                    expandAll
+                  }
                 >
                   Expand all
                 </button>
@@ -3795,7 +4048,9 @@ export default function Users() {
                 <button
                   type="button"
                   className="reporting-tree-action"
-                  onClick={collapseAll}
+                  onClick={
+                    collapseAll
+                  }
                 >
                   Collapse all
                 </button>
@@ -3805,48 +4060,52 @@ export default function Users() {
             </div>
 
 
-            <div className="reporting-tree-container">
+            {loading ? (
 
+              <div className="users-empty">
+                Loading reporting tree...
+              </div>
 
-              {loading ? (
+            ) : reportingTree.length === 0 ? (
 
-                <div className="users-empty">
-                  Loading users...
-                </div>
+              <div className="users-empty">
 
-              ) : reportingTree.length === 0 ? (
+                No active users found.
 
-                <div className="users-empty">
-                  No users match the current filters.
-                </div>
+              </div>
 
-              ) : (
+            ) : (
 
-                reportingTree.map(
-                  (user) => (
+              reportingTree.map(
+                (user) => (
 
-                    <ReportingTreeNode
-                      key={user.id}
-                      user={user}
-                      children={
-                        user.children
-                      }
-                      expandedUsers={
-                        expandedUsers
-                      }
-                      toggleUser={
-                        toggleUser
-                      }
-                    />
+                  <ReportingTreeNode
+                    key={
+                      user.id
+                    }
+                    user={
+                      user
+                    }
+                    children={
+                      user.children
+                    }
+                    expandedUsers={
+                      expandedUsers
+                    }
+                    toggleUser={
+                      toggleUser
+                    }
+                    onEdit={
+                      openEditUser
+                    }
+                  />
 
-                  )
                 )
+              )
 
-              )}
+            )}
 
-            </div>
-
-          </>
+          </div>
 
         )}
 
@@ -3861,13 +4120,17 @@ export default function Users() {
 
         <div
           className="users-modal-overlay"
-          onMouseDown={(event) => {
+          onMouseDown={(
+            event
+          ) => {
 
             if (
               event.target ===
               event.currentTarget
             ) {
+
               closeModal()
+
             }
 
           }}
@@ -3904,8 +4167,12 @@ export default function Users() {
               <button
                 type="button"
                 className="users-modal-close"
-                onClick={closeModal}
-                disabled={saving}
+                onClick={
+                  closeModal
+                }
+                disabled={
+                  saving
+                }
               >
 
                 <X size={16} />
@@ -3930,12 +4197,15 @@ export default function Users() {
                     Full name
                   </label>
 
+
                   <input
                     className="users-form-input"
                     value={
                       form.full_name
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       updateForm(
                         "full_name",
                         event.target.value
@@ -3955,12 +4225,15 @@ export default function Users() {
                     Auth user ID
                   </label>
 
+
                   <input
                     className="users-form-input"
                     value={
                       form.auth_user_id
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       updateForm(
                         "auth_user_id",
                         event.target.value
@@ -3980,12 +4253,15 @@ export default function Users() {
                     Role
                   </label>
 
+
                   <input
                     className="users-form-input"
                     value={
                       form.role
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       updateForm(
                         "role",
                         event.target.value
@@ -4005,12 +4281,15 @@ export default function Users() {
                     Branch
                   </label>
 
+
                   <input
                     className="users-form-input"
                     value={
                       form.branch
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       updateForm(
                         "branch",
                         event.target.value
@@ -4030,12 +4309,15 @@ export default function Users() {
                     Permission level
                   </label>
 
+
                   <select
                     className="users-form-select"
                     value={
                       form.permission_level
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       updateForm(
                         "permission_level",
                         Number(
@@ -4074,12 +4356,15 @@ export default function Users() {
                     Manager
                   </label>
 
+
                   <select
                     className="users-form-select"
                     value={
                       form.manager_id
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       updateForm(
                         "manager_id",
                         event.target.value
@@ -4094,12 +4379,16 @@ export default function Users() {
 
                     {managers
                       .filter(
-                        (manager) =>
+                        (
+                          manager
+                        ) =>
                           manager.id !==
                           editingUser?.id
                       )
                       .map(
-                        (manager) => (
+                        (
+                          manager
+                        ) => (
 
                           <option
                             key={
@@ -4138,10 +4427,13 @@ export default function Users() {
                       Active user
                     </span>
 
+
                     <span className="users-active-description">
+
                       Inactive users can remain
                       in the system but should
                       not have active CRM access.
+
                     </span>
 
                   </div>
@@ -4154,13 +4446,16 @@ export default function Users() {
                       checked={
                         form.active
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event
+                      ) =>
                         updateForm(
                           "active",
                           event.target.checked
                         )
                       }
                     />
+
 
                     <span className="users-slider" />
 
@@ -4178,7 +4473,8 @@ export default function Users() {
                     style={{
                       gridColumn:
                         "1 / -1",
-                      marginBottom: 0,
+                      marginBottom:
+                        0,
                     }}
                   >
                     {error}
@@ -4198,8 +4494,12 @@ export default function Users() {
               <button
                 type="button"
                 className="users-cancel-button"
-                onClick={closeModal}
-                disabled={saving}
+                onClick={
+                  closeModal
+                }
+                disabled={
+                  saving
+                }
               >
                 Cancel
               </button>
@@ -4208,7 +4508,9 @@ export default function Users() {
               <button
                 type="button"
                 className="users-save-button"
-                onClick={saveUser}
+                onClick={
+                  saveUser
+                }
                 disabled={
                   saving ||
                   !form.full_name.trim()
