@@ -8,871 +8,182 @@ import {
 
 import { supabase } from "../lib/supabase"
 
-function Appointments({
-  onSelectAppointment,
-}) {
-  const [appointments, setAppointments] =
-    useState([])
-
-  const [loading, setLoading] =
-    useState(true)
-
-  const [error, setError] =
-    useState("")
-
-  const [query, setQuery] =
-    useState("")
-
-  const [page, setPage] =
-    useState(0)
-
-  const [total, setTotal] =
-    useState(0)
+function Appointments({ onSelectAppointment }) {
+  const [appointments, setAppointments] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [query, setQuery] = useState("")
+  const [page, setPage] = useState(0)
+  const [total, setTotal] = useState(0)
 
   const pageSize = 50
-
-
-  /*
-   * =========================================================
-   * LOAD APPOINTMENTS
-   * =========================================================
-   */
 
   async function loadAppointments() {
     setLoading(true)
     setError("")
 
     try {
-      const from =
-        page * pageSize
+      const from = page * pageSize
+      const to = from + pageSize - 1
 
-      const to =
-        from + pageSize - 1
+      let request = supabase
+        .from("appointments")
+        .select("*", { count: "exact" })
+        .order("appointment_date", {
+          ascending: false,
+          nullsFirst: false,
+        })
+        .range(from, to)
 
-      let request =
-        supabase
-          .from("appointments")
-          .select("*", {
-            count: "exact",
-          })
-          .order(
-            "appointment_date",
-            {
-              ascending: false,
-              nullsFirst: false,
-            }
-          )
-          .range(from, to)
-
-
-      /*
-       * SEARCH
-       */
-
-      const search =
-        query.trim()
+      const search = query.trim()
 
       if (search) {
-        request = request.or(
-          [
-            `name.ilike.%${search}%`,
-            `postcode.ilike.%${search}%`,
-            `rep_allocated.ilike.%${search}%`,
-            `phone_number_1.ilike.%${search}%`,
-            `email.ilike.%${search}%`,
-          ].join(",")
-        )
+        request = request.or([
+          `name.ilike.%${search}%`,
+          `postcode.ilike.%${search}%`,
+          `rep_allocated.ilike.%${search}%`,
+          `phone_number_1.ilike.%${search}%`,
+          `email_address.ilike.%${search}%`,
+        ].join(","))
       }
 
+      const { data, error: supabaseError, count } = await request
 
-      const {
-        data,
-        error: supabaseError,
-        count,
-      } = await request
+      if (supabaseError) throw supabaseError
 
-      if (supabaseError) {
-        throw supabaseError
-      }
-
-      setAppointments(
-        data || []
-      )
-
-      setTotal(
-        count || 0
-      )
-
+      setAppointments(data || [])
+      setTotal(count || 0)
     } catch (err) {
-
-      console.error(
-        "Error loading appointments:",
-        err
-      )
-
-      setError(
-        err?.message ||
-          "Unable to load appointments."
-      )
-
+      console.error("Error loading appointments:", err)
+      setError(err?.message || "Unable to load appointments.")
       setAppointments([])
-
     } finally {
-
       setLoading(false)
-
     }
   }
-
-
-  /*
-   * =========================================================
-   * LOAD WHEN PAGE / SEARCH CHANGES
-   * =========================================================
-   */
 
   useEffect(() => {
     loadAppointments()
   }, [page, query])
-
-
-  /*
-   * =========================================================
-   * SEARCH
-   * =========================================================
-   */
 
   function handleSearch(value) {
     setQuery(value)
     setPage(0)
   }
 
-
-  /*
-   * =========================================================
-   * PAGINATION
-   * =========================================================
-   */
-
-  const totalPages =
-    Math.ceil(
-      total / pageSize
-    )
-
-  const canGoBack =
-    page > 0
-
-  const canGoForward =
-    page <
-    totalPages - 1
-
-
-  /*
-   * =========================================================
-   * FORMAT DATE
-   * =========================================================
-   */
+  const totalPages = Math.ceil(total / pageSize)
+  const canGoBack = page > 0
+  const canGoForward = page < totalPages - 1
 
   function formatDate(value) {
+    if (!value) return "—"
 
-    if (!value) {
-      return "—"
-    }
+    const date = new Date(value)
 
-    const date =
-      new Date(value)
+    if (Number.isNaN(date.getTime())) return value
 
-    if (
-      Number.isNaN(
-        date.getTime()
-      )
-    ) {
-      return value
-    }
-
-    return date.toLocaleString(
-      "en-GB",
-      {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }
-    )
+    return date.toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
   }
-
-
-  /*
-   * =========================================================
-   * RESULT
-   * =========================================================
-   */
 
   function getResult(appointment) {
-
-    return (
-      appointment.result ||
-      appointment.status ||
-      "—"
-    )
+    return appointment.result || appointment.status || "—"
   }
-
-
-  /*
-   * =========================================================
-   * OPEN APPOINTMENT
-   *
-   * IMPORTANT:
-   * This explicitly passes the entire appointment
-   * object to App.jsx.
-   * =========================================================
-   */
 
   function openAppointment(appointment) {
-
-    console.log(
-      "Opening appointment:",
-      appointment
-    )
-
-    if (
-      typeof onSelectAppointment ===
-      "function"
-    ) {
-
-      onSelectAppointment(
-        appointment
-      )
-
-    } else {
-
-      console.error(
-        "onSelectAppointment was not provided to Appointments"
-      )
-
+    if (typeof onSelectAppointment === "function") {
+      onSelectAppointment(appointment)
     }
   }
-
-
-  /*
-   * =========================================================
-   * RENDER
-   * =========================================================
-   */
 
   return (
     <section>
-
-      {/* HEADER */}
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent:
-            "space-between",
-          marginBottom: "18px",
-        }}
-      >
-
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px" }}>
         <div>
-
-          <h1
-            style={{
-              margin: 0,
-              fontSize: "22px",
-              color: "#222",
-            }}
-          >
-            Appointments
-          </h1>
-
-          <p
-            style={{
-              margin:
-                "5px 0 0",
-              fontSize: "11px",
-              color: "#888",
-            }}
-          >
+          <h1 style={{ margin: 0, fontSize: "22px", color: "#222" }}>Appointments</h1>
+          <p style={{ margin: "5px 0 0", fontSize: "11px", color: "#888" }}>
             {total.toLocaleString()} appointments
           </p>
-
         </div>
-
       </div>
 
-
-      {/* SEARCH */}
-
-      <div
-        className="card"
-        style={{
-          marginBottom: "18px",
-          padding: "12px 14px",
-        }}
-      >
-
-        <div
-          style={{
-            position: "relative",
-          }}
-        >
-
-          <Search
-            size={15}
-            style={{
-              position:
-                "absolute",
-              left: "11px",
-              top: "50%",
-              transform:
-                "translateY(-50%)",
-              color: "#999",
-            }}
-          />
-
+      <div className="card" style={{ marginBottom: "18px", padding: "12px 14px" }}>
+        <div style={{ position: "relative" }}>
+          <Search size={15} style={{ position: "absolute", left: "11px", top: "50%", transform: "translateY(-50%)", color: "#999" }} />
           <input
             type="text"
             value={query}
-            onChange={(e) =>
-              handleSearch(
-                e.target.value
-              )
-            }
+            onChange={(e) => handleSearch(e.target.value)}
             placeholder="Search customer, postcode, phone, email or sales rep..."
-            style={{
-              width: "100%",
-              boxSizing:
-                "border-box",
-              height: "38px",
-              padding:
-                "0 12px 0 34px",
-              border:
-                "1px solid #d9dadd",
-              borderRadius:
-                "7px",
-              outline: "none",
-              fontFamily:
-                "inherit",
-              fontSize: "12px",
-            }}
+            style={{ width: "100%", boxSizing: "border-box", height: "38px", padding: "0 12px 0 34px", border: "1px solid #d9dadd", borderRadius: "7px", outline: "none", fontFamily: "inherit", fontSize: "12px" }}
           />
-
         </div>
-
       </div>
-
-
-      {/* ERROR */}
 
       {error && (
-
-        <div
-          className="error"
-          style={{
-            marginBottom:
-              "18px",
-          }}
-        >
-
-          <b>
-            Database error
-          </b>
-
-          <span>
-            {error}
-          </span>
-
+        <div className="error" style={{ marginBottom: "18px" }}>
+          <b>Database error</b>
+          <span>{error}</span>
         </div>
-
       )}
 
-
-      {/* TABLE */}
-
-      <div
-        className="card"
-        style={{
-          padding: 0,
-          overflow: "hidden",
-        }}
-      >
-
-        {/* TABLE HEADER */}
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "1.7fr 1.4fr 1fr 1fr 1fr 100px",
-            padding:
-              "11px 16px",
-            background:
-              "#f7f7f8",
-            borderBottom:
-              "1px solid #dddfe3",
-            fontSize: "9px",
-            fontWeight: 700,
-            color: "#777",
-            textTransform:
-              "uppercase",
-            letterSpacing:
-              "0.04em",
-          }}
-        >
-
-          <div>
-            Customer
-          </div>
-
-          <div>
-            Appointment
-          </div>
-
-          <div>
-            Postcode
-          </div>
-
-          <div>
-            Type
-          </div>
-
-          <div>
-            Sales Rep
-          </div>
-
-          <div>
-            Result
-          </div>
-
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1.7fr 1.4fr 1fr 1fr 1fr 100px", padding: "11px 16px", background: "#f7f7f8", borderBottom: "1px solid #dddfe3", fontSize: "9px", fontWeight: 700, color: "#777", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          <div>Customer</div><div>Appointment</div><div>Postcode</div><div>Type</div><div>Sales Rep</div><div>Result</div>
         </div>
-
-
-        {/* LOADING */}
 
         {loading ? (
-
-          <div
-            style={{
-              padding:
-                "60px 20px",
-              textAlign:
-                "center",
-              color: "#999",
-              fontSize: "12px",
-            }}
-          >
-            Loading appointments...
-          </div>
-
+          <div style={{ padding: "60px 20px", textAlign: "center", color: "#999", fontSize: "12px" }}>Loading appointments...</div>
         ) : appointments.length === 0 ? (
-
-          <div
-            style={{
-              padding:
-                "60px 20px",
-              textAlign:
-                "center",
-              color: "#999",
-              fontSize: "12px",
-            }}
-          >
-
-            <CalendarDays
-              size={28}
-              style={{
-                marginBottom:
-                  "8px",
-              }}
-            />
-
-            <div>
-              No appointments found.
-            </div>
-
+          <div style={{ padding: "60px 20px", textAlign: "center", color: "#999", fontSize: "12px" }}>
+            <CalendarDays size={28} style={{ marginBottom: "8px" }} />
+            <div>No appointments found.</div>
           </div>
-
         ) : (
-
-          appointments.map(
-            (appointment) => (
-
-              <button
-                key={
-                  appointment.id
-                }
-                type="button"
-                onClick={() =>
-                  openAppointment(
-                    appointment
-                  )
-                }
-                style={{
-                  width: "100%",
-                  display: "grid",
-                  gridTemplateColumns:
-                    "1.7fr 1.4fr 1fr 1fr 1fr 100px",
-                  padding:
-                    "13px 16px",
-                  border: 0,
-                  borderBottom:
-                    "1px solid #eeeeef",
-                  background:
-                    "#fff",
-                  textAlign:
-                    "left",
-                  cursor:
-                    "pointer",
-                  fontFamily:
-                    "inherit",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background =
-                    "#fafbfc"
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background =
-                    "#fff"
-                }}
-              >
-
-                {/* CUSTOMER */}
-
-                <div
-                  style={{
-                    minWidth: 0,
-                  }}
-                >
-
-                  <div
-                    style={{
-                      fontSize:
-                        "11px",
-                      fontWeight:
-                        600,
-                      color:
-                        "#222",
-                      whiteSpace:
-                        "nowrap",
-                      overflow:
-                        "hidden",
-                      textOverflow:
-                        "ellipsis",
-                    }}
-                  >
-
-                    {appointment.name ||
-                      "Unnamed customer"}
-
-                  </div>
-
-                  {appointment.phone_number_1 && (
-
-                    <div
-                      style={{
-                        marginTop:
-                          "3px",
-                        fontSize:
-                          "9px",
-                        color:
-                          "#888",
-                      }}
-                    >
-
-                      {
-                        appointment.phone_number_1
-                      }
-
-                    </div>
-
-                  )}
-
+          appointments.map((appointment) => (
+            <button
+              key={appointment.appointment_row_id}
+              type="button"
+              onClick={() => openAppointment(appointment)}
+              style={{ width: "100%", display: "grid", gridTemplateColumns: "1.7fr 1.4fr 1fr 1fr 1fr 100px", padding: "13px 16px", border: 0, borderBottom: "1px solid #eeeeef", background: "#fff", textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#fafbfc" }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "#fff" }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: "11px", fontWeight: 600, color: "#222", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {appointment.name || "Unnamed customer"}
                 </div>
-
-
-                {/* APPOINTMENT DATE */}
-
-                <div
-                  style={{
-                    fontSize:
-                      "10px",
-                    color:
-                      "#444",
-                  }}
-                >
-
-                  {formatDate(
-                    appointment.appointment_date
-                  )}
-
-                </div>
-
-
-                {/* POSTCODE */}
-
-                <div
-                  style={{
-                    fontSize:
-                      "10px",
-                    color:
-                      "#555",
-                  }}
-                >
-
-                  {appointment.postcode ||
-                    "—"}
-
-                </div>
-
-
-                {/* TYPE */}
-
-                <div
-                  style={{
-                    fontSize:
-                      "10px",
-                    color:
-                      "#555",
-                  }}
-                >
-
-                  {appointment.product ||
-                    appointment.type ||
-                    appointment.appointment_type ||
-                    "—"}
-
-                </div>
-
-
-                {/* SALES REP */}
-
-                <div
-                  style={{
-                    fontSize:
-                      "10px",
-                    color:
-                      "#555",
-                  }}
-                >
-
-                  {appointment.red_allocated ||
-                    "—"}
-
-                </div>
-
-
-                {/* RESULT */}
-
-                <div>
-
-                  <span
-                    style={{
-                      display:
-                        "inline-block",
-                      padding:
-                        "4px 7px",
-                      borderRadius:
-                        "5px",
-                      background:
-                        "#f2f3f5",
-                      color:
-                        "#555",
-                      fontSize:
-                        "9px",
-                      fontWeight:
-                        600,
-                    }}
-                  >
-
-                    {getResult(
-                      appointment
-                    )}
-
-                  </span>
-
-                </div>
-
-              </button>
-
-            )
-          )
-
+                {appointment.phone_number_1 && (
+                  <div style={{ marginTop: "3px", fontSize: "9px", color: "#888" }}>{appointment.phone_number_1}</div>
+                )}
+              </div>
+              <div style={{ fontSize: "10px", color: "#444" }}>{formatDate(appointment.appointment_date)}</div>
+              <div style={{ fontSize: "10px", color: "#555" }}>{appointment.postcode || "—"}</div>
+              <div style={{ fontSize: "10px", color: "#555" }}>{appointment.product || appointment.type || appointment.appointment_type || "—"}</div>
+              <div style={{ fontSize: "10px", color: "#555" }}>{appointment.rep_allocated || "—"}</div>
+              <div><span style={{ display: "inline-block", padding: "4px 7px", borderRadius: "5px", background: "#f2f3f5", color: "#555", fontSize: "9px", fontWeight: 600 }}>{getResult(appointment)}</span></div>
+            </button>
+          ))
         )}
-
       </div>
 
-
-      {/* PAGINATION */}
-
       {totalPages > 1 && (
-
-        <div
-          style={{
-            display: "flex",
-            alignItems:
-              "center",
-            justifyContent:
-              "space-between",
-            marginTop:
-              "14px",
-          }}
-        >
-
-          <div
-            style={{
-              fontSize:
-                "10px",
-              color:
-                "#888",
-            }}
-          >
-
-            Showing{" "}
-            {page *
-              pageSize +
-              1}{" "}
-            –{" "}
-            {Math.min(
-              (page + 1) *
-                pageSize,
-              total
-            )}{" "}
-            of{" "}
-            {total.toLocaleString()}
-
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "14px" }}>
+          <div style={{ fontSize: "10px", color: "#888" }}>
+            Showing {page * pageSize + 1} – {Math.min((page + 1) * pageSize, total)} of {total.toLocaleString()}
           </div>
-
-
-          <div
-            style={{
-              display:
-                "flex",
-              gap: "6px",
-            }}
-          >
-
-            <button
-              type="button"
-              disabled={
-                !canGoBack
-              }
-              onClick={() =>
-                setPage(
-                  (value) =>
-                    value - 1
-                )
-              }
-              style={{
-                width: "34px",
-                height: "32px",
-                border:
-                  "1px solid #dddfe3",
-                borderRadius:
-                  "7px",
-                background:
-                  "#fff",
-                cursor:
-                  canGoBack
-                    ? "pointer"
-                    : "default",
-                opacity:
-                  canGoBack
-                    ? 1
-                    : 0.4,
-                display:
-                  "flex",
-                alignItems:
-                  "center",
-                justifyContent:
-                  "center",
-              }}
-            >
-
-              <ChevronLeft
-                size={15}
-              />
-
-            </button>
-
-
-            <div
-              style={{
-                minWidth:
-                  "70px",
-                height:
-                  "32px",
-                display:
-                  "flex",
-                alignItems:
-                  "center",
-                justifyContent:
-                  "center",
-                fontSize:
-                  "10px",
-                color:
-                  "#555",
-              }}
-            >
-
-              Page{" "}
-              {page + 1}{" "}
-              of{" "}
-              {totalPages}
-
-            </div>
-
-
-            <button
-              type="button"
-              disabled={
-                !canGoForward
-              }
-              onClick={() =>
-                setPage(
-                  (value) =>
-                    value + 1
-                )
-              }
-              style={{
-                width: "34px",
-                height: "32px",
-                border:
-                  "1px solid #dddfe3",
-                borderRadius:
-                  "7px",
-                background:
-                  "#fff",
-                cursor:
-                  canGoForward
-                    ? "pointer"
-                    : "default",
-                opacity:
-                  canGoForward
-                    ? 1
-                    : 0.4,
-                display:
-                  "flex",
-                alignItems:
-                  "center",
-                justifyContent:
-                  "center",
-              }}
-            >
-
-              <ChevronRight
-                size={15}
-              />
-
-            </button>
-
+          <div style={{ display: "flex", gap: "6px" }}>
+            <button type="button" disabled={!canGoBack} onClick={() => setPage((value) => value - 1)} style={{ width: "34px", height: "32px", border: "1px solid #dddfe3", borderRadius: "7px", background: "#fff", cursor: canGoBack ? "pointer" : "default", opacity: canGoBack ? 1 : 0.4, display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronLeft size={15} /></button>
+            <div style={{ minWidth: "70px", height: "32px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", color: "#555" }}>Page {page + 1} of {totalPages}</div>
+            <button type="button" disabled={!canGoForward} onClick={() => setPage((value) => value + 1)} style={{ width: "34px", height: "32px", border: "1px solid #dddfe3", borderRadius: "7px", background: "#fff", cursor: canGoForward ? "pointer" : "default", opacity: canGoForward ? 1 : 0.4, display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronRight size={15} /></button>
           </div>
-
         </div>
-
       )}
-
     </section>
   )
 }
