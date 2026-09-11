@@ -649,13 +649,52 @@ export default function MarketingTV({ onSelectAppointment }) {
           background: #fff;
         }
 
+        /*
+          Every branch has its own table, so the browser would normally
+          size each table's columns independently based on its contents.
+          Fixed column widths make every branch table use the exact same
+          column geometry, so headers and appointment data line up vertically.
+        */
         .mtv-table {
           width: 100%;
           min-width: 980px;
           border-collapse: separate;
           border-spacing: 0;
-          table-layout: auto;
+          table-layout: fixed;
         }
+
+        .mtv-table th:nth-child(1),
+        .mtv-table td:nth-child(1) { width: 18%; }
+
+        .mtv-table th:nth-child(2),
+        .mtv-table td:nth-child(2) { width: 13%; }
+
+        .mtv-table th:nth-child(3),
+        .mtv-table td:nth-child(3) { width: 20%; }
+
+        .mtv-table th:nth-child(4),
+        .mtv-table td:nth-child(4) { width: 7%; }
+
+        .mtv-table th:nth-child(5),
+        .mtv-table td:nth-child(5) { width: 8%; }
+
+        .mtv-table th:nth-child(6),
+        .mtv-table td:nth-child(6) { width: 7%; }
+
+        .mtv-table th:nth-child(7),
+        .mtv-table td:nth-child(7) { width: 13%; }
+
+        .mtv-table th:nth-child(8),
+        .mtv-table td:nth-child(8) { width: 4%; }
+
+        .mtv-table th:nth-child(9),
+        .mtv-table td:nth-child(9) { width: 4%; }
+
+        .mtv-table th:nth-child(10),
+        .mtv-table td:nth-child(10) { width: 4%; }
+
+        .mtv-table th:nth-child(11),
+        .mtv-table td:nth-child(11) { width: 2%; }
 
         .mtv-table-header th {
           padding: 7px 10px;
