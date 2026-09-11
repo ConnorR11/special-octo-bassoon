@@ -5,11 +5,12 @@ import {
   Pencil,
   X,
   Check,
-  RefreshCw,
   ChevronDown,
   ChevronRight,
-  Users as UsersIcon,
+  RefreshCw,
   GitBranch,
+  Users as UsersIcon,
+  UserRound,
 } from "lucide-react"
 
 import { supabase } from "../lib/supabase"
@@ -24,19 +25,8 @@ function display(value, fallback = "—") {
   return text || fallback
 }
 
-
-/* =========================================================
-   PERMISSION / ROLE LABEL
-========================================================= */
-
-function getPermissionLabel(level) {
-  const value = Number(level)
-
-  if (value >= 4) return "Administrator"
-  if (value === 3) return "Management"
-  if (value === 2) return "Supervisor"
-
-  return "Standard"
+function normaliseId(value) {
+  return value == null ? "" : String(value)
 }
 
 
@@ -47,7 +37,6 @@ function getPermissionLabel(level) {
 export default function Users() {
 
   const [users, setUsers] = useState([])
-
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -57,17 +46,13 @@ export default function Users() {
 
   const [showInactive, setShowInactive] = useState(false)
 
+  const [branchFilter, setBranchFilter] = useState("")
+  const [roleFilter, setRoleFilter] = useState("")
+
+  const [expanded, setExpanded] = useState({})
+
   const [showModal, setShowModal] = useState(false)
-
   const [editingUser, setEditingUser] = useState(null)
-
-
-  /* =======================================================
-     TREE EXPANSION
-  ======================================================= */
-
-  const [collapsedManagers, setCollapsedManagers] = useState({})
-  const [collapsedBranches, setCollapsedBranches] = useState({})
 
 
   /* =======================================================
@@ -156,22 +141,20 @@ export default function Users() {
 
 
   /* =======================================================
-     MANAGERS
+     UNIQUE BRANCHES
   ======================================================= */
 
-  const managers = useMemo(() => {
+  const branches = useMemo(() => {
 
-    return users
-      .filter(
-        user =>
-          user.active !== false
-      )
-      .sort((a, b) =>
-        display(a.full_name)
-          .localeCompare(
-            display(b.full_name)
-          )
-      )
+    return [
+      ...new Set(
+        users
+          .map(user => String(user.branch ?? "").trim())
+          .filter(Boolean)
+      ),
+    ].sort((a, b) =>
+      a.localeCompare(b)
+    )
 
   }, [users])
 
@@ -185,9 +168,7 @@ export default function Users() {
     return [
       ...new Set(
         users
-          .map(user =>
-            String(user.role || "").trim()
-          )
+          .map(user => String(user.role ?? "").trim())
           .filter(Boolean)
       ),
     ].sort((a, b) =>
@@ -201,14 +182,14 @@ export default function Users() {
      FILTER USERS
   ======================================================= */
 
-  const filteredUsers = useMemo(() => {
+  const visibleUsers = useMemo(() => {
 
     const query =
       search
         .toLowerCase()
         .trim()
 
-    return users.filter(user => {
+    return users.filter((user) => {
 
       if (
         !showInactive &&
@@ -217,18 +198,37 @@ export default function Users() {
         return false
       }
 
+      if (
+        branchFilter &&
+        String(user.branch ?? "") !== branchFilter
+      ) {
+        return false
+      }
+
+      if (
+        roleFilter &&
+        String(user.role ?? "") !== roleFilter
+      ) {
+        return false
+      }
+
       if (!query) {
         return true
       }
+
+      const manager =
+        users.find(
+          item =>
+            normaliseId(item.id) ===
+            normaliseId(user.manager_id)
+        )
 
       const values = [
         user.full_name,
         user.role,
         user.branch,
-        user.manager_id,
-        getPermissionLabel(
-          user.permission_level
-        ),
+        user.permission_level,
+        manager?.full_name,
       ]
 
       return values.some(value =>
@@ -243,118 +243,173 @@ export default function Users() {
     users,
     search,
     showInactive,
+    branchFilter,
+    roleFilter,
   ])
 
 
   /* =======================================================
-     MANAGER NAME
+     CHILDREN LOOKUP
+     
+     IMPORTANT:
+     This is the basis of the reporting tree.
+     
+     Every user is attached to their manager using
+     manager_id.
   ======================================================= */
 
-  function getManagerName(managerId) {
+  const childrenByManager = useMemo(() => {
 
-    if (!managerId) {
-      return "No manager"
-    }
+    const map = new Map()
 
-    const manager =
-      users.find(
-        user =>
-          user.id === managerId
+    visibleUsers.forEach(user => {
+
+      const managerId =
+        normaliseId(user.manager_id)
+
+      if (!managerId) {
+        return
+      }
+
+      if (!map.has(managerId)) {
+        map.set(managerId, [])
+      }
+
+      map.get(managerId).push(user)
+
+    })
+
+    for (const children of map.values()) {
+
+      children.sort((a, b) =>
+        display(a.full_name)
+          .localeCompare(
+            display(b.full_name)
+          )
       )
 
-    return display(
-      manager?.full_name,
-      "Unknown manager"
+    }
+
+    return map
+
+  }, [visibleUsers])
+
+
+  /* =======================================================
+     ROOT USERS
+     
+     A root user is someone with:
+     
+     - no manager
+     OR
+     - a manager_id that doesn't exist
+     
+     This is what prevents Alex / Ann / etc. from appearing
+     twice.
+  ======================================================= */
+
+  const rootUsers = useMemo(() => {
+
+    const visibleIds = new Set(
+      visibleUsers.map(user =>
+        normaliseId(user.id)
+      )
     )
+
+    return visibleUsers
+      .filter(user => {
+
+        const managerId =
+          normaliseId(user.manager_id)
+
+        return (
+          !managerId ||
+          !visibleIds.has(managerId)
+        )
+
+      })
+      .sort((a, b) =>
+        display(a.full_name)
+          .localeCompare(
+            display(b.full_name)
+          )
+      )
+
+  }, [visibleUsers])
+
+
+  /* =======================================================
+     TOTAL REPORTING USERS
+  ======================================================= */
+
+  const reportingCount =
+    visibleUsers.length
+
+
+  /* =======================================================
+     MANAGERS
+  ======================================================= */
+
+  const managers = useMemo(() => {
+
+    return users
+      .filter(user =>
+        user.active !== false
+      )
+      .sort((a, b) =>
+        display(a.full_name)
+          .localeCompare(
+            display(b.full_name)
+          )
+      )
+
+  }, [users])
+
+
+  /* =======================================================
+     PERMISSION LABEL
+  ======================================================= */
+
+  function getPermissionLabel(level) {
+
+    const value =
+      Number(level)
+
+    if (value >= 4) {
+      return "Administrator"
+    }
+
+    if (value === 3) {
+      return "Management"
+    }
+
+    if (value === 2) {
+      return "Supervisor"
+    }
+
+    return "Standard"
   }
 
 
   /* =======================================================
-     TREE STRUCTURE
+     TOGGLE NODE
   ======================================================= */
 
-  const tree = useMemo(() => {
+  function toggleExpanded(id) {
 
-    const visibleUsers = filteredUsers
+    const key =
+      normaliseId(id)
 
-    const managersMap = new Map()
+    setExpanded(current => ({
+      ...current,
+      [key]: !current[key],
+    }))
 
-    visibleUsers.forEach(user => {
-
-      if (!user.manager_id) {
-        return
-      }
-
-      if (!managersMap.has(user.manager_id)) {
-
-        managersMap.set(
-          user.manager_id,
-          []
-        )
-
-      }
-
-      managersMap
-        .get(user.manager_id)
-        .push(user)
-
-    })
-
-
-    /*
-     * Managers are users who either:
-     *
-     * 1. Have direct reports
-     * 2. Have permission level >= 2
-     *
-     */
-
-    const managerUsers =
-      visibleUsers
-        .filter(user =>
-          managersMap.has(user.id) ||
-          Number(user.permission_level) >= 2
-        )
-        .sort((a, b) =>
-          display(a.full_name)
-            .localeCompare(
-              display(b.full_name)
-            )
-        )
-
-
-    /*
-     * Users without managers
-     */
-
-    const unassigned =
-      visibleUsers
-        .filter(user =>
-          !user.manager_id &&
-          !managerUsers.some(
-            manager =>
-              manager.id === user.id
-          )
-        )
-        .sort((a, b) =>
-          display(a.full_name)
-            .localeCompare(
-              display(b.full_name)
-            )
-        )
-
-
-    return {
-      managerUsers,
-      managersMap,
-      unassigned,
-    }
-
-  }, [filteredUsers])
+  }
 
 
   /* =======================================================
-     OPEN ADD USER
+     OPEN ADD
   ======================================================= */
 
   function openAddUser() {
@@ -371,7 +426,7 @@ export default function Users() {
 
 
   /* =======================================================
-     OPEN EDIT USER
+     OPEN EDIT
   ======================================================= */
 
   function openEditUser(user) {
@@ -417,19 +472,16 @@ export default function Users() {
     }
 
     setShowModal(false)
-
     setEditingUser(null)
-
     setForm({
       ...emptyForm,
     })
-
     setError("")
   }
 
 
   /* =======================================================
-     FORM UPDATE
+     FORM CHANGE
   ======================================================= */
 
   function updateForm(field, value) {
@@ -480,9 +532,7 @@ export default function Users() {
           null,
 
         permission_level:
-          Number(
-            form.permission_level
-          ) || 1,
+          Number(form.permission_level) || 1,
 
         manager_id:
           form.manager_id ||
@@ -577,44 +627,283 @@ export default function Users() {
 
 
   /* =======================================================
-     TOGGLE MANAGER
+     MANAGER NAME
   ======================================================= */
 
-  function toggleManager(managerId) {
+  function getManagerName(managerId) {
 
-    setCollapsedManagers(current => ({
-      ...current,
-      [managerId]:
-        !current[managerId],
-    }))
+    if (!managerId) {
+      return "No manager"
+    }
 
+    const manager =
+      users.find(
+        user =>
+          normaliseId(user.id) ===
+          normaliseId(managerId)
+      )
+
+    return display(
+      manager?.full_name,
+      "Unknown manager"
+    )
   }
 
 
   /* =======================================================
-     TOGGLE BRANCH
+     PERSON CARD
   ======================================================= */
 
-  function toggleBranch(branchKey) {
+  function UserCard({
+    user,
+    level = 0,
+  }) {
 
-    setCollapsedBranches(current => ({
-      ...current,
-      [branchKey]:
-        !current[branchKey],
-    }))
+    const userId =
+      normaliseId(user.id)
 
+    const children =
+      childrenByManager.get(userId) || []
+
+    const hasChildren =
+      children.length > 0
+
+    const isExpanded =
+      expanded[userId] !== false
+
+    const initials =
+      display(user.full_name, "?")
+        .split(" ")
+        .map(part => part[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+
+    return (
+      <div
+        className={`tree-user-wrapper level-${Math.min(level, 5)}`}
+      >
+
+        <div className="tree-user-row">
+
+          {/* EXPAND BUTTON */}
+
+          <button
+            type="button"
+            className={
+              hasChildren
+                ? "tree-expand-button"
+                : "tree-expand-button tree-expand-empty"
+            }
+            onClick={() => {
+              if (hasChildren) {
+                toggleExpanded(userId)
+              }
+            }}
+            disabled={!hasChildren}
+          >
+
+            {hasChildren ? (
+              isExpanded ? (
+                <ChevronDown size={14} />
+              ) : (
+                <ChevronRight size={14} />
+              )
+            ) : (
+              <span />
+            )}
+
+          </button>
+
+
+          {/* AVATAR */}
+
+          <div className="tree-avatar">
+
+            {initials || (
+              <UserRound size={16} />
+            )}
+
+          </div>
+
+
+          {/* USER INFORMATION */}
+
+          <div className="tree-user-main">
+
+            <div className="tree-user-name">
+
+              {display(
+                user.full_name,
+                "Unnamed user"
+              )}
+
+            </div>
+
+            <div className="tree-user-meta">
+
+              <span>
+                {display(
+                  user.role,
+                  "No role"
+                )}
+              </span>
+
+              <span className="tree-meta-dot">
+                •
+              </span>
+
+              <span>
+                {display(
+                  user.branch,
+                  "No branch"
+                )}
+              </span>
+
+            </div>
+
+          </div>
+
+
+          {/* MANAGER */}
+
+          {level > 0 && (
+            <div className="tree-user-manager">
+
+              Reports to{" "}
+
+              <strong>
+                {getManagerName(
+                  user.manager_id
+                )}
+              </strong>
+
+            </div>
+          )}
+
+
+          {/* PERMISSION */}
+
+          <span className="tree-permission">
+
+            {getPermissionLabel(
+              user.permission_level
+            )}
+
+          </span>
+
+
+          {/* STATUS */}
+
+          {user.active !== false ? (
+
+            <span className="tree-active">
+
+              <span className="status-dot" />
+
+              Active
+
+            </span>
+
+          ) : (
+
+            <span className="tree-inactive">
+
+              <span className="status-dot inactive-dot" />
+
+              Inactive
+
+            </span>
+
+          )}
+
+
+          {/* REPORT COUNT */}
+
+          {hasChildren && (
+
+            <span className="tree-report-count">
+
+              {children.length}
+
+              {" "}
+
+              {children.length === 1
+                ? "report"
+                : "reports"}
+
+            </span>
+
+          )}
+
+
+          {/* EDIT */}
+
+          <button
+            type="button"
+            className="tree-edit-button"
+            title="Edit user"
+            onClick={() =>
+              openEditUser(user)
+            }
+          >
+
+            <Pencil size={13} />
+
+          </button>
+
+        </div>
+
+
+        {/* =================================================
+            CHILDREN
+        ================================================= */}
+
+        {hasChildren && isExpanded && (
+
+          <div className="tree-children">
+
+            <BranchGroups
+              children={children}
+              parentId={userId}
+              level={level + 1}
+            />
+
+          </div>
+
+        )}
+
+      </div>
+    )
   }
 
 
   /* =======================================================
-     BRANCH GROUPING
+     BRANCH GROUPS
+     
+     Direct reports are grouped by branch.
+     
+     Example:
+     
+     Colin
+       ├── Accounts
+       │    └── Fiona
+       ├── Central Solar
+       │    └── Scott
+       ├── Installations
+       │    └── Alex
+       │         └── Alex's reports
   ======================================================= */
 
-  function getBranches(usersForManager) {
+  function BranchGroups({
+    children,
+    parentId,
+    level,
+  }) {
 
-    const groups = {}
+    const grouped = new Map()
 
-    usersForManager.forEach(user => {
+    children.forEach(user => {
 
       const branch =
         display(
@@ -622,153 +911,107 @@ export default function Users() {
           "No branch"
         )
 
-      if (!groups[branch]) {
-        groups[branch] = []
+      if (!grouped.has(branch)) {
+        grouped.set(branch, [])
       }
 
-      groups[branch].push(user)
+      grouped.get(branch).push(user)
 
     })
 
-    return Object.entries(groups)
-      .sort(([a], [b]) =>
-        a.localeCompare(b)
-      )
 
-  }
+    const groups =
+      Array.from(grouped.entries())
+        .sort((a, b) =>
+          a[0].localeCompare(b[0])
+        )
 
-
-  /* =======================================================
-     USER CARD
-  ======================================================= */
-
-  function UserNode({
-    user,
-    nested = false,
-  }) {
 
     return (
+      <>
 
-      <div
-        className={
-          nested
-            ? "tree-user-node nested"
-            : "tree-user-node"
-        }
-      >
+        {groups.map(
+          ([branch, branchUsers]) => {
 
-        <div className="tree-user-connector" />
+            const branchKey =
+              `${parentId}-${branch}`
 
-        <div className="tree-user-card">
+            const isBranchExpanded =
+              expanded[branchKey] !== false
 
-          <div className="tree-user-main">
+            return (
+              <div
+                key={branchKey}
+                className="tree-branch-group"
+              >
 
-            <div className="tree-avatar">
+                {/* BRANCH HEADER */}
 
-              {display(
-                user.full_name,
-                "?"
-              )
-                .charAt(0)
-                .toUpperCase()}
+                <div className="tree-branch-line">
 
-            </div>
+                  <div className="tree-branch-connector" />
+
+                  <button
+                    type="button"
+                    className="tree-branch-button"
+                    onClick={() =>
+                      setExpanded(current => ({
+                        ...current,
+                        [branchKey]:
+                          !isBranchExpanded,
+                      }))
+                    }
+                  >
+
+                    {isBranchExpanded ? (
+                      <ChevronDown size={12} />
+                    ) : (
+                      <ChevronRight size={12} />
+                    )}
+
+                    <span className="tree-branch-name">
+                      {branch}
+                    </span>
+
+                    <span className="tree-branch-count">
+                      {branchUsers.length}{" "}
+                      {branchUsers.length === 1
+                        ? "user"
+                        : "users"}
+                    </span>
+
+                  </button>
+
+                </div>
 
 
-            <div className="tree-user-details">
+                {/* PEOPLE IN BRANCH */}
 
-              <div className="tree-user-name">
+                {isBranchExpanded && (
 
-                {display(
-                  user.full_name,
-                  "Unnamed user"
+                  <div className="tree-branch-users">
+
+                    {branchUsers.map(user => (
+
+                      <UserCard
+                        key={user.id}
+                        user={user}
+                        level={level}
+                      />
+
+                    ))}
+
+                  </div>
+
                 )}
 
               </div>
+            )
+          }
+        )}
 
-
-              <div className="tree-user-meta">
-
-                <span>
-                  {display(
-                    user.role,
-                    "No role"
-                  )}
-                </span>
-
-                <span className="tree-dot">
-                  •
-                </span>
-
-                <span>
-                  {display(
-                    user.branch,
-                    "No branch"
-                  )}
-                </span>
-
-              </div>
-
-            </div>
-
-          </div>
-
-
-          <div className="tree-user-right">
-
-            <span className="tree-permission">
-
-              {getPermissionLabel(
-                user.permission_level
-              )}
-
-            </span>
-
-
-            {user.active !== false ? (
-
-              <span className="tree-active">
-
-                <span className="tree-status-dot" />
-
-                Active
-
-              </span>
-
-            ) : (
-
-              <span className="tree-inactive">
-
-                <span className="tree-status-dot" />
-
-                Inactive
-
-              </span>
-
-            )}
-
-
-            <button
-              type="button"
-              className="tree-edit-button"
-              onClick={() =>
-                openEditUser(user)
-              }
-              title="Edit user"
-            >
-
-              <Pencil size={13} />
-
-            </button>
-
-          </div>
-
-        </div>
-
-      </div>
-
+      </>
     )
-
   }
 
 
@@ -787,22 +1030,11 @@ export default function Users() {
         ================================================= */
 
         .users-page {
-          min-height:
-            calc(100vh - 90px);
-
-          background:
-            #f5f6f8;
-
-          color:
-            #172033;
-
-          font-family:
-            Inter,
-            Arial,
-            sans-serif;
-
-          padding:
-            24px;
+          min-height: calc(100vh - 90px);
+          background: #f5f6f8;
+          color: #172033;
+          font-family: Inter, Arial, sans-serif;
+          padding: 24px;
         }
 
 
@@ -811,1200 +1043,45 @@ export default function Users() {
         ================================================= */
 
         .users-header {
-          display:
-            flex;
-
-          align-items:
-            flex-start;
-
-          justify-content:
-            space-between;
-
-          gap:
-            20px;
-
-          margin-bottom:
-            18px;
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 20px;
+          margin-bottom: 20px;
         }
-
 
         .users-title {
-          margin:
-            0;
-
-          font-size:
-            25px;
-
-          line-height:
-            1.15;
-
-          font-weight:
-            750;
-
-          letter-spacing:
-            -.5px;
+          margin: 0;
+          font-size: 25px;
+          line-height: 1.15;
+          font-weight: 750;
+          letter-spacing: -0.5px;
         }
-
 
         .users-subtitle {
-          margin:
-            6px 0 0;
-
-          color:
-            #7b8794;
-
-          font-size:
-            12px;
+          margin: 6px 0 0;
+          color: #7b8794;
+          font-size: 12px;
         }
-
-
-        .users-header-actions {
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          gap:
-            8px;
-
-          flex-wrap:
-            wrap;
-
-          justify-content:
-            flex-end;
-        }
-
-
-        /* =================================================
-           BUTTONS
-        ================================================= */
 
         .users-add-button {
-          display:
-            inline-flex;
-
-          align-items:
-            center;
-
-          gap:
-            7px;
-
-          height:
-            38px;
-
-          padding:
-            0 14px;
-
-          border:
-            0;
-
-          border-radius:
-            7px;
-
-          background:
-            #2499ed;
-
-          color:
-            #fff;
-
-          font-family:
-            inherit;
-
-          font-size:
-            11px;
-
-          font-weight:
-            700;
-
-          cursor:
-            pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          height: 38px;
+          padding: 0 14px;
+          border: 0;
+          border-radius: 7px;
+          background: #2499ed;
+          color: #fff;
+          font-family: inherit;
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
         }
-
 
         .users-add-button:hover {
-          opacity:
-            .92;
-        }
-
-
-        /* =================================================
-           TOGGLE
-        ================================================= */
-
-        .users-toggle {
-          display:
-            inline-flex;
-
-          align-items:
-            center;
-
-          gap:
-            8px;
-
-          height:
-            38px;
-
-          padding:
-            0 12px;
-
-          border:
-            1px solid #dfe4e9;
-
-          border-radius:
-            7px;
-
-          background:
-            #fff;
-
-          color:
-            #596575;
-
-          font-family:
-            inherit;
-
-          font-size:
-            10px;
-
-          font-weight:
-            650;
-
-          cursor:
-            pointer;
-        }
-
-
-        .users-toggle:hover {
-          background:
-            #f8fafb;
-        }
-
-
-        .users-toggle-indicator {
-          width:
-            18px;
-
-          height:
-            18px;
-
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          justify-content:
-            center;
-
-          border:
-            1px solid #d8dee5;
-
-          border-radius:
-            5px;
-
-          background:
-            #fff;
-        }
-
-
-        .users-toggle.active
-        .users-toggle-indicator {
-          background:
-            #2499ed;
-
-          border-color:
-            #2499ed;
-
-          color:
-            #fff;
-        }
-
-
-        /* =================================================
-           CARD
-        ================================================= */
-
-        .users-card {
-          background:
-            #fff;
-
-          border:
-            1px solid #e1e5ea;
-
-          border-radius:
-            10px;
-
-          overflow:
-            hidden;
-        }
-
-
-        /* =================================================
-           TOOLBAR
-        ================================================= */
-
-        .users-toolbar {
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          justify-content:
-            space-between;
-
-          gap:
-            12px;
-
-          padding:
-            12px 14px;
-
-          border-bottom:
-            1px solid #e7eaee;
-        }
-
-
-        .users-search {
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          gap:
-            8px;
-
-          width:
-            300px;
-
-          max-width:
-            100%;
-
-          height:
-            34px;
-
-          padding:
-            0 10px;
-
-          border:
-            1px solid #dfe4e9;
-
-          border-radius:
-            6px;
-
-          background:
-            #fff;
-
-          color:
-            #94a3b8;
-        }
-
-
-        .users-search input {
-          width:
-            100%;
-
-          border:
-            0;
-
-          outline:
-            0;
-
-          font-family:
-            inherit;
-
-          font-size:
-            11px;
-
-          color:
-            #172033;
-
-          background:
-            transparent;
-        }
-
-
-        .users-refresh {
-          display:
-            inline-flex;
-
-          align-items:
-            center;
-
-          gap:
-            6px;
-
-          height:
-            32px;
-
-          padding:
-            0 10px;
-
-          border:
-            1px solid #e1e5e9;
-
-          border-radius:
-            6px;
-
-          background:
-            #f8f9fa;
-
-          color:
-            #64748b;
-
-          font-family:
-            inherit;
-
-          font-size:
-            10px;
-
-          font-weight:
-            600;
-
-          cursor:
-            pointer;
-        }
-
-
-        .users-refresh:disabled {
-          opacity:
-            .5;
-
-          cursor:
-            default;
-        }
-
-
-        /* =================================================
-           TREE AREA
-        ================================================= */
-
-        .reporting-tree {
-          padding:
-            22px 24px 28px;
-        }
-
-
-        .tree-summary {
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          gap:
-            8px;
-
-          margin-bottom:
-            20px;
-
-          color:
-            #718096;
-
-          font-size:
-            10px;
-
-          font-weight:
-            650;
-        }
-
-
-        .tree-summary strong {
-          color:
-            #273142;
-        }
-
-
-        /* =================================================
-           MANAGER
-        ================================================= */
-
-        .tree-manager {
-          position:
-            relative;
-
-          margin-bottom:
-            24px;
-
-          padding-left:
-            30px;
-        }
-
-
-        /*
-         * Main vertical line running through
-         * the manager's hierarchy.
-         */
-
-        .tree-manager::before {
-          content:
-            "";
-
-          position:
-            absolute;
-
-          left:
-            8px;
-
-          top:
-            30px;
-
-          bottom:
-            18px;
-
-          width:
-            2px;
-
-          background:
-            #dbe2e8;
-
-          border-radius:
-            2px;
-        }
-
-
-        .tree-manager-header {
-          position:
-            relative;
-
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          justify-content:
-            space-between;
-
-          gap:
-            15px;
-
-          min-height:
-            62px;
-
-          padding:
-            10px 13px;
-
-          border:
-            1px solid #dce3e9;
-
-          border-radius:
-            9px;
-
-          background:
-            #fff;
-
-          box-shadow:
-            0 1px 2px rgba(15,23,42,.03);
-        }
-
-
-        .tree-manager-header::before {
-          content:
-            "";
-
-          position:
-            absolute;
-
-          left:
-            -24px;
-
-          top:
-            50%;
-
-          width:
-            24px;
-
-          height:
-            2px;
-
-          background:
-            #dbe2e8;
-        }
-
-
-        .tree-manager-left {
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          gap:
-            11px;
-
-          min-width:
-            0;
-        }
-
-
-        .tree-expand {
-          width:
-            27px;
-
-          height:
-            27px;
-
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          justify-content:
-            center;
-
-          flex-shrink:
-            0;
-
-          border:
-            1px solid #e0e5ea;
-
-          border-radius:
-            6px;
-
-          background:
-            #f8fafb;
-
-          color:
-            #64748b;
-
-          cursor:
-            pointer;
-        }
-
-
-        .tree-expand:hover {
-          background:
-            #f1f5f8;
-
-          color:
-            #172033;
-        }
-
-
-        .tree-manager-icon {
-          width:
-            38px;
-
-          height:
-            38px;
-
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          justify-content:
-            center;
-
-          flex-shrink:
-            0;
-
-          border-radius:
-            9px;
-
-          background:
-            #eef7ff;
-
-          color:
-            #2499ed;
-        }
-
-
-        .tree-manager-name {
-          font-size:
-            13px;
-
-          font-weight:
-            750;
-
-          color:
-            #172033;
-        }
-
-
-        .tree-manager-role {
-          margin-top:
-            3px;
-
-          font-size:
-            10px;
-
-          color:
-            #84909d;
-        }
-
-
-        .tree-manager-right {
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          gap:
-            9px;
-
-          flex-shrink:
-            0;
-        }
-
-
-        .tree-count {
-          padding:
-            4px 7px;
-
-          border-radius:
-            5px;
-
-          background:
-            #f1f4f6;
-
-          color:
-            #687585;
-
-          font-size:
-            9px;
-
-          font-weight:
-            700;
-        }
-
-
-        /* =================================================
-           BRANCH
-        ================================================= */
-
-        .tree-manager-children {
-          position:
-            relative;
-
-          padding-top:
-            12px;
-
-          padding-left:
-            28px;
-        }
-
-
-        .tree-branch {
-          position:
-            relative;
-
-          margin-bottom:
-            13px;
-        }
-
-
-        /*
-         * Horizontal branch connector
-         */
-
-        .tree-branch::before {
-          content:
-            "";
-
-          position:
-            absolute;
-
-          left:
-            -20px;
-
-          top:
-            17px;
-
-          width:
-            20px;
-
-          height:
-            2px;
-
-          background:
-            #dbe2e8;
-        }
-
-
-        .tree-branch-header {
-          display:
-            inline-flex;
-
-          align-items:
-            center;
-
-          gap:
-            7px;
-
-          min-height:
-            30px;
-
-          padding:
-            0 9px;
-
-          border:
-            1px solid #e2e7eb;
-
-          border-radius:
-            6px;
-
-          background:
-            #f8fafb;
-
-          color:
-            #566273;
-
-          font-size:
-            10px;
-
-          font-weight:
-            750;
-
-          cursor:
-            pointer;
-        }
-
-
-        .tree-branch-header:hover {
-          background:
-            #f2f5f7;
-        }
-
-
-        .tree-branch-count {
-          color:
-            #97a1ac;
-
-          font-size:
-            9px;
-
-          font-weight:
-            650;
-        }
-
-
-        .tree-branch-users {
-          position:
-            relative;
-
-          margin-top:
-            6px;
-
-          margin-left:
-            14px;
-
-          padding-left:
-            24px;
-        }
-
-
-        /*
-         * Vertical branch line
-         */
-
-        .tree-branch-users::before {
-          content:
-            "";
-
-          position:
-            absolute;
-
-          left:
-            0;
-
-          top:
-            0;
-
-          bottom:
-            19px;
-
-          width:
-            2px;
-
-          background:
-            #e5eaee;
-
-          border-radius:
-            2px;
-        }
-
-
-        /* =================================================
-           USER NODE
-        ================================================= */
-
-        .tree-user-node {
-          position:
-            relative;
-
-          margin:
-            0 0 7px;
-        }
-
-
-        .tree-user-connector {
-          position:
-            absolute;
-
-          left:
-            -24px;
-
-          top:
-            24px;
-
-          width:
-            24px;
-
-          height:
-            2px;
-
-          background:
-            #e5eaee;
-        }
-
-
-        .tree-user-card {
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          justify-content:
-            space-between;
-
-          gap:
-            15px;
-
-          min-height:
-            53px;
-
-          padding:
-            8px 10px;
-
-          border:
-            1px solid #e7ebee;
-
-          border-radius:
-            8px;
-
-          background:
-            #fff;
-
-          transition:
-            .15s;
-        }
-
-
-        .tree-user-card:hover {
-          border-color:
-            #d8e0e6;
-
-          box-shadow:
-            0 2px 8px rgba(15,23,42,.04);
-        }
-
-
-        .tree-user-main {
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          gap:
-            10px;
-
-          min-width:
-            0;
-        }
-
-
-        .tree-avatar {
-          width:
-            31px;
-
-          height:
-            31px;
-
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          justify-content:
-            center;
-
-          flex-shrink:
-            0;
-
-          border-radius:
-            50%;
-
-          background:
-            #f0f3f6;
-
-          color:
-            #657182;
-
-          font-size:
-            10px;
-
-          font-weight:
-            800;
-        }
-
-
-        .tree-user-details {
-          min-width:
-            0;
-        }
-
-
-        .tree-user-name {
-          overflow:
-            hidden;
-
-          text-overflow:
-            ellipsis;
-
-          white-space:
-            nowrap;
-
-          color:
-            #273142;
-
-          font-size:
-            11px;
-
-          font-weight:
-            700;
-        }
-
-
-        .tree-user-meta {
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          gap:
-            5px;
-
-          margin-top:
-            3px;
-
-          color:
-            #8a95a1;
-
-          font-size:
-            9px;
-        }
-
-
-        .tree-dot {
-          color:
-            #c1c8cf;
-        }
-
-
-        .tree-user-right {
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          gap:
-            8px;
-
-          flex-shrink:
-            0;
-        }
-
-
-        .tree-permission {
-          padding:
-            4px 7px;
-
-          border-radius:
-            5px;
-
-          background:
-            #eef7ff;
-
-          color:
-            #2679b3;
-
-          font-size:
-            9px;
-
-          font-weight:
-            700;
-        }
-
-
-        .tree-active,
-        .tree-inactive {
-          display:
-            inline-flex;
-
-          align-items:
-            center;
-
-          gap:
-            5px;
-
-          font-size:
-            9px;
-
-          font-weight:
-            700;
-        }
-
-
-        .tree-active {
-          color:
-            #34804a;
-        }
-
-
-        .tree-inactive {
-          color:
-            #a06464;
-        }
-
-
-        .tree-status-dot {
-          width:
-            6px;
-
-          height:
-            6px;
-
-          border-radius:
-            50%;
-
-          background:
-            currentColor;
-        }
-
-
-        .tree-edit-button {
-          width:
-            29px;
-
-          height:
-            29px;
-
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          justify-content:
-            center;
-
-          border:
-            1px solid #e0e4e8;
-
-          border-radius:
-            6px;
-
-          background:
-            #fff;
-
-          color:
-            #64748b;
-
-          cursor:
-            pointer;
-        }
-
-
-        .tree-edit-button:hover {
-          background:
-            #f5f8fa;
-
-          color:
-            #172033;
-        }
-
-
-        /* =================================================
-           UNASSIGNED
-        ================================================= */
-
-        .tree-unassigned {
-          margin-top:
-            24px;
-
-          padding:
-            16px;
-
-          border:
-            1px dashed #d8dee5;
-
-          border-radius:
-            9px;
-
-          background:
-            #fafbfc;
-        }
-
-
-        .tree-unassigned-title {
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          gap:
-            7px;
-
-          margin-bottom:
-            10px;
-
-          color:
-            #687585;
-
-          font-size:
-            10px;
-
-          font-weight:
-            750;
-        }
-
-
-        /* =================================================
-           EMPTY
-        ================================================= */
-
-        .users-empty {
-          padding:
-            65px 20px;
-
-          text-align:
-            center;
-
-          color:
-            #94a3b8;
-
-          font-size:
-            12px;
-        }
-
-
-        .users-empty-icon {
-          margin-bottom:
-            8px;
-
-          color:
-            #c1c9d1;
+          opacity: .92;
         }
 
 
@@ -2013,26 +1090,532 @@ export default function Users() {
         ================================================= */
 
         .users-error {
-          margin-bottom:
-            14px;
+          margin-bottom: 14px;
+          padding: 10px 12px;
+          border: 1px solid #fecaca;
+          border-radius: 7px;
+          background: #fef2f2;
+          color: #991b1b;
+          font-size: 11px;
+        }
 
-          padding:
-            10px 12px;
 
-          border:
-            1px solid #fecaca;
+        /* =================================================
+           CARD
+        ================================================= */
 
-          border-radius:
-            7px;
+        .users-card {
+          background: #fff;
+          border: 1px solid #e1e5ea;
+          border-radius: 9px;
+          overflow: hidden;
+        }
 
-          background:
-            #fef2f2;
 
-          color:
-            #991b1b;
+        /* =================================================
+           TOOLBAR
+        ================================================= */
 
-          font-size:
-            11px;
+        .users-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px 14px;
+          border-bottom: 1px solid #e7eaee;
+          flex-wrap: wrap;
+        }
+
+        .users-toolbar-left {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .users-search {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          width: 300px;
+          max-width: 100%;
+          height: 34px;
+          padding: 0 10px;
+          border: 1px solid #dfe4e9;
+          border-radius: 6px;
+          background: #fff;
+          color: #94a3b8;
+          box-sizing: border-box;
+        }
+
+        .users-search input {
+          width: 100%;
+          border: 0;
+          outline: 0;
+          font-family: inherit;
+          font-size: 11px;
+          color: #172033;
+          background: transparent;
+        }
+
+        .users-filter {
+          height: 34px;
+          min-width: 145px;
+          padding: 0 10px;
+          border: 1px solid #dfe4e9;
+          border-radius: 6px;
+          background: #fff;
+          color: #596575;
+          font-family: inherit;
+          font-size: 10px;
+          outline: none;
+          cursor: pointer;
+        }
+
+        .users-filter:focus {
+          border-color: #2499ed;
+        }
+
+        .users-toolbar-right {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .users-toggle {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          height: 34px;
+          padding: 0 10px;
+          border: 1px solid #dfe4e9;
+          border-radius: 6px;
+          background: #fff;
+          color: #596575;
+          font-family: inherit;
+          font-size: 10px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .users-toggle:hover {
+          background: #f8fafb;
+        }
+
+        .users-toggle-indicator {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #cbd5e1;
+        }
+
+        .users-toggle.active .users-toggle-indicator {
+          background: #2499ed;
+        }
+
+        .users-refresh {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          height: 34px;
+          padding: 0 10px;
+          border: 1px solid #e1e5e9;
+          border-radius: 6px;
+          background: #f8f9fa;
+          color: #64748b;
+          font-family: inherit;
+          font-size: 10px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .users-refresh:disabled {
+          opacity: .5;
+          cursor: default;
+        }
+
+
+        /* =================================================
+           TREE HEADER
+        ================================================= */
+
+        .tree-summary {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 15px 16px 10px;
+          color: #5e7086;
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        .tree-summary svg {
+          color: #6d8aa5;
+        }
+
+        .tree-summary-number {
+          color: #172033;
+          font-weight: 800;
+        }
+
+
+        /* =================================================
+           TREE
+        ================================================= */
+
+        .reporting-tree {
+          padding: 4px 12px 24px;
+        }
+
+        .tree-root {
+          position: relative;
+        }
+
+        .tree-user-wrapper {
+          position: relative;
+          margin-bottom: 8px;
+        }
+
+        .tree-user-row {
+          position: relative;
+          display: flex;
+          align-items: center;
+          min-height: 62px;
+          padding: 8px 12px;
+          background: #fff;
+          border: 1px solid #dce3e9;
+          border-radius: 9px;
+          box-sizing: border-box;
+          transition: .15s;
+        }
+
+        .tree-user-row:hover {
+          border-color: #c8d6e2;
+          box-shadow: 0 2px 7px rgba(15, 23, 42, .04);
+        }
+
+
+        /* =================================================
+           ROOT TREE CONNECTOR
+        ================================================= */
+
+        .tree-root > .tree-user-wrapper {
+          padding-left: 30px;
+        }
+
+        .tree-root > .tree-user-wrapper:before {
+          content: "";
+          position: absolute;
+          left: 7px;
+          top: 30px;
+          width: 22px;
+          border-top: 1px solid #cfd9e2;
+        }
+
+
+        /* =================================================
+           EXPAND
+        ================================================= */
+
+        .tree-expand-button {
+          width: 28px;
+          height: 28px;
+          flex: 0 0 28px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          margin-right: 8px;
+          border: 1px solid #dce5ec;
+          border-radius: 6px;
+          background: #f8fafc;
+          color: #64748b;
+          cursor: pointer;
+        }
+
+        .tree-expand-button:hover {
+          background: #f1f5f9;
+        }
+
+        .tree-expand-button:disabled {
+          border-color: transparent;
+          background: transparent;
+          cursor: default;
+        }
+
+        .tree-expand-empty span {
+          width: 4px;
+          height: 4px;
+          border-radius: 50%;
+          background: #cbd5e1;
+        }
+
+
+        /* =================================================
+           AVATAR
+        ================================================= */
+
+        .tree-avatar {
+          width: 38px;
+          height: 38px;
+          flex: 0 0 38px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-right: 11px;
+          border-radius: 9px;
+          background: #eef6fd;
+          color: #2879b5;
+          font-size: 11px;
+          font-weight: 800;
+        }
+
+
+        /* =================================================
+           USER DETAILS
+        ================================================= */
+
+        .tree-user-main {
+          min-width: 170px;
+          flex: 1;
+        }
+
+        .tree-user-name {
+          color: #172033;
+          font-size: 12px;
+          font-weight: 750;
+        }
+
+        .tree-user-meta {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-top: 4px;
+          color: #8290a0;
+          font-size: 9px;
+        }
+
+        .tree-meta-dot {
+          color: #b6c0ca;
+        }
+
+
+        /* =================================================
+           MANAGER
+        ================================================= */
+
+        .tree-user-manager {
+          margin-right: 15px;
+          color: #9aa5b1;
+          font-size: 9px;
+        }
+
+        .tree-user-manager strong {
+          color: #64748b;
+          font-weight: 700;
+        }
+
+
+        /* =================================================
+           BADGES
+        ================================================= */
+
+        .tree-permission {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 55px;
+          padding: 5px 7px;
+          margin-right: 12px;
+          border-radius: 5px;
+          background: #eef7ff;
+          color: #2679b3;
+          font-size: 9px;
+          font-weight: 700;
+        }
+
+        .tree-active,
+        .tree-inactive {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          min-width: 54px;
+          margin-right: 12px;
+          font-size: 9px;
+          font-weight: 700;
+        }
+
+        .tree-active {
+          color: #34804a;
+        }
+
+        .tree-inactive {
+          color: #a06464;
+        }
+
+        .status-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #3d9b58;
+        }
+
+        .inactive-dot {
+          background: #b77b7b;
+        }
+
+        .tree-report-count {
+          min-width: 62px;
+          padding: 5px 7px;
+          margin-right: 10px;
+          border-radius: 5px;
+          background: #f3f5f7;
+          color: #697686;
+          text-align: center;
+          font-size: 9px;
+          font-weight: 700;
+        }
+
+
+        /* =================================================
+           EDIT
+        ================================================= */
+
+        .tree-edit-button {
+          width: 31px;
+          height: 31px;
+          flex: 0 0 31px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid #dfe5ea;
+          border-radius: 6px;
+          background: #fff;
+          color: #64748b;
+          cursor: pointer;
+        }
+
+        .tree-edit-button:hover {
+          background: #f5f8fa;
+          color: #172033;
+        }
+
+
+        /* =================================================
+           CHILDREN
+        ================================================= */
+
+        .tree-children {
+          position: relative;
+          margin-left: 29px;
+          padding-left: 27px;
+        }
+
+        .tree-children:before {
+          content: "";
+          position: absolute;
+          left: 7px;
+          top: 0;
+          bottom: 18px;
+          border-left: 1px solid #cfd9e2;
+        }
+
+
+        /* =================================================
+           BRANCH GROUP
+        ================================================= */
+
+        .tree-branch-group {
+          position: relative;
+          margin-top: 7px;
+        }
+
+        .tree-branch-line {
+          position: relative;
+          min-height: 30px;
+        }
+
+        .tree-branch-connector {
+          position: absolute;
+          left: -20px;
+          top: 15px;
+          width: 20px;
+          border-top: 1px solid #cfd9e2;
+        }
+
+        .tree-branch-button {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          height: 30px;
+          padding: 0 9px;
+          border: 1px solid #dfe6ec;
+          border-radius: 6px;
+          background: #f8fafc;
+          color: #617186;
+          font-family: inherit;
+          cursor: pointer;
+        }
+
+        .tree-branch-button:hover {
+          background: #f2f6f9;
+        }
+
+        .tree-branch-name {
+          color: #53667b;
+          font-size: 9px;
+          font-weight: 800;
+        }
+
+        .tree-branch-count {
+          color: #9aa6b3;
+          font-size: 9px;
+          font-weight: 600;
+        }
+
+
+        /* =================================================
+           BRANCH USERS
+        ================================================= */
+
+        .tree-branch-users {
+          position: relative;
+          margin-left: 14px;
+          padding-left: 20px;
+        }
+
+        .tree-branch-users:before {
+          content: "";
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 20px;
+          border-left: 1px solid #d6dee6;
+        }
+
+        .tree-branch-users .tree-user-wrapper {
+          margin-top: 7px;
+          margin-bottom: 0;
+        }
+
+        .tree-branch-users .tree-user-wrapper:before {
+          content: "";
+          position: absolute;
+          left: -20px;
+          top: 30px;
+          width: 20px;
+          border-top: 1px solid #d6dee6;
+        }
+
+
+        /* =================================================
+           EMPTY
+        ================================================= */
+
+        .users-empty {
+          padding: 70px 20px;
+          text-align: center;
+          color: #94a3b8;
+          font-size: 12px;
         }
 
 
@@ -2041,474 +1624,218 @@ export default function Users() {
         ================================================= */
 
         .users-modal-overlay {
-          position:
-            fixed;
-
-          inset:
-            0;
-
-          z-index:
-            1000;
-
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          justify-content:
-            center;
-
-          padding:
-            20px;
-
-          background:
-            rgba(15,23,42,.38);
+          position: fixed;
+          inset: 0;
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+          background: rgba(15, 23, 42, .38);
         }
-
 
         .users-modal {
-          width:
-            100%;
-
-          max-width:
-            560px;
-
-          max-height:
-            calc(100vh - 40px);
-
-          overflow:
-            auto;
-
-          background:
-            #fff;
-
-          border-radius:
-            10px;
-
-          box-shadow:
-            0 20px 60px rgba(0,0,0,.20);
-
-          overflow-x:
-            hidden;
+          width: 100%;
+          max-width: 560px;
+          background: #fff;
+          border-radius: 10px;
+          box-shadow: 0 20px 60px rgba(0,0,0,.20);
+          overflow: hidden;
         }
-
 
         .users-modal-header {
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          justify-content:
-            space-between;
-
-          padding:
-            17px 20px;
-
-          border-bottom:
-            1px solid #edf0f2;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 17px 20px;
+          border-bottom: 1px solid #edf0f2;
         }
-
 
         .users-modal-title {
-          margin:
-            0;
-
-          font-size:
-            15px;
-
-          font-weight:
-            750;
+          margin: 0;
+          font-size: 15px;
+          font-weight: 750;
         }
-
 
         .users-modal-subtitle {
-          margin:
-            4px 0 0;
-
-          color:
-            #8a95a1;
-
-          font-size:
-            10px;
+          margin: 4px 0 0;
+          color: #8a95a1;
+          font-size: 10px;
         }
-
 
         .users-modal-close {
-          width:
-            30px;
-
-          height:
-            30px;
-
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          justify-content:
-            center;
-
-          border:
-            0;
-
-          border-radius:
-            6px;
-
-          background:
-            transparent;
-
-          color:
-            #8993a0;
-
-          cursor:
-            pointer;
+          width: 30px;
+          height: 30px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 0;
+          border-radius: 6px;
+          background: transparent;
+          color: #8993a0;
+          cursor: pointer;
         }
-
 
         .users-modal-close:hover {
-          background:
-            #f3f5f7;
+          background: #f3f5f7;
         }
-
 
         .users-form {
-          padding:
-            20px;
+          padding: 20px;
         }
-
 
         .users-form-grid {
-          display:
-            grid;
-
-          grid-template-columns:
-            repeat(2,minmax(0,1fr));
-
-          gap:
-            15px;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 15px;
         }
-
 
         .users-form-field {
-          display:
-            flex;
-
-          flex-direction:
-            column;
-
-          gap:
-            6px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
         }
-
-
-        .users-form-field.full {
-          grid-column:
-            1 / -1;
-        }
-
 
         .users-form-label {
-          font-size:
-            9px;
-
-          font-weight:
-            800;
-
-          color:
-            #687585;
-
-          text-transform:
-            uppercase;
-
-          letter-spacing:
-            .04em;
+          font-size: 9px;
+          font-weight: 800;
+          color: #687585;
+          text-transform: uppercase;
+          letter-spacing: .04em;
         }
-
 
         .users-form-input,
         .users-form-select {
-          width:
-            100%;
-
-          height:
-            38px;
-
-          box-sizing:
-            border-box;
-
-          border:
-            1px solid #dce1e6;
-
-          border-radius:
-            6px;
-
-          padding:
-            0 10px;
-
-          background:
-            #fff;
-
-          color:
-            #172033;
-
-          font-family:
-            inherit;
-
-          font-size:
-            11px;
-
-          outline:
-            none;
+          width: 100%;
+          height: 38px;
+          box-sizing: border-box;
+          border: 1px solid #dce1e6;
+          border-radius: 6px;
+          padding: 0 10px;
+          background: #fff;
+          color: #172033;
+          font-family: inherit;
+          font-size: 11px;
+          outline: none;
         }
-
 
         .users-form-input:focus,
         .users-form-select:focus {
-          border-color:
-            #2499ed;
-
-          box-shadow:
-            0 0 0 2px rgba(36,153,237,.10);
+          border-color: #2499ed;
+          box-shadow: 0 0 0 2px rgba(36,153,237,.10);
         }
-
 
         .users-active-row {
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          justify-content:
-            space-between;
-
-          padding:
-            10px 12px;
-
-          border:
-            1px solid #e1e5e9;
-
-          border-radius:
-            7px;
-
-          grid-column:
-            1 / -1;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 10px 12px;
+          border: 1px solid #e1e5e9;
+          border-radius: 7px;
+          grid-column: 1 / -1;
         }
-
 
         .users-active-text {
-          display:
-            flex;
-
-          flex-direction:
-            column;
-
-          gap:
-            3px;
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
         }
-
 
         .users-active-title {
-          font-size:
-            11px;
-
-          font-weight:
-            700;
-
-          color:
-            #273142;
+          font-size: 11px;
+          font-weight: 700;
+          color: #273142;
         }
-
 
         .users-active-description {
-          font-size:
-            9px;
-
-          color:
-            #8a95a1;
+          font-size: 9px;
+          color: #8a95a1;
         }
-
 
         .users-switch {
-          position:
-            relative;
-
-          width:
-            38px;
-
-          height:
-            21px;
-
-          flex-shrink:
-            0;
+          position: relative;
+          width: 38px;
+          height: 21px;
+          flex-shrink: 0;
         }
-
 
         .users-switch input {
-          opacity:
-            0;
-
-          width:
-            0;
-
-          height:
-            0;
+          opacity: 0;
+          width: 0;
+          height: 0;
         }
-
 
         .users-slider {
-          position:
-            absolute;
-
-          inset:
-            0;
-
-          border-radius:
-            20px;
-
-          background:
-            #cbd2d9;
-
-          cursor:
-            pointer;
-
-          transition:
-            .2s;
+          position: absolute;
+          inset: 0;
+          border-radius: 20px;
+          background: #cbd2d9;
+          cursor: pointer;
+          transition: .2s;
         }
-
 
         .users-slider:before {
-          content:
-            "";
-
-          position:
-            absolute;
-
-          width:
-            17px;
-
-          height:
-            17px;
-
-          left:
-            2px;
-
-          top:
-            2px;
-
-          border-radius:
-            50%;
-
-          background:
-            #fff;
-
-          transition:
-            .2s;
-
-          box-shadow:
-            0 1px 3px rgba(0,0,0,.18);
+          content: "";
+          position: absolute;
+          width: 17px;
+          height: 17px;
+          left: 2px;
+          top: 2px;
+          border-radius: 50%;
+          background: #fff;
+          transition: .2s;
+          box-shadow: 0 1px 3px rgba(0,0,0,.18);
         }
 
-
-        .users-switch input:checked
-        + .users-slider {
-          background:
-            #2499ed;
+        .users-switch input:checked + .users-slider {
+          background: #2499ed;
         }
 
-
-        .users-switch input:checked
-        + .users-slider:before {
-          transform:
-            translateX(17px);
+        .users-switch input:checked + .users-slider:before {
+          transform: translateX(17px);
         }
 
 
         /* =================================================
-           FOOTER
+           MODAL FOOTER
         ================================================= */
 
         .users-modal-footer {
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          justify-content:
-            flex-end;
-
-          gap:
-            8px;
-
-          padding:
-            13px 20px;
-
-          border-top:
-            1px solid #edf0f2;
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 8px;
+          padding: 13px 20px;
+          border-top: 1px solid #edf0f2;
         }
-
 
         .users-cancel-button,
         .users-save-button {
-          height:
-            36px;
-
-          padding:
-            0 14px;
-
-          border-radius:
-            6px;
-
-          font-family:
-            inherit;
-
-          font-size:
-            10px;
-
-          font-weight:
-            700;
-
-          cursor:
-            pointer;
+          height: 36px;
+          padding: 0 14px;
+          border-radius: 6px;
+          font-family: inherit;
+          font-size: 10px;
+          font-weight: 700;
+          cursor: pointer;
         }
-
 
         .users-cancel-button {
-          border:
-            1px solid #dfe3e7;
-
-          background:
-            #fff;
-
-          color:
-            #596575;
+          border: 1px solid #dfe3e7;
+          background: #fff;
+          color: #596575;
         }
-
 
         .users-save-button {
-          border:
-            0;
-
-          background:
-            #172554;
-
-          color:
-            #fff;
+          border: 0;
+          background: #172554;
+          color: #fff;
         }
-
 
         .users-save-button:disabled,
         .users-cancel-button:disabled {
-          opacity:
-            .5;
-
-          cursor:
-            default;
+          opacity: .5;
+          cursor: default;
         }
 
 
@@ -2516,61 +1843,82 @@ export default function Users() {
            MOBILE
         ================================================= */
 
-        @media (max-width: 800px) {
+        @media (max-width: 850px) {
+
+          .tree-user-manager {
+            display: none;
+          }
+
+          .tree-report-count {
+            display: none;
+          }
+
+        }
+
+        @media (max-width: 700px) {
 
           .users-page {
-            padding:
-              16px;
+            padding: 16px;
           }
 
           .users-header {
-            flex-direction:
-              column;
+            align-items: stretch;
+            flex-direction: column;
           }
 
-          .users-header-actions {
-            justify-content:
-              flex-start;
+          .users-add-button {
+            align-self: flex-start;
           }
 
           .users-toolbar {
-            flex-direction:
-              column;
+            align-items: stretch;
+            flex-direction: column;
+          }
 
-            align-items:
-              stretch;
+          .users-toolbar-left {
+            width: 100%;
           }
 
           .users-search {
-            width:
-              auto;
+            width: 100%;
           }
 
-          .tree-user-card {
-            align-items:
-              flex-start;
-
-            flex-direction:
-              column;
+          .users-filter {
+            flex: 1;
           }
 
-          .tree-user-right {
-            width:
-              100%;
-
-            justify-content:
-              flex-end;
+          .users-toolbar-right {
+            justify-content: space-between;
           }
 
           .users-form-grid {
-            grid-template-columns:
-              1fr;
+            grid-template-columns: 1fr;
           }
 
-          .users-form-field.full,
           .users-active-row {
-            grid-column:
-              auto;
+            grid-column: auto;
+          }
+
+          .tree-user-row {
+            min-height: 58px;
+            padding: 7px;
+          }
+
+          .tree-avatar {
+            width: 34px;
+            height: 34px;
+            flex-basis: 34px;
+          }
+
+          .tree-permission,
+          .tree-active,
+          .tree-inactive {
+            display: none;
+          }
+
+          .tree-children {
+            margin-left: 18px;
+            padding-left: 20px;
           }
 
         }
@@ -2598,48 +1946,17 @@ export default function Users() {
         </div>
 
 
-        <div className="users-header-actions">
+        <button
+          type="button"
+          className="users-add-button"
+          onClick={openAddUser}
+        >
 
-          <button
-            type="button"
-            className={
-              showInactive
-                ? "users-toggle active"
-                : "users-toggle"
-            }
-            onClick={() =>
-              setShowInactive(
-                current => !current
-              )
-            }
-          >
+          <Plus size={15} />
 
-            <span className="users-toggle-indicator">
+          Add user
 
-              {showInactive && (
-                <Check size={12} />
-              )}
-
-            </span>
-
-            Show inactive users
-
-          </button>
-
-
-          <button
-            type="button"
-            className="users-add-button"
-            onClick={openAddUser}
-          >
-
-            <Plus size={15} />
-
-            Add user
-
-          </button>
-
-        </div>
+        </button>
 
       </div>
 
@@ -2658,7 +1975,7 @@ export default function Users() {
 
 
       {/* =====================================================
-          CARD
+          MAIN CARD
       ===================================================== */}
 
       <div className="users-card">
@@ -2670,38 +1987,154 @@ export default function Users() {
 
         <div className="users-toolbar">
 
-          <div className="users-search">
+          <div className="users-toolbar-left">
 
-            <Search size={14} />
+            {/* SEARCH */}
 
-            <input
-              type="text"
-              placeholder="Search users, roles or branches..."
-              value={search}
+            <div className="users-search">
+
+              <Search size={14} />
+
+              <input
+                type="text"
+                placeholder="Search users..."
+                value={search}
+                onChange={event =>
+                  setSearch(
+                    event.target.value
+                  )
+                }
+              />
+
+            </div>
+
+
+            {/* BRANCH */}
+
+            <select
+              className="users-filter"
+              value={branchFilter}
               onChange={event =>
-                setSearch(
+                setBranchFilter(
                   event.target.value
                 )
               }
-            />
+            >
+
+              <option value="">
+                All branches
+              </option>
+
+              {branches.map(branch => (
+
+                <option
+                  key={branch}
+                  value={branch}
+                >
+                  {branch}
+                </option>
+
+              ))}
+
+            </select>
+
+
+            {/* ROLE */}
+
+            <select
+              className="users-filter"
+              value={roleFilter}
+              onChange={event =>
+                setRoleFilter(
+                  event.target.value
+                )
+              }
+            >
+
+              <option value="">
+                All roles
+              </option>
+
+              {roles.map(role => (
+
+                <option
+                  key={role}
+                  value={role}
+                >
+                  {role}
+                </option>
+
+              ))}
+
+            </select>
 
           </div>
 
 
-          <button
-            type="button"
-            className="users-refresh"
-            onClick={loadUsers}
-            disabled={loading}
-          >
+          <div className="users-toolbar-right">
 
-            <RefreshCw size={12} />
+            {/* ACTIVE TOGGLE */}
 
-            {loading
-              ? "Loading..."
-              : "Refresh"}
+            <button
+              type="button"
+              className={
+                showInactive
+                  ? "users-toggle active"
+                  : "users-toggle"
+              }
+              onClick={() =>
+                setShowInactive(
+                  current => !current
+                )
+              }
+            >
 
-          </button>
+              <span className="users-toggle-indicator" />
+
+              {showInactive
+                ? "Showing inactive"
+                : "Active users only"}
+
+            </button>
+
+
+            {/* REFRESH */}
+
+            <button
+              type="button"
+              className="users-refresh"
+              onClick={loadUsers}
+              disabled={loading}
+            >
+
+              <RefreshCw size={12} />
+
+              {loading
+                ? "Loading..."
+                : "Refresh"}
+
+            </button>
+
+          </div>
+
+        </div>
+
+
+        {/* ===================================================
+            SUMMARY
+        =================================================== */}
+
+        <div className="tree-summary">
+
+          <GitBranch size={14} />
+
+          <span className="tree-summary-number">
+            {reportingCount}
+          </span>
+
+          <span>
+            users in reporting structure
+          </span>
 
         </div>
 
@@ -2710,335 +2143,47 @@ export default function Users() {
             TREE
         =================================================== */}
 
-        <div className="reporting-tree">
+        {loading ? (
 
-          {loading ? (
+          <div className="users-empty">
+            Loading users...
+          </div>
 
-            <div className="users-empty">
-              Loading reporting structure...
-            </div>
+        ) : visibleUsers.length === 0 ? (
 
-          ) : filteredUsers.length === 0 ? (
+          <div className="users-empty">
+            No users found.
+          </div>
 
-            <div className="users-empty">
+        ) : (
 
-              <UsersIcon
-                size={28}
-                className="users-empty-icon"
-              />
+          <div className="reporting-tree">
 
-              <div>
-                No users found.
-              </div>
+            {rootUsers.map(user => (
 
-            </div>
+              <div
+                className="tree-root"
+                key={user.id}
+              >
 
-          ) : (
-
-            <>
-
-              <div className="tree-summary">
-
-                <GitBranch size={13} />
-
-                <strong>
-                  {filteredUsers.length}
-                </strong>
-
-                users in reporting structure
+                <UserCard
+                  user={user}
+                  level={0}
+                />
 
               </div>
 
+            ))}
 
-              {/* =================================================
-                  MANAGERS
-              ================================================= */}
+          </div>
 
-              {tree.managerUsers.map(manager => {
-
-                const directReports =
-                  tree.managersMap.get(
-                    manager.id
-                  ) || []
-
-                const branches =
-                  getBranches(
-                    directReports
-                  )
-
-                const collapsed =
-                  collapsedManagers[
-                    manager.id
-                  ] === true
-
-
-                return (
-
-                  <div
-                    className="tree-manager"
-                    key={manager.id}
-                  >
-
-
-                    {/* MANAGER HEADER */}
-
-                    <div className="tree-manager-header">
-
-                      <div className="tree-manager-left">
-
-                        <button
-                          type="button"
-                          className="tree-expand"
-                          onClick={() =>
-                            toggleManager(
-                              manager.id
-                            )
-                          }
-                          title={
-                            collapsed
-                              ? "Expand"
-                              : "Collapse"
-                          }
-                        >
-
-                          {collapsed ? (
-                            <ChevronRight
-                              size={15}
-                            />
-                          ) : (
-                            <ChevronDown
-                              size={15}
-                            />
-                          )}
-
-                        </button>
-
-
-                        <div className="tree-manager-icon">
-
-                          <UsersIcon
-                            size={18}
-                          />
-
-                        </div>
-
-
-                        <div>
-
-                          <div className="tree-manager-name">
-
-                            {display(
-                              manager.full_name,
-                              "Unnamed manager"
-                            )}
-
-                          </div>
-
-
-                          <div className="tree-manager-role">
-
-                            {display(
-                              manager.role,
-                              getPermissionLabel(
-                                manager.permission_level
-                              )
-                            )}
-
-                            {manager.branch && (
-                              <>
-                                {" • "}
-                                {manager.branch}
-                              </>
-                            )}
-
-                          </div>
-
-                        </div>
-
-                      </div>
-
-
-                      <div className="tree-manager-right">
-
-                        <span className="tree-count">
-
-                          {directReports.length}
-                          {" "}
-                          {directReports.length === 1
-                            ? "report"
-                            : "reports"}
-
-                        </span>
-
-
-                        <button
-                          type="button"
-                          className="tree-edit-button"
-                          onClick={() =>
-                            openEditUser(
-                              manager
-                            )
-                          }
-                          title="Edit manager"
-                        >
-
-                          <Pencil size={13} />
-
-                        </button>
-
-                      </div>
-
-                    </div>
-
-
-                    {/* MANAGER CHILDREN */}
-
-                    {!collapsed && (
-
-                      <div className="tree-manager-children">
-
-                        {branches.map(
-                          ([branch, branchUsers]) => {
-
-                            const branchKey =
-                              `${manager.id}::${branch}`
-
-                            const branchCollapsed =
-                              collapsedBranches[
-                                branchKey
-                              ] === true
-
-
-                            return (
-
-                              <div
-                                className="tree-branch"
-                                key={branchKey}
-                              >
-
-                                <button
-                                  type="button"
-                                  className="tree-branch-header"
-                                  onClick={() =>
-                                    toggleBranch(
-                                      branchKey
-                                    )
-                                  }
-                                >
-
-                                  {branchCollapsed ? (
-                                    <ChevronRight
-                                      size={13}
-                                    />
-                                  ) : (
-                                    <ChevronDown
-                                      size={13}
-                                    />
-                                  )}
-
-                                  <span>
-                                    {branch}
-                                  </span>
-
-                                  <span className="tree-branch-count">
-                                    {branchUsers.length}
-                                    {" "}
-                                    {branchUsers.length === 1
-                                      ? "user"
-                                      : "users"}
-                                  </span>
-
-                                </button>
-
-
-                                {!branchCollapsed && (
-
-                                  <div className="tree-branch-users">
-
-                                    {branchUsers
-                                      .sort(
-                                        (a, b) =>
-                                          display(
-                                            a.full_name
-                                          ).localeCompare(
-                                            display(
-                                              b.full_name
-                                            )
-                                          )
-                                      )
-                                      .map(user => (
-
-                                        <UserNode
-                                          key={user.id}
-                                          user={user}
-                                          nested
-                                        />
-
-                                      ))}
-
-                                  </div>
-
-                                )}
-
-                              </div>
-
-                            )
-
-                          }
-                        )}
-
-                      </div>
-
-                    )}
-
-                  </div>
-
-                )
-
-              })}
-
-
-              {/* =================================================
-                  UNASSIGNED
-              ================================================= */}
-
-              {tree.unassigned.length > 0 && (
-
-                <div className="tree-unassigned">
-
-                  <div className="tree-unassigned-title">
-
-                    <GitBranch size={13} />
-
-                    Unassigned users
-
-                  </div>
-
-
-                  {tree.unassigned.map(user => (
-
-                    <UserNode
-                      key={user.id}
-                      user={user}
-                    />
-
-                  ))}
-
-                </div>
-
-              )}
-
-            </>
-
-          )}
-
-        </div>
+        )}
 
       </div>
 
 
       {/* =====================================================
-          MODAL
+          ADD / EDIT MODAL
       ===================================================== */}
 
       {showModal && (
@@ -3060,9 +2205,7 @@ export default function Users() {
           <div className="users-modal">
 
 
-            {/* =================================================
-                HEADER
-            ================================================= */}
+            {/* HEADER */}
 
             <div className="users-modal-header">
 
@@ -3075,7 +2218,6 @@ export default function Users() {
                     : "Add user"}
 
                 </h2>
-
 
                 <p className="users-modal-subtitle">
 
@@ -3101,16 +2243,14 @@ export default function Users() {
             </div>
 
 
-            {/* =================================================
-                FORM
-            ================================================= */}
+            {/* FORM */}
 
             <div className="users-form">
 
               <div className="users-form-grid">
 
 
-                {/* NAME */}
+                {/* FULL NAME */}
 
                 <div className="users-form-field">
 
@@ -3133,7 +2273,7 @@ export default function Users() {
                 </div>
 
 
-                {/* AUTH USER ID */}
+                {/* AUTH ID */}
 
                 <div className="users-form-field">
 
@@ -3166,7 +2306,6 @@ export default function Users() {
 
                   <input
                     className="users-form-input"
-                    list="user-role-list"
                     value={form.role}
                     onChange={event =>
                       updateForm(
@@ -3176,19 +2315,6 @@ export default function Users() {
                     }
                     placeholder="Sales Rep"
                   />
-
-                  <datalist id="user-role-list">
-
-                    {roles.map(role => (
-
-                      <option
-                        key={role}
-                        value={role}
-                      />
-
-                    ))}
-
-                  </datalist>
 
                 </div>
 
@@ -3286,10 +2412,9 @@ export default function Users() {
                     </option>
 
                     {managers
-                      .filter(
-                        manager =>
-                          manager.id !==
-                          editingUser?.id
+                      .filter(manager =>
+                        normaliseId(manager.id) !==
+                        normaliseId(editingUser?.id)
                       )
                       .map(manager => (
 
@@ -3356,7 +2481,7 @@ export default function Users() {
                 </div>
 
 
-                {/* ERROR */}
+                {/* MODAL ERROR */}
 
                 {error && (
 
@@ -3365,13 +2490,10 @@ export default function Users() {
                     style={{
                       gridColumn:
                         "1 / -1",
-                      marginBottom:
-                        0,
+                      marginBottom: 0,
                     }}
                   >
-
                     {error}
-
                   </div>
 
                 )}
@@ -3381,9 +2503,7 @@ export default function Users() {
             </div>
 
 
-            {/* =================================================
-                FOOTER
-            ================================================= */}
+            {/* FOOTER */}
 
             <div className="users-modal-footer">
 
@@ -3393,9 +2513,7 @@ export default function Users() {
                 onClick={closeModal}
                 disabled={saving}
               >
-
                 Cancel
-
               </button>
 
 
@@ -3426,6 +2544,5 @@ export default function Users() {
       )}
 
     </section>
-
   )
 }
