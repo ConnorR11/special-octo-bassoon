@@ -1,0 +1,40 @@
+name: Update appointment last update field
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    if: github.event.head_commit.message != 'chore: use record_last_update in appointment detail'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update appointment detail
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/pages/AppointmentDetail.jsx')
+          text = path.read_text()
+          old = 'appointment.appointment_updated_time'
+          new = 'appointment.record_last_update'
+          if old not in text:
+              raise SystemExit(f'Expected text not found: {old}')
+          path.write_text(text.replace(old, new))
+          PY
+
+      - name: Commit change and remove temporary workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm .github/workflows/update-last-update-field.yml
+          git add src/pages/AppointmentDetail.jsx .github/workflows/update-last-update-field.yml
+          git diff --cached --quiet && exit 0
+          git commit -m 'chore: use record_last_update in appointment detail'
+          git push
