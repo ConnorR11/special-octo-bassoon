@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "lucide-react"
 import {
   CalendarDays,
   ChevronDown,
@@ -172,13 +172,23 @@ function AppointmentRow({
     repNameByEmail[normaliseEmail(repEmail)] ||
     repEmail
 
+  const hasRep = Boolean(
+    String(repEmail ?? "").trim()
+  )
+
   const repConfirmed = Boolean(
     appointment.rep_confirmed_time
   )
 
+  const rowStatusClass = !hasRep
+    ? "mtv-row-unassigned"
+    : repConfirmed
+      ? "mtv-row-confirmed"
+      : "mtv-row-unconfirmed"
+
   return (
     <tr
-      className="mtv-appointment-row"
+      className={`mtv-appointment-row ${rowStatusClass}`}
       onClick={() => onSelect?.(appointment)}
     >
       <td
@@ -201,13 +211,8 @@ function AppointmentRow({
         {display(appointment.branch)}
       </td>
 
-      {/* REP NAME */}
       <td
-        className={`mtv-cell ${
-          repConfirmed
-            ? "mtv-rep-confirmed"
-            : "mtv-rep-unconfirmed"
-        }`}
+        className="mtv-cell"
         title={display(repName)}
       >
         {display(repName)}
@@ -229,14 +234,6 @@ function AppointmentRow({
 
       <td className="mtv-cell">
         {display(appointment.lead_source)}
-      </td>
-
-      <td className="mtv-cell mtv-status-cell">
-        <StatusTick
-          value={Boolean(
-            appointment.rep_confirmed_time
-          )}
-        />
       </td>
 
       <td className="mtv-cell mtv-status-cell">
@@ -310,7 +307,6 @@ function BranchSection({
                 <th>POSTCODE</th>
                 <th>MEASURE</th>
                 <th>LEAD SOURCE</th>
-                <th>REP</th>
                 <th>PICKUP</th>
                 <th>RESULT</th>
                 <th>SURVEY</th>
@@ -902,22 +898,17 @@ export default function MarketingTV({
 
         .mtv-table th:nth-child(8),
         .mtv-table td:nth-child(8){
-          width:4%
+          width:5%
         }
 
         .mtv-table th:nth-child(9),
         .mtv-table td:nth-child(9){
-          width:4%
+          width:8%
         }
 
         .mtv-table th:nth-child(10),
         .mtv-table td:nth-child(10){
           width:7%
-        }
-
-        .mtv-table th:nth-child(11),
-        .mtv-table td:nth-child(11){
-          width:5%
         }
 
         .mtv-table-header th{
@@ -971,8 +962,29 @@ export default function MarketingTV({
           background:#fbfcfd
         }
 
+        /*
+         * SUBTLE REP STATUS ROW COLOURS
+         *
+         * No rep assigned = light red
+         * Rep assigned but not confirmed = light orange
+         * Rep assigned and confirmed = subtle HomeShield blue
+         *
+         * The text itself remains the normal dark colour for readability.
+         */
+        .mtv-appointment-row.mtv-row-unassigned td{
+          background:#fff4f4
+        }
+
+        .mtv-appointment-row.mtv-row-unconfirmed td{
+          background:#fff8ee
+        }
+
+        .mtv-appointment-row.mtv-row-confirmed td{
+          background:#eef8ff
+        }
+
         .mtv-appointment-row:hover td{
-          background:#eef7ff
+          background:#eaf5ff
         }
 
         .mtv-cell{
@@ -993,22 +1005,6 @@ export default function MarketingTV({
 
         .mtv-status-cell{
           text-align:center
-        }
-
-        /*
-         * REP COLOUR
-         *
-         * Unconfirmed rep = orange
-         * Confirmed rep = blue
-         */
-        .mtv-rep-unconfirmed{
-          color:#f59e0b !important;
-          font-weight:700
-        }
-
-        .mtv-rep-confirmed{
-          color:#2398ed !important;
-          font-weight:700
         }
 
         .mtv-tick,
