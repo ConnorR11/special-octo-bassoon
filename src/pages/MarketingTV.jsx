@@ -657,6 +657,7 @@ export default function MarketingTV({
 
   useEffect(() => {
 
+<<<<<<< HEAD
     loadAppointments(
       selectedDate
     )
@@ -853,6 +854,22 @@ export default function MarketingTV({
     }, [
       visibleAppointments,
     ])
+=======
+  const visibleAppointments = useMemo(() => {
+    if (activeTab === "mastersheet") {
+      const eligible = appointments.filter(a => isTrueValue(a.cps_c) || isTrueValue(a.cps_s))
+      const seen = new Set()
+      return eligible.filter(appointment => {
+        const key = display(appointment.marketing_row_id, appointment.appointment_row_id)
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+    }
+    if (activeTab === "handover") return appointments.filter(a => !isTrueValue(a.cps_c) && !isTrueValue(a.cps_s))
+    return []
+  }, [appointments, activeTab])
+>>>>>>> f2226bc248a4c8969cbfe35e282af8690662522b
 
 
   return (

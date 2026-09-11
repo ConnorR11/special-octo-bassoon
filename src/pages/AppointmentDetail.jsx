@@ -11,6 +11,7 @@ import {
   UserRound,
   Check,
   X,
+  Clock,
 } from "lucide-react"
 
 import { supabase } from "../lib/supabase"
@@ -465,57 +466,80 @@ function AppointmentDetail({
           <div
             style={{
               display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-end",
               gap: "8px",
               flexShrink: 0,
             }}
           >
-            <button
-              type="button"
-              onClick={() => {
-                setError("")
-                setShowResult(true)
-              }}
+            <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "7px",
-                height: "40px",
-                padding: "0 15px",
-                border: "none",
-                borderRadius: "8px",
-                background: "#2499ed",
-                color: "#fff",
-                cursor: "pointer",
-                fontFamily: "inherit",
-                fontSize: "12px",
-                fontWeight: 700,
+                gap: "5px",
+                fontSize: "10px",
+                color: "#c9d8e1",
+                whiteSpace: "nowrap",
               }}
             >
-              <Plus size={17} />
-              Result
-            </button>
+              <Clock size={12} />
+              <span>Last updated {formatDate(appointment.record_last_update)}</span>
+            </div>
 
-            <button
-              type="button"
+            <div
               style={{
                 display: "flex",
-                alignItems: "center",
-                gap: "7px",
-                height: "40px",
-                padding: "0 15px",
-                border: "1px solid #557287",
-                borderRadius: "8px",
-                background: "#173f59",
-                color: "#fff",
-                cursor: "pointer",
-                fontFamily: "inherit",
-                fontSize: "12px",
-                fontWeight: 600,
+                gap: "8px",
               }}
             >
-              <Pencil size={15} />
-              Edit
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setError("")
+                  setShowResult(true)
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "7px",
+                  height: "40px",
+                  padding: "0 15px",
+                  border: "none",
+                  borderRadius: "8px",
+                  background: "#2499ed",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                }}
+              >
+                <Plus size={17} />
+                Result
+              </button>
+
+              <button
+                type="button"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "7px",
+                  height: "40px",
+                  padding: "0 15px",
+                  border: "1px solid #557287",
+                  borderRadius: "8px",
+                  background: "#173f59",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                }}
+              >
+                <Pencil size={15} />
+                Edit
+              </button>
+            </div>
           </div>
         </div>
       </div>
