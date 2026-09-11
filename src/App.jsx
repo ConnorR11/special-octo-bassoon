@@ -706,7 +706,7 @@ function App() {
           <SalesKPI />
 
         ) : page ===
-          "user-management" ? (
+          "users" ? (
 
           <Users />
 
