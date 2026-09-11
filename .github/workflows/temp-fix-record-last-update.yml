@@ -1,0 +1,22 @@
+name: Fix appointment last update field
+
+on: push
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Change field
+        run: python -c "from pathlib import Path; p=Path('src/pages/AppointmentDetail.jsx'); t=p.read_text(); old='appointment.appointment_updated_time'; new='appointment.record_last_update'; assert old in t; p.write_text(t.replace(old,new))"
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm -f .github/workflows/temp-fix-record-last-update.yml .github/workflows/update-last-update-field.yml
+          git add src/pages/AppointmentDetail.jsx .github/workflows/temp-fix-record-last-update.yml .github/workflows/update-last-update-field.yml
+          git commit -m 'chore: use record_last_update in appointment detail'
+          git push
