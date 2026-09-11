@@ -483,7 +483,7 @@ function AppointmentDetail({
               }}
             >
               <Clock size={12} />
-              <span>Last updated {formatDate(appointment.appointment_updated_time)}</span>
+              <span>Last updated {formatDate(appointment.record_last_update)}</span>
             </div>
 
             <div
