@@ -59,6 +59,27 @@ function countTrue(rows, field) {
   )
 }
 
+function getDealNetValue(appointment) {
+  const deal = Array.isArray(appointment?.deals)
+    ? appointment.deals[0]
+    : appointment?.deals
+  const value = Number(deal?.net_value)
+  return Number.isFinite(value) ? value : null
+}
+
+function formatCurrency(value) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return "—"
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: "GBP",
+    maximumFractionDigits: 0,
+  }).format(Number(value))
+}
+
+function sumNetValue(rows) {
+  return rows.reduce((total, row) => total + (getDealNetValue(row) ?? 0), 0)
+}
+
 function sortBranches(rows) {
   return [...new Set(rows.map((row) => display(row.branch, "Unassigned")))].sort((a, b) => {
     if (a === "Unassigned") return 1
@@ -86,7 +107,7 @@ function SummaryTable({ appointments }) {
           <span>{countTrue(appointments, "cps_c")}</span>
           <span>{countTrue(appointments, "cps_p")}</span>
           <span>{countTrue(appointments, "cps_s")}</span>
-          <span className="mtv-coming-soon">Coming soon</span>
+          <span>{formatCurrency(sumNetValue(appointments))}</span>
         </div>
       </div>
 
@@ -100,7 +121,7 @@ function SummaryTable({ appointments }) {
               <span>{countTrue(rows, "cps_c")}</span>
               <span>{countTrue(rows, "cps_p")}</span>
               <span>{countTrue(rows, "cps_s")}</span>
-              <span className="mtv-coming-soon">Coming soon</span>
+              <span>{formatCurrency(sumNetValue(rows))}</span>
             </div>
           </div>
         )
@@ -120,6 +141,7 @@ function StatusTick({ value }) {
 function AppointmentRow({ appointment, onSelect, repNameByEmail }) {
   const repEmail = appointment.rep_allocated
   const repName = repNameByEmail[normaliseEmail(repEmail)] || repEmail
+  const netValue = getDealNetValue(appointment)
 
   const hasRep = Boolean(String(repEmail ?? "").trim())
   const repConfirmed = Boolean(appointment.rep_confirmed_time)
@@ -154,6 +176,7 @@ function AppointmentRow({ appointment, onSelect, repNameByEmail }) {
         <StatusTick value={Boolean(appointment.was_picked_up || appointment.pickup_rep)} />
       </td>
       <td className="mtv-cell mtv-result-cell">{display(appointment.result)}</td>
+      <td className="mtv-cell mtv-value-cell">{formatCurrency(netValue)}</td>
       <td className="mtv-cell mtv-status-cell">
         {appointment.epvs_calculation ? "✓" : "—"}
       </td>
@@ -194,6 +217,7 @@ function BranchSection({ branch, appointments, onSelect, repNameByEmail }) {
                 <th>LEAD SOURCE</th>
                 <th>PICKUP</th>
                 <th>RESULT</th>
+                <th>NET VALUE</th>
                 <th>SURVEY</th>
               </tr>
             </thead>
@@ -241,7 +265,7 @@ export default function MarketingTV({ onSelectAppointment }) {
       const [appointmentsResult, profilesResult] = await Promise.all([
         supabase
           .from("appointments")
-          .select("*")
+          .select("*, deals(net_value)")
           .gte("appointment_date", `${date}T00:00:00.000Z`)
           .lt("appointment_date", `${nextDate}T00:00:00.000Z`)
           .order("appointment_date", { ascending: true }),
@@ -434,12 +458,6 @@ export default function MarketingTV({ onSelectAppointment }) {
           text-overflow:ellipsis
         }
 
-        .mtv-coming-soon{
-          color:#b9cbd4;
-          font-weight:600;
-          font-size:10px
-        }
-
         .mtv-controls-wrap{
           padding:10px 14px;
           background:#fff;
@@ -601,16 +619,17 @@ export default function MarketingTV({ onSelectAppointment }) {
           table-layout:fixed
         }
 
-        .mtv-table th:nth-child(1),.mtv-table td:nth-child(1){width:18%}
-        .mtv-table th:nth-child(2),.mtv-table td:nth-child(2){width:10%}
-        .mtv-table th:nth-child(3),.mtv-table td:nth-child(3){width:14%}
-        .mtv-table th:nth-child(4),.mtv-table td:nth-child(4){width:7%}
-        .mtv-table th:nth-child(5),.mtv-table td:nth-child(5){width:9%}
+        .mtv-table th:nth-child(1),.mtv-table td:nth-child(1){width:17%}
+        .mtv-table th:nth-child(2),.mtv-table td:nth-child(2){width:9%}
+        .mtv-table th:nth-child(3),.mtv-table td:nth-child(3){width:13%}
+        .mtv-table th:nth-child(4),.mtv-table td:nth-child(4){width:6%}
+        .mtv-table th:nth-child(5),.mtv-table td:nth-child(5){width:8%}
         .mtv-table th:nth-child(6),.mtv-table td:nth-child(6){width:8%}
-        .mtv-table th:nth-child(7),.mtv-table td:nth-child(7){width:14%}
+        .mtv-table th:nth-child(7),.mtv-table td:nth-child(7){width:13%}
         .mtv-table th:nth-child(8),.mtv-table td:nth-child(8){width:5%}
-        .mtv-table th:nth-child(9),.mtv-table td:nth-child(9){width:8%}
+        .mtv-table th:nth-child(9),.mtv-table td:nth-child(9){width:7%}
         .mtv-table th:nth-child(10),.mtv-table td:nth-child(10){width:7%}
+        .mtv-table th:nth-child(11),.mtv-table td:nth-child(11){width:7%}
 
         .mtv-table-header th{
           padding:6px 8px;
@@ -660,6 +679,7 @@ export default function MarketingTV({ onSelectAppointment }) {
         .mtv-name-cell{font-weight:700}
         .mtv-time-cell{font-weight:700}
         .mtv-result-cell{font-weight:600}
+        .mtv-value-cell{font-weight:700;text-align:right}
         .mtv-status-cell{text-align:center}
 
         .mtv-tick,.mtv-cross{
@@ -718,7 +738,7 @@ export default function MarketingTV({ onSelectAppointment }) {
           .mtv-hero{padding:18px}
           .mtv-controls-wrap{padding:10px 12px}
           .mtv-date-label{display:none}
-          .mtv-table{min-width:900px}
+          .mtv-table{min-width:1000px}
         }
       `}</style>
 
