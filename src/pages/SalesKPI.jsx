@@ -43,10 +43,15 @@ function isTrue(value) {
   return value === 1
 }
 
+function normaliseEmail(value) {
+  return String(value ?? "").trim().toLowerCase()
+}
+
 export default function SalesKPI() {
   const [startDate, setStartDate] = useState(DEFAULT_START)
   const [endDate, setEndDate] = useState(DEFAULT_END)
   const [appointments, setAppointments] = useState([])
+  const [profiles, setProfiles] = useState([])
   const [jobTypeFilter, setJobTypeFilter] = useState("all")
   const [branchFilter, setBranchFilter] = useState("all")
   const [loading, setLoading] = useState(false)
@@ -78,19 +83,26 @@ export default function SalesKPI() {
       endExclusive.setDate(endExclusive.getDate() + 1)
       const endExclusiveString = `${endExclusive.getFullYear()}-${String(endExclusive.getMonth() + 1).padStart(2, "0")}-${String(endExclusive.getDate()).padStart(2, "0")}T00:00:00`
 
-      // Load appointments first. We intentionally do not use the nested
-      // deals(net_value) relationship because it can cause a slow/expensive
-      // query over a large KPI date range.
-      const { data: appointmentData, error: appointmentsError } = await supabase
-        .from("appointments")
-        .select("appointment_row_id, rep_allocated, cps_h, cps_c, cps_p, cps_s, job_type, branch")
-        .gte("appointment_date", `${startDate}T00:00:00`)
-        .lt("appointment_date", endExclusiveString)
-        .order("appointment_date", { ascending: true })
+      // Load appointments and profiles separately. The rep stored on an
+      // appointment is the user's email address; profiles provides the name.
+      const [appointmentsResult, profilesResult] = await Promise.all([
+        supabase
+          .from("appointments")
+          .select("appointment_row_id, rep_allocated, cps_h, cps_c, cps_p, cps_s, job_type, branch")
+          .gte("appointment_date", `${startDate}T00:00:00`)
+          .lt("appointment_date", endExclusiveString)
+          .order("appointment_date", { ascending: true }),
+        supabase
+          .from("profiles")
+          .select("email, full_name")
+          .order("full_name", { ascending: true }),
+      ])
 
-      if (appointmentsError) throw appointmentsError
+      if (appointmentsResult.error) throw appointmentsResult.error
+      if (profilesResult.error) throw profilesResult.error
 
-      const loadedAppointments = appointmentData || []
+      const loadedAppointments = appointmentsResult.data || []
+      const loadedProfiles = profilesResult.data || []
       const appointmentIds = loadedAppointments
         .map((appointment) => appointment.appointment_row_id)
         .filter(Boolean)
@@ -123,12 +135,14 @@ export default function SalesKPI() {
       }))
 
       setAppointments(appointmentsWithDeals)
+      setProfiles(loadedProfiles)
       setJobTypeFilter("all")
       setBranchFilter("all")
     } catch (err) {
       console.error("Error loading sales KPI:", err)
       setError(err?.message || "Unable to load sales KPI.")
       setAppointments([])
+      setProfiles([])
     } finally {
       setLoading(false)
     }
@@ -137,6 +151,16 @@ export default function SalesKPI() {
   useEffect(() => {
     loadKPI()
   }, [])
+
+  const repNameByEmail = useMemo(
+    () => profiles.reduce((map, profile) => {
+      const email = normaliseEmail(profile.email)
+      const name = String(profile.full_name ?? "").trim()
+      if (email && name) map[email] = name
+      return map
+    }, {}),
+    [profiles]
+  )
 
   const filteredAppointments = useMemo(
     () => appointments.filter((appointment) => {
@@ -159,6 +183,7 @@ export default function SalesKPI() {
         grouped.set(key, {
           key,
           rep_allocated: appointment.rep_allocated || "Unallocated",
+          rep_name: repNameByEmail[normaliseEmail(appointment.rep_allocated)] || appointment.rep_allocated || "Unallocated",
           h: 0,
           c: 0,
           p: 0,
@@ -178,7 +203,7 @@ export default function SalesKPI() {
     })
 
     return Array.from(grouped.values())
-  }, [filteredAppointments])
+  }, [filteredAppointments, repNameByEmail])
 
   const jobTypes = useMemo(
     () => Array.from(new Set(appointments.map((appointment) => appointment.job_type || "Unspecified"))).sort((a, b) => a.localeCompare(b)),
@@ -196,7 +221,7 @@ export default function SalesKPI() {
       if (b.key === "__unallocated__" && a.key !== "__unallocated__") return -1
 
       if (sortField === "rep_allocated") {
-        const result = a.rep_allocated.localeCompare(b.rep_allocated)
+        const result = a.rep_name.localeCompare(b.rep_name)
         return sortDirection === "asc" ? result : -result
       }
 
@@ -407,7 +432,7 @@ export default function SalesKPI() {
 
                       return (
                         <tr key={row.key} className={row.key === "__unallocated__" ? "unallocated" : ""}>
-                          <td><div className="sales-kpi-rep"><span className="sales-kpi-rep-dot" />{row.rep_allocated}</div></td>
+                          <td><div className="sales-kpi-rep"><span className="sales-kpi-rep-dot" />{row.rep_name}</div></td>
                           <td>{formatNumber(row.h)}</td>
                           <td>{formatNumber(row.c)}</td>
                           <td>{formatNumber(row.p)}</td>
