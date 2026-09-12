@@ -30,8 +30,9 @@ function formatCurrency(value) {
   }).format(value || 0)
 }
 
-function formatPercentage(value) {
-  return `${Number(value || 0).toFixed(1)}%`
+function formatConversion(value) {
+  if (!Number.isFinite(Number(value)) || Number(value) <= 0) return "—"
+  return Number(value).toFixed(1)
 }
 
 function isTrue(value) {
@@ -200,8 +201,8 @@ export default function SalesKPI() {
       }
 
       if (sortField === "conversion") {
-        const aConversion = a.p > 0 ? (a.s / a.p) * 100 : 0
-        const bConversion = b.p > 0 ? (b.s / b.p) * 100 : 0
+        const aConversion = a.s > 0 ? a.p / a.s : 0
+        const bConversion = b.s > 0 ? b.p / b.s : 0
         const difference = bConversion - aConversion
         return sortDirection === "asc" ? -difference : difference
       }
@@ -226,7 +227,7 @@ export default function SalesKPI() {
     [rows]
   )
 
-  const totalConversion = totals.p > 0 ? (totals.s / totals.p) * 100 : 0
+  const totalConversion = totals.s > 0 ? totals.p / totals.s : 0
 
   const displayedRepCount = useMemo(
     () => rows.filter((row) => row.key !== "__unallocated__").length,
@@ -393,7 +394,7 @@ export default function SalesKPI() {
                     <td>{formatNumber(totals.p)}</td>
                     <td>{formatNumber(totals.s)}</td>
                     <td>{formatCurrency(totals.net_value)}</td>
-                    <td>{formatPercentage(totalConversion)}</td>
+                    <td>{formatConversion(totalConversion)}</td>
                   </tr>
 
                   {loading ? (
@@ -402,7 +403,7 @@ export default function SalesKPI() {
                     <tr><td colSpan="7" className="sales-kpi-empty">No appointments found for the selected filters.</td></tr>
                   ) : (
                     sortedRows.map((row) => {
-                      const conversion = row.p > 0 ? (row.s / row.p) * 100 : 0
+                      const conversion = row.s > 0 ? row.p / row.s : 0
 
                       return (
                         <tr key={row.key} className={row.key === "__unallocated__" ? "unallocated" : ""}>
@@ -412,7 +413,7 @@ export default function SalesKPI() {
                           <td>{formatNumber(row.p)}</td>
                           <td>{formatNumber(row.s)}</td>
                           <td>{formatCurrency(row.net_value)}</td>
-                          <td>{formatPercentage(conversion)}</td>
+                          <td>{formatConversion(conversion)}</td>
                         </tr>
                       )
                     })
