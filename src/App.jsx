@@ -134,7 +134,7 @@ function App() {
 
   const totalValue = contracts.reduce(
     (total, contract) =>
-      total + Number(contract.deal_value || 0),
+      total + Number(contract.net_value || 0),
     0
   )
 
