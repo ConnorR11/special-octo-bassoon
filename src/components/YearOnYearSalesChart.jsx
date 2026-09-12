@@ -189,7 +189,7 @@ function YearOnYearSalesChart({ contracts = [] }) {
 
       yearlyTotals[year][month] +=
         Number(
-          contract.deal_value || 0
+          contract.net_value || 0
         )
     })
 
@@ -495,7 +495,7 @@ function YearOnYearSalesChart({ contracts = [] }) {
           </h2>
 
           <p>
-            Cumulative contract value
+            Cumulative net sales value
             by month
           </p>
 
