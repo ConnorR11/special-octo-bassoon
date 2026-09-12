@@ -215,6 +215,13 @@ export default function SalesKPI() {
     [rows]
   )
 
+  const displayedRepCount = useMemo(
+    () => rows.filter((row) => row.key !== "__unallocated__").length,
+    [rows]
+  )
+
+  const displayedDealCount = filteredAppointments.length
+
   function changeSort(field) {
     if (sortField === field) {
       setSortDirection((current) => current === "desc" ? "asc" : "desc")
@@ -234,7 +241,7 @@ export default function SalesKPI() {
       <style>{`
         .sales-kpi-page { min-height:100%; padding:28px 32px 40px; background:#f5f7fa; color:#0f172a; box-sizing:border-box; }
         .sales-kpi-container { max-width:1400px; margin:0 auto; }
-        .sales-kpi-header { display:flex; justify-content:space-between; align-items:flex-end; gap:28px; margin-bottom:24px; }
+        .sales-kpi-header { display:flex; justify-content:space-between; align-items:flex-end; gap:28px; margin-bottom:16px; }
         .sales-kpi-eyebrow { color:#0877bd; font-size:12px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; margin-bottom:6px; }
         .sales-kpi-header h1 { margin:0; font-size:32px; line-height:1.1; font-weight:750; letter-spacing:-.025em; }
         .sales-kpi-header p { margin:8px 0 0; color:#64748b; font-size:14px; }
@@ -246,6 +253,9 @@ export default function SalesKPI() {
         .sales-kpi-date-input input { border:0; outline:0; background:transparent; color:#0f172a; font:inherit; font-size:13px; min-width:125px; }
         .sales-kpi-run { height:38px; padding:0 15px; border:0; border-radius:8px; background:#0877bd; color:#fff; font-weight:700; font-size:13px; cursor:pointer; display:inline-flex; align-items:center; gap:7px; }
         .sales-kpi-run:hover { background:#06659f; } .sales-kpi-run:disabled { opacity:.65; cursor:default; }
+        .sales-kpi-summary { display:flex; align-items:center; gap:8px; margin:0 0 16px; color:#64748b; font-size:12px; font-weight:600; }
+        .sales-kpi-summary-label { color:#0f172a; font-weight:750; }
+        .sales-kpi-summary-separator { color:#cbd5e1; }
         .sales-kpi-panel { background:#fff; border:1px solid #e2e8f0; border-radius:14px; box-shadow:0 2px 10px rgba(15,23,42,.05); overflow:hidden; }
         .sales-kpi-panel-header { padding:20px 22px; border-bottom:1px solid #e8edf2; display:flex; justify-content:space-between; align-items:center; gap:20px; }
         .sales-kpi-panel-title { display:flex; align-items:center; gap:11px; } .sales-kpi-panel-icon { width:34px; height:34px; border-radius:9px; display:grid; place-items:center; background:#eaf5fc; color:#0877bd; }
@@ -304,6 +314,13 @@ export default function SalesKPI() {
               </button>
             </div>
           </header>
+
+          <div className="sales-kpi-summary" aria-live="polite">
+            <span className="sales-kpi-summary-label">Displaying</span>
+            <span>{formatNumber(displayedRepCount)} reps</span>
+            <span className="sales-kpi-summary-separator">·</span>
+            <span>{formatNumber(displayedDealCount)} deals</span>
+          </div>
 
           {error && (
             <div className="sales-kpi-error">
