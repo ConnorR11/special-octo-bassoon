@@ -42,7 +42,7 @@ function Dashboard({
 
         <Stat
           icon={<PoundSterling size={20} />}
-          label="Contract value"
+          label="Net Value"
           value={money(total)}
         />
 
