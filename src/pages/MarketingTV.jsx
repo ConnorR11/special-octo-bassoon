@@ -59,7 +59,13 @@ function countTrue(rows, field) {
   )
 }
 
+function isSold(appointment) {
+  return String(appointment?.result ?? "").trim().toLowerCase() === "sold"
+}
+
 function getDealNetValue(appointment) {
+  if (!isSold(appointment)) return null
+
   const deal = Array.isArray(appointment?.deals)
     ? appointment.deals[0]
     : appointment?.deals
@@ -68,7 +74,7 @@ function getDealNetValue(appointment) {
 }
 
 function formatCurrency(value) {
-  if (value === null || value === undefined || !Number.isFinite(Number(value))) return "—"
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return "NULL"
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency: "GBP",
@@ -458,288 +464,29 @@ export default function MarketingTV({ onSelectAppointment }) {
           text-overflow:ellipsis
         }
 
-        .mtv-controls-wrap{
-          padding:10px 14px;
-          background:#fff;
-          border-top:1px solid #e6eaee
+        .mtv-summary-total .mtv-summary-values span:last-child,
+        .mtv-summary-row .mtv-summary-values span:last-child{
+          font-variant-numeric:tabular-nums
         }
 
-        .mtv-controls{
-          display:flex;
-          align-items:center;
-          gap:8px
-        }
-
-        .mtv-date-control{
-          display:inline-flex;
-          align-items:center;
-          gap:7px;
-          border:1px solid #e1e5ea;
-          border-radius:6px;
-          padding:6px 9px;
-          background:#fff;
-          color:#475569;
-          font-size:11px
-        }
-
-        .mtv-date-label{
-          font-size:10px;
-          font-weight:700;
-          color:#64748b
-        }
-
-        .mtv-date-control input{
-          border:0;
-          outline:0;
-          font:inherit;
-          color:#475569;
-          background:transparent
-        }
-
-        .mtv-today-button{
-          border:0;
-          border-radius:6px;
-          background:#2d9bf0;
-          color:#fff;
-          padding:7px 24px;
-          font-size:11px;
-          font-weight:700;
-          cursor:pointer
-        }
-
-        .mtv-main{
-          margin:0 14px 20px;
-          background:#fff;
-          border:1px solid #e1e5ea;
-          border-radius:7px;
-          overflow:hidden
-        }
-
-        .mtv-tabs{
-          height:38px;
-          display:flex;
-          align-items:flex-end;
-          gap:24px;
-          padding:0 16px;
-          border-bottom:1px solid #e5e7eb
-        }
-
-        .mtv-tab{
-          border:0;
-          background:transparent;
-          padding:0 0 8px;
-          font-size:10px;
-          color:#64748b;
-          cursor:pointer;
-          position:relative
-        }
-
-        .mtv-tab.active{
-          color:#172033;
-          font-weight:700
-        }
-
-        .mtv-tab.active:after{
-          content:"";
-          position:absolute;
-          left:0;
-          right:0;
-          bottom:-1px;
-          height:2px;
-          background:#2698ed
-        }
-
-        .mtv-content{padding:8px 10px 14px}
-
-        .mtv-date-title{
-          color:#2398ed;
-          font-size:13px;
-          font-weight:800;
-          margin:0 0 9px
-        }
-
-        .mtv-toolbar{
-          display:flex;
-          justify-content:flex-end;
-          margin-bottom:3px
-        }
-
-        .mtv-refresh{
-          display:inline-flex;
-          align-items:center;
-          gap:5px;
-          border:1px solid #e2e6ea;
-          background:#f8f9fa;
-          color:#64748b;
-          border-radius:5px;
-          padding:5px 8px;
-          font-size:9px;
-          cursor:pointer
-        }
-
-        .mtv-refresh:disabled{opacity:.55;cursor:default}
-
-        .mtv-branch-section{margin-top:10px}
-
-        .mtv-branch-title{
-          width:100%;
-          display:flex;
-          align-items:center;
-          gap:7px;
-          border:0;
-          background:transparent;
-          color:#2398ed;
-          text-align:left;
-          font-size:18px;
-          font-weight:800;
-          padding:0 0 4px;
-          cursor:pointer
-        }
-
-        .mtv-branch-count{
-          font-size:9px;
-          font-weight:700;
-          color:#94a3b8;
-          margin-left:1px
-        }
-
-        .mtv-table-scroll{
-          width:100%;
-          overflow-x:auto;
-          border:1px solid #e5e9ee;
-          border-radius:5px;
-          background:#fff
-        }
-
-        .mtv-table{
-          width:100%;
-          min-width:0;
-          border-collapse:separate;
-          border-spacing:0;
-          table-layout:fixed
-        }
-
-        .mtv-table th:nth-child(1),.mtv-table td:nth-child(1){width:17%}
-        .mtv-table th:nth-child(2),.mtv-table td:nth-child(2){width:9%}
-        .mtv-table th:nth-child(3),.mtv-table td:nth-child(3){width:13%}
-        .mtv-table th:nth-child(4),.mtv-table td:nth-child(4){width:6%}
-        .mtv-table th:nth-child(5),.mtv-table td:nth-child(5){width:8%}
-        .mtv-table th:nth-child(6),.mtv-table td:nth-child(6){width:8%}
-        .mtv-table th:nth-child(7),.mtv-table td:nth-child(7){width:13%}
-        .mtv-table th:nth-child(8),.mtv-table td:nth-child(8){width:5%}
-        .mtv-table th:nth-child(9),.mtv-table td:nth-child(9){width:7%}
-        .mtv-table th:nth-child(10),.mtv-table td:nth-child(10){width:7%}
-        .mtv-table th:nth-child(11),.mtv-table td:nth-child(11){width:7%}
-
-        .mtv-table-header th{
-          padding:6px 8px;
-          background:#f7f9fb;
-          border-bottom:1px solid #dfe5ea;
-          color:#64748b;
-          font-size:8px;
-          font-weight:800;
-          line-height:1;
-          letter-spacing:.04em;
-          text-align:left;
-          white-space:nowrap;
-          overflow:hidden;
-          text-overflow:ellipsis
-        }
-
-        .mtv-table-header th:first-child{padding-left:10px}
-        .mtv-table-header th:last-child{padding-right:10px}
-
-        .mtv-appointment-row{cursor:pointer}
-
-        .mtv-appointment-row td{
-          padding:7px 8px;
-          border-bottom:1px solid #edf0f3;
-          color:#172033;
-          font-size:12px;
-          line-height:1.15;
-          white-space:nowrap;
-          vertical-align:middle;
-          overflow:hidden;
-          text-overflow:ellipsis
-        }
-
-        .mtv-appointment-row td:first-child{padding-left:10px}
-        .mtv-appointment-row td:last-child{padding-right:10px}
-
-        .mtv-appointment-row:nth-child(even) td{background:#fbfcfd}
-
-        /* Subtle but more visible status colours */
-        .mtv-appointment-row.mtv-row-unassigned td{background:#fee4e4}
-        .mtv-appointment-row.mtv-row-unconfirmed td{background:#ffecd6}
-        .mtv-appointment-row.mtv-row-confirmed td{background:#c7e5fc}
-
-        .mtv-appointment-row:hover td{background:#eaf5ff}
-
-        .mtv-cell{max-width:none}
-        .mtv-name-cell{font-weight:700}
-        .mtv-time-cell{font-weight:700}
-        .mtv-result-cell{font-weight:600}
-        .mtv-value-cell{font-weight:700;text-align:right}
-        .mtv-status-cell{text-align:center}
-
-        .mtv-tick,.mtv-cross{
-          display:inline-flex;
-          width:18px;
-          height:18px;
-          align-items:center;
-          justify-content:center;
-          border-radius:50%
-        }
-
-        .mtv-tick{color:#249cf1;background:#eaf6ff}
-        .mtv-cross{color:#b7bdc5;background:#f3f5f7}
-
-        .mtv-empty{
-          padding:60px 20px;
-          text-align:center;
-          color:#94a3b8;
-          font-size:12px
-        }
-
-        .mtv-error{
-          margin:8px 14px 0;
-          padding:9px 11px;
-          border:1px solid #fecaca;
-          background:#fef2f2;
-          color:#991b1b;
-          border-radius:6px;
-          font-size:11px
-        }
-
-        .mtv-placeholder{
-          min-height:340px;
-          display:flex;
-          align-items:center;
-          justify-content:center;
-          color:#94a3b8;
-          font-size:12px
-        }
-
-        .mtv-last-updated{
-          padding:0 14px 14px;
-          color:#a1aab5;
-          font-size:8px
-        }
-
-        @media(max-width:1100px){
-          .mtv-hero{align-items:flex-start;flex-direction:column;gap:16px}
-          .mtv-summary-wrap{width:100%}
-        }
-
-        @media(max-width:850px){
-          .marketing-tv-page{margin:-16px}
-          .mtv-top-card{margin:8px 10px 7px}
-          .mtv-main{margin:0 10px 16px}
-          .mtv-hero{padding:18px}
-          .mtv-controls-wrap{padding:10px 12px}
-          .mtv-date-label{display:none}
-          .mtv-table{min-width:1000px}
-        }
+        .mtv-table-scroll{overflow-x:auto}
+        .mtv-table{width:100%;border-collapse:collapse;table-layout:auto}
+        .mtv-table-header{background:#f7f9fa}
+        .mtv-table th{padding:10px 12px;text-align:left;font-size:10px;font-weight:800;letter-spacing:.05em;color:#66788a;border-bottom:1px solid #dfe5ea;white-space:nowrap}
+        .mtv-cell{padding:9px 12px;border-bottom:1px solid #edf0f2;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .mtv-name-cell{font-weight:650;max-width:220px}
+        .mtv-time-cell,.mtv-status-cell,.mtv-value-cell{text-align:center}
+        .mtv-value-cell{font-variant-numeric:tabular-nums;font-weight:650}
+        .mtv-result-cell{font-weight:650}
+        .mtv-row-confirmed{background:#f7fcf8}
+        .mtv-row-unconfirmed{background:#fffdf6}
+        .mtv-row-unassigned{background:#fff8f8}
+        .mtv-tick,.mtv-cross{display:inline-flex;align-items:center;justify-content:center}
+        .mtv-tick{color:#16834b}.mtv-cross{color:#bd4a4a}
+        .mtv-branch-section{margin:0 14px 12px;background:#fff;border:1px solid #dfe5ea;border-radius:8px;overflow:hidden}
+        .mtv-branch-title{width:100%;border:0;background:#fff;padding:11px 14px;display:flex;align-items:center;gap:9px;text-align:left;font-weight:750;color:#172033;cursor:pointer}
+        .mtv-branch-title:hover{background:#f8fafb}
+        .mtv-branch-count{margin-left:auto;font-size:11px;color:#748496;font-weight:650}
       `}</style>
 
       <div className="mtv-top-card">
@@ -748,108 +495,43 @@ export default function MarketingTV({ onSelectAppointment }) {
             <h1>Marketing TV</h1>
             <div className="mtv-hero-date">{formatDisplayDate(selectedDate)}</div>
           </div>
-          <SummaryTable appointments={appointments} />
-        </div>
-
-        <div className="mtv-controls-wrap">
-          <div className="mtv-controls">
-            <span className="mtv-date-label">Viewing date</span>
-            <label className="mtv-date-control">
-              <CalendarDays size={14} />
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(event) => setSelectedDate(event.target.value)}
-              />
-            </label>
-            <button
-              type="button"
-              className="mtv-today-button"
-              onClick={() => setSelectedDate(today)}
-            >
-              <Clock3 size={13} style={{ verticalAlign: "-2px", marginRight: 5 }} />
-              Today
-            </button>
-          </div>
+          <SummaryTable appointments={visibleAppointments} />
         </div>
       </div>
 
       {error && <div className="mtv-error">{error}</div>}
 
-      <div className="mtv-main">
-        <div className="mtv-tabs">
-          <button
-            className={`mtv-tab ${activeTab === "mastersheet" ? "active" : ""}`}
-            onClick={() => setActiveTab("mastersheet")}
-          >
-            Mastersheet
-          </button>
-          <button
-            className={`mtv-tab ${activeTab === "handover" ? "active" : ""}`}
-            onClick={() => setActiveTab("handover")}
-          >
-            Handover
-          </button>
-          <button
-            className={`mtv-tab ${activeTab === "sales-schedule" ? "active" : ""}`}
-            onClick={() => setActiveTab("sales-schedule")}
-          >
-            Sales Schedule
-          </button>
+      <div className="mtv-controls">
+        <div className="mtv-date-control">
+          <CalendarDays size={16} />
+          <input type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} />
         </div>
-
-        {activeTab === "mastersheet" || activeTab === "handover" ? (
-          <div className="mtv-content">
-            <div className="mtv-toolbar">
-              <button
-                type="button"
-                className="mtv-refresh"
-                onClick={() => loadAppointments()}
-                disabled={loading}
-              >
-                <RefreshCw size={12} />
-                {loading ? "Loading" : "Refresh"}
-              </button>
-            </div>
-
-            <div className="mtv-date-title">
-              {loading
-                ? "Loading..."
-                : `${visibleAppointments.length} appointments · ${formatDisplayDate(selectedDate)}`}
-            </div>
-
-            {loading ? (
-              <div className="mtv-empty">Loading appointments...</div>
-            ) : visibleGrouped.length === 0 ? (
-              <div className="mtv-empty">
-                No appointments found for {formatDisplayDate(selectedDate)}.
-              </div>
-            ) : (
-              visibleGrouped.map(({ branch, rows }) => (
-                <BranchSection
-                  key={branch}
-                  branch={branch}
-                  appointments={rows}
-                  onSelect={onSelectAppointment}
-                  repNameByEmail={repNameByEmail}
-                />
-              ))
-            )}
-          </div>
-        ) : (
-          <div className="mtv-placeholder">Sales Schedule coming soon</div>
-        )}
-
-        {lastUpdated && (
-          <div className="mtv-last-updated">
-            Last updated {lastUpdated.toLocaleTimeString("en-GB", {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-            })} · Auto-refreshes every 60 seconds
-          </div>
-        )}
+        <button type="button" className="mtv-refresh" onClick={() => loadAppointments(selectedDate)} disabled={loading}>
+          <RefreshCw size={15} className={loading ? "mtv-spin" : ""} />
+          Refresh
+        </button>
+        <div className="mtv-tabs">
+          <button type="button" className={activeTab === "mastersheet" ? "active" : ""} onClick={() => setActiveTab("mastersheet")}>Mastersheet</button>
+          <button type="button" className={activeTab === "handover" ? "active" : ""} onClick={() => setActiveTab("handover")}>Handover</button>
+        </div>
+        {lastUpdated && <div className="mtv-last-updated">Updated {lastUpdated.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</div>}
       </div>
+
+      {loading && appointments.length === 0 ? (
+        <div className="mtv-loading">Loading appointments...</div>
+      ) : visibleGrouped.length === 0 ? (
+        <div className="mtv-empty">No appointments for this view.</div>
+      ) : (
+        visibleGrouped.map(({ branch, rows }) => (
+          <BranchSection
+            key={branch}
+            branch={branch}
+            appointments={rows}
+            onSelect={onSelectAppointment}
+            repNameByEmail={repNameByEmail}
+          />
+        ))
+      )}
     </section>
   )
 }
