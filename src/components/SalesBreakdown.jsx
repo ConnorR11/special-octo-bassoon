@@ -62,7 +62,7 @@ function SalesBreakdown({ contracts = [] }) {
               return (
                 sum +
                 Number(
-                  contract.deal_value || 0
+                  contract.net_value || 0
                 )
               )
             },
