@@ -181,7 +181,9 @@ function AppointmentRow({ appointment, onSelect, repNameByEmail }) {
       <td className="mtv-cell mtv-status-cell">
         <StatusTick value={Boolean(appointment.was_picked_up || appointment.pickup_rep)} />
       </td>
-      <td className="mtv-cell mtv-result-cell">{display(appointment.result)}</td>
+      <td className="mtv-cell mtv-result-cell">
+        {isSold(appointment) ? formatCurrency(netValue) : display(appointment.result)}
+      </td>
       <td className="mtv-cell mtv-value-cell">{formatCurrency(netValue)}</td>
       <td className="mtv-cell mtv-status-cell">
         {appointment.epvs_calculation ? "✓" : "—"}
