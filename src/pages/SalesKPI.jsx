@@ -30,6 +30,10 @@ function formatCurrency(value) {
   }).format(value || 0)
 }
 
+function formatPercentage(value) {
+  return `${Number(value || 0).toFixed(1)}%`
+}
+
 function isTrue(value) {
   if (value === true) return true
   if (typeof value === "string") {
@@ -195,6 +199,13 @@ export default function SalesKPI() {
         return sortDirection === "asc" ? result : -result
       }
 
+      if (sortField === "conversion") {
+        const aConversion = a.p > 0 ? (a.s / a.p) * 100 : 0
+        const bConversion = b.p > 0 ? (b.s / b.p) * 100 : 0
+        const difference = bConversion - aConversion
+        return sortDirection === "asc" ? -difference : difference
+      }
+
       const difference = Number(b[sortField] || 0) - Number(a[sortField] || 0)
       return sortDirection === "asc" ? -difference : difference
     }),
@@ -214,6 +225,8 @@ export default function SalesKPI() {
     ),
     [rows]
   )
+
+  const totalConversion = totals.p > 0 ? (totals.s / totals.p) * 100 : 0
 
   const displayedRepCount = useMemo(
     () => rows.filter((row) => row.key !== "__unallocated__").length,
@@ -368,6 +381,7 @@ export default function SalesKPI() {
                     <th className="sortable" onClick={() => changeSort("p")}><span className="sales-kpi-sort">P <SortIcon field="p" /></span></th>
                     <th className="sortable" onClick={() => changeSort("s")}><span className="sales-kpi-sort">S <SortIcon field="s" /></span></th>
                     <th className="sortable" onClick={() => changeSort("net_value")}><span className="sales-kpi-sort">NET VALUE <SortIcon field="net_value" /></span></th>
+                    <th className="sortable" onClick={() => changeSort("conversion")}><span className="sales-kpi-sort">CONVERSION <SortIcon field="conversion" /></span></th>
                   </tr>
                 </thead>
 
@@ -379,23 +393,29 @@ export default function SalesKPI() {
                     <td>{formatNumber(totals.p)}</td>
                     <td>{formatNumber(totals.s)}</td>
                     <td>{formatCurrency(totals.net_value)}</td>
+                    <td>{formatPercentage(totalConversion)}</td>
                   </tr>
 
                   {loading ? (
-                    <tr><td colSpan="6" className="sales-kpi-empty">Loading sales KPI...</td></tr>
+                    <tr><td colSpan="7" className="sales-kpi-empty">Loading sales KPI...</td></tr>
                   ) : sortedRows.length === 0 ? (
-                    <tr><td colSpan="6" className="sales-kpi-empty">No appointments found for the selected filters.</td></tr>
+                    <tr><td colSpan="7" className="sales-kpi-empty">No appointments found for the selected filters.</td></tr>
                   ) : (
-                    sortedRows.map((row) => (
-                      <tr key={row.key} className={row.key === "__unallocated__" ? "unallocated" : ""}>
-                        <td><div className="sales-kpi-rep"><span className="sales-kpi-rep-dot" />{row.rep_allocated}</div></td>
-                        <td>{formatNumber(row.h)}</td>
-                        <td>{formatNumber(row.c)}</td>
-                        <td>{formatNumber(row.p)}</td>
-                        <td>{formatNumber(row.s)}</td>
-                        <td>{formatCurrency(row.net_value)}</td>
-                      </tr>
-                    ))
+                    sortedRows.map((row) => {
+                      const conversion = row.p > 0 ? (row.s / row.p) * 100 : 0
+
+                      return (
+                        <tr key={row.key} className={row.key === "__unallocated__" ? "unallocated" : ""}>
+                          <td><div className="sales-kpi-rep"><span className="sales-kpi-rep-dot" />{row.rep_allocated}</div></td>
+                          <td>{formatNumber(row.h)}</td>
+                          <td>{formatNumber(row.c)}</td>
+                          <td>{formatNumber(row.p)}</td>
+                          <td>{formatNumber(row.s)}</td>
+                          <td>{formatCurrency(row.net_value)}</td>
+                          <td>{formatPercentage(conversion)}</td>
+                        </tr>
+                      )
+                    })
                   )}
                 </tbody>
               </table>
