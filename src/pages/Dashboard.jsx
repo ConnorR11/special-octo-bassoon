@@ -165,13 +165,13 @@ function Dashboard({
                     </div>
 
 
-                    {/* VALUE */}
+                    {/* NET VALUE */}
 
                     <div className="row-value">
 
                       <b>
                         {money(
-                          contract.deal_value
+                          contract.net_value
                         )}
                       </b>
 
