@@ -106,7 +106,7 @@ function SalesChart({ contracts = [] }) {
             return (
               sum +
               Number(
-                contract.deal_value || 0
+                contract.net_value || 0
               )
             )
           },
@@ -175,7 +175,7 @@ function SalesChart({ contracts = [] }) {
           </h2>
 
           <p>
-            Total contract value by month
+            Total net sales value by month
           </p>
 
         </div>
@@ -227,7 +227,7 @@ function SalesChart({ contracts = [] }) {
           <div className="chart-total">
 
             <span>
-              {activeYear} value
+              {activeYear} net value
             </span>
 
             <b>
@@ -284,7 +284,7 @@ function SalesChart({ contracts = [] }) {
             <Tooltip
               formatter={(value) => [
                 money(value),
-                "Contract value",
+                "Net sales value",
               ]}
               labelFormatter={(label) =>
                 `${activeYear} — ${label}`
@@ -293,7 +293,7 @@ function SalesChart({ contracts = [] }) {
 
             <Bar
               dataKey="total"
-              name="Contract value"
+              name="Net sales value"
               fill="#172554"
               radius={[
                 5,
