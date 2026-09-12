@@ -19,6 +19,10 @@ function formatConversion(value) {
   if (!Number.isFinite(Number(value)) || Number(value) <= 0) return "—"
   return Number(value).toFixed(1)
 }
+function formatPercent(value) {
+  if (!Number.isFinite(Number(value))) return "—"
+  return `${Number(value).toFixed(1)}%`
+}
 function isTrue(value) {
   if (value === true) return true
   if (typeof value === "string") return ["true", "t", "1", "yes", "y"].includes(value.trim().toLowerCase())
@@ -138,6 +142,14 @@ export default function SalesKPI() {
       const difference = (b.s > 0 ? b.p / b.s : 0) - (a.s > 0 ? a.p / a.s : 0)
       return sortDirection === "asc" ? -difference : difference
     }
+    if (sortField === "bo_percent") {
+      const difference = (b.c > 0 ? ((b.c - b.p) / b.c) * 100 : 0) - (a.c > 0 ? ((a.c - a.p) / a.c) * 100 : 0)
+      return sortDirection === "asc" ? -difference : difference
+    }
+    if (sortField === "avg_order_value") {
+      const difference = (b.s > 0 ? b.net_value / b.s : 0) - (a.s > 0 ? a.net_value / a.s : 0)
+      return sortDirection === "asc" ? -difference : difference
+    }
     const difference = Number(b[sortField] || 0) - Number(a[sortField] || 0)
     return sortDirection === "asc" ? -difference : difference
   }), [rows, sortField, sortDirection])
@@ -146,6 +158,8 @@ export default function SalesKPI() {
     h: total.h + row.h, c: total.c + row.c, p: total.p + row.p, s: total.s + row.s, net_value: total.net_value + row.net_value,
   }), { h: 0, c: 0, p: 0, s: 0, net_value: 0 }), [rows])
   const totalConversion = totals.s > 0 ? totals.p / totals.s : 0
+  const totalBoPercent = totals.c > 0 ? ((totals.c - totals.p) / totals.c) * 100 : 0
+  const totalAvgOrderValue = totals.s > 0 ? totals.net_value / totals.s : 0
   const displayedRepCount = useMemo(() => rows.filter(row => row.key !== "__unallocated__").length, [rows])
 
   function changeSort(field) {
@@ -169,9 +183,9 @@ export default function SalesKPI() {
       {error && <div className="sales-kpi-error"><strong>Unable to load KPI</strong>{error}</div>}
       <section className="sales-kpi-panel"><div className="sales-kpi-panel-header"><div className="sales-kpi-panel-title"><div className="sales-kpi-panel-icon"><Users size={17}/></div><div><h2>Sales Rep Performance</h2><p>Appointments grouped by allocated sales rep.</p></div></div><div className="sales-kpi-date-range">{formatDate(startDate)} – {formatDate(endDate)}</div></div>
         <div className="sales-kpi-filter-bar"><span className="sales-kpi-filter-label">Filter</span><select className="sales-kpi-filter-select" value={jobTypeFilter} onChange={e=>setJobTypeFilter(e.target.value)}><option value="all">All job types</option>{jobTypes.map(jobType=><option key={jobType} value={jobType}>{jobType}</option>)}</select><select className="sales-kpi-filter-select" value={branchFilter} onChange={e=>setBranchFilter(e.target.value)}><option value="all">All branches</option>{branches.map(branch=><option key={branch} value={branch}>{branch}</option>)}</select>{(jobTypeFilter!=="all"||branchFilter!=="all")&&<button className="sales-kpi-filter-clear" onClick={()=>{setJobTypeFilter("all");setBranchFilter("all")}}>Clear filters</button>}</div>
-        <div className="sales-kpi-table-wrap"><table className="sales-kpi-table"><thead><tr><th className="sortable" onClick={()=>changeSort("rep_allocated")}><span className="sales-kpi-sort">REP <SortIcon field="rep_allocated"/></span></th><th className="sortable" onClick={()=>changeSort("h")}><span className="sales-kpi-sort">H <SortIcon field="h"/></span></th><th className="sortable" onClick={()=>changeSort("c")}><span className="sales-kpi-sort">C <SortIcon field="c"/></span></th><th className="sortable" onClick={()=>changeSort("p")}><span className="sales-kpi-sort">P <SortIcon field="p"/></span></th><th className="sortable" onClick={()=>changeSort("s")}><span className="sales-kpi-sort">S <SortIcon field="s"/></span></th><th className="sortable" onClick={()=>changeSort("net_value")}><span className="sales-kpi-sort">NET VALUE <SortIcon field="net_value"/></span></th><th className="sortable" onClick={()=>changeSort("conversion")}><span className="sales-kpi-sort">CONVERSION <SortIcon field="conversion"/></span></th></tr></thead><tbody>
-          <tr className="sales-kpi-total"><td><div className="sales-kpi-rep"><span className="sales-kpi-rep-dot"/>Total</div></td><td>{formatNumber(totals.h)}</td><td>{formatNumber(totals.c)}</td><td>{formatNumber(totals.p)}</td><td>{formatNumber(totals.s)}</td><td>{formatCurrency(totals.net_value)}</td><td>{formatConversion(totalConversion)}</td></tr>
-          {loading?<tr><td colSpan="7" className="sales-kpi-empty">Loading sales KPI...</td></tr>:sortedRows.length===0?<tr><td colSpan="7" className="sales-kpi-empty">No appointments found for the selected filters.</td></tr>:sortedRows.map(row=>{const conversion=row.s>0?row.p/row.s:0;return <tr key={row.key} className={row.key==="__unallocated__"?"unallocated":""}><td><div className="sales-kpi-rep"><span className="sales-kpi-rep-dot"/>{row.rep_name}</div></td><td>{formatNumber(row.h)}</td><td>{formatNumber(row.c)}</td><td>{formatNumber(row.p)}</td><td>{formatNumber(row.s)}</td><td>{formatCurrency(row.net_value)}</td><td>{formatConversion(conversion)}</td></tr>})}
+        <div className="sales-kpi-table-wrap"><table className="sales-kpi-table"><thead><tr><th className="sortable" onClick={()=>changeSort("rep_allocated")}><span className="sales-kpi-sort">REP <SortIcon field="rep_allocated"/></span></th><th className="sortable" onClick={()=>changeSort("h")}><span className="sales-kpi-sort">H <SortIcon field="h"/></span></th><th className="sortable" onClick={()=>changeSort("c")}><span className="sales-kpi-sort">C <SortIcon field="c"/></span></th><th className="sortable" onClick={()=>changeSort("p")}><span className="sales-kpi-sort">P <SortIcon field="p"/></span></th><th className="sortable" onClick={()=>changeSort("s")}><span className="sales-kpi-sort">S <SortIcon field="s"/></span></th><th className="sortable" onClick={()=>changeSort("net_value")}><span className="sales-kpi-sort">NET VALUE <SortIcon field="net_value"/></span></th><th className="sortable" onClick={()=>changeSort("conversion")}><span className="sales-kpi-sort">CONVERSION <SortIcon field="conversion"/></span></th><th className="sortable" onClick={()=>changeSort("bo_percent")}><span className="sales-kpi-sort">BO% <SortIcon field="bo_percent"/></span></th><th className="sortable" onClick={()=>changeSort("avg_order_value")}><span className="sales-kpi-sort">AVG <SortIcon field="avg_order_value"/></span></th></tr></thead><tbody>
+          <tr className="sales-kpi-total"><td><div className="sales-kpi-rep"><span className="sales-kpi-rep-dot"/>Total</div></td><td>{formatNumber(totals.h)}</td><td>{formatNumber(totals.c)}</td><td>{formatNumber(totals.p)}</td><td>{formatNumber(totals.s)}</td><td>{formatCurrency(totals.net_value)}</td><td>{formatConversion(totalConversion)}</td><td>{formatPercent(totalBoPercent)}</td><td>{formatCurrency(totalAvgOrderValue)}</td></tr>
+          {loading?<tr><td colSpan="9" className="sales-kpi-empty">Loading sales KPI...</td></tr>:sortedRows.length===0?<tr><td colSpan="9" className="sales-kpi-empty">No appointments found for the selected filters.</td></tr>:sortedRows.map(row=>{const conversion=row.s>0?row.p/row.s:0;const boPercent=row.c>0?((row.c-row.p)/row.c)*100:0;const avgOrderValue=row.s>0?row.net_value/row.s:0;return <tr key={row.key} className={row.key==="__unallocated__"?"unallocated":""}><td><div className="sales-kpi-rep"><span className="sales-kpi-rep-dot"/>{row.rep_name}</div></td><td>{formatNumber(row.h)}</td><td>{formatNumber(row.c)}</td><td>{formatNumber(row.p)}</td><td>{formatNumber(row.s)}</td><td>{formatCurrency(row.net_value)}</td><td>{formatConversion(conversion)}</td><td>{formatPercent(boPercent)}</td><td>{formatCurrency(avgOrderValue)}</td></tr>})}
         </tbody></table></div>
       </section>
     </div></div>
