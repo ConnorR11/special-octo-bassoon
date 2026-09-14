@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react"
 import { GitBranch, X } from "lucide-react"
 import { supabase } from "../lib/supabase"
+import AllocateSalesRep from "./AllocateSalesRep"
 
 const MAKE_ALLOCATE_BRANCH_WEBHOOK = import.meta.env.VITE_MAKE_ALLOCATE_BRANCH_WEBHOOK
 
@@ -199,6 +200,8 @@ export default function AllocateBranch({ appointment, onUpdated }) {
         <GitBranch size={16} />
         {appointment.branch ? "Reallocate Branch" : "Allocate Branch"}
       </button>
+
+      <AllocateSalesRep appointment={appointment} onUpdated={onUpdated} />
 
       {showForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.35)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px" }}>
