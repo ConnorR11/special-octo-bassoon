@@ -108,6 +108,7 @@ function App() {
   function handleBackToDeals() {
     setSelected(null)
     setPage("contracts")
+    window.history.pushState({}, "", "/contracts")
   }
 
   function handleDealUpdated(updatedDeal) {
@@ -120,19 +121,90 @@ function App() {
     setSelectedAppointment(null)
     setPickupAppointment(null)
     setPage(newPage)
+    window.history.pushState({}, "", newPage === "dashboard" ? "/" : `/${newPage}`)
   }
 
-  function handleAppointmentSelect(appointment) {
-    const mappedAppointment = {
+  function mapAppointment(appointment) {
+    if (!appointment) return null
+    return {
       ...appointment,
       phone: appointment?.phone_number_1,
       email: appointment?.email_address,
     }
+  }
+
+  function appointmentUrl(appointment) {
+    return `/appointments/${encodeURIComponent(appointment.appointment_row_id)}`
+  }
+
+  function handleAppointmentSelect(appointment) {
+    const mappedAppointment = mapAppointment(appointment)
+    if (!mappedAppointment?.appointment_row_id) return
+
     console.log("Opening appointment:", mappedAppointment)
     setSelected(null)
     setPickupAppointment(null)
     setSelectedAppointment(mappedAppointment)
+    setPage("appointments")
+    window.history.pushState({}, "", appointmentUrl(mappedAppointment))
   }
+
+  async function loadAppointmentFromUrl(appointmentId) {
+    if (!supabase || !appointmentId) return
+
+    setError("")
+    const { data, error: appointmentError } = await supabase
+      .from("appointments")
+      .select("*")
+      .eq("appointment_row_id", appointmentId)
+      .maybeSingle()
+
+    if (appointmentError) {
+      console.error("Error loading appointment from URL:", appointmentError)
+      setError(appointmentError.message)
+      return
+    }
+
+    if (!data) {
+      setError("Appointment not found.")
+      window.history.replaceState({}, "", "/appointments")
+      setPage("appointments")
+      return
+    }
+
+    setSelected(null)
+    setPickupAppointment(null)
+    setSelectedAppointment(mapAppointment(data))
+    setPage("appointments")
+  }
+
+  useEffect(() => {
+    if (!session) return
+
+    function handlePopState() {
+      const path = window.location.pathname.replace(/\/+$/, "") || "/"
+      const appointmentMatch = path.match(/^\/appointments\/([^/]+)$/)
+
+      if (appointmentMatch) {
+        loadAppointmentFromUrl(decodeURIComponent(appointmentMatch[1]))
+        return
+      }
+
+      setSelected(null)
+      setSelectedAppointment(null)
+      setPickupAppointment(null)
+
+      if (path === "/" || path === "/dashboard") {
+        setPage("dashboard")
+      } else {
+        setPage(path.slice(1))
+      }
+    }
+
+    handlePopState()
+    window.addEventListener("popstate", handlePopState)
+    return () => window.removeEventListener("popstate", handlePopState)
+  }, [session])
 
   function handleOpenPickup() {
     if (!selectedAppointment?.result) return
@@ -143,6 +215,7 @@ function App() {
     setPickupAppointment(null)
     setSelectedAppointment(null)
     setPage("appointments")
+    window.history.pushState({}, "", "/appointments")
   }
 
   function handleBackFromPickup() {
@@ -165,7 +238,7 @@ function App() {
     if (signOutError) console.error("Error signing out:", signOutError)
   }
 
-  const headerPage = selected ? "customer" : selectedAppointment ? (pickupAppointment ? "appointment" : "appointment") : page
+  const headerPage = selected ? "customer" : selectedAppointment ? "appointment" : page
 
   if (authLoading) {
     return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f7fa", color: "#002d49", fontFamily: "Inter, Arial, sans-serif", fontSize: 14 }}>Loading CRM...</div>
