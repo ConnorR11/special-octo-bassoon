@@ -3,6 +3,7 @@ import { ChevronDown, Check, Lock, Building2, UserRound, Pencil, Plus, RotateCcw
 import { supabase } from "../lib/supabase"
 import AllocateBranch from "./AllocateBranch"
 import AllocateSalesRep from "./AllocateSalesRep"
+import RepConfirmation from "./RepConfirmation"
 
 function getSubmittedBy(user) {
   const metadataName = String(user?.user_metadata?.full_name || user?.user_metadata?.name || "").trim()
@@ -28,6 +29,7 @@ export default function AppointmentActions({ appointment, onUpdated, onConfirmLe
   const hasResult = Boolean(String(appointment?.result || appointment?.status || "").trim())
   const confirmed = appointment?.cps_c === true
   const hasBranch = Boolean(String(appointment?.branch || "").trim())
+  const hasAllocatedRep = Boolean(String(appointment?.rep_allocated || "").trim())
 
   useEffect(() => {
     setEditValues({
@@ -111,6 +113,7 @@ export default function AppointmentActions({ appointment, onUpdated, onConfirmLe
           <MenuButton icon={Check} disabled={confirmed} onClick={() => closeAnd(onConfirmLegacy)}>Confirm Appointment{confirmed && <Done />}</MenuButton>
           {confirmed ? <AllocateBranch appointment={appointment} menuItem onUpdated={handleUpdated} /> : <MenuButton icon={Building2} disabled>Allocate Branch <Lock size={13} color="#b8c0c8" /></MenuButton>}
           {hasBranch ? <AllocateSalesRep appointment={appointment} menuItem onUpdated={handleUpdated} /> : <MenuButton icon={UserRound} disabled>Allocate Sales Rep <Lock size={13} color="#b8c0c8" /></MenuButton>}
+          {hasAllocatedRep ? <RepConfirmation appointment={appointment} menuItem onUpdated={handleUpdated} /> : <MenuButton icon={Check} disabled>Rep Confirmation <Lock size={13} color="#b8c0c8" /></MenuButton>}
           <MenuButton icon={Pencil} onClick={openEdit}>Edit Appointment</MenuButton>
           <MenuButton icon={Plus} onClick={() => closeAnd(onResultLegacy)}>Result Appointment</MenuButton>
           <div style={{ height: 1, background: "#eef1f4", margin: "6px 4px" }} />
