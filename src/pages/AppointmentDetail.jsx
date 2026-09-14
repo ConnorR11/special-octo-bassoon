@@ -18,6 +18,7 @@ import { supabase } from "../lib/supabase"
 import EPVSCalculator from "../EPVSCalculator"
 import { GenerateSolarContract } from "../contracts/GenerateSolarContract"
 import ActionHistory from "../components/ActionHistory"
+import AllocateBranch from "../components/AllocateBranch"
 
 function getSubmittedBy(user) {
   const metadataName = String(user?.user_metadata?.full_name || user?.user_metadata?.name || "").trim()
@@ -216,6 +217,7 @@ function AppointmentDetail({ appointment, onBack, onUpdated }) {
             <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10px", color: "#c9d8e1", whiteSpace: "nowrap" }}><Clock size={12} /><span>Last updated {formatDate(appointment.record_last_update)}</span></div>
             <div style={{ display: "flex", gap: "8px" }}>
               {!appointment.cps_c && <button type="button" onClick={confirmAppointment} disabled={confirming} style={{ display: "flex", alignItems: "center", gap: "7px", height: "40px", padding: "0 15px", border: "none", borderRadius: "8px", background: "#2d9bf0", color: "#fff", cursor: confirming ? "default" : "pointer", fontFamily: "inherit", fontSize: "12px", fontWeight: 700, opacity: confirming ? 0.65 : 1 }}><Check size={17} />{confirming ? "Confirming..." : "Confirm Appointment"}</button>}
+              {appointment.cps_c && <AllocateBranch appointment={appointment} onUpdated={onUpdated} />}
               <button type="button" onClick={() => { setError(""); setShowResult(true) }} style={{ display: "flex", alignItems: "center", gap: "7px", height: "40px", padding: "0 15px", border: "none", borderRadius: "8px", background: "#2499ed", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: "12px", fontWeight: 700 }}><Plus size={17} />Result</button>
               <button type="button" style={{ display: "flex", alignItems: "center", gap: "7px", height: "40px", padding: "0 15px", border: "1px solid #557287", borderRadius: "8px", background: "#173f59", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: "12px", fontWeight: 600 }}><Pencil size={15} />Edit</button>
             </div>
