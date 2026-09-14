@@ -120,7 +120,7 @@ export default function RepConfirmation({ appointment, menuItem = false, onTrigg
   return <>
     <button type="button" disabled={locked} onClick={confirm} style={style}>
       <CheckCircle2 size={15} />
-      <span>{saving ? "Confirming..." : confirmed ? "Rep Confirmed" : "Rep Confirmation"}</span>
+      <span>{saving ? "Confirming..." : confirmed ? "Completed" : "Rep Confirmation"}</span>
     </button>
     {error && !menuItem && <div style={{ marginTop: 6, padding: "7px 9px", background: "#fbeaea", color: "#8b3333", borderRadius: 6, fontSize: 10 }}>{error}</div>}
   </>
