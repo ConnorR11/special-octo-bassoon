@@ -18,6 +18,8 @@ import Login from "./pages/Login"
 import SalesKPI from "./pages/SalesKPI"
 import Users from "./pages/Users"
 
+const DEALS_PAGE_SIZE = 50
+
 function App() {
   const [session, setSession] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
@@ -31,6 +33,8 @@ function App() {
   const [selected, setSelected] = useState(null)
   const [selectedAppointment, setSelectedAppointment] = useState(null)
   const [pickupAppointment, setPickupAppointment] = useState(null)
+  const [contractsPage, setContractsPage] = useState(0)
+  const [hasMoreContracts, setHasMoreContracts] = useState(false)
 
   useEffect(() => {
     if (!supabase) { setAuthLoading(false); return }
@@ -46,15 +50,32 @@ function App() {
     return () => { mounted = false; authListener?.subscription?.unsubscribe() }
   }, [])
 
-  async function loadContracts() {
+  async function loadContracts(pageNumber = 0) {
     setLoading(true); setError("")
     if (!supabase) { setError("Supabase is not configured. Check your environment variables."); setLoading(false); return }
-    const { data, error: supabaseError } = await supabase.from("deals").select("*").order("sale_date", { ascending: false })
-    if (supabaseError) { setError(supabaseError.message); setContracts([]) } else setContracts(data || [])
+
+    const from = pageNumber * DEALS_PAGE_SIZE
+    const to = from + DEALS_PAGE_SIZE - 1
+
+    const { data, error: supabaseError } = await supabase
+      .from("deals")
+      .select("*")
+      .order("sale_date", { ascending: false })
+      .range(from, to)
+
+    if (supabaseError) {
+      setError(supabaseError.message)
+      setContracts([])
+      setHasMoreContracts(false)
+    } else {
+      setContracts(data || [])
+      setContractsPage(pageNumber)
+      setHasMoreContracts((data || []).length === DEALS_PAGE_SIZE)
+    }
     setLoading(false)
   }
 
-  useEffect(() => { if (session) loadContracts() }, [session])
+  useEffect(() => { if (session) loadContracts(0) }, [session])
 
   const filteredContracts = useMemo(() => {
     const search = query.toLowerCase().trim()
@@ -73,7 +94,13 @@ function App() {
 
   function handleBackToDeals() { setSelected(null); setPage("contracts"); window.history.pushState({}, "", "/contracts") }
   function handleDealUpdated(updatedDeal) { setContracts((current) => current.map((contract) => contract.id === updatedDeal.id ? updatedDeal : contract)); setSelected(updatedDeal) }
-  function handlePageChange(newPage) { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage(newPage); window.history.pushState({}, "", newPage === "dashboard" ? "/" : `/${newPage}`) }
+  function handlePageChange(newPage) {
+    setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage(newPage)
+    if (newPage === "contracts") {
+      setQuery(""); setStatus("all"); loadContracts(0)
+    }
+    window.history.pushState({}, "", newPage === "dashboard" ? "/" : `/${newPage}`)
+  }
   function mapAppointment(appointment) { if (!appointment) return null; return { ...appointment, phone: appointment?.phone_number_1, email: appointment?.email_address } }
   function appointmentUrl(appointment) { return `/appointments/${encodeURIComponent(appointment.appointment_row_id)}` }
 
@@ -128,13 +155,13 @@ function App() {
     <Sidebar page={page} setPage={handlePageChange} mobile={mobile} setMobile={setMobile} />
     <main>
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, padding: "10px 24px 0", background: "#fff" }}><span style={{ fontSize: 12, color: "#64748b" }}>{session?.user?.email || "Signed in"}</span><button type="button" onClick={handleSignOut} style={{ border: "1px solid #d7dce2", background: "#fff", color: "#002d49", borderRadius: 7, padding: "6px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Sign out</button></div>
-      <Header page={headerPage} setMobile={setMobile} onRefresh={loadContracts} />
+      <Header page={headerPage} setMobile={setMobile} onRefresh={() => loadContracts(contractsPage)} />
       {error && page !== "epvs" && <div className="error"><b>Database error</b><span>{error}</span></div>}
       {pickupAppointment ? <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated} /> : selectedAppointment ? <div style={{ position: "relative" }}>
         <style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}</style>
         <div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 24px 0", background: "#fff" }}><AppointmentActions appointment={selectedAppointment} onUpdated={handleAppointmentUpdated} onConfirmLegacy={handleLegacyConfirm} onResultLegacy={handleLegacyResult} onOpenPickup={handleOpenPickup} /></div>
         <div className="appointment-detail-host"><AppointmentDetail appointment={selectedAppointment} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated} /></div>
-      </div> : selected ? <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated} /> : page === "dashboard" ? <Dashboard contracts={contracts} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={loading} setPage={handlePageChange} setSelected={setSelected} /> : page === "marketing-tv" ? <MarketingTV onSelectAppointment={handleAppointmentSelect} /> : page === "marketing-dashboard" ? <MarketingDashboard contracts={contracts} loading={loading} onSelectAppointment={handleAppointmentSelect} /> : page === "sales-kpi" ? <SalesKPI /> : page === "users" ? <Users /> : page === "contracts" ? <Contracts filtered={filteredContracts} loading={loading} query={query} setQuery={setQuery} status={status} setStatus={setStatus} setSelected={setSelected} /> : page === "appointments" ? <Appointments onSelectAppointment={handleAppointmentSelect} /> : page === "fitsheet" ? <FitSheet contracts={contracts} loading={loading} setSelected={setSelected} onSelectDeal={setSelected} /> : page === "epvs" ? <EPVSCalculator /> : <Dashboard contracts={contracts} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={loading} setPage={handlePageChange} setSelected={setSelected} />}
+      </div> : selected ? <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated} /> : page === "dashboard" ? <Dashboard contracts={contracts} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={loading} setPage={handlePageChange} setSelected={setSelected} /> : page === "marketing-tv" ? <MarketingTV onSelectAppointment={handleAppointmentSelect} /> : page === "marketing-dashboard" ? <MarketingDashboard contracts={contracts} loading={loading} onSelectAppointment={handleAppointmentSelect} /> : page === "sales-kpi" ? <SalesKPI /> : page === "users" ? <Users /> : page === "contracts" ? <Contracts filtered={filteredContracts} loading={loading} query={query} setQuery={setQuery} status={status} setStatus={setStatus} setSelected={setSelected} page={contractsPage} pageSize={DEALS_PAGE_SIZE} hasMore={hasMoreContracts} onPreviousPage={() => loadContracts(Math.max(contractsPage - 1, 0))} onNextPage={() => loadContracts(contractsPage + 1)} /> : page === "appointments" ? <Appointments onSelectAppointment={handleAppointmentSelect} /> : page === "fitsheet" ? <FitSheet contracts={contracts} loading={loading} setSelected={setSelected} onSelectDeal={setSelected} /> : page === "epvs" ? <EPVSCalculator /> : <Dashboard contracts={contracts} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={loading} setPage={handlePageChange} setSelected={setSelected} />}
     </main>
   </div>
 }
