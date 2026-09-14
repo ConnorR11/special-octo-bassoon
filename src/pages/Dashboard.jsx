@@ -53,6 +53,7 @@ function Dashboard({ contracts, total, avg, upcoming, loading, setPage, setSelec
       const { data, error: optionsError } = await supabase
         .from("appointments")
         .select("job_type, lead_source")
+        .gte("appointment_date", "2026-01-01T00:00:00.000Z")
 
       if (optionsError) {
         console.error("Error loading appointment options:", optionsError)
