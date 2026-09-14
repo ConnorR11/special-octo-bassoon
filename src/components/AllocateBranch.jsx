@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react"
 import { GitBranch, X } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
+const MAKE_ALLOCATE_BRANCH_WEBHOOK = import.meta.env.VITE_MAKE_ALLOCATE_BRANCH_WEBHOOK
+
 function getSubmittedBy(user) {
   const metadataName = String(user?.user_metadata?.full_name || user?.user_metadata?.name || "").trim()
   return metadataName || user?.email || "Unknown"
@@ -86,6 +88,48 @@ export default function AllocateBranch({ appointment, onUpdated }) {
 
       if (updateError) throw updateError
 
+      const { data: managerProfiles, error: managerError } = await supabase
+        .from("profiles")
+        .select("full_name, role, branch, phone_number, active")
+        .eq("branch", selectedBranch)
+        .eq("active", true)
+
+      if (managerError) throw managerError
+
+      const branchManager = (managerProfiles || []).find((profile) =>
+        String(profile.role || "").trim().toLowerCase().endsWith("branch manager")
+      )
+
+      const primarySalesManager = (managerProfiles || []).find((profile) =>
+        String(profile.role || "").trim().toLowerCase().endsWith("sales manager")
+      )
+
+      if (!MAKE_ALLOCATE_BRANCH_WEBHOOK) {
+        throw new Error("The Allocate Branch Make webhook is not configured in the deployment environment.")
+      }
+
+      const webhookPayload = {
+        "Customer Name": updatedAppointment.name || "",
+        ManagerNumber: branchManager?.phone_number || "",
+        SalesManagerNumber: primarySalesManager?.phone_number || "",
+        appointmentTimeSplit: updatedAppointment.appointment_date || "",
+        MTV: updatedAppointment.postcode || "",
+        Product: updatedAppointment.product || updatedAppointment.measure || "",
+        Branch: selectedBranch,
+      }
+
+      const webhookResponse = await fetch(MAKE_ALLOCATE_BRANCH_WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(webhookPayload),
+      })
+
+      const webhookText = await webhookResponse.text()
+
+      if (!webhookResponse.ok) {
+        throw new Error(`Make webhook returned ${webhookResponse.status}${webhookText ? `: ${webhookText}` : ""}`)
+      }
+
       const { error: actionUpdateError } = await supabase
         .from("action_runs")
         .update({
@@ -95,6 +139,9 @@ export default function AllocateBranch({ appointment, onUpdated }) {
             appointment_row_id: appointment.appointment_row_id,
             previous_branch: previousBranch,
             branch: updatedAppointment.branch,
+            branch_manager: branchManager?.full_name || null,
+            primary_sales_manager: primarySalesManager?.full_name || null,
+            webhook_triggered: true,
           },
         })
         .eq("id", actionId)
