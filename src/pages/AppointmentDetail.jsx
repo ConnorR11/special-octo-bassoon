@@ -19,11 +19,18 @@ import EPVSCalculator from "../EPVSCalculator"
 import { GenerateSolarContract } from "../contracts/GenerateSolarContract"
 import ActionHistory from "../components/ActionHistory"
 
+function getSubmittedBy(user) {
+  const metadataName = String(user?.user_metadata?.full_name || user?.user_metadata?.name || "").trim()
+  return metadataName || user?.email || "Unknown"
+}
+
 function AppointmentDetail({ appointment, onBack, onUpdated }) {
   const [showResult, setShowResult] = useState(false)
   const [result, setResult] = useState(appointment?.result || appointment?.status || "")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const [confirming, setConfirming] = useState(false)
+  const [confirmError, setConfirmError] = useState("")
   const [cpsValues, setCpsValues] = useState({ cps_h: appointment?.cps_h === true, cps_c: appointment?.cps_c === true, cps_p: appointment?.cps_p === true, cps_s: appointment?.cps_s === true })
   const [savingCps, setSavingCps] = useState(false)
   const [cpsError, setCpsError] = useState("")
@@ -31,6 +38,7 @@ function AppointmentDetail({ appointment, onBack, onUpdated }) {
   useEffect(() => {
     setCpsValues({ cps_h: appointment?.cps_h === true, cps_c: appointment?.cps_c === true, cps_p: appointment?.cps_p === true, cps_s: appointment?.cps_s === true })
     setCpsError("")
+    setConfirmError("")
   }, [appointment])
 
   const [epvsCalculation, setEpvsCalculation] = useState(null)
@@ -41,6 +49,84 @@ function AppointmentDetail({ appointment, onBack, onUpdated }) {
     const date = new Date(value)
     if (Number.isNaN(date.getTime())) return String(value)
     return date.toLocaleString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })
+  }
+
+  async function confirmAppointment() {
+    if (!appointment?.appointment_row_id || appointment.cps_c || confirming) return
+
+    setConfirming(true)
+    setConfirmError("")
+    let actionId = null
+    const now = new Date().toISOString()
+
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser()
+      if (userError) throw userError
+      const submittedBy = getSubmittedBy(userData?.user)
+
+      const { data: action, error: actionError } = await supabase
+        .from("action_runs")
+        .insert({
+          action_type: "confirm_appointment",
+          status: "running",
+          entity_type: "appointment",
+          entity_id: appointment.appointment_row_id,
+          triggered_by: submittedBy,
+          started_at: now,
+          input_data: {
+            appointment_row_id: appointment.appointment_row_id,
+            previous_cps_c: appointment.cps_c === true,
+          },
+        })
+        .select("id")
+        .single()
+
+      if (actionError) throw actionError
+      actionId = action.id
+
+      const { data: updatedAppointment, error: updateError } = await supabase
+        .from("appointments")
+        .update({ cps_c: true })
+        .eq("appointment_row_id", appointment.appointment_row_id)
+        .select("*")
+        .single()
+
+      if (updateError) throw updateError
+
+      const { error: actionUpdateError } = await supabase
+        .from("action_runs")
+        .update({
+          status: "completed",
+          completed_at: new Date().toISOString(),
+          output_data: {
+            appointment_row_id: updatedAppointment.appointment_row_id,
+            cps_c: true,
+          },
+        })
+        .eq("id", actionId)
+
+      if (actionUpdateError) throw actionUpdateError
+
+      setCpsValues((current) => ({ ...current, cps_c: true }))
+      onUpdated?.(updatedAppointment)
+    } catch (err) {
+      console.error("Confirm Appointment action failed:", err)
+      const message = err?.message || "Unable to confirm appointment."
+      setConfirmError(message)
+
+      if (actionId) {
+        await supabase
+          .from("action_runs")
+          .update({
+            status: "failed",
+            completed_at: new Date().toISOString(),
+            error_message: message,
+          })
+          .eq("id", actionId)
+      }
+    } finally {
+      setConfirming(false)
+    }
   }
 
   async function saveResult() {
@@ -129,9 +215,11 @@ function AppointmentDetail({ appointment, onBack, onUpdated }) {
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "8px", flexShrink: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10px", color: "#c9d8e1", whiteSpace: "nowrap" }}><Clock size={12} /><span>Last updated {formatDate(appointment.record_last_update)}</span></div>
             <div style={{ display: "flex", gap: "8px" }}>
+              {!appointment.cps_c && <button type="button" onClick={confirmAppointment} disabled={confirming} style={{ display: "flex", alignItems: "center", gap: "7px", height: "40px", padding: "0 15px", border: "none", borderRadius: "8px", background: "#2d9bf0", color: "#fff", cursor: confirming ? "default" : "pointer", fontFamily: "inherit", fontSize: "12px", fontWeight: 700, opacity: confirming ? 0.65 : 1 }}><Check size={17} />{confirming ? "Confirming..." : "Confirm Appointment"}</button>}
               <button type="button" onClick={() => { setError(""); setShowResult(true) }} style={{ display: "flex", alignItems: "center", gap: "7px", height: "40px", padding: "0 15px", border: "none", borderRadius: "8px", background: "#2499ed", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: "12px", fontWeight: 700 }}><Plus size={17} />Result</button>
               <button type="button" style={{ display: "flex", alignItems: "center", gap: "7px", height: "40px", padding: "0 15px", border: "1px solid #557287", borderRadius: "8px", background: "#173f59", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: "12px", fontWeight: 600 }}><Pencil size={15} />Edit</button>
             </div>
+            {confirmError && <div style={{ marginTop: "2px", padding: "7px 9px", background: "#fbeaea", color: "#8b3333", borderRadius: "6px", fontSize: "10px", maxWidth: "320px" }}>{confirmError}</div>}
           </div>
         </div>
       </div>
