@@ -102,22 +102,17 @@ export default function Login() {
           }}
         >
 
-          <div
+          <img
+            src="/homeshield-logo.png"
+            alt="HomeShield"
             style={{
               width: 46,
               height: 46,
-              borderRadius: 10,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "#0877bd",
-              fontSize: 20,
-              fontWeight: 800,
+              display: "block",
+              objectFit: "contain",
               marginBottom: 18,
             }}
-          >
-            C
-          </div>
+          />
 
           <h1
             style={{
@@ -360,3 +355,4 @@ export default function Login() {
     </div>
   )
 }
+
