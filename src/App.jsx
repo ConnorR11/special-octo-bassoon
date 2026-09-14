@@ -19,12 +19,15 @@ import SalesKPI from "./pages/SalesKPI"
 import Users from "./pages/Users"
 
 const DEALS_PAGE_SIZE = 50
+const REPORTING_PAGE_SIZE = 1000
 
 function App() {
   const [session, setSession] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [contracts, setContracts] = useState([])
+  const [allDeals, setAllDeals] = useState([])
   const [loading, setLoading] = useState(true)
+  const [reportingLoading, setReportingLoading] = useState(true)
   const [error, setError] = useState("")
   const [page, setPage] = useState("dashboard")
   const [mobile, setMobile] = useState(false)
@@ -50,6 +53,7 @@ function App() {
     return () => { mounted = false; authListener?.subscription?.unsubscribe() }
   }, [])
 
+  // Deals page: deliberately loads only one 50-row page.
   async function loadContracts(pageNumber = 0, searchValue = query, statusValue = status) {
     setLoading(true); setError("")
     if (!supabase) { setError("Supabase is not configured. Check your environment variables."); setLoading(false); return }
@@ -68,15 +72,59 @@ function App() {
     setLoading(false)
   }
 
-  useEffect(() => { if (session) loadContracts(0, query, status) }, [session])
+  // Home page reporting and Fit Sheet need the complete deal set. Load it in
+  // Supabase-sized chunks so this is not limited by the Deals page pagination.
+  async function loadAllDealsForReporting() {
+    if (!supabase) return
+    setReportingLoading(true)
+    try {
+      const results = []
+      let from = 0
+      while (true) {
+        const { data, error: supabaseError } = await supabase
+          .from("deals")
+          .select("*")
+          .order("sale_date", { ascending: false })
+          .range(from, from + REPORTING_PAGE_SIZE - 1)
+        if (supabaseError) throw supabaseError
+        const batch = data || []
+        results.push(...batch)
+        if (batch.length < REPORTING_PAGE_SIZE) break
+        from += REPORTING_PAGE_SIZE
+      }
+      setAllDeals(results)
+    } catch (err) {
+      console.error("Error loading all deals for reporting:", err)
+      setError(err?.message || "Unable to load deals for reporting.")
+      setAllDeals([])
+    } finally {
+      setReportingLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!session) return
+    loadContracts(0, query, status)
+    loadAllDealsForReporting()
+  }, [session])
+
   const filteredContracts = contracts
-  const totalValue = contracts.reduce((total, contract) => total + Number(contract.net_value || 0), 0)
-  const averageValue = contracts.length > 0 ? totalValue / contracts.length : 0
+  const totalValue = allDeals.reduce((total, contract) => total + Number(contract.net_value || 0), 0)
+  const averageValue = allDeals.length > 0 ? totalValue / allDeals.length : 0
   const today = new Date().toISOString().slice(0, 10)
-  const upcomingInstallations = contracts.filter((contract) => contract.installation_date && contract.installation_date >= today).length
+  const upcomingInstallations = allDeals.filter((contract) => contract.installation_date && contract.installation_date >= today).length
+
   function handleBackToDeals() { setSelected(null); setPage("contracts"); window.history.pushState({}, "", "/contracts") }
-  function handleDealUpdated(updatedDeal) { setContracts((current) => current.map((contract) => contract.id === updatedDeal.id ? updatedDeal : contract)); setSelected(updatedDeal) }
-  function handlePageChange(newPage) { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage(newPage); if (newPage === "contracts") { setQuery(""); setStatus("all"); loadContracts(0, "", "all") } window.history.pushState({}, "", newPage === "dashboard" ? "/" : `/${newPage}`) }
+  function handleDealUpdated(updatedDeal) {
+    setContracts((current) => current.map((contract) => contract.id === updatedDeal.id ? updatedDeal : contract))
+    setAllDeals((current) => current.map((contract) => contract.id === updatedDeal.id ? updatedDeal : contract))
+    setSelected(updatedDeal)
+  }
+  function handlePageChange(newPage) {
+    setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage(newPage)
+    if (newPage === "contracts") { setQuery(""); setStatus("all"); loadContracts(0, "", "all") }
+    window.history.pushState({}, "", newPage === "dashboard" ? "/" : `/${newPage}`)
+  }
   function handleSearchChange(value) { setQuery(value); loadContracts(0, value, status) }
   function handleStatusChange(value) { setStatus(value); loadContracts(0, query, value) }
   function mapAppointment(appointment) { if (!appointment) return null; return { ...appointment, phone: appointment?.phone_number_1, email: appointment?.email_address } }
@@ -96,7 +144,7 @@ function App() {
   const headerPage = selected ? "customer" : selectedAppointment ? "appointment" : page
   if (authLoading) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f7fa", color: "#002d49", fontFamily: "Inter, Arial, sans-serif", fontSize: 14 }}>Loading CRM...</div>
   if (!session) return <Login />
-  return <div className="app"><Sidebar page={page} setPage={handlePageChange} mobile={mobile} setMobile={setMobile} onSignOut={handleSignOut} /><main><Header page={headerPage} setMobile={setMobile} onRefresh={() => loadContracts(contractsPage, query, status)} />{error && page !== "epvs" && <div className="error"><b>Database error</b><span>{error}</span></div>}{pickupAppointment ? <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated} /> : selectedAppointment ? <div style={{ position: "relative" }}><style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}</style><div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 24px 0", background: "#fff" }}><AppointmentActions appointment={selectedAppointment} onUpdated={handleAppointmentUpdated} onConfirmLegacy={handleLegacyConfirm} onResultLegacy={handleLegacyResult} onOpenPickup={handleOpenPickup} /></div><div className="appointment-detail-host"><AppointmentDetail appointment={selectedAppointment} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated} /></div></div> : selected ? <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated} /> : page === "dashboard" ? <Dashboard contracts={contracts} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={loading} setPage={handlePageChange} setSelected={setSelected} /> : page === "marketing-tv" ? <MarketingTV onSelectAppointment={handleAppointmentSelect} /> : page === "marketing-dashboard" ? <MarketingDashboard contracts={contracts} loading={loading} onSelectAppointment={handleAppointmentSelect} /> : page === "sales-kpi" ? <SalesKPI /> : page === "users" ? <Users /> : page === "contracts" ? <Contracts filtered={filteredContracts} loading={loading} query={query} setQuery={handleSearchChange} status={status} setStatus={handleStatusChange} setSelected={setSelected} page={contractsPage} pageSize={DEALS_PAGE_SIZE} hasMore={hasMoreContracts} onPreviousPage={() => loadContracts(Math.max(contractsPage - 1, 0), query, status)} onNextPage={() => loadContracts(contractsPage + 1, query, status)} /> : page === "appointments" ? <Appointments onSelectAppointment={handleAppointmentSelect} /> : page === "fitsheet" ? <FitSheet contracts={contracts} loading={loading} setSelected={setSelected} onSelectDeal={setSelected} /> : page === "epvs" ? <EPVSCalculator /> : <Dashboard contracts={contracts} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={loading} setPage={handlePageChange} setSelected={setSelected} />}</main></div>
+  return <div className="app"><Sidebar page={page} setPage={handlePageChange} mobile={mobile} setMobile={setMobile} onSignOut={handleSignOut} /><main><Header page={headerPage} setMobile={setMobile} />{error && page !== "epvs" && <div className="error"><b>Database error</b><span>{error}</span></div>}{pickupAppointment ? <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated} /> : selectedAppointment ? <div style={{ position: "relative" }}><style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}</style><div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 24px 0", background: "#fff" }}><AppointmentActions appointment={selectedAppointment} onUpdated={handleAppointmentUpdated} onConfirmLegacy={handleLegacyConfirm} onResultLegacy={handleLegacyResult} onOpenPickup={handleOpenPickup} /></div><div className="appointment-detail-host"><AppointmentDetail appointment={selectedAppointment} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated} /></div></div> : selected ? <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated} /> : page === "dashboard" ? <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={reportingLoading} setPage={handlePageChange} setSelected={setSelected} /> : page === "marketing-tv" ? <MarketingTV onSelectAppointment={handleAppointmentSelect} /> : page === "marketing-dashboard" ? <MarketingDashboard contracts={contracts} loading={loading} onSelectAppointment={handleAppointmentSelect} /> : page === "sales-kpi" ? <SalesKPI /> : page === "users" ? <Users /> : page === "contracts" ? <Contracts filtered={filteredContracts} loading={loading} query={query} setQuery={handleSearchChange} status={status} setStatus={handleStatusChange} setSelected={setSelected} page={contractsPage} pageSize={DEALS_PAGE_SIZE} hasMore={hasMoreContracts} onPreviousPage={() => loadContracts(Math.max(contractsPage - 1, 0), query, status)} onNextPage={() => loadContracts(contractsPage + 1, query, status)} /> : page === "appointments" ? <Appointments onSelectAppointment={handleAppointmentSelect} /> : page === "fitsheet" ? <FitSheet contracts={allDeals} loading={reportingLoading} setSelected={setSelected} onSelectDeal={setSelected} /> : page === "epvs" ? <EPVSCalculator /> : <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={reportingLoading} setPage={handlePageChange} setSelected={setSelected} />}</main></div>
 }
 
 export default App
