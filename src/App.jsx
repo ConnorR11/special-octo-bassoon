@@ -74,7 +74,6 @@ function App() {
   function handleBackToDeals() { setSelected(null); setPage("contracts"); window.history.pushState({}, "", "/contracts") }
   function handleDealUpdated(updatedDeal) { setContracts((current) => current.map((contract) => contract.id === updatedDeal.id ? updatedDeal : contract)); setSelected(updatedDeal) }
   function handlePageChange(newPage) { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage(newPage); window.history.pushState({}, "", newPage === "dashboard" ? "/" : `/${newPage}`) }
-
   function mapAppointment(appointment) { if (!appointment) return null; return { ...appointment, phone: appointment?.phone_number_1, email: appointment?.email_address } }
   function appointmentUrl(appointment) { return `/appointments/${encodeURIComponent(appointment.appointment_row_id)}` }
 
@@ -110,23 +109,18 @@ function App() {
   function handleBackFromPickup() { setPickupAppointment(null) }
   function handlePickupCreated(created, updatedOriginal) { setSelectedAppointment({ ...selectedAppointment, ...updatedOriginal, phone: updatedOriginal?.phone_number_1, email: updatedOriginal?.email_address }); setPickupAppointment(null) }
   function handleSignOut() { if (supabase) supabase.auth.signOut().catch((err) => console.error("Error signing out:", err)) }
-
-  function handleAppointmentUpdated(updatedAppointment) {
-    const mapped = mapAppointment(updatedAppointment)
-    setSelectedAppointment((current) => current ? { ...current, ...mapped } : mapped)
-  }
+  function handleAppointmentUpdated(updatedAppointment) { const mapped = mapAppointment(updatedAppointment); setSelectedAppointment((current) => current ? { ...current, ...mapped } : mapped) }
 
   function clickLegacyButton(text) {
-    const button = Array.from(document.querySelectorAll("button")).find((candidate) => candidate.textContent.trim() === text)
+    const host = document.querySelector(".appointment-detail-host")
+    const button = host ? Array.from(host.querySelectorAll("button")).find((candidate) => candidate.textContent.trim() === text) : null
     if (button) { button.click(); return true }
     return false
   }
-
   function handleLegacyConfirm() { clickLegacyButton("Confirm Appointment") }
   function handleLegacyResult() { clickLegacyButton("Result") }
 
   const headerPage = selected ? "customer" : selectedAppointment ? "appointment" : page
-
   if (authLoading) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f7fa", color: "#002d49", fontFamily: "Inter, Arial, sans-serif", fontSize: 14 }}>Loading CRM...</div>
   if (!session) return <Login />
 
@@ -136,12 +130,9 @@ function App() {
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, padding: "10px 24px 0", background: "#fff" }}><span style={{ fontSize: 12, color: "#64748b" }}>{session?.user?.email || "Signed in"}</span><button type="button" onClick={handleSignOut} style={{ border: "1px solid #d7dce2", background: "#fff", color: "#002d49", borderRadius: 7, padding: "6px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Sign out</button></div>
       <Header page={headerPage} setMobile={setMobile} onRefresh={loadContracts} />
       {error && page !== "epvs" && <div className="error"><b>Database error</b><span>{error}</span></div>}
-
       {pickupAppointment ? <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated} /> : selectedAppointment ? <div style={{ position: "relative" }}>
         <style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}</style>
-        <div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 24px 0", background: "#fff" }}>
-          <AppointmentActions appointment={selectedAppointment} onUpdated={handleAppointmentUpdated} onConfirmLegacy={handleLegacyConfirm} onResultLegacy={handleLegacyResult} onOpenPickup={handleOpenPickup} />
-        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 24px 0", background: "#fff" }}><AppointmentActions appointment={selectedAppointment} onUpdated={handleAppointmentUpdated} onConfirmLegacy={handleLegacyConfirm} onResultLegacy={handleLegacyResult} onOpenPickup={handleOpenPickup} /></div>
         <div className="appointment-detail-host"><AppointmentDetail appointment={selectedAppointment} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated} /></div>
       </div> : selected ? <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated} /> : page === "dashboard" ? <Dashboard contracts={contracts} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={loading} setPage={handlePageChange} setSelected={setSelected} /> : page === "marketing-tv" ? <MarketingTV onSelectAppointment={handleAppointmentSelect} /> : page === "marketing-dashboard" ? <MarketingDashboard contracts={contracts} loading={loading} onSelectAppointment={handleAppointmentSelect} /> : page === "sales-kpi" ? <SalesKPI /> : page === "users" ? <Users /> : page === "contracts" ? <Contracts filtered={filteredContracts} loading={loading} query={query} setQuery={setQuery} status={status} setStatus={setStatus} setSelected={setSelected} /> : page === "appointments" ? <Appointments onSelectAppointment={handleAppointmentSelect} /> : page === "fitsheet" ? <FitSheet contracts={contracts} loading={loading} setSelected={setSelected} onSelectDeal={setSelected} /> : page === "epvs" ? <EPVSCalculator /> : <Dashboard contracts={contracts} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={loading} setPage={handlePageChange} setSelected={setSelected} />}
     </main>
