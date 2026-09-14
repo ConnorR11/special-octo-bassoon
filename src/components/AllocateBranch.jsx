@@ -19,6 +19,7 @@ export default function AllocateBranch({ appointment, onUpdated }) {
       const { data, error: queryError } = await supabase
         .from("profiles")
         .select("full_name, display_name, email, active, role, branch")
+        .eq("role", "Sales Rep")
         .order("full_name", { ascending: true })
 
       if (queryError) {
@@ -168,7 +169,7 @@ export default function AllocateBranch({ appointment, onUpdated }) {
                 <option value="">Select branch...</option>
                 {branches.map((branch) => <option key={branch} value={branch}>{branch}</option>)}
               </select>
-              {branches.length === 0 && <div style={{ marginTop: 10, padding: "9px 10px", background: "#fbeaea", borderRadius: 6, color: "#8b3333", fontSize: 10 }}>No active branches were found in user profiles.</div>}
+              {branches.length === 0 && <div style={{ marginTop: 10, padding: "9px 10px", background: "#fbeaea", borderRadius: 6, color: "#8b3333", fontSize: 10 }}>No active sales rep branches were found in user profiles.</div>}
               {error && <div style={{ marginTop: 10, padding: "9px 10px", background: "#fbeaea", borderRadius: 6, color: "#8b3333", fontSize: 10 }}>{error}</div>}
             </div>
             <div style={{ padding: "14px 18px", borderTop: "1px solid #eee", display: "flex", justifyContent: "flex-end", gap: 8 }}>
