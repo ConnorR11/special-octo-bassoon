@@ -86,6 +86,7 @@ export default function CreateAppointment({ onBack, onCreated }) {
           status: "completed",
           completed_at: new Date().toISOString(),
           entity_id: created.appointment_row_id,
+          appointment_row_id: created.appointment_row_id,
           output_data: { appointment_row_id: created.appointment_row_id },
         })
         .eq("id", actionId)
