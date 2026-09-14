@@ -5,6 +5,7 @@ import {
   PoundSterling,
   CalendarDays,
   ChevronRight,
+  Plus,
 } from "lucide-react"
 
 import Stat from "../components/Stat"
@@ -29,205 +30,56 @@ function Dashboard({
 }) {
   return (
     <section>
-
-      {/* STATS */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 18 }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 22, color: "#222" }}>Dashboard</h1>
+          <p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>Overview of sales performance and activity</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setPage("create-appointment")}
+          style={{ display: "inline-flex", alignItems: "center", gap: 7, height: 38, padding: "0 14px", border: 0, borderRadius: 8, background: "#0877bd", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", boxShadow: "0 2px 5px rgba(8,119,189,.18)" }}
+        >
+          <Plus size={15} />
+          Create Appointment
+        </button>
+      </div>
 
       <div className="stats">
-
-        <Stat
-          icon={<FileText size={20} />}
-          label="Deals"
-          value={contracts.length}
-        />
-
-        <Stat
-          icon={<PoundSterling size={20} />}
-          label="Net Value"
-          value={money(total)}
-        />
-
-        <Stat
-          icon={<PoundSterling size={20} />}
-          label="Average contract"
-          value={money(avg)}
-        />
-
-        <Stat
-          icon={<CalendarDays size={20} />}
-          label="Upcoming installations"
-          value={upcoming}
-        />
-
+        <Stat icon={<FileText size={20} />} label="Deals" value={contracts.length} />
+        <Stat icon={<PoundSterling size={20} />} label="Net Value" value={money(total)} />
+        <Stat icon={<PoundSterling size={20} />} label="Average contract" value={money(avg)} />
+        <Stat icon={<CalendarDays size={20} />} label="Upcoming installations" value={upcoming} />
       </div>
-
-
-      {/* SALES CHART */}
 
       <SalesChart contracts={contracts} />
-      
       <YearOnYearSalesChart contracts={contracts} />
 
-
-      {/* LOWER DASHBOARD */}
-
       <div className="grid2">
-
-
-        {/* RECENT CONTRACTS */}
-
         <div className="card">
-
           <div className="card-head">
-
-            <div>
-
-              <h2>
-                Recent contracts
-              </h2>
-
-              <p>
-                Latest sold deals
-              </p>
-
-            </div>
-
-            <button
-              className="link"
-              onClick={() =>
-                setPage("contracts")
-              }
-            >
-
-              View all
-
-              <ChevronRight size={16} />
-
-            </button>
-
+            <div><h2>Recent contracts</h2><p>Latest sold deals</p></div>
+            <button className="link" onClick={() => setPage("contracts")}>View all <ChevronRight size={16} /></button>
           </div>
-
-
-          {loading ? (
-
-            <div className="empty">
-              Loading…
-            </div>
-
-          ) : contracts.length === 0 ? (
-
-            <div className="empty">
-              No contracts found.
-            </div>
-
-          ) : (
-
+          {loading ? <div className="empty">Loading…</div> : contracts.length === 0 ? <div className="empty">No contracts found.</div> : (
             <div className="rows">
-
-              {contracts
-                .slice(0, 6)
-                .map((contract) => (
-
-                  <button
-                    className="contract-row"
-                    key={contract.id}
-                    onClick={() =>
-                      setSelected(contract)
-                    }
-                  >
-
-                    {/* AVATAR */}
-
-                    <div className="avatar">
-
-                      {getInitials(
-                        contract.customer_name ||
-                        "Customer"
-                      )}
-
-                    </div>
-
-
-                    {/* CUSTOMER */}
-
-                    <div className="row-main">
-
-                      <b>
-                        {contract.customer_name ||
-                          "Unnamed customer"}
-                      </b>
-
-                      <span>
-                        {contract.product || "—"}
-                        {" · "}
-                        {contract.postcode || "—"}
-                      </span>
-
-                    </div>
-
-
-                    {/* NET VALUE */}
-
-                    <div className="row-value">
-
-                      <b>
-                        {money(
-                          contract.net_value
-                        )}
-                      </b>
-
-                      <span>
-                        {contract.sale_date
-                          ? formatDate(
-                              contract.sale_date
-                            )
-                          : "—"}
-                      </span>
-
-                    </div>
-
-
-                    <ChevronRight size={16} />
-
-                  </button>
-
-                ))}
-
+              {contracts.slice(0, 6).map((contract) => (
+                <button className="contract-row" key={contract.id} onClick={() => setSelected(contract)}>
+                  <div className="avatar">{getInitials(contract.customer_name || "Customer")}</div>
+                  <div className="row-main"><b>{contract.customer_name || "Unnamed customer"}</b><span>{contract.product || "—"}{" · "}{contract.postcode || "—"}</span></div>
+                  <div className="row-value"><b>{money(contract.net_value)}</b><span>{contract.sale_date ? formatDate(contract.sale_date) : "—"}</span></div>
+                  <ChevronRight size={16} />
+                </button>
+              ))}
             </div>
-
           )}
-
         </div>
-
-
-        {/* SALES BREAKDOWN */}
 
         <div className="card">
-
-          <div className="card-head">
-
-            <div>
-
-              <h2>
-                Sales
-              </h2>
-
-              <p>
-                Contract value by month
-              </p>
-
-            </div>
-
-          </div>
-
-          <SalesBreakdown
-            contracts={contracts}
-          />
-
+          <div className="card-head"><div><h2>Sales</h2><p>Contract value by month</p></div></div>
+          <SalesBreakdown contracts={contracts} />
         </div>
-
-
       </div>
-
     </section>
   )
 }
