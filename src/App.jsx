@@ -50,18 +50,30 @@ function App() {
     return () => { mounted = false; authListener?.subscription?.unsubscribe() }
   }, [])
 
-  async function loadContracts(pageNumber = 0) {
+  async function loadContracts(pageNumber = 0, searchValue = query, statusValue = status) {
     setLoading(true); setError("")
     if (!supabase) { setError("Supabase is not configured. Check your environment variables."); setLoading(false); return }
 
     const from = pageNumber * DEALS_PAGE_SIZE
     const to = from + DEALS_PAGE_SIZE - 1
+    const search = String(searchValue || "").trim()
 
-    const { data, error: supabaseError } = await supabase
+    let request = supabase
       .from("deals")
       .select("*")
       .order("sale_date", { ascending: false })
       .range(from, to)
+
+    if (search) {
+      const escaped = search.replace(/[%_]/g, "\\$&").replace(/,/g, "\\,")
+      request = request.or(`customer_name.ilike.%${escaped}%,postcode.ilike.%${escaped}%,product.ilike.%${escaped}%,salesperson.ilike.%${escaped}%,contract_number.ilike.%${escaped}%,phone.ilike.%${escaped}%,email.ilike.%${escaped}%`)
+    }
+
+    if (statusValue && statusValue !== "all") {
+      request = request.eq("status", statusValue)
+    }
+
+    const { data, error: supabaseError } = await request
 
     if (supabaseError) {
       setError(supabaseError.message)
@@ -75,17 +87,9 @@ function App() {
     setLoading(false)
   }
 
-  useEffect(() => { if (session) loadContracts(0) }, [session])
+  useEffect(() => { if (session) loadContracts(0, query, status) }, [session])
 
-  const filteredContracts = useMemo(() => {
-    const search = query.toLowerCase().trim()
-    return contracts.filter((contract) => {
-      const searchableFields = [contract.customer_name, contract.postcode, contract.product, contract.salesperson, contract.contract_number, contract.phone, contract.email]
-      const matchesSearch = !search || searchableFields.some((field) => String(field || "").toLowerCase().includes(search))
-      const matchesStatus = status === "all" || contract.status === status
-      return matchesSearch && matchesStatus
-    })
-  }, [contracts, query, status])
+  const filteredContracts = contracts
 
   const totalValue = contracts.reduce((total, contract) => total + Number(contract.net_value || 0), 0)
   const averageValue = contracts.length > 0 ? totalValue / contracts.length : 0
@@ -97,10 +101,12 @@ function App() {
   function handlePageChange(newPage) {
     setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage(newPage)
     if (newPage === "contracts") {
-      setQuery(""); setStatus("all"); loadContracts(0)
+      setQuery(""); setStatus("all"); loadContracts(0, "", "all")
     }
     window.history.pushState({}, "", newPage === "dashboard" ? "/" : `/${newPage}`)
   }
+  function handleSearchChange(value) { setQuery(value); loadContracts(0, value, status) }
+  function handleStatusChange(value) { setStatus(value); loadContracts(0, query, value) }
   function mapAppointment(appointment) { if (!appointment) return null; return { ...appointment, phone: appointment?.phone_number_1, email: appointment?.email_address } }
   function appointmentUrl(appointment) { return `/appointments/${encodeURIComponent(appointment.appointment_row_id)}` }
 
@@ -155,13 +161,13 @@ function App() {
     <Sidebar page={page} setPage={handlePageChange} mobile={mobile} setMobile={setMobile} />
     <main>
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, padding: "10px 24px 0", background: "#fff" }}><span style={{ fontSize: 12, color: "#64748b" }}>{session?.user?.email || "Signed in"}</span><button type="button" onClick={handleSignOut} style={{ border: "1px solid #d7dce2", background: "#fff", color: "#002d49", borderRadius: 7, padding: "6px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Sign out</button></div>
-      <Header page={headerPage} setMobile={setMobile} onRefresh={() => loadContracts(contractsPage)} />
+      <Header page={headerPage} setMobile={setMobile} onRefresh={() => loadContracts(contractsPage, query, status)} />
       {error && page !== "epvs" && <div className="error"><b>Database error</b><span>{error}</span></div>}
       {pickupAppointment ? <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated} /> : selectedAppointment ? <div style={{ position: "relative" }}>
         <style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}</style>
         <div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 24px 0", background: "#fff" }}><AppointmentActions appointment={selectedAppointment} onUpdated={handleAppointmentUpdated} onConfirmLegacy={handleLegacyConfirm} onResultLegacy={handleLegacyResult} onOpenPickup={handleOpenPickup} /></div>
         <div className="appointment-detail-host"><AppointmentDetail appointment={selectedAppointment} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated} /></div>
-      </div> : selected ? <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated} /> : page === "dashboard" ? <Dashboard contracts={contracts} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={loading} setPage={handlePageChange} setSelected={setSelected} /> : page === "marketing-tv" ? <MarketingTV onSelectAppointment={handleAppointmentSelect} /> : page === "marketing-dashboard" ? <MarketingDashboard contracts={contracts} loading={loading} onSelectAppointment={handleAppointmentSelect} /> : page === "sales-kpi" ? <SalesKPI /> : page === "users" ? <Users /> : page === "contracts" ? <Contracts filtered={filteredContracts} loading={loading} query={query} setQuery={setQuery} status={status} setStatus={setStatus} setSelected={setSelected} page={contractsPage} pageSize={DEALS_PAGE_SIZE} hasMore={hasMoreContracts} onPreviousPage={() => loadContracts(Math.max(contractsPage - 1, 0))} onNextPage={() => loadContracts(contractsPage + 1)} /> : page === "appointments" ? <Appointments onSelectAppointment={handleAppointmentSelect} /> : page === "fitsheet" ? <FitSheet contracts={contracts} loading={loading} setSelected={setSelected} onSelectDeal={setSelected} /> : page === "epvs" ? <EPVSCalculator /> : <Dashboard contracts={contracts} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={loading} setPage={handlePageChange} setSelected={setSelected} />}
+      </div> : selected ? <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated} /> : page === "dashboard" ? <Dashboard contracts={contracts} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={loading} setPage={handlePageChange} setSelected={setSelected} /> : page === "marketing-tv" ? <MarketingTV onSelectAppointment={handleAppointmentSelect} /> : page === "marketing-dashboard" ? <MarketingDashboard contracts={contracts} loading={loading} onSelectAppointment={handleAppointmentSelect} /> : page === "sales-kpi" ? <SalesKPI /> : page === "users" ? <Users /> : page === "contracts" ? <Contracts filtered={filteredContracts} loading={loading} query={query} setQuery={handleSearchChange} status={status} setStatus={handleStatusChange} setSelected={setSelected} page={contractsPage} pageSize={DEALS_PAGE_SIZE} hasMore={hasMoreContracts} onPreviousPage={() => loadContracts(Math.max(contractsPage - 1, 0), query, status)} onNextPage={() => loadContracts(contractsPage + 1, query, status)} /> : page === "appointments" ? <Appointments onSelectAppointment={handleAppointmentSelect} /> : page === "fitsheet" ? <FitSheet contracts={contracts} loading={loading} setSelected={setSelected} onSelectDeal={setSelected} /> : page === "epvs" ? <EPVSCalculator /> : <Dashboard contracts={contracts} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={loading} setPage={handlePageChange} setSelected={setSelected} />}
     </main>
   </div>
 }
