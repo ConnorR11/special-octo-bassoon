@@ -1,7 +1,7 @@
 import React from "react"
-import { Menu, RefreshCw } from "lucide-react"
+import { Menu } from "lucide-react"
 
-function Header({ page, setMobile, onRefresh }) {
+function Header({ page, setMobile }) {
   const pageTitle = {
     dashboard: "Dashboard",
     contracts: "Deals",
@@ -29,12 +29,6 @@ function Header({ page, setMobile, onRefresh }) {
           <p>{pageSubtitle}</p>
         </div>
       </div>
-
-      {page !== "epvs" && (
-        <button className="refresh" onClick={onRefresh} title="Refresh">
-          <RefreshCw size={17} />
-        </button>
-      )}
     </header>
   )
 }
