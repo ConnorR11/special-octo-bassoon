@@ -45,6 +45,7 @@ export default function AppointmentActions({ appointment, onUpdated, onConfirmLe
   }, [appointment])
 
   const closeAnd = (fn) => { setOpen(false); fn?.() }
+  const handleUpdated = (updatedAppointment) => { setOpen(false); onUpdated?.(updatedAppointment) }
 
   function openEdit() {
     setEditError("")
@@ -107,9 +108,9 @@ export default function AppointmentActions({ appointment, onUpdated, onConfirmLe
         <button type="button" aria-label="Close actions" onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 998, border: 0, background: "transparent" }} />
         <div style={{ position: "absolute", top: 46, right: 0, width: 280, background: "#fff", border: "1px solid #dfe4e8", borderRadius: 10, boxShadow: "0 14px 35px rgba(0,0,0,.16)", padding: 6, zIndex: 999 }}>
           <div style={{ padding: "7px 10px 6px", fontSize: 9, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".06em" }}>Appointment actions</div>
-          <MenuButton icon={Check} disabled={confirmed} onClick={() => closeAnd(onConfirmLegacy)}>{confirmed ? "Confirm Appointment" : "Confirm Appointment"}{confirmed && <Done />}</MenuButton>
-          {confirmed ? <AllocateBranch appointment={appointment} menuItem onTriggered={() => setOpen(false)} onUpdated={onUpdated} /> : <MenuButton icon={Building2} disabled>Allocate Branch <Lock size={13} color="#b8c0c8" /></MenuButton>}
-          {hasBranch ? <AllocateSalesRep appointment={appointment} menuItem onTriggered={() => setOpen(false)} onUpdated={onUpdated} /> : <MenuButton icon={UserRound} disabled>Allocate Sales Rep <Lock size={13} color="#b8c0c8" /></MenuButton>}
+          <MenuButton icon={Check} disabled={confirmed} onClick={() => closeAnd(onConfirmLegacy)}>Confirm Appointment{confirmed && <Done />}</MenuButton>
+          {confirmed ? <AllocateBranch appointment={appointment} menuItem onUpdated={handleUpdated} /> : <MenuButton icon={Building2} disabled>Allocate Branch <Lock size={13} color="#b8c0c8" /></MenuButton>}
+          {hasBranch ? <AllocateSalesRep appointment={appointment} menuItem onUpdated={handleUpdated} /> : <MenuButton icon={UserRound} disabled>Allocate Sales Rep <Lock size={13} color="#b8c0c8" /></MenuButton>}
           <MenuButton icon={Pencil} onClick={openEdit}>Edit Appointment</MenuButton>
           <MenuButton icon={Plus} onClick={() => closeAnd(onResultLegacy)}>Result Appointment</MenuButton>
           <div style={{ height: 1, background: "#eef1f4", margin: "6px 4px" }} />
