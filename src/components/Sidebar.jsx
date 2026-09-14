@@ -16,7 +16,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut }) {
   return <>
     {mobile && <div className="sidebar-overlay" onClick={() => setMobile(false)} />}
     <aside className={`sidebar ${mobile ? "sidebar-open" : ""}`}>
-      <div className="sidebar-brand"><div className="brand-mark">C</div><div><strong>CRM</strong><span>Home Improvements</span></div></div>
+      <div className="sidebar-brand"><div className="brand-mark">C</div><div><strong>Homeshield Scotland</strong><span>CRM</span></div></div>
       <nav className="sidebar-nav">
         <button type="button" className={`sidebar-item ${isActive("dashboard") ? "active" : ""}`} onClick={() => navigate("dashboard")}><LayoutDashboard size={18} /><span>Home</span></button>
         <div className="sidebar-divider" />
