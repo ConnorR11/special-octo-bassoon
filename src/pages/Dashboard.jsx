@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 
 import {
   FileText,
@@ -25,24 +25,60 @@ const EMPTY_FORM = {
   phone_number_1: "",
   email_address: "",
   appointment_date: "",
-  branch: "",
   product: "",
   job_type: "",
   lead_source: "",
-  canvasser: "",
-  marketing_notes: "",
-  rep_allocated: "",
   sales_notes: "",
+}
+
+function normaliseOptions(rows, field) {
+  return Array.from(new Set((rows || []).map((row) => String(row?.[field] ?? "").trim()).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b))
 }
 
 function Dashboard({ contracts, total, avg, upcoming, loading, setPage, setSelected }) {
   const [showCreateAppointment, setShowCreateAppointment] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [jobTypes, setJobTypes] = useState([])
+  const [leadSources, setLeadSources] = useState([])
+  const [loadingOptions, setLoadingOptions] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
 
-  const canSubmit = useMemo(() => form.name.trim() && form.appointment_date, [form.name, form.appointment_date])
+  useEffect(() => {
+    async function loadOptions() {
+      if (!supabase) return
+      setLoadingOptions(true)
+      const { data, error: optionsError } = await supabase
+        .from("appointments")
+        .select("job_type, lead_source")
+
+      if (optionsError) {
+        console.error("Error loading appointment options:", optionsError)
+      } else {
+        setJobTypes(normaliseOptions(data, "job_type"))
+        setLeadSources(normaliseOptions(data, "lead_source"))
+      }
+      setLoadingOptions(false)
+    }
+
+    loadOptions()
+  }, [])
+
+  const canSubmit = useMemo(() => {
+    return Boolean(
+      form.name.trim() &&
+      form.appointment_date &&
+      form.postcode.trim() &&
+      form.phone_number_1.trim() &&
+      form.email_address.trim() &&
+      form.address.trim() &&
+      form.product.trim() &&
+      form.job_type.trim() &&
+      form.lead_source.trim()
+    )
+  }, [form])
 
   function update(field, value) {
     setForm((current) => ({ ...current, [field]: value }))
@@ -58,6 +94,29 @@ function Dashboard({ contracts, total, avg, upcoming, loading, setPage, setSelec
     setSuccess("")
   }
 
+  async function getSubmittedBy() {
+    const { data: userData } = await supabase.auth.getUser()
+    const user = userData?.user
+    if (!user) return "Unknown"
+
+    const metadataName = String(user.user_metadata?.full_name || user.user_metadata?.name || "").trim()
+    if (metadataName) return metadataName
+
+    if (user.email) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("email", user.email)
+        .maybeSingle()
+
+      const profileName = String(profile?.full_name || "").trim()
+      if (profileName) return profileName
+      return user.email
+    }
+
+    return "Unknown"
+  }
+
   async function createAppointment(event) {
     event.preventDefault()
     if (!supabase || !canSubmit || saving) return
@@ -66,17 +125,19 @@ function Dashboard({ contracts, total, avg, upcoming, loading, setPage, setSelec
     setError("")
     setSuccess("")
     let actionId = null
-    const startedAt = new Date().toISOString()
+    const now = new Date().toISOString()
 
     try {
+      const submittedBy = await getSubmittedBy()
+
       const { data: action, error: actionError } = await supabase
         .from("action_runs")
         .insert({
           action_type: "create_appointment",
           status: "running",
           entity_type: "appointment",
-          triggered_by: "crm",
-          started_at: startedAt,
+          triggered_by: submittedBy,
+          started_at: now,
           input_data: form,
         })
         .select("id")
@@ -85,10 +146,12 @@ function Dashboard({ contracts, total, avg, upcoming, loading, setPage, setSelec
       if (actionError) throw actionError
       actionId = action.id
 
-      const now = new Date().toISOString()
       const appointment = Object.fromEntries(
         Object.entries(form).map(([key, value]) => [key, typeof value === "string" ? value.trim() : value])
       )
+      appointment.data_received_date = now
+      appointment.submitted_to_sales_app_date = now
+      appointment.submitted_to_sales_by = submittedBy
       appointment.appointment_updated_time = now
       appointment.record_last_update = now
 
@@ -100,15 +163,20 @@ function Dashboard({ contracts, total, avg, upcoming, loading, setPage, setSelec
 
       if (appointmentError) throw appointmentError
 
-      await supabase
+      const { error: actionUpdateError } = await supabase
         .from("action_runs")
         .update({
           status: "completed",
           completed_at: new Date().toISOString(),
           entity_id: created.appointment_row_id,
-          output_data: { appointment_row_id: created.appointment_row_id },
+          output_data: {
+            appointment_row_id: created.appointment_row_id,
+            submitted_by: submittedBy,
+          },
         })
         .eq("id", actionId)
+
+      if (actionUpdateError) throw actionUpdateError
 
       setSuccess("Appointment created successfully.")
       setForm(EMPTY_FORM)
@@ -130,6 +198,7 @@ function Dashboard({ contracts, total, avg, upcoming, loading, setPage, setSelec
 
   const inputStyle = { width: "100%", boxSizing: "border-box", height: 38, padding: "0 10px", border: "1px solid #d7dee7", borderRadius: 7, outline: "none", fontFamily: "inherit", fontSize: 12, color: "#0f172a", background: "#fff" }
   const labelStyle = { display: "flex", flexDirection: "column", gap: 5, fontSize: 10, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: ".05em" }
+  const selectStyle = { ...inputStyle, cursor: loadingOptions ? "default" : "pointer" }
 
   return (
     <section>
@@ -192,18 +261,14 @@ function Dashboard({ contracts, total, avg, upcoming, loading, setPage, setSelec
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: "16px 18px" }}>
                 <label style={labelStyle}>Customer name *<input style={inputStyle} value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Customer name" /></label>
                 <label style={labelStyle}>Appointment date & time *<input style={inputStyle} type="datetime-local" value={form.appointment_date} onChange={(e) => update("appointment_date", e.target.value)} /></label>
-                <label style={labelStyle}>Postcode<input style={inputStyle} value={form.postcode} onChange={(e) => update("postcode", e.target.value)} placeholder="Postcode" /></label>
-                <label style={labelStyle}>Phone number<input style={inputStyle} type="tel" value={form.phone_number_1} onChange={(e) => update("phone_number_1", e.target.value)} placeholder="Phone number" /></label>
-                <label style={labelStyle}>Email address<input style={inputStyle} type="email" value={form.email_address} onChange={(e) => update("email_address", e.target.value)} placeholder="Email address" /></label>
-                <label style={labelStyle}>Address<input style={inputStyle} value={form.address} onChange={(e) => update("address", e.target.value)} placeholder="Address" /></label>
-                <label style={labelStyle}>Branch<input style={inputStyle} value={form.branch} onChange={(e) => update("branch", e.target.value)} placeholder="Branch" /></label>
-                <label style={labelStyle}>Product / measure<input style={inputStyle} value={form.product} onChange={(e) => update("product", e.target.value)} placeholder="Product" /></label>
-                <label style={labelStyle}>Job type<input style={inputStyle} value={form.job_type} onChange={(e) => update("job_type", e.target.value)} placeholder="Job type" /></label>
-                <label style={labelStyle}>Lead source<input style={inputStyle} value={form.lead_source} onChange={(e) => update("lead_source", e.target.value)} placeholder="Lead source" /></label>
-                <label style={labelStyle}>Canvasser<input style={inputStyle} value={form.canvasser} onChange={(e) => update("canvasser", e.target.value)} placeholder="Canvasser" /></label>
-                <label style={labelStyle}>Sales rep<input style={inputStyle} value={form.rep_allocated} onChange={(e) => update("rep_allocated", e.target.value)} placeholder="Sales rep" /></label>
-                <label style={{ ...labelStyle, gridColumn: "1 / -1" }}>Marketing notes<textarea style={{ ...inputStyle, height: 76, padding: "9px 10px", resize: "vertical" }} value={form.marketing_notes} onChange={(e) => update("marketing_notes", e.target.value)} placeholder="Marketing notes" /></label>
-                <label style={{ ...labelStyle, gridColumn: "1 / -1" }}>Sales notes<textarea style={{ ...inputStyle, height: 76, padding: "9px 10px", resize: "vertical" }} value={form.sales_notes} onChange={(e) => update("sales_notes", e.target.value)} placeholder="Sales notes" /></label>
+                <label style={labelStyle}>Postcode *<input style={inputStyle} value={form.postcode} onChange={(e) => update("postcode", e.target.value)} placeholder="Postcode" /></label>
+                <label style={labelStyle}>Phone number *<input style={inputStyle} type="tel" value={form.phone_number_1} onChange={(e) => update("phone_number_1", e.target.value)} placeholder="Phone number" /></label>
+                <label style={labelStyle}>Email address *<input style={inputStyle} type="email" value={form.email_address} onChange={(e) => update("email_address", e.target.value)} placeholder="Email address" /></label>
+                <label style={labelStyle}>Address *<input style={inputStyle} value={form.address} onChange={(e) => update("address", e.target.value)} placeholder="Address" /></label>
+                <label style={labelStyle}>Measure *<input style={inputStyle} value={form.product} onChange={(e) => update("product", e.target.value)} placeholder="Measure" /></label>
+                <label style={labelStyle}>Job type *<select style={selectStyle} value={form.job_type} onChange={(e) => update("job_type", e.target.value)} disabled={loadingOptions}><option value="">{loadingOptions ? "Loading…" : "Select job type"}</option>{jobTypes.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
+                <label style={labelStyle}>Lead source *<select style={selectStyle} value={form.lead_source} onChange={(e) => update("lead_source", e.target.value)} disabled={loadingOptions}><option value="">{loadingOptions ? "Loading…" : "Select lead source"}</option>{leadSources.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
+                <label style={{ ...labelStyle, gridColumn: "1 / -1" }}>Sales note<textarea style={{ ...inputStyle, height: 76, padding: "9px 10px", resize: "vertical" }} value={form.sales_notes} onChange={(e) => update("sales_notes", e.target.value)} placeholder="Sales note" /></label>
               </div>
               <div style={{ marginTop: 20, paddingTop: 18, borderTop: "1px solid #e8edf2", display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 <button type="button" onClick={closeCreateAppointment} disabled={saving} style={{ height: 40, padding: "0 14px", border: "1px solid #d7dee7", borderRadius: 8, background: "#fff", color: "#475569", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Cancel</button>
