@@ -31,8 +31,8 @@ function AppointmentRow({ appointment, onSelect, repNameByEmail }) {
   const repConfirmed = Boolean(appointment.rep_confirmed_time)
   const rowStatusClass = !hasRep ? "mtv-row-unassigned" : repConfirmed ? "mtv-row-confirmed" : "mtv-row-unconfirmed"
 
-  // Only replace SOLD with net value. Every other result remains unchanged.
-  const resultDisplay = sold ? formatCurrency(netValue) : display(appointment.result)
+  // Replace SOLD with net value when available; otherwise keep SOLD.
+  const resultDisplay = sold ? (netValue === null ? "SOLD" : formatCurrency(netValue)) : display(appointment.result)
 
   return <tr className={`mtv-appointment-row ${rowStatusClass}`} onClick={() => onSelect?.(appointment)}><td className="mtv-cell mtv-name-cell" title={appointment.name || "Unnamed customer"}>{display(appointment.name, "Unnamed customer")}</td><td className="mtv-cell" title={display(appointment.branch)}>{display(appointment.branch)}</td><td className="mtv-cell" title={display(repName)}>{display(repName)}</td><td className="mtv-cell mtv-time-cell">{formatTime(appointment.appointment_date)}</td><td className="mtv-cell">{display(appointment.postcode)}</td><td className="mtv-cell">{display(appointment.product)}</td><td className="mtv-cell">{display(appointment.lead_source)}</td><td className="mtv-cell mtv-status-cell"><StatusTick value={Boolean(appointment.was_picked_up || appointment.pickup_rep)} /></td><td className="mtv-cell mtv-result-cell">{resultDisplay}</td></tr>
 }
