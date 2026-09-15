@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react"
+import React, { useMemo } from "react"
 
 import {
   ResponsiveContainer,
@@ -8,246 +8,127 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
 } from "recharts"
 
 import { money } from "../utils/formatters"
 
+const PRODUCT_COLOURS = [
+  "#1683c7",
+  "#d86bdc",
+  "#f59e0b",
+  "#15803d",
+  "#6366f1",
+  "#64748b",
+  "#dc2626",
+  "#0f766e",
+]
+
+function normaliseProduct(value) {
+  const product = String(value ?? "").trim()
+  return product || "Unassigned"
+}
+
+function productColour(product, index) {
+  const name = product.toLowerCase()
+
+  if (name === "unassigned") return "#94a3b8"
+  if (name.includes("window")) return "#1683c7"
+  if (name.includes("solar")) return "#d86bdc"
+  if (name.includes("ashp") || name.includes("heat pump")) return "#f59e0b"
+  if (name === "other") return "#15803d"
+
+  return PRODUCT_COLOURS[index % PRODUCT_COLOURS.length]
+}
+
 function SalesChart({ contracts = [] }) {
-
-  /*
-   * FIND ALL YEARS IN THE DATA
-   */
-
   const years = useMemo(() => {
     const yearSet = new Set()
 
     contracts.forEach((contract) => {
-      if (!contract.sale_date) {
-        return
-      }
+      if (!contract.sale_date) return
 
-      const date = new Date(
-        `${contract.sale_date}T00:00:00`
-      )
-
+      const date = new Date(`${contract.sale_date}T00:00:00`)
       if (!Number.isNaN(date.getTime())) {
         yearSet.add(date.getFullYear())
       }
     })
 
-    return Array.from(yearSet).sort(
-      (a, b) => b - a
-    )
+    return Array.from(yearSet).sort((a, b) => a - b)
   }, [contracts])
 
+  const products = useMemo(() => {
+    const productSet = new Set()
 
-  /*
-   * DEFAULT TO THE MOST RECENT YEAR
-   */
+    contracts.forEach((contract) => {
+      productSet.add(normaliseProduct(contract.product))
+    })
 
-  const [selectedYear, setSelectedYear] =
-    useState(null)
-
-  const activeYear =
-    selectedYear ?? years[0]
-
-
-  /*
-   * MONTHLY DATA FOR SELECTED YEAR
-   */
+    return Array.from(productSet).sort((a, b) => {
+      if (a === "Unassigned") return 1
+      if (b === "Unassigned") return -1
+      return a.localeCompare(b)
+    })
+  }, [contracts])
 
   const chartData = useMemo(() => {
+    return years.map((year) => {
+      const row = { year }
 
-    const months = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ]
+      products.forEach((product) => {
+        row[product] = 0
+      })
 
-    if (!activeYear) {
-      return months.map((month) => ({
-        month,
-        shortMonth: month.substring(0, 3),
-        total: 0,
-      }))
-    }
+      contracts.forEach((contract) => {
+        if (!contract.sale_date) return
 
-    return months.map(
-      (month, index) => {
+        const date = new Date(`${contract.sale_date}T00:00:00`)
+        if (Number.isNaN(date.getTime()) || date.getFullYear() !== year) return
 
-        const total = contracts.reduce(
-          (sum, contract) => {
+        const product = normaliseProduct(contract.product)
+        const value = Number(contract.net_value || 0)
+        row[product] += Number.isFinite(value) ? value : 0
+      })
 
-            if (!contract.sale_date) {
-              return sum
-            }
+      return row
+    })
+  }, [contracts, products, years])
 
-            const date = new Date(
-              `${contract.sale_date}T00:00:00`
-            )
-
-            if (
-              date.getFullYear() !==
-                activeYear ||
-              date.getMonth() !== index
-            ) {
-              return sum
-            }
-
-            return (
-              sum +
-              Number(
-                contract.net_value || 0
-              )
-            )
-          },
-          0
-        )
-
-        return {
-          month,
-          shortMonth:
-            month.substring(0, 3),
-          total,
-        }
-      }
-    )
-
-  }, [contracts, activeYear])
-
-
-  /*
-   * YEAR TOTAL
-   */
-
-  const totalValue = chartData.reduce(
-    (total, month) =>
-      total + month.total,
-    0
-  )
-
-
-  /*
-   * NO DATA
-   */
+  const yearlyTotals = useMemo(() => {
+    return chartData.reduce((sum, row) => {
+      return sum + products.reduce((productSum, product) => productSum + Number(row[product] || 0), 0)
+    }, 0)
+  }, [chartData, products])
 
   if (!years.length) {
     return (
       <div className="card sales-chart">
-
         <div className="card-head">
-
           <div>
-            <h2>
-              Sales Performance
-            </h2>
-
-            <p>
-              No sales data available
-            </p>
+            <h2>Sales Performance</h2>
+            <p>No sales data available</p>
           </div>
-
         </div>
-
       </div>
     )
   }
 
-
   return (
     <div className="card sales-chart">
-
       <div className="card-head">
-
         <div>
-
-          <h2>
-            {activeYear} Sales Performance
-          </h2>
-
-          <p>
-            Total net sales value by month
-          </p>
-
+          <h2>Sales Performance</h2>
+          <p>Annual net sales value by product</p>
         </div>
 
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "20px",
-          }}
-        >
-
-          {/* YEAR SELECTOR */}
-
-          <select
-            value={activeYear}
-            onChange={(event) =>
-              setSelectedYear(
-                Number(event.target.value)
-              )
-            }
-            style={{
-              border:
-                "1px solid #dddfe3",
-              borderRadius: "8px",
-              background: "#fff",
-              padding: "8px 12px",
-              fontSize: "12px",
-              color: "#444",
-              cursor: "pointer",
-            }}
-          >
-
-            {years.map((year) => (
-              <option
-                value={year}
-                key={year}
-              >
-                {year}
-              </option>
-            ))}
-
-          </select>
-
-
-          {/* TOTAL */}
-
-          <div className="chart-total">
-
-            <span>
-              {activeYear} net value
-            </span>
-
-            <b>
-              {money(totalValue)}
-            </b>
-
-          </div>
-
+        <div className="chart-total">
+          <span>Total net value</span>
+          <b>{money(yearlyTotals)}</b>
         </div>
-
       </div>
 
-
       <div className="chart-container">
-
-        <ResponsiveContainer
-          width="100%"
-          height={340}
-        >
-
+        <ResponsiveContainer width="100%" height={340}>
           <BarChart
             data={chartData}
             margin={{
@@ -257,14 +138,13 @@ function SalesChart({ contracts = [] }) {
               bottom: 5,
             }}
           >
-
             <CartesianGrid
               strokeDasharray="3 3"
               vertical={false}
             />
 
             <XAxis
-              dataKey="shortMonth"
+              dataKey="year"
               axisLine={false}
               tickLine={false}
             />
@@ -274,41 +154,46 @@ function SalesChart({ contracts = [] }) {
               tickLine={false}
               tickFormatter={(value) =>
                 value >= 1000
-                  ? `£${Math.round(
-                      value / 1000
-                    )}k`
+                  ? `£${Math.round(value / 1000)}k`
                   : `£${value}`
               }
             />
 
             <Tooltip
-              formatter={(value) => [
+              formatter={(value, name) => [
                 money(value),
-                "Net sales value",
+                name,
               ]}
-              labelFormatter={(label) =>
-                `${activeYear} — ${label}`
-              }
+              labelFormatter={(label) => `${label}`}
             />
 
-            <Bar
-              dataKey="total"
-              name="Net sales value"
-              fill="#172554"
-              radius={[
-                5,
-                5,
-                0,
-                0,
-              ]}
+            <Legend
+              verticalAlign="bottom"
+              height={36}
+              iconType="circle"
+              wrapperStyle={{
+                fontSize: 12,
+                paddingTop: 8,
+              }}
             />
 
+            {products.map((product, index) => (
+              <Bar
+                key={product}
+                dataKey={product}
+                name={product}
+                stackId="sales"
+                fill={productColour(product, index)}
+                radius={
+                  index === products.length - 1
+                    ? [4, 4, 0, 0]
+                    : [0, 0, 0, 0]
+                }
+              />
+            ))}
           </BarChart>
-
         </ResponsiveContainer>
-
       </div>
-
     </div>
   )
 }
