@@ -11,16 +11,18 @@ function batteryBenefitForDisplay(row) {
 }
 
 function exportBenefitForDisplay(row) {
-  // Use the export benefit produced by the main EPVS calculation.
-  // This includes both residual export and the separate peak export benefit,
-  // which is what the EPVS calculator's 30-year EXPORT total displays.
-  if (Object.prototype.hasOwnProperty.call(row || {}, "exportBenefit")) {
-    return safeNumber(row.exportBenefit)
-  }
-  if (Object.prototype.hasOwnProperty.call(row || {}, "residualExportBenefit")) {
-    return safeNumber(row.residualExportBenefit)
-  }
-  return safeNumber(row?.exportBenefit)
+  // The EPVS EXPORT column displays the residual solar export benefit.
+  // The separate peak export benefit is already included in annualBenefit,
+  // so it should not also be displayed in the EXPORT column.
+  const totalExportKwh = safeNumber(row?.exportKwh)
+  const peakExportKwh = safeNumber(row?.peakExportCapacity)
+  const residualExportKwh = Math.max(0, totalExportKwh - peakExportKwh)
+  const exportRatePence = safeNumber(row?.fluxDayExportYear ?? row?.exportRateYear)
+
+  // For the standard new-system calculation, the residual export is paid at
+  // the Flux day export rate. This matches the EPVS calculator's
+  // residualExportBenefit calculation when there is no existing-system export.
+  return residualExportKwh * (exportRatePence / 100)
 }
 
 export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
@@ -40,16 +42,16 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
   const rows = Array.isArray(scenario.rows) ? scenario.rows : []
   const totals = scenario.totals || {}
 
-  const firstYearBenefit = rows[0] ? safeNumber(rows[0].solarBenefit) + batteryBenefitForDisplay(rows[0]) + exportBenefitForDisplay(rows[0]) : 0
+  const firstYearBenefit = rows[0] ? safeNumber(rows[0].annualBenefit ?? rows[0].annualSaving) : 0
 
   const calculatedRows = useMemo(() => {
     let cumulativePosition = 0
     return rows.map((row) => {
       const batteryBenefit = batteryBenefitForDisplay(row)
       const exportBenefit = exportBenefitForDisplay(row)
-      const annualBenefit = safeNumber(row.solarBenefit) + batteryBenefit + exportBenefit
+      const annualBenefit = safeNumber(row.annualBenefit ?? row.annualSaving)
       const yearlyPayment = safeNumber(row.yearlyPayment)
-      const netAnnualBenefit = annualBenefit + yearlyPayment
+      const netAnnualBenefit = safeNumber(row.netAnnualBenefit ?? (annualBenefit + yearlyPayment))
       cumulativePosition += netAnnualBenefit
       return { ...row, batteryBenefit, exportBenefit, annualBenefit, yearlyPayment, netAnnualBenefit, cumulativePosition }
     })
@@ -66,11 +68,12 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
     solarBenefit: total.solarBenefit + safeNumber(row.solarBenefit),
     batteryBenefit: total.batteryBenefit + row.batteryBenefit,
     exportBenefit: total.exportBenefit + row.exportBenefit,
+    annualBenefit: total.annualBenefit + row.annualBenefit,
     yearlyPayment: total.yearlyPayment + row.yearlyPayment,
     netAnnualBenefit: total.netAnnualBenefit + row.netAnnualBenefit,
     billPreInstall: total.billPreInstall + safeNumber(row.billPreInstall),
     billPostInstall: total.billPostInstall + safeNumber(row.billPostInstall),
-  }), { generation: 0, solarBenefit: 0, batteryBenefit: 0, exportBenefit: 0, yearlyPayment: 0, netAnnualBenefit: 0, billPreInstall: 0, billPostInstall: 0 }), [calculatedRows])
+  }), { generation: 0, solarBenefit: 0, batteryBenefit: 0, exportBenefit: 0, annualBenefit: 0, yearlyPayment: 0, netAnnualBenefit: 0, billPreInstall: 0, billPostInstall: 0 }), [calculatedRows])
 
   return (
     <div style={{ marginTop: 24 }}>
@@ -113,7 +116,7 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
               </tr>)}
               {calculatedRows.length > 0 && <tr>
                 <td style={{ ...totalCell, textAlign: "left" }}>TOTALS</td><td style={totalCell}>{number(displayTotals.generation || totals.generation)}</td><td style={totalCell}>{money(displayTotals.solarBenefit)}</td><td style={totalCell}>{money(displayTotals.batteryBenefit)}</td><td style={totalCell}>{money(displayTotals.exportBenefit)}</td>
-                <td style={{ ...totalCell, background: "#299d48" }}>{money(displayTotals.solarBenefit + displayTotals.batteryBenefit + displayTotals.exportBenefit)}</td><td style={totalCell}>{money(displayTotals.yearlyPayment)}</td><td style={totalCell}>{money(displayTotals.netAnnualBenefit)}</td><td style={{ ...totalCell, background: "#299d48" }}>{money(finalNetPosition)}</td><td style={totalCell}>{money(displayTotals.billPreInstall)}</td><td style={totalCell}>{money(displayTotals.billPostInstall)}</td>
+                <td style={{ ...totalCell, background: "#299d48" }}>{money(displayTotals.annualBenefit)}</td><td style={totalCell}>{money(displayTotals.yearlyPayment)}</td><td style={totalCell}>{money(displayTotals.netAnnualBenefit)}</td><td style={{ ...totalCell, background: "#299d48" }}>{money(finalNetPosition)}</td><td style={totalCell}>{money(displayTotals.billPreInstall)}</td><td style={totalCell}>{money(displayTotals.billPostInstall)}</td>
               </tr>}
             </tbody>
           </table>
