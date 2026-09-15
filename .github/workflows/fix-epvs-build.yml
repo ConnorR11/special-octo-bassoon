@@ -1,0 +1,51 @@
+name: Fix EPVS JSX build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/EPVSCalculator.jsx'
+      - '.github/workflows/fix-epvs-build.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Repair malformed EPVS Card JSX
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/EPVSCalculator.jsx')
+          s = p.read_text()
+          old = '''\n        {\n        </Card>\n\n/* =================================================\n            TARIFF'''
+          new = '''\n        </Card>\n\n        {/* =================================================\n            TARIFF'''
+          if old in s:
+              s = s.replace(old, new, 1)
+              p.write_text(s)
+              print('Repaired malformed JSX block')
+          else:
+              print('No malformed JSX block found')
+          PY
+
+      - name: Validate build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Commit repair
+        run: |
+          if git diff --quiet -- src/EPVSCalculator.jsx; then
+            echo 'No repair needed'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/EPVSCalculator.jsx
+          git commit -m 'Fix malformed EPVS calculator JSX'
+          git push
