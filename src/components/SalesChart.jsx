@@ -45,6 +45,8 @@ function SalesChart({ contracts = [] }) {
   const today = new Date()
   const currentMonth = today.getMonth()
   const currentDay = today.getDate()
+  const currentYear = today.getFullYear()
+  const previousYear = currentYear - 1
 
   const years = useMemo(() => {
     const yearSet = new Set()
@@ -84,9 +86,6 @@ function SalesChart({ contracts = [] }) {
    * 2025 = 1 Jan → 15 Sep 2025
    * 2024 = 1 Jan → 15 Sep 2024
    * etc.
-   *
-   * This prevents complete historical years being compared
-   * against only part of the current year.
    */
   const chartData = useMemo(() => {
     return years.map((year) => {
@@ -121,14 +120,24 @@ function SalesChart({ contracts = [] }) {
     })
   }, [contracts, products, years, currentMonth, currentDay])
 
-  const yearlyTotals = useMemo(() => {
-    return chartData.reduce((sum, row) => {
-      return sum + products.reduce(
-        (productSum, product) => productSum + Number(row[product] || 0),
+  const yearTotals = useMemo(() => {
+    return chartData.reduce((totals, row) => {
+      const total = products.reduce(
+        (sum, product) => sum + Number(row[product] || 0),
         0
       )
-    }, 0)
+
+      totals[row.year] = total
+      return totals
+    }, {})
   }, [chartData, products])
+
+  const currentYearValue = yearTotals[currentYear] || 0
+  const previousYearValue = yearTotals[previousYear] || 0
+  const yearOnYearDifference = currentYearValue - previousYearValue
+  const yearOnYearPercent = previousYearValue > 0
+    ? (yearOnYearDifference / previousYearValue) * 100
+    : null
 
   const yAxisTicks = useMemo(() => {
     const maxValue = chartData.reduce((max, row) => {
@@ -161,6 +170,11 @@ function SalesChart({ contracts = [] }) {
     )
   }
 
+  const comparisonValue = `${yearOnYearDifference >= 0 ? "+" : ""}${money(yearOnYearDifference)}`
+  const comparisonPercent = yearOnYearPercent === null
+    ? "—"
+    : `${yearOnYearPercent >= 0 ? "+" : ""}${yearOnYearPercent.toFixed(1)}%`
+
   return (
     <div className="card sales-chart">
       <div className="card-head">
@@ -170,8 +184,8 @@ function SalesChart({ contracts = [] }) {
         </div>
 
         <div className="chart-total">
-          <span>Total YTD across all years</span>
-          <b>{money(yearlyTotals)}</b>
+          <span>{currentYear} vs {previousYear}</span>
+          <b>{comparisonValue} ({comparisonPercent})</b>
         </div>
       </div>
 
