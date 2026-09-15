@@ -3,8 +3,6 @@ name: Combine EPVS battery and inverter cards
 on:
   push:
     branches: [main]
-    paths:
-      - '.github/workflows/combine-battery-inverter-cards.yml'
 
 permissions:
   contents: write
@@ -30,7 +28,8 @@ jobs:
           end = text.find(end_marker, start)
 
           if start == -1 or end == -1:
-              raise SystemExit('Expected Battery and Inverter cards were not found')
+              print('Battery/Inverter cards already merged or block not present; nothing to do.')
+              raise SystemExit(0)
 
           replacement = '''            <Card
               title="Battery & Inverter"
@@ -99,6 +98,9 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add src/EPVSCalculator.jsx
-          git diff --cached --quiet && exit 0
+          if git diff --cached --quiet; then
+            echo 'No EPVS UI changes needed'
+            exit 0
+          fi
           git commit -m 'Combine EPVS battery and inverter cards'
           git push
