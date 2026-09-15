@@ -25,8 +25,8 @@ jobs:
           text = path.read_text()
 
           pattern = re.compile(
-              r'''(?P<indent>\s*)<div style=\{\{ display: "flex", flexDirection: "column", gap: 20 \}\}>\s*'
-              r'''\s*<Card\s*\n\s*title="Battery".*?\n\s*</Card>\s*\n\s*<Card\s*\n\s*title="Inverter".*?\n\s*</Card>\s*\n\s*<Card\s*\n\s*title="EPVS battery & inverter assumptions"''',
+              r'''(?P<indent>\s*)<div style=\{\{ display: "flex", flexDirection: "column", gap: 20 \}\}>\s*
+              <Card\s*\n\s*title="Battery".*?\n\s*</Card>\s*\n\s*<Card\s*\n\s*title="Inverter".*?\n\s*</Card>\s*\n\s*<Card\s*\n\s*title="EPVS battery & inverter assumptions"''',
               re.S,
           )
 
