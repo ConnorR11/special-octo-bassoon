@@ -24,8 +24,43 @@ jobs:
           path = Path('src/EPVSCalculator.jsx')
           text = path.read_text()
 
+          # Allow individual callers to use the same compact label styling as the tables.
+          old_input_signature = '''function Input({
+  label,
+  value,
+  onChange,
+  type = "text",
+  step,
+  min,
+  max,
+  disabled = false,
+  readOnly = false,
+}) {'''
+          new_input_signature = '''function Input({
+  label,
+  value,
+  onChange,
+  type = "text",
+  step,
+  min,
+  max,
+  disabled = false,
+  readOnly = false,
+  labelStyle,
+}) {'''
+          if old_input_signature in text:
+              text = text.replace(old_input_signature, new_input_signature, 1)
+
+          if '      <span style={labelStyle}>{label}</span>' not in text:
+              text = text.replace('      <span>{label}</span>', '      <span style={labelStyle}>{label}</span>', 1)
+
           start_marker = '''                  <Card
             title="Energy"
+            subtitle="Electricity usage and existing solar PV."
+          >'''
+          if start_marker not in text:
+              start_marker = '''                  <Card
+            title="Current Energy"
             subtitle="Electricity usage and existing solar PV."
           >'''
           end_marker = '''       {/* =================================================
@@ -39,12 +74,12 @@ jobs:
               raise SystemExit(f'Could not locate Energy card: start={start}, end={end}')
 
           block = text[start:end]
-
           block = block.replace('title="Energy"', 'title="Current Energy"', 1)
           block = block.replace('label="Current import rate (p/kWh)"', 'label="Import rate (p/kWh)"', 1)
           block = block.replace('label="Current export rate (p/kWh)"', 'label="Export rate (p/kWh)"', 1)
           block = block.replace('label="Current standing charge (p/day)"', 'label="Standing charge (p/day)"', 1)
 
+          # Four compact electricity inputs on one row.
           electricity_marker = '''              <div style={styles.grid}>'''
           compact_grid = '''              <div
                 style={{
@@ -53,17 +88,140 @@ jobs:
                   gap: 12,
                 }}
               >'''
+          if electricity_marker in block:
+              block = block.replace(electricity_marker, compact_grid, 1)
 
-          if electricity_marker not in block:
-              raise SystemExit('Could not locate Electricity input grid')
+          compact_label = 'labelStyle={{ fontSize: 12, fontWeight: 600, color: "#172554" }}'
+          block = block.replace('label="Annual electricity consumption (kWh)"', 'label="Annual electricity consumption (kWh)"\n                    ' + compact_label, 1)
+          block = block.replace('label="Import rate (p/kWh)"', 'label="Import rate (p/kWh)"\n                    ' + compact_label, 1)
+          block = block.replace('label="Export rate (p/kWh)"', 'label="Export rate (p/kWh)"\n                    ' + compact_label, 1)
+          block = block.replace('label="Standing charge (p/day)"', 'label="Standing charge (p/day)"\n                    ' + compact_label, 1)
 
-          block = block.replace(electricity_marker, compact_grid, 1)
+          # Put the existing-solar toggle inside its header and place the two inputs on one compact row.
+          old_existing = '''              <div
+                style={{
+                  padding: "12px 14px",
+                  background: "#f8fafc",
+                  borderTop: "1px solid #dbe3ec",
+                  borderBottom: "1px solid #dbe3ec",
+                  color: "#172554",
+                  fontSize: 13,
+                  fontWeight: 700,
+                }}
+              >
+                Existing solar PV
+              </div>
+
+              <div style={{ padding: 14 }}>
+                <div style={styles.grid}>
+                  <Toggle
+                    label="Existing solar PV"
+                    value={data.existingSolar}
+                    onChange={(value) => update("existingSolar", value)}
+                  />
+                  {data.existingSolar && (
+                    <Input
+                      label="Existing annual generation (kWh)"
+                      type="number"
+                      value={data.existingGeneration}
+                      onChange={(value) => update("existingGeneration", value)}
+                      min={0}
+                    />
+                  )}
+                  {data.existingSolar && (
+                    <Input
+                      label="Existing solar self-consumption (%)"
+                      type="number"
+                      value={data.existingSolarSelfConsumption}
+                      onChange={(value) => update("existingSolarSelfConsumption", value)}
+                      min={0}
+                      max={100}
+                      step={1}
+                    />
+                  )}
+                </div>
+              </div>'''
+
+          new_existing = '''              <div
+                style={{
+                  padding: "10px 14px",
+                  background: "#f8fafc",
+                  borderTop: "1px solid #dbe3ec",
+                  borderBottom: "1px solid #dbe3ec",
+                  color: "#172554",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <span>Existing solar PV</span>
+                <button
+                  type="button"
+                  aria-label="Existing solar PV"
+                  onClick={() => update("existingSolar", !data.existingSolar)}
+                  style={{
+                    ...styles.toggle,
+                    background: data.existingSolar ? "#172554" : "#d1d5db",
+                    flexShrink: 0,
+                  }}
+                >
+                  <span
+                    style={{
+                      ...styles.toggleKnob,
+                      transform: data.existingSolar ? "translateX(20px)" : "translateX(0)",
+                    }}
+                  />
+                </button>
+              </div>
+
+              <div style={{ padding: 14 }}>
+                {data.existingSolar && (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                      gap: 12,
+                    }}
+                  >
+                    <Input
+                      label="Annual generation (kWh)"
+                      labelStyle={{ fontSize: 12, fontWeight: 600, color: "#172554" }}
+                      type="number"
+                      value={data.existingGeneration}
+                      onChange={(value) => update("existingGeneration", value)}
+                      min={0}
+                    />
+                    <Input
+                      label="Self-consumption (%)"
+                      labelStyle={{ fontSize: 12, fontWeight: 600, color: "#172554" }}
+                      type="number"
+                      value={data.existingSolarSelfConsumption}
+                      onChange={(value) => update("existingSolarSelfConsumption", value)}
+                      min={0}
+                      max={100}
+                      step={1}
+                    />
+                  </div>
+                )}
+              </div>'''
+
+          if old_existing in block:
+              block = block.replace(old_existing, new_existing, 1)
+          else:
+              raise SystemExit('Could not locate existing solar block')
+
           text = text[:start] + block + text[end:]
           path.write_text(text)
 
+      - name: Verify build
+        run: |
+          npm ci
+          npm run build
+
       - name: Commit changes and remove temporary workflow
         run: |
-          rm -f .github/workflows/tidy-current-energy.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add src/EPVSCalculator.jsx .github/workflows/tidy-current-energy.yml
