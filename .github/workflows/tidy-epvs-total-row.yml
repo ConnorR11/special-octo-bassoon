@@ -1,0 +1,74 @@
+name: Tidy EPVS total generation row
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tidy-epvs-total-row.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  tidy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Move total generation into table footer
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('src/EPVSCalculator.jsx')
+          text = path.read_text()
+
+          pattern = re.compile(
+              r'''\n  /\* TOTAL \*/\n\n  <div\n    style=\{\{\n      marginTop: 18,\n      padding: 18,\n      background: "#e8f5eb",\n      borderRadius: 10,\n      display: "flex",\n      justifyContent: "space-between",\n      alignItems: "center",\n    \}\}\n  >\n    <div>\n      <div\n        style=\{\{\n          fontSize: 12,\n          fontWeight: 700,\n          color: "#315b28",\n        \}\}\n      >\n        Total overall generation\n      </div>\n\n      <div\n        style=\{\{\n          marginTop: 4,\n          fontSize: 11,\n          color: "#4d7047",\n        \}\}\n      >\n        \{results\.numberOfArrays\}\{" "\}\n        array\n        \{results\.numberOfArrays !== 1 \? "s" : ""\}\n      </div>\n    </div>\n\n    <strong\n      style=\{\{\n        fontSize: 20,\n        color: "#26783a",\n      \}\}\n    >\n      \{Number\(results\.generation \|\| 0\)\.toFixed\(2\)\} kWh\n    </strong>\n  </div>''',
+              re.S,
+          )
+
+          replacement = '''\n  <tfoot>\n    <tr\n      style={{\n        background: "#e8f5eb",\n        color: "#315b28",\n      }}\n    >\n      <td\n        colSpan={8}\n        style={{\n          padding: "14px 10px",\n          borderTop: "1px solid #bbdfc1",\n          fontWeight: 700,\n        }}\n      >\n        <div style={{ fontSize: 12 }}>\n          Total overall generation\n        </div>\n        <div\n          style={{\n            marginTop: 3,\n            fontSize: 11,\n            fontWeight: 500,\n            color: "#4d7047",\n          }}\n        >\n          {results.numberOfArrays} array\n          {results.numberOfArrays !== 1 ? "s" : ""}\n        </div>\n      </td>\n\n      <td\n        style={{\n          padding: "14px 10px",\n          borderTop: "1px solid #bbdfc1",\n          textAlign: "right",\n          whiteSpace: "nowrap",\n          fontSize: 16,\n          fontWeight: 800,\n          color: "#26783a",\n        }}\n      >\n        {Number(results.generation || 0).toFixed(2)} kWh\n      </td>\n    </tr>\n  </tfoot>'''
+
+          new_text, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit('Could not find the existing EPVS total generation block; no changes made.')
+
+          new_text = new_text.replace(
+              '  </div>\n\n  <tfoot>',
+              '  </div>\n\n  <tfoot>',
+              1,
+          )
+
+          # The footer must be inside the table, so move it from after the table
+          # to immediately before the closing </table>.
+          footer_match = re.search(r'\n  <tfoot>[\s\S]*?</tfoot>', new_text)
+          if not footer_match:
+              raise SystemExit('Footer replacement was not created.')
+          footer = footer_match.group(0)
+          new_text = new_text[:footer_match.start()] + new_text[footer_match.end():]
+
+          table_close = new_text.find('    </table>')
+          if table_close == -1:
+              raise SystemExit('Could not find the EPVS table closing tag.')
+          new_text = new_text[:table_close] + footer + '\n' + new_text[table_close:]
+
+          path.write_text(new_text)
+
+      - name: Verify build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/EPVSCalculator.jsx
+          git diff --cached --quiet && exit 0
+          git commit -m "Tidy EPVS total generation row"
+          git push
