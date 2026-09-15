@@ -1555,6 +1555,7 @@ export default function EPVSCalculator({
         {/* =================================================
             BATTERY & INVERTER
         <Card>
+        
             ================================================= */}
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
