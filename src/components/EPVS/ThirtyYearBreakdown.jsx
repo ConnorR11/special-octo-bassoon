@@ -16,6 +16,34 @@ const number = (value) =>
 
 const safeNumber = (value) => Number(value || 0)
 
+function batteryBenefitForDisplay(row) {
+  const hasComponentValues =
+    Object.prototype.hasOwnProperty.call(row || {}, "batterySelfConsumptionBenefit") ||
+    Object.prototype.hasOwnProperty.call(row || {}, "forceChargeBenefit")
+
+  if (hasComponentValues) {
+    return (
+      safeNumber(row.batterySelfConsumptionBenefit) +
+      safeNumber(row.forceChargeBenefit)
+    )
+  }
+
+  return safeNumber(row?.batteryBenefit)
+}
+
+function exportBenefitForDisplay(row) {
+  if (
+    Object.prototype.hasOwnProperty.call(
+      row || {},
+      "residualExportBenefit"
+    )
+  ) {
+    return safeNumber(row.residualExportBenefit)
+  }
+
+  return safeNumber(row?.exportBenefit)
+}
+
 export default function ThirtyYearBreakdown({
   thirtyYearProjection,
 }) {
@@ -56,8 +84,8 @@ export default function ThirtyYearBreakdown({
 
   const firstYearBenefit = rows[0]
     ? safeNumber(rows[0].solarBenefit) +
-      safeNumber(rows[0].batteryBenefit) +
-      safeNumber(rows[0].exportBenefit)
+      batteryBenefitForDisplay(rows[0]) +
+      exportBenefitForDisplay(rows[0])
     : 0
 
   const paybackPeriod = scenario.paybackPeriod
@@ -66,6 +94,43 @@ export default function ThirtyYearBreakdown({
   )
   const totalNetReturn = safeNumber(
     scenario.totalNetReturn
+  )
+
+  const displayTotals = useMemo(
+    () =>
+      rows.reduce(
+        (total, row) => ({
+          generation: total.generation + safeNumber(row.generation),
+          solarBenefit: total.solarBenefit + safeNumber(row.solarBenefit),
+          batteryBenefit:
+            total.batteryBenefit + batteryBenefitForDisplay(row),
+          exportBenefit:
+            total.exportBenefit + exportBenefitForDisplay(row),
+          yearlyPayment:
+            total.yearlyPayment + safeNumber(row.yearlyPayment),
+          netAnnualBenefit:
+            total.netAnnualBenefit +
+            safeNumber(row.solarBenefit) +
+            batteryBenefitForDisplay(row) +
+            exportBenefitForDisplay(row) +
+            safeNumber(row.yearlyPayment),
+          billPreInstall:
+            total.billPreInstall + safeNumber(row.billPreInstall),
+          billPostInstall:
+            total.billPostInstall + safeNumber(row.billPostInstall),
+        }),
+        {
+          generation: 0,
+          solarBenefit: 0,
+          batteryBenefit: 0,
+          exportBenefit: 0,
+          yearlyPayment: 0,
+          netAnnualBenefit: 0,
+          billPreInstall: 0,
+          billPostInstall: 0,
+        }
+      ),
+    [rows]
   )
 
   return (
@@ -247,10 +312,12 @@ export default function ThirtyYearBreakdown({
 
             <tbody>
               {rows.map((row, index) => {
+                const batteryBenefit = batteryBenefitForDisplay(row)
+                const exportBenefit = exportBenefitForDisplay(row)
                 const annualBenefit =
                   safeNumber(row.solarBenefit) +
-                  safeNumber(row.batteryBenefit) +
-                  safeNumber(row.exportBenefit)
+                  batteryBenefit +
+                  exportBenefit
 
                 const yearlyPayment = safeNumber(row.yearlyPayment)
                 const netAnnualBenefit = annualBenefit + yearlyPayment
@@ -260,8 +327,8 @@ export default function ThirtyYearBreakdown({
                   .reduce((sum, currentRow) => {
                     const currentAnnualBenefit =
                       safeNumber(currentRow.solarBenefit) +
-                      safeNumber(currentRow.batteryBenefit) +
-                      safeNumber(currentRow.exportBenefit)
+                      batteryBenefitForDisplay(currentRow) +
+                      exportBenefitForDisplay(currentRow)
 
                     return (
                       sum +
@@ -275,8 +342,8 @@ export default function ThirtyYearBreakdown({
                     <BodyCell>{row.year}</BodyCell>
                     <BodyCell>{number(row.generation)}</BodyCell>
                     <BodyCell>{money(row.solarBenefit)}</BodyCell>
-                    <BodyCell>{money(row.batteryBenefit)}</BodyCell>
-                    <BodyCell>{money(row.exportBenefit)}</BodyCell>
+                    <BodyCell>{money(batteryBenefit)}</BodyCell>
+                    <BodyCell>{money(exportBenefit)}</BodyCell>
                     <BodyCell green>
                       {money(annualBenefit)}
                     </BodyCell>
@@ -304,16 +371,16 @@ export default function ThirtyYearBreakdown({
                     TOTALS
                   </td>
                   <td style={totalCell}>
-                    {number(totals.generation)}
+                    {number(displayTotals.generation || totals.generation)}
                   </td>
                   <td style={totalCell}>
-                    {money(totals.solarBenefit)}
+                    {money(displayTotals.solarBenefit)}
                   </td>
                   <td style={totalCell}>
-                    {money(totals.batteryBenefit)}
+                    {money(displayTotals.batteryBenefit)}
                   </td>
                   <td style={totalCell}>
-                    {money(totals.exportBenefit)}
+                    {money(displayTotals.exportBenefit)}
                   </td>
                   <td
                     style={{
@@ -322,29 +389,16 @@ export default function ThirtyYearBreakdown({
                     }}
                   >
                     {money(
-                      safeNumber(totals.solarBenefit) +
-                        safeNumber(totals.batteryBenefit) +
-                        safeNumber(totals.exportBenefit)
+                      displayTotals.solarBenefit +
+                        displayTotals.batteryBenefit +
+                        displayTotals.exportBenefit
                     )}
                   </td>
                   <td style={totalCell}>
-                    {money(totals.yearlyPayment)}
+                    {money(displayTotals.yearlyPayment)}
                   </td>
                   <td style={totalCell}>
-                    {money(
-                      rows.reduce((sum, row) => {
-                        const annualBenefit =
-                          safeNumber(row.solarBenefit) +
-                          safeNumber(row.batteryBenefit) +
-                          safeNumber(row.exportBenefit)
-
-                        return (
-                          sum +
-                          annualBenefit +
-                          safeNumber(row.yearlyPayment)
-                        )
-                      }, 0)
-                    )}
+                    {money(displayTotals.netAnnualBenefit)}
                   </td>
                   <td
                     style={{
@@ -353,25 +407,14 @@ export default function ThirtyYearBreakdown({
                     }}
                   >
                     {money(
-                      rows.reduce((sum, row) => {
-                        const annualBenefit =
-                          safeNumber(row.solarBenefit) +
-                          safeNumber(row.batteryBenefit) +
-                          safeNumber(row.exportBenefit)
-
-                        return (
-                          sum +
-                          annualBenefit +
-                          safeNumber(row.yearlyPayment)
-                        )
-                      }, 0)
+                      rows[rows.length - 1]?.cumulativePosition
                     )}
                   </td>
                   <td style={totalCell}>
-                    {money(totals.billPreInstall)}
+                    {money(displayTotals.billPreInstall)}
                   </td>
                   <td style={totalCell}>
-                    {money(totals.billPostInstall)}
+                    {money(displayTotals.billPostInstall)}
                   </td>
                 </tr>
               )}
