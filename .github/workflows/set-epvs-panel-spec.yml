@@ -1,0 +1,70 @@
+name: Set EPVS panel specification
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set panel wattage to 460W and lock the field
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/EPVSCalculator.jsx')
+          text = path.read_text()
+
+          text = text.replace('panelWattage: 415,', 'panelWattage: 460,')
+
+          old = '''                  <input
+                    type="number"
+                    value={array.panelWattage}
+                    min={1}
+                    style={inputStyle}
+                    onChange={(event) =>
+                      updateArray(
+                        index,
+                        "panelWattage",
+                        event.target.value
+                      )
+                    }
+                  />'''
+
+          new = '''                  <input
+                    type="number"
+                    value={460}
+                    min={1}
+                    style={{ ...inputStyle, background: "#f8fafc", color: "#64748b" }}
+                    disabled
+                    readOnly
+                  />'''
+
+          if old not in text:
+              raise SystemExit('Could not find the EPVS panel wattage input block.')
+
+          text = text.replace(old, new)
+          path.write_text(text)
+          PY
+
+      - name: Verify build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Commit source change and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/EPVSCalculator.jsx .github/workflows/set-epvs-panel-spec.yml
+          git rm .github/workflows/set-epvs-panel-spec.yml
+          git commit -m "Set EPVS panels to fixed 460W"
+          git push
