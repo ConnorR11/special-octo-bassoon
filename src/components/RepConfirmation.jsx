@@ -75,6 +75,15 @@ export default function RepConfirmation({ appointment, menuItem = false, onTrigg
       if (actionError) throw actionError
       actionId = action.id
 
+      const { error: appointmentUpdateError } = await supabase
+        .from("appointments")
+        .update({
+          rep_confirmed_time: now,
+        })
+        .eq("appointment_row_id", appointment.appointment_row_id)
+
+      if (appointmentUpdateError) throw appointmentUpdateError
+
       const { error: actionUpdateError } = await supabase
         .from("action_runs")
         .update({
@@ -83,6 +92,7 @@ export default function RepConfirmation({ appointment, menuItem = false, onTrigg
           output_data: {
             appointment_row_id: appointment.appointment_row_id,
             rep_confirmation: true,
+            rep_confirmed_time: now,
             allocated_rep: appointment.rep_allocated || null,
           },
         })
@@ -92,7 +102,7 @@ export default function RepConfirmation({ appointment, menuItem = false, onTrigg
 
       setConfirmed(true)
       onTriggered?.()
-      onUpdated?.(appointment)
+      onUpdated?.({ ...appointment, rep_confirmed_time: now })
     } catch (err) {
       console.error("Rep confirmation action failed:", err)
       const message = err?.message || "Unable to confirm rep attendance."
