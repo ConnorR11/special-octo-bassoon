@@ -1553,70 +1553,62 @@ export default function EPVSCalculator({
           </Card>
 
         {/* =================================================
-            BATTERY & INVERTER
-            ================================================= */}
+    BATTERY & INVERTER
+    ================================================= */}
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            <Card
-              title="Battery"
-              subtitle="Configure the proposed battery."
-            >
-              <div style={styles.grid}>
-                <label style={styles.field}>
-                  <span>Battery configuration</span>
+<Card
+  title="Battery & Inverter"
+  subtitle="Configure the proposed battery and inverter."
+>
+  <div style={styles.grid}>
+    <label style={styles.field}>
+      <span>Battery configuration</span>
 
-                  <select
-                    value={data.batteryCapacity}
-                    onChange={(event) =>
-                      update(
-                        "batteryCapacity",
-                        event.target.value === ""
-                          ? ""
-                          : Number(event.target.value)
-                      )
-                    }
-                  >
-                    <option value="">Select battery</option>
-                    <option value={0}>No battery</option>
-                    <option value={5.12}>1 × 5.12 kWh</option>
-                    <option value={10.24}>2 × 5.12 kWh</option>
-                    <option value={15.36}>3 × 5.12 kWh</option>
-                    <option value={9.4}>1 × 9.4 kWh</option>
-                    <option value={18.8}>2 × 9.4 kWh</option>
-                    <option value={28.2}>3 × 9.4 kWh</option>
-                  </select>
-                </label>
-              </div>
-            </Card>
+      <select
+        value={data.batteryCapacity}
+        onChange={(event) =>
+          update(
+            "batteryCapacity",
+            event.target.value === ""
+              ? ""
+              : Number(event.target.value)
+          )
+        }
+      >
+        <option value="">Select battery</option>
+        <option value={0}>No battery</option>
+        <option value={5.12}>1 × 5.12 kWh</option>
+        <option value={10.24}>2 × 5.12 kWh</option>
+        <option value={15.36}>3 × 5.12 kWh</option>
+        <option value={9.4}>1 × 9.4 kWh</option>
+        <option value={18.8}>2 × 9.4 kWh</option>
+        <option value={28.2}>3 × 9.4 kWh</option>
+      </select>
+    </label>
 
-            <Card
-              title="Inverter"
-              subtitle="Configure the inverter capacity."
-            >
-              <div style={styles.grid}>
-                <label style={styles.field}>
-                  <span>Inverter capacity (kW)</span>
+    <label style={styles.field}>
+      <span>Inverter capacity (kW)</span>
 
-                  <select
-                    value={data.inverterCapacity}
-                    onChange={(event) =>
-                      update(
-                        "inverterCapacity",
-                        event.target.value === ""
-                          ? ""
-                          : Number(event.target.value)
-                      )
-                    }
-                  >
-                    <option value="">Select inverter</option>
-                    <option value={3.7}>3.7 kW</option>
-                    <option value={6}>6 kW</option>
-                    <option value={7}>7 kW</option>
-                    <option value={10}>10 kW</option>
-                  </select>
-                </label>
-              </div>
-            </Card>
+      <select
+        value={data.inverterCapacity}
+        onChange={(event) =>
+          update(
+            "inverterCapacity",
+            event.target.value === ""
+              ? ""
+              : Number(event.target.value)
+          )
+        }
+      >
+        <option value="">Select inverter</option>
+        <option value={3.7}>3.7 kW</option>
+        <option value={6}>6 kW</option>
+        <option value={7}>7 kW</option>
+        <option value={10}>10 kW</option>
+      </select>
+    </label>
+  </div>
+</Card>
 
             <Card
               title="EPVS battery & inverter assumptions"
