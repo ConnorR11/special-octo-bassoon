@@ -4,9 +4,11 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  Plus,
 } from "lucide-react"
 
 import { supabase } from "../lib/supabase"
+import CreateAppointment from "./CreateAppointment"
 
 function Appointments({ onSelectAppointment }) {
   const [appointments, setAppointments] = useState([])
@@ -15,6 +17,7 @@ function Appointments({ onSelectAppointment }) {
   const [query, setQuery] = useState("")
   const [page, setPage] = useState(0)
   const [total, setTotal] = useState(0)
+  const [showCreateAppointment, setShowCreateAppointment] = useState(false)
 
   const pageSize = 50
 
@@ -101,15 +104,52 @@ function Appointments({ onSelectAppointment }) {
     }
   }
 
+  if (showCreateAppointment) {
+    return (
+      <CreateAppointment
+        onBack={() => setShowCreateAppointment(false)}
+        onCreated={() => {
+          setShowCreateAppointment(false)
+          setPage(0)
+          loadAppointments()
+        }}
+      />
+    )
+  }
+
   return (
     <section>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px", gap: 16 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: "22px", color: "#222" }}>Appointments</h1>
           <p style={{ margin: "5px 0 0", fontSize: "11px", color: "#888" }}>
             {total.toLocaleString()} appointments
           </p>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setShowCreateAppointment(true)}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 7,
+            height: 38,
+            padding: "0 14px",
+            border: 0,
+            borderRadius: 8,
+            background: "#0877bd",
+            color: "#fff",
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: "pointer",
+            boxShadow: "0 2px 5px rgba(8,119,189,.18)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          <Plus size={15} />
+          Create Appointment
+        </button>
       </div>
 
       <div className="card" style={{ marginBottom: "18px", padding: "12px 14px" }}>
@@ -180,7 +220,7 @@ function Appointments({ onSelectAppointment }) {
           <div style={{ display: "flex", gap: "6px" }}>
             <button type="button" disabled={!canGoBack} onClick={() => setPage((value) => value - 1)} style={{ width: "34px", height: "32px", border: "1px solid #dddfe3", borderRadius: "7px", background: "#fff", cursor: canGoBack ? "pointer" : "default", opacity: canGoBack ? 1 : 0.4, display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronLeft size={15} /></button>
             <div style={{ minWidth: "70px", height: "32px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", color: "#555" }}>Page {page + 1} of {totalPages}</div>
-            <button type="button" disabled={!canGoForward} onClick={() => setPage((value) => value + 1)} style={{ width: "34px", height: "32px", border: "1px solid #dddfe3", borderRadius: "7px", background: "#fff", cursor: canGoForward ? "pointer" : "default", opacity: canGoForward ? 1 : 0.4, display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronRight size={15} /></button>
+            <button type="button" disabled={!canGoForward} onClick={() => setPage((value) => value + 1)} style={{ width: "34px", height: "32px", border: "1px solid #dddfe3", borderRadius: "7px", background: "#fff", cursor: canGoForward ? "pointer" : "default", opacity: canGoForward ? 1 : 0.4, display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronLeft size={15} /></button>
           </div>
         </div>
       )}
