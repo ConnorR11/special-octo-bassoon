@@ -24,7 +24,7 @@ const money = (value) =>
   }).format(Number(value || 0))
 
 const steps = [
-  { title: "Customer", icon: Home },
+  { title: "Energy", icon: Zap },
   { title: "Solar PV", icon: Zap },
   { title: "Battery & Inverter", icon: Battery },
   { title: "Tariff", icon: PoundSterling },
@@ -1160,33 +1160,10 @@ export default function EPVSCalculator({
 
         {step === 0 && (
           <Card
-            title="Customer"
-            subtitle="Customer details, electricity usage and existing solar PV."
+            title="Energy"
+            subtitle="Electricity usage and existing solar PV."
           >
             <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-              <div>
-                <h3 style={{ margin: "0 0 14px", fontSize: 15, color: "#172554" }}>
-                  Customer details
-                </h3>
-                <div style={styles.grid}>
-                  <Input
-                    label="Customer name"
-                    value={data.customerName}
-                    onChange={(value) => update("customerName", value)}
-                  />
-                  <Input
-                    label="Postcode"
-                    value={data.postcode}
-                    onChange={(value) => update("postcode", value)}
-                  />
-                  <Input
-                    label="Address"
-                    value={data.address}
-                    onChange={(value) => update("address", value)}
-                  />
-                </div>
-              </div>
-
               <div>
                 <h3 style={{ margin: "0 0 14px", fontSize: 15, color: "#172554" }}>
                   Electricity
