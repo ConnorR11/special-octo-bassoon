@@ -1,0 +1,65 @@
+/* Current Energy layout overrides */
+
+/* Keep the four electricity inputs on one clean row on desktop. */
+.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  align-items: end;
+}
+
+.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child > label {
+  min-width: 0;
+}
+
+.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 34px;
+  padding: 7px 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  color: #172554;
+  font-size: 12px;
+  outline: none;
+}
+
+/* Rename the card visually without changing the calculator logic. */
+.card:first-of-type .card-head h2 {
+  font-size: 0;
+}
+
+.card:first-of-type .card-head h2::after {
+  content: "Current Energy";
+  font-size: 15px;
+}
+
+/* The card title already establishes that these are current rates. */
+.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child > label:nth-child(2) span,
+.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child > label:nth-child(3) span,
+.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child > label:nth-child(4) span {
+  font-size: 0;
+}
+
+.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child > label:nth-child(2) span::after {
+  content: "Import rate (p/kWh)";
+  font-size: 14px;
+}
+
+.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child > label:nth-child(3) span::after {
+  content: "Export rate (p/kWh)";
+  font-size: 14px;
+}
+
+.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child > label:nth-child(4) span::after {
+  content: "Standing charge (p/day)";
+  font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
