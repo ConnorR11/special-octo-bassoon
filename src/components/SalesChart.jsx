@@ -231,6 +231,9 @@ function SalesChart({ contracts = [] }) {
                 if (!active || !payload?.length) return null
 
                 const row = payload[0]?.payload
+                const nonZeroPayload = payload.filter(
+                  (entry) => Number(entry.value || 0) > 0
+                )
 
                 return (
                   <div
@@ -252,7 +255,7 @@ function SalesChart({ contracts = [] }) {
                       {label} YTD
                     </div>
 
-                    {payload.map((entry) => (
+                    {nonZeroPayload.map((entry) => (
                       <div
                         key={entry.dataKey}
                         style={{
