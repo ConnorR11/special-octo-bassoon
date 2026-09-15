@@ -1141,7 +1141,7 @@ export default function EPVSCalculator({
             </div>
           </Card>
 
-        {/* =================================================
+       {/* =================================================
     SOLAR PV
     ================================================= */}
 
@@ -1170,10 +1170,7 @@ export default function EPVSCalculator({
             "numberOfArrays",
             Math.min(
               3,
-              Math.max(
-                1,
-                value || 1
-              )
+              Math.max(1, value || 1)
             )
           )
         }
@@ -1208,8 +1205,9 @@ export default function EPVSCalculator({
     <table
       style={{
         width: "100%",
-        minWidth: 1150,
-        borderCollapse: "collapse",
+        minWidth: 1050,
+        borderCollapse: "separate",
+        borderSpacing: 0,
         fontSize: 12,
       }}
     >
@@ -1217,15 +1215,15 @@ export default function EPVSCalculator({
         <tr
           style={{
             background: "#f8fafc",
-            borderBottom: "1px solid #dbe3ec",
           }}
         >
           <th
             style={{
               padding: "12px 10px",
               textAlign: "left",
-              fontWeight: 700,
               color: "#172554",
+              fontWeight: 700,
+              borderBottom: "1px solid #dbe3ec",
               whiteSpace: "nowrap",
             }}
           >
@@ -1236,56 +1234,61 @@ export default function EPVSCalculator({
             style={{
               padding: "12px 10px",
               textAlign: "left",
-              fontWeight: 700,
               color: "#172554",
+              fontWeight: 700,
+              borderBottom: "1px solid #dbe3ec",
               whiteSpace: "nowrap",
             }}
           >
-            Number of panels
+            Panels
           </th>
 
           <th
             style={{
               padding: "12px 10px",
               textAlign: "left",
-              fontWeight: 700,
               color: "#172554",
+              fontWeight: 700,
+              borderBottom: "1px solid #dbe3ec",
               whiteSpace: "nowrap",
             }}
           >
-            Panel wattage (Wp)
+            Panel Wp
           </th>
 
           <th
             style={{
               padding: "12px 10px",
               textAlign: "left",
-              fontWeight: 700,
               color: "#172554",
+              fontWeight: 700,
+              borderBottom: "1px solid #dbe3ec",
               whiteSpace: "nowrap",
             }}
           >
-            Degrees from south (°)
+            Orientation °
           </th>
 
           <th
             style={{
               padding: "12px 10px",
               textAlign: "left",
-              fontWeight: 700,
               color: "#172554",
+              fontWeight: 700,
+              borderBottom: "1px solid #dbe3ec",
               whiteSpace: "nowrap",
             }}
           >
-            Roof pitch (°)
+            Pitch °
           </th>
 
           <th
             style={{
               padding: "12px 10px",
               textAlign: "left",
-              fontWeight: 700,
               color: "#172554",
+              fontWeight: 700,
+              borderBottom: "1px solid #dbe3ec",
               whiteSpace: "nowrap",
             }}
           >
@@ -1296,20 +1299,22 @@ export default function EPVSCalculator({
             style={{
               padding: "12px 10px",
               textAlign: "left",
-              fontWeight: 700,
               color: "#172554",
+              fontWeight: 700,
+              borderBottom: "1px solid #dbe3ec",
               whiteSpace: "nowrap",
             }}
           >
-            Shade factor
+            Shade SF
           </th>
 
           <th
             style={{
               padding: "12px 10px",
               textAlign: "right",
-              fontWeight: 700,
               color: "#172554",
+              fontWeight: 700,
+              borderBottom: "1px solid #dbe3ec",
               whiteSpace: "nowrap",
             }}
           >
@@ -1320,8 +1325,9 @@ export default function EPVSCalculator({
             style={{
               padding: "12px 10px",
               textAlign: "right",
-              fontWeight: 700,
               color: "#172554",
+              fontWeight: 700,
+              borderBottom: "1px solid #dbe3ec",
               whiteSpace: "nowrap",
             }}
           >
@@ -1336,50 +1342,71 @@ export default function EPVSCalculator({
           .map((array, index) => {
             const calculated = results.arrays[index];
 
+            const inputStyle = {
+              width: "100%",
+              boxSizing: "border-box",
+              padding: "9px 8px",
+              border: "1px solid #cbd5e1",
+              borderRadius: 7,
+              background: "#ffffff",
+              color: "#172554",
+              fontSize: 12,
+              outline: "none",
+            };
+
+            const calculatedStyle = {
+              padding: "9px 8px",
+              background: "#f0fdf4",
+              border: "1px solid #bbf7d0",
+              borderRadius: 7,
+              color: "#26783a",
+              fontWeight: 700,
+              textAlign: "right",
+              whiteSpace: "nowrap",
+            };
+
             return (
-              <tr
-                key={index}
-                style={{
-                  borderBottom:
-                    index === data.numberOfArrays - 1
-                      ? "none"
-                      : "1px solid #e2e8f0",
-                }}
-              >
-                {/* ARRAY NAME */}
+              <tr key={index}>
+                {/* ARRAY */}
 
                 <td
                   style={{
-                    padding: "12px 10px",
+                    padding: "10px",
+                    borderBottom:
+                      index === data.numberOfArrays - 1
+                        ? "none"
+                        : "1px solid #e2e8f0",
                     fontWeight: 700,
                     color: "#172554",
                     whiteSpace: "nowrap",
-                    verticalAlign: "middle",
                   }}
                 >
                   Array {index + 1}
                 </td>
 
-                {/* NUMBER OF PANELS */}
+                {/* PANELS */}
 
                 <td
                   style={{
-                    padding: "8px 10px",
-                    minWidth: 110,
+                    padding: "8px 6px",
+                    borderBottom:
+                      index === data.numberOfArrays - 1
+                        ? "none"
+                        : "1px solid #e2e8f0",
                   }}
                 >
-                  <Input
-                    label=""
+                  <input
                     type="number"
                     value={array.panelCount}
-                    onChange={(value) =>
+                    min={1}
+                    style={inputStyle}
+                    onChange={(event) =>
                       updateArray(
                         index,
                         "panelCount",
-                        value
+                        event.target.value
                       )
                     }
-                    min={1}
                   />
                 </td>
 
@@ -1387,22 +1414,25 @@ export default function EPVSCalculator({
 
                 <td
                   style={{
-                    padding: "8px 10px",
-                    minWidth: 130,
+                    padding: "8px 6px",
+                    borderBottom:
+                      index === data.numberOfArrays - 1
+                        ? "none"
+                        : "1px solid #e2e8f0",
                   }}
                 >
-                  <Input
-                    label=""
+                  <input
                     type="number"
                     value={array.panelWattage}
-                    onChange={(value) =>
+                    min={1}
+                    style={inputStyle}
+                    onChange={(event) =>
                       updateArray(
                         index,
                         "panelWattage",
-                        value
+                        event.target.value
                       )
                     }
-                    min={1}
                   />
                 </td>
 
@@ -1410,23 +1440,26 @@ export default function EPVSCalculator({
 
                 <td
                   style={{
-                    padding: "8px 10px",
-                    minWidth: 150,
+                    padding: "8px 6px",
+                    borderBottom:
+                      index === data.numberOfArrays - 1
+                        ? "none"
+                        : "1px solid #e2e8f0",
                   }}
                 >
-                  <Input
-                    label=""
+                  <input
                     type="number"
                     value={array.orientation}
-                    onChange={(value) =>
+                    min={-180}
+                    max={180}
+                    style={inputStyle}
+                    onChange={(event) =>
                       updateArray(
                         index,
                         "orientation",
-                        value
+                        event.target.value
                       )
                     }
-                    min={-180}
-                    max={180}
                   />
                 </td>
 
@@ -1434,23 +1467,26 @@ export default function EPVSCalculator({
 
                 <td
                   style={{
-                    padding: "8px 10px",
-                    minWidth: 110,
+                    padding: "8px 6px",
+                    borderBottom:
+                      index === data.numberOfArrays - 1
+                        ? "none"
+                        : "1px solid #e2e8f0",
                   }}
                 >
-                  <Input
-                    label=""
+                  <input
                     type="number"
                     value={array.pitch}
-                    onChange={(value) =>
+                    min={0}
+                    max={90}
+                    style={inputStyle}
+                    onChange={(event) =>
                       updateArray(
                         index,
                         "pitch",
-                        value
+                        event.target.value
                       )
                     }
-                    min={0}
-                    max={90}
                   />
                 </td>
 
@@ -1458,23 +1494,26 @@ export default function EPVSCalculator({
 
                 <td
                   style={{
-                    padding: "8px 10px",
-                    minWidth: 130,
+                    padding: "8px 6px",
+                    borderBottom:
+                      index === data.numberOfArrays - 1
+                        ? "none"
+                        : "1px solid #e2e8f0",
                   }}
                 >
-                  <Input
-                    label=""
+                  <input
                     type="number"
                     value={array.irradiance}
-                    onChange={(value) =>
+                    min={0}
+                    step={0.01}
+                    style={inputStyle}
+                    onChange={(event) =>
                       updateArray(
                         index,
                         "irradiance",
-                        value
+                        event.target.value
                       )
                     }
-                    min={0}
-                    step={0.01}
                   />
                 </td>
 
@@ -1482,47 +1521,42 @@ export default function EPVSCalculator({
 
                 <td
                   style={{
-                    padding: "8px 10px",
-                    minWidth: 110,
+                    padding: "8px 6px",
+                    borderBottom:
+                      index === data.numberOfArrays - 1
+                        ? "none"
+                        : "1px solid #e2e8f0",
                   }}
                 >
-                  <Input
-                    label=""
+                  <input
                     type="number"
                     value={array.shading}
-                    onChange={(value) =>
-                      updateArray(
-                        index,
-                        "shading",
-                        value
-                      )
-                    }
                     min={0}
                     max={1}
                     step={0.01}
+                    style={inputStyle}
+                    onChange={(event) =>
+                      updateArray(
+                        index,
+                        "shading",
+                        event.target.value
+                      )
+                    }
                   />
                 </td>
 
-                {/* CALCULATED SYSTEM SIZE */}
+                {/* SYSTEM SIZE */}
 
                 <td
                   style={{
                     padding: "8px 10px",
-                    textAlign: "right",
-                    whiteSpace: "nowrap",
+                    borderBottom:
+                      index === data.numberOfArrays - 1
+                        ? "none"
+                        : "1px solid #e2e8f0",
                   }}
                 >
-                  <div
-                    style={{
-                      display: "inline-block",
-                      padding: "8px 10px",
-                      background: "#f0fdf4",
-                      border: "1px solid #bbf7d0",
-                      borderRadius: 8,
-                      fontWeight: 700,
-                      color: "#26783a",
-                    }}
-                  >
+                  <div style={calculatedStyle}>
                     {calculated
                       ? `${Number(
                           calculated.systemSize || 0
@@ -1531,26 +1565,18 @@ export default function EPVSCalculator({
                   </div>
                 </td>
 
-                {/* CALCULATED GENERATION */}
+                {/* GENERATION */}
 
                 <td
                   style={{
                     padding: "8px 10px",
-                    textAlign: "right",
-                    whiteSpace: "nowrap",
+                    borderBottom:
+                      index === data.numberOfArrays - 1
+                        ? "none"
+                        : "1px solid #e2e8f0",
                   }}
                 >
-                  <div
-                    style={{
-                      display: "inline-block",
-                      padding: "8px 10px",
-                      background: "#f0fdf4",
-                      border: "1px solid #bbf7d0",
-                      borderRadius: 8,
-                      fontWeight: 700,
-                      color: "#26783a",
-                    }}
-                  >
+                  <div style={calculatedStyle}>
                     {calculated
                       ? `${Math.round(
                           calculated.generation || 0
