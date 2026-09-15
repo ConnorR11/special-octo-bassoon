@@ -1706,36 +1706,17 @@ export default function EPVSCalculator({
             ================================================= */}
 
                   <Card
-            title="New Octopus Standard Flux"
-            subtitle="Enter the current Flux rates from the Octopus Energy website."
-          >
-            <div
-              style={{
-                marginBottom: 18,
-                padding: 16,
-                background: "#f8fafc",
-                border: "1px solid #e2e8f0",
-                borderRadius: 10,
-              }}
-            >
-              <div
+            title={
+              <span
                 style={{
                   display: "flex",
-                  justifyContent: "space-between",
                   alignItems: "center",
+                  justifyContent: "space-between",
                   gap: 16,
-                  flexWrap: "wrap",
+                  width: "100%",
                 }}
               >
-                <div>
-                  <div style={{ fontWeight: 700, color: "#172554", marginBottom: 5 }}>
-                    Get current Octopus Flux rates
-                  </div>
-                  <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.5 }}>
-                    Uses the customer postcode to identify the electricity region and retrieves the current Flux import and export rates from Octopus.
-                  </div>
-                </div>
-
+                <span>Get current Octopus Flux rates</span>
                 <button
                   type="button"
                   onClick={getCurrentFluxRates}
@@ -1744,59 +1725,54 @@ export default function EPVSCalculator({
                     ...styles.primary,
                     opacity: loadingFluxRates ? 0.65 : 1,
                     whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
                   }}
                 >
                   <OctopusLogo />
                   {loadingFluxRates ? "Getting rates…" : "Get current rates"}
                 </button>
-              </div>
+              </span>
+            }
+            subtitle="Uses the customer postcode to identify the electricity region and retrieves the current Flux import and export rates from Octopus."
+          >
+            <div className="octopus-flux-card">
+              <style>{`
+                .octopus-flux-card input {
+                  width: 100%;
+                  box-sizing: border-box;
+                  border: 1px solid #cbd5e1;
+                  border-radius: 8px;
+                  padding: 7px 10px;
+                  font-family: inherit;
+                  font-size: 12px;
+                  background: #fff;
+                  color: #172554;
+                }
 
-              {data.fluxRatesRetrievedAt && (
-                <div
-                  style={{
-                    marginTop: 12,
-                    paddingTop: 12,
-                    borderTop: "1px solid #e2e8f0",
-                    display: "flex",
-                    gap: 14,
-                    flexWrap: "wrap",
-                    fontSize: 11,
-                    color: "#64748b",
-                  }}
-                >
-                  <span>
-                    Retrieved {new Date(data.fluxRatesRetrievedAt).toLocaleString("en-GB")}
-                  </span>
-                  {data.fluxGsp && <span>GSP: {data.fluxGsp}</span>}
-                </div>
-              )}
+                .octopus-flux-card input[readonly] {
+                  background: #f1f5f9;
+                  color: #334155;
+                }
+              `}</style>
 
-              {fluxRateError && (
-                <div
-                  style={{
-                    marginTop: 12,
-                    padding: "10px 12px",
-                    borderRadius: 8,
-                    background: "#fef2f2",
-                    border: "1px solid #fecaca",
-                    color: "#b91c1c",
-                    fontSize: 12,
-                  }}
-                >
-                  {fluxRateError}
-                </div>
-              )}
-
+            {fluxRateError && (
               <div
                 style={{
-                  marginTop: 12,
-                  fontSize: 11,
-                  color: "#64748b",
+                  marginBottom: 12,
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  background: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  color: "#b91c1c",
+                  fontSize: 12,
                 }}
               >
-                Octopus Flux uses three daily periods: 02:00–05:00 off-peak, 05:00–16:00 and 19:00–02:00 standard, and 16:00–19:00 peak. Rates are retrieved automatically from Octopus and are locked to prevent accidental changes.
+                {fluxRateError}
               </div>
-            </div>
+            )}
 
             <div
               style={{
@@ -1816,7 +1792,14 @@ export default function EPVSCalculator({
                   borderBottom: "1px solid #dbe3ec",
                 }}
               >
-                Rate
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%" }}>
+                  <span>Rate</span>
+                  {data.fluxRatesRetrievedAt && (
+                    <span style={{ fontSize: 10, fontWeight: 500, color: "#64748b", whiteSpace: "nowrap" }}>
+                      Retrieved {new Date(data.fluxRatesRetrievedAt).toLocaleString("en-GB")}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div
@@ -1981,6 +1964,7 @@ export default function EPVSCalculator({
                   step={0.01}
                 />
               </div>
+            </div>
             </div>
           </Card>
 
