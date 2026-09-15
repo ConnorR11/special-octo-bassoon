@@ -23,7 +23,7 @@ const money = (value) =>
 
 
 const createArray = () => ({
-  panelWattage: 415,
+  panelWattage: 460,
   panelCount: 0,
   orientation: 0,
   pitch: 30,
@@ -1375,18 +1375,16 @@ export default function EPVSCalculator({
                   }}
                 >
                   <input
-                    type="number"
-                    value={array.panelWattage}
-                    min={1}
-                    style={inputStyle}
-                    onChange={(event) =>
-                      updateArray(
-                        index,
-                        "panelWattage",
-                        event.target.value
-                      )
-                    }
-                  />
+          type="number"
+          value={460}
+          readOnly
+          aria-label="Panel wattage (Wp)"
+          style={{
+            ...inputStyle,
+            background: "#f1f5f9",
+            cursor: "not-allowed",
+          }}
+        />
                 </td>
 
                 {/* ORIENTATION */}
@@ -1455,19 +1453,16 @@ export default function EPVSCalculator({
                   }}
                 >
                   <input
-                    type="number"
-                    value={array.irradiance}
-                    min={0}
-                    step={0.01}
-                    style={inputStyle}
-                    onChange={(event) =>
-                      updateArray(
-                        index,
-                        "irradiance",
-                        event.target.value
-                      )
-                    }
-                  />
+          type="number"
+          value={array.irradiance}
+          readOnly
+          aria-label="Irradiance / Kk"
+          style={{
+            ...inputStyle,
+            background: "#f1f5f9",
+            cursor: "not-allowed",
+          }}
+        />
                 </td>
 
                 {/* SHADE FACTOR */}
