@@ -1,0 +1,22 @@
+/* Match the Battery configuration and Inverter capacity controls to the Solar PV inputs. */
+.card select:not([class]) {
+  width: 100% !important;
+  min-height: 38px !important;
+  height: 38px !important;
+  box-sizing: border-box !important;
+  padding: 0 32px 0 10px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 7px !important;
+  background: #ffffff !important;
+  color: #172554 !important;
+  font-family: inherit !important;
+  font-size: 12px !important;
+  line-height: 38px !important;
+  outline: none !important;
+  cursor: pointer !important;
+}
+
+.card select:not([class]):focus {
+  border-color: #94a3b8 !important;
+  box-shadow: 0 0 0 2px rgba(23, 37, 84, 0.08) !important;
+}
