@@ -88,32 +88,62 @@ export default function ThirtyYearBreakdown({
       exportBenefitForDisplay(rows[0])
     : 0
 
-  const paybackPeriod = scenario.paybackPeriod
-  const totalNetSavings = safeNumber(
-    scenario.totalNetSavings
+  // Recalculate the cumulative position from the displayed EPVS
+  // component values so the total and payback use exactly the same
+  // figures shown in the table.
+  const calculatedRows = useMemo(() => {
+    let cumulativePosition = 0
+
+    return rows.map((row) => {
+      const batteryBenefit = batteryBenefitForDisplay(row)
+      const exportBenefit = exportBenefitForDisplay(row)
+      const annualBenefit =
+        safeNumber(row.solarBenefit) +
+        batteryBenefit +
+        exportBenefit
+      const yearlyPayment = safeNumber(row.yearlyPayment)
+      const netAnnualBenefit = annualBenefit + yearlyPayment
+
+      cumulativePosition += netAnnualBenefit
+
+      return {
+        ...row,
+        batteryBenefit,
+        exportBenefit,
+        annualBenefit,
+        yearlyPayment,
+        netAnnualBenefit,
+        cumulativePosition,
+      }
+    })
+  }, [rows])
+
+  const paybackRow = calculatedRows.find(
+    (row) => row.cumulativePosition >= 0
   )
-  const totalNetReturn = safeNumber(
-    scenario.totalNetReturn
-  )
+  const paybackPeriod = paybackRow?.year || null
+  const finalNetPosition =
+    calculatedRows[calculatedRows.length - 1]?.cumulativePosition || 0
+
+  // These values should represent the same cumulative net result as
+  // the NET POSITION column, rather than the older source totals.
+  const totalNetSavings = finalNetPosition
+  const totalNetReturn = finalNetPosition
 
   const displayTotals = useMemo(
     () =>
-      rows.reduce(
+      calculatedRows.reduce(
         (total, row) => ({
           generation: total.generation + safeNumber(row.generation),
           solarBenefit: total.solarBenefit + safeNumber(row.solarBenefit),
           batteryBenefit:
-            total.batteryBenefit + batteryBenefitForDisplay(row),
+            total.batteryBenefit + row.batteryBenefit,
           exportBenefit:
-            total.exportBenefit + exportBenefitForDisplay(row),
+            total.exportBenefit + row.exportBenefit,
           yearlyPayment:
-            total.yearlyPayment + safeNumber(row.yearlyPayment),
+            total.yearlyPayment + row.yearlyPayment,
           netAnnualBenefit:
-            total.netAnnualBenefit +
-            safeNumber(row.solarBenefit) +
-            batteryBenefitForDisplay(row) +
-            exportBenefitForDisplay(row) +
-            safeNumber(row.yearlyPayment),
+            total.netAnnualBenefit + row.netAnnualBenefit,
           billPreInstall:
             total.billPreInstall + safeNumber(row.billPreInstall),
           billPostInstall:
@@ -130,7 +160,7 @@ export default function ThirtyYearBreakdown({
           billPostInstall: 0,
         }
       ),
-    [rows]
+    [calculatedRows]
   )
 
   return (
@@ -311,61 +341,34 @@ export default function ThirtyYearBreakdown({
             </thead>
 
             <tbody>
-              {rows.map((row, index) => {
-                const batteryBenefit = batteryBenefitForDisplay(row)
-                const exportBenefit = exportBenefitForDisplay(row)
-                const annualBenefit =
-                  safeNumber(row.solarBenefit) +
-                  batteryBenefit +
-                  exportBenefit
+              {calculatedRows.map((row) => (
+                <tr key={row.year}>
+                  <BodyCell>{row.year}</BodyCell>
+                  <BodyCell>{number(row.generation)}</BodyCell>
+                  <BodyCell>{money(row.solarBenefit)}</BodyCell>
+                  <BodyCell>{money(row.batteryBenefit)}</BodyCell>
+                  <BodyCell>{money(row.exportBenefit)}</BodyCell>
+                  <BodyCell green>
+                    {money(row.annualBenefit)}
+                  </BodyCell>
+                  <BodyCell>
+                    {money(row.yearlyPayment)}
+                  </BodyCell>
+                  <BodyCell negative={row.netAnnualBenefit < 0}>
+                    {money(row.netAnnualBenefit)}
+                  </BodyCell>
+                  <BodyCell
+                    green={row.cumulativePosition >= 0}
+                    negative={row.cumulativePosition < 0}
+                  >
+                    {money(row.cumulativePosition)}
+                  </BodyCell>
+                  <BodyCell>{money(row.billPreInstall)}</BodyCell>
+                  <BodyCell>{money(row.billPostInstall)}</BodyCell>
+                </tr>
+              ))}
 
-                const yearlyPayment = safeNumber(row.yearlyPayment)
-                const netAnnualBenefit = annualBenefit + yearlyPayment
-
-                const cumulativePosition = rows
-                  .slice(0, index + 1)
-                  .reduce((sum, currentRow) => {
-                    const currentAnnualBenefit =
-                      safeNumber(currentRow.solarBenefit) +
-                      batteryBenefitForDisplay(currentRow) +
-                      exportBenefitForDisplay(currentRow)
-
-                    return (
-                      sum +
-                      currentAnnualBenefit +
-                      safeNumber(currentRow.yearlyPayment)
-                    )
-                  }, 0)
-
-                return (
-                  <tr key={row.year}>
-                    <BodyCell>{row.year}</BodyCell>
-                    <BodyCell>{number(row.generation)}</BodyCell>
-                    <BodyCell>{money(row.solarBenefit)}</BodyCell>
-                    <BodyCell>{money(batteryBenefit)}</BodyCell>
-                    <BodyCell>{money(exportBenefit)}</BodyCell>
-                    <BodyCell green>
-                      {money(annualBenefit)}
-                    </BodyCell>
-                    <BodyCell>
-                      {money(yearlyPayment)}
-                    </BodyCell>
-                    <BodyCell negative={netAnnualBenefit < 0}>
-                      {money(netAnnualBenefit)}
-                    </BodyCell>
-                    <BodyCell
-                      green={cumulativePosition >= 0}
-                      negative={cumulativePosition < 0}
-                    >
-                      {money(cumulativePosition)}
-                    </BodyCell>
-                    <BodyCell>{money(row.billPreInstall)}</BodyCell>
-                    <BodyCell>{money(row.billPostInstall)}</BodyCell>
-                  </tr>
-                )
-              })}
-
-              {rows.length > 0 && (
+              {calculatedRows.length > 0 && (
                 <tr>
                   <td style={{ ...totalCell, textAlign: "left" }}>
                     TOTALS
@@ -406,9 +409,7 @@ export default function ThirtyYearBreakdown({
                       background: "#299d48",
                     }}
                   >
-                    {money(
-                      rows[rows.length - 1]?.cumulativePosition
-                    )}
+                    {money(finalNetPosition)}
                   </td>
                   <td style={totalCell}>
                     {money(displayTotals.billPreInstall)}
