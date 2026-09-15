@@ -19,85 +19,80 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
 
           path = Path('src/EPVSCalculator.jsx')
           text = path.read_text()
 
-          pattern = re.compile(
-              r'''(?P<indent>\s*)<div style=\{\{ display: "flex", flexDirection: "column", gap: 20 \}\}>\s*
-              <Card\s*\n\s*title="Battery".*?\n\s*</Card>\s*\n\s*<Card\s*\n\s*title="Inverter".*?\n\s*</Card>\s*\n\s*<Card\s*\n\s*title="EPVS battery & inverter assumptions"''',
-              re.S,
-          )
+          start_marker = '            <Card\n              title="Battery"'
+          end_marker = '            <Card\n              title="EPVS battery & inverter assumptions"'
 
-          replacement = '''
-          <Card
-            title="Battery & Inverter"
-            subtitle="Configure the proposed battery and inverter capacity."
-          >
-            <div style={styles.grid}>
-              <label style={styles.field}>
-                <span>Battery configuration</span>
-                <select
-                  value={data.batteryCapacity}
-                  onChange={(event) =>
-                    update(
-                      "batteryCapacity",
-                      event.target.value === ""
-                        ? ""
-                        : Number(event.target.value)
-                    )
-                  }
-                >
-                  <option value="">Select battery</option>
-                  <option value={0}>No battery</option>
-                  <option value={5.12}>1 × 5.12 kWh</option>
-                  <option value={10.24}>2 × 5.12 kWh</option>
-                  <option value={15.36}>3 × 5.12 kWh</option>
-                  <option value={9.4}>1 × 9.4 kWh</option>
-                  <option value={18.8}>2 × 9.4 kWh</option>
-                  <option value={28.2}>3 × 9.4 kWh</option>
-                </select>
-              </label>
+          start = text.find(start_marker)
+          end = text.find(end_marker, start)
 
-              <label style={styles.field}>
-                <span>Inverter capacity (kW)</span>
-                <select
-                  value={data.inverterCapacity}
-                  onChange={(event) =>
-                    update(
-                      "inverterCapacity",
-                      event.target.value === ""
-                        ? ""
-                        : Number(event.target.value)
-                    )
-                  }
-                >
-                  <option value="">Select inverter</option>
-                  <option value={3.7}>3.7 kW</option>
-                  <option value={6}>6 kW</option>
-                  <option value={7}>7 kW</option>
-                  <option value={10}>10 kW</option>
-                </select>
-              </label>
-            </div>
-          </Card>
+          if start == -1 or end == -1:
+              raise SystemExit('Expected Battery and Inverter cards were not found')
 
-          <Card
-            title="EPVS battery & inverter assumptions"'''
+          replacement = '''            <Card
+              title="Battery & Inverter"
+              subtitle="Configure the proposed battery and inverter capacity."
+            >
+              <div style={styles.grid}>
+                <label style={styles.field}>
+                  <span>Battery configuration</span>
+                  <select
+                    value={data.batteryCapacity}
+                    onChange={(event) =>
+                      update(
+                        "batteryCapacity",
+                        event.target.value === ""
+                          ? ""
+                          : Number(event.target.value)
+                      )
+                    }
+                  >
+                    <option value="">Select battery</option>
+                    <option value={0}>No battery</option>
+                    <option value={5.12}>1 × 5.12 kWh</option>
+                    <option value={10.24}>2 × 5.12 kWh</option>
+                    <option value={15.36}>3 × 5.12 kWh</option>
+                    <option value={9.4}>1 × 9.4 kWh</option>
+                    <option value={18.8}>2 × 9.4 kWh</option>
+                    <option value={28.2}>3 × 9.4 kWh</option>
+                  </select>
+                </label>
 
-          new_text, count = pattern.subn(replacement, text, count=1)
-          if count != 1:
-              raise SystemExit(f'Expected one battery/inverter card block, found {count}')
+                <label style={styles.field}>
+                  <span>Inverter capacity (kW)</span>
+                  <select
+                    value={data.inverterCapacity}
+                    onChange={(event) =>
+                      update(
+                        "inverterCapacity",
+                        event.target.value === ""
+                          ? ""
+                          : Number(event.target.value)
+                      )
+                    }
+                  >
+                    <option value="">Select inverter</option>
+                    <option value={3.7}>3.7 kW</option>
+                    <option value={6}>6 kW</option>
+                    <option value={7}>7 kW</option>
+                    <option value={10}>10 kW</option>
+                  </select>
+                </label>
+              </div>
+            </Card>
 
-          path.write_text(new_text)
+'''
+
+          path.write_text(text[:start] + replacement + text[end:])
           PY
 
-      - name: Verify JSX structure
+      - name: Verify build
         run: |
-          test -f src/EPVSCalculator.jsx
-          grep -q 'title="Battery & Inverter"' src/EPVSCalculator.jsx
-          grep -q 'title="EPVS battery & inverter assumptions"' src/EPVSCalculator.jsx
+          npm ci
+          npm run build
 
       - name: Commit change
         run: |
