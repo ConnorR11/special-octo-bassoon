@@ -69,12 +69,12 @@ export default async function handler(req, res) {
       return (Array.isArray(system?.module_groups) ? system.module_groups : []).map(
         (group, index) => {
           const azimuth = Number(group?.azimuth ?? 180)
-          const orientation = Math.abs(((azimuth - 180 + 540) % 360) - 180)
+          const orientation = Math.round(Math.abs(((azimuth - 180 + 540) % 360) - 180))
 
           return {
             panelCount: Number(group?.module_quantity || 0),
             orientation,
-            pitch: Number(group?.slope || 0),
+            pitch: Math.round(Number(group?.slope || 0)),
             shading: Number.isFinite(shadeFactor) ? shadeFactor : 1,
             irradiance: Number(specificYield[index] || 0),
           }
