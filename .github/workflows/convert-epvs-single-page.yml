@@ -1,0 +1,78 @@
+name: Convert EPVS to single page
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  convert-epvs:
+    if: ${{ !contains(github.event.head_commit.message, 'Convert EPVS to single page') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Convert calculator to single page
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('src/EPVSCalculator.jsx')
+          text = path.read_text()
+
+          text = text.replace('  ArrowLeft,\n  ArrowRight,\n', '')
+          text = text.replace('  const [step, setStep] = useState(0)\n', '')
+
+          text = re.sub(
+              r'const steps = \[.*?\]\n\nconst createArray',
+              'const createArray',
+              text,
+              count=1,
+              flags=re.S,
+          )
+
+          stepper_start = text.find('        {/* =================================================\n            STEPPER\n            ================================================= */}')
+          energy_start = text.find('        {/* =================================================\n            CUSTOMER & ENERGY', stepper_start)
+          if stepper_start == -1 or energy_start == -1:
+              raise SystemExit('Could not find EPVS stepper block')
+
+          header = '''        <div style={{ marginBottom: 20 }}>
+          <h2 style={{ margin: 0, fontSize: 22, color: "#172554" }}>EPVS Calculation</h2>
+          <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b" }}>
+            Complete the calculation below. All EPVS inputs and results are shown on one page.
+          </p>
+        </div>
+
+'''
+          text = text[:stepper_start] + header + text[energy_start:]
+
+          for number in range(6):
+              text = text.replace(f'{{step === {number} && (', '{(')
+
+          text = re.sub(
+              r'  const next = \(\) => \{.*?\n  const reset = \(\) => \{',
+              '  const reset = () => {',
+              text,
+              count=1,
+              flags=re.S,
+          )
+          text = text.replace('    setStep(0)\n', '')
+
+          nav_pattern = r'''          <div\n            style=\{\{\n              display:\n                "flex",\n              gap: 10,\n            \}\}\n          >.*?          </div>\n        </div>\n      </div>\n    </section>'''
+          text, count = re.subn(nav_pattern, '''        </div>\n      </div>\n    </section>''', text, count=1, flags=re.S)
+          if count != 1:
+              raise SystemExit('Could not remove EPVS footer navigation')
+
+          path.write_text(text)
+          PY
+
+      - name: Commit change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/EPVSCalculator.jsx
+          git diff --cached --quiet && exit 0
+          git commit -m "Convert EPVS to single page"
+          git push
