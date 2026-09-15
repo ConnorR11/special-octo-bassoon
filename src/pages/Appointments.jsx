@@ -220,7 +220,7 @@ function Appointments({ onSelectAppointment }) {
           <div style={{ display: "flex", gap: "6px" }}>
             <button type="button" disabled={!canGoBack} onClick={() => setPage((value) => value - 1)} style={{ width: "34px", height: "32px", border: "1px solid #dddfe3", borderRadius: "7px", background: "#fff", cursor: canGoBack ? "pointer" : "default", opacity: canGoBack ? 1 : 0.4, display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronLeft size={15} /></button>
             <div style={{ minWidth: "70px", height: "32px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", color: "#555" }}>Page {page + 1} of {totalPages}</div>
-            <button type="button" disabled={!canGoForward} onClick={() => setPage((value) => value + 1)} style={{ width: "34px", height: "32px", border: "1px solid #dddfe3", borderRadius: "7px", background: "#fff", cursor: canGoForward ? "pointer" : "default", opacity: canGoForward ? 1 : 0.4, display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronLeft size={15} /></button>
+            <button type="button" disabled={!canGoForward} onClick={() => setPage((value) => value + 1)} style={{ width: "34px", height: "32px", border: "1px solid #dddfe3", borderRadius: "7px", background: "#fff", cursor: canGoForward ? "pointer" : "default", opacity: canGoForward ? 1 : 0.4, display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronRight size={15} /></button>
           </div>
         </div>
       )}
