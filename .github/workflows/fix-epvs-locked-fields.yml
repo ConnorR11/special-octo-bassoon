@@ -1,0 +1,100 @@
+name: Fix EPVS locked fields
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lock panel wattage and irradiance
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('src/EPVSCalculator.jsx')
+          text = path.read_text()
+
+          text = text.replace('panelWattage: 415,', 'panelWattage: 460,')
+
+          old_panel = '''                  <input
+                    type="number"
+                    value={array.panelWattage}
+                    min={1}
+                    style={inputStyle}
+                    onChange={(event) =>
+                      updateArray(
+                        index,
+                        "panelWattage",
+                        event.target.value
+                      )
+                    }
+                  />'''
+
+          new_panel = '''                  <input
+                    type="number"
+                    value={460}
+                    readOnly
+                    aria-label="Panel wattage"
+                    style={{
+                      ...inputStyle,
+                      background: "#f1f5f9",
+                      cursor: "not-allowed",
+                    }}
+                  />'''
+
+          old_irr = '''                  <input
+                    type="number"
+                    value={array.irradiance}
+                    min={0}
+                    step={0.01}
+                    style={inputStyle}
+                    onChange={(event) =>
+                      updateArray(
+                        index,
+                        "irradiance",
+                        event.target.value
+                      )
+                    }
+                  />'''
+
+          new_irr = '''                  <input
+                    type="number"
+                    value={array.irradiance}
+                    readOnly
+                    aria-label="Irradiance / Kk"
+                    style={{
+                      ...inputStyle,
+                      background: "#f1f5f9",
+                      cursor: "not-allowed",
+                    }}
+                  />'''
+
+          if old_panel not in text:
+              raise SystemExit('Panel wattage input block not found')
+          if old_irr not in text:
+              raise SystemExit('Irradiance input block not found')
+
+          text = text.replace(old_panel, new_panel, 1)
+          text = text.replace(old_irr, new_irr, 1)
+          path.write_text(text)
+
+      - name: Verify build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Commit and remove workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/EPVSCalculator.jsx
+          git rm .github/workflows/fix-epvs-locked-fields.yml
+          git commit -m "Lock EPVS panel wattage and irradiance"
+          git push
