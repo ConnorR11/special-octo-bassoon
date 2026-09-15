@@ -1,4 +1,4 @@
-name: Convert EPVS to single page
+name: Update EPVS UI
 
 on:
   push:
@@ -8,12 +8,13 @@ permissions:
   contents: write
 
 jobs:
-  convert-epvs:
-    if: ${{ !contains(github.event.head_commit.message, 'Convert EPVS to single page') }}
+  update-epvs-ui:
+    if: ${{ !contains(github.event.head_commit.message, 'Update EPVS UI') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Convert calculator to single page
+
+      - name: Update battery and inverter UI
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -22,49 +23,55 @@ jobs:
           path = Path('src/EPVSCalculator.jsx')
           text = path.read_text()
 
-          text = text.replace('  ArrowLeft,\n  ArrowRight,\n', '')
-          text = text.replace('  const [step, setStep] = useState(0)\n', '')
+          section_start = text.find('BATTERY & INVERTER')
+          if section_start == -1:
+              raise SystemExit('Could not find BATTERY & INVERTER section')
 
-          text = re.sub(
-              r'const steps = \[.*?\]\n\nconst createArray',
-              'const createArray',
-              text,
-              count=1,
-              flags=re.S,
-          )
+          section_end = text.find('/* =================================================', section_start + 20)
+          if section_end == -1:
+              raise SystemExit('Could not find end of BATTERY & INVERTER section')
 
-          stepper_start = text.find('        {/* =================================================\n            STEPPER\n            ================================================= */}')
-          energy_start = text.find('        {/* =================================================\n            CUSTOMER & ENERGY', stepper_start)
-          if stepper_start == -1 or energy_start == -1:
-              raise SystemExit('Could not find EPVS stepper block')
+          block = text[section_start:section_end]
 
-          header = '''        <div style={{ marginBottom: 20 }}>
-          <h2 style={{ margin: 0, fontSize: 22, color: "#172554" }}>EPVS Calculation</h2>
-          <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b" }}>
-            Complete the calculation below. All EPVS inputs and results are shown on one page.
-          </p>
-        </div>
+          # Remove the visible EPVS modelling-assumption inputs while leaving
+          # the underlying data fields and calculation logic untouched.
+          assumption_labels = [
+              'Battery DoD',
+              'Battery round-trip efficiency',
+              'Battery degradation',
+              'Battery warranty',
+              'Inverter EU efficiency',
+              'Solar degradation',
+              'Solar warranty',
+              'Existing solar self-consumption',
+          ]
+          for label in assumption_labels:
+              pattern = r'\s*<Input\b[^>]*label=["\\\']' + re.escape(label) + r'[^>]*\/>'
+              block = re.sub(pattern, '', block, flags=re.I)
 
-'''
-          text = text[:stepper_start] + header + text[energy_start:]
+          # Remove common assumption-section headings/descriptions if present.
+          block = re.sub(r'\s*<h3[^>]*>\s*EPVS[^<]*(?:<[^>]+>[^<]*)*<\/h3>', '', block, flags=re.I)
+          block = re.sub(r'\s*<p[^>]*>\s*Manufacturer values[^<]*<\/p>', '', block, flags=re.I)
 
-          for number in range(6):
-              text = text.replace(f'{{step === {number} && (', '{(')
+          # Put the remaining battery and inverter inputs inside one Card.
+          # Remove Card wrappers inside this section, then add one shared Card.
+          block = re.sub(r'<Card(?:\s+[^>]*)?>', '', block)
+          block = block.replace('</Card>', '')
 
-          text = re.sub(
-              r'  const next = \(\) => \{.*?\n  const reset = \(\) => \{',
-              '  const reset = () => {',
-              text,
-              count=1,
-              flags=re.S,
-          )
-          text = text.replace('    setStep(0)\n', '')
+          marker = 'BATTERY & INVERTER'
+          marker_pos = block.find(marker)
+          if marker_pos == -1:
+              raise SystemExit('Battery/inverter marker disappeared unexpectedly')
+          line_end = block.find('\n', marker_pos)
+          if line_end == -1:
+              raise SystemExit('Could not locate battery/inverter marker line')
 
-          nav_pattern = r'''          <div\n            style=\{\{\n              display:\n                "flex",\n              gap: 10,\n            \}\}\n          >.*?          </div>\n        </div>\n      </div>\n    </section>'''
-          text, count = re.subn(nav_pattern, '''        </div>\n      </div>\n    </section>''', text, count=1, flags=re.S)
-          if count != 1:
-              raise SystemExit('Could not remove EPVS footer navigation')
+          block = block[:line_end + 1] + '        <Card>\n' + block[line_end + 1:]
 
+          # Close the shared Card immediately before the next major section.
+          block = block.rstrip() + '\n        </Card>\n\n'
+
+          text = text[:section_start] + block + text[section_end:]
           path.write_text(text)
           PY
 
@@ -72,7 +79,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/EPVSCalculator.jsx
+          git add src/EPVSCalculator.jsx .github/workflows/convert-epvs-single-page.yml
           git diff --cached --quiet && exit 0
-          git commit -m "Convert EPVS to single page"
+          git commit -m "Update EPVS UI"
           git push
