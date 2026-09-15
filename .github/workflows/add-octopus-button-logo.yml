@@ -1,7 +1,8 @@
 name: Add Octopus logo to Flux button
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
   contents: write
@@ -37,9 +38,8 @@ jobs:
           text = path.read_text()
           old = '<RotateCcw size={15} />'
           new = '<img src="/octopus-logo.svg" alt="" aria-hidden="true" style={{ width: 18, height: 18, objectFit: "contain" }} />'
-          if old not in text:
-              raise SystemExit("Could not find Flux button loading icon")
-          path.write_text(text.replace(old, new, 1))
+          if old in text:
+              path.write_text(text.replace(old, new, 1))
           PY
 
       - name: Commit changes
@@ -47,10 +47,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/EPVSCalculator.jsx public/octopus-logo.svg
+          git diff --cached --quiet && exit 0
           git commit -m "Use Octopus logo on Flux rates button"
           git push
 
       - name: Remove temporary workflow
+        if: success()
         run: |
           git rm .github/workflows/add-octopus-button-logo.yml
           git commit -m "Remove temporary Octopus logo workflow"
