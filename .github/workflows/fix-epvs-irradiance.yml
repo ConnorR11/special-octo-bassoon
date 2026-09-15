@@ -13,25 +13,80 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch EPVS calculator
+      - name: Update EPVS calculator layout
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           path = Path('src/EPVSCalculator.jsx')
           text = path.read_text()
 
-          import_line = 'import { getIrradiance } from "./epvsIrradianceData"\n'
-          if import_line not in text:
-              text = text.replace('import { supabase } from "./lib/supabase"\n', 'import { supabase } from "./lib/supabase"\n' + import_line, 1)
+          text = text.replace('  ArrowLeft,\n  ArrowRight,\n', '')
 
-          marker = '  const updateArray = (\n'
-          effect = '''  const arrayGeometryKey = data.arrays\n    .map((array) => `${array.pitch ?? ""}:${array.orientation ?? ""}`)\n    .join("|")\n\n  // Automatically populate EPVS irradiance from postcode/SAP zone, pitch and orientation.\n  useEffect(() => {\n    const zone = getSapZone(data.postcode, data.sapZone)\n    const zoneCode = zone?.code\n\n    if (!zoneCode) return\n\n    const updatedArrays = data.arrays.map((array) => {\n      const irradiance = getIrradiance(\n        zoneCode,\n        Number(array.pitch || 0),\n        Number(array.orientation || 0)\n      )\n\n      return {\n        ...array,\n        irradiance,\n      }\n    })\n\n    const changed = updatedArrays.some(\n      (array, index) => Number(data.arrays[index]?.irradiance || 0) !== Number(array.irradiance || 0)\n    )\n\n    if (changed) {\n      setData((current) => ({\n        ...current,\n        arrays: updatedArrays,\n      }))\n    }\n  }, [data.postcode, data.sapZone, arrayGeometryKey])\n\n'''
+          steps_start = text.find('const steps = [')
+          if steps_start != -1:
+              steps_end = text.find(']\n\nconst createArray', steps_start)
+              if steps_end == -1:
+                  raise SystemExit('Could not find end of steps definition')
+              text = text[:steps_start] + text[steps_end + 2:]
 
-          if 'const arrayGeometryKey = data.arrays' not in text:
-              if marker not in text:
-                  raise SystemExit('Could not find updateArray marker')
-              text = text.replace(marker, effect + marker, 1)
+          text = text.replace('  const [step, setStep] = useState(0)\n', '')
+
+          next_start = text.find('  const next = () => {')
+          if next_start != -1:
+              return_start = text.find('  return (', next_start)
+              if return_start == -1:
+                  raise SystemExit('Could not find calculator return')
+              text = text[:next_start] + '  const reset = () => {\n    setData(appointmentInitial)\n  }\n\n' + text[return_start:]
+
+          stepper_start = text.find('        {/* =================================================\n            STEPPER')
+          if stepper_start != -1:
+              energy_marker = text.find('        {/* =================================================\n            CUSTOMER & ENERGY', stepper_start)
+              if energy_marker == -1:
+                  raise SystemExit('Could not find Energy section marker')
+              text = text[:stepper_start] + text[energy_marker:]
+
+          sections = [
+              'CUSTOMER & ENERGY',
+              'SOLAR PV',
+              'BATTERY & INVERTER',
+              'TARIFF',
+              'FINANCE',
+              'RESULTS',
+          ]
+
+          for index, title in enumerate(sections):
+              opening = f'        {{step === {index} && (\n'
+              text = text.replace(opening, '        ', 1)
+              next_title = sections[index + 1] if index < len(sections) - 1 else 'FOOTER'
+              marker = f'        {{/* =================================================\n            {next_title}'
+              marker_pos = text.find(marker)
+              if marker_pos == -1:
+                  raise SystemExit(f'Could not find next section marker after {title}')
+              before = text[:marker_pos]
+              close_pos = before.rfind('        )}\n')
+              if close_pos == -1:
+                  raise SystemExit(f'Could not find wrapper close for {title}')
+              text = before[:close_pos] + before[close_pos + len('        )}\n'):] + text[marker_pos:]
+
+          nav_pattern = re.compile(
+              r'          <div\n'
+              r'            style=\{\{\n'
+              r'              display:\n'
+              r'                "flex",\n'
+              r'              gap: 10,\n'
+              r'            \}\}\n'
+              r'          >\n'
+              r'\n'
+              r'            <button\n'
+              r'              type="button"\n'
+              r'              onClick=\{back\}[\s\S]*?'
+              r'          </div>\n'
+          )
+          text, count = nav_pattern.subn('', text, count=1)
+          if count == 0 and 'onClick={back}' in text:
+              raise SystemExit('Could not remove Back/Next navigation')
 
           path.write_text(text)
           PY
@@ -45,5 +100,5 @@ jobs:
             echo "No changes needed"
             exit 0
           fi
-          git commit -m "Fix automatic EPVS irradiance population"
+          git commit -m "Convert EPVS calculator to single-page layout"
           git push
