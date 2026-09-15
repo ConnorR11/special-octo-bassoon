@@ -1588,55 +1588,48 @@ export default function EPVSCalculator({
             );
           })}
       </tbody>
+  <tfoot>
+    <tr style={{ background: "#e8f5eb", color: "#315b28" }}>
+      <td
+        colSpan={8}
+        style={{
+          padding: "14px 10px",
+          borderTop: "1px solid #bbdfc1",
+          fontWeight: 700,
+        }}
+      >
+        <div style={{ fontSize: 12 }}>Total overall generation</div>
+        <div
+          style={{
+            marginTop: 3,
+            fontSize: 11,
+            fontWeight: 500,
+            color: "#4d7047",
+          }}
+        >
+          {results.numberOfArrays} array
+          {results.numberOfArrays !== 1 ? "s" : ""}
+        </div>
+      </td>
+      <td
+        style={{
+          padding: "14px 10px",
+          borderTop: "1px solid #bbdfc1",
+          textAlign: "right",
+          whiteSpace: "nowrap",
+          fontSize: 16,
+          fontWeight: 800,
+          color: "#26783a",
+        }}
+      >
+        {Number(results.generation || 0).toFixed(2)} kWh
+      </td>
+    </tr>
+  </tfoot>
     </table>
   </div>
 
-  {/* TOTAL */}
 
-  <div
-    style={{
-      marginTop: 18,
-      padding: 18,
-      background: "#e8f5eb",
-      borderRadius: 10,
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-    }}
-  >
-    <div>
-      <div
-        style={{
-          fontSize: 12,
-          fontWeight: 700,
-          color: "#315b28",
-        }}
-      >
-        Total overall generation
-      </div>
-
-      <div
-        style={{
-          marginTop: 4,
-          fontSize: 11,
-          color: "#4d7047",
-        }}
-      >
-        {results.numberOfArrays}{" "}
-        array
-        {results.numberOfArrays !== 1 ? "s" : ""}
-      </div>
-    </div>
-
-    <strong
-      style={{
-        fontSize: 20,
-        color: "#26783a",
-      }}
-    >
-      {Number(results.generation || 0).toFixed(2)} kWh
-    </strong>
-  </div>
 </Card>
 
         {/* =================================================
