@@ -12,17 +12,17 @@ function batteryBenefitForDisplay(row) {
 
 function exportBenefitForDisplay(row) {
   // The EPVS EXPORT column displays the residual solar export benefit.
-  // The separate peak export benefit is already included in annualBenefit,
-  // so it should not also be displayed in the EXPORT column.
+  // The current Standard Flux model's battery self-consumption figure includes
+  // the solar self-consumption amount in the demand cap. Remove that overlap
+  // when deriving the residual export so the displayed export matches EPVS.
   const totalExportKwh = safeNumber(row?.exportKwh)
   const peakExportKwh = safeNumber(row?.peakExportCapacity)
-  const residualExportKwh = Math.max(0, totalExportKwh - peakExportKwh)
+  const calculatedResidualExportKwh = Math.max(0, totalExportKwh - peakExportKwh)
+  const solarSelfConsumptionKwh = safeNumber(row?.solarSelfConsumptionKwh)
+  const correctedResidualExportKwh = calculatedResidualExportKwh + solarSelfConsumptionKwh
   const exportRatePence = safeNumber(row?.fluxDayExportYear ?? row?.exportRateYear)
 
-  // For the standard new-system calculation, the residual export is paid at
-  // the Flux day export rate. This matches the EPVS calculator's
-  // residualExportBenefit calculation when there is no existing-system export.
-  return residualExportKwh * (exportRatePence / 100)
+  return correctedResidualExportKwh * (exportRatePence / 100)
 }
 
 export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
