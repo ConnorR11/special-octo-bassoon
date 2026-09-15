@@ -20,12 +20,10 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
-          import re
 
           path = Path('src/EPVSCalculator.jsx')
           text = path.read_text()
 
-          # Only act if the separate green total block still exists.
           marker = '  {/* TOTAL */}'
           start = text.find(marker)
           if start == -1:
@@ -36,16 +34,13 @@ jobs:
           if card_end == -1:
               raise SystemExit('Could not find the end of the Solar PV card.')
 
-          total_block = text[start:card_end]
-
           footer = '''  <tfoot>\n    <tr style={{ background: "#e8f5eb", color: "#315b28" }}>\n      <td\n        colSpan={8}\n        style={{\n          padding: "14px 10px",\n          borderTop: "1px solid #bbdfc1",\n          fontWeight: 700,\n        }}\n      >\n        <div style={{ fontSize: 12 }}>Total overall generation</div>\n        <div\n          style={{\n            marginTop: 3,\n            fontSize: 11,\n            fontWeight: 500,\n            color: "#4d7047",\n          }}\n        >\n          {results.numberOfArrays} array\n          {results.numberOfArrays !== 1 ? "s" : ""}\n        </div>\n      </td>\n      <td\n        style={{\n          padding: "14px 10px",\n          borderTop: "1px solid #bbdfc1",\n          textAlign: "right",\n          whiteSpace: "nowrap",\n          fontSize: 16,\n          fontWeight: 800,\n          color: "#26783a",\n        }}\n      >\n        {Number(results.generation || 0).toFixed(2)} kWh\n      </td>\n    </tr>\n  </tfoot>'''
 
           # Remove the old total card.
           new_text = text[:start] + text[card_end:]
 
-          # Insert the footer immediately before the Solar PV table closing tag.
-          solar_end = new_text.find('\n</Card>', start)
-          table_close = new_text.rfind('    </table>', start, solar_end)
+          # The table is immediately before the old total block.
+          table_close = new_text.rfind('    </table>', 0, start)
           if table_close == -1:
               raise SystemExit('Could not find the Solar PV table closing tag.')
 
