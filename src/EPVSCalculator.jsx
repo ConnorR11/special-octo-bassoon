@@ -1554,12 +1554,13 @@ export default function EPVSCalculator({
 
         {/* =================================================
             BATTERY & INVERTER
-        <Card>
-        
             ================================================= */}
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            
+            <Card
+              title="Battery"
+              subtitle="Configure the proposed battery."
+            >
               <div style={styles.grid}>
                 <label style={styles.field}>
                   <span>Battery configuration</span>
@@ -1586,9 +1587,12 @@ export default function EPVSCalculator({
                   </select>
                 </label>
               </div>
-            
+            </Card>
 
-            
+            <Card
+              title="Inverter"
+              subtitle="Configure the inverter capacity."
+            >
               <div style={styles.grid}>
                 <label style={styles.field}>
                   <span>Inverter capacity (kW)</span>
@@ -1612,9 +1616,12 @@ export default function EPVSCalculator({
                   </select>
                 </label>
               </div>
-            
+            </Card>
 
-            
+            <Card
+              title="EPVS battery & inverter assumptions"
+              subtitle="Manufacturer figures are preferred; EPVS defaults are shown where manufacturer data is unavailable."
+            >
               <div style={styles.grid}>
                 <Input label="Battery DoD (%)" type="number" value={data.batteryDoD} onChange={(value) => update("batteryDoD", value)} min={0} max={100} step={1} />
                 <Input label="Battery round-trip efficiency (%)" type="number" value={data.batteryRTE} onChange={(value) => update("batteryRTE", value)} min={0} max={100} step={1} />
@@ -1630,13 +1637,10 @@ export default function EPVSCalculator({
                   </select>
                 </label>
               </div>
-            
+            </Card>
           </div>
 
-        {
-        </Card>
-
-/* =================================================
+        {/* =================================================
             TARIFF
             ================================================= */}
 
