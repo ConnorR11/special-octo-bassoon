@@ -42,18 +42,19 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
   const rows = Array.isArray(scenario.rows) ? scenario.rows : []
   const totals = scenario.totals || {}
 
-  const firstYearBenefit = rows[0] ? safeNumber(rows[0].annualBenefit ?? rows[0].annualSaving) : 0
+  const firstYearBenefit = rows[0] ? safeNumber(rows[0].solarBenefit) + batteryBenefitForDisplay(rows[0]) + exportBenefitForDisplay(rows[0]) : 0
 
   const calculatedRows = useMemo(() => {
     let cumulativePosition = 0
     return rows.map((row) => {
       const batteryBenefit = batteryBenefitForDisplay(row)
       const exportBenefit = exportBenefitForDisplay(row)
-      const annualBenefit = safeNumber(row.annualBenefit ?? row.annualSaving)
+      const solarBenefit = safeNumber(row.solarBenefit)
+      const annualBenefit = solarBenefit + batteryBenefit + exportBenefit
       const yearlyPayment = safeNumber(row.yearlyPayment)
-      const netAnnualBenefit = safeNumber(row.netAnnualBenefit ?? (annualBenefit + yearlyPayment))
+      const netAnnualBenefit = annualBenefit + yearlyPayment
       cumulativePosition += netAnnualBenefit
-      return { ...row, batteryBenefit, exportBenefit, annualBenefit, yearlyPayment, netAnnualBenefit, cumulativePosition }
+      return { ...row, solarBenefit, batteryBenefit, exportBenefit, annualBenefit, yearlyPayment, netAnnualBenefit, cumulativePosition }
     })
   }, [rows])
 
