@@ -1717,7 +1717,16 @@ export default function EPVSCalculator({
                     whiteSpace: "nowrap",
                   }}
                 >
-                  <img src="/octopus-logo.svg" alt="" aria-hidden="true" style={{ width: 18, height: 18, objectFit: "contain" }} />
+                  <svg width="20" height="20" viewBox="0 0 600 600" aria-hidden="true" style={{ display: "block" }}>
+          <path fill="#f743d0" d="M300 30c-138 0-245 94-245 222 0 77 30 121 62 164-30 10-44 35-25 52 18 17 54 17 75 7-20 25-51 36-47 52 6 23 78 26 125-19 5 35 12 61 55 61s50-26 55-61c47 45 119 42 125 19 4-16-27-27-47-52 21 10 57 10 75-7 19-17 5-42-25-52 32-43 62-87 62-164C545 124 438 30 300 30Z"/>
+          <ellipse cx="204" cy="304" rx="58" ry="58" fill="white"/>
+          <ellipse cx="396" cy="304" rx="58" ry="58" fill="white"/>
+          <ellipse cx="208" cy="312" rx="41" ry="48" fill="#09002f"/>
+          <ellipse cx="392" cy="312" rx="41" ry="48" fill="#09002f"/>
+          <circle cx="183" cy="292" r="10" fill="white"/>
+          <circle cx="367" cy="292" r="10" fill="white"/>
+          <path d="M265 396q35 28 70 0" fill="none" stroke="#09002f" stroke-width="14" stroke-linecap="round"/>
+        </svg>
                   {loadingFluxRates ? "Getting rates…" : "Get current rates"}
                 </button>
               </div>
