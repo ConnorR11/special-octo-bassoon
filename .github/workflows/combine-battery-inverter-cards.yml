@@ -1,0 +1,109 @@
+name: Combine EPVS battery and inverter cards
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/combine-battery-inverter-cards.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Combine cards
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('src/EPVSCalculator.jsx')
+          text = path.read_text()
+
+          pattern = re.compile(
+              r'''(?P<indent>\s*)<div style=\{\{ display: "flex", flexDirection: "column", gap: 20 \}\}>\s*'
+              r'''\s*<Card\s*\n\s*title="Battery".*?\n\s*</Card>\s*\n\s*<Card\s*\n\s*title="Inverter".*?\n\s*</Card>\s*\n\s*<Card\s*\n\s*title="EPVS battery & inverter assumptions"''',
+              re.S,
+          )
+
+          replacement = '''
+          <Card
+            title="Battery & Inverter"
+            subtitle="Configure the proposed battery and inverter capacity."
+          >
+            <div style={styles.grid}>
+              <label style={styles.field}>
+                <span>Battery configuration</span>
+                <select
+                  value={data.batteryCapacity}
+                  onChange={(event) =>
+                    update(
+                      "batteryCapacity",
+                      event.target.value === ""
+                        ? ""
+                        : Number(event.target.value)
+                    )
+                  }
+                >
+                  <option value="">Select battery</option>
+                  <option value={0}>No battery</option>
+                  <option value={5.12}>1 × 5.12 kWh</option>
+                  <option value={10.24}>2 × 5.12 kWh</option>
+                  <option value={15.36}>3 × 5.12 kWh</option>
+                  <option value={9.4}>1 × 9.4 kWh</option>
+                  <option value={18.8}>2 × 9.4 kWh</option>
+                  <option value={28.2}>3 × 9.4 kWh</option>
+                </select>
+              </label>
+
+              <label style={styles.field}>
+                <span>Inverter capacity (kW)</span>
+                <select
+                  value={data.inverterCapacity}
+                  onChange={(event) =>
+                    update(
+                      "inverterCapacity",
+                      event.target.value === ""
+                        ? ""
+                        : Number(event.target.value)
+                    )
+                  }
+                >
+                  <option value="">Select inverter</option>
+                  <option value={3.7}>3.7 kW</option>
+                  <option value={6}>6 kW</option>
+                  <option value={7}>7 kW</option>
+                  <option value={10}>10 kW</option>
+                </select>
+              </label>
+            </div>
+          </Card>
+
+          <Card
+            title="EPVS battery & inverter assumptions"'''
+
+          new_text, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f'Expected one battery/inverter card block, found {count}')
+
+          path.write_text(new_text)
+          PY
+
+      - name: Verify JSX structure
+        run: |
+          test -f src/EPVSCalculator.jsx
+          grep -q 'title="Battery & Inverter"' src/EPVSCalculator.jsx
+          grep -q 'title="EPVS battery & inverter assumptions"' src/EPVSCalculator.jsx
+
+      - name: Commit change
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/EPVSCalculator.jsx
+          git diff --cached --quiet && exit 0
+          git commit -m 'Combine EPVS battery and inverter cards'
+          git push
