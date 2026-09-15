@@ -58,8 +58,63 @@
   font-size: 14px;
 }
 
+/* =========================================================
+   EXISTING SOLAR PV
+   ========================================================= */
+
+/* Make the section header the visual home of the on/off switch. */
+.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:nth-child(3) {
+  position: relative;
+  padding-right: 60px !important;
+}
+
+/* Put the existing-solar toggle into the header, rather than beside the inputs. */
+.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:nth-child(4) > div:first-child > label:first-child {
+  position: absolute;
+  top: -39px;
+  right: 14px;
+  z-index: 2;
+  display: block;
+  margin: 0;
+}
+
+.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:nth-child(4) > div:first-child > label:first-child > span {
+  display: none;
+}
+
+/* Two compact inputs on one row, matching the Electricity inputs. */
+.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:nth-child(4) > div:first-child {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  align-items: end;
+  position: relative;
+}
+
+.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:nth-child(4) > div:first-child > label:not(:first-child) {
+  min-width: 0;
+}
+
+.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:nth-child(4) > div:first-child input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 34px;
+  padding: 7px 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  color: #172554;
+  font-size: 12px;
+  outline: none;
+}
+
 @media (max-width: 900px) {
   .card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:nth-child(4) > div:first-child {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
