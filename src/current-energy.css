@@ -1,4 +1,4 @@
-/* Current Energy layout overrides */
+/* Current Energy layout */
 
 /* Keep the four electricity inputs on one clean row on desktop. */
 .card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child {
@@ -26,7 +26,7 @@
   outline: none;
 }
 
-/* Rename the card visually without changing the calculator logic. */
+/* Rename the card to Current Energy. */
 .card:first-of-type .card-head h2 {
   font-size: 0;
 }
@@ -36,7 +36,7 @@
   font-size: 15px;
 }
 
-/* The card title already establishes that these are current rates. */
+/* Remove "Current" from the three rate labels because the card title already says it. */
 .card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child > label:nth-child(2) span,
 .card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child > label:nth-child(3) span,
 .card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child > label:nth-child(4) span {
@@ -62,28 +62,19 @@
    EXISTING SOLAR PV
    ========================================================= */
 
-/* Make the section header the visual home of the on/off switch. */
-.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:nth-child(3) {
+/* The existing-solar header is the third child inside the card content wrapper. */
+.card:first-of-type > div:nth-child(2) > div:nth-child(3) {
   position: relative;
-  padding-right: 60px !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding-right: 64px !important;
+  box-sizing: border-box;
 }
 
-/* Put the existing-solar toggle into the header, rather than beside the inputs. */
-.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:nth-child(4) > div:first-child > label:first-child {
-  position: absolute;
-  top: -39px;
-  right: 14px;
-  z-index: 2;
-  display: block;
-  margin: 0;
-}
-
-.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:nth-child(4) > div:first-child > label:first-child > span {
-  display: none;
-}
-
-/* Two compact inputs on one row, matching the Electricity inputs. */
-.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:nth-child(4) > div:first-child {
+/* The toggle remains connected to the existingSolar state, but is visually placed in the header. */
+.card:first-of-type > div:nth-child(2) > div:nth-child(4) > div:first-child {
   display: grid !important;
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   gap: 12px !important;
@@ -91,11 +82,25 @@
   position: relative;
 }
 
-.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:nth-child(4) > div:first-child > label:not(:first-child) {
+.card:first-of-type > div:nth-child(2) > div:nth-child(4) > div:first-child > label:first-child {
+  position: absolute !important;
+  top: -42px;
+  right: 14px;
+  z-index: 5;
+  display: flex !important;
+  align-items: center;
+  margin: 0 !important;
+}
+
+.card:first-of-type > div:nth-child(2) > div:nth-child(4) > div:first-child > label:first-child > span {
+  display: none !important;
+}
+
+.card:first-of-type > div:nth-child(2) > div:nth-child(4) > div:first-child > label:not(:first-child) {
   min-width: 0;
 }
 
-.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:nth-child(4) > div:first-child input {
+.card:first-of-type > div:nth-child(2) > div:nth-child(4) > div:first-child > label:not(:first-child) input {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
@@ -114,7 +119,14 @@
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
-  .card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:nth-child(4) > div:first-child {
+  .card:first-of-type > div:nth-child(2) > div:nth-child(4) > div:first-child {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child,
+  .card:first-of-type > div:nth-child(2) > div:nth-child(4) > div:first-child {
+    grid-template-columns: 1fr !important;
   }
 }
