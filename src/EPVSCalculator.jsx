@@ -24,7 +24,7 @@ const money = (value) =>
 
 const createArray = () => ({
   panelWattage: 415,
-  panelCount: 10,
+  panelCount: 0,
   orientation: 0,
   pitch: 30,
   irradiance: 0,
@@ -40,8 +40,6 @@ const initial = {
 
   existingSolar: false,
   existingGeneration: 0,
-
-  numberOfArrays: 1,
 
   arrays: [
     createArray(),
@@ -667,12 +665,9 @@ export default function EPVSCalculator({
    */
 
   const results = useMemo(() => {
-    const numberOfArrays = Math.min(
-      3,
-      Math.max(1, Number(data.numberOfArrays || 1))
-    )
+    const numberOfArrays = 3
 
-    const activeArrays = data.arrays.slice(0, numberOfArrays)
+    const activeArrays = data.arrays.slice(0, 3)
 
     const calculatedArrays = activeArrays.map((array, index) => {
       const panelWattage = Number(array.panelWattage || 0)
@@ -1149,48 +1144,6 @@ export default function EPVSCalculator({
   title="Solar PV arrays"
   subtitle="Enter the EPVS information for each roof / array."
 >
-  {/* NUMBER OF ARRAYS */}
-
-  <div
-    style={{
-      marginBottom: 22,
-      padding: 16,
-      background: "#f8fafc",
-      border: "1px solid #e2e8f0",
-      borderRadius: 10,
-    }}
-  >
-    <div style={{ maxWidth: 350 }}>
-      <Input
-        label="Number of arrays"
-        type="number"
-        value={data.numberOfArrays}
-        onChange={(value) =>
-          update(
-            "numberOfArrays",
-            Math.min(
-              3,
-              Math.max(1, value || 1)
-            )
-          )
-        }
-        min={1}
-        max={3}
-        step={1}
-      />
-    </div>
-
-    <p
-      style={{
-        margin: "8px 0 0",
-        fontSize: 11,
-        color: "#64748b",
-      }}
-    >
-      Maximum 3 arrays. Add an array when the panels are
-      split across different roof orientations.
-    </p>
-  </div>
 
   {/* ARRAYS TABLE */}
 
@@ -1338,7 +1291,7 @@ export default function EPVSCalculator({
 
       <tbody>
         {data.arrays
-          .slice(0, data.numberOfArrays)
+          .slice(0, 3)
           .map((array, index) => {
             const calculated = results.arrays[index];
 
@@ -1373,7 +1326,7 @@ export default function EPVSCalculator({
                   style={{
                     padding: "10px",
                     borderBottom:
-                      index === data.numberOfArrays - 1
+                      index === 2
                         ? "none"
                         : "1px solid #e2e8f0",
                     fontWeight: 700,
@@ -1390,7 +1343,7 @@ export default function EPVSCalculator({
                   style={{
                     padding: "8px 6px",
                     borderBottom:
-                      index === data.numberOfArrays - 1
+                      index === 2
                         ? "none"
                         : "1px solid #e2e8f0",
                   }}
@@ -1416,7 +1369,7 @@ export default function EPVSCalculator({
                   style={{
                     padding: "8px 6px",
                     borderBottom:
-                      index === data.numberOfArrays - 1
+                      index === 2
                         ? "none"
                         : "1px solid #e2e8f0",
                   }}
@@ -1442,7 +1395,7 @@ export default function EPVSCalculator({
                   style={{
                     padding: "8px 6px",
                     borderBottom:
-                      index === data.numberOfArrays - 1
+                      index === 2
                         ? "none"
                         : "1px solid #e2e8f0",
                   }}
@@ -1469,7 +1422,7 @@ export default function EPVSCalculator({
                   style={{
                     padding: "8px 6px",
                     borderBottom:
-                      index === data.numberOfArrays - 1
+                      index === 2
                         ? "none"
                         : "1px solid #e2e8f0",
                   }}
@@ -1496,7 +1449,7 @@ export default function EPVSCalculator({
                   style={{
                     padding: "8px 6px",
                     borderBottom:
-                      index === data.numberOfArrays - 1
+                      index === 2
                         ? "none"
                         : "1px solid #e2e8f0",
                   }}
@@ -1523,7 +1476,7 @@ export default function EPVSCalculator({
                   style={{
                     padding: "8px 6px",
                     borderBottom:
-                      index === data.numberOfArrays - 1
+                      index === 2
                         ? "none"
                         : "1px solid #e2e8f0",
                   }}
@@ -1551,7 +1504,7 @@ export default function EPVSCalculator({
                   style={{
                     padding: "8px 10px",
                     borderBottom:
-                      index === data.numberOfArrays - 1
+                      index === 2
                         ? "none"
                         : "1px solid #e2e8f0",
                   }}
@@ -1571,7 +1524,7 @@ export default function EPVSCalculator({
                   style={{
                     padding: "8px 10px",
                     borderBottom:
-                      index === data.numberOfArrays - 1
+                      index === 2
                         ? "none"
                         : "1px solid #e2e8f0",
                   }}
