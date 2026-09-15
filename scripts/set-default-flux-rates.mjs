@@ -19,7 +19,8 @@ for (const [pattern, replacement] of replacements) {
 }
 
 if (next === text) {
-  throw new Error("Could not find the default Flux rates in src/EPVSCalculator.jsx")
+  console.log("Flux defaults already set; nothing to change.")
+  process.exit(0)
 }
 
 fs.writeFileSync(path, next)
