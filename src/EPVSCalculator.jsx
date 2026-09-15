@@ -88,6 +88,36 @@ const initial = {
   financeRate: 7.9,
 }
 
+\
+function OctopusLogo() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 48 48"
+      aria-hidden="true"
+      focusable="false"
+      style={{ display: "block", flexShrink: 0 }}
+    >
+      <path
+        d="M24 5c-8.3 0-15 6.7-15 15v6.5c0 2.4-1.5 4.2-3.5 5.5C3.8 33.2 4.2 37 7 38.5c2.1 1.1 4.3.3 5.4-1.3.1 3.3 2.1 5.8 5 5.8 2.1 0 3.8-1.1 4.8-2.9 0.5 2.3 1.9 3.9 3.8 3.9s3.3-1.6 3.8-3.9c1 1.8 2.7 2.9 4.8 2.9 2.9 0 4.9-2.5 5-5.8 1.1 1.6 3.3 2.4 5.4 1.3 2.8-1.5 3.2-5.3 1.5-6.5-2-1.3-3.5-3.1-3.5-5.5V20C39 11.7 32.3 5 24 5Z"
+        fill="#ff48d8"
+      />
+      <circle cx="18" cy="21" r="4.2" fill="#fff" />
+      <circle cx="30" cy="21" r="4.2" fill="#fff" />
+      <circle cx="18.8" cy="21" r="2.3" fill="#18005c" />
+      <circle cx="30.8" cy="21" r="2.3" fill="#18005c" />
+      <path
+        d="M19 29c2.8 2.8 7.2 2.8 10 0"
+        fill="none"
+        stroke="#18005c"
+        strokeWidth="2.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 function Input({
   label,
   value,
