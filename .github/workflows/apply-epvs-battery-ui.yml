@@ -13,18 +13,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Update EPVS UI
         run: |
           python - <<'PY'
           from pathlib import Path
+
           path = Path('src/EPVSCalculator.jsx')
           text = path.read_text()
 
-          start = text.find('            <Card\n              title="Battery"')
-          end_marker = '          </div>\n\n        {/* =================================================\n            TARIFF'
+          start_marker = '            <Card\n              title="Battery"'
+          end_marker = '            <Card\n              title="EPVS battery & inverter assumptions"'
+
+          start = text.find(start_marker)
           end = text.find(end_marker, start)
+
           if start == -1 or end == -1:
-              raise SystemExit('Battery/inverter UI block not found')
+              raise SystemExit('Battery/Inverter cards not found; no changes made')
 
           replacement = '''            <Card
               title="Battery & Inverter"
@@ -84,6 +89,11 @@ jobs:
           path.write_text(text)
           PY
 
+      - name: Verify build
+        run: |
+          npm ci
+          npm run build
+
       - name: Commit UI change
         run: |
           git config user.name "github-actions[bot]"
@@ -93,5 +103,5 @@ jobs:
             echo "No changes needed"
             exit 0
           fi
-          git commit -m "Simplify EPVS battery and inverter UI"
+          git commit -m "Combine EPVS battery and inverter cards"
           git push
