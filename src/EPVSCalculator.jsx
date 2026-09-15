@@ -1142,390 +1142,476 @@ export default function EPVSCalculator({
           </Card>
 
         {/* =================================================
-            SOLAR PV
-            ================================================= */}
+    SOLAR PV
+    ================================================= */}
 
-                  <Card
-            title="Solar PV arrays"
-            subtitle="Enter the EPVS information for each roof / array."
+<Card
+  title="Solar PV arrays"
+  subtitle="Enter the EPVS information for each roof / array."
+>
+  {/* NUMBER OF ARRAYS */}
+
+  <div
+    style={{
+      marginBottom: 22,
+      padding: 16,
+      background: "#f8fafc",
+      border: "1px solid #e2e8f0",
+      borderRadius: 10,
+    }}
+  >
+    <div style={{ maxWidth: 350 }}>
+      <Input
+        label="Number of arrays"
+        type="number"
+        value={data.numberOfArrays}
+        onChange={(value) =>
+          update(
+            "numberOfArrays",
+            Math.min(
+              3,
+              Math.max(
+                1,
+                value || 1
+              )
+            )
+          )
+        }
+        min={1}
+        max={3}
+        step={1}
+      />
+    </div>
+
+    <p
+      style={{
+        margin: "8px 0 0",
+        fontSize: 11,
+        color: "#64748b",
+      }}
+    >
+      Maximum 3 arrays. Add an array when the panels are
+      split across different roof orientations.
+    </p>
+  </div>
+
+  {/* ARRAYS TABLE */}
+
+  <div
+    style={{
+      width: "100%",
+      overflowX: "auto",
+      border: "1px solid #dbe3ec",
+      borderRadius: 10,
+    }}
+  >
+    <table
+      style={{
+        width: "100%",
+        minWidth: 1150,
+        borderCollapse: "collapse",
+        fontSize: 12,
+      }}
+    >
+      <thead>
+        <tr
+          style={{
+            background: "#f8fafc",
+            borderBottom: "1px solid #dbe3ec",
+          }}
+        >
+          <th
+            style={{
+              padding: "12px 10px",
+              textAlign: "left",
+              fontWeight: 700,
+              color: "#172554",
+              whiteSpace: "nowrap",
+            }}
           >
+            Array
+          </th>
 
-            {/* NUMBER OF ARRAYS */}
+          <th
+            style={{
+              padding: "12px 10px",
+              textAlign: "left",
+              fontWeight: 700,
+              color: "#172554",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Number of panels
+          </th>
 
-            <div
-              style={{
-                marginBottom: 22,
-                padding: 16,
-                background:
-                  "#f8fafc",
-                border:
-                  "1px solid #e2e8f0",
-                borderRadius: 10,
-              }}
-            >
-              <div
+          <th
+            style={{
+              padding: "12px 10px",
+              textAlign: "left",
+              fontWeight: 700,
+              color: "#172554",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Panel wattage (Wp)
+          </th>
+
+          <th
+            style={{
+              padding: "12px 10px",
+              textAlign: "left",
+              fontWeight: 700,
+              color: "#172554",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Degrees from south (°)
+          </th>
+
+          <th
+            style={{
+              padding: "12px 10px",
+              textAlign: "left",
+              fontWeight: 700,
+              color: "#172554",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Roof pitch (°)
+          </th>
+
+          <th
+            style={{
+              padding: "12px 10px",
+              textAlign: "left",
+              fontWeight: 700,
+              color: "#172554",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Irradiance / Kk
+          </th>
+
+          <th
+            style={{
+              padding: "12px 10px",
+              textAlign: "left",
+              fontWeight: 700,
+              color: "#172554",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Shade factor
+          </th>
+
+          <th
+            style={{
+              padding: "12px 10px",
+              textAlign: "right",
+              fontWeight: 700,
+              color: "#172554",
+              whiteSpace: "nowrap",
+            }}
+          >
+            System size
+          </th>
+
+          <th
+            style={{
+              padding: "12px 10px",
+              textAlign: "right",
+              fontWeight: 700,
+              color: "#172554",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Generation
+          </th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {data.arrays
+          .slice(0, data.numberOfArrays)
+          .map((array, index) => {
+            const calculated = results.arrays[index];
+
+            return (
+              <tr
+                key={index}
                 style={{
-                  maxWidth: 350,
+                  borderBottom:
+                    index === data.numberOfArrays - 1
+                      ? "none"
+                      : "1px solid #e2e8f0",
                 }}
               >
-                <Input
-                  label="Number of arrays"
-                  type="number"
-                  value={
-                    data.numberOfArrays
-                  }
-                  onChange={(
-                    value
-                  ) =>
-                    update(
-                      "numberOfArrays",
-                      Math.min(
-                        3,
-                        Math.max(
-                          1,
-                          value ||
-                            1
-                        )
-                      )
-                    )
-                  }
-                  min={1}
-                  max={3}
-                  step={1}
-                />
-              </div>
+                {/* ARRAY NAME */}
 
-              <p
-                style={{
-                  margin:
-                    "8px 0 0",
-                  fontSize: 11,
-                  color:
-                    "#64748b",
-                }}
-              >
-                Maximum 3 arrays.
-                Add an array when
-                the panels are split
-                across different
-                roof orientations.
-              </p>
-            </div>
-
-            {/* ARRAYS */}
-
-            <div
-              style={{
-                display:
-                  "flex",
-                flexDirection:
-                  "column",
-                gap: 18,
-              }}
-            >
-              {data.arrays
-                .slice(
-                  0,
-                  data.numberOfArrays
-                )
-                .map(
-                  (
-                    array,
-                    index
-                  ) => {
-                    const calculated =
-                      results.arrays[
-                        index
-                      ]
-
-                    return (
-                      <div
-                        key={
-                          index
-                        }
-                        style={{
-                          border:
-                            "1px solid #dbe3ec",
-                          borderRadius: 10,
-                          padding: 20,
-                        }}
-                      >
-                        <div
-                          style={{
-                            display:
-                              "flex",
-                            justifyContent:
-                              "space-between",
-                            alignItems:
-                              "center",
-                            marginBottom:
-                              18,
-                          }}
-                        >
-                          <div>
-                            <h3
-                              style={{
-                                margin: 0,
-                                fontSize: 15,
-                              }}
-                            >
-                              Array{" "}
-                              {index +
-                                1}
-                            </h3>
-
-                            <p
-                              style={{
-                                margin:
-                                  "4px 0 0",
-                                fontSize: 11,
-                                color:
-                                  "#64748b",
-                              }}
-                            >
-                              EPVS roof /
-                              array
-                            </p>
-                          </div>
-
-                          <div
-                            style={{
-                              background:
-                                "#e8f5eb",
-                              color:
-                                "#26783a",
-                              borderRadius:
-                                999,
-                              padding:
-                                "7px 10px",
-                              fontSize: 11,
-                              fontWeight:
-                                700,
-                            }}
-                          >
-                            {calculated
-                              ? `${Number(calculated.systemSize || 0).toFixed(
-                                  2
-                                )} kWp · ${Math.round(
-                                  calculated.generation
-                                ).toLocaleString(
-                                  "en-GB"
-                                )} kWh`
-                              : "—"}
-                          </div>
-                        </div>
-
-                        <div
-                          style={
-                            styles.grid
-                          }
-                        >
-                          <Input
-                            label="Number of panels"
-                            type="number"
-                            value={
-                              array.panelCount
-                            }
-                            onChange={(
-                              value
-                            ) =>
-                              updateArray(
-                                index,
-                                "panelCount",
-                                value
-                              )
-                            }
-                            min={1}
-                          />
-
-                          <Input
-                            label="Panel wattage (Wp)"
-                            type="number"
-                            value={
-                              array.panelWattage
-                            }
-                            onChange={(
-                              value
-                            ) =>
-                              updateArray(
-                                index,
-                                "panelWattage",
-                                value
-                              )
-                            }
-                            min={1}
-                          />
-
-                          <Input
-                            label="Degrees from south (°)"
-                            type="number"
-                            value={
-                              array.orientation
-                            }
-                            onChange={(
-                              value
-                            ) =>
-                              updateArray(
-                                index,
-                                "orientation",
-                                value
-                              )
-                            }
-                            min={-180}
-                            max={180}
-                          />
-
-                          <Input
-                            label="Roof pitch / inclination (°)"
-                            type="number"
-                            value={
-                              array.pitch
-                            }
-                            onChange={(
-                              value
-                            ) =>
-                              updateArray(
-                                index,
-                                "pitch",
-                                value
-                              )
-                            }
-                            min={0}
-                            max={90}
-                          />
-
-                          <Input
-                            label="Irradiance / Kk figure"
-                            type="number"
-                            value={
-                              array.irradiance
-                            }
-                            onChange={(
-                              value
-                            ) =>
-                              updateArray(
-                                index,
-                                "irradiance",
-                                value
-                              )
-                            }
-                            min={0}
-                            step={0.01}
-                          />
-
-                          <Input
-                            label="Shade factor (SF)"
-                            type="number"
-                            value={
-                              array.shading
-                            }
-                            onChange={(
-                              value
-                            ) =>
-                              updateArray(
-                                index,
-                                "shading",
-                                value
-                              )
-                            }
-                            min={0}
-                            max={1}
-                            step={0.01}
-                          />
-
-                          <Input
-                            label="Calculated system size (kWp)"
-                            type="number"
-                            value={
-                              calculated
-                                ? Number(calculated.systemSize || 0).toFixed(
-                                    2
-                                  )
-                                : "0.00"
-                            }
-                            disabled
-                          />
-
-                          <Input
-                            label="Calculated generation (kWh)"
-                            type="number"
-                            value={
-                              calculated
-                                ? Number(calculated.generation || 0).toFixed(
-                                    2
-                                  )
-                                : "0.00"
-                            }
-                            disabled
-                          />
-                        </div>
-                      </div>
-                    )
-                  }
-                )}
-            </div>
-
-            {/* TOTAL */}
-
-            <div
-              style={{
-                marginTop: 18,
-                padding: 18,
-                background:
-                  "#e8f5eb",
-                borderRadius: 10,
-                display:
-                  "flex",
-                justifyContent:
-                  "space-between",
-                alignItems:
-                  "center",
-              }}
-            >
-              <div>
-                <div
+                <td
                   style={{
-                    fontSize: 12,
+                    padding: "12px 10px",
                     fontWeight: 700,
-                    color:
-                      "#315b28",
+                    color: "#172554",
+                    whiteSpace: "nowrap",
+                    verticalAlign: "middle",
                   }}
                 >
-                  Total overall
-                  generation
-                </div>
+                  Array {index + 1}
+                </td>
 
-                <div
+                {/* NUMBER OF PANELS */}
+
+                <td
                   style={{
-                    marginTop: 4,
-                    fontSize: 11,
-                    color:
-                      "#4d7047",
+                    padding: "8px 10px",
+                    minWidth: 110,
                   }}
                 >
-                  {results.numberOfArrays}{" "}
-                  array
-                  {results.numberOfArrays !==
-                  1
-                    ? "s"
-                    : ""}
-                </div>
-              </div>
+                  <Input
+                    label=""
+                    type="number"
+                    value={array.panelCount}
+                    onChange={(value) =>
+                      updateArray(
+                        index,
+                        "panelCount",
+                        value
+                      )
+                    }
+                    min={1}
+                  />
+                </td>
 
-              <strong
-                style={{
-                  fontSize: 20,
-                  color:
-                    "#26783a",
-                }}
-              >
-                {Number(results.generation || 0).toFixed(
-                  2
-                )}{" "}
-                kWh
-              </strong>
-            </div>
-          </Card>
+                {/* PANEL WATTAGE */}
+
+                <td
+                  style={{
+                    padding: "8px 10px",
+                    minWidth: 130,
+                  }}
+                >
+                  <Input
+                    label=""
+                    type="number"
+                    value={array.panelWattage}
+                    onChange={(value) =>
+                      updateArray(
+                        index,
+                        "panelWattage",
+                        value
+                      )
+                    }
+                    min={1}
+                  />
+                </td>
+
+                {/* ORIENTATION */}
+
+                <td
+                  style={{
+                    padding: "8px 10px",
+                    minWidth: 150,
+                  }}
+                >
+                  <Input
+                    label=""
+                    type="number"
+                    value={array.orientation}
+                    onChange={(value) =>
+                      updateArray(
+                        index,
+                        "orientation",
+                        value
+                      )
+                    }
+                    min={-180}
+                    max={180}
+                  />
+                </td>
+
+                {/* PITCH */}
+
+                <td
+                  style={{
+                    padding: "8px 10px",
+                    minWidth: 110,
+                  }}
+                >
+                  <Input
+                    label=""
+                    type="number"
+                    value={array.pitch}
+                    onChange={(value) =>
+                      updateArray(
+                        index,
+                        "pitch",
+                        value
+                      )
+                    }
+                    min={0}
+                    max={90}
+                  />
+                </td>
+
+                {/* IRRADIANCE */}
+
+                <td
+                  style={{
+                    padding: "8px 10px",
+                    minWidth: 130,
+                  }}
+                >
+                  <Input
+                    label=""
+                    type="number"
+                    value={array.irradiance}
+                    onChange={(value) =>
+                      updateArray(
+                        index,
+                        "irradiance",
+                        value
+                      )
+                    }
+                    min={0}
+                    step={0.01}
+                  />
+                </td>
+
+                {/* SHADE FACTOR */}
+
+                <td
+                  style={{
+                    padding: "8px 10px",
+                    minWidth: 110,
+                  }}
+                >
+                  <Input
+                    label=""
+                    type="number"
+                    value={array.shading}
+                    onChange={(value) =>
+                      updateArray(
+                        index,
+                        "shading",
+                        value
+                      )
+                    }
+                    min={0}
+                    max={1}
+                    step={0.01}
+                  />
+                </td>
+
+                {/* CALCULATED SYSTEM SIZE */}
+
+                <td
+                  style={{
+                    padding: "8px 10px",
+                    textAlign: "right",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "inline-block",
+                      padding: "8px 10px",
+                      background: "#f0fdf4",
+                      border: "1px solid #bbf7d0",
+                      borderRadius: 8,
+                      fontWeight: 700,
+                      color: "#26783a",
+                    }}
+                  >
+                    {calculated
+                      ? `${Number(
+                          calculated.systemSize || 0
+                        ).toFixed(2)} kWp`
+                      : "0.00 kWp"}
+                  </div>
+                </td>
+
+                {/* CALCULATED GENERATION */}
+
+                <td
+                  style={{
+                    padding: "8px 10px",
+                    textAlign: "right",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "inline-block",
+                      padding: "8px 10px",
+                      background: "#f0fdf4",
+                      border: "1px solid #bbf7d0",
+                      borderRadius: 8,
+                      fontWeight: 700,
+                      color: "#26783a",
+                    }}
+                  >
+                    {calculated
+                      ? `${Math.round(
+                          calculated.generation || 0
+                        ).toLocaleString("en-GB")} kWh`
+                      : "0 kWh"}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+      </tbody>
+    </table>
+  </div>
+
+  {/* TOTAL */}
+
+  <div
+    style={{
+      marginTop: 18,
+      padding: 18,
+      background: "#e8f5eb",
+      borderRadius: 10,
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+    }}
+  >
+    <div>
+      <div
+        style={{
+          fontSize: 12,
+          fontWeight: 700,
+          color: "#315b28",
+        }}
+      >
+        Total overall generation
+      </div>
+
+      <div
+        style={{
+          marginTop: 4,
+          fontSize: 11,
+          color: "#4d7047",
+        }}
+      >
+        {results.numberOfArrays}{" "}
+        array
+        {results.numberOfArrays !== 1 ? "s" : ""}
+      </div>
+    </div>
+
+    <strong
+      style={{
+        fontSize: 20,
+        color: "#26783a",
+      }}
+    >
+      {Number(results.generation || 0).toFixed(2)} kWh
+    </strong>
+  </div>
+</Card>
 
         {/* =================================================
     BATTERY & INVERTER
