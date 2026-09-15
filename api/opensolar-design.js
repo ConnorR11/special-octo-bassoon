@@ -21,9 +21,6 @@ export default async function handler(req, res) {
   const url = new URL(
     `https://api.opensolar.com/api/orgs/${encodeURIComponent(orgId)}/projects/${encodeURIComponent(projectId)}/systems/details/`
   )
-
-  // We only need the system/module layout and MCS values. Keeping this request
-  // focused also follows OpenSolar's recommendation to minimise large responses.
   url.searchParams.set("include_parts", "mcs")
 
   try {
@@ -54,8 +51,6 @@ export default async function handler(req, res) {
 
     const systems = Array.isArray(payload?.systems) ? payload.systems : []
 
-    // OpenSolar exposes each roof/array as a module_group. If a project has
-    // multiple systems, flatten their groups into the calculator's three rows.
     const arrays = systems.flatMap((system) => {
       const shadeFactor = Number(system?.data?.mcs?.shadingFactor ?? 1)
       const specificYield = String(system?.data?.mcs?.mcsSpecificYieldBeforeShading || "")
@@ -82,14 +77,43 @@ export default async function handler(req, res) {
       )
     })
 
+    let systemImageUrl = ""
+    const firstSystem = systems.find((system) => system?.uuid)
+
+    if (firstSystem?.uuid) {
+      const imageUrl = new URL(
+        `https://api.opensolar.com/api/orgs/${encodeURIComponent(orgId)}/projects/${encodeURIComponent(projectId)}/systems/${encodeURIComponent(firstSystem.uuid)}/image/`
+      )
+      imageUrl.searchParams.set("width", "1200")
+      imageUrl.searchParams.set("height", "800")
+
+      try {
+        const imageResponse = await fetch(imageUrl, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "image/*",
+          },
+          redirect: "follow",
+        })
+
+        if (imageResponse.ok) {
+          systemImageUrl = imageResponse.url || ""
+        }
+      } catch (imageError) {
+        console.warn("OpenSolar system image lookup failed", imageError)
+      }
+    }
+
     return res.status(200).json({
       success: true,
       projectId,
       numberOfArrays: arrays.length,
       arrays: arrays.slice(0, 3),
       truncated: arrays.length > 3,
+      systemImageUrl,
       systems: systems.map((system) => ({
         id: system?.id,
+        uuid: system?.uuid,
         name: system?.name,
         kwStc: system?.kw_stc,
         totalModuleQuantity: system?.total_module_quantity,
