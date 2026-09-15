@@ -1364,10 +1364,11 @@ export default function EPVSCalculator({
               padding: "9px 8px",
               border: "1px solid #cbd5e1",
               borderRadius: 7,
-              background: "#ffffff",
-              color: "#172554",
+              background: "#f1f5f9",
+              color: "#475569",
               fontSize: 12,
               outline: "none",
+              cursor: "not-allowed",
             };
 
             const calculatedStyle = {
@@ -1416,13 +1417,8 @@ export default function EPVSCalculator({
                     value={array.panelCount}
                     min={1}
                     style={inputStyle}
-                    onChange={(event) =>
-                      updateArray(
-                        index,
-                        "panelCount",
-                        event.target.value
-                      )
-                    }
+                    readOnly
+                    aria-label="Panels"
                   />
                 </td>
 
@@ -1467,13 +1463,8 @@ export default function EPVSCalculator({
                     min={-180}
                     max={180}
                     style={inputStyle}
-                    onChange={(event) =>
-                      updateArray(
-                        index,
-                        "orientation",
-                        event.target.value
-                      )
-                    }
+                    readOnly
+                    aria-label="Orientation"
                   />
                 </td>
 
@@ -1494,13 +1485,8 @@ export default function EPVSCalculator({
                     min={0}
                     max={90}
                     style={inputStyle}
-                    onChange={(event) =>
-                      updateArray(
-                        index,
-                        "pitch",
-                        event.target.value
-                      )
-                    }
+                    readOnly
+                    aria-label="Pitch"
                   />
                 </td>
 
@@ -1546,13 +1532,8 @@ export default function EPVSCalculator({
                     max={1}
                     step={0.01}
                     style={inputStyle}
-                    onChange={(event) =>
-                      updateArray(
-                        index,
-                        "shading",
-                        event.target.value
-                      )
-                    }
+                    readOnly
+                    aria-label="Shade factor"
                   />
                 </td>
 
