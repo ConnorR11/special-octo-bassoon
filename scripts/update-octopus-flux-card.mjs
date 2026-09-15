@@ -3,8 +3,6 @@ import fs from "node:fs"
 const path = "src/EPVSCalculator.jsx"
 const text = fs.readFileSync(path, "utf8")
 
-// Find the Octopus card regardless of whether the source still has the old
-// title or has already been transformed by this build script.
 const oldTitle = text.indexOf('title="New Octopus Standard Flux"')
 const newTitle = text.indexOf('title="Get current Octopus Flux rates"')
 const titleIndex = newTitle !== -1 ? newTitle : oldTitle
@@ -27,8 +25,8 @@ next = next.replace(
   "\n"
 )
 
-// Put the retrieved date directly beside the Rate heading. This is intentionally
-// skipped on later builds once the heading is already transformed.
+// Put the retrieved date directly beside the Rate heading. The old script used
+// a non-existent capture group here, which caused the visible "undefined".
 const rateHeadingRegex = /(\n\s*)Rate(\n\s*)/
 const tableStart = next.indexOf('gridTemplateColumns: "1.2fr 1fr 1fr"')
 if (tableStart !== -1) {
@@ -42,12 +40,13 @@ if (tableStart !== -1) {
   }
 }
 
-// Close the styling wrapper immediately before this card closes. Do this only
-// when the wrapper is present and has not already been closed.
+// Ensure the styling wrapper is closed exactly once before the Card closes.
 const cardClose = next.indexOf("          </Card>", tableStart)
 if (cardClose !== -1) {
-  const beforeClose = next.slice(Math.max(0, cardClose - 80), cardClose)
-  if (!beforeClose.includes("</div>")) {
+  const cardSection = next.slice(tableStart, cardClose)
+  const alreadyClosed = /\n\s*<\/div>\s*$/.test(cardSection)
+
+  if (!alreadyClosed) {
     next = next.slice(0, cardClose) + "            </div>\n" + next.slice(cardClose)
   }
 }
