@@ -1717,7 +1717,7 @@ export default function EPVSCalculator({
                     whiteSpace: "nowrap",
                   }}
                 >
-                  <RotateCcw size={15} />
+                  <img src="/octopus-logo.svg" alt="" aria-hidden="true" style={{ width: 18, height: 18, objectFit: "contain" }} />
                   {loadingFluxRates ? "Getting rates…" : "Get current rates"}
                 </button>
               </div>
