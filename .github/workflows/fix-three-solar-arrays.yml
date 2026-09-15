@@ -1,0 +1,77 @@
+name: Set EPVS calculator to three fixed solar arrays
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update EPVS calculator
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('src/EPVSCalculator.jsx')
+          text = path.read_text()
+
+          # Keep three arrays in the data model and make each new array start with zero panels.
+          text = text.replace('panelCount: 10,', 'panelCount: 0,', 1)
+          text = text.replace('  numberOfArrays: 1,\n\n', '')
+
+          # Calculation: always calculate all three array slots.
+          text = re.sub(
+              r'const numberOfArrays = Math\.min\(\s*3,\s*Math\.max\(1, Number\(data\.numberOfArrays \|\| 1\)\)\s*\)',
+              'const numberOfArrays = 3',
+              text,
+          )
+          text = text.replace(
+              'const activeArrays = data.arrays.slice(0, numberOfArrays)',
+              'const activeArrays = data.arrays.slice(0, 3)',
+          )
+
+          # UI: remove the Number of arrays control and explanatory box.
+          text = re.sub(
+              r'\n\s*\{\/\* NUMBER OF ARRAYS \*\/\}\s*\n\s*<div\s*\n\s*style=\{\{\s*\n\s*marginBottom: 22,.*?\n\s*</div>\s*\n\s*\{\/\* ARRAYS TABLE \*\/\}',
+              '\n\n  {/* ARRAYS TABLE */}',
+              text,
+              count=1,
+              flags=re.S,
+          )
+
+          # Render exactly three rows.
+          text = text.replace(
+              '{data.arrays\n          .slice(0, data.numberOfArrays)',
+              '{data.arrays\n          .slice(0, 3)',
+          )
+
+          # Row borders should be based on the fixed three rows.
+          text = text.replace(
+              'index === data.numberOfArrays - 1',
+              'index === 2',
+          )
+
+          path.write_text(text)
+
+      - name: Verify build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Commit and remove workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/EPVSCalculator.jsx .github/workflows/fix-three-solar-arrays.yml
+          git rm .github/workflows/fix-three-solar-arrays.yml
+          git commit -m "Use three fixed solar array rows"
+          git push
