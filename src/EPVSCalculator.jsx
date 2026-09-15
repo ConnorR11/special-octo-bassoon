@@ -3,8 +3,6 @@ import { supabase } from "./lib/supabase"
 import { getIrradiance } from "./epvsIrradianceData"
 
 import {
-  ArrowLeft,
-  ArrowRight,
   RotateCcw,
   CheckCircle2,
   Zap,
@@ -23,14 +21,6 @@ const money = (value) =>
     maximumFractionDigits: 0,
   }).format(Number(value || 0))
 
-const steps = [
-  { title: "Energy", icon: Zap },
-  { title: "Solar PV", icon: Zap },
-  { title: "Battery & Inverter", icon: Battery },
-  { title: "Tariff", icon: PoundSterling },
-  { title: "Finance", icon: PoundSterling },
-  { title: "Results", icon: CheckCircle2 },
-]
 
 const createArray = () => ({
   panelWattage: 415,
@@ -519,7 +509,6 @@ export default function EPVSCalculator({
   appointment,
   onCalculationChange,
 }) {
-  const [step, setStep] = useState(0)
   const [loadingFluxRates, setLoadingFluxRates] = useState(false)
   const [fluxRateError, setFluxRateError] = useState("")
   const [savingCalculation, setSavingCalculation] = useState(false)
@@ -1049,35 +1038,8 @@ export default function EPVSCalculator({
     String(data.exportRate ?? "").trim() !== "" &&
     String(data.standingCharge ?? "").trim() !== ""
 
-  const next = () => {
-    if (step === 0 && !hasRequiredEnergyInputs) {
-      setSaveError(
-        "Please enter annual electricity consumption, current import rate, current export rate and current standing charge before continuing."
-      )
-      return
-    }
-
-    setSaveError("")
-    setStep((current) =>
-      Math.min(
-        steps.length - 1,
-        current + 1
-      )
-    )
-  }
-
-  const back = () => {
-    setStep((current) =>
-      Math.max(
-        0,
-        current - 1
-      )
-    )
-  }
-
   const reset = () => {
     setData(appointmentInitial)
-    setStep(0)
   }
 
   return (
@@ -1085,81 +1047,10 @@ export default function EPVSCalculator({
       <div style={styles.wrapper}>
 
         {/* =================================================
-            STEPPER
-            ================================================= */}
-
-        <div style={styles.stepper}>
-          {steps.map(
-            (item, index) => {
-              const Icon =
-                item.icon
-
-              const active =
-                index === step
-
-              const complete =
-                index < step
-
-              return (
-                <button
-                  key={
-                    item.title
-                  }
-                  type="button"
-                  onClick={() => {
-                    if (
-                      index <=
-                      step
-                    ) {
-                      setStep(
-                        index
-                      )
-                    }
-                  }}
-                  style={{
-                    ...styles.step,
-                    opacity:
-                      index >
-                      step
-                        ? 0.5
-                        : 1,
-                  }}
-                >
-                  <div
-                    style={{
-                      ...styles.stepCircle,
-                      background:
-                        active ||
-                        complete
-                          ? "#172554"
-                          : "#eef2f7",
-                      color:
-                        active ||
-                        complete
-                          ? "white"
-                          : "#64748b",
-                    }}
-                  >
-                    <Icon
-                      size={16}
-                    />
-                  </div>
-
-                  <span>
-                    {item.title}
-                  </span>
-                </button>
-              )
-            }
-          )}
-        </div>
-
-        {/* =================================================
             CUSTOMER & ENERGY
             ================================================= */}
 
-        {step === 0 && (
-          <Card
+                  <Card
             title="Energy"
             subtitle="Electricity usage and existing solar PV."
           >
@@ -1249,14 +1140,12 @@ export default function EPVSCalculator({
               </div>
             </div>
           </Card>
-        )}
 
         {/* =================================================
             SOLAR PV
             ================================================= */}
 
-        {step === 1 && (
-          <Card
+                  <Card
             title="Solar PV arrays"
             subtitle="Enter the EPVS information for each roof / array."
           >
@@ -1662,14 +1551,12 @@ export default function EPVSCalculator({
               <p style={{ margin: "10px 0 0", fontSize: 11, color: "#64748b" }}>Enter manufacturer figures where available. The projection is limited to the stated performance warranty.</p>
             </div>
           </Card>
-        )}
 
         {/* =================================================
             BATTERY & INVERTER
             ================================================= */}
 
-        {step === 2 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <Card
               title="Battery"
               subtitle="Configure the proposed battery."
@@ -1752,14 +1639,12 @@ export default function EPVSCalculator({
               </div>
             </Card>
           </div>
-        )}
 
         {/* =================================================
             TARIFF
             ================================================= */}
 
-        {step === 3 && (
-          <Card
+                  <Card
             title="New Octopus Standard Flux"
             subtitle="Enter the current Flux rates from the Octopus Energy website."
           >
@@ -2037,14 +1922,12 @@ export default function EPVSCalculator({
               </div>
             </div>
           </Card>
-        )}
 
         {/* =================================================
             FINANCE
             ================================================= */}
 
-        {step === 4 && (
-          <Card
+                  <Card
             title="Payment"
             subtitle="Choose how the customer is paying for the system."
           >
@@ -2207,14 +2090,12 @@ export default function EPVSCalculator({
               </div>
             </div>
           </Card>
-        )}
 
         {/* =================================================
             RESULTS
             ================================================= */}
 
-        {step === 5 && (
-          <>
+                  <>
             <Results
               results={results}
               data={data}
@@ -2230,7 +2111,6 @@ export default function EPVSCalculator({
               }
             />
           </>
-        )}
 
         {/* =================================================
             FOOTER
@@ -2279,50 +2159,6 @@ export default function EPVSCalculator({
             Reset
           </button>
 
-          <div
-            style={{
-              display:
-                "flex",
-              gap: 10,
-            }}
-          >
-            <button
-              type="button"
-              onClick={back}
-              disabled={
-                step === 0
-              }
-              style={{
-                ...styles.secondary,
-                opacity:
-                  step === 0
-                    ? 0.5
-                    : 1,
-              }}
-            >
-              <ArrowLeft
-                size={16}
-              />
-              Back
-            </button>
-
-            {step <
-              steps.length -
-                1 && (
-              <button
-                type="button"
-                onClick={next}
-                style={
-                  styles.primary
-                }
-              >
-                Next
-                <ArrowRight
-                  size={16}
-                />
-              </button>
-            )}
-          </div>
         </div>
       </div>
     </section>
