@@ -1,4 +1,4 @@
-name: Set EPVS panel specification
+name: Update Octopus Flux card layout
 
 on:
   push:
@@ -16,44 +16,95 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set panel wattage to 460W and lock the field
+      - name: Update Octopus Flux card header
+        shell: python
         run: |
-          python - <<'PY'
           from pathlib import Path
-          path = Path('src/EPVSCalculator.jsx')
+
+          path = Path("src/EPVSCalculator.jsx")
           text = path.read_text()
 
-          text = text.replace('panelWattage: 415,', 'panelWattage: 460,')
+          start_marker = '''                  <Card
+            title="New Octopus Standard Flux"
+            subtitle="Enter the current Flux rates from the Octopus Energy website."
+          >'''
 
-          old = '''                  <input
-                    type="number"
-                    value={array.panelWattage}
-                    min={1}
-                    style={inputStyle}
-                    onChange={(event) =>
-                      updateArray(
-                        index,
-                        "panelWattage",
-                        event.target.value
-                      )
-                    }
-                  />'''
+          end_marker = '''            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1.2fr 1fr 1fr",
+'''
 
-          new = '''                  <input
-                    type="number"
-                    value={460}
-                    min={1}
-                    style={{ ...inputStyle, background: "#f8fafc", color: "#64748b" }}
-                    disabled
-                    readOnly
-                  />'''
+          start = text.find(start_marker)
+          end = text.find(end_marker, start)
 
-          if old not in text:
-              raise SystemExit('Could not find the EPVS panel wattage input block.')
+          if start == -1 or end == -1:
+              raise SystemExit(f"Could not locate Octopus Flux card section: start={start}, end={end}")
 
-          text = text.replace(old, new)
+          new_header = '''                  <Card
+            title="Get current Octopus Flux rates"
+            subtitle="Uses the customer postcode to identify the electricity region and retrieves the current Flux import and export rates from Octopus."
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 16,
+                marginBottom: 12,
+                paddingBottom: 12,
+                borderBottom: "1px solid #e2e8f0",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#64748b",
+                }}
+              >
+                {data.fluxRatesRetrievedAt && (
+                  <span>
+                    Retrieved {new Date(data.fluxRatesRetrievedAt).toLocaleString("en-GB")}
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={getCurrentFluxRates}
+                disabled={loadingFluxRates}
+                style={{
+                  ...styles.primary,
+                  opacity: loadingFluxRates ? 0.65 : 1,
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                }}
+              >
+                <RotateCcw size={15} />
+                {loadingFluxRates ? "Getting rates…" : "Get current rates"}
+              </button>
+            </div>
+
+            {fluxRateError && (
+              <div
+                style={{
+                  marginBottom: 12,
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  background: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  color: "#b91c1c",
+                  fontSize: 12,
+                }}
+              >
+                {fluxRateError}
+              </div>
+            )}
+
+'''
+
+          text = text[:start] + new_header + text[end:]
           path.write_text(text)
-          PY
 
       - name: Verify build
         run: |
@@ -66,5 +117,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/EPVSCalculator.jsx .github/workflows/set-epvs-panel-spec.yml
           git rm .github/workflows/set-epvs-panel-spec.yml
-          git commit -m "Set EPVS panels to fixed 460W"
+          git commit -m "Update Octopus Flux card layout [automated]"
           git push
