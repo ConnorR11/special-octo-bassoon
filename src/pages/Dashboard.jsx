@@ -24,8 +24,8 @@ function Dashboard({ contracts, total, avg, upcoming, loading, setPage, setSelec
       </div>
 
       <div className="stats">
-        <Stat icon={<FileText size={20} />} label="Deals" value={contracts.length} />
-        <Stat icon={<PoundSterling size={20} />} label="Net Value" value={money(total)} />
+        <Stat icon={<FileText size={20} />} label="Deals (since 2018)" value={contracts.length} />
+        <Stat icon={<PoundSterling size={20} />} label="Net Value (since 2018)" value={money(total)} />
         <Stat icon={<PoundSterling size={20} />} label="Average contract" value={money(avg)} />
         <Stat icon={<CalendarDays size={20} />} label="Upcoming installations" value={upcoming} />
       </div>
