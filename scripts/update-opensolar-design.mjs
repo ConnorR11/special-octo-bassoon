@@ -52,8 +52,8 @@ if (cardHeaderPattern.test(next) && !next.includes("{action && <div")) {
 }
 
 const arrayTableMarker = `  {/* ARRAYS TABLE */}`
-if (next.includes(arrayTableMarker) && !next.includes("openSolarImageUrl &&")) {
-  const imageBlock = `  {openSolarImageUrl && (\n    <div\n      style={{\n        marginBottom: 16,\n        border: "1px solid #e2e8f0",\n        borderRadius: 12,\n        overflow: "hidden",\n        background: "#f8fafc",\n      }}\n    >\n      <img\n        src={openSolarImageUrl}\n        alt="OpenSolar system design"\n        style={{\n          display: "block",\n          width: "100%",\n          maxHeight: 520,\n          objectFit: "contain",\n          background: "#f8fafc",\n        }}\n      />\n    </div>\n  )}\n\n`
+if (next.includes(arrayTableMarker) && !next.includes("openSolarImageUrl || \"/opensolar-system-placeholder.svg\"")) {
+  const imageBlock = `  <div\n    style={{\n      marginBottom: 16,\n      border: "1px solid #e2e8f0",\n      borderRadius: 12,\n      overflow: "hidden",\n      background: "#f8fafc",\n    }}\n  >\n    <img\n      src={openSolarImageUrl || "/opensolar-system-placeholder.svg"}\n      alt={openSolarImageUrl ? "OpenSolar system design" : "OpenSolar system design placeholder"}\n      style={{\n        display: "block",\n        width: "100%",\n        maxHeight: 520,\n        objectFit: "contain",\n        background: "#f8fafc",\n      }}\n    />\n  </div>\n\n`
   next = next.replace(arrayTableMarker, imageBlock + arrayTableMarker)
 }
 
