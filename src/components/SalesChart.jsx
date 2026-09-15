@@ -126,6 +126,11 @@ function SalesChart({ contracts = [] }) {
         }
       })
 
+      row.total = products.reduce(
+        (sum, product) => sum + Number(row[product] || 0),
+        0
+      )
+
       return row
     })
   }, [contracts, products, years, currentMonth, currentDay])
@@ -135,23 +140,13 @@ function SalesChart({ contracts = [] }) {
 
   const yearTotal = useMemo(() => {
     const row = chartData.find((item) => item.year === currentYear)
-    if (!row) return 0
-
-    return products.reduce(
-      (sum, product) => sum + Number(row[product] || 0),
-      0
-    )
-  }, [chartData, products, currentYear])
+    return row?.total || 0
+  }, [chartData, currentYear])
 
   const previousYearTotal = useMemo(() => {
     const row = chartData.find((item) => item.year === previousYear)
-    if (!row) return 0
-
-    return products.reduce(
-      (sum, product) => sum + Number(row[product] || 0),
-      0
-    )
-  }, [chartData, products, previousYear])
+    return row?.total || 0
+  }, [chartData, previousYear])
 
   const yearDifference = yearTotal - previousYearTotal
   const yearDifferencePercent = previousYearTotal > 0
@@ -159,13 +154,10 @@ function SalesChart({ contracts = [] }) {
     : null
 
   const yAxisTicks = useMemo(() => {
-    const maxValue = chartData.reduce((max, row) => {
-      const total = products.reduce(
-        (sum, product) => sum + Number(row[product] || 0),
-        0
-      )
-      return Math.max(max, total)
-    }, 0)
+    const maxValue = chartData.reduce(
+      (max, row) => Math.max(max, Number(row.total || 0)),
+      0
+    )
 
     const step = 2500000
     const maxTick = Math.max(step, Math.ceil(maxValue / step) * step)
@@ -174,7 +166,7 @@ function SalesChart({ contracts = [] }) {
       { length: maxTick / step + 1 },
       (_, index) => index * step
     )
-  }, [chartData, products])
+  }, [chartData])
 
   if (!years.length) {
     return (
@@ -215,23 +207,11 @@ function SalesChart({ contracts = [] }) {
         <ResponsiveContainer width="100%" height={340}>
           <BarChart
             data={chartData}
-            margin={{
-              top: 10,
-              right: 10,
-              left: 0,
-              bottom: 5,
-            }}
+            margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
           >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              vertical={false}
-            />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
 
-            <XAxis
-              dataKey="year"
-              axisLine={false}
-              tickLine={false}
-            />
+            <XAxis dataKey="year" axisLine={false} tickLine={false} />
 
             <YAxis
               axisLine={false}
@@ -248,18 +228,75 @@ function SalesChart({ contracts = [] }) {
             />
 
             <Tooltip
-              formatter={(value, name) => [money(value), name]}
               labelFormatter={(label) => `${label} YTD`}
+              formatter={(value, name) => [money(value), name]}
+              content={({ active, payload, label }) => {
+                if (!active || !payload?.length) return null
+
+                const row = payload[0]?.payload
+
+                return (
+                  <div
+                    style={{
+                      background: "#fff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 8,
+                      padding: "10px 12px",
+                      boxShadow: "0 4px 12px rgba(15,23,42,.10)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 700,
+                        marginBottom: 7,
+                        color: "#0f172a",
+                      }}
+                    >
+                      {label} YTD
+                    </div>
+
+                    {payload.map((entry) => (
+                      <div
+                        key={entry.dataKey}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 20,
+                          fontSize: 12,
+                          lineHeight: 1.7,
+                        }}
+                      >
+                        <span style={{ color: "#64748b" }}>
+                          {entry.name}
+                        </span>
+                        <strong>{money(entry.value)}</strong>
+                      </div>
+                    ))}
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 20,
+                        marginTop: 6,
+                        paddingTop: 7,
+                        borderTop: "1px solid #e2e8f0",
+                        fontSize: 12,
+                      }}
+                    >
+                      <strong>Total</strong>
+                      <strong>{money(row?.total || 0)}</strong>
+                    </div>
+                  </div>
+                )
+              }}
             />
 
             <Legend
               verticalAlign="bottom"
               height={36}
               iconType="circle"
-              wrapperStyle={{
-                fontSize: 12,
-                paddingTop: 8,
-              }}
+              wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
             />
 
             {products.map((product, index) => (
@@ -269,11 +306,7 @@ function SalesChart({ contracts = [] }) {
                 name={product}
                 stackId="sales"
                 fill={productColour(product, index)}
-                radius={
-                  index === products.length - 1
-                    ? [4, 4, 0, 0]
-                    : [0, 0, 0, 0]
-                }
+                radius={index === products.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
               />
             ))}
           </BarChart>
