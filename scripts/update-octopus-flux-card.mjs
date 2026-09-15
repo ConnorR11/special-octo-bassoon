@@ -27,9 +27,8 @@ next = next.replace(
   "\n"
 )
 
-// Replace the rate heading with "Rate — Retrieved <date>". The previous
-// version accidentally used a non-existent capture group, which produced
-// the visible "undefined" text.
+// Put the retrieved date directly beside the Rate heading. This is intentionally
+// skipped on later builds once the heading is already transformed.
 const rateHeadingRegex = /(\n\s*)Rate(\n\s*)/
 const tableStart = next.indexOf('gridTemplateColumns: "1.2fr 1fr 1fr"')
 if (tableStart !== -1) {
@@ -40,6 +39,16 @@ if (tableStart !== -1) {
     const absolute = tableStart + match.index
     const replacementHeading = `${match[1]}<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%" }}>\n                  <span>Rate</span>\n                  {data.fluxRatesRetrievedAt && (\n                    <span style={{ fontSize: 10, fontWeight: 500, color: "#64748b", whiteSpace: "nowrap" }}>\n                      Retrieved {new Date(data.fluxRatesRetrievedAt).toLocaleString("en-GB")}\n                    </span>\n                  )}\n                </div>${match[2]}`
     next = next.slice(0, absolute) + next.slice(absolute).replace(match[0], replacementHeading)
+  }
+}
+
+// Close the styling wrapper immediately before this card closes. Do this only
+// when the wrapper is present and has not already been closed.
+const cardClose = next.indexOf("          </Card>", tableStart)
+if (cardClose !== -1) {
+  const beforeClose = next.slice(Math.max(0, cardClose - 80), cardClose)
+  if (!beforeClose.includes("</div>")) {
+    next = next.slice(0, cardClose) + "            </div>\n" + next.slice(cardClose)
   }
 }
 
