@@ -9,7 +9,6 @@ import {
 
 import Stat from "../components/Stat"
 import SalesChart from "../components/SalesChart"
-import YearOnYearSalesChart from "../components/YearOnYearSalesChart"
 import SalesBreakdown from "../components/SalesBreakdown"
 import { formatDate, getInitials, money } from "../utils/formatters"
 
@@ -31,7 +30,6 @@ function Dashboard({ contracts, total, avg, upcoming, loading, setPage, setSelec
       </div>
 
       <SalesChart contracts={contracts} />
-      <YearOnYearSalesChart contracts={contracts} />
 
       <div className="grid2">
         <div className="card">
