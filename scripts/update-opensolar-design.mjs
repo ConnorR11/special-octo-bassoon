@@ -24,6 +24,16 @@ if (!next.includes("const handleOpenSolarDesignLoaded")) {
   next = next.replace(marker, handler + marker)
 }
 
+// Keep an existing generated handler in sync if it predates irradiance support.
+if (next.includes("const handleOpenSolarDesignLoaded") && !next.includes("irradiance: Number(importedArray.irradiance")) {
+  const oldLine = `          pitch: Number(importedArray.pitch || 0),\n          shading: Number(importedArray.shading ?? 1),`
+  const newLines = `          pitch: Number(importedArray.pitch || 0),\n          irradiance: Number(importedArray.irradiance || 0),\n          shading: Number(importedArray.shading ?? 1),`
+  if (!next.includes(oldLine)) {
+    throw new Error("Could not locate the existing OpenSolar array mapping")
+  }
+  next = next.replace(oldLine, newLines)
+}
+
 const solarCardPattern = /<Card\n  title="Solar PV arrays"\n  subtitle="Enter the EPVS information for each roof \/ array\."\n>\n/
 if (solarCardPattern.test(next) && !next.includes("projectId={appointment?.open_solar_id}")) {
   next = next.replace(
