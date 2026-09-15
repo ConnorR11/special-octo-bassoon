@@ -1,0 +1,49 @@
+name: Add Octopus logo to Flux button
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add logo and update button
+        env:
+          LOGO_B64: "__LOGO_B64__"
+        run: |
+          mkdir -p public
+          python - <<'PY'
+          import os, base64
+          from pathlib import Path
+
+          b64 = os.environ["LOGO_B64"]
+          svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600"><image href="data:image/png;base64,{b64}" width="600" height="600" preserveAspectRatio="xMidYMid meet"/></svg>'''
+          Path("public/octopus-logo.svg").write_text(svg)
+
+          path = Path("src/EPVSCalculator.jsx")
+          text = path.read_text()
+          old = '<RotateCcw size={15} />'
+          new = '<img src="/octopus-logo.svg" alt="" aria-hidden="true" style={{ width: 18, height: 18, objectFit: "contain" }} />'
+          if old not in text:
+              raise SystemExit("Could not find Flux button loading icon")
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/EPVSCalculator.jsx public/octopus-logo.svg
+          git commit -m "Use Octopus logo on Flux rates button"
+          git push
+
+      - name: Remove temporary workflow
+        run: |
+          git rm .github/workflows/add-octopus-button-logo.yml
+          git commit -m "Remove temporary Octopus logo workflow"
+          git push
