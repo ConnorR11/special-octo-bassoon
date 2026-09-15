@@ -1,0 +1,199 @@
+name: Update EPVS arrays table
+
+on:
+  push:
+    paths:
+      - '.github/epvs-arrays-table-trigger.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace array cards with table
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('src/EPVSCalculator.jsx')
+          text = path.read_text()
+
+          start_marker = '            {/* ARRAYS */}'
+          end_marker = '            {/* TOTAL */}'
+          start = text.find(start_marker)
+          end = text.find(end_marker, start)
+
+          if start == -1 or end == -1:
+              raise SystemExit(f'Could not locate array section: start={start}, end={end}')
+
+          replacement = r'''            {/* ARRAYS */}
+
+            <div
+              style={{
+                overflowX: "auto",
+                border: "1px solid #dbe3ec",
+                borderRadius: 10,
+              }}
+            >
+              <table
+                style={{
+                  width: "100%",
+                  minWidth: 1050,
+                  borderCollapse: "collapse",
+                  fontSize: 12,
+                }}
+              >
+                <thead>
+                  <tr style={{ background: "#f8fafc" }}>
+                    {[
+                      "Array",
+                      "Panels",
+                      "Panel Wp",
+                      "Orientation (°)",
+                      "Pitch (°)",
+                      "Irradiance / Kk",
+                      "Shade factor",
+                      "System size (kWp)",
+                      "Generation (kWh)",
+                    ].map((heading) => (
+                      <th
+                        key={heading}
+                        style={{
+                          padding: "11px 10px",
+                          textAlign: "left",
+                          borderBottom: "1px solid #dbe3ec",
+                          color: "#475569",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {heading}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {data.arrays
+                    .slice(0, data.numberOfArrays)
+                    .map((array, index) => {
+                      const calculated = results.arrays[index]
+
+                      return (
+                        <tr key={index}>
+                          <td
+                            style={{
+                              padding: 10,
+                              borderBottom: "1px solid #e2e8f0",
+                              fontWeight: 700,
+                              color: "#172554",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            Array {index + 1}
+                          </td>
+
+                          <td style={{ padding: 8, borderBottom: "1px solid #e2e8f0" }}>
+                            <Input
+                              label=""
+                              type="number"
+                              value={array.panelCount}
+                              onChange={(value) => updateArray(index, "panelCount", value)}
+                              min={1}
+                            />
+                          </td>
+
+                          <td style={{ padding: 8, borderBottom: "1px solid #e2e8f0" }}>
+                            <Input
+                              label=""
+                              type="number"
+                              value={array.panelWattage}
+                              onChange={(value) => updateArray(index, "panelWattage", value)}
+                              min={1}
+                            />
+                          </td>
+
+                          <td style={{ padding: 8, borderBottom: "1px solid #e2e8f0" }}>
+                            <Input
+                              label=""
+                              type="number"
+                              value={array.orientation}
+                              onChange={(value) => updateArray(index, "orientation", value)}
+                              min={-180}
+                              max={180}
+                            />
+                          </td>
+
+                          <td style={{ padding: 8, borderBottom: "1px solid #e2e8f0" }}>
+                            <Input
+                              label=""
+                              type="number"
+                              value={array.pitch}
+                              onChange={(value) => updateArray(index, "pitch", value)}
+                              min={0}
+                              max={90}
+                            />
+                          </td>
+
+                          <td style={{ padding: 8, borderBottom: "1px solid #e2e8f0" }}>
+                            <Input
+                              label=""
+                              type="number"
+                              value={array.irradiance}
+                              onChange={(value) => updateArray(index, "irradiance", value)}
+                              min={0}
+                              step={0.01}
+                            />
+                          </td>
+
+                          <td style={{ padding: 8, borderBottom: "1px solid #e2e8f0" }}>
+                            <Input
+                              label=""
+                              type="number"
+                              value={array.shading}
+                              onChange={(value) => updateArray(index, "shading", value)}
+                              min={0}
+                              max={1}
+                              step={0.01}
+                            />
+                          </td>
+
+                          <td style={{ padding: 8, borderBottom: "1px solid #e2e8f0" }}>
+                            <Input
+                              label=""
+                              type="number"
+                              value={calculated ? Number(calculated.systemSize || 0).toFixed(2) : "0.00"}
+                              disabled
+                            />
+                          </td>
+
+                          <td style={{ padding: 8, borderBottom: "1px solid #e2e8f0" }}>
+                            <Input
+                              label=""
+                              type="number"
+                              value={calculated ? Number(calculated.generation || 0).toFixed(2) : "0.00"}
+                              disabled
+                            />
+                          </td>
+                        </tr>
+                      )
+                    })}
+                </tbody>
+              </table>
+            </div>
+
+'''
+
+          path.write_text(text[:start] + replacement + text[end:])
+      - name: Commit change and clean up
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm .github/workflows/epvs-arrays-table.yml .github/epvs-arrays-table-trigger.txt
+          git add src/EPVSCalculator.jsx .github/workflows/epvs-arrays-table.yml .github/epvs-arrays-table-trigger.txt
+          git commit -m 'Display EPVS solar arrays as a table'
+          git push
