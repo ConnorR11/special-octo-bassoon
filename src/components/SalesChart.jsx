@@ -74,7 +74,9 @@ function SalesChart({ contracts = [] }) {
       }
     })
 
-    return Array.from(yearSet).sort((a, b) => a - b)
+    return Array.from(yearSet)
+      .filter((year) => year >= 2020)
+      .sort((a, b) => a - b)
   }, [contracts])
 
   const products = useMemo(() => {
