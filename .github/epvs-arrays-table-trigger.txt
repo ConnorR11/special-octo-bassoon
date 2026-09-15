@@ -1,1 +1,1 @@
-Trigger EPVS arrays table update.
+Tidy EPVS solar generation total.
