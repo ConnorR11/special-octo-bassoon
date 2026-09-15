@@ -1,0 +1,65 @@
+name: Fix battery and inverter dropdown styling
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix-styling:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update dropdown styling
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("src/EPVSCalculator.jsx")
+          text = path.read_text()
+
+          style = '''
+        style={{
+          width: "100%",
+          boxSizing: "border-box",
+          padding: "9px 8px",
+          border: "1px solid #cbd5e1",
+          borderRadius: 7,
+          background: "#ffffff",
+          color: "#172554",
+          fontSize: 12,
+          outline: "none",
+        }}'''
+
+          battery_marker = '      <select\n        value={data.batteryCapacity}'
+          inverter_marker = '      <select\n        value={data.inverterCapacity}'
+
+          for marker in (battery_marker, inverter_marker):
+              start = text.find(marker)
+              if start == -1:
+                  raise SystemExit(f"Could not find select: {marker}")
+
+              select_end = text.find('      >', start)
+              if select_end == -1:
+                  raise SystemExit("Could not find select opening tag end")
+
+              opening = text[start:select_end]
+              if 'style={{' not in opening:
+                  opening = opening + style
+                  text = text[:start] + opening + text[select_end:]
+
+          path.write_text(text)
+      - name: Commit styling change and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/fix-battery-dropdown-style.yml
+          git add src/EPVSCalculator.jsx .github/workflows/fix-battery-dropdown-style.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "Match battery and inverter dropdowns to PV inputs"
+          git push
