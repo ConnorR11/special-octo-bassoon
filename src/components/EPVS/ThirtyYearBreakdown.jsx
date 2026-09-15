@@ -11,22 +11,16 @@ function batteryBenefitForDisplay(row) {
 }
 
 function exportBenefitForDisplay(row) {
-  // EPVS Standard Flux EXPORT is the residual solar export only.
-  // Peak force-charge export is a separate calculation and must not be
-  // included in the EXPORT column.
+  // Use the export benefit produced by the main EPVS calculation.
+  // This includes both residual export and the separate peak export benefit,
+  // which is what the EPVS calculator's 30-year EXPORT total displays.
+  if (Object.prototype.hasOwnProperty.call(row || {}, "exportBenefit")) {
+    return safeNumber(row.exportBenefit)
+  }
   if (Object.prototype.hasOwnProperty.call(row || {}, "residualExportBenefit")) {
     return safeNumber(row.residualExportBenefit)
   }
-
-  const totalExportKwh = safeNumber(row?.exportKwh)
-  const peakExportKwh = safeNumber(row?.peakExportCapacity)
-  const residualExportKwh = Math.max(0, totalExportKwh - peakExportKwh)
-  const exportRatePence = safeNumber(row?.fluxDayExportYear ?? row?.exportRateYear)
-
-  // Existing-system export is not present in the projection row, so the
-  // residual calculation above is the correct value for the current CRM
-  // Standard Flux projection and matches the EPVS export column.
-  return residualExportKwh * (exportRatePence / 100)
+  return safeNumber(row?.exportBenefit)
 }
 
 export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
@@ -37,7 +31,6 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
     { key: "averageInflation", label: "7.6% inflation", data: scenarios.averageInflation },
   ].filter((scenario) => scenario.data), [scenarios])
 
-  // Default to the 7.6% inflation scenario.
   const [selectedKey, setSelectedKey] = useState("averageInflation")
 
   if (!thirtyYearProjection || !scenarioList.length) return null
