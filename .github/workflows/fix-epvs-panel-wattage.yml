@@ -1,0 +1,69 @@
+name: Fix EPVS panel wattage
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fix panel wattage and lock field
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('src/EPVSCalculator.jsx')
+          text = path.read_text()
+
+          text = text.replace('panelWattage: 415,', 'panelWattage: 460,')
+
+          old = '''                  <input
+                    type="number"
+                    value={array.panelWattage}
+                    min={1}
+                    style={inputStyle}
+                    onChange={(event) =>
+                      updateArray(
+                        index,
+                        "panelWattage",
+                        event.target.value
+                      )
+                    }
+                  />'''
+
+          new = '''                  <input
+                    type="number"
+                    value={460}
+                    min={1}
+                    style={inputStyle}
+                    readOnly
+                    aria-label="Panel wattage (Wp)"
+                  />'''
+
+          if old not in text:
+              raise SystemExit('Could not find the panel wattage input block.')
+
+          text = text.replace(old, new, 1)
+          path.write_text(text)
+
+      - name: Verify build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Commit and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/EPVSCalculator.jsx .github/workflows/fix-epvs-panel-wattage.yml
+          git rm .github/workflows/fix-epvs-panel-wattage.yml
+          git commit -m "Lock EPVS panel wattage at 460W"
+          git push
