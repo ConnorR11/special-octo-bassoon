@@ -119,3 +119,5 @@ jobs:
           git rm .github/workflows/tidy-current-energy.yml
           git commit -m 'Update Octopus Flux card layout [automated]'
           git push
+
+# Triggered from the main branch to apply the one-time UI change.
