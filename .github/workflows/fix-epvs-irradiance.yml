@@ -65,3 +65,4 @@ jobs:
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Convert EPVS calculator to single-page layout"
           git push
+# temporary trigger
