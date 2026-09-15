@@ -1,0 +1,66 @@
+name: Remove annual savings breakdown
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  remove:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Remove component and references
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          component = Path("src/components/EPVS/AnnualBreakdown.jsx")
+          if component.exists():
+              component.unlink()
+
+          calculator = Path("src/EPVSCalculator.jsx")
+          text = calculator.read_text()
+          text = re.sub(r'^import AnnualBreakdown from ".*AnnualBreakdown"\\s*\\n', '', text, flags=re.MULTILINE)
+          text = re.sub(r'\\n\\s*<AnnualBreakdown\\s+results=\\{results\\}\\s*/>\\s*\\n', '\\n', text)
+          calculator.write_text(text)
+
+          css = Path("src/index.css")
+          text = css.read_text()
+          # Remove standalone CSS rules whose selector belongs only to AnnualBreakdown.
+          text = re.sub(r'(?m)^\\s*\\.annual-breakdown[^\\{]*\\{[^\\}]*\\}\\s*', '', text)
+          css.write_text(text)
+          PY
+
+      - name: Verify no AnnualBreakdown references remain
+        run: |
+          if grep -Rni --exclude-dir=.git --exclude-dir=node_modules "AnnualBreakdown\|annual-breakdown" src; then
+            echo "Annual savings breakdown references still remain."
+            exit 1
+          fi
+
+      - name: Verify build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Remove annual savings breakdown component"
+          git push origin main
