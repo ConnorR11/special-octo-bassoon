@@ -130,6 +130,24 @@ function SalesChart({ contracts = [] }) {
     }, 0)
   }, [chartData, products])
 
+  const yAxisTicks = useMemo(() => {
+    const maxValue = chartData.reduce((max, row) => {
+      const total = products.reduce(
+        (sum, product) => sum + Number(row[product] || 0),
+        0
+      )
+      return Math.max(max, total)
+    }, 0)
+
+    const step = 2500000
+    const maxTick = Math.max(step, Math.ceil(maxValue / step) * step)
+
+    return Array.from(
+      { length: maxTick / step + 1 },
+      (_, index) => index * step
+    )
+  }, [chartData, products])
+
   if (!years.length) {
     return (
       <div className="card sales-chart">
@@ -182,6 +200,8 @@ function SalesChart({ contracts = [] }) {
             <YAxis
               axisLine={false}
               tickLine={false}
+              ticks={yAxisTicks}
+              domain={[0, yAxisTicks[yAxisTicks.length - 1]]}
               tickFormatter={(value) =>
                 value >= 1000000
                   ? `£${(value / 1000000).toFixed(1)}m`
