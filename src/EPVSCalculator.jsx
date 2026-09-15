@@ -88,7 +88,6 @@ const initial = {
   financeRate: 7.9,
 }
 
-\
 function OctopusLogo() {
   return (
     <svg
@@ -1747,7 +1746,7 @@ export default function EPVSCalculator({
                     whiteSpace: "nowrap",
                   }}
                 >
-                  <img src="/octopus-logo.svg" alt="" aria-hidden="true" style={{ width: 20, height: 20, objectFit: "contain", display: "block" }} />
+                  <OctopusLogo />
                   {loadingFluxRates ? "Getting rates…" : "Get current rates"}
                 </button>
               </div>
