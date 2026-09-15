@@ -1610,28 +1610,6 @@ export default function EPVSCalculator({
   </div>
 </Card>
 
-            <Card
-              title="EPVS battery & inverter assumptions"
-              subtitle="Manufacturer figures are preferred; EPVS defaults are shown where manufacturer data is unavailable."
-            >
-              <div style={styles.grid}>
-                <Input label="Battery DoD (%)" type="number" value={data.batteryDoD} onChange={(value) => update("batteryDoD", value)} min={0} max={100} step={1} />
-                <Input label="Battery round-trip efficiency (%)" type="number" value={data.batteryRTE} onChange={(value) => update("batteryRTE", value)} min={0} max={100} step={1} />
-                <Input label="Battery degradation (% / year)" type="number" value={data.batteryDegradation} onChange={(value) => update("batteryDegradation", value)} min={0} max={20} step={0.1} />
-                <Input label="Battery warranty (years)" type="number" value={data.batteryWarrantyYears} onChange={(value) => update("batteryWarrantyYears", value)} min={1} max={30} step={1} />
-                <Input label="Inverter EU efficiency (%)" type="number" value={data.inverterEuEfficiency} onChange={(value) => update("inverterEuEfficiency", value)} min={0} max={100} step={0.1} />
-                <label style={styles.field}>
-                  <span>EPVS SAP region</span>
-                  <select value={data.sapZone || inferSapZone(data.postcode)} onChange={(event) => update("sapZone", event.target.value)}>
-                    {SAP_ZONES.map((zone) => (
-                      <option key={zone.code} value={zone.code}>Zone {zone.code} - {zone.name} ({zone.sunshine.toFixed(2)} h/day)</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            </Card>
-          </div>
-
         {/* =================================================
             TARIFF
             ================================================= */}
