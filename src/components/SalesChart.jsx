@@ -197,9 +197,6 @@ function SalesChart({ contracts = [] }) {
               ? ` (${yearDifferencePercent >= 0 ? "+" : ""}${yearDifferencePercent.toFixed(1)}%)`
               : ""}
           </b>
-          <small>
-            {money(yearTotal)} vs {money(previousYearTotal)}
-          </small>
         </div>
       </div>
 
