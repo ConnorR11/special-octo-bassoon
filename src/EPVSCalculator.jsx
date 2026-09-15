@@ -1525,31 +1525,6 @@ export default function EPVSCalculator({
                 kWh
               </strong>
             </div>
-
-            <div style={{ marginTop: 18, padding: 16, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10 }}>
-              <h3 style={{ margin: "0 0 12px", fontSize: 14, color: "#172554" }}>EPVS panel assumptions</h3>
-              <div style={styles.grid}>
-                <Input
-                  label="Annual panel degradation (%)"
-                  type="number"
-                  value={data.solarDegradation}
-                  onChange={(value) => update("solarDegradation", value)}
-                  min={0}
-                  max={10}
-                  step={0.01}
-                />
-                <Input
-                  label="Panel performance warranty (years)"
-                  type="number"
-                  value={data.solarWarrantyYears}
-                  onChange={(value) => update("solarWarrantyYears", value)}
-                  min={1}
-                  max={40}
-                  step={1}
-                />
-              </div>
-              <p style={{ margin: "10px 0 0", fontSize: 11, color: "#64748b" }}>Enter manufacturer figures where available. The projection is limited to the stated performance warranty.</p>
-            </div>
           </Card>
 
         {/* =================================================
