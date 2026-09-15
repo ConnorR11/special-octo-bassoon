@@ -1049,11 +1049,29 @@ export default function EPVSCalculator({
             title="Energy"
             subtitle="Electricity usage and existing solar PV."
           >
-            <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-              <div>
-                <h3 style={{ margin: "0 0 14px", fontSize: 15, color: "#172554" }}>
-                  Electricity
-                </h3>
+            <div
+              style={{
+                border: "1px solid #dbe3ec",
+                borderRadius: 10,
+                overflow: "hidden",
+                background: "#ffffff",
+              }}
+            >
+              {/* ELECTRICITY */}
+              <div
+                style={{
+                  padding: "12px 14px",
+                  background: "#f8fafc",
+                  borderBottom: "1px solid #dbe3ec",
+                  color: "#172554",
+                  fontSize: 13,
+                  fontWeight: 700,
+                }}
+              >
+                Electricity
+              </div>
+
+              <div style={{ padding: 14 }}>
                 <div style={styles.grid}>
                   <Input
                     label="Annual electricity consumption (kWh)"
@@ -1092,8 +1110,12 @@ export default function EPVSCalculator({
                   <div
                     style={{
                       marginTop: 10,
-                      fontSize: 12,
-                      color: "#b45309",
+                      padding: "8px 10px",
+                      borderRadius: 7,
+                      background: "#fffbeb",
+                      border: "1px solid #fde68a",
+                      fontSize: 11,
+                      color: "#92400e",
                     }}
                   >
                     Enter all four electricity values before continuing to the calculation.
@@ -1101,10 +1123,22 @@ export default function EPVSCalculator({
                 )}
               </div>
 
-              <div>
-                <h3 style={{ margin: "0 0 14px", fontSize: 15, color: "#172554" }}>
-                  Existing solar PV
-                </h3>
+              {/* EXISTING SOLAR */}
+              <div
+                style={{
+                  padding: "12px 14px",
+                  background: "#f8fafc",
+                  borderTop: "1px solid #dbe3ec",
+                  borderBottom: "1px solid #dbe3ec",
+                  color: "#172554",
+                  fontSize: 13,
+                  fontWeight: 700,
+                }}
+              >
+                Existing solar PV
+              </div>
+
+              <div style={{ padding: 14 }}>
                 <div style={styles.grid}>
                   <Toggle
                     label="Existing solar PV"
