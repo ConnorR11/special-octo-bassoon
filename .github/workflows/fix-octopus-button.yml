@@ -16,7 +16,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Replace button icon
+      - name: Replace the actual Get current rates button icon
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -24,11 +24,20 @@ jobs:
           path = Path('src/EPVSCalculator.jsx')
           text = path.read_text()
 
-          old_icon = '<RotateCcw size={15} />'
-          new_icon = '<OctopusLogo />'
+          # The previous automation accidentally targeted a different RotateCcw icon.
+          # This targets the exact image currently rendered inside the Get current rates button.
+          old_target = '<img src="/octopus-logo.svg" alt="" aria-hidden="true" style={{ width: 20, height: 20, objectFit: "contain", display: "block" }} />'
+          new_target = '<OctopusLogo />'
 
-          component = r'''\
-          function OctopusLogo() {
+          if old_target in text:
+              text = text.replace(old_target, new_target, 1)
+
+          # Remove the accidental line-continuation character introduced by the earlier patch.
+          text = text.replace('\n\\\nfunction OctopusLogo()', '\nfunction OctopusLogo()')
+
+          # If the logo component is somehow missing, add it immediately before Input.
+          if '<OctopusLogo />' in text and 'function OctopusLogo()' not in text:
+              component = '''function OctopusLogo() {
             return (
               <svg
                 width="18"
@@ -58,14 +67,7 @@ jobs:
           }
 
           '''
-
-          if new_icon not in text and old_icon in text:
-              text = text.replace(old_icon, new_icon, 1)
-
-          if 'function OctopusLogo()' not in text:
               marker = 'function Input({'
-              if marker not in text:
-                  raise SystemExit('Could not find Input component insertion point')
               text = text.replace(marker, component + marker, 1)
 
           path.write_text(text)
@@ -76,5 +78,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/EPVSCalculator.jsx
-          git diff --cached --quiet || git commit -m "Use Octopus logo on Flux rates button"
+          git diff --cached --quiet || git commit -m "Fix Octopus logo on Get current rates button"
           git push
