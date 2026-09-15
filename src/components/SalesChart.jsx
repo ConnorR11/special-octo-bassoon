@@ -24,18 +24,34 @@ const PRODUCT_COLOURS = [
   "#0f766e",
 ]
 
+const PRODUCT_ORDER = [
+  "Windows",
+  "Solar",
+  "Air Source Heat Pump",
+  "Unassigned",
+]
+
 function normaliseProduct(value) {
   const product = String(value ?? "").trim()
-  return product || "Unassigned"
+  if (!product) return "Unassigned"
+
+  const lower = product.toLowerCase()
+  if (lower.includes("window")) return "Windows"
+  if (lower.includes("solar")) return "Solar"
+  if (lower === "ashp" || lower.includes("air source heat pump") || lower.includes("heat pump")) {
+    return "Air Source Heat Pump"
+  }
+
+  return product
 }
 
 function productColour(product, index) {
   const name = product.toLowerCase()
 
   if (name === "unassigned") return "#94a3b8"
-  if (name.includes("window")) return "#1683c7"
-  if (name.includes("solar")) return "#d86bdc"
-  if (name.includes("ashp") || name.includes("heat pump")) return "#f59e0b"
+  if (name === "windows") return "#1683c7"
+  if (name === "solar") return "#d86bdc"
+  if (name === "air source heat pump") return "#f59e0b"
   if (name === "other") return "#15803d"
 
   return PRODUCT_COLOURS[index % PRODUCT_COLOURS.length]
@@ -45,8 +61,6 @@ function SalesChart({ contracts = [] }) {
   const today = new Date()
   const currentMonth = today.getMonth()
   const currentDay = today.getDate()
-  const currentYear = today.getFullYear()
-  const previousYear = currentYear - 1
 
   const years = useMemo(() => {
     const yearSet = new Set()
@@ -71,22 +85,16 @@ function SalesChart({ contracts = [] }) {
     })
 
     return Array.from(productSet).sort((a, b) => {
-      if (a === "Unassigned") return 1
-      if (b === "Unassigned") return -1
+      const aIndex = PRODUCT_ORDER.indexOf(a)
+      const bIndex = PRODUCT_ORDER.indexOf(b)
+
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex
+      if (aIndex !== -1) return -1
+      if (bIndex !== -1) return 1
       return a.localeCompare(b)
     })
   }, [contracts])
 
-  /*
-   * YEAR-TO-DATE SALES
-   *
-   * Every year is measured over the same point in the year.
-   * For example, if today is 15 September:
-   * 2026 = 1 Jan → 15 Sep 2026
-   * 2025 = 1 Jan → 15 Sep 2025
-   * 2024 = 1 Jan → 15 Sep 2024
-   * etc.
-   */
   const chartData = useMemo(() => {
     return years.map((year) => {
       const row = { year }
@@ -104,7 +112,6 @@ function SalesChart({ contracts = [] }) {
         const month = date.getMonth()
         const day = date.getDate()
 
-        // Only include sales up to today's month/day for every year.
         if (month > currentMonth) return
         if (month === currentMonth && day > currentDay) return
 
@@ -112,6 +119,7 @@ function SalesChart({ contracts = [] }) {
         const value = Number(contract.net_value || 0)
 
         if (Number.isFinite(value)) {
+          if (row[product] === undefined) row[product] = 0
           row[product] += value
         }
       })
@@ -120,23 +128,32 @@ function SalesChart({ contracts = [] }) {
     })
   }, [contracts, products, years, currentMonth, currentDay])
 
-  const yearTotals = useMemo(() => {
-    return chartData.reduce((totals, row) => {
-      const total = products.reduce(
-        (sum, product) => sum + Number(row[product] || 0),
-        0
-      )
+  const currentYear = today.getFullYear()
+  const previousYear = currentYear - 1
 
-      totals[row.year] = total
-      return totals
-    }, {})
-  }, [chartData, products])
+  const yearTotal = useMemo(() => {
+    const row = chartData.find((item) => item.year === currentYear)
+    if (!row) return 0
 
-  const currentYearValue = yearTotals[currentYear] || 0
-  const previousYearValue = yearTotals[previousYear] || 0
-  const yearOnYearDifference = currentYearValue - previousYearValue
-  const yearOnYearPercent = previousYearValue > 0
-    ? (yearOnYearDifference / previousYearValue) * 100
+    return products.reduce(
+      (sum, product) => sum + Number(row[product] || 0),
+      0
+    )
+  }, [chartData, products, currentYear])
+
+  const previousYearTotal = useMemo(() => {
+    const row = chartData.find((item) => item.year === previousYear)
+    if (!row) return 0
+
+    return products.reduce(
+      (sum, product) => sum + Number(row[product] || 0),
+      0
+    )
+  }, [chartData, products, previousYear])
+
+  const yearDifference = yearTotal - previousYearTotal
+  const yearDifferencePercent = previousYearTotal > 0
+    ? (yearDifference / previousYearTotal) * 100
     : null
 
   const yAxisTicks = useMemo(() => {
@@ -170,11 +187,6 @@ function SalesChart({ contracts = [] }) {
     )
   }
 
-  const comparisonValue = `${yearOnYearDifference >= 0 ? "+" : ""}${money(yearOnYearDifference)}`
-  const comparisonPercent = yearOnYearPercent === null
-    ? "—"
-    : `${yearOnYearPercent >= 0 ? "+" : ""}${yearOnYearPercent.toFixed(1)}%`
-
   return (
     <div className="card sales-chart">
       <div className="card-head">
@@ -184,8 +196,16 @@ function SalesChart({ contracts = [] }) {
         </div>
 
         <div className="chart-total">
-          <span>{currentYear} vs {previousYear}</span>
-          <b>{comparisonValue} ({comparisonPercent})</b>
+          <span>{currentYear} vs {previousYear} (YTD)</span>
+          <b>
+            {yearDifference >= 0 ? "+" : ""}{money(yearDifference)}
+            {yearDifferencePercent !== null
+              ? ` (${yearDifferencePercent >= 0 ? "+" : ""}${yearDifferencePercent.toFixed(1)}%)`
+              : ""}
+          </b>
+          <small>
+            {money(yearTotal)} vs {money(previousYearTotal)}
+          </small>
         </div>
       </div>
 
