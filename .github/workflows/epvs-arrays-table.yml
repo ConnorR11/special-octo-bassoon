@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Replace array cards with table
+      - name: Tidy EPVS arrays table
         shell: python
         run: |
           from pathlib import Path
@@ -183,17 +183,73 @@ jobs:
                       )
                     })}
                 </tbody>
+
+                <tfoot>
+                  <tr
+                    style={{
+                      background: "#e8f5eb",
+                      borderTop: "2px solid #bbf7d0",
+                    }}
+                  >
+                    <td
+                      colSpan={7}
+                      style={{
+                        padding: "14px 10px",
+                        fontWeight: 700,
+                        color: "#315b28",
+                        fontSize: 12,
+                      }}
+                    >
+                      <div>Total overall generation</div>
+                      <div
+                        style={{
+                          marginTop: 3,
+                          fontSize: 11,
+                          fontWeight: 400,
+                          color: "#4d7047",
+                        }}
+                      >
+                        {results.numberOfArrays}{" "}
+                        array
+                        {results.numberOfArrays !== 1 ? "s" : ""}
+                      </div>
+                    </td>
+
+                    <td
+                      colSpan={2}
+                      style={{
+                        padding: "14px 10px",
+                        textAlign: "right",
+                        fontSize: 20,
+                        fontWeight: 700,
+                        color: "#26783a",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {Number(results.generation || 0).toFixed(2)} kWh
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
 
 '''
 
-          path.write_text(text[:start] + replacement + text[end:])
+          text = text[:start] + replacement + text[end:]
+
+          total_start = text.find(end_marker)
+          card_end = text.find('          </Card>', total_start)
+
+          if total_start == -1 or card_end == -1:
+              raise SystemExit(f'Could not locate old total card: total={total_start}, card_end={card_end}')
+
+          text = text[:total_start] + text[card_end:]
+          path.write_text(text)
       - name: Commit change and clean up
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           rm .github/workflows/epvs-arrays-table.yml .github/epvs-arrays-table-trigger.txt
           git add src/EPVSCalculator.jsx .github/workflows/epvs-arrays-table.yml .github/epvs-arrays-table-trigger.txt
-          git commit -m 'Display EPVS solar arrays as a table'
+          git commit -m 'Tidy EPVS solar generation total'
           git push
