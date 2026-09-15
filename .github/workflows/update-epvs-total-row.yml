@@ -1,0 +1,130 @@
+name: Expand EPVS total row across table columns
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  update-total-row:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update EPVS total row
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('src/EPVSCalculator.jsx')
+          text = path.read_text()
+
+          start = text.find('  <tfoot>')
+          end = text.find('  </tfoot>', start)
+          if start == -1 or end == -1:
+              raise SystemExit('Could not find the EPVS table footer.')
+
+          end += len('  </tfoot>')
+
+          footer = '''  <tfoot>
+    <tr
+      style={{
+        background: "#e8f5eb",
+        color: "#315b28",
+        borderTop: "2px solid #bbdfc1",
+      }}
+    >
+      <td
+        style={{
+          padding: "14px 10px",
+          fontWeight: 800,
+          whiteSpace: "nowrap",
+        }}
+      >
+        Total
+      </td>
+
+      <td
+        style={{
+          padding: "14px 10px",
+          fontWeight: 800,
+          whiteSpace: "nowrap",
+        }}
+      >
+        {data.arrays
+          .slice(0, data.numberOfArrays)
+          .reduce((total, array) => total + Number(array.panelCount || 0), 0)}
+      </td>
+
+      <td
+        style={{
+          padding: "14px 10px",
+          fontWeight: 800,
+          whiteSpace: "nowrap",
+        }}
+      >
+        {data.arrays
+          .slice(0, data.numberOfArrays)
+          .reduce(
+            (total, array) =>
+              total + Number(array.panelCount || 0) * Number(array.panelWattage || 0),
+            0
+          )} Wp
+      </td>
+
+      <td style={{ padding: "14px 10px", color: "#64748b" }}>—</td>
+      <td style={{ padding: "14px 10px", color: "#64748b" }}>—</td>
+      <td style={{ padding: "14px 10px", color: "#64748b" }}>—</td>
+      <td style={{ padding: "14px 10px", color: "#64748b" }}>—</td>
+
+      <td
+        style={{
+          padding: "14px 10px",
+          textAlign: "right",
+          whiteSpace: "nowrap",
+          fontWeight: 800,
+          color: "#26783a",
+        }}
+      >
+        {Number(results.arrays?.reduce(
+          (total, array) => total + Number(array?.systemSize || 0),
+          0
+        ) || 0).toFixed(2)} kWp
+      </td>
+
+      <td
+        style={{
+          padding: "14px 10px",
+          textAlign: "right",
+          whiteSpace: "nowrap",
+          fontSize: 16,
+          fontWeight: 800,
+          color: "#26783a",
+        }}
+      >
+        {Number(results.generation || 0).toFixed(2)} kWh
+      </td>
+    </tr>
+  </tfoot>'''
+
+          path.write_text(text[:start] + footer + text[end:])
+
+      - name: Verify build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Commit and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/EPVSCalculator.jsx .github/workflows/update-epvs-total-row.yml
+          git rm .github/workflows/update-epvs-total-row.yml
+          git commit -m "Expand EPVS total row across table columns"
+          git push
