@@ -42,6 +42,10 @@ function productColour(product, index) {
 }
 
 function SalesChart({ contracts = [] }) {
+  const today = new Date()
+  const currentMonth = today.getMonth()
+  const currentDay = today.getDate()
+
   const years = useMemo(() => {
     const yearSet = new Set()
 
@@ -71,6 +75,19 @@ function SalesChart({ contracts = [] }) {
     })
   }, [contracts])
 
+  /*
+   * YEAR-TO-DATE SALES
+   *
+   * Every year is measured over the same point in the year.
+   * For example, if today is 15 September:
+   * 2026 = 1 Jan → 15 Sep 2026
+   * 2025 = 1 Jan → 15 Sep 2025
+   * 2024 = 1 Jan → 15 Sep 2024
+   * etc.
+   *
+   * This prevents complete historical years being compared
+   * against only part of the current year.
+   */
   const chartData = useMemo(() => {
     return years.map((year) => {
       const row = { year }
@@ -85,18 +102,31 @@ function SalesChart({ contracts = [] }) {
         const date = new Date(`${contract.sale_date}T00:00:00`)
         if (Number.isNaN(date.getTime()) || date.getFullYear() !== year) return
 
+        const month = date.getMonth()
+        const day = date.getDate()
+
+        // Only include sales up to today's month/day for every year.
+        if (month > currentMonth) return
+        if (month === currentMonth && day > currentDay) return
+
         const product = normaliseProduct(contract.product)
         const value = Number(contract.net_value || 0)
-        row[product] += Number.isFinite(value) ? value : 0
+
+        if (Number.isFinite(value)) {
+          row[product] += value
+        }
       })
 
       return row
     })
-  }, [contracts, products, years])
+  }, [contracts, products, years, currentMonth, currentDay])
 
   const yearlyTotals = useMemo(() => {
     return chartData.reduce((sum, row) => {
-      return sum + products.reduce((productSum, product) => productSum + Number(row[product] || 0), 0)
+      return sum + products.reduce(
+        (productSum, product) => productSum + Number(row[product] || 0),
+        0
+      )
     }, 0)
   }, [chartData, products])
 
@@ -118,11 +148,11 @@ function SalesChart({ contracts = [] }) {
       <div className="card-head">
         <div>
           <h2>Sales Performance</h2>
-          <p>Annual net sales value by product</p>
+          <p>Year-to-date net sales value by product</p>
         </div>
 
         <div className="chart-total">
-          <span>Total net value</span>
+          <span>Total YTD across all years</span>
           <b>{money(yearlyTotals)}</b>
         </div>
       </div>
@@ -153,18 +183,17 @@ function SalesChart({ contracts = [] }) {
               axisLine={false}
               tickLine={false}
               tickFormatter={(value) =>
-                value >= 1000
-                  ? `£${Math.round(value / 1000)}k`
-                  : `£${value}`
+                value >= 1000000
+                  ? `£${(value / 1000000).toFixed(1)}m`
+                  : value >= 1000
+                    ? `£${Math.round(value / 1000)}k`
+                    : `£${value}`
               }
             />
 
             <Tooltip
-              formatter={(value, name) => [
-                money(value),
-                name,
-              ]}
-              labelFormatter={(label) => `${label}`}
+              formatter={(value, name) => [money(value), name]}
+              labelFormatter={(label) => `${label} YTD`}
             />
 
             <Legend
