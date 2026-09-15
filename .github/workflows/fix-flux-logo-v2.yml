@@ -1,0 +1,47 @@
+name: Use Octopus logo asset on Flux button
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Replace Flux button icon
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path("src/EPVSCalculator.jsx")
+          text = path.read_text(encoding="utf-8")
+          start = text.find('                  <svg width="20" height="20" viewBox="0 0 600 600"')
+          end = text.find('                  {loadingFluxRates ? "Getting rates…" : "Get current rates"}', start)
+          if start == -1 or end == -1:
+              raise SystemExit("Flux button SVG block not found")
+          replacement = '                  <img src="/octopus-logo.svg" alt="" aria-hidden="true" style={{ width: 20, height: 20, objectFit: "contain", display: "block" }} />\n'
+          path.write_text(text[:start] + replacement + text[end:], encoding="utf-8")
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/EPVSCalculator.jsx
+          git diff --cached --quiet && exit 0
+          git commit -m "Use Octopus logo asset on Flux button"
+          git push origin main
+
+      - name: Remove one-time workflow
+        if: always()
+        run: |
+          git rm -f .github/workflows/fix-flux-logo-v2.yml || true
+          git diff --cached --quiet && exit 0
+          git commit -m "Remove one-time Flux logo workflow"
+          git push origin main
