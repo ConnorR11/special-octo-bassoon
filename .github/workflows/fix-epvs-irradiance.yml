@@ -1,71 +1,49 @@
-name: Convert EPVS calculator to single page
+name: Fix EPVS irradiance auto population
 
 on:
-  pull_request:
-    types: [opened, synchronize]
+  push:
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
   patch:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-      - name: Convert layout
+      - name: Patch EPVS calculator
         run: |
           python - <<'PY'
           from pathlib import Path
 
           path = Path('src/EPVSCalculator.jsx')
           text = path.read_text()
-          text = text.replace('  ArrowLeft,\n  ArrowRight,\n', '')
-          steps_start = text.find('const steps = [')
-          if steps_start != -1:
-              steps_end = text.find(']\n\nconst createArray', steps_start)
-              if steps_end == -1: raise SystemExit('steps end not found')
-              text = text[:steps_start] + text[steps_end + 2:]
-          text = text.replace('  const [step, setStep] = useState(0)\n', '')
-          next_start = text.find('  const next = () => {')
-          if next_start != -1:
-              return_start = text.find('  return (', next_start)
-              if return_start == -1: raise SystemExit('return not found')
-              text = text[:next_start] + '  const reset = () => {\n    setData(appointmentInitial)\n  }\n\n' + text[return_start:]
-          stepper_start = text.find('        {/* =================================================\n            STEPPER')
-          if stepper_start != -1:
-              energy = text.find('        {/* =================================================\n            CUSTOMER & ENERGY', stepper_start)
-              if energy == -1: raise SystemExit('energy marker not found')
-              text = text[:stepper_start] + text[energy:]
-          sections = ['CUSTOMER & ENERGY','SOLAR PV','BATTERY & INVERTER','TARIFF','FINANCE','RESULTS']
-          for index, title in enumerate(sections):
-              opening = f'        {{step === {index} && (\n'
-              text = text.replace(opening, '        ', 1)
-              next_title = sections[index + 1] if index < 5 else 'FOOTER'
-              marker = f'        {{/* =================================================\n            {next_title}'
-              marker_pos = text.find(marker)
-              if marker_pos == -1: raise SystemExit(f'next marker not found: {title}')
-              before = text[:marker_pos]
-              close_pos = before.rfind('        )}\n')
-              if close_pos == -1: raise SystemExit(f'wrapper close not found: {title}')
-              text = before[:close_pos] + before[close_pos + len('        )}\n'):] + text[marker_pos:]
-          back_pos = text.find('              onClick={back}')
-          if back_pos != -1:
-              nav_start = text.rfind('          <div', 0, back_pos)
-              if nav_start == -1: raise SystemExit('navigation start not found')
-              nav_end = text.find('          </div>\n        </div>', back_pos)
-              if nav_end == -1: raise SystemExit('navigation end not found')
-              nav_end += len('          </div>\n')
-              text = text[:nav_start] + text[nav_end:]
+
+          import_line = 'import { getIrradiance } from "./epvsIrradianceData"\n'
+          if import_line not in text:
+              text = text.replace('import { supabase } from "./lib/supabase"\n', 'import { supabase } from "./lib/supabase"\n' + import_line, 1)
+
+          marker = '  const updateArray = (\n'
+          effect = '''  const arrayGeometryKey = data.arrays\n    .map((array) => `${array.pitch ?? ""}:${array.orientation ?? ""}`)\n    .join("|")\n\n  // Automatically populate EPVS irradiance from postcode/SAP zone, pitch and orientation.\n  useEffect(() => {\n    const zone = getSapZone(data.postcode, data.sapZone)\n    const zoneCode = zone?.code\n\n    if (!zoneCode) return\n\n    const updatedArrays = data.arrays.map((array) => {\n      const irradiance = getIrradiance(\n        zoneCode,\n        Number(array.pitch || 0),\n        Number(array.orientation || 0)\n      )\n\n      return {\n        ...array,\n        irradiance,\n      }\n    })\n\n    const changed = updatedArrays.some(\n      (array, index) => Number(data.arrays[index]?.irradiance || 0) !== Number(array.irradiance || 0)\n    )\n\n    if (changed) {\n      setData((current) => ({\n        ...current,\n        arrays: updatedArrays,\n      }))\n    }\n  }, [data.postcode, data.sapZone, arrayGeometryKey])\n\n'''
+
+          if 'const arrayGeometryKey = data.arrays' not in text:
+              if marker not in text:
+                  raise SystemExit('Could not find updateArray marker')
+              text = text.replace(marker, effect + marker, 1)
+
           path.write_text(text)
           PY
-      - name: Commit layout change
+
+      - name: Commit patch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/EPVSCalculator.jsx
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m "Convert EPVS calculator to single-page layout"
+          if git diff --cached --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git commit -m "Fix automatic EPVS irradiance population"
           git push
