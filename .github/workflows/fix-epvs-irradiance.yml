@@ -19,7 +19,6 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
 
           path = Path('src/EPVSCalculator.jsx')
           text = path.read_text()
@@ -52,9 +51,14 @@ jobs:
               close_pos = before.rfind('        )}\n')
               if close_pos == -1: raise SystemExit(f'wrapper close not found: {title}')
               text = before[:close_pos] + before[close_pos + len('        )}\n'):] + text[marker_pos:]
-          nav = re.compile(r'          <div\n            style=\{\{\n              display:\n                "flex",\n              gap: 10,\n            \}\}\n          >\n\n            <button\n              type="button"\n              onClick=\{back\}[\s\S]*?          </div>\n')
-          text, count = nav.subn('', text, count=1)
-          if count == 0 and 'onClick={back}' in text: raise SystemExit('navigation not removed')
+          back_pos = text.find('              onClick={back}')
+          if back_pos != -1:
+              nav_start = text.rfind('          <div', 0, back_pos)
+              if nav_start == -1: raise SystemExit('navigation start not found')
+              nav_end = text.find('          </div>\n        </div>', back_pos)
+              if nav_end == -1: raise SystemExit('navigation end not found')
+              nav_end += len('          </div>\n')
+              text = text[:nav_start] + text[nav_end:]
           path.write_text(text)
           PY
       - name: Commit layout change
