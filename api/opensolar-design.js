@@ -8,98 +8,204 @@ export default async function handler(req, res) {
   if (!projectId) return res.status(400).json({ success: false, error: "OpenSolar project ID is required." })
   if (!orgId || !token) return res.status(500).json({ success: false, error: "OpenSolar API credentials are not configured on Vercel." })
 
-  const headers = { Authorization: `Bearer ${token}`, Accept: "application/json" }
-  const base = `https://api.opensolar.com/api/orgs/${encodeURIComponent(orgId)}`
+  const url = new URL(`https://api.opensolar.com/api/orgs/${encodeURIComponent(orgId)}/projects/${encodeURIComponent(projectId)}/systems/details/`)
+  url.searchParams.set("include_parts", "mcs")
+
+  const apiHeaders = { Authorization: `Bearer ${token}`, Accept: "application/json" }
 
   try {
-    const response = await fetch(`${base}/projects/${encodeURIComponent(projectId)}/systems/details/?include_parts=mcs`, { headers })
+    const response = await fetch(url, { headers: apiHeaders })
     const text = await response.text()
-    let payload = null
-    try { payload = JSON.parse(text) } catch {}
+    let payload
+    try { payload = JSON.parse(text) } catch { payload = null }
+
     if (!response.ok) {
-      return res.status(response.status).json({ success: false, error: payload?.detail || payload?.error || `OpenSolar returned HTTP ${response.status}.` })
+      return res.status(response.status).json({
+        success: false,
+        error: payload?.detail || payload?.error || `OpenSolar returned HTTP ${response.status}.`,
+      })
     }
 
     const systems = Array.isArray(payload?.systems) ? payload.systems : []
-    const firstSystem = systems.find((s) => s?.uuid) || systems[0] || null
+    const firstSystem = systems.find((system) => system?.uuid) || systems[0] || null
 
-    const parseData = (value) => {
+    const parseJsonData = (value) => {
       if (!value) return {}
       if (typeof value === "object") return value
       try { return JSON.parse(value) } catch { return {} }
     }
 
-    const fetchList = async (name) => {
+    const fetchActivationList = async (path) => {
       try {
-        const r = await fetch(`${base}/${name}/`, { headers })
-        if (!r.ok) return []
-        const v = await r.json()
-        return Array.isArray(v) ? v : (Array.isArray(v?.results) ? v.results : [])
+        const activationResponse = await fetch(
+          `https://api.opensolar.com/api/orgs/${encodeURIComponent(orgId)}/${path}/`,
+          { headers: apiHeaders }
+        )
+        if (!activationResponse.ok) return []
+        const activationPayload = await activationResponse.json()
+        return Array.isArray(activationPayload)
+          ? activationPayload
+          : Array.isArray(activationPayload?.results) ? activationPayload.results : []
       } catch { return [] }
     }
 
-    const [inverters, batteries] = await Promise.all([
-      fetchList("component_inverter_activations"),
-      fetchList("component_battery_activations"),
+    // Keep the existing working OpenSolar system-details request and enrich its
+    // response with the hardware components. EV charger is queried separately
+    // because OpenSolar exposes it as a different component catalogue.
+    const [inverterActivations, batteryActivations, evChargerActivations] = await Promise.all([
+      fetchActivationList("component_inverter_activations"),
+      fetchActivationList("component_battery_activations"),
+      fetchActivationList("component_ev_charger_activations"),
     ])
 
-    const findActivation = (part, list) => {
+    const findActivation = (part, activations) => {
       const code = String(part?.code || "").trim().toLowerCase()
       const manufacturer = String(part?.manufacturer_name || "").trim().toLowerCase()
-      return list.find((x) => String(x?.code || "").trim().toLowerCase() === code && String(x?.manufacturer_name || "").trim().toLowerCase() === manufacturer)
-        || list.find((x) => String(x?.code || "").trim().toLowerCase() === code)
-        || null
+      return activations.find(
+        (item) =>
+          String(item?.code || "").trim().toLowerCase() === code &&
+          String(item?.manufacturer_name || "").trim().toLowerCase() === manufacturer
+      ) || activations.find(
+        (item) => String(item?.code || "").trim().toLowerCase() === code
+      ) || null
     }
 
-    const inverterParts = (Array.isArray(firstSystem?.inverters) ? firstSystem.inverters : []).map((part) => {
-      const activation = findActivation(part, inverters)
-      const d = parseData(activation?.data)
-      const capacity = Number(d?.max_power_rating ?? d?.max_power_kw ?? part?.max_power_rating ?? 0)
+    const systemInverters = Array.isArray(firstSystem?.inverters) ? firstSystem.inverters : []
+    const systemBatteries = Array.isArray(firstSystem?.batteries) ? firstSystem.batteries : []
+    const systemEvChargers = [
+      ...(Array.isArray(firstSystem?.ev_chargers) ? firstSystem.ev_chargers : []),
+      ...(Array.isArray(firstSystem?.evChargers) ? firstSystem.evChargers : []),
+      ...(Array.isArray(firstSystem?.electric_vehicle_chargers) ? firstSystem.electric_vehicle_chargers : []),
+      ...(Array.isArray(firstSystem?.chargers) ? firstSystem.chargers : []),
+    ]
+
+    const inverterParts = systemInverters.map((part) => {
+      const activation = findActivation(part, inverterActivations)
+      const activationData = parseJsonData(activation?.data)
+      const capacity = Number(activationData?.max_power_rating ?? activationData?.max_power_kw ?? part?.max_power_rating ?? 0)
       return {
         manufacturer: String(part?.manufacturer_name || activation?.manufacturer_name || ""),
         model: String(part?.code || activation?.code || ""),
-        quantity: Math.max(1, Number(part?.quantity || 1)),
+        quantity: Number(part?.quantity || 1),
         capacityKw: Number.isFinite(capacity) ? capacity : 0,
       }
     })
 
-    const batteryParts = (Array.isArray(firstSystem?.batteries) ? firstSystem.batteries : []).map((part) => {
-      const activation = findActivation(part, batteries)
-      const d = parseData(activation?.data)
-      const capacity = Number(d?.kwh_optimal ?? d?.capacity_kwh ?? part?.kwh_optimal ?? 0)
+    const batteryParts = systemBatteries.map((part) => {
+      const activation = findActivation(part, batteryActivations)
+      const activationData = parseJsonData(activation?.data)
+      const capacity = Number(activationData?.kwh_optimal ?? activationData?.capacity_kwh ?? part?.kwh_optimal ?? 0)
       return {
         manufacturer: String(part?.manufacturer_name || activation?.manufacturer_name || ""),
         model: String(part?.code || activation?.code || ""),
-        quantity: Math.max(1, Number(part?.quantity || 1)),
+        quantity: Number(part?.quantity || 1),
         capacityKwh: Number.isFinite(capacity) ? capacity : 0,
       }
     })
 
-    const hardware = {
-      inverter: {
-        manufacturer: inverterParts[0]?.manufacturer || "",
-        model: inverterParts[0]?.model || "",
-        quantity: inverterParts.reduce((n, p) => n + p.quantity, 0),
-        capacityKw: inverterParts.reduce((n, p) => n + p.capacityKw * p.quantity, 0),
-        parts: inverterParts,
-      },
-      battery: {
-        manufacturer: batteryParts[0]?.manufacturer || "",
-        model: batteryParts[0]?.model || "",
-        quantity: batteryParts.reduce((n, p) => n + p.quantity, 0),
-        capacityKwh: batteryParts.reduce((n, p) => n + p.capacityKwh * p.quantity, 0),
-        parts: batteryParts,
-      },
+    const evChargerParts = systemEvChargers.map((part) => {
+      const activation = findActivation(part, evChargerActivations)
+      const activationData = parseJsonData(activation?.data)
+      const power = Number(
+        activationData?.max_power_rating ??
+        activationData?.max_power_kw ??
+        activationData?.power_kw ??
+        part?.max_power_rating ??
+        part?.max_power_kw ??
+        part?.power_kw ??
+        0
+      )
+      return {
+        manufacturer: String(part?.manufacturer_name || activation?.manufacturer_name || ""),
+        model: String(part?.code || activation?.code || ""),
+        quantity: Math.max(1, Number(part?.quantity || 1)),
+        powerKw: Number.isFinite(power) ? power : 0,
+      }
+    })
+
+    const inverterCapacity = inverterParts.reduce((total, part) => total + part.capacityKw * Math.max(1, part.quantity), 0)
+    const batteryCapacity = batteryParts.reduce((total, part) => total + part.capacityKwh * Math.max(1, part.quantity), 0)
+    const evChargerPower = evChargerParts.reduce((total, part) => total + part.powerKw * Math.max(1, part.quantity), 0)
+
+    const arrays = systems.flatMap((system) => {
+      const shadeFactor = Number(system?.data?.mcs?.shadingFactor ?? 1)
+      const specificYield = String(system?.data?.mcs?.mcsSpecificYieldBeforeShading || "")
+        .split(/\n+/)
+        .map((line) => {
+          const match = line.match(/:\s*([0-9]+(?:\.[0-9]+)?)/)
+          return match ? Number(match[1]) : null
+        })
+        .filter((value) => Number.isFinite(value))
+
+      return (Array.isArray(system?.module_groups) ? system.module_groups : []).map((group, index) => {
+        const azimuth = Number(group?.azimuth ?? 180)
+        const orientation = Math.round(Math.abs(((azimuth - 180 + 540) % 360) - 180))
+        return {
+          panelCount: Number(group?.module_quantity || 0),
+          orientation,
+          pitch: Math.round(Number(group?.slope || 0)),
+          shading: Number.isFinite(shadeFactor) ? shadeFactor : 1,
+          irradiance: Number(specificYield[index] || 0),
+        }
+      })
+    })
+
+    let systemImageUrl = ""
+    if (firstSystem?.uuid) {
+      const imageUrl = new URL(`https://api.opensolar.com/api/orgs/${encodeURIComponent(orgId)}/projects/${encodeURIComponent(projectId)}/systems/${encodeURIComponent(firstSystem.uuid)}/image/`)
+      imageUrl.searchParams.set("width", "1200")
+      imageUrl.searchParams.set("height", "800")
+      try {
+        const imageResponse = await fetch(imageUrl, {
+          headers: { Authorization: `Bearer ${token}`, Accept: "image/*" },
+          redirect: "follow",
+        })
+        if (imageResponse.ok) systemImageUrl = imageResponse.url || ""
+      } catch (imageError) {
+        console.warn("OpenSolar system image lookup failed", imageError)
+      }
     }
 
     return res.status(200).json({
       success: true,
       projectId,
-      hardware,
-      systems: systems.map((s) => ({ id: s?.id, uuid: s?.uuid, name: s?.name, kwStc: s?.kw_stc, totalModuleQuantity: s?.total_module_quantity })),
+      numberOfArrays: arrays.length,
+      arrays: arrays.slice(0, 3),
+      truncated: arrays.length > 3,
+      systemImageUrl,
+      hardware: {
+        inverter: {
+          manufacturer: inverterParts[0]?.manufacturer || "",
+          model: inverterParts[0]?.model || "",
+          quantity: inverterParts.reduce((total, part) => total + Math.max(1, part.quantity), 0),
+          capacityKw: inverterCapacity,
+          parts: inverterParts,
+        },
+        battery: {
+          manufacturer: batteryParts[0]?.manufacturer || "",
+          model: batteryParts[0]?.model || "",
+          quantity: batteryParts.reduce((total, part) => total + Math.max(1, part.quantity), 0),
+          capacityKwh: batteryCapacity,
+          parts: batteryParts,
+        },
+        evCharger: {
+          manufacturer: evChargerParts[0]?.manufacturer || "",
+          model: evChargerParts[0]?.model || "",
+          quantity: evChargerParts.reduce((total, part) => total + Math.max(1, part.quantity), 0),
+          powerKw: evChargerPower,
+          parts: evChargerParts,
+        },
+      },
+      systems: systems.map((system) => ({
+        id: system?.id,
+        uuid: system?.uuid,
+        name: system?.name,
+        kwStc: system?.kw_stc,
+        totalModuleQuantity: system?.total_module_quantity,
+      })),
     })
   } catch (error) {
-    console.error("OpenSolar hardware lookup failed", error)
-    return res.status(500).json({ success: false, error: error?.message || "Unable to retrieve the OpenSolar hardware." })
+    console.error("OpenSolar design lookup failed", error)
+    return res.status(500).json({ success: false, error: error?.message || "Unable to retrieve the OpenSolar design." })
   }
 }
