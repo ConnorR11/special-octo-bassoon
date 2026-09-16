@@ -9,19 +9,19 @@ const stateAnchor = '  batteryCapacity: "",'
 if (!next.includes('batteryManufacturer: ""')) {
   next = next.replace(
     stateAnchor,
-    `${stateAnchor}\n  batteryManufacturer: ""\n  batteryModel: ""\n  batteryQuantity: 0,`
+    `${stateAnchor}\n  batteryManufacturer: "",\n  batteryModel: "",\n  batteryQuantity: 0,`
   )
 }
 if (!next.includes('inverterManufacturer: ""')) {
   next = next.replace(
     '  inverterCapacity: "",',
-    '  inverterCapacity: "",\n  inverterManufacturer: ""\n  inverterModel: ""\n  inverterQuantity: 0,'
+    '  inverterCapacity: "",\n  inverterManufacturer: "",\n  inverterModel: "",\n  inverterQuantity: 0,'
   )
 }
 if (!next.includes('evChargerManufacturer: ""')) {
   next = next.replace(
     '  inverterQuantity: 0,',
-    '  inverterQuantity: 0,\n\n  evChargerManufacturer: ""\n  evChargerModel: ""\n  evChargerQuantity: 0,'
+    '  inverterQuantity: 0,\n\n  evChargerManufacturer: "",\n  evChargerModel: "",\n  evChargerQuantity: 0,'
   )
 }
 
@@ -33,13 +33,21 @@ if (!next.includes('const importedHardware = payload?.hardware || {}')) {
   )
 }
 
-// Populate the calculator state from OpenSolar without changing the existing API call.
+// Populate calculator state from OpenSolar.
 if (!next.includes('batteryManufacturer: String(importedHardware?.battery?.manufacturer || "")')) {
   next = next.replace(
     /([ \t]*)\.\.\.current,\n\1arrays:/,
     '$1...current,\n$1batteryCapacity: Number(importedHardware?.battery?.capacityKwh || 0),\n$1batteryManufacturer: String(importedHardware?.battery?.manufacturer || ""),\n$1batteryModel: String(importedHardware?.battery?.model || ""),\n$1batteryQuantity: Number(importedHardware?.battery?.quantity || 0),\n$1inverterCapacity: Number(importedHardware?.inverter?.capacityKw || 0),\n$1inverterManufacturer: String(importedHardware?.inverter?.manufacturer || ""),\n$1inverterModel: String(importedHardware?.inverter?.model || ""),\n$1inverterQuantity: Number(importedHardware?.inverter?.quantity || 0),\n$1evChargerManufacturer: String(importedHardware?.evCharger?.manufacturer || ""),\n$1evChargerModel: String(importedHardware?.evCharger?.model || ""),\n$1evChargerQuantity: Number(importedHardware?.evCharger?.quantity || 0),\n$1arrays:'
   )
 }
+
+// Repair missing commas from any previous generated version before Vite parses it.
+next = next.replace(/(batteryManufacturer:\s*"[^"]*")\n(\s*batteryModel:)/g, '$1,\n$2')
+next = next.replace(/(batteryModel:\s*"[^"]*")\n(\s*batteryQuantity:)/g, '$1,\n$2')
+next = next.replace(/(inverterManufacturer:\s*"[^"]*")\n(\s*inverterModel:)/g, '$1,\n$2')
+next = next.replace(/(inverterModel:\s*"[^"]*")\n(\s*inverterQuantity:)/g, '$1,\n$2')
+next = next.replace(/(evChargerManufacturer:\s*"[^"]*")\n(\s*evChargerModel:)/g, '$1,\n$2')
+next = next.replace(/(evChargerModel:\s*"[^"]*")\n(\s*evChargerQuantity:)/g, '$1,\n$2')
 
 const labelBlock = (label) => new RegExp(
   `<label\\b[^>]*>[\\s\\S]*?<span[^>]*>${label}<\\/span>[\\s\\S]*?<\\/label>`,
@@ -72,25 +80,24 @@ const evField = displayField(
   ' {Number(data.evChargerQuantity || 0) > 1 && <span style={{ marginLeft: 6, flexShrink: 0, fontWeight: 500, color: "#64748b" }}>× {Number(data.evChargerQuantity)}</span>}'
 )
 
-// Replace the three hardware fields as one controlled row. This is deliberately
-// idempotent so repeated Vercel builds cannot remove the EV charger field.
 const batteryRe = labelBlock("Battery configuration")
-const inverterRe = labelBlock("Inverter capacity \(kW\)")
+const inverterRe = labelBlock("Inverter capacity \\(kW\\)")
 const evRe = labelBlock("EV Charger")
 
-const batteryMatch = next.match(batteryRe)
-const inverterMatch = next.match(inverterRe)
-const evMatch = next.match(evRe)
+// Replace existing fields with the OpenSolar read-only versions.
+if (batteryRe.test(next)) next = next.replace(batteryRe, batteryField)
+if (inverterRe.test(next)) next = next.replace(inverterRe, inverterField)
+if (evRe.test(next)) next = next.replace(evRe, evField)
 
-if (batteryMatch && inverterMatch) {
-  // Remove any existing hardware row wrapper first, leaving the three labels.
-  next = next.replace(/<div className="opensolar-hardware-row"[^>]*>[\s\S]*?<\/div>/m, `${batteryMatch[0]}\n${inverterMatch[0]}\n${evMatch ? evMatch[0] : evField}`)
-
+// Wrap the three fields together so they share one row.
+if (!next.includes('className="opensolar-hardware-row"')) {
   const batteryNow = next.match(batteryRe)
   const inverterNow = next.match(inverterRe)
   const evNow = next.match(evRe)
 
   if (batteryNow && inverterNow && evNow) {
+    const start = batteryNow.index
+    const end = evNow.index + evNow[0].length
     const row = [
       '    <div className="opensolar-hardware-row" style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "row", alignItems: "flex-start", gap: 12, width: "100%", minWidth: 0 }}>',
       batteryField,
@@ -99,30 +106,11 @@ if (batteryMatch && inverterMatch) {
       "    </div>",
     ].join("\n")
 
-    const start = batteryNow.index
-    const end = Math.max(
-      batteryNow.index + batteryNow[0].length,
-      inverterNow.index + inverterNow[0].length,
-      evNow.index + evNow[0].length
-    )
-
-    // The fields are expected to be adjacent in the Payment/System section.
-    // If another field sits between them, fall back to replacing individually.
     const between = next.slice(start, end)
-    const onlyHardware =
-      between.match(new RegExp(`<label\\b`, "g"))?.length === 3
-
-    if (onlyHardware) {
+    if ((between.match(/<label\\b/g) || []).length === 3) {
       next = next.slice(0, start) + row + next.slice(end)
-    } else {
-      next = next.replace(batteryRe, batteryField).replace(inverterRe, inverterField).replace(evRe, evField)
     }
   }
-} else {
-  // If an earlier generated version has unusual markup, at minimum ensure EV is
-  // present immediately after the inverter field.
-  next = next.replace(inverterRe, `${inverterField}\n${evField}`)
-  next = next.replace(batteryRe, batteryField)
 }
 
 if (next !== text) {
