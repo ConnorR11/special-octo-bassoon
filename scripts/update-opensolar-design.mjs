@@ -10,30 +10,15 @@ if (!next.includes('import OpenSolarDesignButton from "./components/EPVS/OpenSol
   next = next.replace(importMarker, `${importMarker}\nimport OpenSolarDesignButton from "./components/EPVS/OpenSolarDesignButton"`)
 }
 
-if (!next.includes("const handleOpenSolarDesignLoaded")) {
+const oldHandler = /  const \[openSolarImageUrl, setOpenSolarImageUrl\] = useState\(""\)\n\n  const handleOpenSolarDesignLoaded = \(payload\) => \{[\s\S]*?\n  \}\n\n/;
+const newHandler = `  const [openSolarImageUrl, setOpenSolarImageUrl] = useState(\n    String(appointment?.open_solar_image || "")\n  )\n\n  useEffect(() => {\n    setOpenSolarImageUrl(String(appointment?.open_solar_image || ""))\n  }, [appointment?.open_solar_image])\n\n  const handleOpenSolarDesignLoaded = async (payload) => {\n    const imported = Array.isArray(payload?.arrays) ? payload.arrays : []\n    const imageUrl = String(payload?.systemImageUrl || "")\n\n    setOpenSolarImageUrl(imageUrl)\n\n    if (imageUrl && appointment?.appointment_row_id) {\n      const { error: imageSaveError } = await supabase\n        .from("appointments")\n        .update({ open_solar_image: imageUrl })\n        .eq("appointment_row_id", appointment.appointment_row_id)\n\n      if (imageSaveError) {\n        console.error("Unable to save OpenSolar image to appointment", imageSaveError)\n      }\n    }\n\n    if (!imported.length) {\n      setFluxRateError("OpenSolar did not return any array/module groups for this project.")\n      return\n    }\n\n    if (payload?.truncated) {\n      setFluxRateError("OpenSolar returned more than 3 arrays. The calculator can display the first 3.")\n    } else {\n      setFluxRateError("")\n    }\n\n    setData((current) => ({\n      ...current,\n      arrays: [0, 1, 2].map((index) => {\n        const importedArray = imported[index]\n        if (!importedArray) return createArray()\n        return {\n          ...createArray(),\n          panelCount: Number(importedArray.panelCount || 0),\n          orientation: Number(importedArray.orientation || 0),\n          pitch: Number(importedArray.pitch || 0),\n          irradiance: Number(importedArray.irradiance || 0),\n          shading: Number(importedArray.shading ?? 1),\n        }\n      }),\n    }))\n  }\n\n`
+
+if (oldHandler.test(next)) {
+  next = next.replace(oldHandler, newHandler)
+} else if (!next.includes("const [openSolarImageUrl, setOpenSolarImageUrl]")) {
   const marker = `  const arrayGeometryKey = data.arrays\n`
-  const handler = `  const [openSolarImageUrl, setOpenSolarImageUrl] = useState("")\n\n  const handleOpenSolarDesignLoaded = (payload) => {\n    const imported = Array.isArray(payload?.arrays) ? payload.arrays : []\n\n    setOpenSolarImageUrl(String(payload?.systemImageUrl || ""))\n\n    if (!imported.length) {\n      setFluxRateError("OpenSolar did not return any array/module groups for this project.")\n      return\n    }\n\n    if (payload?.truncated) {\n      setFluxRateError("OpenSolar returned more than 3 arrays. The calculator can display the first 3.")\n    } else {\n      setFluxRateError("")\n    }\n\n    setData((current) => ({\n      ...current,\n      arrays: [0, 1, 2].map((index) => {\n        const importedArray = imported[index]\n        if (!importedArray) return createArray()\n        return {\n          ...createArray(),\n          panelCount: Number(importedArray.panelCount || 0),\n          orientation: Number(importedArray.orientation || 0),\n          pitch: Number(importedArray.pitch || 0),\n          irradiance: Number(importedArray.irradiance || 0),\n          shading: Number(importedArray.shading ?? 1),\n        }\n      }),\n    }))\n  }\n\n`
   if (!next.includes(marker)) throw new Error("Could not locate the EPVS array geometry key")
-  next = next.replace(marker, handler + marker)
-}
-
-if (next.includes("const handleOpenSolarDesignLoaded") && !next.includes("irradiance: Number(importedArray.irradiance")) {
-  const oldLine = `          pitch: Number(importedArray.pitch || 0),\n          shading: Number(importedArray.shading ?? 1),`
-  const newLines = `          pitch: Number(importedArray.pitch || 0),\n          irradiance: Number(importedArray.irradiance || 0),\n          shading: Number(importedArray.shading ?? 1),`
-  if (!next.includes(oldLine)) throw new Error("Could not locate the existing OpenSolar array mapping")
-  next = next.replace(oldLine, newLines)
-}
-
-if (next.includes("const handleOpenSolarDesignLoaded") && !next.includes("setOpenSolarImageUrl(String(payload?.systemImageUrl || \"\"))")) {
-  const handlerMarker = `  const handleOpenSolarDesignLoaded = (payload) => {\n    const imported = Array.isArray(payload?.arrays) ? payload.arrays : []\n`
-  if (!next.includes(handlerMarker)) throw new Error("Could not locate the existing OpenSolar design handler")
-  next = next.replace(handlerMarker, `${handlerMarker}\n    setOpenSolarImageUrl(String(payload?.systemImageUrl || ""))\n`)
-}
-
-if (next.includes("const handleOpenSolarDesignLoaded") && !next.includes("const [openSolarImageUrl, setOpenSolarImageUrl]")) {
-  const marker = `  const handleOpenSolarDesignLoaded = (payload) => {\n`
-  if (!next.includes(marker)) throw new Error("Could not locate the OpenSolar design handler")
-  next = next.replace(marker, `  const [openSolarImageUrl, setOpenSolarImageUrl] = useState("")\n\n${marker}`)
+  next = next.replace(marker, newHandler + marker)
 }
 
 const solarCardPattern = /<Card\n  title="Solar PV arrays"\n  subtitle="Enter the EPVS information for each roof \/ array\."\n>/
