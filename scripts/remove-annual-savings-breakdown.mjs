@@ -13,11 +13,29 @@ const withoutComponent = withoutImport.replace(
   "\n"
 )
 
-if (withoutComponent !== calculator) {
-  fs.writeFileSync(calculatorPath, withoutComponent)
-  console.log("Annual savings breakdown removed from calculator.")
+let next = withoutComponent
+
+// Remove the two result metrics from the EPVS results summary.
+next = next.replace(
+  /\n\s*\[\s*"Annual saving",[\s\S]*?\n\s*\],/g,
+  "\n"
+)
+next = next.replace(
+  /\n\s*\[\s*"Simple payback",[\s\S]*?\n\s*\],/g,
+  "\n"
+)
+
+// The six remaining summary metrics should sit on one row on desktop.
+next = next.replace(
+  'gridTemplateColumns:\n      "repeat(4, minmax(0, 1fr))"',
+  'gridTemplateColumns:\n      "repeat(6, minmax(0, 1fr))"'
+)
+
+if (next !== calculator) {
+  fs.writeFileSync(calculatorPath, next)
+  console.log("EPVS results summary updated.")
 } else {
-  console.log("Annual savings breakdown already removed from calculator.")
+  console.log("EPVS results summary already matches the requested layout.")
 }
 
 const cssPath = "src/index.css"
