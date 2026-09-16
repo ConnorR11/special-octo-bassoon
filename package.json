@@ -5,12 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/remove-annual-savings-breakdown.mjs && node scripts/update-opensolar-design.mjs && node scripts/force-opensolar-hardware-ui-v2.mjs && node scripts/update-octopus-flux-card.mjs && vite build",
+    "build": "node scripts/remove-annual-savings-breakdown.mjs && node scripts/update-opensolar-design.mjs && node scripts/apply-opensolar-epvs-specs.mjs && node scripts/force-opensolar-hardware-ui-v2.mjs && node scripts/update-octopus-flux-card.mjs && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",
-    "jspdf": "^4.2.1",
+    "jspdf": "^4.2.0",
     "lucide-react": "^0.468.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
