@@ -5,13 +5,11 @@ function Header({ page, setMobile }) {
   const pageTitle = {
     dashboard: "Dashboard",
     contracts: "Deals",
-    epvs: "EPVS Calculator",
   }[page]
 
   const pageSubtitle = {
     dashboard: "Overview of your deals",
     contracts: "Search and manage deals",
-    epvs: "Build and review an EPVS calculation",
   }[page]
 
   return (
@@ -24,10 +22,12 @@ function Header({ page, setMobile }) {
           <Menu size={20} />
         </button>
 
-        <div>
-          <h1>{pageTitle}</h1>
-          <p>{pageSubtitle}</p>
-        </div>
+        {pageTitle && (
+          <div>
+            <h1>{pageTitle}</h1>
+            <p>{pageSubtitle}</p>
+          </div>
+        )}
       </div>
     </header>
   )
