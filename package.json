@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/update-opensolar-design.mjs && node scripts/update-octopus-flux-button.mjs && vite build",
+    "build": "node scripts/update-opensolar-design.mjs && node scripts/update-octopus-flux-card.mjs && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
