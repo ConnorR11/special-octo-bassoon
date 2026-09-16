@@ -11,10 +11,10 @@ const replacement = `<Card
 >
   <div
     style={{
-      display: "grid",
-      gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+      display: "flex",
       gap: 12,
       width: "100%",
+      alignItems: "stretch",
     }}
   >
     {[
@@ -40,8 +40,23 @@ const replacement = `<Card
         quantity: data.evChargerQuantity,
       },
     ].map((item) => (
-      <div key={item.label} style={{ minWidth: 0 }}>
-        <div style={{ marginBottom: 6, fontSize: 12, fontWeight: 600, color: "#172554" }}>
+      <div
+        key={item.label}
+        style={{
+          flex: "1 1 0",
+          width: 0,
+          minWidth: 0,
+        }}
+      >
+        <div
+          style={{
+            marginBottom: 6,
+            fontSize: 12,
+            fontWeight: 600,
+            color: "#172554",
+            lineHeight: 1.25,
+          }}
+        >
           {item.label}
         </div>
         <div
@@ -57,19 +72,63 @@ const replacement = `<Card
             overflow: "hidden",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 10,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
               {item.manufacturer || "Not returned by OpenSolar"}
             </span>
-            <span style={{ flexShrink: 0, fontSize: 11, color: "#475569", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span
+              style={{
+                flexShrink: 0,
+                maxWidth: "55%",
+                fontSize: 11,
+                color: "#475569",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
               {item.model || "—"}
             </span>
           </div>
-          <div style={{ marginTop: 9, display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11, color: "#64748b" }}>
+          <div
+            style={{
+              marginTop: 9,
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 10,
+              fontSize: 11,
+              color: "#64748b",
+            }}
+          >
             <span>Capacity / power</span>
             <strong style={{ color: "#172554" }}>{item.value}</strong>
           </div>
-          <div style={{ marginTop: 3, display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11, color: "#64748b" }}>
+          <div
+            style={{
+              marginTop: 3,
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 10,
+              fontSize: 11,
+              color: "#64748b",
+            }}
+          >
             <span>Quantity</span>
             <strong style={{ color: "#172554" }}>{Number(item.quantity || 0)}</strong>
           </div>
@@ -84,4 +143,4 @@ if (!cardPattern.test(text)) {
 }
 
 fs.writeFileSync(path, text.replace(cardPattern, replacement))
-console.log("OpenSolar hardware UI forced into the three-column layout.")
+console.log("OpenSolar hardware UI forced into three equal-width columns.")
