@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { supabase } from "../../lib/supabase"
 
 function OpenSolarLogo() {
@@ -65,6 +65,10 @@ export default function OpenSolarDesignButton({
     }
   }
 
+  useEffect(() => {
+    if (projectId) getCurrentDesign()
+  }, [projectId])
+
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, ...style }}>
       <button
@@ -90,7 +94,7 @@ export default function OpenSolarDesignButton({
         }}
       >
         <OpenSolarLogo />
-        {loading ? "Getting design…" : "Get Current Design"}
+        {loading ? "Getting design…" : "Refresh from OpenSolar"}
       </button>
 
       {error && (
