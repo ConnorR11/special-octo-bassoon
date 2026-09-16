@@ -4,21 +4,20 @@ const path = "src/EPVSCalculator.jsx"
 const text = fs.readFileSync(path, "utf8")
 let next = text
 
-if (!next.includes('import OpenSolarDesignButton from "./components/EPVS/OpenSolarDesignButton"')) {
-  const importMarker = 'import ThirtyYearBreakdown from "./components/EPVS/ThirtyYearBreakdown"'
-  if (!next.includes(importMarker)) throw new Error("Could not locate the EPVS breakdown imports")
-  next = next.replace(importMarker, `${importMarker}\nimport OpenSolarDesignButton from "./components/EPVS/OpenSolarDesignButton"`)
+const importMarker = 'import ThirtyYearBreakdown from "./components/EPVS/ThirtyYearBreakdown"'
+const importStatement = 'import OpenSolarDesignButton from "./components/EPVS/OpenSolarDesignButton"'
+if (!next.includes(importStatement)) {
+  if (next.includes(importMarker)) {
+    next = next.replace(importMarker, `${importMarker}\n${importStatement}`)
+  } else {
+    console.log("EPVS breakdown import marker not found; skipping OpenSolar design import patch.")
+  }
 }
 
 const oldHandler = /  const \[openSolarImageUrl, setOpenSolarImageUrl\] = useState\(""\)\n\n  const handleOpenSolarDesignLoaded = \(payload\) => \{[\s\S]*?\n  \}\n\n/;
 const newHandler = `  const [openSolarImageUrl, setOpenSolarImageUrl] = useState(\n    String(appointment?.open_solar_image || "")\n  )\n\n  useEffect(() => {\n    setOpenSolarImageUrl(String(appointment?.open_solar_image || ""))\n  }, [appointment?.open_solar_image])\n\n  const handleOpenSolarDesignLoaded = async (payload) => {\n    const imported = Array.isArray(payload?.arrays) ? payload.arrays : []\n    const imageUrl = String(payload?.systemImageUrl || "")\n    const hardware = payload?.hardware || {}\n\n    setOpenSolarImageUrl(imageUrl)\n\n    if (imageUrl && appointment?.appointment_row_id) {\n      const { error: imageSaveError } = await supabase\n        .from("appointments")\n        .update({ open_solar_image: imageUrl })\n        .eq("appointment_row_id", appointment.appointment_row_id)\n\n      if (imageSaveError) console.error("Unable to save OpenSolar image to appointment", imageSaveError)\n    }\n\n    if (!imported.length) {\n      setFluxRateError("OpenSolar did not return any array/module groups for this project.")\n      return\n    }\n\n    setFluxRateError(payload?.truncated ? "OpenSolar returned more than 3 arrays. The calculator can display the first 3." : "")\n\n    setData((current) => ({\n      ...current,\n      batteryCapacity: Number(hardware?.battery?.capacityKwh || 0),\n      batteryManufacturer: String(hardware?.battery?.manufacturer || ""),\n      batteryModel: String(hardware?.battery?.model || ""),\n      batteryQuantity: Number(hardware?.battery?.quantity || 0),\n      inverterCapacity: Number(hardware?.inverter?.capacityKw || 0),\n      inverterManufacturer: String(hardware?.inverter?.manufacturer || ""),\n      inverterModel: String(hardware?.inverter?.model || ""),\n      inverterQuantity: Number(hardware?.inverter?.quantity || 0),\n      evChargerManufacturer: String(hardware?.evCharger?.manufacturer || ""),\n      evChargerModel: String(hardware?.evCharger?.model || ""),\n      evChargerQuantity: Number(hardware?.evCharger?.quantity || 0),\n      evChargerPowerKw: Number(hardware?.evCharger?.powerKw || 0),\n      arrays: [0, 1, 2].map((index) => {\n        const importedArray = imported[index]\n        if (!importedArray) return createArray()\n        return {\n          ...createArray(),\n          panelCount: Number(importedArray.panelCount || 0),\n          orientation: Number(importedArray.orientation || 0),\n          pitch: Number(importedArray.pitch || 0),\n          irradiance: Number(importedArray.irradiance || 0),\n          shading: Number(importedArray.shading ?? 1),\n        }\n      }),\n    }))\n  }\n\n`
 
 if (oldHandler.test(next)) next = next.replace(oldHandler, newHandler)
-else if (!next.includes("const [openSolarImageUrl, setOpenSolarImageUrl]")) {
-  const marker = `  const arrayGeometryKey = data.arrays\n`
-  if (!next.includes(marker)) throw new Error("Could not locate the EPVS array geometry key")
-  next = next.replace(marker, newHandler + marker)
-}
 
 next = next.replace(
   'title="Solar PV arrays"\n  subtitle="Enter the EPVS information for each roof / array."',
