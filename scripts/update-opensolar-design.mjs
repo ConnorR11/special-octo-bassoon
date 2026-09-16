@@ -5,7 +5,7 @@ const text = fs.readFileSync(path, "utf8")
 let next = text
 
 if (!next.includes('import OpenSolarDesignButton from "./components/EPVS/OpenSolarDesignButton"')) {
-  const importMarker = 'import ThirtyYearBreakdown from "./components/ThirtyYearBreakdown"'
+  const importMarker = 'import ThirtyYearBreakdown from "./components/EPVS/ThirtyYearBreakdown"'
   if (!next.includes(importMarker)) throw new Error("Could not locate the EPVS breakdown imports")
   next = next.replace(importMarker, `${importMarker}\nimport OpenSolarDesignButton from "./components/EPVS/OpenSolarDesignButton"`)
 }
