@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react"
+import React, { useState } from "react"
+import { supabase } from "../../lib/supabase"
 
 function OpenSolarLogo() {
   return (
@@ -18,7 +19,6 @@ function OpenSolarLogo() {
 
 export default function OpenSolarDesignButton({
   projectId,
-  appointmentRowId,
   onDesignLoaded,
   style,
 }) {
@@ -31,25 +31,28 @@ export default function OpenSolarDesignButton({
       return
     }
 
+    if (!supabase) {
+      setError("Supabase is not configured for this application.")
+      return
+    }
+
     setLoading(true)
     setError("")
 
     try {
-      const response = await fetch("/api/opensolar-design", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ projectId, appointmentRowId }),
-      })
+      const { data: payload, error: functionError } = await supabase.functions.invoke(
+        "opensolar-design",
+        {
+          body: { projectId },
+        }
+      )
 
-      const payload = await response.json().catch(() => null)
+      if (functionError) {
+        throw new Error(functionError.message || "Unable to retrieve the OpenSolar design.")
+      }
 
-      if (!response.ok || !payload?.success) {
-        throw new Error(
-          payload?.error || `Unable to retrieve the OpenSolar design (HTTP ${response.status}).`
-        )
+      if (!payload?.success) {
+        throw new Error(payload?.error || "Unable to retrieve the OpenSolar design.")
       }
 
       onDesignLoaded?.(payload)
@@ -60,10 +63,6 @@ export default function OpenSolarDesignButton({
       setLoading(false)
     }
   }
-
-  useEffect(() => {
-    if (projectId) getCurrentDesign()
-  }, [projectId])
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, ...style }}>
