@@ -37,7 +37,11 @@ export default async function handler(req, res) {
 
   const collectComponentParts = (system, type) => {
     const data = parseJsonData(system?.data)
-    const keys = type === "inverter" ? ["inverters", "inverter", "inverterParts"] : type === "battery" ? ["batteries", "battery", "batteryParts"] : ["ev_chargers", "evChargers", "electric_vehicle_chargers", "chargers", "evCharger"]
+    const keys = type === "inverter"
+      ? ["inverters", "inverter", "inverterParts"]
+      : type === "battery"
+        ? ["batteries", "battery", "batteryParts"]
+        : ["ev_chargers", "evChargers", "electric_vehicle_chargers", "evCharger", "ev_charger"]
     const found = []
     const add = (value) => { if (Array.isArray(value)) value.forEach((item) => item && found.push(item)); else if (value && typeof value === "object") found.push(value) }
     keys.forEach((key) => { add(system?.[key]); add(data?.[key]); add(data?.components?.[key]); add(data?.hardware?.[key]) })
@@ -61,18 +65,49 @@ export default async function handler(req, res) {
     const inverterParts = systemInverters.map((part) => {
       const activation = findActivation(part, inverterActivations, "inverter")
       const partData = parseJsonData(part?.data); const activationData = parseJsonData(activation?.data)
-      const capacityKw = numberOrNull(activationData?.max_power_kw, activation?.max_power_kw, partData?.max_power_kw, part?.max_power_kw)
+      const capacityKw = numberOrNull(
+        activationData?.max_power_kw, activation?.max_power_kw,
+        activationData?.specs?.max_power_kw, activation?.specs?.max_power_kw,
+        partData?.max_power_kw, part?.max_power_kw,
+        activationData?.max_power_rating, activation?.max_power_rating,
+        activationData?.power_kw, activation?.power_kw,
+        partData?.max_power_rating, part?.max_power_rating,
+        partData?.power_kw, part?.power_kw,
+      )
       const efficiency = numberOrNull(activationData?.efficiency, partData?.efficiency, part?.efficiency)
-      return { manufacturer: String(part?.manufacturer_name || activation?.manufacturer_name || activationData?.manufacturer_name || ""), model: String(part?.code || activation?.code || activationData?.code || ""), quantity: Math.max(1, Number(part?.quantity || 1)), capacityKw: capacityKw || 0, efficiencyPercent: efficiency }
+      return { manufacturer: String(part?.manufacturer_name || activation?.manufacturer_name || activationData?.manufacturer_name || ""), model: String(part?.code || activation?.code || activationData?.code || ""), quantity: Math.max(1, Number(part?.quantity || 1)), capacityKw: capacityKw ? (capacityKw > 100 ? capacityKw / 1000 : capacityKw) : 0, efficiencyPercent: efficiency }
     })
 
-    const batteryParts = systemBatteries.map((part) => { const activation = findActivation(part, batteryActivations, "battery"); const partData = parseJsonData(part?.data); const activationData = parseJsonData(activation?.data); const capacity = numberOrNull(activationData?.kwh_optimal, activationData?.capacity_kwh, activationData?.battery_total_kwh, partData?.kwh_optimal, partData?.capacity_kwh, partData?.battery_total_kwh, part?.kwh_optimal, part?.capacity_kwh, part?.battery_total_kwh); return { manufacturer: String(part?.manufacturer_name || activation?.manufacturer_name || activationData?.manufacturer_name || ""), model: String(part?.code || activation?.code || activationData?.code || ""), quantity: Math.max(1, Number(part?.quantity || 1)), capacityKwh: capacity || 0 } })
-    const evChargerParts = systemEvChargers.map((part) => { const activation = findActivation(part, evChargerActivations, "ev_charger"); const partData = parseJsonData(part?.data); const activationData = parseJsonData(activation?.data); const power = numberOrNull(activationData?.max_power_rating, activationData?.max_power_kw, activationData?.power_kw, partData?.max_power_rating, partData?.max_power_kw, partData?.power_kw, part?.max_power_rating, part?.max_power_kw, part?.power_kw); return { manufacturer: String(part?.manufacturer_name || activation?.manufacturer_name || activationData?.manufacturer_name || ""), model: String(part?.code || activation?.code || activationData?.code || ""), quantity: Math.max(1, Number(part?.quantity || 1)), powerKw: power || 0 } })
+    const batteryParts = systemBatteries.map((part) => {
+      const activation = findActivation(part, batteryActivations, "battery")
+      const partData = parseJsonData(part?.data); const activationData = parseJsonData(activation?.data)
+      const capacity = numberOrNull(
+        activationData?.kwh_optimal, activation?.kwh_optimal,
+        activationData?.capacity_kwh, activation?.capacity_kwh,
+        activationData?.battery_total_kwh, activation?.battery_total_kwh,
+        activationData?.nominal_capacity_kwh, activation?.nominal_capacity_kwh,
+        activationData?.usable_capacity_kwh, activation?.usable_capacity_kwh,
+        activationData?.energy_capacity_kwh, activation?.energy_capacity_kwh,
+        activationData?.specs?.capacity_kwh, activation?.specs?.capacity_kwh,
+        activationData?.specs?.kwh_optimal, activation?.specs?.kwh_optimal,
+        partData?.kwh_optimal, partData?.capacity_kwh, partData?.battery_total_kwh,
+        partData?.nominal_capacity_kwh, partData?.usable_capacity_kwh, partData?.energy_capacity_kwh,
+        part?.kwh_optimal, part?.capacity_kwh, part?.battery_total_kwh,
+      )
+      return { manufacturer: String(part?.manufacturer_name || activation?.manufacturer_name || activationData?.manufacturer_name || ""), model: String(part?.code || activation?.code || activationData?.code || ""), quantity: Math.max(1, Number(part?.quantity || 1)), capacityKwh: capacity || 0 }
+    })
+
+    const evChargerParts = systemEvChargers.map((part) => {
+      const activation = findActivation(part, evChargerActivations, "ev_charger")
+      const partData = parseJsonData(part?.data); const activationData = parseJsonData(activation?.data)
+      const power = numberOrNull(activationData?.max_power_rating, activationData?.max_power_kw, activationData?.power_kw, partData?.max_power_rating, partData?.max_power_kw, partData?.power_kw, part?.max_power_rating, part?.max_power_kw, part?.power_kw)
+      return { manufacturer: String(part?.manufacturer_name || activation?.manufacturer_name || activationData?.manufacturer_name || ""), model: String(part?.code || activation?.code || activationData?.code || ""), quantity: Math.max(1, Number(part?.quantity || 1)), powerKw: power || 0 }
+    })
 
     const inverterCapacity = inverterParts.reduce((total, part) => total + part.capacityKw * part.quantity, 0)
     const batteryCapacity = batteryParts.reduce((total, part) => total + part.capacityKwh * part.quantity, 0)
     const evChargerPower = evChargerParts.reduce((total, part) => total + part.powerKw * part.quantity, 0)
-    const diagnosticInverters = systemInverters.map((part) => { const activation = findActivation(part, inverterActivations, "inverter"); const partData = parseJsonData(part?.data); const activationData = parseJsonData(activation?.data); return { part: { id: part?.id, code: part?.code, model: part?.model, manufacturer: part?.manufacturer_name || part?.manufacturer, quantity: part?.quantity }, activation: activation ? { id: activation?.id, code: activation?.code, manufacturer: activation?.manufacturer_name || activation?.manufacturer } : null, max_power_kw: { activationData: activationData?.max_power_kw ?? null, activation: activation?.max_power_kw ?? null, partData: partData?.max_power_kw ?? null, part: part?.max_power_kw ?? null }, resolvedCapacityKw: numberOrNull(activationData?.max_power_kw, activation?.max_power_kw, partData?.max_power_kw, part?.max_power_kw) || 0 } })
+    const diagnosticInverters = systemInverters.map((part) => { const activation = findActivation(part, inverterActivations, "inverter"); const partData = parseJsonData(part?.data); const activationData = parseJsonData(activation?.data); return { part: { id: part?.id, code: part?.code, model: part?.model, manufacturer: part?.manufacturer_name || part?.manufacturer, quantity: part?.quantity }, activation: activation ? { id: activation?.id, code: activation?.code, manufacturer: activation?.manufacturer_name || activation?.manufacturer } : null, max_power_kw: { activationData: activationData?.max_power_kw ?? null, activation: activation?.max_power_kw ?? null, activationSpecs: activation?.specs?.max_power_kw ?? null, activationDataSpecs: activationData?.specs?.max_power_kw ?? null, partData: partData?.max_power_kw ?? null, part: part?.max_power_kw ?? null }, resolvedCapacityKw: numberOrNull(activationData?.max_power_kw, activation?.max_power_kw, activationData?.specs?.max_power_kw, activation?.specs?.max_power_kw, partData?.max_power_kw, part?.max_power_kw) || 0 } })
 
     let systemImageUrl = ""
     if (firstSystem?.uuid) {
