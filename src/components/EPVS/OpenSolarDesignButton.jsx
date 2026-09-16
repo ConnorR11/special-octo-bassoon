@@ -19,6 +19,7 @@ function OpenSolarLogo() {
 
 export default function OpenSolarDesignButton({
   projectId,
+  appointmentRowId,
   onDesignLoaded,
   style,
 }) {
@@ -43,7 +44,7 @@ export default function OpenSolarDesignButton({
       const { data: payload, error: functionError } = await supabase.functions.invoke(
         "opensolar-design",
         {
-          body: { projectId },
+          body: { projectId, appointmentRowId },
         }
       )
 
