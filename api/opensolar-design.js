@@ -55,9 +55,34 @@ export default async function handler(req, res) {
       fetchActivationList("component_ev_charger_activations"),
     ])
 
+    const numericIdFromUrl = (value) => {
+      const match = String(value || "").match(/\/(\d+)\/?$/)
+      return match ? Number(match[1]) : null
+    }
+
     const findActivation = (part, activations) => {
-      const code = String(part?.code || "").trim().toLowerCase()
-      const manufacturer = String(part?.manufacturer_name || "").trim().toLowerCase()
+      const explicitActivationId = Number(
+        part?.activation_id ??
+        part?.inverter_activation_id ??
+        part?.battery_activation_id ??
+        part?.ev_charger_activation_id ??
+        numericIdFromUrl(part?.activation) ??
+        numericIdFromUrl(part?.activation_url)
+      )
+
+      if (Number.isFinite(explicitActivationId) && explicitActivationId > 0) {
+        const byId = activations.find((item) => Number(item?.id) === explicitActivationId)
+        if (byId) return byId
+      }
+
+      const componentId = Number(part?.inverter_id ?? part?.battery_id ?? part?.ev_charger_id ?? part?.component_id)
+      if (Number.isFinite(componentId) && componentId > 0) {
+        const byComponentId = activations.find((item) => Number(item?.inverter_id ?? item?.battery_id ?? item?.ev_charger_id) === componentId)
+        if (byComponentId) return byComponentId
+      }
+
+      const code = String(part?.code || part?.model || "").trim().toLowerCase()
+      const manufacturer = String(part?.manufacturer_name || part?.manufacturer || "").trim().toLowerCase()
       return activations.find(
         (item) =>
           String(item?.code || "").trim().toLowerCase() === code &&
@@ -78,13 +103,27 @@ export default async function handler(req, res) {
 
     const inverterParts = systemInverters.map((part) => {
       const activation = findActivation(part, inverterActivations)
+      const partData = parseJsonData(part?.data)
       const activationData = parseJsonData(activation?.data)
-      const capacity = Number(activationData?.max_power_rating ?? activationData?.max_power_kw ?? part?.max_power_rating ?? 0)
-      const efficiency = Number(activationData?.efficiency ?? part?.efficiency ?? NaN)
+      const capacity = Number(
+        activationData?.max_power_rating ??
+        activationData?.max_power_kw ??
+        partData?.max_power_rating ??
+        partData?.max_power_kw ??
+        part?.max_power_rating ??
+        part?.max_power_kw ??
+        0
+      )
+      const efficiency = Number(
+        activationData?.efficiency ??
+        partData?.efficiency ??
+        part?.efficiency ??
+        NaN
+      )
       return {
-        manufacturer: String(part?.manufacturer_name || activation?.manufacturer_name || ""),
-        model: String(part?.code || activation?.code || ""),
-        quantity: Number(part?.quantity || 1),
+        manufacturer: String(part?.manufacturer_name || part?.manufacturer || activation?.manufacturer_name || activationData?.manufacturer_name || ""),
+        model: String(part?.code || part?.model || activation?.code || activationData?.code || ""),
+        quantity: Number(part?.quantity || activation?.quantity || 1),
         capacityKw: Number.isFinite(capacity) ? capacity : 0,
         efficiencyPercent: Number.isFinite(efficiency) ? efficiency : null,
       }
