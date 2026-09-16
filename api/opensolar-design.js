@@ -49,9 +49,6 @@ export default async function handler(req, res) {
       } catch { return [] }
     }
 
-    // Keep the existing working OpenSolar system-details request and enrich its
-    // response with the hardware components. EV charger is queried separately
-    // because OpenSolar exposes it as a different component catalogue.
     const [inverterActivations, batteryActivations, evChargerActivations] = await Promise.all([
       fetchActivationList("component_inverter_activations"),
       fetchActivationList("component_battery_activations"),
@@ -83,11 +80,13 @@ export default async function handler(req, res) {
       const activation = findActivation(part, inverterActivations)
       const activationData = parseJsonData(activation?.data)
       const capacity = Number(activationData?.max_power_rating ?? activationData?.max_power_kw ?? part?.max_power_rating ?? 0)
+      const efficiency = Number(activationData?.efficiency ?? part?.efficiency ?? NaN)
       return {
         manufacturer: String(part?.manufacturer_name || activation?.manufacturer_name || ""),
         model: String(part?.code || activation?.code || ""),
         quantity: Number(part?.quantity || 1),
         capacityKw: Number.isFinite(capacity) ? capacity : 0,
+        efficiencyPercent: Number.isFinite(efficiency) ? efficiency : null,
       }
     })
 
@@ -95,11 +94,19 @@ export default async function handler(req, res) {
       const activation = findActivation(part, batteryActivations)
       const activationData = parseJsonData(activation?.data)
       const capacity = Number(activationData?.kwh_optimal ?? activationData?.capacity_kwh ?? part?.kwh_optimal ?? 0)
+      const efficiency = Number(activationData?.efficiency_factor ?? activationData?.round_trip_efficiency ?? part?.efficiency_factor ?? NaN)
+      const dod = Number(activationData?.depth_of_discharge_factor ?? part?.depth_of_discharge_factor ?? NaN)
+      const endOfLifeCapacity = Number(activationData?.end_of_life_capacity ?? NaN)
+      const warrantyYears = Number(activation?.product_warranty ?? activationData?.product_warranty ?? NaN)
       return {
         manufacturer: String(part?.manufacturer_name || activation?.manufacturer_name || ""),
         model: String(part?.code || activation?.code || ""),
         quantity: Number(part?.quantity || 1),
         capacityKwh: Number.isFinite(capacity) ? capacity : 0,
+        roundTripEfficiencyPercent: Number.isFinite(efficiency) ? efficiency * 100 : null,
+        depthOfDischargePercent: Number.isFinite(dod) ? dod * 100 : null,
+        endOfLifeCapacityPercent: Number.isFinite(endOfLifeCapacity) ? endOfLifeCapacity * 100 : null,
+        warrantyYears: Number.isFinite(warrantyYears) ? warrantyYears : null,
       }
     })
 
@@ -126,6 +133,26 @@ export default async function handler(req, res) {
     const inverterCapacity = inverterParts.reduce((total, part) => total + part.capacityKw * Math.max(1, part.quantity), 0)
     const batteryCapacity = batteryParts.reduce((total, part) => total + part.capacityKwh * Math.max(1, part.quantity), 0)
     const evChargerPower = evChargerParts.reduce((total, part) => total + part.powerKw * Math.max(1, part.quantity), 0)
+
+    const weighted = (parts, valueKey, capacityKey, quantityKey = "quantity") => {
+      let numerator = 0
+      let denominator = 0
+      parts.forEach((part) => {
+        const value = Number(part?.[valueKey])
+        const weight = Number(part?.[capacityKey] || 0) * Math.max(1, Number(part?.[quantityKey] || 1))
+        if (Number.isFinite(value) && weight > 0) {
+          numerator += value * weight
+          denominator += weight
+        }
+      })
+      return denominator > 0 ? numerator / denominator : null
+    }
+
+    const inverterEfficiency = weighted(inverterParts, "efficiencyPercent", "capacityKw")
+    const batteryRTE = weighted(batteryParts, "roundTripEfficiencyPercent", "capacityKwh")
+    const batteryDoD = weighted(batteryParts, "depthOfDischargePercent", "capacityKwh")
+    const batteryEOL = weighted(batteryParts, "endOfLifeCapacityPercent", "capacityKwh")
+    const batteryWarrantyYears = weighted(batteryParts, "warrantyYears", "capacityKwh")
 
     const arrays = systems.flatMap((system) => {
       const shadeFactor = Number(system?.data?.mcs?.shadingFactor ?? 1)
@@ -179,6 +206,7 @@ export default async function handler(req, res) {
           model: inverterParts[0]?.model || "",
           quantity: inverterParts.reduce((total, part) => total + Math.max(1, part.quantity), 0),
           capacityKw: inverterCapacity,
+          efficiencyPercent: inverterEfficiency,
           parts: inverterParts,
         },
         battery: {
@@ -186,6 +214,10 @@ export default async function handler(req, res) {
           model: batteryParts[0]?.model || "",
           quantity: batteryParts.reduce((total, part) => total + Math.max(1, part.quantity), 0),
           capacityKwh: batteryCapacity,
+          roundTripEfficiencyPercent: batteryRTE,
+          depthOfDischargePercent: batteryDoD,
+          endOfLifeCapacityPercent: batteryEOL,
+          warrantyYears: batteryWarrantyYears,
           parts: batteryParts,
         },
         evCharger: {
