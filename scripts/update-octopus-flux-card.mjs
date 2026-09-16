@@ -3,19 +3,83 @@ import fs from "node:fs"
 const path = "src/EPVSCalculator.jsx"
 const text = fs.readFileSync(path, "utf8")
 
-const oldTitle = text.indexOf('title="New Octopus Standard Flux"')
-const newTitle = text.indexOf('title="Get current Octopus Flux rates"')
-const titleIndex = newTitle !== -1 ? newTitle : oldTitle
-const start = titleIndex === -1 ? -1 : text.lastIndexOf("                  <Card", titleIndex)
+const titleIndex = text.indexOf('title="Get current Octopus Flux rates"')
+if (titleIndex === -1) {
+  throw new Error("Could not locate the Octopus Flux card title")
+}
 
-const endMarker = `            <div\n              style={{\n                display: "grid",\n                gridTemplateColumns: "1.2fr 1fr 1fr",`
-const end = text.indexOf(endMarker, start)
+// Don't depend on JSX indentation. Find the Card opening tag containing the title.
+const start = text.lastIndexOf("<Card", titleIndex)
 
-if (start === -1 || end === -1) {
+// The rates table is the first grid using these columns. Replace everything before
+// that table, while leaving the table itself and the rest of the calculator intact.
+const gridMarker = 'gridTemplateColumns: "1.2fr 1fr 1fr"'
+const gridIndex = text.indexOf(gridMarker, start)
+const end = gridIndex === -1 ? -1 : text.lastIndexOf("<div", gridIndex)
+
+if (start === -1 || end === -1 || end <= start) {
   throw new Error(`Could not locate the Octopus Flux card. start=${start}, end=${end}`)
 }
 
-const replacement = `                  <Card\n            title="Get current Octopus Flux rates"\n            subtitle="Uses the customer postcode to identify the electricity region and retrieves the current Flux import and export rates from Octopus."\n            action={\n              <button\n                type="button"\n                onClick={getCurrentFluxRates}\n                disabled={loadingFluxRates}\n                style={{\n                  ...styles.primary,\n                  opacity: loadingFluxRates ? 0.65 : 1,\n                  whiteSpace: "nowrap",\n                  display: "inline-flex",\n                  alignItems: "center",\n                  gap: 8,\n                }}\n              >\n                <OctopusLogo />\n                {loadingFluxRates ? "Getting rates…" : "Get current rates"}\n              </button>\n            }\n          >\n            <div className="octopus-flux-card">\n              <style>{\`\n                .octopus-flux-card input {\n                  width: 100%;\n                  box-sizing: border-box;\n                  border: 1px solid #cbd5e1;\n                  border-radius: 8px;\n                  padding: 7px 10px;\n                  font-family: inherit;\n                  font-size: 12px;\n                  background: #fff;\n                  color: #172554;\n                }\n\n                .octopus-flux-card input[readonly] {\n                  background: #f1f5f9;\n                  color: #334155;\n                }\n              \`}</style>\n\n            {fluxRateError && (\n              <div\n                style={{\n                  marginBottom: 12,\n                  padding: "10px 12px",\n                  borderRadius: 8,\n                  background: "#fef2f2",\n                  border: "1px solid #fecaca",\n                  color: "#b91c1c",\n                  fontSize: 12,\n                }}\n              >\n                {fluxRateError}\n              </div>\n            )}\n\n`
+const replacement = `                  <Card
+            title="Get current Octopus Flux rates"
+            subtitle="Uses the customer postcode to identify the electricity region and retrieves the current Flux import and export rates from Octopus."
+            action={
+              <button
+                type="button"
+                onClick={getCurrentFluxRates}
+                disabled={loadingFluxRates}
+                style={{
+                  ...styles.primary,
+                  opacity: loadingFluxRates ? 0.65 : 1,
+                  whiteSpace: "nowrap",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <OctopusLogo />
+                {loadingFluxRates ? "Getting rates…" : "Get current rates"}
+              </button>
+            }
+          >
+            <div className="octopus-flux-card">
+              <style>{\`
+                .octopus-flux-card input {
+                  width: 100%;
+                  box-sizing: border-box;
+                  border: 1px solid #cbd5e1;
+                  border-radius: 8px;
+                  padding: 7px 10px;
+                  font-family: inherit;
+                  font-size: 12px;
+                  background: #fff;
+                  color: #172554;
+                }
+
+                .octopus-flux-card input[readonly] {
+                  background: #f1f5f9;
+                  color: #334155;
+                }
+              \`}</style>
+
+            {fluxRateError && (
+              <div
+                style={{
+                  marginBottom: 12,
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  background: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  color: "#b91c1c",
+                  fontSize: 12,
+                }}
+              >
+                {fluxRateError}
+              </div>
+            )}
+
+`
 
 let next = text.slice(0, start) + replacement + text.slice(end)
 
@@ -27,7 +91,7 @@ next = next.replace(
 
 // Put the retrieved date directly beside the Rate heading.
 const rateHeadingRegex = /(\n\s*)Rate(\n\s*)/
-const tableStart = next.indexOf('gridTemplateColumns: "1.2fr 1fr 1fr"')
+const tableStart = next.indexOf(gridMarker)
 if (tableStart !== -1) {
   const table = next.slice(tableStart)
   const match = table.match(rateHeadingRegex)
@@ -40,7 +104,7 @@ if (tableStart !== -1) {
 }
 
 // Ensure the styling wrapper is closed exactly once before the Card closes.
-const cardClose = next.indexOf("          </Card>", tableStart)
+const cardClose = next.indexOf("</Card>", tableStart)
 if (cardClose !== -1) {
   const cardSection = next.slice(tableStart, cardClose)
   const alreadyClosed = /\n\s*<\/div>\s*$/.test(cardSection)
