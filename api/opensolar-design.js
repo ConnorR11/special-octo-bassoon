@@ -28,11 +28,32 @@ export default async function handler(req, res) {
 
   const findActivation = (part, activations, kind) => {
     const partData = parseJsonData(part?.data)
-    const candidateIds = [part?.[`${kind}_activation_id`], part?.activation_id, partData?.[`${kind}_activation_id`], partData?.activation_id, part?.activation?.id].map((v) => String(v || "").trim()).filter(Boolean)
-    for (const id of candidateIds) { const direct = activations.find((item) => String(item?.id || "") === id); if (direct) return direct }
+    const candidateIds = [
+      part?.id,
+      part?.[`${kind}_id`],
+      part?.[`${kind}_activation_id`],
+      part?.activation_id,
+      partData?.id,
+      partData?.[`${kind}_id`],
+      partData?.[`${kind}_activation_id`],
+      partData?.activation_id,
+      part?.activation?.id,
+    ].map((v) => String(v || "").trim()).filter(Boolean)
+    for (const id of candidateIds) {
+      const direct = activations.find((item) => String(item?.id || "") === id)
+      if (direct) return direct
+    }
     const codes = [part?.code, partData?.code, part?.model, partData?.model, part?.sku, partData?.sku].map(normalise).filter(Boolean)
     const manufacturers = [part?.manufacturer_name, partData?.manufacturer_name, partData?.manufacturer, part?.manufacturer].map(normalise).filter(Boolean)
-    return activations.find((item) => { const data = parseJsonData(item?.data); const code = normalise(item?.code || data?.code); const manufacturer = normalise(item?.manufacturer_name || data?.manufacturer_name || data?.manufacturer); return codes.includes(code) && (!manufacturers.length || !manufacturer || manufacturers.includes(manufacturer)) }) || activations.find((item) => { const data = parseJsonData(item?.data); return codes.includes(normalise(item?.code || data?.code)) }) || null
+    return activations.find((item) => {
+      const data = parseJsonData(item?.data)
+      const code = normalise(item?.code || data?.code)
+      const manufacturer = normalise(item?.manufacturer_name || data?.manufacturer_name || data?.manufacturer)
+      return codes.includes(code) && (!manufacturers.length || !manufacturer || manufacturers.includes(manufacturer))
+    }) || activations.find((item) => {
+      const data = parseJsonData(item?.data)
+      return codes.includes(normalise(item?.code || data?.code))
+    }) || null
   }
 
   const collectComponentParts = (system, type) => {
@@ -41,7 +62,9 @@ export default async function handler(req, res) {
       ? ["inverters", "inverter", "inverterParts"]
       : type === "battery"
         ? ["batteries", "battery", "batteryParts"]
-        : ["ev_chargers", "evChargers", "electric_vehicle_chargers", "evCharger", "ev_charger"]
+        : type === "other"
+          ? ["other_components", "otherComponents", "other_components_parts", "otherParts", "others", "other"]
+          : []
     const found = []
     const add = (value) => { if (Array.isArray(value)) value.forEach((item) => item && found.push(item)); else if (value && typeof value === "object") found.push(value) }
     keys.forEach((key) => { add(system?.[key]); add(data?.[key]); add(data?.components?.[key]); add(data?.hardware?.[key]) })
@@ -51,31 +74,55 @@ export default async function handler(req, res) {
     return unique
   }
 
+  const isLikelyEvCharger = (part, activation) => {
+    const partData = parseJsonData(part?.data)
+    const activationData = parseJsonData(activation?.data)
+    const text = [
+      part?.type, part?.category, part?.component_type, part?.component_category,
+      part?.description, part?.name, part?.model, part?.code,
+      partData?.type, partData?.category, partData?.component_type, partData?.component_category,
+      partData?.description, partData?.name, partData?.model, partData?.code,
+      activation?.type, activation?.category, activation?.component_type, activation?.component_category,
+      activation?.description, activation?.name, activation?.model, activation?.code,
+      activationData?.type, activationData?.category, activationData?.component_type, activationData?.component_category,
+      activationData?.description, activationData?.name, activationData?.model, activationData?.code,
+    ].filter(Boolean).join(" ").toLowerCase()
+    return /ev\s*charger|electric\s*vehicle|wallbox|zappi|ohme|easee|hypervolt|pod\s*point|rolec|wall\s*connector|charge\s*point/.test(text)
+  }
+
   try {
     const detailsUrl = new URL(`${base}/projects/${encodeURIComponent(projectId)}/systems/details/`); detailsUrl.searchParams.set("include_parts", "mcs")
     const response = await fetch(detailsUrl, { headers: apiHeaders }); const text = await response.text(); let payload; try { payload = JSON.parse(text) } catch { payload = null }
     if (!response.ok) return res.status(response.status).json({ success: false, error: payload?.detail || payload?.error || `OpenSolar returned HTTP ${response.status}.` })
     const systems = Array.isArray(payload?.systems) ? payload.systems : []
     const firstSystem = systems.find((system) => system?.uuid) || systems[0] || null
-    const [inverterActivations, batteryActivations, evChargerActivations] = await Promise.all([fetchAllActivations("component_inverter_activations"), fetchAllActivations("component_battery_activations"), fetchAllActivations("component_ev_charger_activations")])
+
+    const [inverterActivations, batteryActivations, otherActivations] = await Promise.all([
+      fetchAllActivations("component_inverter_activations"),
+      fetchAllActivations("component_battery_activations"),
+      fetchAllActivations("component_other_activations"),
+    ])
+
     const systemInverters = systems.flatMap((system) => collectComponentParts(system, "inverter"))
     const systemBatteries = systems.flatMap((system) => collectComponentParts(system, "battery"))
-    const systemEvChargers = systems.flatMap((system) => collectComponentParts(system, "ev_charger"))
+    const systemOtherComponents = systems.flatMap((system) => collectComponentParts(system, "other"))
 
     const inverterParts = systemInverters.map((part) => {
       const activation = findActivation(part, inverterActivations, "inverter")
       const partData = parseJsonData(part?.data); const activationData = parseJsonData(activation?.data)
-      const capacityKw = numberOrNull(
-        activationData?.max_power_kw, activation?.max_power_kw,
-        activationData?.specs?.max_power_kw, activation?.specs?.max_power_kw,
-        partData?.max_power_kw, part?.max_power_kw,
+      const rawCapacity = numberOrNull(
         activationData?.max_power_rating, activation?.max_power_rating,
-        activationData?.power_kw, activation?.power_kw,
+        activationData?.max_power_kw, activation?.max_power_kw,
+        activationData?.specs?.max_power_rating, activation?.specs?.max_power_rating,
+        activationData?.specs?.max_power_kw, activation?.specs?.max_power_kw,
         partData?.max_power_rating, part?.max_power_rating,
+        partData?.max_power_kw, part?.max_power_kw,
+        activationData?.power_kw, activation?.power_kw,
         partData?.power_kw, part?.power_kw,
       )
-      const efficiency = numberOrNull(activationData?.efficiency, partData?.efficiency, part?.efficiency)
-      return { manufacturer: String(part?.manufacturer_name || activation?.manufacturer_name || activationData?.manufacturer_name || ""), model: String(part?.code || activation?.code || activationData?.code || ""), quantity: Math.max(1, Number(part?.quantity || 1)), capacityKw: capacityKw ? (capacityKw > 100 ? capacityKw / 1000 : capacityKw) : 0, efficiencyPercent: efficiency }
+      const capacityKw = rawCapacity == null ? 0 : rawCapacity > 100 ? rawCapacity / 1000 : rawCapacity
+      const efficiency = numberOrNull(activationData?.efficiency, activation?.efficiency, partData?.efficiency, part?.efficiency)
+      return { manufacturer: String(part?.manufacturer_name || activation?.manufacturer_name || activationData?.manufacturer_name || ""), model: String(part?.code || activation?.code || activationData?.code || ""), quantity: Math.max(1, Number(part?.quantity || activation?.quantity || 1)), capacityKw, efficiencyPercent: efficiency }
     })
 
     const batteryParts = systemBatteries.map((part) => {
@@ -88,26 +135,44 @@ export default async function handler(req, res) {
         activationData?.nominal_capacity_kwh, activation?.nominal_capacity_kwh,
         activationData?.usable_capacity_kwh, activation?.usable_capacity_kwh,
         activationData?.energy_capacity_kwh, activation?.energy_capacity_kwh,
-        activationData?.specs?.capacity_kwh, activation?.specs?.capacity_kwh,
         activationData?.specs?.kwh_optimal, activation?.specs?.kwh_optimal,
+        activationData?.specs?.capacity_kwh, activation?.specs?.capacity_kwh,
         partData?.kwh_optimal, partData?.capacity_kwh, partData?.battery_total_kwh,
         partData?.nominal_capacity_kwh, partData?.usable_capacity_kwh, partData?.energy_capacity_kwh,
         part?.kwh_optimal, part?.capacity_kwh, part?.battery_total_kwh,
       )
-      return { manufacturer: String(part?.manufacturer_name || activation?.manufacturer_name || activationData?.manufacturer_name || ""), model: String(part?.code || activation?.code || activationData?.code || ""), quantity: Math.max(1, Number(part?.quantity || 1)), capacityKwh: capacity || 0 }
+      return { manufacturer: String(part?.manufacturer_name || activation?.manufacturer_name || activationData?.manufacturer_name || ""), model: String(part?.code || activation?.code || activationData?.code || ""), quantity: Math.max(1, Number(part?.quantity || activation?.quantity || 1)), capacityKwh: capacity || 0 }
     })
 
-    const evChargerParts = systemEvChargers.map((part) => {
-      const activation = findActivation(part, evChargerActivations, "ev_charger")
-      const partData = parseJsonData(part?.data); const activationData = parseJsonData(activation?.data)
-      const power = numberOrNull(activationData?.max_power_rating, activationData?.max_power_kw, activationData?.power_kw, partData?.max_power_rating, partData?.max_power_kw, partData?.power_kw, part?.max_power_rating, part?.max_power_kw, part?.power_kw)
-      return { manufacturer: String(part?.manufacturer_name || activation?.manufacturer_name || activationData?.manufacturer_name || ""), model: String(part?.code || activation?.code || activationData?.code || ""), quantity: Math.max(1, Number(part?.quantity || 1)), powerKw: power || 0 }
-    })
+    // OpenSolar does not expose a dedicated EV-charger activation endpoint in the
+    // standard hardware API. EV chargers are treated as "other" components, so
+    // only classify an other component as an EV charger when its own metadata
+    // explicitly identifies it as one. This prevents PV connectors and other
+    // components (for example STÄUBLI PV-KBT4-EVO) from appearing as chargers.
+    const evChargerParts = systemOtherComponents
+      .map((part) => ({ part, activation: findActivation(part, otherActivations, "other") }))
+      .filter(({ part, activation }) => isLikelyEvCharger(part, activation))
+      .map(({ part, activation }) => {
+        const partData = parseJsonData(part?.data); const activationData = parseJsonData(activation?.data)
+        const power = numberOrNull(activationData?.max_power_kw, activation?.max_power_kw, activationData?.power_kw, activation?.power_kw, partData?.max_power_kw, partData?.power_kw, part?.max_power_kw, part?.power_kw, activationData?.max_power_rating, activation?.max_power_rating, partData?.max_power_rating, part?.max_power_rating)
+        return { manufacturer: String(part?.manufacturer_name || activation?.manufacturer_name || activationData?.manufacturer_name || ""), model: String(part?.code || activation?.code || activationData?.code || ""), quantity: Math.max(1, Number(part?.quantity || activation?.quantity || 1)), powerKw: power ? (power > 100 ? power / 1000 : power) : 0 }
+      })
 
     const inverterCapacity = inverterParts.reduce((total, part) => total + part.capacityKw * part.quantity, 0)
     const batteryCapacity = batteryParts.reduce((total, part) => total + part.capacityKwh * part.quantity, 0)
     const evChargerPower = evChargerParts.reduce((total, part) => total + part.powerKw * part.quantity, 0)
-    const diagnosticInverters = systemInverters.map((part) => { const activation = findActivation(part, inverterActivations, "inverter"); const partData = parseJsonData(part?.data); const activationData = parseJsonData(activation?.data); return { part: { id: part?.id, code: part?.code, model: part?.model, manufacturer: part?.manufacturer_name || part?.manufacturer, quantity: part?.quantity }, activation: activation ? { id: activation?.id, code: activation?.code, manufacturer: activation?.manufacturer_name || activation?.manufacturer } : null, max_power_kw: { activationData: activationData?.max_power_kw ?? null, activation: activation?.max_power_kw ?? null, activationSpecs: activation?.specs?.max_power_kw ?? null, activationDataSpecs: activationData?.specs?.max_power_kw ?? null, partData: partData?.max_power_kw ?? null, part: part?.max_power_kw ?? null }, resolvedCapacityKw: numberOrNull(activationData?.max_power_kw, activation?.max_power_kw, activationData?.specs?.max_power_kw, activation?.specs?.max_power_kw, partData?.max_power_kw, part?.max_power_kw) || 0 } })
+
+    const diagnosticInverters = systemInverters.map((part) => {
+      const activation = findActivation(part, inverterActivations, "inverter")
+      const partData = parseJsonData(part?.data); const activationData = parseJsonData(activation?.data)
+      return {
+        part: { id: part?.id, inverter_id: part?.inverter_id, code: part?.code, model: part?.model, manufacturer: part?.manufacturer_name || part?.manufacturer, quantity: part?.quantity },
+        activation: activation ? { id: activation?.id, inverter_id: activation?.inverter_id, code: activation?.code, manufacturer: activation?.manufacturer_name || activation?.manufacturer } : null,
+        max_power_rating: { activationData: activationData?.max_power_rating ?? null, activation: activation?.max_power_rating ?? null, partData: partData?.max_power_rating ?? null, part: part?.max_power_rating ?? null },
+        max_power_kw: { activationData: activationData?.max_power_kw ?? null, activation: activation?.max_power_kw ?? null, partData: partData?.max_power_kw ?? null, part: part?.max_power_kw ?? null },
+        resolvedCapacityKw: inverterParts.find((item) => item.model === String(part?.code || activation?.code || activationData?.code || ""))?.capacityKw || 0,
+      }
+    })
 
     let systemImageUrl = ""
     if (firstSystem?.uuid) {
@@ -115,6 +180,28 @@ export default async function handler(req, res) {
       try { const imageResponse = await fetch(imageUrl, { headers: { Authorization: `Bearer ${token}`, Accept: "image/*" }, redirect: "follow" }); if (imageResponse.ok) systemImageUrl = imageResponse.url || "" } catch (imageError) { console.warn("OpenSolar system image lookup failed", imageError) }
     }
 
-    return res.status(200).json({ success: true, projectId, numberOfArrays: 0, arrays: [], truncated: false, systemImageUrl, hardware: { inverter: { manufacturer: inverterParts[0]?.manufacturer || "", model: inverterParts[0]?.model || "", quantity: inverterParts.reduce((total, part) => total + part.quantity, 0), capacityKw: inverterCapacity, efficiencyPercent: null, parts: inverterParts }, battery: { manufacturer: batteryParts[0]?.manufacturer || "", model: batteryParts[0]?.model || "", quantity: batteryParts.reduce((total, part) => total + part.quantity, 0), capacityKwh: batteryCapacity, roundTripEfficiencyPercent: null, depthOfDischargePercent: null, endOfLifeCapacityPercent: null, warrantyYears: null, parts: batteryParts }, evCharger: { manufacturer: evChargerParts[0]?.manufacturer || "", model: evChargerParts[0]?.model || "", quantity: evChargerParts.reduce((total, part) => total + part.quantity, 0), powerKw: evChargerPower, parts: evChargerParts }, diagnostic: { inverterParts: diagnosticInverters, activationCount: inverterActivations.length, systemInverterCount: systemInverters.length } })
+    return res.status(200).json({
+      success: true,
+      projectId,
+      numberOfArrays: 0,
+      arrays: [],
+      truncated: false,
+      systemImageUrl,
+      hardware: {
+        inverter: { manufacturer: inverterParts[0]?.manufacturer || "", model: inverterParts[0]?.model || "", quantity: inverterParts.reduce((total, part) => total + part.quantity, 0), capacityKw: inverterCapacity, efficiencyPercent: null, parts: inverterParts },
+        battery: { manufacturer: batteryParts[0]?.manufacturer || "", model: batteryParts[0]?.model || "", quantity: batteryParts.reduce((total, part) => total + part.quantity, 0), capacityKwh: batteryCapacity, roundTripEfficiencyPercent: null, depthOfDischargePercent: null, endOfLifeCapacityPercent: null, warrantyYears: null, parts: batteryParts },
+        evCharger: { manufacturer: evChargerParts[0]?.manufacturer || "", model: evChargerParts[0]?.model || "", quantity: evChargerParts.reduce((total, part) => total + part.quantity, 0), powerKw: evChargerPower, parts: evChargerParts },
+      },
+      diagnostic: {
+        inverterParts: diagnosticInverters,
+        activationCount: inverterActivations.length,
+        batteryActivationCount: batteryActivations.length,
+        otherActivationCount: otherActivations.length,
+        systemInverterCount: systemInverters.length,
+        systemBatteryCount: systemBatteries.length,
+        systemOtherComponentCount: systemOtherComponents.length,
+        evChargerCandidateCount: evChargerParts.length,
+      },
+    })
   } catch (error) { console.error("OpenSolar design lookup failed", error); return res.status(500).json({ success: false, error: error?.message || "Unable to retrieve the OpenSolar design." }) }
 }
