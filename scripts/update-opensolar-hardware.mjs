@@ -54,30 +54,44 @@ const labelBlock = (label) => new RegExp(
   "m"
 )
 
-const displayField = (label, expression, suffix = "") =>
+// All three OpenSolar hardware displays use the same structure and styling.
+const displayField = (label, manufacturerExpression, modelExpression, capacityExpression, unit) =>
   `    <label style={{ ...styles.field, flex: "1 1 0", minWidth: 0, width: 0 }}>\n` +
   `      <span>${label}</span>\n` +
-  `      <div style={{ minHeight: 44, boxSizing: "border-box", padding: "0 10px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#172554", display: "flex", alignItems: "center", fontSize: 12, fontWeight: 600, minWidth: 0, width: "100%", overflow: "hidden" }}>\n` +
-  `        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>${expression}</span>${suffix}\n` +
+  `      <div style={{ minHeight: 68, boxSizing: "border-box", padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#172554", display: "flex", flexDirection: "column", justifyContent: "center", minWidth: 0, width: "100%", overflow: "hidden" }}>\n` +
+  `        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, minWidth: 0 }}>\n` +
+  `          <span style={{ fontSize: 12, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>${manufacturerExpression}</span>\n` +
+  `          <span style={{ fontSize: 11, fontWeight: 500, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, textAlign: "right" }}>${modelExpression}</span>\n` +
+  `        </div>\n` +
+  `        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 7, fontSize: 11, color: "#64748b" }}>\n` +
+  `          <span>${capacityExpression} ${unit}</span>\n` +
+  `          <span style={{ color: "#172554", fontWeight: 700 }}>Quantity ${unit === "kWh" ? "{Number(data.batteryQuantity || 0)}" : unit === "kW" ? "{Number(data.inverterQuantity || 0)}" : "{Number(data.evChargerQuantity || 0)}"}</span>\n` +
+  `        </div>\n` +
   `      </div>\n` +
   `    </label>`
 
 const batteryField = displayField(
   "Battery configuration",
-  'data.batteryManufacturer ? data.batteryManufacturer + " — " + (data.batteryModel || "Unknown model") : data.batteryModel || "No battery selected in OpenSolar"',
-  ' {Number(data.batteryCapacity || 0) > 0 && <span style={{ marginLeft: 6, flexShrink: 0, fontWeight: 500, color: "#64748b" }}>({Number(data.batteryCapacity).toFixed(1)} kWh)</span>} {Number(data.batteryQuantity || 0) > 1 && <span style={{ marginLeft: 6, flexShrink: 0, fontWeight: 500, color: "#64748b" }}>× {Number(data.batteryQuantity)}</span>}'
+  'data.batteryManufacturer || "No battery selected in OpenSolar"',
+  'data.batteryModel || "Unknown model"',
+  'Number(data.batteryCapacity || 0).toFixed(1)',
+  "kWh"
 )
 
 const inverterField = displayField(
   "Inverter capacity (kW)",
-  'data.inverterManufacturer ? data.inverterManufacturer + " — " + (data.inverterModel || "Unknown model") : data.inverterModel || "No inverter selected in OpenSolar"',
-  ' {Number(data.inverterCapacity || 0) > 0 && <span style={{ marginLeft: 6, flexShrink: 0, fontWeight: 500, color: "#64748b" }}>({Number(data.inverterCapacity).toFixed(1)} kW)</span>} {Number(data.inverterQuantity || 0) > 1 && <span style={{ marginLeft: 6, flexShrink: 0, fontWeight: 500, color: "#64748b" }}>× {Number(data.inverterQuantity)}</span>}'
+  'data.inverterManufacturer || "No inverter selected in OpenSolar"',
+  'data.inverterModel || "Unknown model"',
+  'Number(data.inverterCapacity || 0).toFixed(1)',
+  "kW"
 )
 
 const evField = displayField(
   "EV Charger",
-  'data.evChargerManufacturer ? data.evChargerManufacturer + " — " + (data.evChargerModel || "Unknown model") : data.evChargerModel || "No EV charger selected in OpenSolar"',
-  ' {Number(data.evChargerQuantity || 0) > 1 && <span style={{ marginLeft: 6, flexShrink: 0, fontWeight: 500, color: "#64748b" }}>× {Number(data.evChargerQuantity)}</span>}'
+  'data.evChargerManufacturer || "No EV charger selected in OpenSolar"',
+  'data.evChargerModel || "Unknown model"',
+  '"—"',
+  ""
 )
 
 const batteryRe = labelBlock("Battery configuration")
