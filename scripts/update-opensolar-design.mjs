@@ -27,3 +27,20 @@ if (cardHeaderPattern.test(next) && !next.includes("{action && <div")) next = ne
 if (next === text) { console.log("OpenSolar UI already applied; nothing to change."); process.exit(0) }
 fs.writeFileSync(path, next)
 console.log("OpenSolar UI patch applied.")
+
+// The OpenSolar image URL is stored on the appointment row. Render that stored
+// URL in AppointmentDetail as well as inside the EPVS calculator so the image
+// remains visible after the appointment is re-opened.
+const appointmentPath = "src/pages/AppointmentDetail.jsx"
+if (fs.existsSync(appointmentPath)) {
+  const appointmentText = fs.readFileSync(appointmentPath, "utf8")
+  let appointmentNext = appointmentText
+  const imageMarker = "data-opensolar-system-image"
+  const epvsMarker = "      {isSolar && <div style={{ marginTop: \"24px\" }}><div style={{ marginBottom: \"12px\" }}><h2 style={{ margin: 0, fontSize: \"18px\", color: \"#222\" }}>EPVS Calculator</h2>"
+  if (!appointmentNext.includes(imageMarker) && appointmentNext.includes(epvsMarker)) {
+    const imageBlock = `      {isSolar && appointment?.open_solar_image && <div data-opensolar-system-image style={{ marginTop: \"24px\", padding: \"16px\", background: \"#fff\", border: \"1px solid #e2e5e8\", borderRadius: \"8px\" }}>\n        <div style={{ marginBottom: \"12px\" }}>\n          <h2 style={{ margin: 0, fontSize: \"16px\", color: \"#222\" }}>OpenSolar System Design</h2>\n          <p style={{ margin: \"5px 0 0\", fontSize: \"11px\", color: \"#888\" }}>System design imported from OpenSolar.</p>\n        </div>\n        <div style={{ width: \"100%\", minHeight: \"240px\", display: \"flex\", alignItems: \"center\", justifyContent: \"center\", overflow: \"hidden\", borderRadius: \"6px\", background: \"#f6f8f9\" }}>\n          <img src={String(appointment.open_solar_image)} alt=\"OpenSolar system design\" style={{ display: \"block\", width: \"100%\", maxHeight: \"650px\", objectFit: \"contain\" }} />\n        </div>\n      </div>}\n\n`
+    appointmentNext = appointmentNext.replace(epvsMarker, `${imageBlock}${epvsMarker}`)
+    fs.writeFileSync(appointmentPath, appointmentNext)
+    console.log("OpenSolar appointment image UI patch applied.")
+  }
+}
