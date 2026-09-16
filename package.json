@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/remove-annual-savings-breakdown.mjs && node scripts/update-opensolar-design.mjs && node scripts/update-octopus-flux-card.mjs && vite build",
+    "build": "node scripts/remove-annual-savings-breakdown.mjs && node scripts/update-opensolar-design.mjs && node scripts/finalize-opensolar-hardware-ui.mjs && node scripts/update-octopus-flux-card.mjs && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
