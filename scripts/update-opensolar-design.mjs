@@ -5,7 +5,7 @@ const text = fs.readFileSync(path, "utf8")
 let next = text
 
 if (!next.includes('import OpenSolarDesignButton from "./components/EPVS/OpenSolarDesignButton"')) {
-  const importMarker = 'import ThirtyYearBreakdown from "./components/EPVS/ThirtyYearBreakdown"'
+  const importMarker = 'import ThirtyYearBreakdown from "./components/ThirtyYearBreakdown"'
   if (!next.includes(importMarker)) throw new Error("Could not locate the EPVS breakdown imports")
   next = next.replace(importMarker, `${importMarker}\nimport OpenSolarDesignButton from "./components/EPVS/OpenSolarDesignButton"`)
 }
@@ -23,7 +23,7 @@ if (oldHandler.test(next)) {
 
 const solarCardPattern = /<Card\n  title="Solar PV arrays"\n  subtitle="Enter the EPVS information for each roof \/ array\."\n>/
 if (solarCardPattern.test(next) && !next.includes("projectId={appointment?.open_solar_id}")) {
-  next = next.replace(solarCardPattern, `<Card\n  title="Solar PV arrays"\n  subtitle="Enter the EPVS information for each roof / array."\n  action={\n    <OpenSolarDesignButton\n      projectId={appointment?.open_solar_id}\n      onDesignLoaded={handleOpenSolarDesignLoaded}\n    />\n  }\n>`)
+  next = next.replace(solarCardPattern, `<Card\n  title="Solar System Design"\n  subtitle="Press get current design to download the system design from open solar"\n  action={\n    <OpenSolarDesignButton\n      projectId={appointment?.open_solar_id}\n      onDesignLoaded={handleOpenSolarDesignLoaded}\n    />\n  }\n>`)
 }
 
 const cardSignature = /function Card\(\{\n  title,\n  subtitle,\n  children,\n\}\) \{/s
