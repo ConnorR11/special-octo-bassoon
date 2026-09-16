@@ -28,10 +28,10 @@ if (!next.includes("batteryManufacturer: String(importedHardware?.battery?.manuf
 }
 
 const displayField = (label, expression, suffix) =>
-  '    <label style={styles.field}>\n' +
-  '      <span>' + label + '</span>\n' +
-  '      <div style={{ minHeight: 44, boxSizing: "border-box", padding: "0 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#172554", display: "flex", alignItems: "center", fontSize: 13, fontWeight: 600, minWidth: 0, overflow: "hidden" }}>\n' +
-  '        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{' + expression + '}</span>' +
+  '    <label style={{ ...styles.field, minWidth: 0, width: "100%" }}>\n' +
+  '      <span style={{ fontSize: 12 }}>{' + JSON.stringify(label) + '}</span>\n' +
+  '      <div style={{ minHeight: 44, boxSizing: "border-box", padding: "0 10px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#172554", display: "flex", alignItems: "center", fontSize: 12, fontWeight: 600, minWidth: 0, width: "100%", overflow: "hidden" }}>\n' +
+  '        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{' + expression + '}</span>' +
   (suffix ? '\n        ' + suffix : '') +
   '\n      </div>\n' +
   '    </label>'
@@ -68,8 +68,11 @@ if (!next.includes('data.evChargerModel || "No EV charger selected in OpenSolar"
   }
 }
 
-// Put Battery / Inverter / EV Charger on one responsive three-column row.
-if (!next.includes('className="opensolar-hardware-row"')) {
+// Force the three OpenSolar hardware displays onto one horizontal row.
+// Flex is used here rather than a nested CSS grid so the row is independent
+// of the calculator's two-column field grid.
+const hardwareRowMarker = 'className="opensolar-hardware-row"'
+if (!next.includes(hardwareRowMarker)) {
   const batteryStart = next.indexOf('    <label style={styles.field}>\n      <span>Battery configuration</span>')
   const batteryEnd = batteryStart === -1 ? -1 : next.indexOf('    </label>', batteryStart) + '    </label>'.length
   const inverterStart = batteryEnd === -1 ? -1 : next.indexOf('    <label style={styles.field}>\n      <span>Inverter capacity (kW)</span>', batteryEnd)
@@ -79,10 +82,10 @@ if (!next.includes('className="opensolar-hardware-row"')) {
 
   if (batteryStart !== -1 && inverterStart !== -1 && evStart !== -1 && evEnd > evStart) {
     const row = [
-      '    <div className="opensolar-hardware-row" style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14, width: "100%", minWidth: 0 }}>',
-      next.slice(batteryStart, batteryEnd),
-      next.slice(inverterStart, inverterEnd),
-      next.slice(evStart, evEnd),
+      '    <div className="opensolar-hardware-row" style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "row", alignItems: "flex-start", gap: 12, width: "100%", minWidth: 0 }}>',
+      next.slice(batteryStart, batteryEnd).replace('style={styles.field}', 'style={{ ...styles.field, flex: "1 1 0", minWidth: 0, width: 0 }}'),
+      next.slice(inverterStart, inverterEnd).replace('style={styles.field}', 'style={{ ...styles.field, flex: "1 1 0", minWidth: 0, width: 0 }}'),
+      next.slice(evStart, evEnd).replace('style={styles.field}', 'style={{ ...styles.field, flex: "1 1 0", minWidth: 0, width: 0 }}'),
       '    </div>',
     ].join("\n")
     next = next.slice(0, batteryStart) + row + next.slice(evEnd)
