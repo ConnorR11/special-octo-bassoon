@@ -23,13 +23,13 @@ export default async function handler(req, res) {
   )
   url.searchParams.set("include_parts", "mcs")
 
+  const apiHeaders = {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/json",
+  }
+
   try {
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/json",
-      },
-    })
+    const response = await fetch(url, { headers: apiHeaders })
 
     const text = await response.text()
     let payload
@@ -50,6 +50,106 @@ export default async function handler(req, res) {
     }
 
     const systems = Array.isArray(payload?.systems) ? payload.systems : []
+    const firstSystem = systems.find((system) => system?.uuid) || systems[0] || null
+
+    const parseJsonData = (value) => {
+      if (!value) return {}
+      if (typeof value === "object") return value
+      try {
+        return JSON.parse(value)
+      } catch {
+        return {}
+      }
+    }
+
+    const fetchActivationList = async (path) => {
+      try {
+        const activationResponse = await fetch(
+          `https://api.opensolar.com/api/orgs/${encodeURIComponent(orgId)}/${path}/`,
+          { headers: apiHeaders }
+        )
+        if (!activationResponse.ok) return []
+        const activationPayload = await activationResponse.json()
+        return Array.isArray(activationPayload)
+          ? activationPayload
+          : Array.isArray(activationPayload?.results)
+            ? activationPayload.results
+            : []
+      } catch {
+        return []
+      }
+    }
+
+    const [inverterActivations, batteryActivations] = await Promise.all([
+      fetchActivationList("component_inverter_activations"),
+      fetchActivationList("component_battery_activations"),
+    ])
+
+    const findActivation = (part, activations) => {
+      const code = String(part?.code || "").trim().toLowerCase()
+      const manufacturer = String(part?.manufacturer_name || "").trim().toLowerCase()
+      return (
+        activations.find(
+          (item) =>
+            String(item?.code || "").trim().toLowerCase() === code &&
+            String(item?.manufacturer_name || "").trim().toLowerCase() === manufacturer
+        ) ||
+        activations.find(
+          (item) => String(item?.code || "").trim().toLowerCase() === code
+        ) ||
+        null
+      )
+    }
+
+    const systemInverters = Array.isArray(firstSystem?.inverters)
+      ? firstSystem.inverters
+      : []
+    const systemBatteries = Array.isArray(firstSystem?.batteries)
+      ? firstSystem.batteries
+      : []
+
+    const inverterParts = systemInverters.map((part) => {
+      const activation = findActivation(part, inverterActivations)
+      const activationData = parseJsonData(activation?.data)
+      const capacity = Number(
+        activationData?.max_power_rating ??
+        activationData?.max_power_kw ??
+        part?.max_power_rating ??
+        0
+      )
+      return {
+        manufacturer: String(part?.manufacturer_name || activation?.manufacturer_name || ""),
+        model: String(part?.code || activation?.code || ""),
+        quantity: Number(part?.quantity || 1),
+        capacityKw: Number.isFinite(capacity) ? capacity : 0,
+      }
+    })
+
+    const batteryParts = systemBatteries.map((part) => {
+      const activation = findActivation(part, batteryActivations)
+      const activationData = parseJsonData(activation?.data)
+      const capacity = Number(
+        activationData?.kwh_optimal ??
+        activationData?.capacity_kwh ??
+        part?.kwh_optimal ??
+        0
+      )
+      return {
+        manufacturer: String(part?.manufacturer_name || activation?.manufacturer_name || ""),
+        model: String(part?.code || activation?.code || ""),
+        quantity: Number(part?.quantity || 1),
+        capacityKwh: Number.isFinite(capacity) ? capacity : 0,
+      }
+    })
+
+    const inverterCapacity = inverterParts.reduce(
+      (total, part) => total + part.capacityKw * Math.max(1, part.quantity),
+      0
+    )
+    const batteryCapacity = batteryParts.reduce(
+      (total, part) => total + part.capacityKwh * Math.max(1, part.quantity),
+      0
+    )
 
     const arrays = systems.flatMap((system) => {
       const shadeFactor = Number(system?.data?.mcs?.shadingFactor ?? 1)
@@ -78,7 +178,6 @@ export default async function handler(req, res) {
     })
 
     let systemImageUrl = ""
-    const firstSystem = systems.find((system) => system?.uuid)
 
     if (firstSystem?.uuid) {
       const imageUrl = new URL(
@@ -111,6 +210,20 @@ export default async function handler(req, res) {
       arrays: arrays.slice(0, 3),
       truncated: arrays.length > 3,
       systemImageUrl,
+      hardware: {
+        inverter: {
+          manufacturer: inverterParts[0]?.manufacturer || "",
+          model: inverterParts[0]?.model || "",
+          quantity: inverterParts.reduce((total, part) => total + Math.max(1, part.quantity), 0),
+          capacityKw: inverterCapacity,
+        },
+        battery: {
+          manufacturer: batteryParts[0]?.manufacturer || "",
+          model: batteryParts[0]?.model || "",
+          quantity: batteryParts.reduce((total, part) => total + Math.max(1, part.quantity), 0),
+          capacityKwh: batteryCapacity,
+        },
+      },
       systems: systems.map((system) => ({
         id: system?.id,
         uuid: system?.uuid,
