@@ -3,13 +3,10 @@ import fs from "node:fs"
 const path = "src/EPVSCalculator.jsx"
 const text = fs.readFileSync(path, "utf8")
 
-// The source may already contain the desired card, or an older version may have
-// used a different title. Locate the card from stable content rather than a
-// particular title/indentation so the Vercel build cannot fail after formatting changes.
-const stableMarker = "getCurrentFluxRates"
-const markerIndex = text.indexOf(stableMarker)
+const marker = "getCurrentFluxRates"
+const markerIndex = text.indexOf(marker)
 if (markerIndex === -1) {
-  console.log("Octopus Flux card patch skipped: source already contains no patchable Flux button")
+  console.log("Octopus Flux card patch skipped: Flux button handler not found")
   process.exit(0)
 }
 
@@ -19,50 +16,71 @@ if (cardStart === -1) {
   process.exit(0)
 }
 
-// Find the matching Card close by scanning JSX tags. This deliberately avoids
-// assumptions about whitespace, title text, or the exact table formatting.
-let depth = 0
-let end = -1
-const tagRegex = /<\/?Card\b[^>]*>/g
-let match
-while ((match = tagRegex.exec(text)) !== null) {
-  if (match.index < cardStart) continue
-  if (match.index === cardStart) {
-    depth = 1
-    continue
-  }
-  if (match[0].startsWith("</Card")) {
-    depth -= 1
-    if (depth === 0) {
-      end = match.index + match[0].length
-      break
-    }
-  } else {
-    depth += 1
-  }
-}
-
-if (end === -1) {
-  console.log("Octopus Flux card patch skipped: matching Card close not found")
+// Replace the complete Octopus Card opening tag. This deliberately removes any
+// old inline title/button JSX so the button is a Card action, not part of the
+// title/subtitle container. The action is therefore laid out independently and
+// can align with the full content width used by the rates table.
+const openingPattern = /<Card[\s\S]*?subtitle="[^"]*"\s*>/
+const sourceFromCard = text.slice(cardStart)
+const openingMatch = sourceFromCard.match(openingPattern)
+if (!openingMatch) {
+  console.log("Octopus Flux card patch skipped: Card opening tag not found")
   process.exit(0)
 }
 
-const card = text.slice(cardStart, end)
-const title = 'title="Get current Octopus Flux rates"'
-const oldTitle = 'title="New Octopus Standard Flux"'
+const replacement = `<Card
+            title="Get current Octopus Flux rates"
+            subtitle="Uses the customer postcode to identify the electricity region and retrieves the current Flux import and export rates from Octopus."
+            action={
+              <button
+                type="button"
+                onClick={getCurrentFluxRates}
+                disabled={loadingFluxRates}
+                style={{
+                  ...styles.primary,
+                  opacity: loadingFluxRates ? 0.65 : 1,
+                  whiteSpace: "nowrap",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <OctopusLogo />
+                {loadingFluxRates ? "Getting rates…" : "Get current rates"}
+              </button>
+            }
+          >`
 
-// Only change the card header/action. Leave the rates table and its contents alone.
-let updated = card
-  .replace(/title="[^"]*"/, title)
-  .replace(/subtitle="[^"]*"/, 'subtitle="Uses the customer postcode to identify the electricity region and retrieves the current Flux import and export rates from Octopus."')
+const absoluteEnd = cardStart + openingMatch[0].length
+let next = text.slice(0, cardStart) + replacement + text.slice(absoluteEnd)
 
-if (!updated.includes("action={")) {
-  const action = `\n            action={\n              <button\n                type="button"\n                onClick={getCurrentFluxRates}\n                disabled={loadingFluxRates}\n                style={{\n                  ...styles.primary,\n                  opacity: loadingFluxRates ? 0.65 : 1,\n                  whiteSpace: "nowrap",\n                  display: "inline-flex",\n                  alignItems: "center",\n                  gap: 8,\n                }}\n              >\n                <OctopusLogo />\n                {loadingFluxRates ? "Getting rates…" : "Get current rates"}\n              </button>\n            }`
-  const bodyStart = updated.indexOf(">", updated.indexOf("<Card"))
-  updated = updated.slice(0, bodyStart) + action + updated.slice(bodyStart)
+// Make the shared Card header explicitly span the full card content width and
+// keep the action at the far right. This is intentionally inline so it survives
+// CSS changes elsewhere in the application.
+const oldHeader = `className="card-head"
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 16,
+        }}`
+const newHeader = `className="card-head"
+        style={{
+          display: "flex",
+          width: "100%",
+          boxSizing: "border-box",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 16,
+        }}`
+if (next.includes(oldHeader)) {
+  next = next.replace(oldHeader, newHeader)
 }
 
-const next = text.slice(0, cardStart) + updated + text.slice(end)
+if (next === text) {
+  console.log("Octopus Flux card already updated; nothing to change.")
+  process.exit(0)
+}
 
-if (next !== text) fs.writeFileSync(path, next)
-console.log("Octopus Flux card patch applied.")
+fs.writeFileSync(path, next)
+console.log("Octopus Flux button moved to the far right of the full card header.")
