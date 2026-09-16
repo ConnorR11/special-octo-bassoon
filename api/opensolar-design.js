@@ -25,7 +25,9 @@ export default async function handler(req, res) {
     return null
   }
 
-  const normalise = (value) => String(value || "").trim().toLowerCase()
+  // OpenSolar sometimes returns the same component with small differences in
+  // punctuation/spacing between System Details and the activation record.
+  const normalise = (value) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9.]+/g, "")
 
   const fetchAllActivations = async (path) => {
     const results = []
@@ -61,22 +63,78 @@ export default async function handler(req, res) {
       if (direct) return direct
     }
 
-    const codeCandidates = [part?.code, partData?.code, part?.model, partData?.model].map(normalise).filter(Boolean)
-    const manufacturerCandidates = [part?.manufacturer_name, partData?.manufacturer_name, partData?.manufacturer, part?.manufacturer].map(normalise).filter(Boolean)
+    const codeCandidates = [
+      part?.code,
+      partData?.code,
+      part?.model,
+      partData?.model,
+      part?.sku,
+      partData?.sku,
+    ].map(normalise).filter(Boolean)
+    const manufacturerCandidates = [
+      part?.manufacturer_name,
+      partData?.manufacturer_name,
+      partData?.manufacturer,
+      part?.manufacturer,
+    ].map(normalise).filter(Boolean)
 
+    // First try manufacturer + code, then code alone. Do not require an
+    // exact manufacturer match if OpenSolar has only supplied a manufacturer ID.
     return activations.find((item) => {
       const data = parseJsonData(item?.data)
       const itemCode = normalise(item?.code || data?.code)
       const itemManufacturer = normalise(item?.manufacturer_name || data?.manufacturer_name || data?.manufacturer)
-      return codeCandidates.includes(itemCode) && (!manufacturerCandidates.length || manufacturerCandidates.includes(itemManufacturer))
+      return codeCandidates.includes(itemCode) && (!manufacturerCandidates.length || !itemManufacturer || manufacturerCandidates.includes(itemManufacturer))
     }) || activations.find((item) => {
       const data = parseJsonData(item?.data)
       return codeCandidates.includes(normalise(item?.code || data?.code))
     }) || null
   }
 
+  const collectComponentParts = (system, type) => {
+    const data = parseJsonData(system?.data)
+    const keys = type === "inverter"
+      ? ["inverters", "inverter", "inverterParts"]
+      : type === "battery"
+        ? ["batteries", "battery", "batteryParts"]
+        : ["ev_chargers", "evChargers", "electric_vehicle_chargers", "chargers", "evCharger"]
+
+    const found = []
+    const add = (value) => {
+      if (Array.isArray(value)) value.forEach((item) => item && found.push(item))
+      else if (value && typeof value === "object") found.push(value)
+    }
+
+    keys.forEach((key) => {
+      add(system?.[key])
+      add(data?.[key])
+      add(data?.components?.[key])
+      add(data?.hardware?.[key])
+    })
+
+    // The compressed/raw design can expose component arrays under a nested
+    // design/system object, so inspect one level deeper as a final fallback.
+    ;[data?.design, data?.system, data?.proposal_data].forEach((container) => {
+      const parsed = parseJsonData(container)
+      keys.forEach((key) => add(parsed?.[key]))
+    })
+
+    const unique = []
+    const seen = new Set()
+    for (const item of found) {
+      const key = `${item?.id || ""}|${item?.code || item?.model || ""}|${item?.manufacturer_name || item?.manufacturer || ""}`
+      if (!seen.has(key)) {
+        seen.add(key)
+        unique.push(item)
+      }
+    }
+    return unique
+  }
+
   try {
     const detailsUrl = new URL(`${base}/projects/${encodeURIComponent(projectId)}/systems/details/`)
+    // System Details explicitly documents these fields; keeping the request
+    // limited avoids unnecessarily large responses.
     detailsUrl.searchParams.set("include_parts", "mcs")
     const response = await fetch(detailsUrl, { headers: apiHeaders })
     const text = await response.text()
@@ -94,20 +152,25 @@ export default async function handler(req, res) {
       fetchAllActivations("component_ev_charger_activations"),
     ])
 
-    const systemInverters = systems.flatMap((system) => Array.isArray(system?.inverters) ? system.inverters : [])
-    const systemBatteries = systems.flatMap((system) => Array.isArray(system?.batteries) ? system.batteries : [])
-    const systemEvChargers = systems.flatMap((system) => [
-      ...(Array.isArray(system?.ev_chargers) ? system.ev_chargers : []),
-      ...(Array.isArray(system?.evChargers) ? system.evChargers : []),
-      ...(Array.isArray(system?.electric_vehicle_chargers) ? system.electric_vehicle_chargers : []),
-      ...(Array.isArray(system?.chargers) ? system.chargers : []),
-    ])
+    const systemInverters = systems.flatMap((system) => collectComponentParts(system, "inverter"))
+    const systemBatteries = systems.flatMap((system) => collectComponentParts(system, "battery"))
+    const systemEvChargers = systems.flatMap((system) => collectComponentParts(system, "ev_charger"))
 
     const inverterParts = systemInverters.map((part) => {
       const activation = findActivation(part, inverterActivations, "inverter")
       const partData = parseJsonData(part?.data)
       const activationData = parseJsonData(activation?.data)
-      const capacity = numberOrNull(activationData?.max_power_rating, activationData?.max_power_kw, activationData?.power_kw, partData?.max_power_rating, partData?.max_power_kw, partData?.power_kw, part?.max_power_rating, part?.max_power_kw, part?.power_kw)
+      const capacity = numberOrNull(
+        activationData?.max_power_rating,
+        activationData?.max_power_kw,
+        activationData?.power_kw,
+        partData?.max_power_rating,
+        partData?.max_power_kw,
+        partData?.power_kw,
+        part?.max_power_rating,
+        part?.max_power_kw,
+        part?.power_kw,
+      )
       const efficiency = numberOrNull(activationData?.efficiency, partData?.efficiency, part?.efficiency)
       return {
         manufacturer: String(part?.manufacturer_name || activation?.manufacturer_name || activationData?.manufacturer_name || ""),
@@ -122,7 +185,17 @@ export default async function handler(req, res) {
       const activation = findActivation(part, batteryActivations, "battery")
       const partData = parseJsonData(part?.data)
       const activationData = parseJsonData(activation?.data)
-      const capacity = numberOrNull(activationData?.kwh_optimal, activationData?.capacity_kwh, activationData?.battery_total_kwh, partData?.kwh_optimal, partData?.capacity_kwh, partData?.battery_total_kwh, part?.kwh_optimal, part?.capacity_kwh, part?.battery_total_kwh)
+      const capacity = numberOrNull(
+        activationData?.kwh_optimal,
+        activationData?.capacity_kwh,
+        activationData?.battery_total_kwh,
+        partData?.kwh_optimal,
+        partData?.capacity_kwh,
+        partData?.battery_total_kwh,
+        part?.kwh_optimal,
+        part?.capacity_kwh,
+        part?.battery_total_kwh,
+      )
       const efficiency = numberOrNull(activationData?.efficiency_factor, activationData?.round_trip_efficiency, partData?.efficiency_factor, partData?.round_trip_efficiency)
       const dod = numberOrNull(activationData?.depth_of_discharge_factor, partData?.depth_of_discharge_factor)
       const endOfLifeCapacity = numberOrNull(activationData?.end_of_life_capacity, partData?.end_of_life_capacity)
