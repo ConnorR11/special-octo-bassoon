@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react"
-import { supabase } from "../../lib/supabase"
 
 function OpenSolarLogo() {
   return (
@@ -32,28 +31,25 @@ export default function OpenSolarDesignButton({
       return
     }
 
-    if (!supabase) {
-      setError("Supabase is not configured for this application.")
-      return
-    }
-
     setLoading(true)
     setError("")
 
     try {
-      const { data: payload, error: functionError } = await supabase.functions.invoke(
-        "opensolar-design",
-        {
-          body: { projectId, appointmentRowId },
-        }
-      )
+      const response = await fetch("/api/opensolar-design", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ projectId, appointmentRowId }),
+      })
 
-      if (functionError) {
-        throw new Error(functionError.message || "Unable to retrieve the OpenSolar design.")
-      }
+      const payload = await response.json().catch(() => null)
 
-      if (!payload?.success) {
-        throw new Error(payload?.error || "Unable to retrieve the OpenSolar design.")
+      if (!response.ok || !payload?.success) {
+        throw new Error(
+          payload?.error || `Unable to retrieve the OpenSolar design (HTTP ${response.status}).`
+        )
       }
 
       onDesignLoaded?.(payload)
