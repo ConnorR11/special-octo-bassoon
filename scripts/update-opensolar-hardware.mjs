@@ -22,18 +22,16 @@ if (!next.includes('batteryManufacturer: String(importedHardware?.battery?.manuf
   }
 }
 
-const readOnlyBox = (label, manufacturer, model, capacity, unit, quantity, emptyText) => `    <label style={styles.field}>\n      <span>${label}</span>\n      <div style={{ minHeight: 44, boxSizing: "border-box", padding: "0 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#172554", display: "flex", alignItems: "center", fontSize: 13, fontWeight: 600 }}>\n        {data.${manufacturer}\n          ? \`\${data.${manufacturer}} — \${data.${model} || "Unknown model"}\`\n          : data.${model} || "${emptyText}"}\n        {Number(data.${capacity} || 0) > 0 && (\n          <span style={{ marginLeft: 6, fontWeight: 500, color: "#64748b" }}>({Number(data.${capacity}).toFixed(1)} ${unit})</span>\n        )}\n        {Number(data.${quantity} || 0) > 1 && (\n          <span style={{ marginLeft: 6, fontWeight: 500, color: "#64748b" }}>× {Number(data.${quantity})}</span>\n        )}\n      </div>\n    </label>`
-
 if (!next.includes('data.batteryModel || "No battery selected in OpenSolar"')) {
   const batteryRegex = /    <label style=\{styles\.field\}>\n      <span>Battery configuration<\/span>[\s\S]*?      <\/select>\n    <\/label>/
-  const replacement = readOnlyBox("Battery configuration", "batteryManufacturer", "batteryModel", "batteryCapacity", "kWh", "batteryQuantity", "No battery selected in OpenSolar")
-  if (batteryRegex.test(next)) next = next.replace(batteryRegex, replacement)
+  const batteryReplacement = `    <label style={styles.field}>\n      <span>Battery configuration</span>\n      <div style={{ minHeight: 44, boxSizing: "border-box", padding: "0 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#172554", display: "flex", alignItems: "center", fontSize: 13, fontWeight: 600 }}>\n        {data.batteryManufacturer\n          ? \`${data.batteryManufacturer} — ${data.batteryModel || "Unknown model"}\`\n          : data.batteryModel || "No battery selected in OpenSolar"}\n        {Number(data.batteryCapacity || 0) > 0 && (\n          <span style={{ marginLeft: 6, fontWeight: 500, color: "#64748b" }}>({Number(data.batteryCapacity).toFixed(1)} kWh)</span>\n        )}\n        {Number(data.batteryQuantity || 0) > 1 && (\n          <span style={{ marginLeft: 6, fontWeight: 500, color: "#64748b" }}>× {Number(data.batteryQuantity)}</span>\n        )}\n      </div>\n    </label>`
+  if (batteryRegex.test(next)) next = next.replace(batteryRegex, batteryReplacement)
 }
 
 if (!next.includes('data.inverterModel || "No inverter selected in OpenSolar"')) {
   const inverterRegex = /    <label style=\{styles\.field\}>\n      <span>Inverter capacity \(kW\)<\/span>[\s\S]*?      <\/select>\n    <\/label>/
-  const replacement = readOnlyBox("Inverter capacity", "inverterManufacturer", "inverterModel", "inverterCapacity", "kW", "inverterQuantity", "No inverter selected in OpenSolar")
-  if (inverterRegex.test(next)) next = next.replace(inverterRegex, replacement)
+  const inverterReplacement = `    <label style={styles.field}>\n      <span>Inverter capacity (kW)</span>\n      <div style={{ minHeight: 44, boxSizing: "border-box", padding: "0 12px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#172554", display: "flex", alignItems: "center", fontSize: 13, fontWeight: 600 }}>\n        {data.inverterManufacturer\n          ? \`${data.inverterManufacturer} — ${data.inverterModel || "Unknown model"}\`\n          : data.inverterModel || "No inverter selected in OpenSolar"}\n        {Number(data.inverterCapacity || 0) > 0 && (\n          <span style={{ marginLeft: 6, fontWeight: 500, color: "#64748b" }}>({Number(data.inverterCapacity).toFixed(1)} kW)</span>\n        )}\n        {Number(data.inverterQuantity || 0) > 1 && (\n          <span style={{ marginLeft: 6, fontWeight: 500, color: "#64748b" }}>× {Number(data.inverterQuantity)}</span>\n        )}\n      </div>\n    </label>`
+  if (inverterRegex.test(next)) next = next.replace(inverterRegex, inverterReplacement)
 }
 
 if (next !== text) {
