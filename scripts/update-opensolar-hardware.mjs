@@ -4,92 +4,125 @@ const path = "src/EPVSCalculator.jsx"
 let text = fs.readFileSync(path, "utf8")
 let next = text
 
-// Add OpenSolar hardware state.
-if (!next.includes("batteryManufacturer:")) {
+// Keep the OpenSolar hardware values in calculator state.
+const stateAnchor = '  batteryCapacity: "",'
+if (!next.includes('batteryManufacturer: ""')) {
   next = next.replace(
-    '  batteryCapacity: "",\n\n  inverterCapacity: "",',
-    '  batteryCapacity: "",\n  batteryManufacturer: "",\n  batteryModel: "",\n  batteryQuantity: 0,\n\n  inverterCapacity: "",\n  inverterManufacturer: "",\n  inverterModel: "",\n  inverterQuantity: 0,\n\n  evChargerManufacturer: "",\n  evChargerModel: "",\n  evChargerQuantity: 0,\n\n  inverterCapacity: "",'
+    stateAnchor,
+    `${stateAnchor}\n  batteryManufacturer: ""\n  batteryModel: ""\n  batteryQuantity: 0,`
+  )
+}
+if (!next.includes('inverterManufacturer: ""')) {
+  next = next.replace(
+    '  inverterCapacity: "",',
+    '  inverterCapacity: "",\n  inverterManufacturer: ""\n  inverterModel: ""\n  inverterQuantity: 0,'
+  )
+}
+if (!next.includes('evChargerManufacturer: ""')) {
+  next = next.replace(
+    '  inverterQuantity: 0,',
+    '  inverterQuantity: 0,\n\n  evChargerManufacturer: ""\n  evChargerModel: ""\n  evChargerQuantity: 0,'
   )
 }
 
-// Read hardware returned by the existing OpenSolar/Supabase call.
-if (!next.includes("const importedHardware = payload?.hardware || {}")) {
+// Read the hardware object returned by the existing OpenSolar/Supabase call.
+if (!next.includes('const importedHardware = payload?.hardware || {}')) {
   next = next.replace(
     /([ \t]*)const imported = Array\.isArray\(payload\?\.arrays\) \? payload\.arrays : \[\]/,
     '$1const imported = Array.isArray(payload?.arrays) ? payload.arrays : []\n$1const importedHardware = payload?.hardware || {}'
   )
 }
 
-if (!next.includes("batteryManufacturer: String(importedHardware?.battery?.manufacturer || \"\")")) {
+// Populate the calculator state from OpenSolar without changing the existing API call.
+if (!next.includes('batteryManufacturer: String(importedHardware?.battery?.manufacturer || "")')) {
   next = next.replace(
     /([ \t]*)\.\.\.current,\n\1arrays:/,
     '$1...current,\n$1batteryCapacity: Number(importedHardware?.battery?.capacityKwh || 0),\n$1batteryManufacturer: String(importedHardware?.battery?.manufacturer || ""),\n$1batteryModel: String(importedHardware?.battery?.model || ""),\n$1batteryQuantity: Number(importedHardware?.battery?.quantity || 0),\n$1inverterCapacity: Number(importedHardware?.inverter?.capacityKw || 0),\n$1inverterManufacturer: String(importedHardware?.inverter?.manufacturer || ""),\n$1inverterModel: String(importedHardware?.inverter?.model || ""),\n$1inverterQuantity: Number(importedHardware?.inverter?.quantity || 0),\n$1evChargerManufacturer: String(importedHardware?.evCharger?.manufacturer || ""),\n$1evChargerModel: String(importedHardware?.evCharger?.model || ""),\n$1evChargerQuantity: Number(importedHardware?.evCharger?.quantity || 0),\n$1arrays:'
   )
 }
 
-const displayField = (label, expression, suffix) =>
-  '    <label style={{ ...styles.field, minWidth: 0, width: "100%" }}>\n' +
-  '      <span style={{ fontSize: 12 }}>{' + JSON.stringify(label) + '}</span>\n' +
-  '      <div style={{ minHeight: 44, boxSizing: "border-box", padding: "0 10px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#172554", display: "flex", alignItems: "center", fontSize: 12, fontWeight: 600, minWidth: 0, width: "100%", overflow: "hidden" }}>\n' +
-  '        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{' + expression + '}</span>' +
-  (suffix ? '\n        ' + suffix : '') +
-  '\n      </div>\n' +
-  '    </label>'
+const labelBlock = (label) => new RegExp(
+  `<label\\b[^>]*>[\\s\\S]*?<span[^>]*>${label}<\\/span>[\\s\\S]*?<\\/label>`,
+  "m"
+)
 
-const batteryRegex = /    <label style=\{styles\.field\}>\n      <span>Battery configuration<\/span>[\s\S]*?    <\/label>/
-if (batteryRegex.test(next)) {
-  const batterySuffix = '{Number(data.batteryCapacity || 0) > 0 && (\n          <span style={{ marginLeft: 6, flexShrink: 0, fontWeight: 500, color: "#64748b" }}>({Number(data.batteryCapacity).toFixed(1)} kWh)</span>\n        )}{Number(data.batteryQuantity || 0) > 1 && (\n          <span style={{ marginLeft: 6, flexShrink: 0, fontWeight: 500, color: "#64748b" }}>× {Number(data.batteryQuantity)}</span>\n        )}'
-  next = next.replace(
-    batteryRegex,
-    displayField("Battery configuration", 'data.batteryManufacturer ? data.batteryManufacturer + " — " + (data.batteryModel || "Unknown model") : data.batteryModel || "No battery selected in OpenSolar"', batterySuffix)
-  )
-}
+const displayField = (label, expression, suffix = "") =>
+  `    <label style={{ ...styles.field, flex: "1 1 0", minWidth: 0, width: 0 }}>\n` +
+  `      <span>${label}</span>\n` +
+  `      <div style={{ minHeight: 44, boxSizing: "border-box", padding: "0 10px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#172554", display: "flex", alignItems: "center", fontSize: 12, fontWeight: 600, minWidth: 0, width: "100%", overflow: "hidden" }}>\n` +
+  `        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>${expression}</span>${suffix}\n` +
+  `      </div>\n` +
+  `    </label>`
 
-const inverterRegex = /    <label style=\{styles\.field\}>\n      <span>Inverter capacity \(kW\)<\/span>[\s\S]*?    <\/label>/
-if (inverterRegex.test(next)) {
-  const inverterSuffix = '{Number(data.inverterCapacity || 0) > 0 && (\n          <span style={{ marginLeft: 6, flexShrink: 0, fontWeight: 500, color: "#64748b" }}>({Number(data.inverterCapacity).toFixed(1)} kW)</span>\n        )}{Number(data.inverterQuantity || 0) > 1 && (\n          <span style={{ marginLeft: 6, flexShrink: 0, fontWeight: 500, color: "#64748b" }}>× {Number(data.inverterQuantity)}</span>\n        )}'
-  next = next.replace(
-    inverterRegex,
-    displayField("Inverter capacity (kW)", 'data.inverterManufacturer ? data.inverterManufacturer + " — " + (data.inverterModel || "Unknown model") : data.inverterModel || "No inverter selected in OpenSolar"', inverterSuffix)
-  )
-}
+const batteryField = displayField(
+  "Battery configuration",
+  'data.batteryManufacturer ? data.batteryManufacturer + " — " + (data.batteryModel || "Unknown model") : data.batteryModel || "No battery selected in OpenSolar"',
+  ' {Number(data.batteryCapacity || 0) > 0 && <span style={{ marginLeft: 6, flexShrink: 0, fontWeight: 500, color: "#64748b" }}>({Number(data.batteryCapacity).toFixed(1)} kWh)</span>} {Number(data.batteryQuantity || 0) > 1 && <span style={{ marginLeft: 6, flexShrink: 0, fontWeight: 500, color: "#64748b" }}>× {Number(data.batteryQuantity)}</span>}'
+)
 
-if (!next.includes('data.evChargerModel || "No EV charger selected in OpenSolar"')) {
-  const evSuffix = '{Number(data.evChargerQuantity || 0) > 1 && (\n          <span style={{ marginLeft: 6, flexShrink: 0, fontWeight: 500, color: "#64748b" }}>× {Number(data.evChargerQuantity)}</span>\n        )}'
-  const evBlock = displayField("EV Charger", 'data.evChargerManufacturer ? data.evChargerManufacturer + " — " + (data.evChargerModel || "Unknown model") : data.evChargerModel || "No EV charger selected in OpenSolar"', evSuffix)
-  const inverterLabel = '      <span>Inverter capacity (kW)</span>'
-  const inverterStart = next.indexOf(inverterLabel)
-  if (inverterStart !== -1) {
-    const inverterEnd = next.indexOf('    </label>', inverterStart)
-    if (inverterEnd !== -1) {
-      const insertAt = inverterEnd + '    </label>'.length
-      next = next.slice(0, insertAt) + "\n" + evBlock + next.slice(insertAt)
-    }
-  }
-}
+const inverterField = displayField(
+  "Inverter capacity (kW)",
+  'data.inverterManufacturer ? data.inverterManufacturer + " — " + (data.inverterModel || "Unknown model") : data.inverterModel || "No inverter selected in OpenSolar"',
+  ' {Number(data.inverterCapacity || 0) > 0 && <span style={{ marginLeft: 6, flexShrink: 0, fontWeight: 500, color: "#64748b" }}>({Number(data.inverterCapacity).toFixed(1)} kW)</span>} {Number(data.inverterQuantity || 0) > 1 && <span style={{ marginLeft: 6, flexShrink: 0, fontWeight: 500, color: "#64748b" }}>× {Number(data.inverterQuantity)}</span>}'
+)
 
-// Force the three OpenSolar hardware displays onto one horizontal row.
-// Flex is used here rather than a nested CSS grid so the row is independent
-// of the calculator's two-column field grid.
-const hardwareRowMarker = 'className="opensolar-hardware-row"'
-if (!next.includes(hardwareRowMarker)) {
-  const batteryStart = next.indexOf('    <label style={styles.field}>\n      <span>Battery configuration</span>')
-  const batteryEnd = batteryStart === -1 ? -1 : next.indexOf('    </label>', batteryStart) + '    </label>'.length
-  const inverterStart = batteryEnd === -1 ? -1 : next.indexOf('    <label style={styles.field}>\n      <span>Inverter capacity (kW)</span>', batteryEnd)
-  const inverterEnd = inverterStart === -1 ? -1 : next.indexOf('    </label>', inverterStart) + '    </label>'.length
-  const evStart = inverterEnd === -1 ? -1 : next.indexOf('    <label style={styles.field}>\n      <span>EV Charger</span>', inverterEnd)
-  const evEnd = evStart === -1 ? -1 : next.indexOf('    </label>', evStart) + '    </label>'.length
+const evField = displayField(
+  "EV Charger",
+  'data.evChargerManufacturer ? data.evChargerManufacturer + " — " + (data.evChargerModel || "Unknown model") : data.evChargerModel || "No EV charger selected in OpenSolar"',
+  ' {Number(data.evChargerQuantity || 0) > 1 && <span style={{ marginLeft: 6, flexShrink: 0, fontWeight: 500, color: "#64748b" }}>× {Number(data.evChargerQuantity)}</span>}'
+)
 
-  if (batteryStart !== -1 && inverterStart !== -1 && evStart !== -1 && evEnd > evStart) {
+// Replace the three hardware fields as one controlled row. This is deliberately
+// idempotent so repeated Vercel builds cannot remove the EV charger field.
+const batteryRe = labelBlock("Battery configuration")
+const inverterRe = labelBlock("Inverter capacity \(kW\)")
+const evRe = labelBlock("EV Charger")
+
+const batteryMatch = next.match(batteryRe)
+const inverterMatch = next.match(inverterRe)
+const evMatch = next.match(evRe)
+
+if (batteryMatch && inverterMatch) {
+  // Remove any existing hardware row wrapper first, leaving the three labels.
+  next = next.replace(/<div className="opensolar-hardware-row"[^>]*>[\s\S]*?<\/div>/m, `${batteryMatch[0]}\n${inverterMatch[0]}\n${evMatch ? evMatch[0] : evField}`)
+
+  const batteryNow = next.match(batteryRe)
+  const inverterNow = next.match(inverterRe)
+  const evNow = next.match(evRe)
+
+  if (batteryNow && inverterNow && evNow) {
     const row = [
       '    <div className="opensolar-hardware-row" style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "row", alignItems: "flex-start", gap: 12, width: "100%", minWidth: 0 }}>',
-      next.slice(batteryStart, batteryEnd).replace('style={styles.field}', 'style={{ ...styles.field, flex: "1 1 0", minWidth: 0, width: 0 }}'),
-      next.slice(inverterStart, inverterEnd).replace('style={styles.field}', 'style={{ ...styles.field, flex: "1 1 0", minWidth: 0, width: 0 }}'),
-      next.slice(evStart, evEnd).replace('style={styles.field}', 'style={{ ...styles.field, flex: "1 1 0", minWidth: 0, width: 0 }}'),
-      '    </div>',
+      batteryField,
+      inverterField,
+      evField,
+      "    </div>",
     ].join("\n")
-    next = next.slice(0, batteryStart) + row + next.slice(evEnd)
+
+    const start = batteryNow.index
+    const end = Math.max(
+      batteryNow.index + batteryNow[0].length,
+      inverterNow.index + inverterNow[0].length,
+      evNow.index + evNow[0].length
+    )
+
+    // The fields are expected to be adjacent in the Payment/System section.
+    // If another field sits between them, fall back to replacing individually.
+    const between = next.slice(start, end)
+    const onlyHardware =
+      between.match(new RegExp(`<label\\b`, "g"))?.length === 3
+
+    if (onlyHardware) {
+      next = next.slice(0, start) + row + next.slice(end)
+    } else {
+      next = next.replace(batteryRe, batteryField).replace(inverterRe, inverterField).replace(evRe, evField)
+    }
   }
+} else {
+  // If an earlier generated version has unusual markup, at minimum ensure EV is
+  // present immediately after the inverter field.
+  next = next.replace(inverterRe, `${inverterField}\n${evField}`)
+  next = next.replace(batteryRe, batteryField)
 }
 
 if (next !== text) {
