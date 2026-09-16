@@ -5,7 +5,7 @@ const text = fs.readFileSync(path, "utf8")
 let next = text
 
 if (!next.includes('import OpenSolarDesignButton from "./components/EPVS/OpenSolarDesignButton"')) {
-  const importMarker = 'import ThirtyYearBreakdown from "./components/EPVS/ThirtyYearBreakdown"'
+  const importMarker = 'import ThirtyYearBreakdown from "./components/ThirtyYearBreakdown"'
   if (!next.includes(importMarker)) throw new Error("Could not locate the EPVS breakdown imports")
   next = next.replace(importMarker, `${importMarker}\nimport OpenSolarDesignButton from "./components/EPVS/OpenSolarDesignButton"`)
 }
@@ -38,9 +38,19 @@ if (cardHeaderPattern.test(next) && !next.includes("{action && <div")) {
 
 const arrayTableMarker = `  {/* ARRAYS TABLE */}`
 if (next.includes(arrayTableMarker) && !next.includes("openSolarImageUrl || \"/opensolar-system-placeholder.svg\"")) {
-  const imageBlock = `  <div\n    style={{\n      marginBottom: 16,\n      border: "1px solid #e2e8f0",\n      borderRadius: 12,\n      overflow: "hidden",\n      background: "#f8fafc",\n    }}\n  >\n    <img\n      src={openSolarImageUrl || "/opensolar-system-placeholder.svg"}\n      alt={openSolarImageUrl ? "OpenSolar system design" : "OpenSolar system design placeholder"}\n      style={{\n        display: "block",\n        width: "100%",\n        maxHeight: 520,\n        objectFit: "contain",\n        background: "#f8fafc",\n      }}\n    />\n  </div>\n\n`
+  const imageBlock = `  <div\n    style={{\n      marginBottom: 16,\n      border: "1px solid #e2e8f0",\n      borderRadius: 12,\n      overflow: "hidden",\n      background: "#f8fafc",\n      aspectRatio: "12 / 7",\n    }}\n  >\n    <img\n      src={openSolarImageUrl || "/opensolar-system-placeholder.svg"}\n      alt={openSolarImageUrl ? "OpenSolar system design" : "OpenSolar system design placeholder"}\n      style={{\n        display: "block",\n        width: "100%",\n        height: "100%",\n        objectFit: "cover",\n        background: "#f8fafc",\n      }}\n    />\n  </div>\n\n`
   next = next.replace(arrayTableMarker, imageBlock + arrayTableMarker)
 }
+
+// Keep the real OpenSolar image and the placeholder in the exact same frame.
+next = next.replace(
+  '        maxHeight: 520,\n        objectFit: "contain",',
+  '        height: "100%",\n        objectFit: "cover",',
+)
+next = next.replace(
+  '      background: "#f8fafc",\n    }}\n  >\n    <img',
+  '      background: "#f8fafc",\n      aspectRatio: "12 / 7",\n    }}\n  >\n    <img',
+)
 
 if (next === text) {
   console.log("OpenSolar UI already applied; nothing to change.")
