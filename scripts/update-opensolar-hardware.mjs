@@ -57,7 +57,7 @@ const labelBlock = (label) => new RegExp(
 // All three OpenSolar hardware displays use the same structure and styling.
 const displayField = (label, manufacturerExpression, modelExpression, capacityExpression, unit) =>
   `    <label style={{ ...styles.field, flex: "1 1 0", minWidth: 0, width: 0 }}>\n` +
-  `      <span>${label}</span>\n` +
+  `      <span style={{ whiteSpace: "nowrap" }}>${label}</span>\n` +
   `      <div style={{ minHeight: 68, boxSizing: "border-box", padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 10, background: "#f8fafc", color: "#172554", display: "flex", flexDirection: "column", justifyContent: "center", minWidth: 0, width: "100%", overflow: "hidden" }}>\n` +
   `        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, minWidth: 0 }}>\n` +
   `          <span style={{ fontSize: 12, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>${manufacturerExpression}</span>\n` +
