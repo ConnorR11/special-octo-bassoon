@@ -1,6 +1,8 @@
 name: Direct OpenSolar source fix
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -8,6 +10,7 @@ permissions:
 
 jobs:
   patch:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -177,10 +180,9 @@ jobs:
           pkg["scripts"]["build"] = "vite build"
           pkg_path.write_text(json.dumps(pkg, indent=2) + "\n")
 
-          Path("scripts/update-opensolar-design.mjs").write_text('import fs from "node:fs"\n\n// OpenSolar UI is now maintained directly in EPVSCalculator.jsx.\n// This file intentionally performs no build-time source rewriting.\nconsole.log("OpenSolar source patch disabled; using checked-in EPVS source.")\n')
+          Path("scripts/update-opensolar-design.mjs").write_text('import fs from "node:fs"\n\n// OpenSolar UI is now maintained directly in EPVSCalculator.jsx.\nconsole.log("Using checked-in EPVS source; no build-time UI rewriting.")\n')
 
-          wf = Path(".github/workflows/direct-opensolar-source-fix.yml")
-          wf.unlink()
+          Path(".github/workflows/direct-opensolar-source-fix.yml").unlink()
 
       - name: Commit and push
         run: |
