@@ -48,7 +48,18 @@ export default function OpenSolarDesignButton({
       )
 
       if (functionError) {
-        throw new Error(functionError.message || "Unable to retrieve the OpenSolar design.")
+        let detail = ""
+        try {
+          const response = functionError.context
+          if (response && typeof response.json === "function") {
+            const body = await response.clone().json()
+            detail = body?.error || body?.detail || body?.message || ""
+            if (body?.status) detail = `${detail}${detail ? " — " : ""}HTTP ${body.status}`
+          }
+        } catch {
+          // Fall back to Supabase's standard error message.
+        }
+        throw new Error(detail || functionError.message || "Unable to retrieve the OpenSolar design.")
       }
 
       if (!payload?.success) {
