@@ -17,8 +17,10 @@ if (!next.includes("const handleOpenSolarDesignLoaded")) {
   next = next.replace(marker, handler + marker)
 }
 
+// The OpenSolar heading is rendered by the dedicated toolbar below. Leave the
+// outer Solar card without a title/header so the heading is not duplicated.
 const solarCardMarker = `<Card\n  title="Solar PV arrays"\n  subtitle="Enter the EPVS information for each roof / array."\n>`
-const solarCardReplacement = `<Card\n  title="OpenSolar System Design"\n  subtitle="Enter the EPVS information for each roof / array."\n>`
+const solarCardReplacement = `<Card\n  title=""\n  subtitle=""\n>`
 if (next.includes(solarCardMarker)) {
   next = next.replace(solarCardMarker, solarCardReplacement)
 }
@@ -35,4 +37,4 @@ if (next === text) {
 }
 
 fs.writeFileSync(path, next)
-console.log("OpenSolar UI patch applied with aligned title and button.")
+console.log("OpenSolar UI patch applied with single visible header.")
