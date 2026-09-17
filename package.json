@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/update-opensolar-design.mjs && node scripts/remove-irradiance-calculation.mjs && node scripts/patch-hardware-display.mjs && node scripts/patch-save-button.mjs && vite build",
+    "build": "node scripts/update-opensolar-design.mjs && node scripts/patch-hardware-display.mjs && node scripts/patch-save-button.mjs && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -17,6 +17,7 @@
     "recharts": "^3.10.1"
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "tailwindcss": "^3.4.17",
