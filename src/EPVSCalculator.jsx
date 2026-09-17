@@ -356,8 +356,10 @@ function calculateStandardFluxYear({
     battery * dod * rte * 337 - cannibalism
   )
   const batteryDemandCapacity = nonNegative(
-    consumption * 0.9 - existingGenerationSC
-  )
+  consumption * 0.9 -
+  cappedSolarSC -
+  existingGenerationSC
+)
 
   const cappedBatterySC = Math.min(
     nonNegative(inverterBatterySCCapacity - cappedSolarSC),
