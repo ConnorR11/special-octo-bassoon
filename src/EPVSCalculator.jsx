@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { supabase } from "./lib/supabase"
-import { getIrradiance } from "./epvsIrradianceData"
 
 import {
   RotateCcw,
@@ -630,42 +629,6 @@ export default function EPVSCalculator({
       setLoadingFluxRates(false)
     }
   }
-
-  const arrayGeometryKey = data.arrays
-    .map((array) => `${array.pitch ?? ""}:${array.orientation ?? ""}`)
-    .join("|")
-
-  // Automatically populate EPVS irradiance from postcode/SAP zone, pitch and orientation.
-  useEffect(() => {
-    const zone = getSapZone(data.postcode, data.sapZone)
-    const zoneCode = zone?.code
-
-    if (!zoneCode) return
-
-    const updatedArrays = data.arrays.map((array) => {
-      const irradiance = getIrradiance(
-        zoneCode,
-        Number(array.pitch || 0),
-        Number(array.orientation || 0)
-      )
-
-      return {
-        ...array,
-        irradiance,
-      }
-    })
-
-    const changed = updatedArrays.some(
-      (array, index) => Number(data.arrays[index]?.irradiance || 0) !== Number(array.irradiance || 0)
-    )
-
-    if (changed) {
-      setData((current) => ({
-        ...current,
-        arrays: updatedArrays,
-      }))
-    }
-  }, [data.postcode, data.sapZone, arrayGeometryKey])
 
   const updateArray = (
     index,
