@@ -19,7 +19,7 @@ if (!next.includes("const handleOpenSolarDesignLoaded")) {
 
 const arrayTableMarker = `  {/* ARRAYS TABLE */}`
 if (next.includes(arrayTableMarker) && !next.includes("openSolarImageUrl || \"/opensolar-system-placeholder.svg\"")) {
-  const toolbar = `  <div\n    style={{\n      display: "flex",\n      justifyContent: "flex-end",\n      marginBottom: 12,\n    }}\n  >\n    <OpenSolarDesignButton\n      projectId={appointment?.open_solar_id}\n      onDesignLoaded={handleOpenSolarDesignLoaded}\n    />\n  </div>\n\n  <div\n    style={{\n      marginBottom: 16,\n      border: "1px solid #e2e8f0",\n      borderRadius: 12,\n      overflow: "hidden",\n      background: "#f8fafc",\n    }}\n  >\n    <img\n      src={openSolarImageUrl || "/opensolar-system-placeholder.svg"}\n      alt={openSolarImageUrl ? "OpenSolar system design" : "OpenSolar system design placeholder"}\n      style={{\n        display: "block",\n        width: "100%",\n        maxHeight: 520,\n        objectFit: "contain",\n        background: "#f8fafc",\n      }}\n    />\n  </div>\n\n`
+  const toolbar = `  <div\n    className="card-head"\n    style={{\n      alignItems: "center",\n      marginBottom: 12,\n    }}\n  >\n    <div>\n      <h2>OpenSolar System Design</h2>\n    </div>\n    <OpenSolarDesignButton\n      projectId={appointment?.open_solar_id}\n      onDesignLoaded={handleOpenSolarDesignLoaded}\n    />\n  </div>\n\n  <div\n    style={{\n      marginBottom: 16,\n      border: "1px solid #e2e8f0",\n      borderRadius: 12,\n      overflow: "hidden",\n      background: "#f8fafc",\n    }}\n  >\n    <img\n      src={openSolarImageUrl || "/opensolar-system-placeholder.svg"}\n      alt={openSolarImageUrl ? "OpenSolar system design" : "OpenSolar system design placeholder"}\n      style={{\n        display: "block",\n        width: "100%",\n        maxHeight: 520,\n        objectFit: "contain",\n        background: "#f8fafc",\n      }}\n    />\n  </div>\n\n`
   next = next.replace(arrayTableMarker, toolbar + arrayTableMarker)
 }
 
@@ -29,4 +29,4 @@ if (next === text) {
 }
 
 fs.writeFileSync(path, next)
-console.log("OpenSolar UI patch applied without modifying Card headers.")
+console.log("OpenSolar UI patch applied with card-style title and aligned action.")
