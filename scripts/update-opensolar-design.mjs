@@ -42,7 +42,7 @@ if (solarCardPattern.test(next) && !next.includes("projectId={appointment?.open_
   next = next.replace(solarCardPattern, `<Card\n  title="Solar PV arrays"\n  subtitle="Enter the EPVS information for each roof / array."\n  action={\n    <OpenSolarDesignButton\n      projectId={appointment?.open_solar_id}\n      onDesignLoaded={handleOpenSolarDesignLoaded}\n    />\n  }\n>`)
 }
 
-const cardSignature = /function Card\(\{\n  title,\n  subtitle,\n  children,\n\}\) \{/s
+const cardSignature = /function Card\(\{\n  title,\n  subtitle,\n  children,\n}\) \{/s
 if (cardSignature.test(next) && !next.includes("  action,\n")) {
   next = next.replace(cardSignature, `function Card({\n  title,\n  subtitle,\n  action,\n  children,\n}) {`)
 }
@@ -54,8 +54,12 @@ if (cardHeaderPattern.test(next) && !next.includes("{action && <div")) {
 
 const arrayTableMarker = `  {/* ARRAYS TABLE */}`
 if (next.includes(arrayTableMarker) && !next.includes("openSolarImageUrl || \"/opensolar-system-placeholder.svg\"")) {
-  const imageBlock = `  <div\n    style={{\n      marginBottom: 16,\n      border: "1px solid #e2e8f0",\n      borderRadius: 12,\n      overflow: "hidden",\n      background: "#f8fafc",\n    }}\n  >\n    <img\n      src={openSolarImageUrl || "/opensolar-system-placeholder.svg"}\n      alt={openSolarImageUrl ? "OpenSolar system design" : "OpenSolar system design placeholder"}\n      style={{\n        display: "block",\n        width: "100%",\n        maxHeight: 520,\n        objectFit: "contain",\n        background: "#f8fafc",\n      }}\n    />\n  </div>\n\n`
+  const imageBlock = `  <div\n    style={{\n      marginBottom: 16,\n      border: "1px solid #e2e8f0",\n      borderRadius: 12,\n      overflow: "hidden",\n      background: "#f8fafc",\n    }}\n  >\n    <img\n      src={openSolarImageUrl || "/opensolar-system-placeholder.svg"}\n      alt={openSolarImageUrl ? "OpenSolar system design" : "OpenSolar system design placeholder"}\n      style={{\n        display: "block",\n        width: "100%",\n        height: 520,\n        objectFit: "cover",\n        background: "#f8fafc",\n      }}\n    />\n  </div>\n\n`
   next = next.replace(arrayTableMarker, imageBlock + arrayTableMarker)
+}
+
+if (next.includes("openSolarImageUrl || \"/opensolar-system-placeholder.svg\"")) {
+  next = next.replace(`        maxHeight: 520,\n        objectFit: "contain",`, `        height: 520,\n        objectFit: "cover",`)
 }
 
 if (next === text) {
