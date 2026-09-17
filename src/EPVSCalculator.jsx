@@ -441,7 +441,7 @@ function calculateStandardFluxYear({
     fluxDemandAfterSC * (currentImport - newFluxImport)
 
   const forceChargeBenefit =
-    peakDemandSavings + dayDemandSavings + fluxDemandSavings
+    peakExportCapacity * newPeakExport - fluxExportCostToCharge
 
   // Residual solar export plus the peak force-charge export.
   const cappedExportKwh = Math.min(
