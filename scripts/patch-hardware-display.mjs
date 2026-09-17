@@ -25,9 +25,9 @@ const replacement = `
             }}
           >
             {[
-              ["Battery configuration", openSolarHardware.batteries, "kWh"],
-              ["Inverter capacity (kW)", openSolarHardware.inverters, "kW"],
-              ["EV Charger", openSolarHardware.evChargers, "kW"],
+              ["Battery configuration", data?.openSolar?.hardware?.batteries || [], "kWh"],
+              ["Inverter capacity (kW)", data?.openSolar?.hardware?.inverters || [], "kW"],
+              ["EV Charger", data?.openSolar?.hardware?.evChargers || [], "kW"],
             ].map(([label, items, unit]) => (
               <div
                 key={label}
