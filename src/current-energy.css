@@ -157,6 +157,11 @@
   border-top-right-radius: 11px !important;
 }
 
+/* Keep the Solar PV card title visible even if the legacy nth-of-type rule matches this card after a save/re-render. */
+.card:has(.opensolar-header) > .card-head {
+  display: flex !important;
+}
+
 /* Remove the Battery & Inverter title/subtitle from the UI. */
 .card:nth-of-type(3) > .card-head {
   display: none !important;
