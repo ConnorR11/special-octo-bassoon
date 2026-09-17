@@ -17,9 +17,15 @@ if (!next.includes("const handleOpenSolarDesignLoaded")) {
   next = next.replace(marker, handler + marker)
 }
 
+const solarCardMarker = `<Card\n  title="Solar PV arrays"\n  subtitle="Enter the EPVS information for each roof / array."\n>`
+const solarCardReplacement = `<Card\n  title="OpenSolar System Design"\n  subtitle="Enter the EPVS information for each roof / array."\n>`
+if (next.includes(solarCardMarker)) {
+  next = next.replace(solarCardMarker, solarCardReplacement)
+}
+
 const arrayTableMarker = `  {/* ARRAYS TABLE */}`
 if (next.includes(arrayTableMarker) && !next.includes("openSolarImageUrl || \"/opensolar-system-placeholder.svg\"")) {
-  const toolbar = `  <div\n    className="opensolar-header"\n    style={{\n      display: "flex",\n      alignItems: "center",\n      justifyContent: "space-between",\n      gap: 12,\n      marginBottom: 12,\n    }}\n  >\n    <h2\n      style={{\n        margin: 0,\n        fontSize: 15,\n        fontWeight: 700,\n        lineHeight: 1.3,\n        color: "#172554",\n      }}\n    >\n      OpenSolar System Design\n    </h2>\n    <OpenSolarDesignButton\n      projectId={appointment?.open_solar_id}\n      onDesignLoaded={handleOpenSolarDesignLoaded}\n    />\n  </div>\n\n  <div\n    style={{\n      marginBottom: 16,\n      border: "1px solid #e2e8f0",\n      borderRadius: 12,\n      overflow: "hidden",\n      background: "#f8fafc",\n    }}\n  >\n    <img\n      src={openSolarImageUrl || "/opensolar-system-placeholder.svg"}\n      alt={openSolarImageUrl ? "OpenSolar system design" : "OpenSolar system design placeholder"}\n      style={{\n        display: "block",\n        width: "100%",\n        maxHeight: 520,\n        objectFit: "contain",\n        background: "#f8fafc",\n      }}\n    />\n  </div>\n\n`
+  const toolbar = `  <div\n    className="opensolar-header"\n    style={{\n      display: "flex",\n      alignItems: "center",\n      justifyContent: "space-between",\n      gap: 12,\n      marginBottom: 12,\n    }}\n  >\n    <div style={{ minWidth: 0 }}>\n      <h2\n        style={{\n          margin: 0,\n          fontSize: 15,\n          fontWeight: 700,\n          lineHeight: 1.3,\n          color: "#172554",\n        }}\n      >\n        OpenSolar System Design\n      </h2>\n      <p\n        style={{\n          margin: "3px 0 0",\n          fontSize: 11,\n          lineHeight: 1.4,\n          color: "#64748b",\n        }}\n      >\n        Enter the EPVS information for each roof / array.\n      </p>\n    </div>\n    <OpenSolarDesignButton\n      projectId={appointment?.open_solar_id}\n      onDesignLoaded={handleOpenSolarDesignLoaded}\n    />\n  </div>\n\n  <div\n    style={{\n      marginBottom: 16,\n      border: "1px solid #e2e8f0",\n      borderRadius: 12,\n      overflow: "hidden",\n      background: "#f8fafc",\n    }}\n  >\n    <img\n      src={openSolarImageUrl || "/opensolar-system-placeholder.svg"}\n      alt={openSolarImageUrl ? "OpenSolar system design" : "OpenSolar system design placeholder"}\n      style={{\n        display: "block",\n        width: "100%",\n        maxHeight: 520,\n        objectFit: "contain",\n        background: "#f8fafc",\n      }}\n    />\n  </div>\n\n`
   next = next.replace(arrayTableMarker, toolbar + arrayTableMarker)
 }
 
@@ -29,4 +35,4 @@ if (next === text) {
 }
 
 fs.writeFileSync(path, next)
-console.log("OpenSolar UI patch applied with isolated header styling.")
+console.log("OpenSolar UI patch applied with aligned title and button.")
