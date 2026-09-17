@@ -1,26 +1,26 @@
 /* Current Energy layout */
 
 /* Keep the four electricity inputs on one clean row on desktop. */
-.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child {
+.epvs-energy-card > div:nth-child(2) > div:nth-child(2) > div:first-child {
   display: grid !important;
   grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   gap: 12px !important;
   align-items: end;
 }
 
-.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child > label {
+.epvs-energy-card > div:nth-child(2) > div:nth-child(2) > div:first-child > label {
   min-width: 0;
 }
 
 /* Use the same compact label sizing as the EPVS table headers. */
-.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child > label span {
+.epvs-energy-card > div:nth-child(2) > div:nth-child(2) > div:first-child > label span {
   font-size: 12px !important;
   font-weight: 600;
   color: #172554;
   line-height: 1.3;
 }
 
-.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child input {
+.epvs-energy-card > div:nth-child(2) > div:nth-child(2) > div:first-child input {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
@@ -35,33 +35,33 @@
 }
 
 /* Rename the card to Current Energy. */
-.card:first-of-type .card-head h2 {
+.epvs-energy-card .card-head h2 {
   font-size: 0;
 }
 
-.card:first-of-type .card-head h2::after {
+.epvs-energy-card .card-head h2::after {
   content: "Current Energy";
   font-size: 15px;
 }
 
 /* Remove "Current" from the three rate labels because the card title already says it. */
-.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child > label:nth-child(2) span,
-.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child > label:nth-child(3) span,
-.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child > label:nth-child(4) span {
+.epvs-energy-card > div:nth-child(2) > div:nth-child(2) > div:first-child > label:nth-child(2) span,
+.epvs-energy-card > div:nth-child(2) > div:nth-child(2) > div:first-child > label:nth-child(3) span,
+.epvs-energy-card > div:nth-child(2) > div:nth-child(2) > div:first-child > label:nth-child(4) span {
   font-size: 0 !important;
 }
 
-.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child > label:nth-child(2) span::after {
+.epvs-energy-card > div:nth-child(2) > div:nth-child(2) > div:first-child > label:nth-child(2) span::after {
   content: "Import rate (p/kWh)";
   font-size: 12px;
 }
 
-.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child > label:nth-child(3) span::after {
+.epvs-energy-card > div:nth-child(2) > div:nth-child(2) > div:first-child > label:nth-child(3) span::after {
   content: "Export rate (p/kWh)";
   font-size: 12px;
 }
 
-.card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child > label:nth-child(4) span::after {
+.epvs-energy-card > div:nth-child(2) > div:nth-child(2) > div:first-child > label:nth-child(4) span::after {
   content: "Standing charge (p/day)";
   font-size: 12px;
 }
@@ -71,7 +71,7 @@
    ========================================================= */
 
 /* The existing-solar header is the third child inside the card content wrapper. */
-.card:first-of-type > div:nth-child(2) > div:nth-child(3) {
+.epvs-energy-card > div:nth-child(2) > div:nth-child(3) {
   position: relative;
   display: flex;
   align-items: center;
@@ -82,7 +82,7 @@
 }
 
 /* Keep the existing-solar inputs as a clean two-column row. */
-.card:first-of-type > div:nth-child(2) > div:nth-child(4) > div:first-child {
+.epvs-energy-card > div:nth-child(2) > div:nth-child(4) > div:first-child {
   display: grid !important;
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   gap: 12px !important;
@@ -91,7 +91,7 @@
 }
 
 /* Visually move the existing-solar toggle into the header row. */
-.card:first-of-type > div:nth-child(2) > div:nth-child(4) > div:first-child > label:first-child {
+.epvs-energy-card > div:nth-child(2) > div:nth-child(4) > div:first-child > label:first-child {
   position: absolute !important;
   top: -55px;
   right: 14px;
@@ -102,22 +102,22 @@
   min-height: 24px !important;
 }
 
-.card:first-of-type > div:nth-child(2) > div:nth-child(4) > div:first-child > label:first-child > span {
+.epvs-energy-card > div:nth-child(2) > div:nth-child(4) > div:first-child > label:first-child > span {
   display: none !important;
 }
 
-.card:first-of-type > div:nth-child(2) > div:nth-child(4) > div:first-child > label:not(:first-child) {
+.epvs-energy-card > div:nth-child(2) > div:nth-child(4) > div:first-child > label:not(:first-child) {
   min-width: 0;
 }
 
-.card:first-of-type > div:nth-child(2) > div:nth-child(4) > div:first-child > label:not(:first-child) span {
+.epvs-energy-card > div:nth-child(2) > div:nth-child(4) > div:first-child > label:not(:first-child) span {
   font-size: 12px !important;
   font-weight: 600;
   color: #172554;
   line-height: 1.3;
 }
 
-.card:first-of-type > div:nth-child(2) > div:nth-child(4) > div:first-child > label:not(:first-child) input {
+.epvs-energy-card > div:nth-child(2) > div:nth-child(4) > div:first-child > label:not(:first-child) input {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
@@ -136,61 +136,61 @@
    ========================================================= */
 
 /* Visually join the Solar PV and Battery/Inverter cards into one section. */
-.card:nth-of-type(2) {
+.epvs-solar-card {
   margin-bottom: 0 !important;
   border-bottom-left-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
 }
 
-.card:nth-of-type(3) {
+.epvs-battery-card {
   margin-top: -18px !important;
   border-top: 0 !important;
   border-top-left-radius: 0 !important;
   border-top-right-radius: 0 !important;
 }
 
-/* The OpenSolar design header lives in the Solar PV card. The legacy nth-of-type rule above can otherwise remove that card's top border when the EPVS card structure changes. */
-.card:has(.opensolar-header) {
+/* The OpenSolar design header lives in the Solar PV card. */
+.epvs-solar-card:has(.opensolar-header) {
   margin-top: 0 !important;
   border-top: 1px solid #e4e6e9 !important;
   border-top-left-radius: 11px !important;
   border-top-right-radius: 11px !important;
 }
 
-/* Keep the Solar PV card title visible even if the legacy nth-of-type rule matches this card after a save/re-render. */
-.card:has(.opensolar-header) > .card-head {
+/* Keep the Solar PV card title visible. */
+.epvs-solar-card > .card-head {
   display: flex !important;
 }
 
 /* Remove the Battery & Inverter title/subtitle from the UI. */
-.card:nth-of-type(3) > .card-head {
+.epvs-battery-card > .card-head {
   display: none !important;
 }
 
 /* Make the battery/inverter controls match the compact Solar PV table controls. */
-.card:nth-of-type(3) > div:nth-child(2) {
+.epvs-battery-card > div:nth-child(2) {
   padding: 12px 14px !important;
 }
 
-.card:nth-of-type(3) > div:nth-child(2) > div:first-child {
+.epvs-battery-card > div:nth-child(2) > div:first-child {
   display: grid !important;
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   gap: 12px !important;
   align-items: end;
 }
 
-.card:nth-of-type(3) > div:nth-child(2) > div:first-child > label {
+.epvs-battery-card > div:nth-child(2) > div:first-child > label {
   min-width: 0;
 }
 
-.card:nth-of-type(3) > div:nth-child(2) > div:first-child > label > span {
+.epvs-battery-card > div:nth-child(2) > div:first-child > label > span {
   font-size: 12px !important;
   font-weight: 600 !important;
   color: #172554 !important;
   line-height: 1.3 !important;
 }
 
-.card:nth-of-type(3) > div:nth-child(2) > div:first-child select {
+.epvs-battery-card > div:nth-child(2) > div:first-child select {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
@@ -205,17 +205,17 @@
 }
 
 @media (max-width: 900px) {
-  .card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child,
-  .card:first-of-type > div:nth-child(2) > div:nth-child(4) > div:first-child,
-  .card:nth-of-type(3) > div:nth-child(2) > div:first-child {
+  .epvs-energy-card > div:nth-child(2) > div:nth-child(2) > div:first-child,
+  .epvs-energy-card > div:nth-child(2) > div:nth-child(4) > div:first-child,
+  .epvs-battery-card > div:nth-child(2) > div:first-child {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
 
 @media (max-width: 560px) {
-  .card:first-of-type > div:nth-child(2) > div:nth-child(2) > div:first-child,
-  .card:first-of-type > div:nth-child(2) > div:nth-child(4) > div:first-child,
-  .card:nth-of-type(3) > div:nth-child(2) > div:first-child {
+  .epvs-energy-card > div:nth-child(2) > div:nth-child(2) > div:first-child,
+  .epvs-energy-card > div:nth-child(2) > div:nth-child(4) > div:first-child,
+  .epvs-battery-card > div:nth-child(2) > div:first-child {
     grid-template-columns: 1fr !important;
   }
 }
