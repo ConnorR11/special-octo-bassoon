@@ -25,36 +25,46 @@ const replacement = `
             }}
           >
             {[
-              ["Battery", openSolarHardware.batteries, "kWh"],
-              ["Inverter", openSolarHardware.inverters, "kW"],
+              ["Battery configuration", openSolarHardware.batteries, "kWh"],
+              ["Inverter capacity (kW)", openSolarHardware.inverters, "kW"],
               ["EV Charger", openSolarHardware.evChargers, "kW"],
             ].map(([label, items, unit]) => (
               <div
                 key={label}
                 style={{
                   minWidth: 0,
-                  padding: 16,
+                  padding: 18,
                   border: "1px solid #dbe3ec",
                   borderRadius: 10,
                   background: "#f8fafc",
                   boxSizing: "border-box",
                 }}
               >
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#172554", marginBottom: 8 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#172554", marginBottom: 14 }}>
                   {label}
                 </div>
                 {items.length ? (
                   items.map((item, index) => (
-                    <div key={index} style={{ minWidth: 0, fontSize: 14, color: "#334155", lineHeight: 1.6, overflowWrap: "anywhere" }}>
-                      <strong>{item.model || "Model not provided"}</strong>
-                      {item.manufacturer ? " · " + item.manufacturer : ""}
-                      {Number(item.capacity) > 0 ? " · " + item.capacity + " " + unit : ""}
-                      {" · Qty " + Number(item.quantity || 1)}
+                    <div key={index} style={{ minWidth: 0, color: "#334155" }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.45, overflowWrap: "anywhere" }}>
+                        {item.manufacturer || "Manufacturer not provided"}
+                      </div>
+                      <div style={{ fontSize: 14, lineHeight: 1.45, marginBottom: 14, overflowWrap: "anywhere" }}>
+                        {item.model || "Model not provided"}
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 14, lineHeight: 1.45 }}>
+                        <span>Capacity / power</span>
+                        <strong>{Number(item.capacity) > 0 ? item.capacity + " " + unit : "—"}</strong>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 14, lineHeight: 1.45 }}>
+                        <span>Quantity</span>
+                        <strong>{Number(item.quantity || 1)}</strong>
+                      </div>
                     </div>
                   ))
                 ) : (
-                  <div style={{ fontSize: 13, color: "#64748b" }}>
-                    No {label.toLowerCase()} information returned by OpenSolar.
+                  <div style={{ fontSize: 14, color: "#64748b", lineHeight: 1.5 }}>
+                    No information returned by OpenSolar.
                   </div>
                 )}
               </div>
@@ -69,4 +79,4 @@ if (replaced === text) {
 }
 
 fs.writeFileSync(path, replaced)
-console.log("Replaced Battery & Inverter inputs with read-only OpenSolar equipment display including EV charger.")
+console.log("Refined OpenSolar equipment display to three structured cards including EV charger.")
