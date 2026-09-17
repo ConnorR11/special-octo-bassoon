@@ -149,6 +149,14 @@
   border-top-right-radius: 0 !important;
 }
 
+/* The OpenSolar design header lives in the Solar PV card. The legacy nth-of-type rule above can otherwise remove that card's top border when the EPVS card structure changes. */
+.card:has(.opensolar-header) {
+  margin-top: 0 !important;
+  border-top: 1px solid #e4e6e9 !important;
+  border-top-left-radius: 11px !important;
+  border-top-right-radius: 11px !important;
+}
+
 /* Remove the Battery & Inverter title/subtitle from the UI. */
 .card:nth-of-type(3) > .card-head {
   display: none !important;
