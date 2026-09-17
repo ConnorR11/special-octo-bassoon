@@ -1199,6 +1199,42 @@ export default function EPVSCalculator({
             </div>
           </Card>
 
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-end",
+              gap: 12,
+              marginTop: -4,
+              marginBottom: 20,
+              padding: "12px 0",
+            }}
+          >
+            <div
+              style={{
+                marginRight: "auto",
+                fontSize: 11,
+                color: saveError ? "#b42318" : "#299d48",
+                fontWeight: 600,
+              }}
+            >
+              {saveError || saveMessage}
+            </div>
+
+            <button
+              type="button"
+              onClick={saveCalculation}
+              disabled={savingCalculation || !hasRequiredEnergyInputs}
+              style={{
+                ...styles.primary,
+                opacity: savingCalculation || !hasRequiredEnergyInputs ? 0.65 : 1,
+                cursor: savingCalculation || !hasRequiredEnergyInputs ? "default" : "pointer",
+              }}
+            >
+              {savingCalculation ? "Saving..." : "Save calculation"}
+            </button>
+          </div>
+
        {/* =================================================
     SOLAR PV
     ================================================= */}
@@ -2148,29 +2184,6 @@ export default function EPVSCalculator({
             flexWrap: "wrap",
           }}
         >
-          <div
-            style={{
-              marginRight: "auto",
-              fontSize: 11,
-              color: saveError ? "#b42318" : "#299d48",
-              fontWeight: 600,
-            }}
-          >
-            {saveError || saveMessage}
-          </div>
-
-          <button
-            type="button"
-            onClick={saveCalculation}
-            disabled={savingCalculation || !hasRequiredEnergyInputs}
-            style={{
-              ...styles.primary,
-              opacity: savingCalculation || !hasRequiredEnergyInputs ? 0.65 : 1,
-              cursor: savingCalculation || !hasRequiredEnergyInputs ? "default" : "pointer",
-            }}
-          >
-            {savingCalculation ? "Saving..." : "Save calculation"}
-          </button>
 
           <button
             type="button"
