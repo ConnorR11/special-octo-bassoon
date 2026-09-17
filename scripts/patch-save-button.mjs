@@ -55,10 +55,38 @@ if (next.includes(saveBar)) {
   next = next.replace(saveBar, saveBarReplacement)
 }
 
+// Keep EPVS_calculation in one canonical shape. OpenSolar hardware is flattened
+// into data alongside the other calculator inputs, while the complete OpenSolar
+// response is retained as data.openSolar. Legacy top-level openSolar is supported
+// when reading so existing appointments are not broken.
+const legacyOpenSolarState = `  const savedOpenSolar = appointment?.epvs_calculation?.openSolar || {}`
+const canonicalOpenSolarState = `  const savedOpenSolar = appointment?.epvs_calculation?.data?.openSolar || appointment?.epvs_calculation?.openSolar || {}`
+if (next.includes(legacyOpenSolarState)) {
+  next = next.replace(legacyOpenSolarState, canonicalOpenSolarState)
+}
+
+const legacyOpenSolarEffect = `    const saved = appointment?.epvs_calculation?.openSolar`
+const canonicalOpenSolarEffect = `    const saved = appointment?.epvs_calculation?.data?.openSolar || appointment?.epvs_calculation?.openSolar`
+if (next.includes(legacyOpenSolarEffect)) {
+  next = next.replace(legacyOpenSolarEffect, canonicalOpenSolarEffect)
+}
+
+const hardwareDataMarker = `      arrays: nextArrays,\n      ...(batteries[0]?.capacity ? { batteryCapacity: Number(batteries[0].capacity) * Math.max(1, Number(batteries[0].quantity || 1)) } : {}),\n      ...(inverters[0]?.capacity ? { inverterCapacity: Number(inverters[0].capacity) } : {}),`
+const hardwareDataReplacement = `      arrays: nextArrays,\n      numberOfArrays: imported.length,\n      ...(batteries[0]?.capacity ? { batteryCapacity: Number(batteries[0].capacity) * Math.max(1, Number(batteries[0].quantity || 1)) } : {}),\n      ...(batteries[0] ? { batteryModel: batteries[0].model || "", batteryManufacturer: batteries[0].manufacturer || "", batteryQuantity: Number(batteries[0].quantity || 1) } : {}),\n      ...(inverters[0]?.capacity ? { inverterCapacity: Number(inverters[0].capacity) } : {}),\n      ...(inverters[0] ? { inverterModel: inverters[0].model || "", inverterManufacturer: inverters[0].manufacturer || "", inverterQuantity: Number(inverters[0].quantity || 1) } : {}),\n      ...(evChargers[0] ? { evChargerModel: evChargers[0].model || "", evChargerManufacturer: evChargers[0].manufacturer || "", evChargerQuantity: Number(evChargers[0].quantity || 1), evChargerPowerKw: Number(evChargers[0].capacity || 0) } : {}),`
+if (next.includes(hardwareDataMarker)) {
+  next = next.replace(hardwareDataMarker, hardwareDataReplacement)
+}
+
+const payloadToSaveMarker = `      const payloadToSave = {\n        ...existingCalculation,\n        version: existingCalculation.version || 1,\n        savedAt: new Date().toISOString(),\n        data: nextData,\n        openSolar: {\n          ...openSolarImport,\n          importedAt: openSolarImport.importedAt || new Date().toISOString(),\n          imageUrl: openSolarImport.imageUrl || imageUrl,\n          arrays: Array.isArray(openSolarImport.arrays) ? openSolarImport.arrays : imported,\n          hardware: openSolarImport.hardware || { batteries, inverters, evChargers },\n        },\n      }`
+const payloadToSaveReplacement = `      const openSolarRecord = {\n        ...openSolarImport,\n        importedAt: openSolarImport.importedAt || new Date().toISOString(),\n        imageUrl: openSolarImport.imageUrl || imageUrl,\n        arrays: Array.isArray(openSolarImport.arrays) ? openSolarImport.arrays : imported,\n        hardware: openSolarImport.hardware || { batteries, inverters, evChargers },\n      }\n\n      const payloadToSave = {\n        version: existingCalculation.version || 1,\n        savedAt: new Date().toISOString(),\n        data: { ...nextData, openSolar: openSolarRecord },\n        results: existingCalculation.results || null,\n        thirtyYearProjection: existingCalculation.thirtyYearProjection || null,\n      }`
+if (next.includes(payloadToSaveMarker)) {
+  next = next.replace(payloadToSaveMarker, payloadToSaveReplacement)
+}
+
 if (next === text) {
-  console.log("Current bill save/card UI already applied; nothing to change.")
+  console.log("Current bill save/card UI and EPVS calculation structure already applied; nothing to change.")
   process.exit(0)
 }
 
 fs.writeFileSync(path, next)
-console.log("Current bill save/card UI patch applied with single OpenSolar header.")
+console.log("Current bill save/card UI and canonical EPVS calculation structure patch applied.")
