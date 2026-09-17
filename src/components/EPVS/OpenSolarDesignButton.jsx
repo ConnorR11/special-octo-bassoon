@@ -24,7 +24,6 @@ export default function OpenSolarDesignButton({
 }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [imageUrl, setImageUrl] = useState("")
 
   const getCurrentDesign = async () => {
     if (!projectId) {
@@ -72,7 +71,8 @@ export default function OpenSolarDesignButton({
         throw new Error("OpenSolar returned successfully, but no system image URL was returned.")
       }
 
-      setImageUrl(nextImageUrl)
+      // The EPVS calculator owns the image area. Passing the payload back here
+      // lets its placeholder swap directly to the returned OpenSolar image.
       onDesignLoaded?.(payload)
     } catch (err) {
       console.error("OpenSolar design lookup failed", err)
@@ -83,7 +83,7 @@ export default function OpenSolarDesignButton({
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 10, ...style }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", ...style }}>
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <button
           type="button"
@@ -113,32 +113,9 @@ export default function OpenSolarDesignButton({
       </div>
 
       {error && (
-        <span style={{ maxWidth: 260, marginLeft: "auto", fontSize: 10, color: "#b91c1c", textAlign: "right" }}>
+        <span style={{ maxWidth: 260, marginLeft: "auto", marginTop: 5, fontSize: 10, color: "#b91c1c", textAlign: "right" }}>
           {error}
         </span>
-      )}
-
-      {imageUrl && (
-        <div
-          style={{
-            width: "100%",
-            overflow: "hidden",
-            border: "1px solid #e2e5e8",
-            borderRadius: 8,
-            background: "#f6f8f9",
-          }}
-        >
-          <img
-            src={imageUrl}
-            alt="OpenSolar system design"
-            style={{
-              display: "block",
-              width: "100%",
-              maxHeight: 650,
-              objectFit: "contain",
-            }}
-          />
-        </div>
       )}
     </div>
   )
