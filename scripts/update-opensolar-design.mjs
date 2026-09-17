@@ -57,6 +57,15 @@ if (next.includes(arrayTableMarker) && !next.includes("openSolarImageUrl || \"/o
   next = next.replace(arrayTableMarker, imageBlock + arrayTableMarker)
 }
 
+// Move the existing Save calculation button into the Energy card header.
+const energyCardPattern = /<Card\n\s*title="Energy"\n\s*subtitle="Electricity usage and existing solar PV\."\n\s*>/s
+const saveButtonPattern = /\n\s*<button\n\s*type="button"\n\s*onClick=\{saveCalculation\}\n\s*disabled=\{savingCalculation \|\| !hasRequiredEnergyInputs\}\n\s*style=\{\{\n\s*\.\.\.styles\.primary,\n\s*opacity: savingCalculation \|\| !hasRequiredEnergyInputs \? 0\.65 : 1,\n\s*cursor: savingCalculation \|\| !hasRequiredEnergyInputs \? "default" : "pointer",\n\s*\}\}\n\s*>\n\s*\{savingCalculation \? "Saving\.\.\." : "Save calculation"\}\n\s*<\/button>/s
+
+if (energyCardPattern.test(next) && saveButtonPattern.test(next) && !next.includes('"Save Current Bill"')) {
+  next = next.replace(energyCardPattern, `<Card\n            title="Energy"\n            subtitle="Electricity usage and existing solar PV."\n            action={\n              <button\n                type="button"\n                onClick={saveCalculation}\n                disabled={savingCalculation || !hasRequiredEnergyInputs}\n                style={{\n                  ...styles.primary,\n                  opacity: savingCalculation || !hasRequiredEnergyInputs ? 0.65 : 1,\n                  cursor: savingCalculation || !hasRequiredEnergyInputs ? "default" : "pointer",\n                  whiteSpace: "nowrap",\n                }}\n              >\n                {savingCalculation ? "Saving..." : "Save Current Bill"}\n              </button>\n            }\n          >`)
+  next = next.replace(saveButtonPattern, "")
+}
+
 if (next === text) {
   console.log("OpenSolar UI already applied; nothing to change.")
   process.exit(0)
