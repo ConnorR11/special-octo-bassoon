@@ -14,20 +14,6 @@ function forceChargeForDisplay(row) {
   return 0
 }
 
-function batteryBenefitForDisplay(row) {
-  return batterySelfConsumptionForDisplay(row) + forceChargeForDisplay(row)
-}
-
-function exportBenefitForDisplay(row) {
-  const totalExportKwh = safeNumber(row?.exportKwh)
-  const peakExportKwh = safeNumber(row?.peakExportCapacity)
-  const calculatedResidualExportKwh = Math.max(0, totalExportKwh - peakExportKwh)
-  const solarSelfConsumptionKwh = safeNumber(row?.solarSelfConsumptionKwh)
-  const correctedResidualExportKwh = calculatedResidualExportKwh + solarSelfConsumptionKwh
-  const exportRatePence = safeNumber(row?.fluxDayExportYear ?? row?.exportRateYear)
-  return correctedResidualExportKwh * (exportRatePence / 100)
-}
-
 export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
   const scenarios = thirtyYearProjection?.scenarios || {}
   const scenarioList = useMemo(() => [
@@ -45,21 +31,39 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
   const rows = Array.isArray(scenario.rows) ? scenario.rows : []
   const totals = scenario.totals || {}
 
-  const firstYearBenefit = rows[0] ? safeNumber(rows[0].solarBenefit) + batteryBenefitForDisplay(rows[0]) + exportBenefitForDisplay(rows[0]) : 0
+  const firstYearBenefit = rows[0]
+    ? safeNumber(rows[0].solarBenefit) +
+      batterySelfConsumptionForDisplay(rows[0]) +
+      forceChargeForDisplay(rows[0]) +
+      safeNumber(rows[0].exportBenefit)
+    : 0
 
   const calculatedRows = useMemo(() => {
     let cumulativePosition = 0
     return rows.map((row) => {
+      // The 30-year table should display the values already calculated by
+      // EPVSCalculator. Do not recalculate battery or export benefits here.
+      const solarBenefit = safeNumber(row.solarBenefit)
       const batterySelfConsumptionBenefit = batterySelfConsumptionForDisplay(row)
       const forceChargeBenefit = forceChargeForDisplay(row)
       const batteryBenefit = batterySelfConsumptionBenefit + forceChargeBenefit
-      const exportBenefit = exportBenefitForDisplay(row)
-      const solarBenefit = safeNumber(row.solarBenefit)
+      const exportBenefit = safeNumber(row.exportBenefit)
       const annualBenefit = solarBenefit + batteryBenefit + exportBenefit
       const yearlyPayment = safeNumber(row.yearlyPayment)
-      const netAnnualBenefit = annualBenefit + yearlyPayment
-      cumulativePosition += netAnnualBenefit
-      return { ...row, solarBenefit, batterySelfConsumptionBenefit, forceChargeBenefit, batteryBenefit, exportBenefit, annualBenefit, yearlyPayment, netAnnualBenefit, cumulativePosition }
+      cumulativePosition += annualBenefit + yearlyPayment
+
+      return {
+        ...row,
+        solarBenefit,
+        batterySelfConsumptionBenefit,
+        forceChargeBenefit,
+        batteryBenefit,
+        exportBenefit,
+        annualBenefit,
+        yearlyPayment,
+        netAnnualBenefit: annualBenefit + yearlyPayment,
+        cumulativePosition,
+      }
     })
   }, [rows])
 
