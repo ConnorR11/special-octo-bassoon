@@ -5,15 +5,42 @@ const text = fs.readFileSync(path, "utf8")
 let next = text
 
 const saveCardMarker = `          <Card\n            title="Energy"\n            subtitle="Electricity usage and existing solar PV."\n          >`
-const saveCardReplacement = `          <Card\n            title="Energy"\n            subtitle="Electricity usage and existing solar PV."\n            action={\n              <button\n                type="button"\n                onClick={saveCalculation}\n                disabled={savingCalculation || !hasRequiredEnergyInputs}\n                style={{\n                  ...styles.primary,\n                  opacity: savingCalculation || !hasRequiredEnergyInputs ? 0.65 : 1,\n                  cursor: savingCalculation || !hasRequiredEnergyInputs ? "default" : "pointer",\n                  whiteSpace: "nowrap",\n                }}\n              >\n                {savingCalculation ? "Saving..." : "Save Current Bill Info"}\n              </button>\n            }\n          >`
+const saveCardReplacement = `          <Card\n            title="Energy"\n            subtitle="Electricity usage and existing solar PV."\n            className="epvs-energy-card"\n            action={\n              <button\n                type="button"\n                onClick={saveCalculation}\n                disabled={savingCalculation || !hasRequiredEnergyInputs}\n                style={{\n                  ...styles.primary,\n                  opacity: savingCalculation || !hasRequiredEnergyInputs ? 0.65 : 1,\n                  cursor: savingCalculation || !hasRequiredEnergyInputs ? "default" : "pointer",\n                  whiteSpace: "nowrap",\n                }}\n              >\n                {savingCalculation ? "Saving..." : "Save Current Bill Info"}\n              </button>\n            }\n          >`
 if (next.includes(saveCardMarker) && !next.includes("Save Current Bill Info")) {
   next = next.replace(saveCardMarker, saveCardReplacement)
 }
 
+// Add stable semantic classes to the three EPVS cards so their styling does not
+// depend on DOM position. These replacements are independent of the save-button
+// patch and therefore also run when the save UI has already been applied.
+const energyCardWithoutClass = `          <Card\n            title="Energy"\n            subtitle="Electricity usage and existing solar PV."\n          >`
+const energyCardWithClass = `          <Card\n            title="Energy"\n            subtitle="Electricity usage and existing solar PV."\n            className="epvs-energy-card"\n          >`
+if (next.includes(energyCardWithoutClass)) {
+  next = next.replace(energyCardWithoutClass, energyCardWithClass)
+}
+
+const solarCardWithoutClass = `<Card\n  title="Solar PV arrays"\n  subtitle="Enter the EPVS information for each roof / array."\n>`
+const solarCardWithClass = `<Card\n  title="Solar PV arrays"\n  subtitle="Enter the EPVS information for each roof / array."\n  className="epvs-solar-card"\n>`
+if (next.includes(solarCardWithoutClass)) {
+  next = next.replace(solarCardWithoutClass, solarCardWithClass)
+}
+
+const batteryCardWithoutClass = `<Card\n  title="Battery & Inverter"\n  subtitle="Configure the proposed battery and inverter."\n>`
+const batteryCardWithClass = `<Card\n  title="Battery & Inverter"\n  subtitle="Configure the proposed battery and inverter."\n  className="epvs-battery-card"\n>`
+if (next.includes(batteryCardWithoutClass)) {
+  next = next.replace(batteryCardWithoutClass, batteryCardWithClass)
+}
+
 const cardSignature = `function Card({\n  title,\n  subtitle,\n  children,\n}) {`
-const cardSignatureReplacement = `function Card({\n  title,\n  subtitle,\n  action,\n  children,\n}) {`
-if (next.includes(cardSignature) && !next.includes("  action,\n  children,")) {
+const cardSignatureReplacement = `function Card({\n  title,\n  subtitle,\n  className,\n  action,\n  children,\n}) {`
+if (next.includes(cardSignature)) {
   next = next.replace(cardSignature, cardSignatureReplacement)
+}
+
+const cardRoot = `      className="card"\n      style={{\n        marginBottom: 20,\n      }}`
+const cardRootReplacement = `      className={["card", className].filter(Boolean).join(" ")}\n      style={{\n        marginBottom: 20,\n      }}`
+if (next.includes(cardRoot)) {
+  next = next.replace(cardRoot, cardRootReplacement)
 }
 
 const cardHeader = `      <div\n        className="card-head"\n      >\n        <div>\n          <h2>{title}</h2>\n\n          <p>\n            {subtitle}\n          </p>\n        </div>\n      </div>`
@@ -29,9 +56,9 @@ if (next.includes(saveBar)) {
 }
 
 if (next === text) {
-  console.log("Current bill save UI already applied; nothing to change.")
+  console.log("Current bill save/card UI already applied; nothing to change.")
   process.exit(0)
 }
 
 fs.writeFileSync(path, next)
-console.log("Current bill save UI patch applied.")
+console.log("Current bill save/card UI patch applied.")
