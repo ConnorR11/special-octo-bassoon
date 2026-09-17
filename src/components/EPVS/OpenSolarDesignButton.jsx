@@ -24,6 +24,7 @@ export default function OpenSolarDesignButton({
 }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [imageUrl, setImageUrl] = useState("")
 
   const getCurrentDesign = async () => {
     if (!projectId) {
@@ -66,6 +67,12 @@ export default function OpenSolarDesignButton({
         throw new Error(payload?.error || "Unable to retrieve the OpenSolar design.")
       }
 
+      const nextImageUrl = String(payload?.imageUrl || payload?.systemImageUrl || "").trim()
+      if (!nextImageUrl) {
+        throw new Error("OpenSolar returned successfully, but no system image URL was returned.")
+      }
+
+      setImageUrl(nextImageUrl)
       onDesignLoaded?.(payload)
     } catch (err) {
       console.error("OpenSolar design lookup failed", err)
@@ -76,37 +83,62 @@ export default function OpenSolarDesignButton({
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, ...style }}>
-      <button
-        type="button"
-        onClick={getCurrentDesign}
-        disabled={loading}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-          minHeight: 38,
-          padding: "0 14px",
-          border: 0,
-          borderRadius: 8,
-          background: "#172554",
-          color: "#fff",
-          fontSize: 12,
-          fontWeight: 700,
-          cursor: loading ? "wait" : "pointer",
-          opacity: loading ? 0.7 : 1,
-          whiteSpace: "nowrap",
-        }}
-      >
-        <OpenSolarLogo />
-        {loading ? "Getting design…" : "Get Current Design"}
-      </button>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 10, ...style }}>
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <button
+          type="button"
+          onClick={getCurrentDesign}
+          disabled={loading}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            minHeight: 38,
+            padding: "0 14px",
+            border: 0,
+            borderRadius: 8,
+            background: "#172554",
+            color: "#fff",
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: loading ? "wait" : "pointer",
+            opacity: loading ? 0.7 : 1,
+            whiteSpace: "nowrap",
+          }}
+        >
+          <OpenSolarLogo />
+          {loading ? "Getting design…" : "Get Current Design"}
+        </button>
+      </div>
 
       {error && (
-        <span style={{ maxWidth: 260, fontSize: 10, color: "#b91c1c", textAlign: "right" }}>
+        <span style={{ maxWidth: 260, marginLeft: "auto", fontSize: 10, color: "#b91c1c", textAlign: "right" }}>
           {error}
         </span>
+      )}
+
+      {imageUrl && (
+        <div
+          style={{
+            width: "100%",
+            overflow: "hidden",
+            border: "1px solid #e2e5e8",
+            borderRadius: 8,
+            background: "#f6f8f9",
+          }}
+        >
+          <img
+            src={imageUrl}
+            alt="OpenSolar system design"
+            style={{
+              display: "block",
+              width: "100%",
+              maxHeight: 650,
+              objectFit: "contain",
+            }}
+          />
+        </div>
       )}
     </div>
   )
