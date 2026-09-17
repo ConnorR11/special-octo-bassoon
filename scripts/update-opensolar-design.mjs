@@ -12,58 +12,15 @@ if (!next.includes('import OpenSolarDesignButton from "./components/EPVS/OpenSol
 
 if (!next.includes("const handleOpenSolarDesignLoaded")) {
   const marker = `  const arrayGeometryKey = data.arrays\n`
-  const handler = `  const [openSolarImageUrl, setOpenSolarImageUrl] = useState("")\n\n  const handleOpenSolarDesignLoaded = (payload) => {\n    const imported = Array.isArray(payload?.arrays) ? payload.arrays : []\n\n    setOpenSolarImageUrl(String(payload?.systemImageUrl || ""))\n\n    if (!imported.length) {\n      setFluxRateError("OpenSolar did not return any array/module groups for this project.")\n      return\n    }\n\n    if (payload?.truncated) {\n      setFluxRateError("OpenSolar returned more than 3 arrays. The calculator can display the first 3.")\n    } else {\n      setFluxRateError("")\n    }\n\n    setData((current) => ({\n      ...current,\n      arrays: [0, 1, 2].map((index) => {\n        const importedArray = imported[index]\n        if (!importedArray) return createArray()\n        return {\n          ...createArray(),\n          panelCount: Number(importedArray.panelCount || 0),\n          orientation: Number(importedArray.orientation || 0),\n          pitch: Number(importedArray.pitch || 0),\n          irradiance: Number(importedArray.irradiance || 0),\n          shading: Number(importedArray.shading ?? 1),\n        }\n      }),\n    }))\n  }\n\n`
+  const handler = `  const [openSolarImageUrl, setOpenSolarImageUrl] = useState(String(appointment?.open_solar_image || ""))\n\n  useEffect(() => {\n    setOpenSolarImageUrl(String(appointment?.open_solar_image || ""))\n  }, [appointment?.appointment_row_id, appointment?.open_solar_image])\n\n  const handleOpenSolarDesignLoaded = (payload) => {\n    const imported = Array.isArray(payload?.arrays) ? payload.arrays : []\n    const imageUrl = String(payload?.imageUrl || payload?.systemImageUrl || "")\n    if (imageUrl) setOpenSolarImageUrl(imageUrl)\n\n    if (!imported.length) {\n      setFluxRateError("OpenSolar did not return any array/module groups for this project.")\n      return\n    }\n\n    if (payload?.truncated) {\n      setFluxRateError("OpenSolar returned more than 3 arrays. The calculator can display the first 3.")\n    } else {\n      setFluxRateError("")\n    }\n\n    setData((current) => ({\n      ...current,\n      arrays: [0, 1, 2].map((index) => {\n        const importedArray = imported[index]\n        if (!importedArray) return createArray()\n        return {\n          ...createArray(),\n          panelCount: Number(importedArray.panelCount || 0),\n          panelWattage: Number(importedArray.panelWattage || 460),\n          orientation: Number(importedArray.orientation || 0),\n          pitch: Number(importedArray.pitch || 0),\n          irradiance: Number(importedArray.irradiance || 0),\n          shading: Number(importedArray.shading ?? 1),\n        }\n      }),\n    }))\n  }\n\n`
   if (!next.includes(marker)) throw new Error("Could not locate the EPVS array geometry key")
   next = next.replace(marker, handler + marker)
 }
 
-if (next.includes("const handleOpenSolarDesignLoaded") && !next.includes("irradiance: Number(importedArray.irradiance")) {
-  const oldLine = `          pitch: Number(importedArray.pitch || 0),\n          shading: Number(importedArray.shading ?? 1),`
-  const newLines = `          pitch: Number(importedArray.pitch || 0),\n          irradiance: Number(importedArray.irradiance || 0),\n          shading: Number(importedArray.shading ?? 1),`
-  if (!next.includes(oldLine)) throw new Error("Could not locate the existing OpenSolar array mapping")
-  next = next.replace(oldLine, newLines)
-}
-
-if (next.includes("const handleOpenSolarDesignLoaded") && !next.includes("setOpenSolarImageUrl(String(payload?.systemImageUrl || \"\"))")) {
-  const handlerMarker = `  const handleOpenSolarDesignLoaded = (payload) => {\n    const imported = Array.isArray(payload?.arrays) ? payload.arrays : []\n`
-  if (!next.includes(handlerMarker)) throw new Error("Could not locate the existing OpenSolar design handler")
-  next = next.replace(handlerMarker, `${handlerMarker}\n    setOpenSolarImageUrl(String(payload?.systemImageUrl || ""))\n`)
-}
-
-if (next.includes("const handleOpenSolarDesignLoaded") && !next.includes("const [openSolarImageUrl, setOpenSolarImageUrl]")) {
-  const marker = `  const handleOpenSolarDesignLoaded = (payload) => {\n`
-  if (!next.includes(marker)) throw new Error("Could not locate the OpenSolar design handler")
-  next = next.replace(marker, `  const [openSolarImageUrl, setOpenSolarImageUrl] = useState("")\n\n${marker}`)
-}
-
-const solarCardPattern = /<Card\n  title="Solar PV arrays"\n  subtitle="Enter the EPVS information for each roof \/ array\."\n>/
-if (solarCardPattern.test(next) && !next.includes("<OpenSolarDesignButton")) {
-  next = next.replace(solarCardPattern, `<Card\n  title="Solar PV arrays"\n  subtitle="Enter the EPVS information for each roof / array."\n  action={\n    <OpenSolarDesignButton\n      projectId={appointment?.open_solar_id}\n      onDesignLoaded={handleOpenSolarDesignLoaded}\n    />\n  }\n>`)
-}
-
-const cardSignature = /function Card\(\{\n  title,\n  subtitle,\n  children,\n}\) \{/s
-if (cardSignature.test(next) && !next.includes("  action,\n")) {
-  next = next.replace(cardSignature, `function Card({\n  title,\n  subtitle,\n  action,\n  children,\n}) {`)
-}
-
-const cardHeaderPattern = /      <div\n        className="card-head"\n      >\n        <div>\n          <h2>\{title\}<\/h2>\n\n          <p>\n            \{subtitle\}\n          <\/p>\n        <\/div>\n      <\/div>/s
-if (cardHeaderPattern.test(next) && !next.includes("{action && <div")) {
-  next = next.replace(cardHeaderPattern, `      <div\n        className="card-head"\n        style={{\n          display: "flex",\n          alignItems: "flex-start",\n          justifyContent: "space-between",\n          gap: 16,\n        }}\n      >\n        <div>\n          <h2>{title}</h2>\n\n          <p>\n            {subtitle}\n          </p>\n        </div>\n\n        {action && <div style={{ marginLeft: "auto", flexShrink: 0 }}>{action}</div>}\n      </div>`)
-}
-
 const arrayTableMarker = `  {/* ARRAYS TABLE */}`
 if (next.includes(arrayTableMarker) && !next.includes("openSolarImageUrl || \"/opensolar-system-placeholder.svg\"")) {
-  const imageBlock = `  <div\n    style={{\n      marginBottom: 16,\n      border: "1px solid #e2e8f0",\n      borderRadius: 12,\n      overflow: "hidden",\n      background: "#f8fafc",\n    }}\n  >\n    <img\n      src={openSolarImageUrl || "/opensolar-system-placeholder.svg"}\n      alt={openSolarImageUrl ? "OpenSolar system design" : "OpenSolar system design placeholder"}\n      style={{\n        display: "block",\n        width: "100%",\n        maxHeight: 520,\n        objectFit: "contain",\n        background: "#f8fafc",\n      }}\n    />\n  </div>\n\n`
-  next = next.replace(arrayTableMarker, imageBlock + arrayTableMarker)
-}
-
-// Move the existing Save calculation button into the Energy card header.
-const energyCardPattern = /<Card\n\s*title="Energy"\n\s*subtitle="Electricity usage and existing solar PV\."\n\s*>/s
-const saveButtonPattern = /\n\s*<button\n\s*type="button"\n\s*onClick=\{saveCalculation\}\n\s*disabled=\{savingCalculation \|\| !hasRequiredEnergyInputs\}\n\s*style=\{\{\n\s*\.\.\.styles\.primary,\n\s*opacity: savingCalculation \|\| !hasRequiredEnergyInputs \? 0\.65 : 1,\n\s*cursor: savingCalculation \|\| !hasRequiredEnergyInputs \? "default" : "pointer",\n\s*\}\}\n\s*>\n\s*\{savingCalculation \? "Saving\.\.\." : "Save calculation"\}\n\s*<\/button>/s
-
-if (energyCardPattern.test(next) && saveButtonPattern.test(next) && !next.includes('"Save Current Bill"')) {
-  next = next.replace(energyCardPattern, `<Card\n            title="Energy"\n            subtitle="Electricity usage and existing solar PV."\n            action={\n              <button\n                type="button"\n                onClick={saveCalculation}\n                disabled={savingCalculation || !hasRequiredEnergyInputs}\n                style={{\n                  ...styles.primary,\n                  opacity: savingCalculation || !hasRequiredEnergyInputs ? 0.65 : 1,\n                  cursor: savingCalculation || !hasRequiredEnergyInputs ? "default" : "pointer",\n                  whiteSpace: "nowrap",\n                }}\n              >\n                {savingCalculation ? "Saving..." : "Save Current Bill"}\n              </button>\n            }\n          >`)
-  next = next.replace(saveButtonPattern, "")
+  const toolbar = `  <div\n    style={{\n      display: "flex",\n      justifyContent: "flex-end",\n      marginBottom: 12,\n    }}\n  >\n    <OpenSolarDesignButton\n      projectId={appointment?.open_solar_id}\n      onDesignLoaded={handleOpenSolarDesignLoaded}\n    />\n  </div>\n\n  <div\n    style={{\n      marginBottom: 16,\n      border: "1px solid #e2e8f0",\n      borderRadius: 12,\n      overflow: "hidden",\n      background: "#f8fafc",\n    }}\n  >\n    <img\n      src={openSolarImageUrl || "/opensolar-system-placeholder.svg"}\n      alt={openSolarImageUrl ? "OpenSolar system design" : "OpenSolar system design placeholder"}\n      style={{\n        display: "block",\n        width: "100%",\n        maxHeight: 520,\n        objectFit: "contain",\n        background: "#f8fafc",\n      }}\n    />\n  </div>\n\n`
+  next = next.replace(arrayTableMarker, toolbar + arrayTableMarker)
 }
 
 if (next === text) {
@@ -72,4 +29,4 @@ if (next === text) {
 }
 
 fs.writeFileSync(path, next)
-console.log("OpenSolar UI patch applied.")
+console.log("OpenSolar UI patch applied without modifying Card headers.")
