@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react"
 
 import { supabase } from "./lib/supabase"
 import EPVSCalculator from "./EPVSCalculator"
-import StandardFluxTest from "./StandardFluxTest"
 import Sidebar from "./components/Sidebar"
 import Header from "./components/Header"
 import FitSheet from "./components/FitSheet"
@@ -54,7 +53,6 @@ function App() {
     return () => { mounted = false; authListener?.subscription?.unsubscribe() }
   }, [])
 
-  // Deals page: deliberately loads only one 50-row page.
   async function loadContracts(pageNumber = 0, searchValue = query, statusValue = status) {
     setLoading(true); setError("")
     if (!supabase) { setError("Supabase is not configured. Check your environment variables."); setLoading(false); return }
@@ -73,8 +71,6 @@ function App() {
     setLoading(false)
   }
 
-  // Home page reporting and Fit Sheet need the complete deal set. Load it in
-  // Supabase-sized chunks so this is not limited by the Deals page pagination.
   async function loadAllDealsForReporting() {
     if (!supabase) return
     setReportingLoading(true)
@@ -82,11 +78,7 @@ function App() {
       const results = []
       let from = 0
       while (true) {
-        const { data, error: supabaseError } = await supabase
-          .from("deals")
-          .select("*")
-          .order("sale_date", { ascending: false })
-          .range(from, from + REPORTING_PAGE_SIZE - 1)
+        const { data, error: supabaseError } = await supabase.from("deals").select("*").order("sale_date", { ascending: false }).range(from, from + REPORTING_PAGE_SIZE - 1)
         if (supabaseError) throw supabaseError
         const batch = data || []
         results.push(...batch)
@@ -98,9 +90,7 @@ function App() {
       console.error("Error loading all deals for reporting:", err)
       setError(err?.message || "Unable to load deals for reporting.")
       setAllDeals([])
-    } finally {
-      setReportingLoading(false)
-    }
+    } finally { setReportingLoading(false) }
   }
 
   useEffect(() => {
@@ -145,7 +135,7 @@ function App() {
   const headerPage = selected ? "customer" : selectedAppointment ? "appointment" : page
   if (authLoading) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f7fa", color: "#002d49", fontFamily: "Inter, Arial, sans-serif", fontSize: 14 }}>Loading CRM...</div>
   if (!session) return <Login />
-  return <div className="app"><Sidebar page={page} setPage={handlePageChange} mobile={mobile} setMobile={setMobile} onSignOut={handleSignOut} /><main><Header page={headerPage} setMobile={setMobile} />{error && page !== "epvs" && <div className="error"><b>Database error</b><span>{error}</span></div>}{pickupAppointment ? <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated} /> : selectedAppointment ? <div style={{ position: "relative" }}><style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}</style><div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 24px 0", background: "#fff" }}><AppointmentActions appointment={selectedAppointment} onUpdated={handleAppointmentUpdated} onConfirmLegacy={handleLegacyConfirm} onResultLegacy={handleLegacyResult} onOpenPickup={handleOpenPickup} /></div><div className="appointment-detail-host"><AppointmentDetail appointment={selectedAppointment} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated} /></div></div> : selected ? <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated} /> : page === "dashboard" ? <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={reportingLoading} setPage={handlePageChange} setSelected={setSelected} /> : page === "marketing-tv" ? <MarketingTV onSelectAppointment={handleAppointmentSelect} /> : page === "marketing-dashboard" ? <MarketingDashboard contracts={contracts} loading={loading} onSelectAppointment={handleAppointmentSelect} /> : page === "sales-kpi" ? <SalesKPI /> : page === "users" ? <Users /> : page === "contracts" ? <Contracts filtered={filteredContracts} loading={loading} query={query} setQuery={handleSearchChange} status={status} setStatus={handleStatusChange} setSelected={setSelected} page={contractsPage} pageSize={DEALS_PAGE_SIZE} hasMore={hasMoreContracts} onPreviousPage={() => loadContracts(Math.max(contractsPage - 1, 0), query, status)} onNextPage={() => loadContracts(contractsPage + 1, query, status)} /> : page === "appointments" ? <Appointments onSelectAppointment={handleAppointmentSelect} /> : page === "fitsheet" ? <FitSheet contracts={allDeals} loading={reportingLoading} setSelected={setSelected} onSelectDeal={setSelected} /> : page === "epvs" ? <><EPVSCalculator /><StandardFluxTest /></> : <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={reportingLoading} setPage={handlePageChange} setSelected={setSelected} />}</main></div>
+  return <div className="app"><Sidebar page={page} setPage={handlePageChange} mobile={mobile} setMobile={setMobile} onSignOut={handleSignOut} /><main><Header page={headerPage} setMobile={setMobile} />{error && page !== "epvs" && <div className="error"><b>Database error</b><span>{error}</span></div>}{pickupAppointment ? <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated} /> : selectedAppointment ? <div style={{ position: "relative" }}><style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}</style><div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 24px 0", background: "#fff" }}><AppointmentActions appointment={selectedAppointment} onUpdated={handleAppointmentUpdated} onConfirmLegacy={handleLegacyConfirm} onResultLegacy={handleLegacyResult} onOpenPickup={handleOpenPickup} /></div><div className="appointment-detail-host"><AppointmentDetail appointment={selectedAppointment} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated} /></div></div> : selected ? <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated} /> : page === "dashboard" ? <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={reportingLoading} setPage={handlePageChange} setSelected={setSelected} /> : page === "marketing-tv" ? <MarketingTV onSelectAppointment={handleAppointmentSelect} /> : page === "marketing-dashboard" ? <MarketingDashboard contracts={contracts} loading={loading} onSelectAppointment={handleAppointmentSelect} /> : page === "sales-kpi" ? <SalesKPI /> : page === "users" ? <Users /> : page === "contracts" ? <Contracts filtered={filteredContracts} loading={loading} query={query} setQuery={handleSearchChange} status={status} setStatus={handleStatusChange} setSelected={setSelected} page={contractsPage} pageSize={DEALS_PAGE_SIZE} hasMore={hasMoreContracts} onPreviousPage={() => loadContracts(Math.max(contractsPage - 1, 0), query, status)} onNextPage={() => loadContracts(contractsPage + 1, query, status)} /> : page === "appointments" ? <Appointments onSelectAppointment={handleAppointmentSelect} /> : page === "fitsheet" ? <FitSheet contracts={allDeals} loading={reportingLoading} setSelected={setSelected} onSelectDeal={setSelected} /> : page === "epvs" ? <EPVSCalculator /> : <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={reportingLoading} setPage={handlePageChange} setSelected={setSelected} />}</main></div>
 }
 
 export default App
