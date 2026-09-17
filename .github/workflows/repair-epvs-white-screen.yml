@@ -1,0 +1,50 @@
+name: Repair EPVS appointment white screen
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore known-good EPVS source and harden appointment data
+        shell: python
+        run: |
+          from pathlib import Path
+          import subprocess
+
+          # Restore the complete known-good source from immediately before the bad edit.
+          subprocess.run(["git", "checkout", "a2df2cc38993712146219534ca68a9bf4d64f28d", "--", "src/EPVSCalculator.jsx"], check=True)
+          path = Path("src/EPVSCalculator.jsx")
+          text = path.read_text()
+
+          # Existing appointments can contain legacy/non-array EPVS array data.
+          # Normalise it before any .map/slice access so opening an appointment cannot blank the UI.
+          marker = '''  const appointmentInitial = useMemo(() => {\n    const saved = appointment?.epvs_calculation?.data || {}\n\n    return {\n      ...initial,\n      ...saved,\n'''
+          replacement = '''  const appointmentInitial = useMemo(() => {\n    const saved = appointment?.epvs_calculation?.data || {}\n    const savedArrays = Array.isArray(saved.arrays) ? saved.arrays : initial.arrays\n\n    return {\n      ...initial,\n      ...saved,\n      arrays: savedArrays,\n'''
+          if marker not in text:
+              raise SystemExit("appointmentInitial marker not found")
+          text = text.replace(marker, replacement, 1)
+          path.write_text(text)
+
+          workflow = Path(".github/workflows/repair-epvs-white-screen.yml")
+          # Leave the repair source in main, but remove this one-shot workflow.
+          workflow.unlink()
+
+      - name: Commit repair
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/EPVSCalculator.jsx .github/workflows/repair-epvs-white-screen.yml
+          git commit -m 'Repair EPVS appointment loading'
+          git push
