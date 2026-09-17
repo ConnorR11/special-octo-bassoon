@@ -37,11 +37,11 @@ if (next.includes("const handleOpenSolarDesignLoaded") && !next.includes("const 
 }
 
 const solarCardPattern = /<Card\n  title="Solar PV arrays"\n  subtitle="Enter the EPVS information for each roof \/ array\."\n>/
-if (solarCardPattern.test(next) && !next.includes("projectId={appointment?.open_solar_id}")) {
+if (solarCardPattern.test(next) && !next.includes("<OpenSolarDesignButton")) {
   next = next.replace(solarCardPattern, `<Card\n  title="Solar PV arrays"\n  subtitle="Enter the EPVS information for each roof / array."\n  action={\n    <OpenSolarDesignButton\n      projectId={appointment?.open_solar_id}\n      onDesignLoaded={handleOpenSolarDesignLoaded}\n    />\n  }\n>`)
 }
 
-const cardSignature = /function Card\(\{\n  title,\n  subtitle,\n  children,\n\}\) \{/s
+const cardSignature = /function Card\(\{\n  title,\n  subtitle,\n  children,\n}\) \{/s
 if (cardSignature.test(next) && !next.includes("  action,\n")) {
   next = next.replace(cardSignature, `function Card({\n  title,\n  subtitle,\n  action,\n  children,\n}) {`)
 }
