@@ -1,0 +1,50 @@
+name: Move EPVS save button
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  move-save-button:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Move save calculation button
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('src/EPVSCalculator.jsx')
+          text = path.read_text()
+
+          save_bar = '''\n          <div\n            style={{\n              display: "flex",\n              alignItems: "center",\n              justifyContent: "flex-end",\n              gap: 12,\n              marginTop: -4,\n              marginBottom: 20,\n              padding: "12px 0",\n            }}\n          >\n            <div\n              style={{\n                marginRight: "auto",\n                fontSize: 11,\n                color: saveError ? "#b42318" : "#299d48",\n                fontWeight: 600,\n              }}\n            >\n              {saveError || saveMessage}\n            </div>\n\n            <button\n              type="button"\n              onClick={saveCalculation}\n              disabled={savingCalculation || !hasRequiredEnergyInputs}\n              style={{\n                ...styles.primary,\n                opacity: savingCalculation || !hasRequiredEnergyInputs ? 0.65 : 1,\n                cursor: savingCalculation || !hasRequiredEnergyInputs ? "default" : "pointer",\n              }}\n            >\n              {savingCalculation ? "Saving..." : "Save calculation"}\n            </button>\n          </div>\n'''
+
+          energy_marker = '''          </Card>\n\n       {/* =================================================\n    SOLAR PV'''
+          if save_bar.strip() not in text:
+              if energy_marker not in text:
+                  raise SystemExit('Could not locate Energy card / Solar PV boundary')
+              text = text.replace(energy_marker, '          </Card>\n' + save_bar + '\n       {/* =================================================\n    SOLAR PV', 1)
+
+          footer_pattern = re.compile(r'''\n          <div\n            style=\{\{\n              marginRight: "auto",\n              fontSize: 11,\n              color: saveError \? "#b42318" : "#299d48",\n              fontWeight: 600,\n            \}\}\n          >\n            \{saveError \|\| saveMessage\}\n          </div>\n\n          <button\n            type="button"\n            onClick=\{saveCalculation\}\n            disabled=\{savingCalculation \|\| !hasRequiredEnergyInputs\}\n            style=\{\{\n              \.\.\.styles\.primary,\n              opacity: savingCalculation \|\| !hasRequiredEnergyInputs \? 0\.65 : 1,\n              cursor: savingCalculation \|\| !hasRequiredEnergyInputs \? "default" : "pointer",\n            \}\}\n          >\n            \{savingCalculation \? "Saving\.\.\." : "Save calculation"\}\n          </button>''', re.M)
+
+          text, count = footer_pattern.subn('', text, count=1)
+          if count != 1:
+              raise SystemExit(f'Could not remove footer save button (matches={count})')
+
+          path.write_text(text)
+          PY
+
+      - name: Commit change and remove one-shot workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/EPVSCalculator.jsx .github/workflows/move-epvs-save-button.yml
+          git rm .github/workflows/move-epvs-save-button.yml
+          git commit -m "Move EPVS save calculation below Energy card"
+          git push
