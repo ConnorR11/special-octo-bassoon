@@ -22,18 +22,17 @@ jobs:
         run: |
           from pathlib import Path
           import json
-
           path = Path("src/EPVSCalculator.jsx")
           text = path.read_text()
-
           imp = 'import ThirtyYearBreakdown from "./components/EPVS/ThirtyYearBreakdown"'
-          new_imp = imp + '\nimport OpenSolarDesignButton from "./components/EPVS/OpenSolarDesignButton"'
-          assert imp in text, "EPVS breakdown import marker not found"
-          if 'import OpenSolarDesignButton from "./components/EPVS/OpenSolarDesignButton"' not in text:
-              text = text.replace(imp, new_imp, 1)
-
+          os_imp = 'import OpenSolarDesignButton from "./components/EPVS/OpenSolarDesignButton"'
+          if os_imp not in text:
+              assert imp in text
+              text = text.replace(imp, imp + '\n' + os_imp, 1)
           marker = '  const arrayGeometryKey = data.arrays\n'
-          handler = '''  const [openSolarImageUrl, setOpenSolarImageUrl] = useState(String(appointment?.open_solar_image || ""))
+          if 'const handleOpenSolarDesignLoaded' not in text:
+              assert marker in text
+              handler = '''  const [openSolarImageUrl, setOpenSolarImageUrl] = useState(String(appointment?.open_solar_image || ""))
 
   useEffect(() => {
     setOpenSolarImageUrl(String(appointment?.open_solar_image || ""))
@@ -42,20 +41,12 @@ jobs:
   const handleOpenSolarDesignLoaded = (payload) => {
     const imported = Array.isArray(payload?.arrays) ? payload.arrays : []
     const imageUrl = String(payload?.imageUrl || payload?.systemImageUrl || "")
-
     if (imageUrl) setOpenSolarImageUrl(imageUrl)
-
     if (!imported.length) {
       setFluxRateError("OpenSolar did not return any array/module groups for this project.")
       return
     }
-
-    if (payload?.truncated) {
-      setFluxRateError("OpenSolar returned more than 3 arrays. The calculator can display the first 3.")
-    } else {
-      setFluxRateError("")
-    }
-
+    setFluxRateError(payload?.truncated ? "OpenSolar returned more than 3 arrays. The calculator can display the first 3." : "")
     setData((current) => ({
       ...current,
       arrays: [0, 1, 2].map((index) => {
@@ -75,10 +66,7 @@ jobs:
   }
 
 '''
-          assert marker in text, "EPVS array geometry marker not found"
-          if "const handleOpenSolarDesignLoaded" not in text:
               text = text.replace(marker, handler + marker, 1)
-
           solar = '''<Card
   title="Solar PV arrays"
   subtitle="Enter the EPVS information for each roof / array."
@@ -93,52 +81,35 @@ jobs:
     />
   }
 >'''
-          assert solar in text, "Solar PV Card marker not found"
-          if "action={\n    <OpenSolarDesignButton" not in text:
+          if 'action={\n    <OpenSolarDesignButton' not in text:
+              assert solar in text
               text = text.replace(solar, solar_new, 1)
-
           image_marker = '  {/* ARRAYS TABLE */}'
-          image_block = '''  <div
-    style={{
-      marginBottom: 16,
-      border: "1px solid #e2e8f0",
-      borderRadius: 12,
-      overflow: "hidden",
-      background: "#f8fafc",
-    }}
-  >
+          if 'openSolarImageUrl || "/opensolar-system-placeholder.svg"' not in text:
+              assert image_marker in text
+              image_block = '''  <div style={{ marginBottom: 16, border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", background: "#f8fafc" }}>
     <img
       src={openSolarImageUrl || "/opensolar-system-placeholder.svg"}
       alt={openSolarImageUrl ? "OpenSolar system design" : "OpenSolar system design placeholder"}
-      style={{
-        display: "block",
-        width: "100%",
-        maxHeight: 520,
-        objectFit: "contain",
-        background: "#f8fafc",
-      }}
+      style={{ display: "block", width: "100%", maxHeight: 520, objectFit: "contain", background: "#f8fafc" }}
     />
   </div>
 
 '''
-          assert image_marker in text, "Solar array table marker not found"
-          if "openSolarImageUrl || \"/opensolar-system-placeholder.svg\"" not in text:
               text = text.replace(image_marker, image_block + image_marker, 1)
-
           card_sig = '''function Card({
   title,
   subtitle,
   children,
 }) {'''
-          card_new = '''function Card({
+          if '  action,\n  children,' not in text:
+              assert card_sig in text
+              text = text.replace(card_sig, '''function Card({
   title,
   subtitle,
   action,
   children,
-}) {'''
-          assert card_sig in text, "Card signature not found"
-          text = text.replace(card_sig, card_new, 1)
-
+}) {''', 1)
           card_head = '''      <div
         className="card-head"
       >
@@ -150,38 +121,25 @@ jobs:
           </p>
         </div>
       </div>'''
-          card_head_new = '''      <div
+          if '{action && <div' not in text:
+              assert card_head in text
+              text = text.replace(card_head, '''      <div
         className="card-head"
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: 16,
-        }}
+        style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}
       >
         <div>
           <h2>{title}</h2>
-
-          <p>
-            {subtitle}
-          </p>
+          <p>{subtitle}</p>
         </div>
-
         {action && <div style={{ marginLeft: "auto", flexShrink: 0 }}>{action}</div>}
-      </div>'''
-          assert card_head in text, "Card header markup not found"
-          text = text.replace(card_head, card_head_new, 1)
-
+      </div>''', 1)
           path.write_text(text)
-
           pkg_path = Path("package.json")
           pkg = json.loads(pkg_path.read_text())
-          assert pkg.get("scripts", {}).get("build") == "node scripts/update-opensolar-design.mjs && vite build", "Unexpected build script; refusing to overwrite"
-          pkg["scripts"]["build"] = "vite build"
-          pkg_path.write_text(json.dumps(pkg, indent=2) + "\n")
-
-          Path("scripts/update-opensolar-design.mjs").write_text('import fs from "node:fs"\n\n// OpenSolar UI is now maintained directly in EPVSCalculator.jsx.\nconsole.log("Using checked-in EPVS source; no build-time UI rewriting.")\n')
-
+          if pkg["scripts"]["build"] != "vite build":
+              pkg["scripts"]["build"] = "vite build"
+              pkg_path.write_text(json.dumps(pkg, indent=2) + "\n")
+          Path("scripts/update-opensolar-design.mjs").write_text('import fs from "node:fs"\nconsole.log("Using checked-in EPVS source; no build-time UI rewriting.")\n')
           Path(".github/workflows/direct-opensolar-source-fix.yml").unlink()
 
       - name: Commit and push
