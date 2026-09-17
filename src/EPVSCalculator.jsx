@@ -454,7 +454,7 @@ function calculateStandardFluxYear({
   const residualExportBenefit =
     cappedExportKwh * dayExport - existingExportKwh * currentExport
 
-  const exportBenefit = residualExportBenefit + peakExportBenefit
+  const exportBenefit = residualExportBenefit
   const exportKwh = cappedExportKwh + peakExportCapacity
 
   const unmetPeakKwh = nonNegative(
