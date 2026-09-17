@@ -361,12 +361,47 @@ function calculateStandardFluxYear({
   existingGenerationSC
 )
 
-  const cappedBatterySC = Math.min(
-    nonNegative(inverterBatterySCCapacity - cappedSolarSC),
-    batterySCCapacity,
-    nonNegative(gen * 0.9 - cappedSolarSC),
-    batteryDemandCapacity + nonNegative(existingGen - existingGenerationSC)
+  const cappedSolarSCPct =
+  gen === 0 ? 0 : cappedSolarSC / gen
+
+const existingSEMPct =
+  existingGen === 0
+    ? 0
+    : Math.min(
+        0.9 - existingScPct,
+        consumption * 0.9 / existingGen
+      )
+
+const existingSEMKwh =
+  existingGen * existingSEMPct
+
+const newGenerationBatterySCPct =
+  gen === 0
+    ? 0
+    : Math.max(
+        0,
+        Math.min(
+          0.9 - cappedSolarSCPct,
+          (
+            (existingSEMKwh === 0
+              ? consumption
+              : consumption - existingSEMKwh) *
+            0.9 / gen
+          ) -
+          cappedSolarSCPct
+        )
+      )
+
+const newGenerationBatterySCKwh =
+  gen * newGenerationBatterySCPct
+
+const cappedBatterySC = Math.min(
+  nonNegative(inverterBatterySCCapacity - cappedSolarSC),
+  batterySCCapacity,
+  nonNegative(
+    newGenerationBatterySCKwh + existingSEMKwh
   )
+)
 
   // Standard Flux battery SC is allocated Peak first, then Day, then Flux.
   const reducedPeakBatteryGC = consumption * 0.9 * profile.peak
