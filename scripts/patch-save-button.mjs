@@ -19,8 +19,8 @@ if (next.includes(energyCardWithoutClass)) {
   next = next.replace(energyCardWithoutClass, energyCardWithClass)
 }
 
-const solarCardWithoutClass = `<Card\n  title="Solar PV arrays"\n  subtitle="Enter the EPVS information for each roof / array."\n>`
-const solarCardWithClass = `<Card\n  title="Solar PV arrays"\n  subtitle="Enter the EPVS information for each roof / array."\n  className="epvs-solar-card"\n>`
+const solarCardWithoutClass = `<Card\n  title=""\n  subtitle=""\n>`
+const solarCardWithClass = `<Card\n  title=""\n  subtitle=""\n  className="epvs-solar-card"\n>`
 if (next.includes(solarCardWithoutClass)) {
   next = next.replace(solarCardWithoutClass, solarCardWithClass)
 }
@@ -44,7 +44,7 @@ if (next.includes(cardRoot)) {
 }
 
 const cardHeader = `      <div\n        className="card-head"\n      >\n        <div>\n          <h2>{title}</h2>\n\n          <p>\n            {subtitle}\n          </p>\n        </div>\n      </div>`
-const cardHeaderReplacement = `      <div\n        className="card-head"\n        style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}\n      >\n        <div>\n          <h2>{title}</h2>\n\n          <p>\n            {subtitle}\n          </p>\n        </div>\n        {action && <div style={{ marginLeft: "auto", flexShrink: 0 }}>{action}</div>}\n      </div>`
+const cardHeaderReplacement = `      {(title || subtitle || action) && (\n        <div\n          className="card-head"\n          style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}\n        >\n          <div>\n            <h2>{title}</h2>\n\n            <p>\n              {subtitle}\n            </p>\n          </div>\n          {action && <div style={{ marginLeft: "auto", flexShrink: 0 }}>{action}</div>}\n        </div>\n      )}`
 if (next.includes(cardHeader) && !next.includes("{action && <div")) {
   next = next.replace(cardHeader, cardHeaderReplacement)
 }
@@ -61,4 +61,4 @@ if (next === text) {
 }
 
 fs.writeFileSync(path, next)
-console.log("Current bill save/card UI patch applied.")
+console.log("Current bill save/card UI patch applied with single OpenSolar header.")
