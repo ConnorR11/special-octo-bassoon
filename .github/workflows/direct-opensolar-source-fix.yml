@@ -17,128 +17,27 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Patch EPVS source
+      - name: Use OpenSolar irradiance directly
         shell: python
         run: |
           from pathlib import Path
-          import json
           path = Path("src/EPVSCalculator.jsx")
           text = path.read_text()
-          imp = 'import ThirtyYearBreakdown from "./components/EPVS/ThirtyYearBreakdown"'
-          os_imp = 'import OpenSolarDesignButton from "./components/EPVS/OpenSolarDesignButton"'
-          if os_imp not in text:
-              assert imp in text
-              text = text.replace(imp, imp + '\n' + os_imp, 1)
-          marker = '  const arrayGeometryKey = data.arrays\n'
-          if 'const handleOpenSolarDesignLoaded' not in text:
-              assert marker in text
-              handler = '''  const [openSolarImageUrl, setOpenSolarImageUrl] = useState(String(appointment?.open_solar_image || ""))
 
-  useEffect(() => {
-    setOpenSolarImageUrl(String(appointment?.open_solar_image || ""))
-  }, [appointment?.appointment_row_id, appointment?.open_solar_image])
+          text = text.replace('import { getIrradiance } from "./epvsIrradianceData"\n', '')
 
-  const handleOpenSolarDesignLoaded = (payload) => {
-    const imported = Array.isArray(payload?.arrays) ? payload.arrays : []
-    const imageUrl = String(payload?.imageUrl || payload?.systemImageUrl || "")
-    if (imageUrl) setOpenSolarImageUrl(imageUrl)
-    if (!imported.length) {
-      setFluxRateError("OpenSolar did not return any array/module groups for this project.")
-      return
-    }
-    setFluxRateError(payload?.truncated ? "OpenSolar returned more than 3 arrays. The calculator can display the first 3." : "")
-    setData((current) => ({
-      ...current,
-      arrays: [0, 1, 2].map((index) => {
-        const importedArray = imported[index]
-        if (!importedArray) return createArray()
-        return {
-          ...createArray(),
-          panelCount: Number(importedArray.panelCount || 0),
-          panelWattage: Number(importedArray.panelWattage || 460),
-          orientation: Number(importedArray.orientation || 0),
-          pitch: Number(importedArray.pitch || 0),
-          irradiance: Number(importedArray.irradiance || 0),
-          shading: Number(importedArray.shading ?? 1),
-        }
-      }),
-    }))
-  }
+          start = text.find('  const arrayGeometryKey = data.arrays\n')
+          if start != -1:
+              end = text.find('  const updateArray = (\n', start)
+              assert end != -1
+              text = text[:start] + text[end:]
 
-'''
-              text = text.replace(marker, handler + marker, 1)
-          solar = '''<Card
-  title="Solar PV arrays"
-  subtitle="Enter the EPVS information for each roof / array."
->'''
-          solar_new = '''<Card
-  title="Solar PV arrays"
-  subtitle="Enter the EPVS information for each roof / array."
-  action={
-    <OpenSolarDesignButton
-      projectId={appointment?.open_solar_id}
-      onDesignLoaded={handleOpenSolarDesignLoaded}
-    />
-  }
->'''
-          if 'action={\n    <OpenSolarDesignButton' not in text:
-              assert solar in text
-              text = text.replace(solar, solar_new, 1)
-          image_marker = '  {/* ARRAYS TABLE */}'
-          if 'openSolarImageUrl || "/opensolar-system-placeholder.svg"' not in text:
-              assert image_marker in text
-              image_block = '''  <div style={{ marginBottom: 16, border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", background: "#f8fafc" }}>
-    <img
-      src={openSolarImageUrl || "/opensolar-system-placeholder.svg"}
-      alt={openSolarImageUrl ? "OpenSolar system design" : "OpenSolar system design placeholder"}
-      style={{ display: "block", width: "100%", maxHeight: 520, objectFit: "contain", background: "#f8fafc" }}
-    />
-  </div>
-
-'''
-              text = text.replace(image_marker, image_block + image_marker, 1)
-          card_sig = '''function Card({
-  title,
-  subtitle,
-  children,
-}) {'''
-          if '  action,\n  children,' not in text:
-              assert card_sig in text
-              text = text.replace(card_sig, '''function Card({
-  title,
-  subtitle,
-  action,
-  children,
-}) {''', 1)
-          card_head = '''      <div
-        className="card-head"
-      >
-        <div>
-          <h2>{title}</h2>
-
-          <p>
-            {subtitle}
-          </p>
-        </div>
-      </div>'''
-          if '{action && <div' not in text:
-              assert card_head in text
-              text = text.replace(card_head, '''      <div
-        className="card-head"
-        style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}
-      >
-        <div>
-          <h2>{title}</h2>
-          <p>{subtitle}</p>
-        </div>
-        {action && <div style={{ marginLeft: "auto", flexShrink: 0 }}>{action}</div>}
-      </div>''', 1)
           path.write_text(text)
-          pkg_path = Path("package.json")
-          pkg = json.loads(pkg_path.read_text())
-          if pkg["scripts"]["build"] != "vite build":
-              pkg["scripts"]["build"] = "vite build"
-              pkg_path.write_text(json.dumps(pkg, indent=2) + "\n")
+
+          irradiance_path = Path("src/epvsIrradianceData.js")
+          if irradiance_path.exists():
+              irradiance_path.unlink()
+
           Path("scripts/update-opensolar-design.mjs").write_text('import fs from "node:fs"\nconsole.log("Using checked-in EPVS source; no build-time UI rewriting.")\n')
           Path(".github/workflows/direct-opensolar-source-fix.yml").unlink()
 
@@ -146,6 +45,6 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/EPVSCalculator.jsx package.json scripts/update-opensolar-design.mjs .github/workflows/direct-opensolar-source-fix.yml
-          git commit -m 'Move OpenSolar UI into EPVS source'
+          git add src/EPVSCalculator.jsx src/epvsIrradianceData.js scripts/update-opensolar-design.mjs .github/workflows/direct-opensolar-source-fix.yml
+          git commit -m 'Use OpenSolar irradiance directly'
           git push
