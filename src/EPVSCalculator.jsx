@@ -798,7 +798,10 @@ export default function EPVSCalculator({
    */
 
   const results = useMemo(() => {
-    const numberOfArrays = 6
+    const numberOfArrays = data.arrays
+      .slice(0, 6)
+      .filter((array) => Number(array.panelCount || 0) > 0)
+      .length
 
     const activeArrays = data.arrays.slice(0, 6)
 
@@ -1772,42 +1775,115 @@ export default function EPVSCalculator({
           })}
       </tbody>
   <tfoot>
-    <tr style={{ background: "#e8f5eb", color: "#315b28" }}>
-      <td
-        colSpan={8}
-        style={{
-          padding: "14px 10px",
-          borderTop: "1px solid #bbdfc1",
-          fontWeight: 700,
-        }}
-      >
-        <div style={{ fontSize: 12 }}>Total overall generation</div>
-        <div
-          style={{
-            marginTop: 3,
-            fontSize: 11,
-            fontWeight: 500,
-            color: "#4d7047",
-          }}
-        >
-          {results.numberOfArrays} array
-          {results.numberOfArrays !== 1 ? "s" : ""}
-        </div>
-      </td>
-      <td
-        style={{
-          padding: "14px 10px",
-          borderTop: "1px solid #bbdfc1",
-          textAlign: "right",
-          whiteSpace: "nowrap",
-          fontSize: 16,
-          fontWeight: 800,
-          color: "#26783a",
-        }}
-      >
-        {Number(results.generation || 0).toFixed(2)} kWh
-      </td>
-    </tr>
+    {(() => {
+      const populatedArrays = results.arrays.filter(
+        (array) => Number(array.panelCount || 0) > 0
+      )
+
+      const average = (key) =>
+        populatedArrays.length
+          ? populatedArrays.reduce(
+              (total, array) => total + Number(array[key] || 0),
+              0
+            ) / populatedArrays.length
+          : 0
+
+      const totalPanels = populatedArrays.reduce(
+        (total, array) => total + Number(array.panelCount || 0),
+        0
+      )
+
+      const totalSystemSize = populatedArrays.reduce(
+        (total, array) => total + Number(array.systemSize || 0),
+        0
+      )
+
+      const totalGeneration = populatedArrays.reduce(
+        (total, array) => total + Number(array.generation || 0),
+        0
+      )
+
+      const totalCellStyle = {
+        padding: "8px 10px",
+        borderTop: "1px solid #bbdfc1",
+        background: "#f0fdf4",
+        color: "#26783a",
+        fontWeight: 700,
+        textAlign: "right",
+        whiteSpace: "nowrap",
+      }
+
+      const totalLabelStyle = {
+        ...totalCellStyle,
+        textAlign: "left",
+      }
+
+      return (
+        <tr style={{ background: "#e8f5eb" }}>
+          <td style={totalLabelStyle}>
+            <div>Total</div>
+            <div
+              style={{
+                marginTop: 3,
+                fontSize: 10,
+                fontWeight: 500,
+                color: "#4d7047",
+              }}
+            >
+              {results.numberOfArrays} array
+              {results.numberOfArrays !== 1 ? "s" : ""}
+            </div>
+          </td>
+
+          <td style={totalCellStyle}>
+            {totalPanels.toLocaleString("en-GB")}
+          </td>
+
+          <td style={totalCellStyle}>
+            {average("panelWattage").toFixed(0)}
+            <div style={{ fontSize: 10, fontWeight: 500, color: "#4d7047" }}>
+              avg Wp
+            </div>
+          </td>
+
+          <td style={totalCellStyle}>
+            {average("orientation").toFixed(1)}°
+            <div style={{ fontSize: 10, fontWeight: 500, color: "#4d7047" }}>
+              avg
+            </div>
+          </td>
+
+          <td style={totalCellStyle}>
+            {average("pitch").toFixed(1)}°
+            <div style={{ fontSize: 10, fontWeight: 500, color: "#4d7047" }}>
+              avg
+            </div>
+          </td>
+
+          <td style={totalCellStyle}>
+            {average("irradiance").toFixed(0)}
+            <div style={{ fontSize: 10, fontWeight: 500, color: "#4d7047" }}>
+              avg
+            </div>
+          </td>
+
+          <td style={totalCellStyle}>
+            {average("shading").toFixed(3)}
+            <div style={{ fontSize: 10, fontWeight: 500, color: "#4d7047" }}>
+              avg
+            </div>
+          </td>
+
+          <td style={totalCellStyle}>
+            {totalSystemSize.toFixed(2)} kWp
+          </td>
+
+          <td style={totalCellStyle}>
+            {totalGeneration.toFixed(2)} kWh
+          </td>
+        </tr>
+      )
+    })()}
   </tfoot>
     </table>
   </div>
