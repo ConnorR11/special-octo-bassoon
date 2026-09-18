@@ -4,27 +4,47 @@ const money = (value) => new Intl.NumberFormat("en-GB", { style: "currency", cur
 const number = (value) => Number(value || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const safeNumber = (value) => Number(value || 0)
 
+function firstNonZero(...values) {
+  for (const value of values) {
+    const numeric = Number(value)
+    if (Number.isFinite(numeric) && numeric !== 0) return numeric
+  }
+  return 0
+}
+
 function solarForDisplay(row) {
-  const direct = safeNumber(row?.solarBenefit)
-  return direct !== 0 ? direct : safeNumber(row?.solar)
+  return firstNonZero(
+    row?.solarBenefit,
+    row?.model?.solarBenefit,
+    row?.solar
+  )
 }
 
 function batterySelfConsumptionForDisplay(row) {
-  const direct = safeNumber(row?.batterySelfConsumptionBenefit)
+  const direct = firstNonZero(
+    row?.batterySelfConsumptionBenefit,
+    row?.model?.batterySelfConsumptionBenefit
+  )
   if (direct !== 0) return direct
 
-  const battery = safeNumber(row?.battery)
-  const forceCharge = safeNumber(row?.forceChargeBenefit)
-  return battery !== 0 ? Math.max(0, battery - forceCharge) : safeNumber(row?.batteryBenefit)
+  const battery = firstNonZero(row?.battery, row?.model?.batteryBenefit)
+  const forceCharge = forceChargeForDisplay(row)
+  return battery !== 0 ? Math.max(0, battery - forceCharge) : 0
 }
 
 function forceChargeForDisplay(row) {
-  return safeNumber(row?.forceChargeBenefit)
+  return firstNonZero(
+    row?.forceChargeBenefit,
+    row?.model?.forceChargeBenefit
+  )
 }
 
 function exportForDisplay(row) {
-  const direct = safeNumber(row?.exportBenefit)
-  return direct !== 0 ? direct : safeNumber(row?.export)
+  return firstNonZero(
+    row?.exportBenefit,
+    row?.model?.exportBenefit,
+    row?.export
+  )
 }
 
 export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
