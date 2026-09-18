@@ -84,7 +84,7 @@ export default function OpenSolarDesignButton({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", ...style }}>
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
         <button
           type="button"
           onClick={getCurrentDesign}
@@ -110,6 +110,39 @@ export default function OpenSolarDesignButton({
           <OpenSolarLogo />
           {loading ? "Getting design…" : "Get Current Design"}
         </button>
+
+        <a
+          href={
+            projectId
+              ? `https://app.opensolar.com/projects/${encodeURIComponent(projectId)}/design`
+              : "#"
+          }
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-disabled={!projectId}
+          onClick={(event) => {
+            if (!projectId) event.preventDefault()
+          }}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: 38,
+            padding: "0 14px",
+            border: "1px solid #172554",
+            borderRadius: 8,
+            background: "#fff",
+            color: "#172554",
+            fontSize: 12,
+            fontWeight: 700,
+            textDecoration: "none",
+            cursor: projectId ? "pointer" : "default",
+            opacity: projectId ? 1 : 0.5,
+            whiteSpace: "nowrap",
+          }}
+        >
+          Open Design
+        </a>
       </div>
 
       {error && (
