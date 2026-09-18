@@ -16,8 +16,11 @@ const number = (value) =>
 
 const valueFrom = (row, ...keys) => {
   for (const key of keys) {
-    const value = Number(row?.[key])
-    if (Number.isFinite(value)) return value
+    const direct = Number(row?.[key])
+    if (Number.isFinite(direct)) return direct
+
+    const model = Number(row?.model?.[key])
+    if (Number.isFinite(model)) return model
   }
   return 0
 }
@@ -42,7 +45,9 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
 
   const rows = Array.isArray(selectedScenario?.data?.rows)
     ? selectedScenario.data.rows
-    : []
+    : Array.isArray(selectedScenario?.data)
+      ? selectedScenario.data
+      : []
 
   const displayRows = useMemo(
     () =>
