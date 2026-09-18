@@ -52,7 +52,14 @@ export default async function handler(req, res) {
     const systems = Array.isArray(payload?.systems) ? payload.systems : []
 
     const arrays = systems.flatMap((system) => {
-      const totalModuleQuantity = Number(system?.total_module_quantity || 0)
+      const moduleQuantityFromParts = Array.isArray(system?.modules)
+        ? system.modules.reduce(
+            (total, module) => total + Number(module?.quantity || 0),
+            0
+          )
+        : 0
+      const totalModuleQuantity =
+        Number(system?.total_module_quantity || 0) || moduleQuantityFromParts
       const kwStc = Number(system?.kw_stc || 0)
       const derivedPanelWattage =
         totalModuleQuantity > 0 && kwStc > 0
