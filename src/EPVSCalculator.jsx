@@ -2282,6 +2282,26 @@ export default function EPVSCalculator({
                   <Card
             title="Payment"
             subtitle="Choose how the customer is paying for the system."
+            action={
+              <button
+                type="button"
+                onClick={saveCalculation}
+                disabled={savingCalculation || !hasRequiredEnergyInputs}
+                style={{
+                  ...styles.primary,
+                  opacity:
+                    savingCalculation || !hasRequiredEnergyInputs ? 0.65 : 1,
+                  cursor:
+                    savingCalculation || !hasRequiredEnergyInputs
+                      ? "default"
+                      : "pointer",
+                }}
+              >
+                {savingCalculation
+                  ? "Saving..."
+                  : "Save payment & calculation"}
+              </button>
+            }
           >
             <div
               style={styles.grid}
@@ -2441,47 +2461,19 @@ export default function EPVSCalculator({
                 </strong>
               </div>
 
-              <div
-                style={{
-                  marginTop: 16,
-                  paddingTop: 14,
-                  borderTop: "1px solid #e2e8f0",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "flex-end",
-                  gap: 10,
-                }}
-              >
+              {(saveError || saveMessage) && (
                 <div
                   style={{
-                    marginRight: "auto",
+                    marginTop: 12,
                     fontSize: 11,
                     color: saveError ? "#b42318" : "#299d48",
                     fontWeight: 600,
+                    textAlign: "right",
                   }}
                 >
                   {saveError || saveMessage}
                 </div>
-
-                <button
-                  type="button"
-                  onClick={saveCalculation}
-                  disabled={savingCalculation || !hasRequiredEnergyInputs}
-                  style={{
-                    ...styles.primary,
-                    opacity:
-                      savingCalculation || !hasRequiredEnergyInputs ? 0.65 : 1,
-                    cursor:
-                      savingCalculation || !hasRequiredEnergyInputs
-                        ? "default"
-                        : "pointer",
-                  }}
-                >
-                  {savingCalculation
-                    ? "Saving..."
-                    : "Save payment & calculation"}
-                </button>
-              </div>
+              )}
             </div>
           </Card>
 
