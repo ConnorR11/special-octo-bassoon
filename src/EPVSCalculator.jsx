@@ -2630,13 +2630,6 @@ function Results({
     ],
 
     [
-      "Annual saving",
-      money(
-        results.annualSaving
-      ),
-    ],
-
-    [
       "Monthly finance",
       data.paymentMethod ===
       "Finance"
@@ -2646,14 +2639,6 @@ function Results({
         : "Cash",
     ],
 
-    [
-      "Simple payback",
-      results.simplePayback
-        ? `${Number(results.simplePayback || 0).toFixed(
-            1
-          )} years`
-        : "—",
-    ],
   ]
 
   return (
@@ -2879,7 +2864,7 @@ const styles = {
   resultGrid: {
     display: "grid",
     gridTemplateColumns:
-      "repeat(4, minmax(0, 1fr))",
+      "repeat(6, minmax(0, 1fr))",
     gap: 12,
   },
 
