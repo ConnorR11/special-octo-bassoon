@@ -676,6 +676,8 @@ export default function EPVSCalculator({
     }
   }
 
+  const [openSolarSavePending, setOpenSolarSavePending] = useState(false)
+
   const [openSolarImageUrl, setOpenSolarImageUrl] = useState(() => {
     const saved = appointment?.epvs_calculation?.data?.openSolar
     return String(saved?.systemImageUrl || saved?.imageUrl || "").trim()
@@ -688,7 +690,7 @@ export default function EPVSCalculator({
     )
   }, [appointment])
 
-  const handleOpenSolarDesignLoaded = async (payload) => {
+  const handleOpenSolarDesignLoaded = (payload) => {
     const imported = Array.isArray(payload?.arrays) ? payload.arrays : []
     setOpenSolarImageUrl(String(payload?.systemImageUrl || payload?.imageUrl || ""))
 
@@ -730,45 +732,10 @@ export default function EPVSCalculator({
       openSolar: openSolarRecord,
     }))
 
-    // Persist the imported OpenSolar design immediately so pressing
-    // "Get Current Design" does not require a second save action.
-    const appointmentRowId = appointment?.appointment_row_id
-    if (appointmentRowId && supabase) {
-      const existingCalculation =
-        appointment?.epvs_calculation &&
-        typeof appointment.epvs_calculation === "object"
-          ? appointment.epvs_calculation
-          : {}
-
-      const existingData =
-        existingCalculation?.data &&
-        typeof existingCalculation.data === "object"
-          ? existingCalculation.data
-          : {}
-
-      const savedData = {
-        ...existingData,
-        arrays: importedArrays,
-        openSolar: openSolarRecord,
-      }
-
-      const savedPayload = {
-        ...existingCalculation,
-        version: existingCalculation.version || 1,
-        savedAt: new Date().toISOString(),
-        data: savedData,
-      }
-
-      const { error: saveError } = await supabase
-        .from("appointments")
-        .update({ epvs_calculation: savedPayload })
-        .eq("appointment_row_id", appointmentRowId)
-
-      if (saveError) {
-        console.error("OpenSolar design could not be saved:", saveError)
-        setFluxRateError("OpenSolar design loaded, but could not be saved to the appointment.")
-      }
-    }
+    // Save only after React has recalculated results and the 30-year projection.
+    // This prevents the OpenSolar import from overwriting epvs_calculation with
+    // stale/null results or projection data.
+    setOpenSolarSavePending(true)
   }
 
   const updateArray = (
@@ -1102,6 +1069,61 @@ export default function EPVSCalculator({
       scenarios,
     }
   }, [data, results])
+
+  useEffect(() => {
+    if (!openSolarSavePending) return
+
+    const appointmentRowId = appointment?.appointment_row_id
+    if (!appointmentRowId || !supabase) {
+      setOpenSolarSavePending(false)
+      return
+    }
+
+    let cancelled = false
+
+    const saveImportedCalculation = async () => {
+      try {
+        const payload = {
+          version: 1,
+          savedAt: new Date().toISOString(),
+          data,
+          results,
+          thirtyYearProjection,
+        }
+
+        const { error } = await supabase
+          .from("appointments")
+          .update({ epvs_calculation: payload })
+          .eq("appointment_row_id", appointmentRowId)
+
+        if (error) throw error
+
+        if (!cancelled) {
+          setOpenSolarSavePending(false)
+        }
+      } catch (error) {
+        console.error("OpenSolar calculation could not be saved:", error)
+        if (!cancelled) {
+          setFluxRateError(
+            "OpenSolar design loaded, but the complete EPVS calculation could not be saved."
+          )
+          setOpenSolarSavePending(false)
+        }
+      }
+    }
+
+    saveImportedCalculation()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    openSolarSavePending,
+    appointment,
+    data,
+    results,
+    thirtyYearProjection,
+  ])
 
   /*
    * =========================================================
