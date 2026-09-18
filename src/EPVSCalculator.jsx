@@ -678,7 +678,7 @@ export default function EPVSCalculator({
 
   const [openSolarImageUrl, setOpenSolarImageUrl] = useState("")
 
-  const handleOpenSolarDesignLoaded = (payload) => {
+  const handleOpenSolarDesignLoaded = async (payload) => {
     const imported = Array.isArray(payload?.arrays) ? payload.arrays : []
     setOpenSolarImageUrl(String(payload?.systemImageUrl || payload?.imageUrl || ""))
 
