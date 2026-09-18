@@ -4,14 +4,27 @@ const money = (value) => new Intl.NumberFormat("en-GB", { style: "currency", cur
 const number = (value) => Number(value || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const safeNumber = (value) => Number(value || 0)
 
+function solarForDisplay(row) {
+  const direct = safeNumber(row?.solarBenefit)
+  return direct !== 0 ? direct : safeNumber(row?.solar)
+}
+
 function batterySelfConsumptionForDisplay(row) {
-  if (Object.prototype.hasOwnProperty.call(row || {}, "batterySelfConsumptionBenefit")) return safeNumber(row.batterySelfConsumptionBenefit)
-  return safeNumber(row?.batteryBenefit)
+  const direct = safeNumber(row?.batterySelfConsumptionBenefit)
+  if (direct !== 0) return direct
+
+  const battery = safeNumber(row?.battery)
+  const forceCharge = safeNumber(row?.forceChargeBenefit)
+  return battery !== 0 ? Math.max(0, battery - forceCharge) : safeNumber(row?.batteryBenefit)
 }
 
 function forceChargeForDisplay(row) {
-  if (Object.prototype.hasOwnProperty.call(row || {}, "forceChargeBenefit")) return safeNumber(row.forceChargeBenefit)
-  return 0
+  return safeNumber(row?.forceChargeBenefit)
+}
+
+function exportForDisplay(row) {
+  const direct = safeNumber(row?.exportBenefit)
+  return direct !== 0 ? direct : safeNumber(row?.export)
 }
 
 export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
@@ -30,10 +43,10 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
   const totals = scenario?.totals || {}
 
   const firstYearBenefit = rows[0]
-    ? safeNumber(rows[0].solarBenefit) +
+    ? solarForDisplay(rows[0]) +
       batterySelfConsumptionForDisplay(rows[0]) +
       forceChargeForDisplay(rows[0]) +
-      safeNumber(rows[0].exportBenefit)
+      exportForDisplay(rows[0])
     : 0
 
   const calculatedRows = useMemo(() => {
@@ -41,11 +54,11 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
     return rows.map((row) => {
       // The 30-year table should display the values already calculated by
       // EPVSCalculator. Do not recalculate battery or export benefits here.
-      const solarBenefit = safeNumber(row.solarBenefit)
+      const solarBenefit = solarForDisplay(row)
       const batterySelfConsumptionBenefit = batterySelfConsumptionForDisplay(row)
       const forceChargeBenefit = forceChargeForDisplay(row)
       const batteryBenefit = batterySelfConsumptionBenefit + forceChargeBenefit
-      const exportBenefit = safeNumber(row.exportBenefit)
+      const exportBenefit = exportForDisplay(row)
       const annualBenefit = solarBenefit + batteryBenefit + exportBenefit
       const yearlyPayment = safeNumber(row.yearlyPayment)
       cumulativePosition += annualBenefit + yearlyPayment
