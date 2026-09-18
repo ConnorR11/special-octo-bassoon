@@ -991,6 +991,9 @@ export default function EPVSCalculator({
         rows.push({
           year,
           generation,
+          // Keep the individual EPVS benefit values together with the row so
+          // the breakdown component can display the exact year-model outputs.
+          model: yearModel,
           solar: yearModel.solarBenefit,
           battery:
             yearModel.batterySelfConsumptionBenefit +
