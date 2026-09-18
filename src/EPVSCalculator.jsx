@@ -1544,7 +1544,9 @@ export default function EPVSCalculator({
       <tbody>
         {data.arrays
           .slice(0, 6)
-          .map((array, index) => {
+          .map((array, index) => ({ array, index }))
+          .filter(({ array }) => Number(array.panelCount || 0) > 0)
+          .map(({ array, index }) => {
             const calculated = results.arrays[index];
 
             const inputStyle = {
