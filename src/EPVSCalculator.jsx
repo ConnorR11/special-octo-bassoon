@@ -737,14 +737,14 @@ export default function EPVSCalculator({
       batteryRTE: Number(data.batteryRTE || 0),
       currentImportPence: Number(data.importRate || 0),
       currentExportPence: Number(data.exportRate || 0),
-      currentStandingPence: Number(data.standingCharge || 0) * inflationMultiplier,
+      currentStandingPence: Number(data.standingCharge || 0),
       fluxDayImport: Number(data.fluxDayImport || 0),
       fluxDayExport: Number(data.fluxDayExport || 0),
       fluxImport: Number(data.fluxImport || 0),
       fluxExport: Number(data.fluxExport || 0),
       fluxPeakImport: Number(data.fluxPeakImport || 0),
       fluxPeakExport: Number(data.fluxPeakExport || 0),
-      fluxStandingCharge: Number(data.fluxStandingCharge || 0) * inflationMultiplier,
+      fluxStandingCharge: Number(data.fluxStandingCharge || 0),
       sunshineHours: sapZone.sunshine,
       existingGeneration: data.existingSolar
         ? Number(data.existingGeneration || 0)
