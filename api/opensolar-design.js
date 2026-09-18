@@ -52,6 +52,20 @@ export default async function handler(req, res) {
     const systems = Array.isArray(payload?.systems) ? payload.systems : []
 
     const arrays = systems.flatMap((system) => {
+      const totalModuleQuantity = Number(system?.total_module_quantity || 0)
+      const kwStc = Number(system?.kw_stc || 0)
+      const derivedPanelWattage =
+        totalModuleQuantity > 0 && kwStc > 0
+          ? (kwStc * 1000) / totalModuleQuantity
+          : 0
+      const modules = Array.isArray(system?.modules)
+        ? system.modules.map((module) => ({
+            manufacturer: module?.manufacturer_name || "",
+            model: module?.code || "",
+            quantity: Number(module?.quantity || 0),
+          }))
+        : []
+
       const shadeFactor = Number(system?.data?.mcs?.shadingFactor ?? 1)
       const specificYield = String(system?.data?.mcs?.mcsSpecificYieldBeforeShading || "")
         .split(/\n+/)
@@ -68,6 +82,8 @@ export default async function handler(req, res) {
 
           return {
             panelCount: Number(group?.module_quantity || 0),
+            panelWattage: derivedPanelWattage,
+            modules,
             orientation,
             pitch: Math.round(Number(group?.slope || 0)),
             shading: Number.isFinite(shadeFactor) ? shadeFactor : 1,
@@ -117,6 +133,19 @@ export default async function handler(req, res) {
         name: system?.name,
         kwStc: system?.kw_stc,
         totalModuleQuantity: system?.total_module_quantity,
+        modules: Array.isArray(system?.modules)
+          ? system.modules.map((module) => ({
+              manufacturer: module?.manufacturer_name || "",
+              model: module?.code || "",
+              quantity: Number(module?.quantity || 0),
+            }))
+          : [],
+        panelWattage:
+          Number(system?.total_module_quantity || 0) > 0 &&
+          Number(system?.kw_stc || 0) > 0
+            ? (Number(system?.kw_stc || 0) * 1000) /
+              Number(system?.total_module_quantity || 0)
+            : 0,
       })),
     })
   } catch (error) {
