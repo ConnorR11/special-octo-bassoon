@@ -58,8 +58,16 @@ export default async function handler(req, res) {
             0
           )
         : 0
+      const moduleQuantityFromGroups = Array.isArray(system?.module_groups)
+        ? system.module_groups.reduce(
+            (total, group) => total + Number(group?.module_quantity || 0),
+            0
+          )
+        : 0
       const totalModuleQuantity =
-        Number(system?.total_module_quantity || 0) || moduleQuantityFromParts
+        Number(system?.total_module_quantity || 0) ||
+        moduleQuantityFromParts ||
+        moduleQuantityFromGroups
       const kwStc = Number(system?.kw_stc || 0)
       const derivedPanelWattage =
         totalModuleQuantity > 0 && kwStc > 0
