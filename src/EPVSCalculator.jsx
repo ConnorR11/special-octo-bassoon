@@ -2300,6 +2300,7 @@ export default function EPVSCalculator({
 function Card({
   title,
   subtitle,
+  className,
   action,
   children,
 }) {
