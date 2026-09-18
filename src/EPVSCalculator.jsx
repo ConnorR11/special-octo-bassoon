@@ -585,11 +585,14 @@ export default function EPVSCalculator({
   const appointmentInitial = useMemo(() => {
     const saved = appointment?.epvs_calculation?.data || {}
     const savedArrays = Array.isArray(saved.arrays) ? saved.arrays : initial.arrays
+    const sixArrays = Array.from({ length: 6 }, (_, index) =>
+      savedArrays[index] || createArray()
+    )
 
     return {
       ...initial,
       ...saved,
-      arrays: savedArrays,
+      arrays: sixArrays,
 
       customerName:
         saved.customerName ||
