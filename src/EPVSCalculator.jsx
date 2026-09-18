@@ -693,22 +693,72 @@ export default function EPVSCalculator({
         : ""
     )
 
+    const importedArrays = [0, 1, 2, 3, 4, 5].map((index) => {
+      const importedArray = imported[index]
+      if (!importedArray) return createArray()
+      return {
+        ...createArray(),
+        panelCount: Number(importedArray.panelCount || 0),
+        panelWattage: Number(importedArray.panelWattage || 0),
+        orientation: Number(importedArray.orientation || 0),
+        pitch: Number(importedArray.pitch || 0),
+        irradiance: Number(importedArray.irradiance || 0),
+        shading: Number(importedArray.shading ?? 1),
+      }
+    })
+
     setData((current) => ({
       ...current,
-      arrays: [0, 1, 2, 3, 4, 5].map((index) => {
-        const importedArray = imported[index]
-        if (!importedArray) return createArray()
-        return {
-          ...createArray(),
-          panelCount: Number(importedArray.panelCount || 0),
-          panelWattage: Number(importedArray.panelWattage || 0),
-          orientation: Number(importedArray.orientation || 0),
-          pitch: Number(importedArray.pitch || 0),
-          irradiance: Number(importedArray.irradiance || 0),
-          shading: Number(importedArray.shading ?? 1),
-        }
-      }),
+      arrays: importedArrays,
     }))
+
+    // Persist the imported OpenSolar design immediately so pressing
+    // "Get Current Design" does not require a second save action.
+    const appointmentRowId = appointment?.appointment_row_id
+    if (appointmentRowId && supabase) {
+      const existingCalculation =
+        appointment?.epvs_calculation &&
+        typeof appointment.epvs_calculation === "object"
+          ? appointment.epvs_calculation
+          : {}
+
+      const existingData =
+        existingCalculation?.data &&
+        typeof existingCalculation.data === "object"
+          ? existingCalculation.data
+          : {}
+
+      const openSolarRecord = {
+        ...payload,
+        importedAt: new Date().toISOString(),
+        imageUrl: String(payload?.systemImageUrl || payload?.imageUrl || ""),
+        arrays: imported,
+      }
+
+      const savedData = {
+        ...existingData,
+        arrays: importedArrays,
+        openSolar: openSolarRecord,
+      }
+
+      const savedPayload = {
+        ...existingCalculation,
+        version: existingCalculation.version || 1,
+        savedAt: new Date().toISOString(),
+        data: savedData,
+        openSolar: openSolarRecord,
+      }
+
+      const { error: saveError } = await supabase
+        .from("appointments")
+        .update({ epvs_calculation: savedPayload })
+        .eq("appointment_row_id", appointmentRowId)
+
+      if (saveError) {
+        console.error("OpenSolar design could not be saved:", saveError)
+        setFluxRateError("OpenSolar design loaded, but could not be saved to the appointment.")
+      }
+    }
   }
 
   const updateArray = (
