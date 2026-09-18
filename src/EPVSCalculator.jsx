@@ -12,6 +12,7 @@ import {
 
 import AnnualBreakdown from "./components/EPVS/AnnualBreakdown"
 import ThirtyYearBreakdown from "./components/EPVS/ThirtyYearBreakdown"
+import OpenSolarDesignButton from "./components/EPVS/OpenSolarDesignButton"
 
 const money = (value) =>
   new Intl.NumberFormat("en-GB", {
@@ -669,6 +670,41 @@ export default function EPVSCalculator({
     }
   }
 
+  const [openSolarImageUrl, setOpenSolarImageUrl] = useState("")
+
+  const handleOpenSolarDesignLoaded = (payload) => {
+    const imported = Array.isArray(payload?.arrays) ? payload.arrays : []
+    setOpenSolarImageUrl(String(payload?.systemImageUrl || payload?.imageUrl || ""))
+
+    if (!imported.length) {
+      setFluxRateError("OpenSolar did not return any array/module groups for this project.")
+      return
+    }
+
+    setFluxRateError(
+      payload?.truncated
+        ? "OpenSolar returned more than 3 arrays. The calculator can display the first 3."
+        : ""
+    )
+
+    setData((current) => ({
+      ...current,
+      arrays: [0, 1, 2].map((index) => {
+        const importedArray = imported[index]
+        if (!importedArray) return createArray()
+        return {
+          ...createArray(),
+          panelCount: Number(importedArray.panelCount || 0),
+          panelWattage: Number(importedArray.panelWattage || 0),
+          orientation: Number(importedArray.orientation || 0),
+          pitch: Number(importedArray.pitch || 0),
+          irradiance: Number(importedArray.irradiance || 0),
+          shading: Number(importedArray.shading ?? 1),
+        }
+      }),
+    }))
+  }
+
   const updateArray = (
     index,
     key,
@@ -1244,7 +1280,35 @@ export default function EPVSCalculator({
 <Card
   title="Solar PV arrays"
   subtitle="Enter the EPVS information for each roof / array."
+  action={
+    <OpenSolarDesignButton
+      projectId={appointment?.open_solar_id}
+      onDesignLoaded={handleOpenSolarDesignLoaded}
+    />
+  }
 >
+
+  <div
+    style={{
+      marginBottom: 16,
+      border: "1px solid #e2e8f0",
+      borderRadius: 12,
+      overflow: "hidden",
+      background: "#f8fafc",
+    }}
+  >
+    <img
+      src={openSolarImageUrl || "/opensolar-system-placeholder.svg"}
+      alt={openSolarImageUrl ? "OpenSolar system design" : "OpenSolar system design placeholder"}
+      style={{
+        display: "block",
+        width: "100%",
+        maxHeight: 520,
+        objectFit: "contain",
+        background: "#f8fafc",
+      }}
+    />
+  </div>
 
   {/* ARRAYS TABLE */}
 
@@ -2215,6 +2279,7 @@ export default function EPVSCalculator({
 function Card({
   title,
   subtitle,
+  action,
   children,
 }) {
   return (
@@ -2234,6 +2299,8 @@ function Card({
             {subtitle}
           </p>
         </div>
+
+        {action && <div style={{ marginLeft: "auto", flexShrink: 0 }}>{action}</div>}
       </div>
 
       {children}
