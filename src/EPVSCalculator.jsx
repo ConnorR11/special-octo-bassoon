@@ -726,10 +726,44 @@ export default function EPVSCalculator({
       arrays: imported,
     }
 
+    const importedBattery = payload?.hardware?.batteries?.[0]
+    const importedInverter = payload?.hardware?.inverters?.[0]
+    const importedEvCharger = payload?.hardware?.evChargers?.[0]
+
     setData((current) => ({
       ...current,
       arrays: importedArrays,
+      numberOfArrays: imported.length,
       openSolar: openSolarRecord,
+
+      // OpenSolar is the source of truth for proposed hardware.
+      // Feed its capacities directly into the EPVS calculation inputs.
+      ...(importedBattery
+        ? {
+            batteryCapacity:
+              Number(importedBattery.capacity || 0) *
+              Math.max(1, Number(importedBattery.quantity || 1)),
+            batteryModel: importedBattery.model || "",
+            batteryManufacturer: importedBattery.manufacturer || "",
+            batteryQuantity: Number(importedBattery.quantity || 1),
+          }
+        : {}),
+      ...(importedInverter
+        ? {
+            inverterCapacity: Number(importedInverter.capacity || 0),
+            inverterModel: importedInverter.model || "",
+            inverterManufacturer: importedInverter.manufacturer || "",
+            inverterQuantity: Number(importedInverter.quantity || 1),
+          }
+        : {}),
+      ...(importedEvCharger
+        ? {
+            evChargerModel: importedEvCharger.model || "",
+            evChargerManufacturer: importedEvCharger.manufacturer || "",
+            evChargerQuantity: Number(importedEvCharger.quantity || 1),
+            evChargerPowerKw: Number(importedEvCharger.capacity || 0),
+          }
+        : {}),
     }))
 
     // Save only after React has recalculated results and the 30-year projection.
