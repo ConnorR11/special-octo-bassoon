@@ -23,7 +23,7 @@ const money = (value) =>
 
 
 const createArray = () => ({
-  panelWattage: 460,
+  panelWattage: 0,
   panelCount: 0,
   orientation: 0,
   pitch: 30,
