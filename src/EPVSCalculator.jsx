@@ -717,9 +717,17 @@ export default function EPVSCalculator({
       }
     })
 
+    const openSolarRecord = {
+      ...payload,
+      importedAt: new Date().toISOString(),
+      imageUrl: String(payload?.systemImageUrl || payload?.imageUrl || ""),
+      arrays: imported,
+    }
+
     setData((current) => ({
       ...current,
       arrays: importedArrays,
+      openSolar: openSolarRecord,
     }))
 
     // Persist the imported OpenSolar design immediately so pressing
@@ -738,13 +746,6 @@ export default function EPVSCalculator({
           ? existingCalculation.data
           : {}
 
-      const openSolarRecord = {
-        ...payload,
-        importedAt: new Date().toISOString(),
-        imageUrl: String(payload?.systemImageUrl || payload?.imageUrl || ""),
-        arrays: imported,
-      }
-
       const savedData = {
         ...existingData,
         arrays: importedArrays,
@@ -756,7 +757,6 @@ export default function EPVSCalculator({
         version: existingCalculation.version || 1,
         savedAt: new Date().toISOString(),
         data: savedData,
-        openSolar: openSolarRecord,
       }
 
       const { error: saveError } = await supabase
