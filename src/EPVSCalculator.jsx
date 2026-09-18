@@ -1557,16 +1557,16 @@ export default function EPVSCalculator({
                   }}
                 >
                   <input
-          type="number"
-          value={460}
-          readOnly
-          aria-label="Panel wattage (Wp)"
-          style={{
-            ...inputStyle,
-            background: "#f1f5f9",
-            cursor: "not-allowed",
-          }}
-        />
+                    type="number"
+                    value={array.panelWattage || 0}
+                    readOnly
+                    aria-label="Panel wattage (Wp)"
+                    style={{
+                      ...inputStyle,
+                      background: "#f1f5f9",
+                      cursor: "not-allowed",
+                    }}
+                  />
                 </td>
 
                 {/* ORIENTATION */}
