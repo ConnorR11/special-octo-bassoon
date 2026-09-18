@@ -45,6 +45,9 @@ const initial = {
     createArray(),
     createArray(),
     createArray(),
+    createArray(),
+    createArray(),
+    createArray(),
   ],
 
   batteryCapacity: "",
@@ -683,13 +686,13 @@ export default function EPVSCalculator({
 
     setFluxRateError(
       payload?.truncated
-        ? "OpenSolar returned more than 3 arrays. The calculator can display the first 3."
+        ? "OpenSolar returned more than 6 arrays. The calculator can display the first 6."
         : ""
     )
 
     setData((current) => ({
       ...current,
-      arrays: [0, 1, 2].map((index) => {
+      arrays: [0, 1, 2, 3, 4, 5].map((index) => {
         const importedArray = imported[index]
         if (!importedArray) return createArray()
         return {
@@ -732,9 +735,9 @@ export default function EPVSCalculator({
    */
 
   const results = useMemo(() => {
-    const numberOfArrays = 3
+    const numberOfArrays = 6
 
-    const activeArrays = data.arrays.slice(0, 3)
+    const activeArrays = data.arrays.slice(0, 6)
 
     const calculatedArrays = activeArrays.map((array, index) => {
       const panelWattage = Number(array.panelWattage || 0)
@@ -1477,7 +1480,7 @@ export default function EPVSCalculator({
 
       <tbody>
         {data.arrays
-          .slice(0, 3)
+          .slice(0, 6)
           .map((array, index) => {
             const calculated = results.arrays[index];
 
