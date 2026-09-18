@@ -224,7 +224,7 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
           <table
             style={{
               width: "100%",
-              minWidth: 1160,
+              minWidth: 1080,
               borderCollapse: "collapse",
               fontSize: 11,
             }}
@@ -234,8 +234,7 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
                 <HeaderCell>YR</HeaderCell>
                 <HeaderCell>GENERATION</HeaderCell>
                 <HeaderCell>SOLAR</HeaderCell>
-                <HeaderCell>BATTERY SC</HeaderCell>
-                <HeaderCell>BATTERY FC</HeaderCell>
+                <HeaderCell>BATTERY</HeaderCell>
                 <HeaderCell>EXPORT</HeaderCell>
                 <HeaderCell green>ANNUAL<br />BENEFIT</HeaderCell>
                 <HeaderCell>YEARLY<br />PAYMENTS</HeaderCell>
@@ -259,8 +258,12 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
                     <BodyCell>{row.year}</BodyCell>
                     <BodyCell>{number(row.generation)}</BodyCell>
                     <BodyCell>{money(row.solarBenefit)}</BodyCell>
-                    <BodyCell>{money(row.batterySelfConsumptionBenefit)}</BodyCell>
-                    <BodyCell>{money(row.forceChargeBenefit)}</BodyCell>
+                    <BodyCell>
+                      {money(
+                        row.batterySelfConsumptionBenefit +
+                        row.forceChargeBenefit
+                      )}
+                    </BodyCell>
                     <BodyCell>{money(row.exportBenefit)}</BodyCell>
                     <BodyCell green>
                       {money(valueFrom(row, "annualBenefit", "annualSaving", annualBenefit))}
@@ -287,9 +290,11 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
                   <td style={totalCell}>{number(totals.generation)}</td>
                   <td style={totalCell}>{money(totals.solarBenefit)}</td>
                   <td style={totalCell}>
-                    {money(totals.batterySelfConsumptionBenefit)}
+                    {money(
+                      totals.batterySelfConsumptionBenefit +
+                      totals.forceChargeBenefit
+                    )}
                   </td>
-                  <td style={totalCell}>{money(totals.forceChargeBenefit)}</td>
                   <td style={totalCell}>{money(totals.exportBenefit)}</td>
                   <td style={{ ...totalCell, background: "#299d48" }}>
                     {money(totals.annualBenefit)}
