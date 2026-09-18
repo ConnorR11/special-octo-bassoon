@@ -15,14 +15,25 @@ const number = (value) =>
   })
 
 const valueFrom = (row, ...keys) => {
+  let fallback = 0
+
   for (const key of keys) {
     const direct = Number(row?.[key])
-    if (Number.isFinite(direct)) return direct
+
+    if (Number.isFinite(direct)) {
+      if (direct !== 0) return direct
+      fallback = direct
+    }
 
     const model = Number(row?.model?.[key])
-    if (Number.isFinite(model)) return model
+
+    if (Number.isFinite(model)) {
+      if (model !== 0) return model
+      fallback = model
+    }
   }
-  return 0
+
+  return fallback
 }
 
 export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
