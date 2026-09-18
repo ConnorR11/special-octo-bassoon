@@ -95,7 +95,12 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
             row.exportBenefit,
           yearlyPayment: total.yearlyPayment + valueFrom(row, "yearlyPayment"),
           netAnnualBenefit:
-            total.netAnnualBenefit + valueFrom(row, "netAnnualBenefit"),
+            total.netAnnualBenefit +
+            (row.solarBenefit +
+              row.batterySelfConsumptionBenefit +
+              row.forceChargeBenefit +
+              row.exportBenefit -
+              valueFrom(row, "yearlyPayment", "payment")),
           billPreInstall:
             total.billPreInstall + valueFrom(row, "billPreInstall"),
           billPostInstall:
@@ -273,8 +278,17 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
                       {money(annualBenefit)}
                     </BodyCell>
                     <BodyCell>{money(row.yearlyPayment)}</BodyCell>
-                    <BodyCell negative={Number(row.netAnnualBenefit || 0) < 0}>
-                      {money(row.netAnnualBenefit)}
+                    <BodyCell
+                      negative={
+                        annualBenefit -
+                          valueFrom(row, "yearlyPayment", "payment") <
+                        0
+                      }
+                    >
+                      {money(
+                        annualBenefit -
+                          valueFrom(row, "yearlyPayment", "payment")
+                      )}
                     </BodyCell>
                     <BodyCell
                       green={Number(row.cumulativePosition || 0) >= 0}
