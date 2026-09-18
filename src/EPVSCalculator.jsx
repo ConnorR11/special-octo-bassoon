@@ -676,7 +676,17 @@ export default function EPVSCalculator({
     }
   }
 
-  const [openSolarImageUrl, setOpenSolarImageUrl] = useState("")
+  const [openSolarImageUrl, setOpenSolarImageUrl] = useState(() => {
+    const saved = appointment?.epvs_calculation?.data?.openSolar
+    return String(saved?.systemImageUrl || saved?.imageUrl || "").trim()
+  })
+
+  useEffect(() => {
+    const saved = appointment?.epvs_calculation?.data?.openSolar
+    setOpenSolarImageUrl(
+      String(saved?.systemImageUrl || saved?.imageUrl || "").trim()
+    )
+  }, [appointment])
 
   const handleOpenSolarDesignLoaded = async (payload) => {
     const imported = Array.isArray(payload?.arrays) ? payload.arrays : []
