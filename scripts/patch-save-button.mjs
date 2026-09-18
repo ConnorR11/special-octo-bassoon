@@ -31,10 +31,28 @@ if (next.includes(batteryCardWithoutClass)) {
   next = next.replace(batteryCardWithoutClass, batteryCardWithClass)
 }
 
-const cardSignature = `function Card({\n  title,\n  subtitle,\n  children,\n}) {`
-const cardSignatureReplacement = `function Card({\n  title,\n  subtitle,\n  className,\n  action,\n  children,\n}) {`
-if (next.includes(cardSignature)) {
-  next = next.replace(cardSignature, cardSignatureReplacement)
+const cardSignatureWithoutAction = `function Card({
+  title,
+  subtitle,
+  children,
+}) {`
+const cardSignatureWithAction = `function Card({
+  title,
+  subtitle,
+  action,
+  children,
+}) {`
+const cardSignatureReplacement = `function Card({
+  title,
+  subtitle,
+  className,
+  action,
+  children,
+}) {`
+if (next.includes(cardSignatureWithoutAction)) {
+  next = next.replace(cardSignatureWithoutAction, cardSignatureReplacement)
+} else if (next.includes(cardSignatureWithAction)) {
+  next = next.replace(cardSignatureWithAction, cardSignatureReplacement)
 }
 
 const cardRoot = `      className="card"\n      style={{\n        marginBottom: 20,\n      }}`
