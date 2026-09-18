@@ -60,20 +60,54 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
       ? selectedScenario.data
       : []
 
-  const displayRows = useMemo(
-    () =>
-      rows.map((row) => ({
+  const displayRows = useMemo(() => {
+    const preparedRows = rows.map((row) => {
+      const solarBenefit = valueFrom(row, "solarBenefit", "solar")
+      const batterySelfConsumptionBenefit = valueFrom(
+        row,
+        "batterySelfConsumptionBenefit"
+      )
+      const forceChargeBenefit = valueFrom(row, "forceChargeBenefit")
+      const exportBenefit = valueFrom(row, "exportBenefit")
+      const annualBenefit =
+        solarBenefit +
+        batterySelfConsumptionBenefit +
+        forceChargeBenefit +
+        exportBenefit
+      const yearlyPayment = valueFrom(row, "yearlyPayment", "payment")
+
+      return {
         ...row,
-        solarBenefit: valueFrom(row, "solarBenefit", "solar"),
-        batterySelfConsumptionBenefit: valueFrom(
-          row,
-          "batterySelfConsumptionBenefit"
-        ),
-        forceChargeBenefit: valueFrom(row, "forceChargeBenefit"),
-        exportBenefit: valueFrom(row, "exportBenefit"),
-      })),
-    [rows]
-  )
+        solarBenefit,
+        batterySelfConsumptionBenefit,
+        forceChargeBenefit,
+        exportBenefit,
+        annualBenefit,
+        yearlyPayment,
+        netAnnualBenefit: annualBenefit + yearlyPayment,
+      }
+    })
+
+    // Net Position follows the same logic as the reference table:
+    // start with the total cost of all scheduled payments, then add the
+    // cumulative annual benefit as each year passes.
+    const totalPayments = preparedRows.reduce(
+      (total, row) => total + row.yearlyPayment,
+      0
+    )
+
+    let cumulativeBenefit = 0
+
+    return preparedRows.map((row) => {
+      cumulativeBenefit += row.annualBenefit
+
+      return {
+        ...row,
+        cumulativeBenefit,
+        displayNetPosition: totalPayments + cumulativeBenefit,
+      }
+    })
+  }, [rows])
 
   const totals = useMemo(
     () =>
@@ -131,10 +165,10 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
     : 0
 
   const finalNetPosition =
-    displayRows[displayRows.length - 1]?.cumulativePosition || 0
+    displayRows[displayRows.length - 1]?.displayNetPosition || 0
 
   const paybackRow = displayRows.find(
-    (row) => Number(row.cumulativePosition || 0) >= 0
+    (row) => Number(row.displayNetPosition || 0) >= 0
   )
 
   if (!thirtyYearProjection || !scenarioList.length) return null
@@ -256,11 +290,7 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
 
             <tbody>
               {displayRows.map((row) => {
-                const annualBenefit =
-                  row.solarBenefit +
-                  row.batterySelfConsumptionBenefit +
-                  row.forceChargeBenefit +
-                  row.exportBenefit
+                const annualBenefit = row.annualBenefit
 
                 return (
                   <tr key={row.year}>
@@ -278,23 +308,14 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
                       {money(annualBenefit)}
                     </BodyCell>
                     <BodyCell>{money(row.yearlyPayment)}</BodyCell>
-                    <BodyCell
-                      negative={
-                        annualBenefit +
-                          valueFrom(row, "yearlyPayment", "payment") <
-                        0
-                      }
-                    >
-                      {money(
-                        annualBenefit +
-                          valueFrom(row, "yearlyPayment", "payment")
-                      )}
+                    <BodyCell negative={row.netAnnualBenefit < 0}>
+                      {money(row.netAnnualBenefit)}
                     </BodyCell>
                     <BodyCell
-                      green={Number(row.cumulativePosition || 0) >= 0}
-                      negative={Number(row.cumulativePosition || 0) < 0}
+                      green={row.displayNetPosition >= 0}
+                      negative={row.displayNetPosition < 0}
                     >
-                      {money(row.cumulativePosition)}
+                      {money(row.displayNetPosition)}
                     </BodyCell>
                     <BodyCell>{money(row.billPreInstall)}</BodyCell>
                     <BodyCell>{money(row.billPostInstall)}</BodyCell>
