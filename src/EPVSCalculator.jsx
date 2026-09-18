@@ -1280,13 +1280,34 @@ export default function EPVSCalculator({
 <Card
   title="Solar PV arrays"
   subtitle="Enter the EPVS information for each roof / array."
-  action={
+>
+
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 16,
+      marginBottom: 16,
+      padding: "14px 16px",
+      border: "1px solid #dbe3ec",
+      borderRadius: 10,
+      background: "#f8fafc",
+    }}
+  >
+    <div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: "#172554" }}>
+        OpenSolar system design
+      </div>
+      <div style={{ marginTop: 3, fontSize: 11, color: "#64748b" }}>
+        Pull the current array layout directly from OpenSolar.
+      </div>
+    </div>
     <OpenSolarDesignButton
       projectId={appointment?.open_solar_id}
       onDesignLoaded={handleOpenSolarDesignLoaded}
     />
-  }
->
+  </div>
 
   <div
     style={{
