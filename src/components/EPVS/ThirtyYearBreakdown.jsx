@@ -24,12 +24,10 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
 
   const [selectedKey, setSelectedKey] = useState("averageInflation")
 
-  if (!thirtyYearProjection || !scenarioList.length) return null
-
   const selectedScenario = scenarioList.find((scenario) => scenario.key === selectedKey) || scenarioList[0]
-  const scenario = selectedScenario.data
-  const rows = Array.isArray(scenario.rows) ? scenario.rows : []
-  const totals = scenario.totals || {}
+  const scenario = selectedScenario?.data
+  const rows = Array.isArray(scenario?.rows) ? scenario.rows : []
+  const totals = scenario?.totals || {}
 
   const firstYearBenefit = rows[0]
     ? safeNumber(rows[0].solarBenefit) +
@@ -66,6 +64,8 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
       }
     })
   }, [rows])
+
+  if (!thirtyYearProjection || !scenarioList.length) return null
 
   const paybackRow = calculatedRows.find((row) => row.cumulativePosition >= 0)
   const paybackPeriod = paybackRow?.year || null
