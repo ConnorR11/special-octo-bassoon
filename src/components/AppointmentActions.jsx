@@ -112,7 +112,7 @@ function downloadEpvsCalc(appointment) {
       ? scenario
       : []
 
-  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
   const customer = appointment?.name || data.customerName || "Customer"
   const postcode = appointment?.postcode || data.postcode || ""
 
@@ -124,7 +124,7 @@ function downloadEpvsCalc(appointment) {
   const muted = [100, 116, 139]
 
   doc.setFillColor(23, 37, 84)
-  doc.rect(0, 0, 297, 10, "F")
+  doc.rect(0, 0, 210, 10, "F")
   doc.setTextColor(255, 255, 255)
   doc.setFont(undefined, "bold")
   doc.setFontSize(8.5)
@@ -171,7 +171,7 @@ function downloadEpvsCalc(appointment) {
   const cardY = 18
   const cardH = 18
   const cardGap = 4
-  const cardW = (283 - cardGap * 3) / 4
+  const cardW = (196 - cardGap * 3) / 4
   const cards = [
     ["First year total benefit:", pdfMoney(firstYearBenefit)],
     ["Payback period:", paybackYear ? String(paybackYear) + " years" : "—"],
@@ -199,9 +199,11 @@ function downloadEpvsCalc(appointment) {
     "NET POSITION", "BILL PRE INSTALL", "BILL POST INSTALL"
   ]
   // Give the table more horizontal room to support a larger, single-line font.
-  const widths = [12, 26, 26, 26, 24, 34, 31, 33, 35, 19, 19]
+  const widths = portraitWidths
   const totalWidth = widths.reduce((sum, width) => sum + width, 0)
-  const startX = (297 - totalWidth) / 2
+  const portraitWidths = [10, 16, 16, 16, 15, 22, 20, 22, 23, 18, 18]
+  const portraitTotalWidth = portraitWidths.reduce((sum, width) => sum + width, 0)
+  const startX = (210 - portraitTotalWidth) / 2
 
   let x = startX
   doc.setFontSize(6.2)
@@ -337,7 +339,7 @@ function downloadEpvsCalc(appointment) {
   }
 
   doc.setDrawColor(226, 232, 240)
-  doc.line(7, 202, 290, 202)
+  doc.line(7, 286, 203, 286)
   doc.setTextColor(...muted)
   doc.setFont(undefined, "normal")
   doc.setFontSize(5.5)
@@ -348,7 +350,7 @@ function downloadEpvsCalc(appointment) {
     hour: "2-digit",
     minute: "2-digit",
   })
-  doc.text("EPVS calculation · 7.6% inflation scenario · Exported " + exportedAt, 7, 206)
+  doc.text("EPVS calculation · 7.6% inflation scenario · Exported " + exportedAt, 7, 291)
 
   const safeName = String(customer).replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "customer"
   doc.save(`EPVS-Calculation-${safeName}.pdf`)
