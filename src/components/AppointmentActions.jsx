@@ -97,7 +97,7 @@ function downloadEpvsCalc(appointment) {
       ? scenario
       : []
 
-  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
   const customer = appointment?.name || data.customerName || "Customer"
   const postcode = appointment?.postcode || data.postcode || ""
 
@@ -140,32 +140,46 @@ function downloadEpvsCalc(appointment) {
   })
 
   y += Math.ceil(summary.length / 4) * 11 + 7
-  doc.setFontSize(11)
+  // Put the complete 30-year table on its own A4 portrait page so all
+  // years remain together and the column headings are always visible.
+  doc.addPage()
+  drawPdfHeader(doc, "EPVS Calculation — 30 Year Breakdown", customer, postcode)
+  y = 28
+
+  doc.setFontSize(10)
   doc.setFont(undefined, "bold")
-  doc.text("30 year breakdown — average inflation scenario", 12, y)
-  y += 6
+  doc.text("30 year breakdown — average inflation scenario", 10, y)
+  y += 5
 
-  const headers = ["YR", "GEN", "SOLAR", "BATTERY", "EXPORT", "ANNUAL BENEFIT", "PAYMENTS", "NET ANNUAL", "NET POSITION", "BILL PRE", "BILL POST"]
-  const widths = [9, 19, 21, 22, 21, 28, 25, 27, 28, 25, 25]
+  const headers = [
+    "YR", "GEN", "SOLAR", "BATTERY", "EXPORT",
+    "ANNUAL BENEFIT", "PAYMENTS", "NET ANNUAL",
+    "NET POSITION", "BILL PRE", "BILL POST"
+  ]
+  const widths = [9, 17, 17, 18, 17, 23, 21, 22, 23, 15, 15]
   const totalWidth = widths.reduce((sum, width) => sum + width, 0)
-  const startX = (297 - totalWidth) / 2
+  const startX = (210 - totalWidth) / 2
 
-  const drawTableHeader = () => {
-    let x = startX
-    doc.setFillColor(87, 87, 87)
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(6.5)
-    doc.setFont(undefined, "bold")
-    headers.forEach((header, index) => {
-      doc.rect(x, y, widths[index], 7, "F")
-      doc.text(header, x + widths[index] / 2, y + 4.5, { align: "center" })
-      x += widths[index]
-    })
-    y += 7
-    doc.setFont(undefined, "normal")
-  }
+  let x = startX
+  doc.setFillColor(87, 87, 87)
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(5.2)
+  doc.setFont(undefined, "bold")
 
-  drawTableHeader()
+  headers.forEach((header, index) => {
+    doc.rect(x, y, widths[index], 9, "F")
+    const lines = header.split(" ")
+    if (lines.length > 1) {
+      const midpoint = Math.ceil(lines.length / 2)
+      doc.text(lines.slice(0, midpoint).join(" "), x + widths[index] / 2, y + 3.5, { align: "center" })
+      doc.text(lines.slice(midpoint).join(" "), x + widths[index] / 2, y + 7, { align: "center" })
+    } else {
+      doc.text(header, x + widths[index] / 2, y + 5.5, { align: "center" })
+    }
+    x += widths[index]
+  })
+
+  y += 9
 
   const totalPayments = rows.reduce(
     (total, row) => total + pdfValue(row, "yearlyPayment", "payment"),
@@ -174,24 +188,17 @@ function downloadEpvsCalc(appointment) {
   let cumulativeBenefit = 0
 
   rows.forEach((row) => {
-    if (y > 191) {
-      doc.addPage()
-      drawPdfHeader(doc, "EPVS Calculation — 30 Year Breakdown", customer, postcode)
-      y = 27
-      drawTableHeader()
-    }
-
     const solar = pdfValue(row, "solarBenefit", "solar")
-    const battery = pdfValue(row, "batteryBenefit", "battery") ||
+    const battery =
+      pdfValue(row, "batteryBenefit", "battery") ||
       pdfValue(row, "batterySelfConsumptionBenefit") +
       pdfValue(row, "forceChargeBenefit")
     const exportBenefit = pdfValue(row, "exportBenefit")
     const annualBenefit = solar + battery + exportBenefit
     const payment = pdfValue(row, "yearlyPayment", "payment")
     const netAnnual = annualBenefit + payment
+
     cumulativeBenefit += annualBenefit
-    // Match the 30-year breakdown UI:
-    // total scheduled payments + cumulative annual benefit.
     const netPosition = totalPayments + cumulativeBenefit
 
     const values = [
@@ -208,22 +215,34 @@ function downloadEpvsCalc(appointment) {
       pdfMoney(row.billPostInstall),
     ]
 
-    let x = startX
-    doc.setFontSize(6.5)
+    x = startX
+    doc.setFontSize(5.2)
+    doc.setFont(undefined, "normal")
+
     values.forEach((value, index) => {
-      doc.setFillColor(index === 5 || index === 8 ? 232 : 255, index === 5 || index === 8 ? 245 : 255, index === 5 || index === 8 ? 235 : 255)
-      doc.setTextColor(netAnnual < 0 && (index === 7 || index === 8) ? 190 : 51, 51, 51)
-      doc.rect(x, y, widths[index], 6, "F")
-      doc.text(value, x + widths[index] - 1.5, y + 4, { align: "right" })
+      const highlighted = index === 5 || index === 8
+      doc.setFillColor(
+        highlighted ? 232 : 255,
+        highlighted ? 245 : 255,
+        highlighted ? 235 : 255
+      )
+      doc.setTextColor(
+        netAnnual < 0 && (index === 7 || index === 8) ? 190 : 51,
+        51,
+        51
+      )
+      doc.rect(x, y, widths[index], 5.8, "F")
+      doc.text(value, x + widths[index] - 1, y + 3.8, { align: "right" })
       x += widths[index]
     })
-    y += 6
+
+    y += 5.8
   })
 
   if (!rows.length) {
     doc.setFontSize(9)
     doc.setTextColor(100, 116, 139)
-    doc.text("No 30 year projection is currently saved.", 12, y + 8)
+    doc.text("No 30 year projection is currently saved.", 10, y + 8)
   }
 
   drawPdfFooter(doc)
