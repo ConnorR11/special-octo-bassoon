@@ -155,11 +155,14 @@ function downloadEpvsCalc(appointment) {
   y += 3 * 11 + 7
   // Put the complete 30-year table on its own A4 portrait page so all
   // years remain together and the column headings are always visible.
-  doc.addPage()
-  drawPdfHeader(doc, "EPVS Calculation — 30 Year Breakdown", customer, postcode)
-  y = 21
+  // Keep the 30-year table on the same A4 page as the system summary.
+  // No additional page is created for the breakdown.
+  doc.setFontSize(9)
+  doc.setFont(undefined, "bold")
+  doc.text("30 year breakdown — average inflation scenario", 10, y)
+  y += 5
 
-  doc.setFontSize(10)
+  doc.setFontSize(9)
   doc.setFont(undefined, "bold")
   doc.text("30 year breakdown — average inflation scenario", 10, y)
   y += 5
@@ -253,12 +256,19 @@ function downloadEpvsCalc(appointment) {
   })
 
   if (!rows.length) {
-    doc.setFontSize(9)
+    doc.setFontSize(7)
     doc.setTextColor(100, 116, 139)
     doc.text("No 30 year projection is currently saved.", 10, y + 8)
   }
 
   drawPdfFooter(doc)
+
+  // EPVS Calc is deliberately a single-page export. If the generated
+  // content ever overflows, keep the PDF to one A4 page rather than
+  // creating a second page.
+  while (doc.internal.getNumberOfPages() > 1) {
+    doc.deletePage(doc.internal.getNumberOfPages())
+  }
 
   const safeName = String(customer).replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "customer"
   doc.save(`EPVS-Calculation-${safeName}.pdf`)
