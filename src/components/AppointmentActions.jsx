@@ -199,11 +199,9 @@ function downloadEpvsCalc(appointment) {
     "NET POSITION", "BILL PRE INSTALL", "BILL POST INSTALL"
   ]
   // Give the table more horizontal room to support a larger, single-line font.
-  const widths = portraitWidths
+  const widths = [10, 16, 16, 16, 15, 22, 20, 22, 23, 18, 18]
   const totalWidth = widths.reduce((sum, width) => sum + width, 0)
-  const portraitWidths = [10, 16, 16, 16, 15, 22, 20, 22, 23, 18, 18]
-  const portraitTotalWidth = portraitWidths.reduce((sum, width) => sum + width, 0)
-  const startX = (210 - portraitTotalWidth) / 2
+  const startX = (210 - totalWidth) / 2
 
   let x = startX
   doc.setFontSize(6.2)
