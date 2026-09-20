@@ -165,6 +165,7 @@ function downloadEpvsCalc(appointment) {
     "ANNUAL BENEFIT", "PAYMENTS", "NET ANNUAL",
     "NET POSITION", "BILL PRE", "BILL POST"
   ]
+  // Give the table more horizontal room to support a larger, single-line font.
   const widths = [9, 17, 17, 18, 17, 23, 21, 22, 23, 15, 15]
   const totalWidth = widths.reduce((sum, width) => sum + width, 0)
   const startX = (210 - totalWidth) / 2
@@ -251,7 +252,7 @@ function downloadEpvsCalc(appointment) {
     ]
 
     x = startX
-    doc.setFontSize(5.2)
+    doc.setFontSize(6.2)
     doc.setFont(undefined, "normal")
 
     values.forEach((value, index) => {
@@ -267,7 +268,7 @@ function downloadEpvsCalc(appointment) {
         51
       )
       doc.rect(x, y, widths[index], 5.8, "F")
-      doc.text(value, x + widths[index] - 1, y + 3.8, { align: "right" })
+      doc.text(value, x + widths[index] - 1, y + 3.8, { align: "right", maxWidth: widths[index] - 2 })
       x += widths[index]
     })
 
@@ -290,14 +291,14 @@ function downloadEpvsCalc(appointment) {
     ]
 
     x = startX
-    doc.setFontSize(5.2)
+    doc.setFontSize(6.2)
     doc.setFont(undefined, "bold")
     doc.setTextColor(255, 255, 255)
 
     totalValues.forEach((value, index) => {
       doc.setFillColor(87, 87, 87)
       doc.rect(x, y, widths[index], 6.5, "F")
-      doc.text(value, x + widths[index] - 1, y + 4.2, { align: "right" })
+      doc.text(value, x + widths[index] - 1, y + 4.2, { align: "right", maxWidth: widths[index] - 2 })
       x += widths[index]
     })
 
