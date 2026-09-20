@@ -167,6 +167,12 @@ function downloadEpvsCalc(appointment) {
 
   drawTableHeader()
 
+  const totalPayments = rows.reduce(
+    (total, row) => total + pdfValue(row, "yearlyPayment", "payment"),
+    0
+  )
+  let cumulativeBenefit = 0
+
   rows.forEach((row) => {
     if (y > 191) {
       doc.addPage()
@@ -183,9 +189,10 @@ function downloadEpvsCalc(appointment) {
     const annualBenefit = solar + battery + exportBenefit
     const payment = pdfValue(row, "yearlyPayment", "payment")
     const netAnnual = annualBenefit + payment
-    const netPosition = Number.isFinite(Number(row?.displayNetPosition))
-      ? Number(row.displayNetPosition)
-      : Number(row?.cumulativePosition || 0)
+    cumulativeBenefit += annualBenefit
+    // Match the 30-year breakdown UI:
+    // total scheduled payments + cumulative annual benefit.
+    const netPosition = totalPayments + cumulativeBenefit
 
     const values = [
       String(row.year || ""),
