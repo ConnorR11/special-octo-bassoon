@@ -118,55 +118,84 @@ function downloadEpvsCalc(appointment) {
       ? scenario
       : []
 
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
   const customer = appointment?.name || data.customerName || "Customer"
   const postcode = appointment?.postcode || data.postcode || ""
 
-  drawPdfHeader(doc, "EPVS Calculation", customer, postcode)
+  // Match the on-screen 30-year breakdown layout.
+  const green = [37, 164, 70]
+  const lightGreen = [231, 244, 234]
+  const dark = [82, 82, 82]
+  const text = [30, 41, 59]
+  const muted = [100, 116, 139]
 
-  let y = 22
-  doc.setFontSize(11)
+  doc.setFillColor(23, 37, 84)
+  doc.rect(0, 0, 297, 10, "F")
+  doc.setTextColor(255, 255, 255)
   doc.setFont(undefined, "bold")
-  doc.text("System summary", 12, y)
-  y += 7
-
-  const summary = [
-    ["System size", `${pdfNumber(results.systemSize, 2)} kWp`],
-    ["Estimated generation", `${pdfNumber(results.generation, 0)} kWh`],
-    ["Solar self-consumption", `${pdfNumber(results.solarSelfConsumption, 0)} kWh`],
-    ["Battery contribution", `${pdfNumber(results.batteryContribution, 0)} kWh`],
-    ["Estimated export", `${pdfNumber(results.exportKwh, 0)} kWh`],
-    ["Battery", data.batteryCapacity ? `${pdfNumber(data.batteryCapacity, 2)} kWh` : "—"],
-    ["Inverter", data.inverterCapacity ? `${pdfNumber(data.inverterCapacity, 2)} kW` : "—"],
-    ["Payment method", data.paymentMethod || "—"],
-    ["System cost", pdfMoney(data.systemCost)],
-    ["Deposit", pdfMoney(data.deposit)],
-    ["Finance term", data.paymentMethod === "Finance" ? `${pdfNumber(data.financeTerm, 0)} years` : "—"],
-    ["Monthly finance", data.paymentMethod === "Finance" ? pdfMoney(results.monthlyPayment) : "Cash"],
-  ]
-
+  doc.setFontSize(8.5)
+  doc.text("EPVS Calculation", 7, 6.4)
   doc.setFont(undefined, "normal")
-  doc.setFontSize(8)
-  summary.forEach(([label, value], index) => {
-    const col = index % 4
-    const row = Math.floor(index / 4)
-    const x = 10 + col * 47.5
-    const yy = y + row * 11
-    doc.setTextColor(100, 116, 139)
-    doc.text(label, x, yy)
-    doc.setTextColor(23, 32, 51)
-    doc.setFont(undefined, "bold")
-    doc.text(value, x, yy + 4.5)
-    doc.setFont(undefined, "normal")
+  doc.setFontSize(6.5)
+  doc.text(String(customer || "Customer") + " · " + String(postcode || "No postcode"), 290, 6.4, { align: "right" })
+
+  let cumulativeBenefit = 0
+  let paybackYear = null
+  let firstYearBenefit = 0
+  let finalNetPosition = 0
+  const totalPayments = rows.reduce(
+    (total, row) => total + pdfValue(row, "yearlyPayment", "payment"),
+    0
+  )
+
+  rows.forEach((row, index) => {
+    const solar = pdfValue(row, "solarBenefit", "solar")
+    const battery =
+      pdfValue(row, "batteryBenefit", "battery") ||
+      pdfValue(row, "batterySelfConsumptionBenefit") +
+      pdfValue(row, "forceChargeBenefit")
+    const exportBenefit = pdfValue(row, "exportBenefit")
+    const annualBenefit = solar + battery + exportBenefit
+
+    if (index === 0) firstYearBenefit = annualBenefit
+
+    cumulativeBenefit += annualBenefit
+    const netPosition = totalPayments + cumulativeBenefit
+
+    if (paybackYear === null && netPosition >= 0) {
+      paybackYear = Number(row.year || 0)
+    }
+
+    finalNetPosition = netPosition
   })
 
-  y += 3 * 11 + 7
-  // Keep the complete 30-year table on the same A4 page as the system summary.
-  doc.setFontSize(9)
+  doc.setTextColor(...text)
   doc.setFont(undefined, "bold")
-  doc.setTextColor(23, 32, 51)
-  doc.text("30 year breakdown — 7.6% inflation scenario", 10, y)
-  y += 5
+  doc.setFontSize(8)
+  doc.text("30 year breakdown — 7.6% inflation scenario", 7, 15)
+
+  const cardY = 18
+  const cardH = 18
+  const cardGap = 4
+  const cardW = (283 - cardGap * 3) / 4
+  const cards = [
+    ["First year total benefit:", pdfMoney(firstYearBenefit)],
+    ["Payback period:", paybackYear ? String(paybackYear) + " years" : "—"],
+    ["Total net savings:", pdfMoney(finalNetPosition)],
+    ["Total net return:", pdfMoney(finalNetPosition)],
+  ]
+
+  cards.forEach(([label, value], index) => {
+    const x = 7 + index * (cardW + cardGap)
+    doc.setFillColor(...green)
+    doc.roundedRect(x, cardY, cardW, cardH, 2.5, 2.5, "F")
+    doc.setTextColor(255, 255, 255)
+    doc.setFont(undefined, "bold")
+    doc.setFontSize(7.2)
+    doc.text(label, x + cardW / 2, cardY + 7, { align: "center" })
+    doc.setFontSize(9)
+    doc.text(value, x + cardW / 2, cardY + 13.5, { align: "center" })
+  })
 
   const headers = [
     "YR", "GEN", "SOLAR", "BATTERY", "EXPORT",
@@ -174,9 +203,9 @@ function downloadEpvsCalc(appointment) {
     "NET POSITION", "BILL PRE", "BILL POST"
   ]
   // Give the table more horizontal room to support a larger, single-line font.
-  const widths = [9, 17, 17, 18, 17, 23, 21, 22, 23, 15, 15]
+  const widths = [12, 27, 27, 27, 25, 35, 30, 33, 35, 17, 17]
   const totalWidth = widths.reduce((sum, width) => sum + width, 0)
-  const startX = (210 - totalWidth) / 2
+  const startX = (297 - totalWidth) / 2
 
   let x = startX
   doc.setFontSize(5.2)
@@ -186,7 +215,7 @@ function downloadEpvsCalc(appointment) {
     // Explicitly paint each header cell grey before drawing the white label.
     doc.setFillColor(75, 75, 75)
     doc.setDrawColor(75, 75, 75)
-    doc.rect(x, y, widths[index], 9, "FD")
+    doc.rect(x, y, widths[index], 10, "FD")
 
     doc.setTextColor(255, 255, 255)
     const lines = header.split(" ")
@@ -200,7 +229,7 @@ function downloadEpvsCalc(appointment) {
     x += widths[index]
   })
 
-  y += 9
+  y += 10
 
   const totalPayments = rows.reduce(
     (total, row) => total + pdfValue(row, "yearlyPayment", "payment"),
@@ -275,12 +304,12 @@ function downloadEpvsCalc(appointment) {
         51,
         51
       )
-      doc.rect(x, y, widths[index], 5.8, "F")
+      doc.rect(x, y, widths[index], 5.55, "FD")
       doc.text(value, x + widths[index] - 1, y + 3.8, { align: "right", maxWidth: widths[index] - 2 })
       x += widths[index]
     })
 
-    y += 5.8
+    y += 5.55
   })
 
   if (rows.length) {
@@ -305,7 +334,7 @@ function downloadEpvsCalc(appointment) {
 
     totalValues.forEach((value, index) => {
       doc.setFillColor(87, 87, 87)
-      doc.rect(x, y, widths[index], 6.5, "F")
+      doc.rect(x, y, widths[index], 6.5, "FD")
       doc.text(value, x + widths[index] - 1, y + 4.2, { align: "right", maxWidth: widths[index] - 2 })
       x += widths[index]
     })
