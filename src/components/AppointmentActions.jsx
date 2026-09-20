@@ -170,13 +170,16 @@ function downloadEpvsCalc(appointment) {
   const startX = (210 - totalWidth) / 2
 
   let x = startX
-  doc.setFillColor(87, 87, 87)
-  doc.setTextColor(255, 255, 255)
   doc.setFontSize(5.2)
   doc.setFont(undefined, "bold")
 
   headers.forEach((header, index) => {
-    doc.rect(x, y, widths[index], 9, "F")
+    // Explicitly paint each header cell grey before drawing the white label.
+    doc.setFillColor(75, 75, 75)
+    doc.setDrawColor(75, 75, 75)
+    doc.rect(x, y, widths[index], 9, "FD")
+
+    doc.setTextColor(255, 255, 255)
     const lines = header.split(" ")
     if (lines.length > 1) {
       const midpoint = Math.ceil(lines.length / 2)
