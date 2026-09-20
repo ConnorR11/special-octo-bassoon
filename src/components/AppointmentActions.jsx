@@ -194,9 +194,9 @@ function downloadEpvsCalc(appointment) {
   let y = 40
 
   const headers = [
-    "YR", "GEN", "SOLAR", "BATTERY", "EXPORT",
-    "ANNUAL BENEFIT", "PAYMENTS", "NET ANNUAL",
-    "NET POSITION", "BILL PRE", "BILL POST"
+    "YR", "GENERATION", "SOLAR", "BATTERY", "EXPORT",
+    "ANNUAL BENEFIT", "YEARLY PAYMENTS", "NET ANNUAL BENEFIT",
+    "NET POSITION", "BILL PRE INSTALL", "BILL POST INSTALL"
   ]
   // Give the table more horizontal room to support a larger, single-line font.
   const widths = [12, 26, 26, 26, 24, 34, 31, 33, 35, 19, 19]
@@ -204,7 +204,7 @@ function downloadEpvsCalc(appointment) {
   const startX = (297 - totalWidth) / 2
 
   let x = startX
-  doc.setFontSize(5.2)
+  doc.setFontSize(6.2)
   doc.setFont(undefined, "bold")
 
   headers.forEach((header, index) => {
@@ -268,7 +268,7 @@ function downloadEpvsCalc(appointment) {
 
     const values = [
       String(row.year || ""),
-      pdfNumber(row.generation, 0),
+      pdfNumber(row.generation, 2),
       pdfMoney(solar),
       pdfMoney(battery),
       pdfMoney(exportBenefit),
@@ -303,7 +303,7 @@ function downloadEpvsCalc(appointment) {
   if (rows.length) {
     const totalValues = [
       "TOTAL",
-      pdfNumber(totals.generation, 0),
+      pdfNumber(totals.generation, 2),
       pdfMoney(totals.solar),
       pdfMoney(totals.battery),
       pdfMoney(totals.exportBenefit),
