@@ -127,9 +127,9 @@ function downloadEpvsCalc(appointment) {
   doc.setFont(undefined, "normal")
   doc.setFontSize(8)
   summary.forEach(([label, value], index) => {
-    const col = index % 3
-    const row = Math.floor(index / 3)
-    const x = 10 + col * 63
+    const col = index % 4
+    const row = Math.floor(index / 4)
+    const x = 10 + col * 47.5
     const yy = y + row * 11
     doc.setTextColor(100, 116, 139)
     doc.text(label, x, yy)
@@ -139,7 +139,7 @@ function downloadEpvsCalc(appointment) {
     doc.setFont(undefined, "normal")
   })
 
-  y += Math.ceil(summary.length / 3) * 11 + 7
+  y += 3 * 11 + 7
   // Put the complete 30-year table on its own A4 portrait page so all
   // years remain together and the column headings are always visible.
   doc.addPage()
