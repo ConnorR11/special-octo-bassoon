@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react"
-import { ChevronDown, Check, Lock, Building2, UserRound, Pencil, Plus, RotateCcw, X } from "lucide-react"
+import { jsPDF } from "jspdf"
+import { ChevronDown, Check, Lock, Building2, UserRound, Pencil, Plus, RotateCcw, X, FileDown } from "lucide-react"
 import { supabase } from "../lib/supabase"
 import AllocateBranch from "./AllocateBranch"
 import AllocateSalesRep from "./AllocateSalesRep"
@@ -18,6 +19,212 @@ function toDateTimeLocal(value) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
+function isSolarAppointment(appointment) {
+  const text = [
+    appointment?.product,
+    appointment?.job_type,
+    appointment?.measure,
+    appointment?.service,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+
+  return text.includes("solar")
+}
+
+function pdfMoney(value) {
+  return `£${Number(value || 0).toLocaleString("en-GB", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`
+}
+
+function pdfNumber(value, digits = 2) {
+  return Number(value || 0).toLocaleString("en-GB", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  })
+}
+
+function pdfValue(row, ...keys) {
+  for (const key of keys) {
+    const direct = Number(row?.[key])
+    if (Number.isFinite(direct) && direct !== 0) return direct
+    const model = Number(row?.model?.[key])
+    if (Number.isFinite(model) && model !== 0) return model
+  }
+  return 0
+}
+
+function drawPdfHeader(doc, title, customer, postcode) {
+  doc.setFillColor(23, 37, 84)
+  doc.rect(0, 0, 297, 18, "F")
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(14)
+  doc.setFont(undefined, "bold")
+  doc.text(title, 12, 11)
+  doc.setFont(undefined, "normal")
+  doc.setFontSize(8)
+  doc.text(`${customer || "Customer"} · ${postcode || "No postcode"}`, 285, 11, { align: "right" })
+  doc.setTextColor(30, 41, 59)
+}
+
+function drawPdfFooter(doc) {
+  const pageCount = doc.internal.getNumberOfPages()
+  for (let page = 1; page <= pageCount; page += 1) {
+    doc.setPage(page)
+    doc.setFontSize(7)
+    doc.setTextColor(100, 116, 139)
+    doc.text(`EPVS calculation · Page ${page} of ${pageCount}`, 285, 203, { align: "right" })
+  }
+}
+
+function downloadEpvsCalc(appointment) {
+  const calculation = appointment?.epvs_calculation
+  if (!calculation?.data) {
+    window.alert("No saved EPVS calculation was found for this appointment. Save the EPVS calculation first.")
+    return
+  }
+
+  const data = calculation.data || {}
+  const results = calculation.results || {}
+  const projection = calculation.thirtyYearProjection || {}
+  const scenario = projection.scenarios?.averageInflation || projection.scenarios?.midpointInflation || projection.scenarios?.noInflation
+  const rows = Array.isArray(scenario?.rows)
+    ? scenario.rows
+    : Array.isArray(scenario)
+      ? scenario
+      : []
+
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
+  const customer = appointment?.name || data.customerName || "Customer"
+  const postcode = appointment?.postcode || data.postcode || ""
+
+  drawPdfHeader(doc, "EPVS Calculation", customer, postcode)
+
+  let y = 27
+  doc.setFontSize(11)
+  doc.setFont(undefined, "bold")
+  doc.text("System summary", 12, y)
+  y += 7
+
+  const summary = [
+    ["System size", `${pdfNumber(results.systemSize, 2)} kWp`],
+    ["Estimated generation", `${pdfNumber(results.generation, 0)} kWh`],
+    ["Solar self-consumption", `${pdfNumber(results.solarSelfConsumption, 0)} kWh`],
+    ["Battery contribution", `${pdfNumber(results.batteryContribution, 0)} kWh`],
+    ["Estimated export", `${pdfNumber(results.exportKwh, 0)} kWh`],
+    ["Battery", data.batteryCapacity ? `${pdfNumber(data.batteryCapacity, 2)} kWh` : "—"],
+    ["Inverter", data.inverterCapacity ? `${pdfNumber(data.inverterCapacity, 2)} kW` : "—"],
+    ["Payment method", data.paymentMethod || "—"],
+    ["System cost", pdfMoney(data.systemCost)],
+    ["Deposit", pdfMoney(data.deposit)],
+    ["Finance term", data.paymentMethod === "Finance" ? `${pdfNumber(data.financeTerm, 0)} years` : "—"],
+    ["Monthly finance", data.paymentMethod === "Finance" ? pdfMoney(results.monthlyPayment) : "Cash"],
+  ]
+
+  doc.setFont(undefined, "normal")
+  doc.setFontSize(8)
+  summary.forEach(([label, value], index) => {
+    const col = index % 4
+    const row = Math.floor(index / 4)
+    const x = 12 + col * 69
+    const yy = y + row * 11
+    doc.setTextColor(100, 116, 139)
+    doc.text(label, x, yy)
+    doc.setTextColor(23, 32, 51)
+    doc.setFont(undefined, "bold")
+    doc.text(value, x, yy + 4.5)
+    doc.setFont(undefined, "normal")
+  })
+
+  y += Math.ceil(summary.length / 4) * 11 + 7
+  doc.setFontSize(11)
+  doc.setFont(undefined, "bold")
+  doc.text("30 year breakdown — average inflation scenario", 12, y)
+  y += 6
+
+  const headers = ["YR", "GEN", "SOLAR", "BATTERY", "EXPORT", "ANNUAL BENEFIT", "PAYMENTS", "NET ANNUAL", "NET POSITION", "BILL PRE", "BILL POST"]
+  const widths = [9, 19, 21, 22, 21, 28, 25, 27, 28, 25, 25]
+  const totalWidth = widths.reduce((sum, width) => sum + width, 0)
+  const startX = (297 - totalWidth) / 2
+
+  const drawTableHeader = () => {
+    let x = startX
+    doc.setFillColor(87, 87, 87)
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(6.5)
+    doc.setFont(undefined, "bold")
+    headers.forEach((header, index) => {
+      doc.rect(x, y, widths[index], 7, "F")
+      doc.text(header, x + widths[index] / 2, y + 4.5, { align: "center" })
+      x += widths[index]
+    })
+    y += 7
+    doc.setFont(undefined, "normal")
+  }
+
+  drawTableHeader()
+
+  rows.forEach((row) => {
+    if (y > 191) {
+      doc.addPage()
+      drawPdfHeader(doc, "EPVS Calculation — 30 Year Breakdown", customer, postcode)
+      y = 27
+      drawTableHeader()
+    }
+
+    const solar = pdfValue(row, "solarBenefit", "solar")
+    const battery = pdfValue(row, "batteryBenefit", "battery") ||
+      pdfValue(row, "batterySelfConsumptionBenefit") +
+      pdfValue(row, "forceChargeBenefit")
+    const exportBenefit = pdfValue(row, "exportBenefit")
+    const annualBenefit = solar + battery + exportBenefit
+    const payment = pdfValue(row, "yearlyPayment", "payment")
+    const netAnnual = annualBenefit + payment
+    const netPosition = Number.isFinite(Number(row?.displayNetPosition))
+      ? Number(row.displayNetPosition)
+      : Number(row?.cumulativePosition || 0)
+
+    const values = [
+      String(row.year || ""),
+      pdfNumber(row.generation, 0),
+      pdfMoney(solar),
+      pdfMoney(battery),
+      pdfMoney(exportBenefit),
+      pdfMoney(annualBenefit),
+      pdfMoney(payment),
+      pdfMoney(netAnnual),
+      pdfMoney(netPosition),
+      pdfMoney(row.billPreInstall),
+      pdfMoney(row.billPostInstall),
+    ]
+
+    let x = startX
+    doc.setFontSize(6.5)
+    values.forEach((value, index) => {
+      doc.setFillColor(index === 5 || index === 8 ? 232 : 255, index === 5 || index === 8 ? 245 : 255, index === 5 || index === 8 ? 235 : 255)
+      doc.setTextColor(netAnnual < 0 && (index === 7 || index === 8) ? 190 : 51, 51, 51)
+      doc.rect(x, y, widths[index], 6, "F")
+      doc.text(value, x + widths[index] - 1.5, y + 4, { align: "right" })
+      x += widths[index]
+    })
+    y += 6
+  })
+
+  if (!rows.length) {
+    doc.setFontSize(9)
+    doc.setTextColor(100, 116, 139)
+    doc.text("No 30 year projection is currently saved.", 12, y + 8)
+  }
+
+  drawPdfFooter(doc)
+
+  const safeName = String(customer).replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "customer"
+  doc.save(`EPVS-Calculation-${safeName}.pdf`)
+}
+
 export default function AppointmentActions({ appointment, onUpdated, onConfirmLegacy, onResultLegacy, onOpenPickup }) {
   const [open, setOpen] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
@@ -31,6 +238,7 @@ export default function AppointmentActions({ appointment, onUpdated, onConfirmLe
   const hasBranch = Boolean(String(appointment?.branch || "").trim())
   const hasAllocatedRep = Boolean(String(appointment?.rep_allocated || "").trim())
 
+  const solarAppointment = isSolarAppointment(appointment)
   useEffect(() => {
     setEditValues({
       name: appointment?.name || "",
@@ -117,6 +325,19 @@ export default function AppointmentActions({ appointment, onUpdated, onConfirmLe
           <MenuButton icon={Pencil} onClick={openEdit}>Edit Appointment</MenuButton>
           <MenuButton icon={Plus} onClick={() => closeAnd(onResultLegacy)}>Result Appointment</MenuButton>
           <div style={{ height: 1, background: "#eef1f4", margin: "6px 4px" }} />
+          <div style={{ padding: "7px 10px 5px", fontSize: 9, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".06em" }}>EPVS</div>
+          <MenuButton
+            icon={FileDown}
+            disabled={!solarAppointment}
+            onClick={() => {
+              if (!solarAppointment) return
+              setOpen(false)
+              downloadEpvsCalc(appointment)
+            }}
+          >
+            Download EPVS Calc
+            {!solarAppointment && <Lock size={13} color="#b8c0c8" />}
+          </MenuButton>
           <MenuButton disabled={!hasResult} icon={RotateCcw} onClick={() => closeAnd(onOpenPickup)}>Pickup{!hasResult && <Lock size={13} color="#b8c0c8" />}</MenuButton>
         </div>
       </>}
