@@ -153,17 +153,10 @@ function downloadEpvsCalc(appointment) {
   })
 
   y += 3 * 11 + 7
-  // Put the complete 30-year table on its own A4 portrait page so all
-  // years remain together and the column headings are always visible.
-  // Keep the 30-year table on the same A4 page as the system summary.
-  // No additional page is created for the breakdown.
+  // Keep the complete 30-year table on the same A4 page as the system summary.
   doc.setFontSize(9)
   doc.setFont(undefined, "bold")
-  doc.text("30 year breakdown — average inflation scenario", 10, y)
-  y += 5
-
-  doc.setFontSize(9)
-  doc.setFont(undefined, "bold")
+  doc.setTextColor(23, 32, 51)
   doc.text("30 year breakdown — average inflation scenario", 10, y)
   y += 5
 
@@ -202,6 +195,18 @@ function downloadEpvsCalc(appointment) {
     0
   )
   let cumulativeBenefit = 0
+  const totals = {
+    generation: 0,
+    solar: 0,
+    battery: 0,
+    exportBenefit: 0,
+    annualBenefit: 0,
+    payments: 0,
+    netAnnual: 0,
+    billPre: 0,
+    billPost: 0,
+    finalNetPosition: 0,
+  }
 
   rows.forEach((row) => {
     const solar = pdfValue(row, "solarBenefit", "solar")
@@ -216,6 +221,17 @@ function downloadEpvsCalc(appointment) {
 
     cumulativeBenefit += annualBenefit
     const netPosition = totalPayments + cumulativeBenefit
+
+    totals.generation += Number(row.generation || 0)
+    totals.solar += solar
+    totals.battery += battery
+    totals.exportBenefit += exportBenefit
+    totals.annualBenefit += annualBenefit
+    totals.payments += payment
+    totals.netAnnual += netAnnual
+    totals.billPre += Number(row.billPreInstall || 0)
+    totals.billPost += Number(row.billPostInstall || 0)
+    totals.finalNetPosition = netPosition
 
     const values = [
       String(row.year || ""),
@@ -255,6 +271,36 @@ function downloadEpvsCalc(appointment) {
     y += 5.8
   })
 
+  if (rows.length) {
+    const totalValues = [
+      "TOTAL",
+      pdfNumber(totals.generation, 0),
+      pdfMoney(totals.solar),
+      pdfMoney(totals.battery),
+      pdfMoney(totals.exportBenefit),
+      pdfMoney(totals.annualBenefit),
+      pdfMoney(totals.payments),
+      pdfMoney(totals.netAnnual),
+      pdfMoney(totals.finalNetPosition),
+      pdfMoney(totals.billPre),
+      pdfMoney(totals.billPost),
+    ]
+
+    x = startX
+    doc.setFontSize(5.2)
+    doc.setFont(undefined, "bold")
+    doc.setTextColor(255, 255, 255)
+
+    totalValues.forEach((value, index) => {
+      doc.setFillColor(87, 87, 87)
+      doc.rect(x, y, widths[index], 6.5, "F")
+      doc.text(value, x + widths[index] - 1, y + 4.2, { align: "right" })
+      x += widths[index]
+    })
+
+    y += 6.5
+  }
+
   if (!rows.length) {
     doc.setFontSize(7)
     doc.setTextColor(100, 116, 139)
@@ -262,13 +308,6 @@ function downloadEpvsCalc(appointment) {
   }
 
   drawPdfFooter(doc)
-
-  // EPVS Calc is deliberately a single-page export. If the generated
-  // content ever overflows, keep the PDF to one A4 page rather than
-  // creating a second page.
-  while (doc.internal.getNumberOfPages() > 1) {
-    doc.deletePage(doc.internal.getNumberOfPages())
-  }
 
   const safeName = String(customer).replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "customer"
   doc.save(`EPVS-Calculation-${safeName}.pdf`)
