@@ -104,13 +104,7 @@ function downloadEpvsCalc(appointment) {
   const results = calculation.results || {}
   const projection = calculation.thirtyYearProjection || {}
   // Export the 7.6% inflation scenario specifically.
-  const scenario =
-    projection.scenarios?.highInflation ||
-    projection.scenarios?.["7.6"] ||
-    projection.scenarios?.inflation76 ||
-    projection.scenarios?.averageInflation ||
-    projection.scenarios?.midpointInflation ||
-    projection.scenarios?.noInflation
+  const scenario = projection.scenarios?.averageInflation
 
   const rows = Array.isArray(scenario?.rows)
     ? scenario.rows
@@ -139,7 +133,7 @@ function downloadEpvsCalc(appointment) {
   doc.setFontSize(6.5)
   doc.text(String(customer || "Customer") + " · " + String(postcode || "No postcode"), 290, 6.4, { align: "right" })
 
-  let cumulativeBenefit = 0
+  let cardCumulativeBenefit = 0
   let paybackYear = null
   let firstYearBenefit = 0
   let finalNetPosition = 0
@@ -159,8 +153,8 @@ function downloadEpvsCalc(appointment) {
 
     if (index === 0) firstYearBenefit = annualBenefit
 
-    cumulativeBenefit += annualBenefit
-    const netPosition = totalPayments + cumulativeBenefit
+    cardCumulativeBenefit += annualBenefit
+    const netPosition = totalPayments + cardCumulativeBenefit
 
     if (paybackYear === null && netPosition >= 0) {
       paybackYear = Number(row.year || 0)
@@ -197,13 +191,15 @@ function downloadEpvsCalc(appointment) {
     doc.text(value, x + cardW / 2, cardY + 13.5, { align: "center" })
   })
 
+  let y = 40
+
   const headers = [
     "YR", "GEN", "SOLAR", "BATTERY", "EXPORT",
     "ANNUAL BENEFIT", "PAYMENTS", "NET ANNUAL",
     "NET POSITION", "BILL PRE", "BILL POST"
   ]
   // Give the table more horizontal room to support a larger, single-line font.
-  const widths = [12, 27, 27, 27, 25, 35, 30, 33, 35, 17, 17]
+  const widths = [12, 26, 26, 26, 24, 34, 31, 33, 35, 19, 19]
   const totalWidth = widths.reduce((sum, width) => sum + width, 0)
   const startX = (297 - totalWidth) / 2
 
@@ -231,10 +227,6 @@ function downloadEpvsCalc(appointment) {
 
   y += 10
 
-  const totalPayments = rows.reduce(
-    (total, row) => total + pdfValue(row, "yearlyPayment", "payment"),
-    0
-  )
   let cumulativeBenefit = 0
   const totals = {
     generation: 0,
@@ -289,27 +281,23 @@ function downloadEpvsCalc(appointment) {
     ]
 
     x = startX
-    doc.setFontSize(6.2)
+    doc.setFontSize(7)
     doc.setFont(undefined, "normal")
 
     values.forEach((value, index) => {
       const highlighted = index === 5 || index === 8
-      doc.setFillColor(
-        highlighted ? 232 : 255,
-        highlighted ? 245 : 255,
-        highlighted ? 235 : 255
-      )
-      doc.setTextColor(
-        netAnnual < 0 && (index === 7 || index === 8) ? 190 : 51,
-        51,
-        51
-      )
-      doc.rect(x, y, widths[index], 5.55, "FD")
-      doc.text(value, x + widths[index] - 1, y + 3.8, { align: "right", maxWidth: widths[index] - 2 })
+      doc.setFillColor(...(highlighted ? lightGreen : [255, 255, 255]))
+      if (netAnnual < 0 && (index === 7 || index === 8)) {
+        doc.setTextColor(255, 0, 0)
+      } else {
+        doc.setTextColor(...text)
+      }
+      doc.rect(x, y, widths[index], 4.5, "FD")
+      doc.text(value, x + widths[index] - 1, y + 3.05, { align: "right" })
       x += widths[index]
     })
 
-    y += 5.55
+    y += 4.5
   })
 
   if (rows.length) {
@@ -328,18 +316,18 @@ function downloadEpvsCalc(appointment) {
     ]
 
     x = startX
-    doc.setFontSize(6.2)
+    doc.setFontSize(7)
     doc.setFont(undefined, "bold")
     doc.setTextColor(255, 255, 255)
 
     totalValues.forEach((value, index) => {
-      doc.setFillColor(87, 87, 87)
-      doc.rect(x, y, widths[index], 6.5, "FD")
-      doc.text(value, x + widths[index] - 1, y + 4.2, { align: "right", maxWidth: widths[index] - 2 })
+      doc.setFillColor(...(index === 5 || index === 8 ? green : dark))
+      doc.rect(x, y, widths[index], 5.2, "FD")
+      doc.text(value, x + widths[index] - 1, y + 3.55, { align: "right" })
       x += widths[index]
     })
 
-    y += 6.5
+    y += 5.2
   }
 
   if (!rows.length) {
@@ -348,7 +336,19 @@ function downloadEpvsCalc(appointment) {
     doc.text("No 30 year projection is currently saved.", 10, y + 8)
   }
 
-  drawPdfFooter(doc)
+  doc.setDrawColor(226, 232, 240)
+  doc.line(7, 202, 290, 202)
+  doc.setTextColor(...muted)
+  doc.setFont(undefined, "normal")
+  doc.setFontSize(5.5)
+  const exportedAt = new Date().toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+  doc.text("EPVS calculation · 7.6% inflation scenario · Exported " + exportedAt, 7, 206)
 
   const safeName = String(customer).replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "customer"
   doc.save(`EPVS-Calculation-${safeName}.pdf`)
