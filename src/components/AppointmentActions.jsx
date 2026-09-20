@@ -58,25 +58,38 @@ function pdfValue(row, ...keys) {
 }
 
 function drawPdfHeader(doc, title, customer, postcode) {
+  // Compact A4-portrait header: keep the title and customer details on one
+  // clean band without consuming unnecessary vertical space.
   doc.setFillColor(23, 37, 84)
-  doc.rect(0, 0, 297, 18, "F")
+  doc.rect(0, 0, 210, 14, "F")
   doc.setTextColor(255, 255, 255)
-  doc.setFontSize(14)
   doc.setFont(undefined, "bold")
-  doc.text(title, 12, 11)
+  doc.setFontSize(11)
+  doc.text(title, 10, 8.5)
   doc.setFont(undefined, "normal")
-  doc.setFontSize(8)
-  doc.text(`${customer || "Customer"} · ${postcode || "No postcode"}`, 200, 11, { align: "right" })
+  doc.setFontSize(7)
+  doc.text(`${customer || "Customer"} · ${postcode || "No postcode"}`, 200, 8.5, { align: "right" })
   doc.setTextColor(30, 41, 59)
 }
 
 function drawPdfFooter(doc) {
   const pageCount = doc.internal.getNumberOfPages()
+  const exportedAt = new Date().toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+
   for (let page = 1; page <= pageCount; page += 1) {
     doc.setPage(page)
-    doc.setFontSize(7)
+    doc.setDrawColor(226, 232, 240)
+    doc.line(10, 286, 200, 286)
+    doc.setFontSize(6.5)
     doc.setTextColor(100, 116, 139)
-    doc.text(`EPVS calculation · Page ${page} of ${pageCount}`, 200, 290, { align: "right" })
+    doc.text(`EPVS calculation · Exported ${exportedAt}`, 10, 291)
+    doc.text(`Page ${page} of ${pageCount}`, 200, 291, { align: "right" })
   }
 }
 
@@ -103,7 +116,7 @@ function downloadEpvsCalc(appointment) {
 
   drawPdfHeader(doc, "EPVS Calculation", customer, postcode)
 
-  let y = 27
+  let y = 22
   doc.setFontSize(11)
   doc.setFont(undefined, "bold")
   doc.text("System summary", 12, y)
@@ -144,7 +157,7 @@ function downloadEpvsCalc(appointment) {
   // years remain together and the column headings are always visible.
   doc.addPage()
   drawPdfHeader(doc, "EPVS Calculation — 30 Year Breakdown", customer, postcode)
-  y = 28
+  y = 21
 
   doc.setFontSize(10)
   doc.setFont(undefined, "bold")
