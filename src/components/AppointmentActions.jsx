@@ -66,7 +66,7 @@ function drawPdfHeader(doc, title, customer, postcode) {
   doc.text(title, 12, 11)
   doc.setFont(undefined, "normal")
   doc.setFontSize(8)
-  doc.text(`${customer || "Customer"} · ${postcode || "No postcode"}`, 285, 11, { align: "right" })
+  doc.text(`${customer || "Customer"} · ${postcode || "No postcode"}`, 200, 11, { align: "right" })
   doc.setTextColor(30, 41, 59)
 }
 
@@ -76,7 +76,7 @@ function drawPdfFooter(doc) {
     doc.setPage(page)
     doc.setFontSize(7)
     doc.setTextColor(100, 116, 139)
-    doc.text(`EPVS calculation · Page ${page} of ${pageCount}`, 285, 203, { align: "right" })
+    doc.text(`EPVS calculation · Page ${page} of ${pageCount}`, 200, 290, { align: "right" })
   }
 }
 
@@ -127,9 +127,9 @@ function downloadEpvsCalc(appointment) {
   doc.setFont(undefined, "normal")
   doc.setFontSize(8)
   summary.forEach(([label, value], index) => {
-    const col = index % 4
-    const row = Math.floor(index / 4)
-    const x = 12 + col * 69
+    const col = index % 3
+    const row = Math.floor(index / 3)
+    const x = 10 + col * 63
     const yy = y + row * 11
     doc.setTextColor(100, 116, 139)
     doc.text(label, x, yy)
@@ -139,7 +139,7 @@ function downloadEpvsCalc(appointment) {
     doc.setFont(undefined, "normal")
   })
 
-  y += Math.ceil(summary.length / 4) * 11 + 7
+  y += Math.ceil(summary.length / 3) * 11 + 7
   // Put the complete 30-year table on its own A4 portrait page so all
   // years remain together and the column headings are always visible.
   doc.addPage()
