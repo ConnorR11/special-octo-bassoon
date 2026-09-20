@@ -103,7 +103,15 @@ function downloadEpvsCalc(appointment) {
   const data = calculation.data || {}
   const results = calculation.results || {}
   const projection = calculation.thirtyYearProjection || {}
-  const scenario = projection.scenarios?.averageInflation || projection.scenarios?.midpointInflation || projection.scenarios?.noInflation
+  // Export the 7.6% inflation scenario specifically.
+  const scenario =
+    projection.scenarios?.highInflation ||
+    projection.scenarios?.["7.6"] ||
+    projection.scenarios?.inflation76 ||
+    projection.scenarios?.averageInflation ||
+    projection.scenarios?.midpointInflation ||
+    projection.scenarios?.noInflation
+
   const rows = Array.isArray(scenario?.rows)
     ? scenario.rows
     : Array.isArray(scenario)
@@ -157,7 +165,7 @@ function downloadEpvsCalc(appointment) {
   doc.setFontSize(9)
   doc.setFont(undefined, "bold")
   doc.setTextColor(23, 32, 51)
-  doc.text("30 year breakdown — average inflation scenario", 10, y)
+  doc.text("30 year breakdown — 7.6% inflation scenario", 10, y)
   y += 5
 
   const headers = [
