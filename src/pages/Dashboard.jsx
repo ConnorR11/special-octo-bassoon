@@ -8,9 +8,14 @@ import {
 
 import Stat from "../components/Stat"
 import SalesChart from "../components/SalesChart"
-import { formatDate, getInitials, money } from "../utils/formatters"
+import Installations from "./Installations"
+import { money } from "../utils/formatters"
 
 function Dashboard({ contracts, total, avg, upcoming, loading }) {
+  if (window.location.pathname === "/installations") {
+    return <Installations />
+  }
+
   return (
     <section>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 18 }}>
