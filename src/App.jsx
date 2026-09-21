@@ -616,7 +616,7 @@ function App() {
         mobile={mobile}
         setMobile={setMobile}
         onSignOut={handleSignOut}
-        permissionLevel={profile?.permission_level}
+        permissionLevel={effectivePermissionLevel}
       />
 
       <main>
