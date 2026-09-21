@@ -28,18 +28,63 @@ export default function Templates() {
         </p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 18 }}>
-        {templates.map(({ key, title, description, type, icon: Icon }) => (
-          <div key={key} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 22, boxShadow: "0 1px 2px rgba(15,23,42,.04)" }}>
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 10, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", color: "#002d49" }}>
-                <Icon size={22} />
-              </div>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#475569", background: "#f1f5f9", padding: "5px 9px", borderRadius: 999 }}>{type}</span>
+      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 2px rgba(15,23,42,.04)" }}>
+        {templates.map(({ key, title, description, type, icon: Icon }, index) => (
+          <div
+            key={key}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 18,
+              padding: "18px 22px",
+              borderBottom: index < templates.length - 1 ? "1px solid #e2e8f0" : "none",
+            }}
+          >
+            <div style={{
+              width: 52,
+              height: 52,
+              flexShrink: 0,
+              borderRadius: 10,
+              background: "#f1f5f9",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#002d49",
+            }}>
+              <Icon size={25} />
             </div>
-            <h2 style={{ margin: "18px 0 8px", fontSize: 18, color: "#0f172a" }}>{title}</h2>
-            <p style={{ margin: 0, minHeight: 42, color: "#64748b", fontSize: 13, lineHeight: 1.5 }}>{description}</p>
-            <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 8, color: "#94a3b8", fontSize: 12 }}>
+
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 5 }}>
+                <h2 style={{ margin: 0, fontSize: 17, fontWeight: 650, color: "#0f172a" }}>
+                  {title}
+                </h2>
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "#475569",
+                  background: "#f1f5f9",
+                  padding: "4px 8px",
+                  borderRadius: 999,
+                }}>
+                  {type}
+                </span>
+              </div>
+
+              <p style={{ margin: 0, color: "#64748b", fontSize: 13, lineHeight: 1.45 }}>
+                {description}
+              </p>
+            </div>
+
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              flexShrink: 0,
+              color: "#94a3b8",
+              fontSize: 12,
+              whiteSpace: "nowrap",
+            }}>
               <ExternalLink size={15} />
               Used from appointment exports
             </div>
