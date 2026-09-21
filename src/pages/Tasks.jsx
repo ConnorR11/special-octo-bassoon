@@ -19,6 +19,7 @@ export default function Tasks() {
   const [profiles, setProfiles] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [updatingId, setUpdatingId] = useState(null)
   const [error, setError] = useState("")
   const [filter, setFilter] = useState("all")
   const [categoryFilter, setCategoryFilter] = useState("all")
@@ -114,11 +115,20 @@ export default function Tasks() {
   }
 
   async function toggleDone(task) {
+    if (updatingId) return
+    const nextStatus = task.status === "done" ? "todo" : "done"
+    setUpdatingId(task.id)
+    setError("")
     try {
-      const { data, error: updateError } = await supabase.from("tasks").update({ status: task.status === "done" ? "todo" : "done" }).eq("id", task.id).select("*").single()
+      const { data, error: updateError } = await supabase.from("tasks").update({ status: nextStatus }).eq("id", task.id).select("*").single()
       if (updateError) throw updateError
       setTasks((current) => current.map((item) => item.id === task.id ? data : item))
-    } catch (err) { setError(err?.message || "Unable to update task.") }
+    } catch (err) {
+      console.error("Error updating task status:", err)
+      setError(err?.message || "Unable to update task.")
+    } finally {
+      setUpdatingId(null)
+    }
   }
 
   async function deleteTask(task) {
@@ -159,19 +169,30 @@ export default function Tasks() {
           {loading ? <div style={emptyState}>Loading tasks...</div> : filteredTasks.length === 0 ? (
             <div style={emptyState}><ClipboardList size={30} color="#aab4c0" /><strong>No tasks yet</strong><span>Create your first task with the New task button.</span></div>
           ) : (
-            <div style={{ overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
-              <thead><tr style={{ background: "#f8fafc" }}>{["", "Task", "Category", "Priority", "Assigned to", "Due", "Status", ""].map((heading, index) => <th key={`${heading}-${index}`} style={thStyle}>{heading}</th>)}</tr></thead>
+            <div style={{ overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
+              <thead><tr style={{ background: "#f8fafc" }}>{["", "Task", "Category", "Priority", "Assigned to", "Due", "Status", "Actions"].map((heading, index) => <th key={`${heading}-${index}`} style={thStyle}>{heading}</th>)}</tr></thead>
               <tbody>{filteredTasks.map((task) => {
                 const assignee = profileMap.get(task.assigned_to)
+                const isUpdating = updatingId === task.id
+                const isDone = task.status === "done"
                 return <tr key={task.id} style={{ borderTop: "1px solid #eef2f6" }}>
-                  <td style={{ ...tdStyle, width: 44 }}><button type="button" onClick={() => toggleDone(task)} title={task.status === "done" ? "Reopen task" : "Complete task"} style={{ ...iconButton, color: task.status === "done" ? "#16a34a" : "#94a3b8" }}><Check size={17} /></button></td>
-                  <td style={tdStyle}><div style={{ fontWeight: 700, color: task.status === "done" ? "#94a3b8" : "#172033", textDecoration: task.status === "done" ? "line-through" : "none" }}>{task.title}</div>{task.description && <div style={{ marginTop: 3, color: "#7b8794", fontSize: 11, maxWidth: 520 }}>{task.description}</div>}</td>
+                  <td style={{ ...tdStyle, width: 44 }}>
+                    <button type="button" onClick={() => toggleDone(task)} disabled={Boolean(updatingId)} title={isDone ? "Reopen task" : "Complete task"} style={{ ...checkboxButton, borderColor: isDone ? "#16a34a" : "#cbd5e1", background: isDone ? "#16a34a" : "#fff", opacity: isUpdating ? 0.55 : 1 }}>
+                      {isDone && <Check size={13} strokeWidth={3} />}
+                    </button>
+                  </td>
+                  <td style={tdStyle}><div style={{ fontWeight: 700, color: isDone ? "#94a3b8" : "#172033", textDecoration: isDone ? "line-through" : "none" }}>{task.title}</div>{task.description && <div style={{ marginTop: 3, color: "#7b8794", fontSize: 11, maxWidth: 520 }}>{task.description}</div>}</td>
                   <td style={tdStyle}><Badge text={task.category === "development" ? "Development" : "General"} tone="blue" /></td>
                   <td style={tdStyle}><Badge text={task.priority} tone={task.priority === "high" ? "red" : task.priority === "low" ? "gray" : "amber"} /></td>
                   <td style={tdStyle}>{personName(assignee)}</td>
                   <td style={tdStyle}>{task.due_date ? new Date(`${task.due_date}T00:00:00`).toLocaleDateString("en-GB") : "—"}</td>
-                  <td style={tdStyle}><Badge text={STATUS_OPTIONS.find(([value]) => value === task.status)?.[1] || task.status} tone={task.status === "done" ? "green" : task.status === "in_progress" ? "purple" : "gray"} /></td>
-                  <td style={{ ...tdStyle, textAlign: "right", whiteSpace: "nowrap" }}><button type="button" onClick={() => startEdit(task)} style={iconButton} title="Edit"><Pencil size={15} /></button><button type="button" onClick={() => deleteTask(task)} style={{ ...iconButton, marginLeft: 5, color: "#b91c1c" }} title="Delete"><Trash2 size={15} /></button></td>
+                  <td style={tdStyle}><Badge text={STATUS_OPTIONS.find(([value]) => value === task.status)?.[1] || task.status} tone={isDone ? "green" : task.status === "in_progress" ? "purple" : "gray"} /></td>
+                  <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                    {!isDone && <button type="button" onClick={() => toggleDone(task)} disabled={Boolean(updatingId)} style={{ ...completeButton, opacity: isUpdating ? 0.55 : 1 }} title="Complete task"><Check size={14} />{isUpdating ? "Saving..." : "Complete"}</button>}
+                    {isDone && <button type="button" onClick={() => toggleDone(task)} disabled={Boolean(updatingId)} style={{ ...reopenButton, opacity: isUpdating ? 0.55 : 1 }} title="Reopen task">Reopen</button>}
+                    <button type="button" onClick={() => startEdit(task)} style={{ ...iconButton, marginLeft: 5 }} title="Edit"><Pencil size={15} /></button>
+                    <button type="button" onClick={() => deleteTask(task)} style={{ ...iconButton, marginLeft: 5, color: "#b91c1c" }} title="Delete"><Trash2 size={15} /></button>
+                  </td>
                 </tr>
               })}</tbody>
             </table></div>
@@ -216,6 +237,9 @@ const labelStyle = { display: "block", marginBottom: 13, fontSize: 10, fontWeigh
 const thStyle = { padding: "10px 12px", textAlign: "left", color: "#7b8794", fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em" }
 const tdStyle = { padding: "11px 12px", color: "#334155", fontSize: 11, verticalAlign: "middle" }
 const iconButton = { border: 0, background: "transparent", padding: 5, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#64748b", cursor: "pointer", borderRadius: 5 }
+const checkboxButton = { width: 22, height: 22, padding: 0, border: "2px solid #cbd5e1", borderRadius: 6, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#fff", cursor: "pointer" }
+const completeButton = { height: 28, padding: "0 9px", border: "1px solid #bbf7d0", borderRadius: 6, background: "#f0fdf4", color: "#15803d", display: "inline-flex", alignItems: "center", gap: 5, fontFamily: "inherit", fontSize: 10, fontWeight: 800, cursor: "pointer" }
+const reopenButton = { height: 28, padding: "0 9px", border: "1px solid #d9dee5", borderRadius: 6, background: "#fff", color: "#64748b", fontFamily: "inherit", fontSize: 10, fontWeight: 800, cursor: "pointer" }
 const emptyState = { minHeight: 220, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 7, color: "#8a94a3", fontSize: 11 }
 const errorBox = { marginBottom: 14, padding: 10, borderRadius: 7, background: "#fef2f2", color: "#991b1b", fontSize: 11 }
 const modalBackdrop = { position: "fixed", inset: 0, zIndex: 1500, background: "rgba(15,23,42,.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }
