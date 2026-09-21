@@ -32,6 +32,16 @@ function statusLabel(status) {
   return "Running"
 }
 
+const EPVS_ACTIONS = {
+  "save current bill info": "save_current_bill_info",
+  "save calculation": "save_current_bill_info",
+  "get current design": "get_current_design",
+  "open design": "open_design",
+  "get current rates": "get_current_rates",
+  "save payment & calculation": "save_payment_calculation",
+  "download epvs calc": "download_epvs_calc",
+}
+
 export default function ActionHistory({ entityType = "appointment", entityId }) {
   const [actions, setActions] = useState([])
   const [loading, setLoading] = useState(true)
@@ -67,6 +77,67 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
 
   useEffect(() => {
     loadActions()
+  }, [entityType, entityId])
+
+  useEffect(() => {
+    if (!supabase || !entityId) return undefined
+
+    const handleActionClick = async (event) => {
+      const element = event.target?.closest?.("button, a")
+      if (!element) return
+      if (element.disabled || element.getAttribute("aria-disabled") === "true") return
+
+      const label = String(element.textContent || "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase()
+
+      const actionType = EPVS_ACTIONS[label]
+      if (!actionType) return
+
+      const now = new Date().toISOString()
+
+      try {
+        const { data: userData } = await supabase.auth.getUser()
+        const user = userData?.user
+        const triggeredBy =
+          String(
+            user?.user_metadata?.full_name ||
+            user?.user_metadata?.name ||
+            user?.email ||
+            "Unknown"
+          ).trim() || "Unknown"
+
+        const { error: insertError } = await supabase
+          .from("action_runs")
+          .insert({
+            action_type: actionType,
+            status: "completed",
+            entity_type: entityType,
+            entity_id: entityId,
+            triggered_by: triggeredBy,
+            started_at: now,
+            completed_at: now,
+            input_data: {
+              source: "epvs_calculator",
+              action_label: label,
+            },
+            output_data: {
+              triggered: true,
+            },
+          })
+
+        if (insertError) throw insertError
+
+        // Refresh the Activity panel immediately after the action row is created.
+        await loadActions()
+      } catch (actionError) {
+        console.error("Error recording EPVS action:", actionError)
+      }
+    }
+
+    document.addEventListener("click", handleActionClick)
+    return () => document.removeEventListener("click", handleActionClick)
   }, [entityType, entityId])
 
   return (
