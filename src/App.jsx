@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react"
-
 import { supabase } from "./lib/supabase"
 import EPVSCalculator from "./EPVSCalculator"
 import Sidebar from "./components/Sidebar"
@@ -17,6 +16,7 @@ import PickupAppointment from "./pages/PickupAppointment"
 import Login from "./pages/Login"
 import SalesKPI from "./pages/SalesKPI"
 import Users from "./pages/Users"
+import AdminUserPreview from "./components/AdminUserPreview"
 
 const DEALS_PAGE_SIZE = 50
 const REPORTING_PAGE_SIZE = 1000
@@ -24,6 +24,8 @@ const REPORTING_PAGE_SIZE = 1000
 function App() {
   const [session, setSession] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [profile, setProfile] = useState(null)
+  const [previewUser, setPreviewUser] = useState(null)
   const [contracts, setContracts] = useState([])
   const [allDeals, setAllDeals] = useState([])
   const [loading, setLoading] = useState(true)
@@ -53,52 +55,44 @@ function App() {
     return () => { mounted = false; authListener?.subscription?.unsubscribe() }
   }, [])
 
+  useEffect(() => {
+    if (!session || !supabase) { setProfile(null); return }
+    supabase.from("profiles").select("*").eq("email", session.user.email).maybeSingle().then(({ data, error: profileError }) => {
+      if (profileError) console.error("Error loading user profile:", profileError)
+      setProfile(data || null)
+    })
+  }, [session])
+
+  const isAdministrator = Number(profile?.permission_level) >= 4
+
+  useEffect(() => {
+    if (page === "users" && !isAdministrator) {
+      setPage("dashboard")
+      window.history.replaceState({}, "", "/")
+    }
+  }, [page, isAdministrator])
+
   async function loadContracts(pageNumber = 0, searchValue = query, statusValue = status) {
     setLoading(true); setError("")
     if (!supabase) { setError("Supabase is not configured. Check your environment variables."); setLoading(false); return }
-    const from = pageNumber * DEALS_PAGE_SIZE
-    const to = from + DEALS_PAGE_SIZE - 1
-    const search = String(searchValue || "").trim()
+    const from = pageNumber * DEALS_PAGE_SIZE, to = from + DEALS_PAGE_SIZE - 1, search = String(searchValue || "").trim()
     let request = supabase.from("deals").select("*").order("sale_date", { ascending: false }).range(from, to)
-    if (search) {
-      const escaped = search.replace(/[%_]/g, "\\$&").replace(/,/g, "\\,")
-      request = request.or(`customer_name.ilike.%${escaped}%,postcode.ilike.%${escaped}%,phone.ilike.%${escaped}%,contract_number.ilike.%${escaped}%`)
-    }
+    if (search) { const escaped = search.replace(/[%_]/g, "\\$&").replace(/,/g, "\\,"); request = request.or(`customer_name.ilike.%${escaped}%,postcode.ilike.%${escaped}%,phone.ilike.%${escaped}%,contract_number.ilike.%${escaped}%`) }
     if (statusValue && statusValue !== "all") request = request.eq("status", statusValue)
     const { data, error: supabaseError } = await request
-    if (supabaseError) { setError(supabaseError.message); setContracts([]); setHasMoreContracts(false) }
-    else { setContracts(data || []); setContractsPage(pageNumber); setHasMoreContracts((data || []).length === DEALS_PAGE_SIZE) }
+    if (supabaseError) { setError(supabaseError.message); setContracts([]); setHasMoreContracts(false) } else { setContracts(data || []); setContractsPage(pageNumber); setHasMoreContracts((data || []).length === DEALS_PAGE_SIZE) }
     setLoading(false)
   }
 
   async function loadAllDealsForReporting() {
     if (!supabase) return
     setReportingLoading(true)
-    try {
-      const results = []
-      let from = 0
-      while (true) {
-        const { data, error: supabaseError } = await supabase.from("deals").select("*").order("sale_date", { ascending: false }).range(from, from + REPORTING_PAGE_SIZE - 1)
-        if (supabaseError) throw supabaseError
-        const batch = data || []
-        results.push(...batch)
-        if (batch.length < REPORTING_PAGE_SIZE) break
-        from += REPORTING_PAGE_SIZE
-      }
-      setAllDeals(results)
-    } catch (err) {
-      console.error("Error loading all deals for reporting:", err)
-      setError(err?.message || "Unable to load deals for reporting.")
-      setAllDeals([])
-    } finally { setReportingLoading(false) }
+    try { const results = []; let from = 0; while (true) { const { data, error: supabaseError } = await supabase.from("deals").select("*").order("sale_date", { ascending: false }).range(from, from + REPORTING_PAGE_SIZE - 1); if (supabaseError) throw supabaseError; const batch = data || []; results.push(...batch); if (batch.length < REPORTING_PAGE_SIZE) break; from += REPORTING_PAGE_SIZE } setAllDeals(results) }
+    catch (err) { console.error("Error loading all deals for reporting:", err); setError(err?.message || "Unable to load deals for reporting."); setAllDeals([]) }
+    finally { setReportingLoading(false) }
   }
 
-  useEffect(() => {
-    if (!session) return
-    loadContracts(0, query, status)
-    loadAllDealsForReporting()
-  }, [session])
-
+  useEffect(() => { if (!session) return; loadContracts(0, query, status); loadAllDealsForReporting() }, [session])
   const filteredContracts = contracts
   const totalValue = allDeals.reduce((total, contract) => total + Number(contract.net_value || 0), 0)
   const averageValue = allDeals.length > 0 ? totalValue / allDeals.length : 0
@@ -106,12 +100,9 @@ function App() {
   const upcomingInstallations = allDeals.filter((contract) => contract.installation_date && contract.installation_date >= today).length
 
   function handleBackToDeals() { setSelected(null); setPage("contracts"); window.history.pushState({}, "", "/contracts") }
-  function handleDealUpdated(updatedDeal) {
-    setContracts((current) => current.map((contract) => contract.id === updatedDeal.id ? updatedDeal : contract))
-    setAllDeals((current) => current.map((contract) => contract.id === updatedDeal.id ? updatedDeal : contract))
-    setSelected(updatedDeal)
-  }
+  function handleDealUpdated(updatedDeal) { setContracts((current) => current.map((contract) => contract.id === updatedDeal.id ? updatedDeal : contract)); setAllDeals((current) => current.map((contract) => contract.id === updatedDeal.id ? updatedDeal : contract)); setSelected(updatedDeal) }
   function handlePageChange(newPage) {
+    if (newPage === "users" && !isAdministrator) return
     setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage(newPage)
     if (newPage === "contracts") { setQuery(""); setStatus("all"); loadContracts(0, "", "all") }
     window.history.pushState({}, "", newPage === "dashboard" ? "/" : `/${newPage}`)
@@ -121,8 +112,15 @@ function App() {
   function mapAppointment(appointment) { if (!appointment) return null; return { ...appointment, phone: appointment?.phone_number_1, email: appointment?.email_address } }
   function appointmentUrl(appointment) { return `/appointments/${encodeURIComponent(appointment.appointment_row_id)}` }
   function handleAppointmentSelect(appointment) { const mappedAppointment = mapAppointment(appointment); if (!mappedAppointment?.appointment_row_id) return; setSelected(null); setPickupAppointment(null); setSelectedAppointment(mappedAppointment); setPage("appointments"); window.history.pushState({}, "", appointmentUrl(mappedAppointment)) }
-  async function loadAppointmentFromUrl(appointmentId) { if (!supabase || !appointmentId) return; setError(""); const { data, error: appointmentError } = await supabase.from("appointments").select("*").eq("appointment_row_id", appointmentId).maybeSingle(); if (appointmentError) { console.error("Error loading appointment from URL:", appointmentError); setError(appointmentError.message); return } if (!data) { setError("Appointment not found."); window.history.replaceState({}, "", "/appointments"); setPage("appointments"); return } setSelected(null); setPickupAppointment(null); setSelectedAppointment(mapAppointment(data)); setPage("appointments") }
-  useEffect(() => { if (!session) return; function handlePopState() { const path = window.location.pathname.replace(/\/+$/, "") || "/"; const appointmentMatch = path.match(/^\/appointments\/([^/]+)$/); if (appointmentMatch) { loadAppointmentFromUrl(decodeURIComponent(appointmentMatch[1])); return } setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage(path === "/" || path === "/dashboard" ? "dashboard" : path.slice(1)) } handlePopState(); window.addEventListener("popstate", handlePopState); return () => window.removeEventListener("popstate", handlePopState) }, [session])
+  async function loadAppointmentFromUrl(appointmentId) {
+    if (!supabase || !appointmentId) return
+    setError("")
+    const { data, error: appointmentError } = await supabase.from("appointments").select("*").eq("appointment_row_id", appointmentId).maybeSingle()
+    if (appointmentError) { console.error("Error loading appointment from URL:", appointmentError); setError(appointmentError.message); return }
+    if (!data || (previewUser?.email && String(data.rep_allocated || "").toLowerCase() !== String(previewUser.email).toLowerCase())) { setError("Appointment not available in this user preview."); window.history.replaceState({}, "", "/appointments"); setPage("appointments"); return }
+    setSelected(null); setPickupAppointment(null); setSelectedAppointment(mapAppointment(data)); setPage("appointments")
+  }
+  useEffect(() => { if (!session) return; function handlePopState() { const path = window.location.pathname.replace(/\/+$/, "") || "/"; const appointmentMatch = path.match(/^\/appointments\/([^/]+)$/); if (appointmentMatch) { loadAppointmentFromUrl(decodeURIComponent(appointmentMatch[1])); return } setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage(path === "/" || path === "/dashboard" ? "dashboard" : path.slice(1)) } handlePopState(); window.addEventListener("popstate", handlePopState); return () => window.removeEventListener("popstate", handlePopState) }, [session, previewUser?.id])
   function handleOpenPickup() { if (selectedAppointment?.result) setPickupAppointment(selectedAppointment) }
   function handleBackToAppointments() { setPickupAppointment(null); setSelectedAppointment(null); setPage("appointments"); window.history.pushState({}, "", "/appointments") }
   function handleBackFromPickup() { setPickupAppointment(null) }
@@ -135,7 +133,6 @@ function App() {
   const headerPage = selected ? "customer" : selectedAppointment ? "appointment" : page
   if (authLoading) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f7fa", color: "#002d49", fontFamily: "Inter, Arial, sans-serif", fontSize: 14 }}>Loading CRM...</div>
   if (!session) return <Login />
-  return <div className="app"><Sidebar page={page} setPage={handlePageChange} mobile={mobile} setMobile={setMobile} onSignOut={handleSignOut} /><main><Header page={headerPage} setMobile={setMobile} />{error && page !== "epvs" && <div className="error"><b>Database error</b><span>{error}</span></div>}{pickupAppointment ? <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated} /> : selectedAppointment ? <div style={{ position: "relative" }}><style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}</style><div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 24px 0", background: "#fff" }}><AppointmentActions appointment={selectedAppointment} onUpdated={handleAppointmentUpdated} onConfirmLegacy={handleLegacyConfirm} onResultLegacy={handleLegacyResult} onOpenPickup={handleOpenPickup} /></div><div className="appointment-detail-host"><AppointmentDetail appointment={selectedAppointment} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated} /></div></div> : selected ? <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated} /> : page === "dashboard" ? <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={reportingLoading} setPage={handlePageChange} setSelected={setSelected} /> : page === "marketing-tv" ? <MarketingTV onSelectAppointment={handleAppointmentSelect} /> : page === "marketing-dashboard" ? <MarketingDashboard contracts={contracts} loading={loading} onSelectAppointment={handleAppointmentSelect} /> : page === "sales-kpi" ? <SalesKPI /> : page === "users" ? <Users /> : page === "contracts" ? <Contracts filtered={filteredContracts} loading={loading} query={query} setQuery={handleSearchChange} status={status} setStatus={handleStatusChange} setSelected={setSelected} page={contractsPage} pageSize={DEALS_PAGE_SIZE} hasMore={hasMoreContracts} onPreviousPage={() => loadContracts(Math.max(contractsPage - 1, 0), query, status)} onNextPage={() => loadContracts(contractsPage + 1, query, status)} /> : page === "appointments" ? <Appointments onSelectAppointment={handleAppointmentSelect} /> : page === "fitsheet" ? <FitSheet contracts={allDeals} loading={reportingLoading} setSelected={setSelected} onSelectDeal={setSelected} /> : page === "epvs" ? <EPVSCalculator /> : <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={reportingLoading} setPage={handlePageChange} setSelected={setSelected} />}</main></div>
+  return <div className="app"><Sidebar page={page} setPage={handlePageChange} mobile={mobile} setMobile={setMobile} onSignOut={handleSignOut} permissionLevel={profile?.permission_level} /><main><Header page={headerPage} setMobile={setMobile} />{error && page !== "epvs" && <div className="error"><b>Database error</b><span>{error}</span></div>}{isAdministrator && page === "users" && <AdminUserPreview activeUser={previewUser} onStart={(user) => { setPreviewUser(user); setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("appointments"); window.history.pushState({}, "", "/appointments") }} onStop={() => { setPreviewUser(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("users"); window.history.pushState({}, "", "/users") }} />}{isAdministrator && previewUser && <AdminUserPreview activeUser={previewUser} onStart={() => {}} onStop={() => { setPreviewUser(null); setSelectedAppointment(null); setPage("users"); window.history.pushState({}, "", "/users") }} />}{pickupAppointment ? <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated} /> : selectedAppointment ? <div style={{ position: "relative" }}><style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}</style><div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 24px 0", background: "#fff" }}><AppointmentActions appointment={selectedAppointment} onUpdated={handleAppointmentUpdated} onConfirmLegacy={handleLegacyConfirm} onResultLegacy={handleLegacyResult} onOpenPickup={handleOpenPickup} /></div><div className="appointment-detail-host"><AppointmentDetail appointment={selectedAppointment} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated} /></div></div> : selected ? <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated} /> : page === "dashboard" ? <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={reportingLoading} setPage={handlePageChange} setSelected={setSelected} /> : page === "marketing-tv" ? <MarketingTV onSelectAppointment={handleAppointmentSelect} /> : page === "marketing-dashboard" ? <MarketingDashboard contracts={contracts} loading={loading} onSelectAppointment={handleAppointmentSelect} /> : page === "sales-kpi" ? <SalesKPI /> : page === "users" && isAdministrator ? <Users /> : page === "contracts" ? <Contracts filtered={filteredContracts} loading={loading} query={query} setQuery={handleSearchChange} status={status} setStatus={handleStatusChange} setSelected={setSelected} page={contractsPage} pageSize={DEALS_PAGE_SIZE} hasMore={hasMoreContracts} onPreviousPage={() => loadContracts(Math.max(contractsPage - 1, 0), query, status)} onNextPage={() => loadContracts(contractsPage + 1, query, status)} /> : page === "appointments" ? <Appointments onSelectAppointment={handleAppointmentSelect} previewUser={previewUser} /> : page === "fitsheet" ? <FitSheet contracts={allDeals} loading={reportingLoading} setSelected={setSelected} onSelectDeal={setSelected} /> : page === "epvs" ? <EPVSCalculator /> : <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={reportingLoading} setPage={handlePageChange} setSelected={setSelected} />}</main></div>
 }
-
 export default App
