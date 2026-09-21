@@ -1,5 +1,7 @@
 import React, { useState } from "react"
-import { LayoutDashboard, FileText, ChevronDown, ChevronRight, BarChart3, CalendarDays, Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck, Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound, MessageCircle, Files, FilePlus, UserCog, FileCheck, LogOut, ClipboardList, Lock, KanbanSquare, Presentation } from "lucide-react"
+import { createPortal } from "react-dom"
+import { LayoutDashboard, FileText, ChevronDown, ChevronRight, BarChart3, CalendarDays, Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck, Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound, MessageCircle, Files, FilePlus, UserCog, FileCheck, LogOut, ClipboardList, Lock, KanbanSquare, Presentation, X } from "lucide-react"
+import SalesPresentations from "../pages/SalesPresentations"
 
 function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel = 1, department = "" }) {
   const numericPermissionLevel = Number(permissionLevel) || 0
@@ -9,6 +11,17 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
   const toggleFolder = (folder) => setOpenFolders((current) => ({ ...current, [folder]: !current[folder] }))
   const navigate = (pageName) => { setPage(pageName); setMobile(false) }
   const isActive = (pageName) => page === pageName
+
+  const presentationOverlay = isAdministrator && page === "sales-presentations" && typeof document !== "undefined"
+    ? createPortal(
+        <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: 250, zIndex: 10000, background: "#f5f7fa", overflow: "auto" }}>
+          <div style={{ maxWidth: 1500, margin: "0 auto", padding: "28px 28px 50px" }}>
+            <SalesPresentations />
+          </div>
+        </div>,
+        document.body
+      )
+    : null
 
   return <>
     {mobile && <div className="sidebar-overlay" onClick={() => setMobile(false)} />}
@@ -57,6 +70,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}><div className="sidebar-footer-icon"><Settings size={16} /></div><div><strong>CRM System</strong><span>v1.0</span></div></div>
       </div>
     </aside>
+    {presentationOverlay}
   </>
 }
 
