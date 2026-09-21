@@ -155,14 +155,6 @@ function App() {
 
   const isAdministrator = Number(profile?.permission_level) >= 4
 
-  /*
-   * These are the EFFECTIVE user details.
-   *
-   * If an administrator is previewing another user, use the previewed
-   * user's permissions/role/email. Otherwise use the logged-in user's.
-   *
-   * AppointmentActions uses these to control appointment actions.
-   */
   const effectivePermissionLevel =
     previewUser?.permission_level ?? profile?.permission_level ?? 0
 
@@ -714,18 +706,9 @@ function App() {
             >
               <AppointmentActions
                 appointment={selectedAppointment}
-
-                /*
-                 * IMPORTANT:
-                 * These are the EFFECTIVE permissions.
-                 * If an admin is previewing another user,
-                 * AppointmentActions receives the previewed
-                 * user's permission level, role and email.
-                 */
                 permissionLevel={effectivePermissionLevel}
                 role={effectiveRole}
                 userEmail={effectiveUserEmail}
-
                 onUpdated={handleAppointmentUpdated}
                 onConfirmLegacy={handleLegacyConfirm}
                 onResultLegacy={handleLegacyResult}
@@ -810,6 +793,8 @@ function App() {
               handleAppointmentSelect
             }
             previewUser={previewUser}
+            permissionLevel={effectivePermissionLevel}
+            role={effectiveRole}
           />
         ) : page === "fitsheet" ? (
           <FitSheet
