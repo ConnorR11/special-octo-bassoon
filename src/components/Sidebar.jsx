@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react"
-
 import {
-  LayoutDashboard, FileText, Calculator, ChevronDown, ChevronRight, Sun, Users,
-  BarChart3, CalendarDays, Wrench, PoundSterling, CreditCard, Headphones, Settings,
-  Target, ClipboardCheck, Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt,
-  PanelsTopLeft, UserRound, MessageCircle, Files, FilePlus, UserCog, FileCheck, LogOut,
+  LayoutDashboard, FileText, ChevronDown, ChevronRight, BarChart3, CalendarDays,
+  Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck,
+  Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound,
+  MessageCircle, Files, FilePlus, UserCog, FileCheck, LogOut,
 } from "lucide-react"
+import { supabase } from "../lib/supabase"
 
 function normaliseDepartment(value) {
   return String(value || "")
@@ -49,11 +49,66 @@ function Sidebar({
 }) {
   const numericPermissionLevel = Number(permissionLevel) || 0
   const isRestrictedDepartmentUser =
-    numericPermissionLevel === 1 ||
-    numericPermissionLevel === 2
+    numericPermissionLevel === 1 || numericPermissionLevel === 2
 
-  const departmentFolder =
-    getDepartmentFolder(department)
+  const [effectiveDepartment, setEffectiveDepartment] = useState(department)
+
+  useEffect(() => {
+    let mounted = true
+
+    async function loadDepartment() {
+      if (!supabase) return
+
+      try {
+        const { data: authData, error: authError } =
+          await supabase.auth.getUser()
+
+        if (authError || !authData?.user) return
+
+        const { data: previewId, error: previewError } =
+          await supabase.rpc("current_preview_profile_id")
+
+        if (previewError) {
+          console.error("Error loading sidebar preview profile:", previewError)
+        }
+
+        const profileId = previewId || null
+
+        let query = supabase
+          .from("profiles")
+          .select("department")
+
+        if (profileId) {
+          query = query.eq("id", profileId)
+        } else {
+          query = query.eq("auth_user_id", authData.user.id)
+        }
+
+        const { data, error } = await query.maybeSingle()
+
+        if (error) {
+          console.error("Error loading sidebar department:", error)
+          return
+        }
+
+        if (mounted) {
+          setEffectiveDepartment(
+            data?.department || department || ""
+          )
+        }
+      } catch (error) {
+        console.error("Error loading sidebar department:", error)
+      }
+    }
+
+    loadDepartment()
+
+    return () => {
+      mounted = false
+    }
+  }, [department])
+
+  const departmentFolder = getDepartmentFolder(effectiveDepartment)
 
   const canSeeFolder = (folder) => {
     if (!isRestrictedDepartmentUser) return true
@@ -73,9 +128,7 @@ function Sidebar({
   })
 
   useEffect(() => {
-    if (!isRestrictedDepartmentUser || !departmentFolder) {
-      return
-    }
+    if (!isRestrictedDepartmentUser || !departmentFolder) return
 
     setOpenFolders((current) => ({
       ...current,
@@ -107,10 +160,8 @@ function Sidebar({
       )}
 
       <aside className={`sidebar ${mobile ? "sidebar-open" : ""}`}>
-
         <div className="sidebar-brand">
           <div className="brand-mark">C</div>
-
           <div>
             <strong>Homeshield Scotland</strong>
             <span>CRM</span>
@@ -118,13 +169,9 @@ function Sidebar({
         </div>
 
         <nav className="sidebar-nav">
-
-          {/* HOME */}
           <button
             type="button"
-            className={`sidebar-item ${
-              isActive("dashboard") ? "active" : ""
-            }`}
+            className={`sidebar-item ${isActive("dashboard") ? "active" : ""}`}
             onClick={() => navigate("dashboard")}
           >
             <LayoutDashboard size={18} />
@@ -133,7 +180,6 @@ function Sidebar({
 
           <div className="sidebar-divider" />
 
-          {/* MARKETING */}
           {canSeeFolder("marketing") && (
             <Folder
               title="Marketing"
@@ -141,13 +187,7 @@ function Sidebar({
               open={openFolders.marketing}
               onClick={() => toggleFolder("marketing")}
             >
-              <NavItem
-                icon={BarChart3}
-                label="Marketing Dashboard"
-                active={isActive("marketing-dashboard")}
-                onClick={() => navigate("marketing-dashboard")}
-              />
-
+              <NavItem icon={BarChart3} label="Marketing Dashboard" active={isActive("marketing-dashboard")} onClick={() => navigate("marketing-dashboard")} />
               <NavItem icon={Target} label="Leads" disabled />
               <NavItem icon={Phone} label="Call Log" disabled />
               <NavItem icon={CalendarDays} label="Booked Leads" disabled />
@@ -156,7 +196,6 @@ function Sidebar({
             </Folder>
           )}
 
-          {/* SALES */}
           {canSeeFolder("sales") && (
             <Folder
               title="Sales"
@@ -164,43 +203,17 @@ function Sidebar({
               open={openFolders.sales}
               onClick={() => toggleFolder("sales")}
             >
-              <NavItem
-                icon={LayoutDashboard}
-                label="Mastersheet"
-                active={isActive("marketing-tv")}
-                onClick={() => navigate("marketing-tv")}
-              />
-
-              <NavItem
-                icon={CalendarDays}
-                label="Appointments"
-                active={isActive("appointments")}
-                onClick={() => navigate("appointments")}
-              />
-
-              <NavItem
-                icon={FileText}
-                label="Deals"
-                active={isActive("contracts")}
-                onClick={() => navigate("contracts")}
-              />
-
+              <NavItem icon={LayoutDashboard} label="Mastersheet" active={isActive("marketing-tv")} onClick={() => navigate("marketing-tv")} />
+              <NavItem icon={CalendarDays} label="Appointments" active={isActive("appointments")} onClick={() => navigate("appointments")} />
+              <NavItem icon={FileText} label="Deals" active={isActive("contracts")} onClick={() => navigate("contracts")} />
               <NavItem icon={FileCheck} label="Overstays" disabled />
               <NavItem icon={FileCheck} label="ECOFs" disabled />
               <NavItem icon={PoundSterling} label="Commissions" disabled />
-
-              <NavItem
-                icon={Trophy}
-                label="Sales KPI"
-                active={isActive("sales-kpi")}
-                onClick={() => navigate("sales-kpi")}
-              />
-
+              <NavItem icon={Trophy} label="Sales KPI" active={isActive("sales-kpi")} onClick={() => navigate("sales-kpi")} />
               <NavItem icon={BarChart3} label="Sales Performance" disabled />
             </Folder>
           )}
 
-          {/* PROCUREMENT */}
           {canSeeFolder("procurement") && (
             <Folder
               title="Procurement"
@@ -215,7 +228,6 @@ function Sidebar({
             </Folder>
           )}
 
-          {/* INSTALLATIONS */}
           {canSeeFolder("installation") && (
             <Folder
               title="Installations"
@@ -223,19 +235,12 @@ function Sidebar({
               open={openFolders.installation}
               onClick={() => toggleFolder("installation")}
             >
-              <NavItem
-                icon={ClipboardCheck}
-                label="Fit Sheet"
-                active={isActive("fitsheet")}
-                onClick={() => navigate("fitsheet")}
-              />
-
+              <NavItem icon={ClipboardCheck} label="Fit Sheet" active={isActive("fitsheet")} onClick={() => navigate("fitsheet")} />
               <NavItem icon={CalendarDays} label="Installations" disabled />
               <NavItem icon={AlertTriangle} label="Installation Issues" disabled />
             </Folder>
           )}
 
-          {/* REMEDIALS */}
           {canSeeFolder("customerService") && (
             <Folder
               title="Remedials"
@@ -249,7 +254,6 @@ function Sidebar({
             </Folder>
           )}
 
-          {/* ACCOUNTS */}
           {canSeeFolder("finance") && (
             <Folder
               title="Accounts"
@@ -263,7 +267,6 @@ function Sidebar({
             </Folder>
           )}
 
-          {/* DOCUMENTS */}
           {canSeeFolder("documents") && (
             <Folder
               title="Documents"
@@ -273,17 +276,10 @@ function Sidebar({
             >
               <NavItem icon={FileText} label="Company Brochures" disabled />
               <NavItem icon={Files} label="Customer Documents" disabled />
-
-              <NavItem
-                icon={FilePlus}
-                label="Templates"
-                active={isActive("templates")}
-                onClick={() => navigate("templates")}
-              />
+              <NavItem icon={FilePlus} label="Templates" active={isActive("templates")} onClick={() => navigate("templates")} />
             </Folder>
           )}
 
-          {/* ADMINISTRATION */}
           {isAdministrator && (
             <Folder
               title="Administration"
@@ -291,20 +287,12 @@ function Sidebar({
               open={openFolders.admin}
               onClick={() => toggleFolder("admin")}
             >
-              <NavItem
-                icon={UserCog}
-                label="Users"
-                active={isActive("users")}
-                onClick={() => navigate("users")}
-              />
-
+              <NavItem icon={UserCog} label="Users" active={isActive("users")} onClick={() => navigate("users")} />
               <NavItem icon={Settings} label="Settings" disabled />
             </Folder>
           )}
-
         </nav>
 
-        {/* FOOTER */}
         <div
           className="sidebar-footer"
           style={{
@@ -332,58 +320,33 @@ function Sidebar({
             }}
           >
             <LogOut size={16} />
-            <span style={{ fontWeight: 600 }}>
-              Sign out
-            </span>
+            <span style={{ fontWeight: 600 }}>Sign out</span>
           </button>
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-            }}
-          >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div className="sidebar-footer-icon">
               <Settings size={16} />
             </div>
-
             <div>
               <strong>CRM System</strong>
               <span>v1.0</span>
             </div>
           </div>
         </div>
-
       </aside>
     </>
   )
 }
 
-function Folder({
-  title,
-  icon: Icon,
-  open,
-  onClick,
-  children,
-}) {
+function Folder({ title, icon: Icon, open, onClick, children }) {
   return (
     <div className="sidebar-folder">
-      <button
-        type="button"
-        className="sidebar-folder-header"
-        onClick={onClick}
-      >
+      <button type="button" className="sidebar-folder-header" onClick={onClick}>
         <span className="sidebar-folder-left">
           <Icon size={17} />
           <span>{title}</span>
         </span>
-
-        {open ? (
-          <ChevronDown size={15} />
-        ) : (
-          <ChevronRight size={15} />
-        )}
+        {open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
       </button>
 
       {open && (
@@ -395,33 +358,19 @@ function Folder({
   )
 }
 
-function NavItem({
-  icon: Icon,
-  label,
-  active = false,
-  onClick,
-  disabled = false,
-}) {
+function NavItem({ icon: Icon, label, active = false, onClick, disabled = false }) {
   return (
     <button
       type="button"
-      className={`sidebar-subitem ${
-        active ? "active" : ""
-      } ${disabled ? "disabled" : ""}`}
+      className={`sidebar-subitem ${active ? "active" : ""} ${disabled ? "disabled" : ""}`}
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
     >
       <span className="sidebar-subitem-icon">
         <Icon size={15} />
       </span>
-
       <span>{label}</span>
-
-      {disabled && (
-        <span className="coming-soon">
-          Soon
-        </span>
-      )}
+      {disabled && <span className="coming-soon">Soon</span>}
     </button>
   )
 }
