@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react"
-import { Plus, Save, Trash2, GripVertical, ChevronLeft, ChevronRight, Eye, Presentation, Image, Video, BarChart3, FileText } from "lucide-react"
+import { Plus, Save, Trash2, GripVertical, ChevronLeft, ChevronRight, Eye, Presentation } from "lucide-react"
 import { supabase } from "../lib/supabase"
 import SalesPresenter from "../components/SalesPresenter"
 
-const EMPTY_SLIDE = { title: "", subtitle: "", body: "", image_url: "", video_url: "", slide_type: "content", settings: {} }
+const EMPTY_SLIDE = { title: "", subtitle: "", body: "", settings: {} }
 
 export default function SalesPresentations() {
   const [presentations, setPresentations] = useState([])
@@ -63,7 +63,7 @@ export default function SalesPresentations() {
   async function saveSlide() {
     if (!selectedSlide) return
     setSaving(true); setError("")
-    const { data, error: updateError } = await supabase.from("sales_presentation_slides").update({ title: selectedSlide.title, subtitle: selectedSlide.subtitle, body: selectedSlide.body, image_url: selectedSlide.image_url, video_url: selectedSlide.video_url, slide_type: selectedSlide.slide_type, settings: selectedSlide.settings || {}, updated_at: new Date().toISOString() }).eq("id", selectedSlide.id).select().single()
+    const { data, error: updateError } = await supabase.from("sales_presentation_slides").update({ title: selectedSlide.title, subtitle: selectedSlide.subtitle, body: selectedSlide.body, settings: selectedSlide.settings || {}, updated_at: new Date().toISOString() }).eq("id", selectedSlide.id).select().single()
     if (updateError) setError(updateError.message)
     else setSlides((current) => current.map((item) => item.id === data.id ? data : item))
     setSaving(false)
@@ -94,8 +94,6 @@ export default function SalesPresentations() {
 
   function updateSlide(field, value) { setSlides((current) => current.map((item) => item.id === selectedSlideId ? { ...item, [field]: value } : item)) }
 
-  function slideIcon(type) { return type === "image" ? <Image size={15} /> : type === "video" ? <Video size={15} /> : type === "stats" ? <BarChart3 size={15} /> : <FileText size={15} /> }
-
   if (preview && selectedPresentation) {
     const previewAppointment = selectedPresentation.presentation_type === "solar"
       ? { name: "Presentation Preview", product: "Solar" }
@@ -114,17 +112,14 @@ export default function SalesPresentations() {
       {selectedPresentation ? <>
         <div className="card" style={{ padding: 14 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}><div><input value={selectedPresentation.name} onChange={(e) => setPresentations((current) => current.map((item) => item.id === selectedId ? { ...item, name: e.target.value } : item))} onBlur={() => updatePresentation({ name: selectedPresentation.name })} style={titleInput} /><div style={{ fontSize: 10, color: "#8b949e", marginTop: 4 }}>{selectedPresentation.presentation_type === "solar" ? "Solar presentation" : "Windows & Doors presentation"}</div></div><label style={{ display: "flex", gap: 7, alignItems: "center", fontSize: 11 }}><input type="checkbox" checked={selectedPresentation.active} onChange={(e) => updatePresentation({ active: e.target.checked })} /> Active</label></div>
-          <div style={{ display: "grid", gap: 8 }}>{slides.map((slide, index) => <button key={slide.id} onClick={() => setSelectedSlideId(slide.id)} style={{ ...slideRow, background: slide.id === selectedSlideId ? "#f4f8fc" : "#fff", borderColor: slide.id === selectedSlideId ? "#b8dcff" : "#e5e9ed" }}><GripVertical size={15} color="#aab2b9" /><span style={slideNumber}>{index + 1}</span><span style={{ flex: 1, minWidth: 0, textAlign: "left" }}><strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{slide.title || "Untitled slide"}</strong><small style={{ color: "#8b949e", display: "flex", gap: 5, alignItems: "center", marginTop: 3 }}>{slideIcon(slide.slide_type)} {slide.slide_type}</small></span></button>)}</div>
+          <div style={{ display: "grid", gap: 8 }}>{slides.map((slide, index) => <button key={slide.id} onClick={() => setSelectedSlideId(slide.id)} style={{ ...slideRow, background: slide.id === selectedSlideId ? "#f4f8fc" : "#fff", borderColor: slide.id === selectedSlideId ? "#b8dcff" : "#e5e9ed" }}><GripVertical size={15} color="#aab2b9" /><span style={slideNumber}>{index + 1}</span><span style={{ flex: 1, minWidth: 0, textAlign: "left" }}><strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{slide.title || "Untitled slide"}</strong><small style={{ color: "#8b949e", display: "block", marginTop: 3 }}>Slide {index + 1}</small></span></button>)}</div>
           <button onClick={addSlide} disabled={saving} style={{ ...buttonStyle, marginTop: 12, width: "100%", justifyContent: "center" }}><Plus size={14} /> Add slide</button>
         </div>
         <div className="card" style={{ padding: 14 }}>{selectedSlide ? <>
           <div style={panelTitle}>Slide {slides.findIndex((item) => item.id === selectedSlideId) + 1}</div>
-          <label style={labelStyle}>Slide type<select value={selectedSlide.slide_type} onChange={(e) => updateSlide("slide_type", e.target.value)} style={fieldStyle}><option value="content">Content</option><option value="image">Image</option><option value="stats">Stats</option><option value="video">Video</option></select></label>
           <label style={labelStyle}>Title<input value={selectedSlide.title} onChange={(e) => updateSlide("title", e.target.value)} style={fieldStyle} /></label>
           <label style={labelStyle}>Subtitle<input value={selectedSlide.subtitle || ""} onChange={(e) => updateSlide("subtitle", e.target.value)} style={fieldStyle} /></label>
           <label style={labelStyle}>Body<textarea value={selectedSlide.body || ""} onChange={(e) => updateSlide("body", e.target.value)} rows={7} style={{ ...fieldStyle, resize: "vertical" }} /></label>
-          <label style={labelStyle}>Image URL<input value={selectedSlide.image_url || ""} onChange={(e) => updateSlide("image_url", e.target.value)} style={fieldStyle} placeholder="https://..." /></label>
-          <label style={labelStyle}>Video URL<input value={selectedSlide.video_url || ""} onChange={(e) => updateSlide("video_url", e.target.value)} style={fieldStyle} placeholder="https://..." /></label>
           <div style={{ display: "flex", gap: 7, marginTop: 14 }}><button onClick={() => moveSlide(-1)} style={iconButton} title="Move up"><ChevronLeft size={15} /></button><button onClick={() => moveSlide(1)} style={iconButton} title="Move down"><ChevronRight size={15} /></button><button onClick={deleteSlide} style={{ ...iconButton, color: "#b42318" }} title="Delete"><Trash2 size={15} /></button><button onClick={saveSlide} disabled={saving} style={{ ...buttonStyle, marginLeft: "auto" }}><Save size={14} /> {saving ? "Saving..." : "Save slide"}</button></div>
         </> : <div style={{ padding: 40, textAlign: "center", color: "#8a939a", fontSize: 11 }}>Select a slide to edit it.</div>}</div>
       </> : <div className="card" style={{ gridColumn: "2 / span 2", padding: 50, textAlign: "center" }}>No presentation selected.</div>}
