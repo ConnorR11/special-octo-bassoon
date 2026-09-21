@@ -220,27 +220,8 @@ export default function Installations() {
     }))
   }, [filteredDeals])
 
-  function openDeal(deal) {
-    const appointmentId = deal?.appointment_row_id
-
-    if (appointmentId) {
-      window.history.pushState(
-        {},
-        "",
-        `/appointments/${encodeURIComponent(appointmentId)}`
-      )
-      window.dispatchEvent(new PopStateEvent("popstate"))
-      return
-    }
-
-    const dealId = getDealId(deal)
-    if (!dealId) return
-
-    window.history.pushState(
-      {},
-      "",
-      `/deals/${encodeURIComponent(dealId)}`
-    )
+  function openDeal() {
+    window.history.pushState({}, "", "/contracts")
     window.dispatchEvent(new PopStateEvent("popstate"))
   }
 
