@@ -74,24 +74,47 @@ export default function Installations() {
       let viewerProfile = profile
 
       if (!viewerProfile) {
-        const { data: authData, error: authError } =
-          await supabase.auth.getUser()
+        let previewId = null
 
-        if (authError) throw authError
+        const { data: previewData, error: previewError } =
+          await supabase.rpc("current_preview_profile_id")
 
-        const authUserId = authData?.user?.id
+        if (!previewError) {
+          previewId = previewData || null
+        }
 
-        if (authUserId) {
-          const { data, error: profileError } = await supabase
+        if (previewId) {
+          const { data, error: previewProfileError } = await supabase
             .from("profiles")
             .select("id, auth_user_id, email, full_name, role, permission_level, branch")
-            .eq("auth_user_id", authUserId)
+            .eq("id", previewId)
             .maybeSingle()
 
-          if (profileError) throw profileError
+          if (previewProfileError) throw previewProfileError
           viewerProfile = data || null
-          setProfile(viewerProfile)
         }
+
+        if (!viewerProfile) {
+          const { data: authData, error: authError } =
+            await supabase.auth.getUser()
+
+          if (authError) throw authError
+
+          const authUserId = authData?.user?.id
+
+          if (authUserId) {
+            const { data, error: profileError } = await supabase
+              .from("profiles")
+              .select("id, auth_user_id, email, full_name, role, permission_level, branch")
+              .eq("auth_user_id", authUserId)
+              .maybeSingle()
+
+            if (profileError) throw profileError
+            viewerProfile = data || null
+          }
+        }
+
+        setProfile(viewerProfile)
       }
 
       const permissionLevel = Number(viewerProfile?.permission_level) || 0
