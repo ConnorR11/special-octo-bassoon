@@ -5,6 +5,7 @@ import {
   MapPin,
   UserRound,
   RefreshCw,
+  KanbanSquare,
 } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
@@ -235,13 +236,16 @@ export default function Installations({ setSelected }) {
           marginBottom: 18,
         }}
       >
-        <div>
-          <h1 style={{ margin: 0, fontSize: 22, color: "#222" }}>
-            Installations
-          </h1>
-          <p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>
-            Read-only installation board grouped by Pipedrive stage
-          </p>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <KanbanSquare size={24} color="#2499ed" />
+          <div>
+            <h1 style={{ margin: 0, fontSize: 22, color: "#222" }}>
+              Kanban
+            </h1>
+            <p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>
+              Read-only installation board grouped by Pipedrive stage
+            </p>
+          </div>
         </div>
 
         <button
