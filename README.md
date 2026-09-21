@@ -21,3 +21,6 @@ Open the local URL Vite gives you.
 npm run build
 
 The app reads the `public.deals` table directly. It does not yet write to the database or connect to Pipedrive.
+
+## Presenter
+The Sales Presenter resolves customer placeholders from the appointment record, using `appointment.name` for `{{customer_name}}`.
