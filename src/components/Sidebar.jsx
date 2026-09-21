@@ -1,7 +1,5 @@
 import React, { useState } from "react"
-import { createPortal } from "react-dom"
-import { LayoutDashboard, FileText, ChevronDown, ChevronRight, BarChart3, CalendarDays, Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck, Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound, MessageCircle, Files, FilePlus, UserCog, FileCheck, LogOut, ClipboardList, Lock, KanbanSquare, Presentation, X } from "lucide-react"
-import SalesPresentations from "../pages/SalesPresentations"
+import { LayoutDashboard, FileText, ChevronDown, ChevronRight, BarChart3, CalendarDays, Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck, Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound, MessageCircle, Files, FilePlus, UserCog, FileCheck, LogOut, ClipboardList, Lock, KanbanSquare, Presentation } from "lucide-react"
 
 function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel = 1, department = "" }) {
   const numericPermissionLevel = Number(permissionLevel) || 0
@@ -11,19 +9,63 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
   const toggleFolder = (folder) => setOpenFolders((current) => ({ ...current, [folder]: !current[folder] }))
   const navigate = (pageName) => { setPage(pageName); setMobile(false) }
   const isActive = (pageName) => page === pageName
-  const presentationOverlay = isAdministrator && page === "sales-presentations" && typeof document !== "undefined" ? createPortal(<div style={{ position: "fixed", inset: 0, zIndex: 10000, background: "#f5f7fa", overflow: "auto" }}><button type="button" onClick={() => navigate("dashboard")} style={{ position: "fixed", top: 14, right: 18, zIndex: 10001, display: "inline-flex", alignItems: "center", gap: 6, height: 34, padding: "0 11px", border: "1px solid #d8e0e6", borderRadius: 7, background: "#fff", color: "#344454", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: 700, boxShadow: "0 2px 8px rgba(0,0,0,.08)" }}><X size={14} /> Close</button><div style={{ maxWidth: 1500, margin: "0 auto", padding: "28px 28px 50px" }}><SalesPresentations /></div></div>, document.body) : null
-  return <><>{mobile && <div className="sidebar-overlay" onClick={() => setMobile(false)} />}</><aside className={`sidebar ${mobile ? "sidebar-open" : ""}`}><div className="sidebar-brand"><div className="brand-mark">C</div><div><strong>Homeshield Scotland</strong><span>CRM</span></div></div><nav className="sidebar-nav">
-    <button type="button" className={`sidebar-item ${isActive("dashboard") ? "active" : ""}`} onClick={() => navigate("dashboard")}><LayoutDashboard size={18} /><span>Home</span></button><div className="sidebar-divider" />
-    <Folder title="Marketing" icon={Megaphone} open={openFolders.marketing} onClick={() => toggleFolder("marketing")}><NavItem icon={BarChart3} label="Marketing Dashboard" active={isActive("marketing-dashboard")} onClick={() => navigate("marketing-dashboard")} disabled={!canAccessMarketingDashboard} locked={!canAccessMarketingDashboard} /><NavItem icon={Target} label="Leads" disabled /><NavItem icon={Phone} label="Call Log" disabled /><NavItem icon={CalendarDays} label="Booked Leads" disabled /><NavItem icon={Handshake} label="Commissions" disabled /><NavItem icon={Trophy} label="Canvasser KPI" disabled /></Folder>
-    <Folder title="Sales" icon={Target} open={openFolders.sales} onClick={() => toggleFolder("sales")}><NavItem icon={LayoutDashboard} label="Mastersheet" active={isActive("marketing-tv")} onClick={() => navigate("marketing-tv")} /><NavItem icon={CalendarDays} label="Appointments" active={isActive("appointments")} onClick={() => navigate("appointments")} /><NavItem icon={FileText} label="Deals" active={isActive("contracts")} onClick={() => navigate("contracts")} /><NavItem icon={FileCheck} label="Overstays" disabled /><NavItem icon={FileCheck} label="ECOFs" disabled /><NavItem icon={PoundSterling} label="Commissions" disabled /><NavItem icon={Trophy} label="Sales KPI" active={isActive("sales-kpi")} onClick={() => navigate("sales-kpi")} /><NavItem icon={BarChart3} label="Sales Performance" disabled /></Folder>
-    <Folder title="Procurement" icon={Wrench} open={openFolders.procurement} onClick={() => toggleFolder("procurement")}><NavItem icon={ClipboardCheck} label="Surveys" disabled /><NavItem icon={CalendarDays} label="Cover Calls" disabled /><NavItem icon={AlertTriangle} label="Costing" disabled /><NavItem icon={AlertTriangle} label="Ordering" disabled /></Folder>
-    <Folder title="Installations" icon={Wrench} open={openFolders.installation} onClick={() => toggleFolder("installation")}><NavItem icon={ClipboardCheck} label="Fit Sheet" active={isActive("fitsheet")} onClick={() => navigate("fitsheet")} /><NavItem icon={KanbanSquare} label="Kanban" active={isActive("installations")} onClick={() => navigate("installations")} /><NavItem icon={AlertTriangle} label="Installation Issues" disabled /></Folder>
-    <Folder title="Remedials" icon={Headphones} open={openFolders.customerService} onClick={() => toggleFolder("customerService")}><NavItem icon={UserRound} label="Customers" disabled /><NavItem icon={MessageCircle} label="Follow-ups" disabled /><NavItem icon={AlertTriangle} label="Complaints" disabled /></Folder>
-    <Folder title="Accounts" icon={PoundSterling} open={openFolders.finance} onClick={() => toggleFolder("finance")}><NavItem icon={PoundSterling} label="Revenue" disabled /><NavItem icon={CreditCard} label="Payments" disabled /><NavItem icon={Receipt} label="Invoices" disabled /></Folder>
-    <Folder title="Documents" icon={Files} open={openFolders.documents} onClick={() => toggleFolder("documents")}><NavItem icon={FileText} label="Company Brochures" disabled /><NavItem icon={Files} label="Customer Documents" disabled /><NavItem icon={FilePlus} label="Templates" active={isActive("templates")} onClick={() => navigate("templates")} /></Folder>
-    {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}><NavItem icon={UserCog} label="Users" active={isActive("users")} onClick={() => navigate("users")} /><NavItem icon={ClipboardList} label="Tasks" active={isActive("tasks")} onClick={() => navigate("tasks")} /><NavItem icon={Presentation} label="Sales Presentations" active={isActive("sales-presentations")} onClick={() => navigate("sales-presentations")} /><NavItem icon={Settings} label="Settings" disabled /></Folder>}
-  </nav><div className="sidebar-footer" style={{ marginTop: "auto", flexDirection: "column", alignItems: "stretch", gap: 10 }}><button type="button" onClick={onSignOut} style={{ width: "100%", border: 0, background: "transparent", color: "inherit", display: "flex", alignItems: "center", gap: 10, padding: "8px 0", cursor: "pointer", font: "inherit", textAlign: "left" }}><LogOut size={16} /><span style={{ fontWeight: 600 }}>Sign out</span></button><div style={{ display: "flex", alignItems: "center", gap: 10 }}><div className="sidebar-footer-icon"><Settings size={16} /></div><div><strong>CRM System</strong><span>v1.0</span></div></div></div></aside>{presentationOverlay}</>
+
+  return <>
+    {mobile && <div className="sidebar-overlay" onClick={() => setMobile(false)} />}
+    <aside className={`sidebar ${mobile ? "sidebar-open" : ""}`}>
+      <div className="sidebar-brand">
+        <div className="brand-mark">C</div>
+        <div><strong>Homeshield Scotland</strong><span>CRM</span></div>
+      </div>
+      <nav className="sidebar-nav">
+        <button type="button" className={`sidebar-item ${isActive("dashboard") ? "active" : ""}`} onClick={() => navigate("dashboard")}><LayoutDashboard size={18} /><span>Home</span></button>
+        <div className="sidebar-divider" />
+        <Folder title="Marketing" icon={Megaphone} open={openFolders.marketing} onClick={() => toggleFolder("marketing")}>
+          <NavItem icon={BarChart3} label="Marketing Dashboard" active={isActive("marketing-dashboard")} onClick={() => navigate("marketing-dashboard")} disabled={!canAccessMarketingDashboard} locked={!canAccessMarketingDashboard} />
+          <NavItem icon={Target} label="Leads" disabled /><NavItem icon={Phone} label="Call Log" disabled /><NavItem icon={CalendarDays} label="Booked Leads" disabled /><NavItem icon={Handshake} label="Commissions" disabled /><NavItem icon={Trophy} label="Canvasser KPI" disabled />
+        </Folder>
+        <Folder title="Sales" icon={Target} open={openFolders.sales} onClick={() => toggleFolder("sales")}>
+          <NavItem icon={LayoutDashboard} label="Mastersheet" active={isActive("marketing-tv")} onClick={() => navigate("marketing-tv")} />
+          <NavItem icon={CalendarDays} label="Appointments" active={isActive("appointments")} onClick={() => navigate("appointments")} />
+          <NavItem icon={FileText} label="Deals" active={isActive("contracts")} onClick={() => navigate("contracts")} />
+          <NavItem icon={FileCheck} label="Overstays" disabled /><NavItem icon={FileCheck} label="ECOFs" disabled /><NavItem icon={PoundSterling} label="Commissions" disabled /><NavItem icon={Trophy} label="Sales KPI" active={isActive("sales-kpi")} onClick={() => navigate("sales-kpi")} /><NavItem icon={BarChart3} label="Sales Performance" disabled />
+        </Folder>
+        <Folder title="Procurement" icon={Wrench} open={openFolders.procurement} onClick={() => toggleFolder("procurement")}>
+          <NavItem icon={ClipboardCheck} label="Surveys" disabled /><NavItem icon={CalendarDays} label="Cover Calls" disabled /><NavItem icon={AlertTriangle} label="Costing" disabled /><NavItem icon={AlertTriangle} label="Ordering" disabled />
+        </Folder>
+        <Folder title="Installations" icon={Wrench} open={openFolders.installation} onClick={() => toggleFolder("installation")}>
+          <NavItem icon={ClipboardCheck} label="Fit Sheet" active={isActive("fitsheet")} onClick={() => navigate("fitsheet")} /><NavItem icon={KanbanSquare} label="Kanban" active={isActive("installations")} onClick={() => navigate("installations")} /><NavItem icon={AlertTriangle} label="Installation Issues" disabled />
+        </Folder>
+        <Folder title="Remedials" icon={Headphones} open={openFolders.customerService} onClick={() => toggleFolder("customerService")}>
+          <NavItem icon={UserRound} label="Customers" disabled /><NavItem icon={MessageCircle} label="Follow-ups" disabled /><NavItem icon={AlertTriangle} label="Complaints" disabled />
+        </Folder>
+        <Folder title="Accounts" icon={PoundSterling} open={openFolders.finance} onClick={() => toggleFolder("finance")}>
+          <NavItem icon={PoundSterling} label="Revenue" disabled /><NavItem icon={CreditCard} label="Payments" disabled /><NavItem icon={Receipt} label="Invoices" disabled />
+        </Folder>
+        <Folder title="Documents" icon={Files} open={openFolders.documents} onClick={() => toggleFolder("documents")}>
+          <NavItem icon={FileText} label="Company Brochures" disabled /><NavItem icon={Files} label="Customer Documents" disabled /><NavItem icon={FilePlus} label="Templates" active={isActive("templates")} onClick={() => navigate("templates")} />
+        </Folder>
+        {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}>
+          <NavItem icon={UserCog} label="Users" active={isActive("users")} onClick={() => navigate("users")} />
+          <NavItem icon={ClipboardList} label="Tasks" active={isActive("tasks")} onClick={() => navigate("tasks")} />
+          <NavItem icon={Presentation} label="Sales Presentations" active={isActive("sales-presentations")} onClick={() => navigate("sales-presentations")} />
+          <NavItem icon={Settings} label="Settings" disabled />
+        </Folder>}
+      </nav>
+      <div className="sidebar-footer" style={{ marginTop: "auto", flexDirection: "column", alignItems: "stretch", gap: 10 }}>
+        <button type="button" onClick={onSignOut} style={{ width: "100%", border: 0, background: "transparent", color: "inherit", display: "flex", alignItems: "center", gap: 10, padding: "8px 0", cursor: "pointer", font: "inherit", textAlign: "left" }}><LogOut size={16} /><span style={{ fontWeight: 600 }}>Sign out</span></button>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}><div className="sidebar-footer-icon"><Settings size={16} /></div><div><strong>CRM System</strong><span>v1.0</span></div></div>
+      </div>
+    </aside>
+  </>
 }
-function Folder({ title, icon: Icon, open, onClick, children }) { return <div className="sidebar-folder"><button type="button" className="sidebar-folder-header" onClick={onClick}><span className="sidebar-folder-left"><Icon size={17} /><span>{title}</span></span>{open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</button>{open && <div className="sidebar-folder-items">{children}</div>}</div> }
-function NavItem({ icon: Icon, label, active = false, onClick, disabled = false, locked = false }) { return <button type="button" className={`sidebar-subitem ${active ? "active" : ""} ${disabled ? "disabled" : ""}`} onClick={disabled ? undefined : onClick} disabled={disabled}><span className="sidebar-subitem-icon"><Icon size={15} /></span><span>{label}</span>{locked ? <Lock size={13} color="#b8c0c8" style={{ marginLeft: "auto" }} /> : disabled ? <span className="coming-soon">Soon</span> : null}</button> }
+
+function Folder({ title, icon: Icon, open, onClick, children }) {
+  return <div className="sidebar-folder"><button type="button" className="sidebar-folder-header" onClick={onClick}><span className="sidebar-folder-left"><Icon size={17} /><span>{title}</span></span>{open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</button>{open && <div className="sidebar-folder-items">{children}</div>}</div>
+}
+
+function NavItem({ icon: Icon, label, active = false, onClick, disabled = false, locked = false }) {
+  return <button type="button" className={`sidebar-subitem ${active ? "active" : ""} ${disabled ? "disabled" : ""}`} onClick={disabled ? undefined : onClick} disabled={disabled}><span className="sidebar-subitem-icon"><Icon size={15} /></span><span>{label}</span>{locked ? <Lock size={13} color="#b8c0c8" style={{ marginLeft: "auto" }} /> : disabled ? <span className="coming-soon">Soon</span> : null}</button>
+}
+
 export default Sidebar
