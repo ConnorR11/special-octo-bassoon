@@ -11,11 +11,13 @@ import {
   RotateCcw,
   X,
   FileDown,
+  Presentation,
 } from "lucide-react"
 import { supabase } from "../lib/supabase"
 import AllocateBranch from "./AllocateBranch"
 import AllocateSalesRep from "./AllocateSalesRep"
 import RepConfirmation from "./RepConfirmation"
+import SalesPresenter from "./SalesPresenter"
 
 function getSubmittedBy(user) {
   const metadataName = String(
@@ -904,6 +906,9 @@ export default function AppointmentActions({
   const [open, setOpen] =
     useState(false)
 
+  const [showSalesPresenter, setShowSalesPresenter] =
+    useState(false)
+
   const [showEdit, setShowEdit] =
     useState(false)
 
@@ -1349,6 +1354,48 @@ export default function AppointmentActions({
     }
   }
 
+  async function openSalesPresenter() {
+    const presentationType = solarAppointment ? "solar" : "windows"
+    setOpen(false)
+
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser()
+      if (userError) throw userError
+      const triggeredBy = getSubmittedBy(userData?.user)
+      const { data: presentation, error: presentationError } = await supabase
+        .from("sales_presentations")
+        .select("id,name,presentation_type")
+        .eq("presentation_type", presentationType)
+        .eq("active", true)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle()
+      if (presentationError) throw presentationError
+
+      const now = new Date().toISOString()
+      const { error: actionError } = await supabase.from("action_runs").insert({
+        action_type: "sales_presenter",
+        status: "completed",
+        entity_type: "appointment",
+        entity_id: appointment?.appointment_row_id,
+        triggered_by: triggeredBy,
+        started_at: now,
+        completed_at: now,
+        input_data: {
+          presentation_type: presentationType,
+          presentation_id: presentation?.id || null,
+          presentation_name: presentation?.name || null,
+        },
+        output_data: { launched: true, presentation_type: presentationType },
+      })
+      if (actionError) throw actionError
+    } catch (err) {
+      console.error("Sales Presenter action failed:", err)
+    }
+
+    setShowSalesPresenter(true)
+  }
+
   const setField = (
     field,
     value
@@ -1614,6 +1661,13 @@ export default function AppointmentActions({
                 Result Appointment
               </MenuButton>
 
+              <MenuButton
+                icon={Presentation}
+                onClick={openSalesPresenter}
+              >
+                Sales Presenter
+              </MenuButton>
+
               <div
                 style={{
                   height: 1,
@@ -1698,6 +1752,13 @@ export default function AppointmentActions({
           </>
         )}
       </div>
+
+      {showSalesPresenter && (
+        <SalesPresenter
+          appointment={appointment}
+          onClose={() => setShowSalesPresenter(false)}
+        />
+      )}
 
       {showEdit && (
         <div
