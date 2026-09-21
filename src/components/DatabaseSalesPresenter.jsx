@@ -23,66 +23,69 @@ function interpolate(value, appointment) {
   return String(value).replace(/\{\{\s*([a-z0-9_]+)\s*\}\}/gi, (_, key) => replacements[key.toLowerCase()] ?? "")
 }
 
-function CoverIcon({ type, size = 14 }) {
+function SlideOneIcon({ type, size = 14 }) {
   const Icon = type === "battery" ? BatteryCharging : type === "money" ? PoundSterling : Sun
   return <Icon size={size} />
 }
 
-function DatabaseCover({ slide, appointment }) {
+function SlideOne({ slide, appointment }) {
   const s = slide?.settings || {}
-  const cover = s.cover || {}
-  const benefits = Array.isArray(s.benefits) && s.benefits.length ? s.benefits : ["Generate", "Store", "Save"]
-  const benefitIcons = Array.isArray(cover.benefit_icons) && cover.benefit_icons.length ? cover.benefit_icons : ["sun", "battery", "money"]
+  const visual = s.visual || s.cover || {}
+  const benefits = Array.isArray(s.benefits) && s.benefits.length ? s.benefits : []
+  const benefitIcons = Array.isArray(visual.benefit_icons) && visual.benefit_icons.length ? visual.benefit_icons : []
   const customer = interpolate("{{customer_name}}", appointment)
   const title = interpolate(slide?.title || "", appointment)
   const subtitle = interpolate(slide?.subtitle || "", appointment)
   const eyebrow = interpolate(s.eyebrow || "", appointment)
   const tagline = interpolate(s.tagline || "", appointment)
-  const background = cover.background || "radial-gradient(circle at 70% 38%, #12639a 0%, #083f69 35%, #032d50 68%, #021f38 100%)"
-  const accent = cover.accent || "#7dd3fc"
-  const logoUrl = cover.logo_url || "/homeshield-logo.png"
-  const heroSvg = cover.hero_svg || ""
+  const background = visual.background || "#07111c"
+  const accent = visual.accent || "#7dd3fc"
+  const logoUrl = visual.logo_url || "/homeshield-logo.png"
+  const heroSvg = visual.hero_svg || ""
+  const textColor = visual.text_color || "#fff"
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%", minHeight: 0, overflow: "hidden", display: "flex", color: cover.text_color || "#fff", background }}>
-      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: cover.overlay || "radial-gradient(ellipse at 73% 50%, rgba(75,190,255,.16), transparent 45%), radial-gradient(ellipse at 20% 90%, rgba(0,0,0,.25), transparent 55%)" }} />
-      <div style={{ position: "relative", zIndex: 2, width: cover.left_width || "58%", padding: cover.left_padding || "clamp(30px,5vw,68px) clamp(28px,5vw,70px) 38px", display: "flex", flexDirection: "column", justifyContent: "space-between", boxSizing: "border-box" }}>
+    <div style={{ position: "relative", width: "100%", height: "100%", minHeight: 0, overflow: "hidden", display: "flex", color: textColor, background }}>
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: visual.overlay || "transparent" }} />
+      <div style={{ position: "relative", zIndex: 2, width: visual.left_width || "58%", padding: visual.left_padding || "clamp(30px,5vw,68px) clamp(28px,5vw,70px) 38px", display: "flex", flexDirection: "column", justifyContent: "space-between", boxSizing: "border-box" }}>
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: cover.logo_gap || 12 }}>
-            <img src={logoUrl} alt={s.brand || "HomeShield Scotland"} style={{ width: cover.logo_width || "clamp(42px,4.2vw,58px)", height: "auto", objectFit: "contain", filter: cover.logo_shadow || "drop-shadow(0 4px 8px rgba(0,0,0,.28))" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: visual.logo_gap ?? 12 }}>
+            <img src={logoUrl} alt={s.brand || "HomeShield Scotland"} style={{ width: visual.logo_width || "clamp(42px,4.2vw,58px)", height: "auto", objectFit: "contain", filter: visual.logo_shadow || "none" }} />
             <div>
-              <div style={{ fontSize: cover.brand_size || "clamp(10px,1vw,14px)", fontWeight: 800, letterSpacing: ".08em" }}>{s.brand || "HOMESHIELD SCOTLAND LTD"}</div>
-              <div style={{ marginTop: 4, fontSize: cover.tagline_size || "clamp(8px,.8vw,11px)", color: cover.muted_color || "rgba(255,255,255,.66)" }}>{tagline || "Enhancing Homes Across Scotland"}</div>
+              <div style={{ fontSize: visual.brand_size || "clamp(10px,1vw,14px)", fontWeight: 800, letterSpacing: visual.brand_letter_spacing || ".08em" }}>{s.brand || ""}</div>
+              {tagline && <div style={{ marginTop: 4, fontSize: visual.tagline_size || "clamp(8px,.8vw,11px)", color: visual.muted_color || "rgba(255,255,255,.66)" }}>{tagline}</div>}
             </div>
           </div>
-          <div style={{ marginTop: cover.content_top_margin || "clamp(45px,8vh,82px)" }}>
-            {eyebrow && <div style={{ display: "inline-block", padding: cover.eyebrow_padding || "7px 11px", borderRadius: 999, background: cover.eyebrow_background || "rgba(125,211,252,.10)", border: `1px solid ${cover.eyebrow_border || "rgba(125,211,252,.25)"}`, color: accent, fontSize: cover.eyebrow_size || "clamp(9px,.9vw,12px)", fontWeight: 800, letterSpacing: ".15em", textTransform: "uppercase", marginBottom: 17 }}>{eyebrow}</div>}
-            <div style={{ fontSize: cover.title_size || "clamp(38px,5.1vw,74px)", lineHeight: .96, fontWeight: 800, letterSpacing: "-.045em" }}>{title}</div>
-            {subtitle && <div style={{ marginTop: 20, maxWidth: cover.subtitle_max_width || 560, fontSize: cover.subtitle_size || "clamp(14px,1.45vw,21px)", lineHeight: 1.4, color: cover.subtitle_color || "rgba(255,255,255,.78)" }}>{subtitle}</div>}
+          <div style={{ marginTop: visual.content_top_margin || "clamp(45px,8vh,82px)" }}>
+            {eyebrow && <div style={{ display: "inline-block", padding: visual.eyebrow_padding || "7px 11px", borderRadius: visual.eyebrow_radius ?? 999, background: visual.eyebrow_background || "transparent", border: visual.eyebrow_border ? `1px solid ${visual.eyebrow_border}` : "none", color: accent, fontSize: visual.eyebrow_size || "clamp(9px,.9vw,12px)", fontWeight: 800, letterSpacing: visual.eyebrow_letter_spacing || ".15em", textTransform: "uppercase", marginBottom: visual.eyebrow_margin_bottom ?? 17 }}>{eyebrow}</div>}
+            <div style={{ fontSize: visual.title_size || "clamp(38px,5.1vw,74px)", lineHeight: visual.title_line_height ?? .96, fontWeight: visual.title_weight ?? 800, letterSpacing: visual.title_letter_spacing || "-.045em" }}>{title}</div>
+            {subtitle && <div style={{ marginTop: visual.subtitle_margin_top ?? 20, maxWidth: visual.subtitle_max_width || 560, fontSize: visual.subtitle_size || "clamp(14px,1.45vw,21px)", lineHeight: visual.subtitle_line_height || 1.4, color: visual.subtitle_color || "rgba(255,255,255,.78)" }}>{subtitle}</div>}
           </div>
         </div>
-        <div style={{ display: "inline-flex", alignSelf: "flex-start", alignItems: "center", gap: 8, padding: cover.customer_padding || "8px 13px", borderRadius: 999, background: cover.customer_background || "rgba(0,0,0,.16)", border: `1px solid ${cover.customer_border || "rgba(255,255,255,.12)"}`, fontSize: cover.customer_size || "clamp(9px,.9vw,12px)", color: cover.customer_muted || "rgba(255,255,255,.75)" }}><span style={{ width: 6, height: 6, borderRadius: 50, background: accent }} />Prepared for <strong style={{ color: "#fff" }}>{customer}</strong></div>
+        <div style={{ display: "inline-flex", alignSelf: "flex-start", alignItems: "center", gap: visual.customer_gap ?? 8, padding: visual.customer_padding || "8px 13px", borderRadius: visual.customer_radius ?? 999, background: visual.customer_background || "transparent", border: visual.customer_border ? `1px solid ${visual.customer_border}` : "none", fontSize: visual.customer_size || "clamp(9px,.9vw,12px)", color: visual.customer_muted || "rgba(255,255,255,.75)" }}><span style={{ width: visual.customer_dot_size ?? 6, height: visual.customer_dot_size ?? 6, borderRadius: 50, background: accent }} />{visual.customer_prefix || "Prepared for"} <strong style={{ color: visual.customer_name_color || textColor }}>{customer}</strong></div>
       </div>
-      <div style={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: cover.hero_padding || "35px 32px 70px 0", boxSizing: "border-box" }}>
-        {heroSvg ? <div style={{ width: cover.hero_width || "min(430px,42vw)", maxWidth: "100%" }} dangerouslySetInnerHTML={{ __html: interpolate(heroSvg, appointment) }} /> : <div style={{ opacity: .5, fontSize: 12 }}>No cover artwork configured</div>}
+      <div style={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: visual.hero_padding || "35px 32px 70px 0", boxSizing: "border-box" }}>
+        {heroSvg ? <div style={{ width: visual.hero_width || "min(430px,42vw)", maxWidth: "100%" }} dangerouslySetInnerHTML={{ __html: interpolate(heroSvg, appointment) }} /> : visual.hero_url ? <img src={visual.hero_url} alt="" style={{ width: visual.hero_width || "min(430px,42vw)", maxWidth: "100%", height: "auto", objectFit: "contain" }} /> : null}
       </div>
-      <div style={{ position: "absolute", zIndex: 4, left: "50%", bottom: cover.benefits_bottom || 20, transform: "translateX(-50%)", display: "flex", gap: 8, whiteSpace: "nowrap" }}>
-        {benefits.map((label, i) => <div key={`${label}-${i}`} style={{ display: "flex", alignItems: "center", gap: 6, padding: cover.benefit_padding || "6px 10px", borderRadius: 8, background: cover.benefit_background || "rgba(0,0,0,.16)", border: `1px solid ${cover.benefit_border || "rgba(255,255,255,.1)"}`, fontSize: cover.benefit_size || "clamp(8px,.75vw,10px)", color: cover.benefit_color || "rgba(255,255,255,.72)" }}><CoverIcon type={benefitIcons[i % benefitIcons.length]} size={12} />{interpolate(label, appointment)}</div>)}
-      </div>
+      {benefits.length > 0 && <div style={{ position: "absolute", zIndex: 4, left: visual.benefits_left || "50%", bottom: visual.benefits_bottom ?? 20, transform: visual.benefits_transform || "translateX(-50%)", display: "flex", gap: visual.benefits_gap ?? 8, whiteSpace: "nowrap" }}>
+        {benefits.map((label, i) => <div key={`${label}-${i}`} style={{ display: "flex", alignItems: "center", gap: visual.benefit_gap ?? 6, padding: visual.benefit_padding || "6px 10px", borderRadius: visual.benefit_radius ?? 8, background: visual.benefit_background || "transparent", border: visual.benefit_border ? `1px solid ${visual.benefit_border}` : "none", fontSize: visual.benefit_size || "clamp(8px,.75vw,10px)", color: visual.benefit_color || "rgba(255,255,255,.72)" }}><SlideOneIcon type={benefitIcons[i % Math.max(benefitIcons.length, 1)]} size={visual.benefit_icon_size ?? 12} />{interpolate(label, appointment)}</div>)}
+      </div>}
     </div>
   )
 }
 
 function StandardSlide({ slide, appointment }) {
+  const settings = slide?.settings || {}
+  const visual = settings.visual || {}
   return (
-    <div style={{ width: "min(1200px,94vw)", height: "min(675px,76vh)", background: "#fff", color: "#172033", borderRadius: 16, overflow: "hidden", boxShadow: "0 25px 80px rgba(0,0,0,.35)", display: "flex", flexDirection: "column" }}>
-      {slide.image_url && <div style={{ flex: "0 0 42%", backgroundImage: `url(${slide.image_url})`, backgroundSize: "cover", backgroundPosition: "center" }} />}
-      {slide.video_url && <video src={slide.video_url} controls autoPlay style={{ width: "100%", maxHeight: "46%", objectFit: "cover" }} />}
-      <div style={{ flex: 1, minHeight: 0, padding: "clamp(28px,5vw,64px)", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-        {slide.settings?.eyebrow && <div style={{ display: "inline-block", marginBottom: 14, color: slide.settings?.accent || "#2499ed", fontSize: "clamp(10px,1vw,13px)", fontWeight: 800, letterSpacing: ".12em", textTransform: "uppercase" }}>{interpolate(slide.settings.eyebrow, appointment)}</div>}
-        <div style={{ fontSize: "clamp(28px,4vw,54px)", lineHeight: 1.05, fontWeight: 800 }}>{interpolate(slide.title, appointment)}</div>
-        {slide.subtitle && <div style={{ marginTop: 14, fontSize: "clamp(16px,2vw,24px)", color: slide.settings?.accent || "#2499ed", fontWeight: 700 }}>{interpolate(slide.subtitle, appointment)}</div>}
-        {slide.body && <div style={{ marginTop: 22, maxWidth: 850, whiteSpace: "pre-wrap", fontSize: "clamp(14px,1.5vw,19px)", lineHeight: 1.6, color: "#52606d" }}>{interpolate(slide.body, appointment)}</div>}
+    <div style={{ width: visual.width || "min(1200px,94vw)", height: visual.height || "min(675px,76vh)", background: visual.background || "#fff", color: visual.text_color || "#172033", borderRadius: visual.border_radius ?? 16, overflow: "hidden", boxShadow: visual.box_shadow || "0 25px 80px rgba(0,0,0,.35)", display: "flex", flexDirection: visual.flex_direction || "column" }}>
+      {slide.image_url && <div style={{ flex: visual.image_flex || "0 0 42%", backgroundImage: `url(${slide.image_url})`, backgroundSize: visual.image_fit || "cover", backgroundPosition: visual.image_position || "center" }} />}
+      {slide.video_url && <video src={slide.video_url} controls autoPlay style={{ width: "100%", maxHeight: visual.video_max_height || "46%", objectFit: visual.video_fit || "cover" }} />}
+      <div style={{ flex: 1, minHeight: 0, padding: visual.content_padding || "clamp(28px,5vw,64px)", display: "flex", flexDirection: "column", justifyContent: visual.content_justify || "center" }}>
+        {settings.eyebrow && <div style={{ display: "inline-block", marginBottom: visual.eyebrow_margin_bottom ?? 14, color: visual.accent || settings.accent || "#2499ed", fontSize: visual.eyebrow_size || "clamp(10px,1vw,13px)", fontWeight: visual.eyebrow_weight || 800, letterSpacing: visual.eyebrow_letter_spacing || ".12em", textTransform: "uppercase" }}>{interpolate(settings.eyebrow, appointment)}</div>}
+        <div style={{ fontSize: visual.title_size || "clamp(28px,4vw,54px)", lineHeight: visual.title_line_height || 1.05, fontWeight: visual.title_weight || 800 }}>{interpolate(slide.title, appointment)}</div>
+        {slide.subtitle && <div style={{ marginTop: visual.subtitle_margin_top ?? 14, fontSize: visual.subtitle_size || "clamp(16px,2vw,24px)", color: visual.accent || settings.accent || "#2499ed", fontWeight: visual.subtitle_weight || 700 }}>{interpolate(slide.subtitle, appointment)}</div>}
+        {slide.body && <div style={{ marginTop: visual.body_margin_top ?? 22, maxWidth: visual.body_max_width || 850, whiteSpace: "pre-wrap", fontSize: visual.body_size || "clamp(14px,1.5vw,19px)", lineHeight: visual.body_line_height || 1.6, color: visual.body_color || "#52606d" }}>{interpolate(slide.body, appointment)}</div>}
       </div>
     </div>
   )
@@ -134,7 +137,7 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
   }, [onClose, slides.length])
 
   const slide = slides[index]
-  const isDatabaseCover = slide?.settings?.layout === "solar-cover"
+  const isSlideOne = index === 0 && Boolean(slide?.settings?.visual || slide?.settings?.cover)
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 3000, background: "#07111c", color: "#fff", display: "flex", flexDirection: "column" }}>
@@ -142,8 +145,8 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
         <div><div style={{ fontSize: 14, fontWeight: 800 }}>{presentation?.name || (type === "solar" ? "Solar Presentation" : "Windows & Doors Presentation")}</div><div style={{ fontSize: 10, opacity: .65, marginTop: 3 }}>{appointment?.name || appointment?.customer_name || "Customer"}</div></div>
         <button type="button" onClick={onClose} style={{ border: 0, background: "rgba(255,255,255,.08)", color: "#fff", width: 36, height: 36, borderRadius: 8, cursor: "pointer" }} aria-label="Close presenter"><X size={18} /></button>
       </div>
-      <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: isDatabaseCover ? 0 : 28 }}>
-        {loading ? <div style={{ fontSize: 14, opacity: .7 }}>Loading presentation...</div> : error ? <div style={{ maxWidth: 520, textAlign: "center" }}><div style={{ fontSize: 18, fontWeight: 800, marginBottom: 10 }}>Presenter unavailable</div><div style={{ fontSize: 12, opacity: .7 }}>{error}</div></div> : slide ? (isDatabaseCover ? <DatabaseCover slide={slide} appointment={appointment} /> : <StandardSlide slide={slide} appointment={appointment} />) : <div style={{ fontSize: 14, opacity: .7 }}>This presentation has no slides yet.</div>}
+      <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: isSlideOne ? 0 : 28 }}>
+        {loading ? <div style={{ fontSize: 14, opacity: .7 }}>Loading presentation...</div> : error ? <div style={{ maxWidth: 520, textAlign: "center" }}><div style={{ fontSize: 18, fontWeight: 800, marginBottom: 10 }}>Presenter unavailable</div><div style={{ fontSize: 12, opacity: .7 }}>{error}</div></div> : slide ? (isSlideOne ? <SlideOne slide={slide} appointment={appointment} /> : <StandardSlide slide={slide} appointment={appointment} />) : <div style={{ fontSize: 14, opacity: .7 }}>This presentation has no slides yet.</div>}
       </div>
       <div style={{ height: 68, display: "flex", alignItems: "center", justifyContent: "center", gap: 18, flex: "0 0 auto" }}>
         <button type="button" disabled={index === 0 || !slides.length} onClick={() => setIndex(value => Math.max(value - 1, 0))} style={{ width: 42, height: 42, border: 0, borderRadius: 21, background: index === 0 ? "rgba(255,255,255,.06)" : "rgba(255,255,255,.12)", color: "#fff", cursor: index === 0 ? "default" : "pointer" }} aria-label="Previous slide"><ChevronLeft size={20} /></button>
