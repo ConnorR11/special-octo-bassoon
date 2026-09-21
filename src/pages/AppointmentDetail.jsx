@@ -25,7 +25,9 @@ function getSubmittedBy(user) {
   return metadataName || user?.email || "Unknown"
 }
 
-function AppointmentDetail({ appointment, onBack, onUpdated }) {
+function AppointmentDetail({ appointment, onBack, onUpdated, permissionLevel }) {
+  const canViewCPS = Number(permissionLevel) >= 4;
+  
   const [showResult, setShowResult] = useState(false)
   const [result, setResult] = useState(appointment?.result || appointment?.status || "")
   const [saving, setSaving] = useState(false)
@@ -53,7 +55,7 @@ function AppointmentDetail({ appointment, onBack, onUpdated }) {
   }
 
   async function confirmAppointment() {
-    if (!appointment?.appointment_row_id || appointment.cps_c || confirming) return
+    if (!canViewCPS || !appointment?.appointment_row_id || appointment.cps_c || confirming) return
 
     setConfirming(true)
     setConfirmError("")
@@ -164,11 +166,13 @@ function AppointmentDetail({ appointment, onBack, onUpdated }) {
   }
 
   function toggleCps(field) {
+    if (!canViewCPS) return
     setCpsValues((current) => ({ ...current, [field]: !current[field] }))
     setCpsError("")
   }
 
   async function saveCpsStatus() {
+    if (!canViewCPS) return
     if (!appointment?.appointment_row_id) {
       setCpsError("This appointment does not have an appointment_row_id.")
       return
@@ -251,6 +255,7 @@ function AppointmentDetail({ appointment, onBack, onUpdated }) {
         </InfoCard>
       </div>
 
+      {canViewCPS && (
       <div style={{ marginTop: "14px", padding: "16px", background: "#fff", border: "1px solid #e2e5e8", borderRadius: "8px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
           <div><h3 style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "#222" }}>CPS Status</h3><p style={{ margin: "4px 0 0", fontSize: "10px", color: "#999" }}>Update the CPS flags for this appointment.</p></div>
@@ -264,6 +269,7 @@ function AppointmentDetail({ appointment, onBack, onUpdated }) {
         </div>
         {cpsError && <div style={{ marginTop: "12px", padding: "9px 10px", background: "#fbeaea", borderRadius: "6px", color: "#8b3333", fontSize: "10px" }}>{cpsError}</div>}
       </div>
+      )}
 
       {isSolar && <div style={{ marginTop: "24px" }}><div style={{ marginBottom: "12px" }}><h2 style={{ margin: 0, fontSize: "18px", color: "#222" }}>EPVS Calculator</h2><p style={{ margin: "5px 0 0", fontSize: "11px", color: "#888" }}>Complete the EPVS calculation for this solar appointment.</p></div><EPVSCalculator appointment={appointment} onCalculationChange={setEpvsCalculation} /></div>}
 
