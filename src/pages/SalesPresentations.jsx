@@ -14,6 +14,7 @@ export default function SalesPresentations() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [preview, setPreview] = useState(false)
+  const [settingsText, setSettingsText] = useState("{}")
 
   const selectedPresentation = useMemo(() => presentations.find((item) => item.id === selectedId) || null, [presentations, selectedId])
   const selectedSlide = useMemo(() => slides.find((item) => item.id === selectedSlideId) || null, [slides, selectedSlideId])
@@ -40,6 +41,10 @@ export default function SalesPresentations() {
 
   useEffect(() => { loadPresentations() }, [])
   useEffect(() => { loadSlides(selectedId) }, [selectedId])
+  useEffect(() => {
+    if (selectedSlide) setSettingsText(JSON.stringify(selectedSlide.settings || {}, null, 2))
+    else setSettingsText("{}")
+  }, [selectedSlideId])
 
   async function updatePresentation(changes) {
     if (!selectedPresentation) return
@@ -62,10 +67,18 @@ export default function SalesPresentations() {
 
   async function saveSlide() {
     if (!selectedSlide) return
+    let parsedSettings
+    try {
+      parsedSettings = settingsText.trim() ? JSON.parse(settingsText) : {}
+      if (!parsedSettings || typeof parsedSettings !== "object" || Array.isArray(parsedSettings)) throw new Error("Settings must be a JSON object.")
+    } catch (err) {
+      setError(`Settings must contain valid JSON: ${err.message}`)
+      return
+    }
     setSaving(true); setError("")
-    const { data, error: updateError } = await supabase.from("sales_presentation_slides").update({ title: selectedSlide.title, subtitle: selectedSlide.subtitle, body: selectedSlide.body, settings: selectedSlide.settings || {}, updated_at: new Date().toISOString() }).eq("id", selectedSlide.id).select().single()
+    const { data, error: updateError } = await supabase.from("sales_presentation_slides").update({ title: selectedSlide.title, subtitle: selectedSlide.subtitle, body: selectedSlide.body, settings: parsedSettings, updated_at: new Date().toISOString() }).eq("id", selectedSlide.id).select().single()
     if (updateError) setError(updateError.message)
-    else setSlides((current) => current.map((item) => item.id === data.id ? data : item))
+    else { setSlides((current) => current.map((item) => item.id === data.id ? data : item)); setSettingsText(JSON.stringify(data.settings || {}, null, 2)) }
     setSaving(false)
   }
 
@@ -120,6 +133,7 @@ export default function SalesPresentations() {
           <label style={labelStyle}>Title<input value={selectedSlide.title} onChange={(e) => updateSlide("title", e.target.value)} style={fieldStyle} /></label>
           <label style={labelStyle}>Subtitle<input value={selectedSlide.subtitle || ""} onChange={(e) => updateSlide("subtitle", e.target.value)} style={fieldStyle} /></label>
           <label style={labelStyle}>Body<textarea value={selectedSlide.body || ""} onChange={(e) => updateSlide("body", e.target.value)} rows={7} style={{ ...fieldStyle, resize: "vertical" }} /></label>
+          <label style={labelStyle}>Settings<textarea value={settingsText} onChange={(e) => setSettingsText(e.target.value)} rows={14} spellCheck={false} style={{ ...fieldStyle, resize: "vertical", fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace", fontSize: 10, lineHeight: 1.45 }} /><small style={{ fontSize: 9, fontWeight: 500, color: "#8b949e" }}>Edit the slide settings as JSON. These values control the slide's visual styling and configuration.</small></label>
           <div style={{ display: "flex", gap: 7, marginTop: 14 }}><button onClick={() => moveSlide(-1)} style={iconButton} title="Move up"><ChevronLeft size={15} /></button><button onClick={() => moveSlide(1)} style={iconButton} title="Move down"><ChevronRight size={15} /></button><button onClick={deleteSlide} style={{ ...iconButton, color: "#b42318" }} title="Delete"><Trash2 size={15} /></button><button onClick={saveSlide} disabled={saving} style={{ ...buttonStyle, marginLeft: "auto" }}><Save size={14} /> {saving ? "Saving..." : "Save slide"}</button></div>
         </> : <div style={{ padding: 40, textAlign: "center", color: "#8a939a", fontSize: 11 }}>Select a slide to edit it.</div>}</div>
       </> : <div className="card" style={{ gridColumn: "2 / span 2", padding: 50, textAlign: "center" }}>No presentation selected.</div>}
