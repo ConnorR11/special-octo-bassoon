@@ -17,7 +17,7 @@ const GROUPS = [
   { key: "rts", label: "Sales", stages: ["Awaiting Funds", "Returned To Sales", "Pending Cancellation"], background: "#e0f2fe", border: "#bae6fd", text: "#075985", badge: "#bae6fd" },
   { key: "surveys", label: "Surveys", stages: ["Book for Survey", "Book for Survey (S)", "Survey Booked"], background: "#dcfce7", border: "#bbf7d0", text: "#166534", badge: "#bbf7d0" },
   { key: "procurement", label: "Procurement", stages: ["To Be Ordered", "Awaiting Customer Confirmation", "Awaiting Manufacture Date"], background: "#ffedd5", border: "#fed7aa", text: "#9a3412", badge: "#fed7aa" },
-  { key: "accounts", label: "Accounts", stages: ["Cancelled - Awaiting Refund", "Fit Complete - Accounts To Check"], background: "#f3e8ff", border: "#e9d5ff", text: "#7e22ce", badge: "#e9d5ff" },
+  { key: "accounts", label: "Accounts", stages: ["Cancelled - Awaiting Refund", "Fit Complete - Accounts To Check", "Admin Fee Outstanding"], background: "#f3e8ff", border: "#e9d5ff", text: "#7e22ce", badge: "#e9d5ff" },
   { key: "deal-lost", label: "Deal Lost", stages: ["Customer Cancelled", "Decline"], background: "#fee2e2", border: "#fecaca", text: "#b91c1c", badge: "#fecaca" },
 ]
 const UNGROUPED = { key: "ungrouped", label: "Ungrouped", background: "#f1f5f9", border: "#e2e8f0", text: "#334155", badge: "#e2e8f0" }
