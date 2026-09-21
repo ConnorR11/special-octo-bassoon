@@ -36,21 +36,30 @@ function getStageLabel(value) {
   return String(value || "").trim()
 }
 
-function getRepName(appointment) {
+function getCustomerName(deal) {
+  return deal?.customer_name || deal?.name || "Unnamed customer"
+}
+
+function getRepName(deal) {
   return (
-    appointment?.rep_name ||
-    appointment?.sales_rep ||
-    appointment?.rep_allocated ||
+    deal?.salesperson ||
+    deal?.sales_rep ||
+    deal?.rep_name ||
+    deal?.rep_allocated ||
     "Unallocated"
   )
 }
 
-function getAppointmentId(appointment) {
-  return appointment?.appointment_row_id
+function getDealDate(deal) {
+  return deal?.installation_date || deal?.appointment_date || deal?.sale_date || deal?.created_at
+}
+
+function getDealId(deal) {
+  return deal?.id || deal?.deal_id
 }
 
 export default function Installations() {
-  const [appointments, setAppointments] = useState([])
+  const [deals, setDeals] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState("")
@@ -123,12 +132,14 @@ export default function Installations() {
         isCentralConfirmationManager(role)
       const canViewBranch = permissionLevel >= 2
 
+      // The installation board is sourced entirely from deals.
+      // Only deals with a populated Pipedrive stage are queried.
       let request = supabase
-        .from("appointments")
+        .from("deals")
         .select("*")
         .not("pipedrive_stage", "is", null)
         .neq("pipedrive_stage", "")
-        .order("appointment_date", { ascending: true, nullsFirst: false })
+        .order("sale_date", { ascending: false, nullsFirst: false })
 
       if (!canViewAll) {
         const branch = String(viewerProfile?.branch || "").trim()
@@ -141,20 +152,20 @@ export default function Installations() {
             .toLowerCase()
 
           if (email) {
-            request = request.eq("rep_allocated", email)
+            request = request.ilike("salesperson", email)
           }
         }
       }
 
-      const { data, error: appointmentsError } = await request
+      const { data, error: dealsError } = await request
 
-      if (appointmentsError) throw appointmentsError
+      if (dealsError) throw dealsError
 
-      setAppointments(data || [])
+      setDeals(data || [])
     } catch (err) {
       console.error("Error loading installations:", err)
       setError(err?.message || "Unable to load installations.")
-      setAppointments([])
+      setDeals([])
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -165,21 +176,23 @@ export default function Installations() {
     loadInstallations()
   }, [])
 
-  const filteredAppointments = useMemo(() => {
+  const filteredDeals = useMemo(() => {
     const search = query.trim().toLowerCase()
 
-    if (!search) return appointments
+    if (!search) return deals
 
-    return appointments.filter((appointment) => {
+    return deals.filter((deal) => {
       const haystack = [
-        appointment?.name,
-        appointment?.postcode,
-        appointment?.product,
-        appointment?.rep_allocated,
-        appointment?.rep_name,
-        appointment?.sales_rep,
-        appointment?.branch,
-        appointment?.pipedrive_stage,
+        deal?.customer_name,
+        deal?.name,
+        deal?.postcode,
+        deal?.product,
+        deal?.salesperson,
+        deal?.sales_rep,
+        deal?.rep_name,
+        deal?.rep_allocated,
+        deal?.branch,
+        deal?.pipedrive_stage,
       ]
         .filter(Boolean)
         .join(" ")
@@ -187,31 +200,47 @@ export default function Installations() {
 
       return haystack.includes(search)
     })
-  }, [appointments, query])
+  }, [deals, query])
 
   const columns = useMemo(() => {
     const grouped = new Map()
 
-    filteredAppointments.forEach((appointment) => {
-      const stage = getStageLabel(appointment?.pipedrive_stage)
+    filteredDeals.forEach((deal) => {
+      const stage = getStageLabel(deal?.pipedrive_stage)
 
       if (!stage) return
 
       if (!grouped.has(stage)) grouped.set(stage, [])
-      grouped.get(stage).push(appointment)
+      grouped.get(stage).push(deal)
     })
 
     return Array.from(grouped.entries()).map(([stage, items]) => ({
       stage,
       items,
     }))
-  }, [filteredAppointments])
+  }, [filteredDeals])
 
-  function openAppointment(appointment) {
-    const id = getAppointmentId(appointment)
-    if (!id) return
+  function openDeal(deal) {
+    const appointmentId = deal?.appointment_row_id
 
-    window.history.pushState({}, "", `/appointments/${encodeURIComponent(id)}`)
+    if (appointmentId) {
+      window.history.pushState(
+        {},
+        "",
+        `/appointments/${encodeURIComponent(appointmentId)}`
+      )
+      window.dispatchEvent(new PopStateEvent("popstate"))
+      return
+    }
+
+    const dealId = getDealId(deal)
+    if (!dealId) return
+
+    window.history.pushState(
+      {},
+      "",
+      `/deals/${encodeURIComponent(dealId)}`
+    )
     window.dispatchEvent(new PopStateEvent("popstate"))
   }
 
@@ -376,11 +405,11 @@ export default function Installations() {
               </div>
 
               <div style={{ padding: 9, display: "grid", gap: 9 }}>
-                {column.items.map((appointment) => (
+                {column.items.map((deal) => (
                   <button
-                    key={appointment.appointment_row_id}
+                    key={getDealId(deal)}
                     type="button"
-                    onClick={() => openAppointment(appointment)}
+                    onClick={() => openDeal(deal)}
                     style={{
                       width: "100%",
                       padding: 12,
@@ -411,24 +440,24 @@ export default function Installations() {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      {appointment.name || "Unnamed customer"}
+                      {getCustomerName(deal)}
                     </div>
 
                     <div style={{ marginTop: 9, display: "grid", gap: 6 }}>
                       <div style={{ display: "flex", gap: 6, alignItems: "center", color: "#687782", fontSize: 9.5 }}>
                         <CalendarDays size={13} />
-                        <span>{formatDate(appointment.appointment_date)}</span>
+                        <span>{formatDate(getDealDate(deal))}</span>
                       </div>
 
                       <div style={{ display: "flex", gap: 6, alignItems: "center", color: "#687782", fontSize: 9.5 }}>
                         <MapPin size={13} />
-                        <span>{appointment.postcode || "No postcode"}</span>
+                        <span>{deal?.postcode || "No postcode"}</span>
                       </div>
 
                       <div style={{ display: "flex", gap: 6, alignItems: "center", color: "#687782", fontSize: 9.5 }}>
                         <UserRound size={13} />
                         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {getRepName(appointment)}
+                          {getRepName(deal)}
                         </span>
                       </div>
                     </div>
@@ -445,8 +474,8 @@ export default function Installations() {
                         color: "#7b8790",
                       }}
                     >
-                      <span>{appointment.product || appointment.job_type || "—"}</span>
-                      <span>{appointment.branch || ""}</span>
+                      <span>{deal?.product || deal?.job_type || "—"}</span>
+                      <span>{deal?.branch || ""}</span>
                     </div>
                   </button>
                 ))}
