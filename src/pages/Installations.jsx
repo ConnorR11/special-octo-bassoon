@@ -58,7 +58,7 @@ function getDealId(deal) {
   return deal?.id || deal?.deal_id
 }
 
-export default function Installations() {
+export default function Installations({ setSelected }) {
   const [deals, setDeals] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -132,8 +132,6 @@ export default function Installations() {
         isCentralConfirmationManager(role)
       const canViewBranch = permissionLevel >= 2
 
-      // The installation board is sourced entirely from deals.
-      // Only deals with a populated Pipedrive stage are queried.
       let request = supabase
         .from("deals")
         .select("*")
@@ -220,9 +218,10 @@ export default function Installations() {
     }))
   }, [filteredDeals])
 
-  function openDeal() {
-    window.history.pushState({}, "", "/contracts")
-    window.dispatchEvent(new PopStateEvent("popstate"))
+  function openDeal(deal) {
+    if (!deal || !setSelected) return
+
+    setSelected(deal)
   }
 
   return (
