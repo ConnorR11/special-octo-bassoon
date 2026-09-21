@@ -23,6 +23,113 @@ function interpolate(value, appointment) {
   return String(value).replace(/\{\{\s*([a-z0-9_]+)\s*\}\}/gi, (_, key) => replacements[key.toLowerCase()] ?? "")
 }
 
+function SolarCoverSlide() {
+  return (
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        minHeight: 0,
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        textAlign: "center",
+        color: "#fff",
+        background:
+          "radial-gradient(circle at 50% 40%, #0c4b78 0%, #06365c 34%, #022b4c 67%, #012642 100%)",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          background:
+            "radial-gradient(ellipse at 50% 46%, rgba(39,139,205,.24) 0%, rgba(8,61,99,.10) 40%, rgba(0,27,49,.30) 100%)",
+        }}
+      />
+
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          width: "100%",
+          padding: "4vh 5vw 7vh",
+          boxSizing: "border-box",
+        }}
+      >
+        <img
+          src="/homeshield-logo.png"
+          alt="HomeShield Scotland"
+          style={{
+            width: "clamp(70px, 7vw, 105px)",
+            height: "auto",
+            objectFit: "contain",
+            marginBottom: "clamp(12px, 1.5vh, 20px)",
+            filter: "drop-shadow(0 4px 8px rgba(0,0,0,.28))",
+          }}
+        />
+
+        <div
+          style={{
+            fontSize: "clamp(18px, 2.05vw, 31px)",
+            lineHeight: 1,
+            fontWeight: 800,
+            letterSpacing: "-.025em",
+            textTransform: "uppercase",
+          }}
+        >
+          HOMESHIELD SCOTLAND LTD
+        </div>
+
+        <div
+          style={{
+            marginTop: "clamp(5px, .7vh, 9px)",
+            fontSize: "clamp(13px, 1.35vw, 20px)",
+            lineHeight: 1,
+            fontWeight: 400,
+            opacity: .9,
+          }}
+        >
+          Enhancing Homes Across Scotland
+        </div>
+
+        <div
+          style={{
+            marginTop: "clamp(55px, 10vh, 105px)",
+            fontSize: "clamp(48px, 7vw, 100px)",
+            lineHeight: .96,
+            fontWeight: 800,
+            letterSpacing: "-.045em",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Homeshield Renewables
+        </div>
+
+        <div
+          style={{
+            marginTop: "clamp(8px, 1vh, 14px)",
+            fontSize: "clamp(34px, 5.2vw, 75px)",
+            lineHeight: .98,
+            fontWeight: 400,
+            letterSpacing: "-.035em",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Solar Energy Systems
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function SalesPresenter({ appointment, onClose }) {
   const [presentation, setPresentation] = useState(null)
   const [slides, setSlides] = useState([])
@@ -84,6 +191,7 @@ export default function SalesPresenter({ appointment, onClose }) {
   }, [onClose, slides.length])
 
   const slide = slides[index]
+  const isSolarCover = type === "solar" && index === 0
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 3000, background: "#07111c", color: "#fff", display: "flex", flexDirection: "column" }}>
@@ -95,17 +203,21 @@ export default function SalesPresenter({ appointment, onClose }) {
         <button type="button" onClick={onClose} style={{ border: 0, background: "rgba(255,255,255,.08)", color: "#fff", width: 36, height: 36, borderRadius: 8, cursor: "pointer" }} aria-label="Close presenter"><X size={18} /></button>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 28 }}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: isSolarCover ? 0 : 28 }}>
         {loading ? <div style={{ fontSize: 14, opacity: .7 }}>Loading presentation...</div> : error ? <div style={{ maxWidth: 520, textAlign: "center" }}><div style={{ fontSize: 18, fontWeight: 800, marginBottom: 10 }}>Presenter unavailable</div><div style={{ fontSize: 12, opacity: .7 }}>{error}</div></div> : slide ? (
-          <div style={{ width: "min(1200px, 94vw)", height: "min(675px, 76vh)", background: "#fff", color: "#172033", borderRadius: 16, overflow: "hidden", boxShadow: "0 25px 80px rgba(0,0,0,.35)", display: "flex", flexDirection: "column" }}>
-            {slide.image_url && <div style={{ flex: "0 0 42%", backgroundImage: `url(${slide.image_url})`, backgroundSize: "cover", backgroundPosition: "center" }} />}
-            {slide.video_url && <video src={slide.video_url} controls autoPlay style={{ width: "100%", maxHeight: "46%", objectFit: "cover" }} />}
-            <div style={{ flex: 1, minHeight: 0, padding: "clamp(28px,5vw,64px)", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-              <div style={{ fontSize: "clamp(28px,4vw,54px)", lineHeight: 1.05, fontWeight: 800 }}>{interpolate(slide.title, appointment)}</div>
-              {slide.subtitle && <div style={{ marginTop: 14, fontSize: "clamp(16px,2vw,24px)", color: "#2499ed", fontWeight: 700 }}>{interpolate(slide.subtitle, appointment)}</div>}
-              {slide.body && <div style={{ marginTop: 22, maxWidth: 850, whiteSpace: "pre-wrap", fontSize: "clamp(14px,1.5vw,19px)", lineHeight: 1.6, color: "#52606d" }}>{interpolate(slide.body, appointment)}</div>}
+          isSolarCover ? (
+            <SolarCoverSlide />
+          ) : (
+            <div style={{ width: "min(1200px, 94vw)", height: "min(675px, 76vh)", background: "#fff", color: "#172033", borderRadius: 16, overflow: "hidden", boxShadow: "0 25px 80px rgba(0,0,0,.35)", display: "flex", flexDirection: "column" }}>
+              {slide.image_url && <div style={{ flex: "0 0 42%", backgroundImage: `url(${slide.image_url})`, backgroundSize: "cover", backgroundPosition: "center" }} />}
+              {slide.video_url && <video src={slide.video_url} controls autoPlay style={{ width: "100%", maxHeight: "46%", objectFit: "cover" }} />}
+              <div style={{ flex: 1, minHeight: 0, padding: "clamp(28px,5vw,64px)", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                <div style={{ fontSize: "clamp(28px,4vw,54px)", lineHeight: 1.05, fontWeight: 800 }}>{interpolate(slide.title, appointment)}</div>
+                {slide.subtitle && <div style={{ marginTop: 14, fontSize: "clamp(16px,2vw,24px)", color: "#2499ed", fontWeight: 700 }}>{interpolate(slide.subtitle, appointment)}</div>}
+                {slide.body && <div style={{ marginTop: 22, maxWidth: 850, whiteSpace: "pre-wrap", fontSize: "clamp(14px,1.5vw,19px)", lineHeight: 1.6, color: "#52606d" }}>{interpolate(slide.body, appointment)}</div>}
+              </div>
             </div>
-          </div>
+          )
         ) : <div style={{ fontSize: 14, opacity: .7 }}>This presentation has no slides yet.</div>}
       </div>
 
