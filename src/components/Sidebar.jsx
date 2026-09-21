@@ -111,7 +111,7 @@ function Sidebar({
 
           <Folder title="Installations" icon={Wrench} open={openFolders.installation} onClick={() => toggleFolder("installation")}>
             <NavItem icon={ClipboardCheck} label="Fit Sheet" active={isActive("fitsheet")} onClick={() => navigate("fitsheet")} />
-            <NavItem icon={CalendarDays} label="Installations" disabled />
+            <NavItem icon={CalendarDays} label="Installations" active={isActive("installations")} onClick={() => navigate("installations")} />
             <NavItem icon={AlertTriangle} label="Installation Issues" disabled />
           </Folder>
 
