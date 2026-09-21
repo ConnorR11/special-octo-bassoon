@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { Plus, Save, Trash2, GripVertical, ChevronLeft, ChevronRight, Eye, Presentation, Image, Video, BarChart3, FileText } from "lucide-react"
 import { supabase } from "../lib/supabase"
+import SalesPresenter from "../components/SalesPresenter"
 
 const EMPTY_SLIDE = { title: "", subtitle: "", body: "", image_url: "", video_url: "", slide_type: "content", settings: {} }
 
@@ -96,7 +97,10 @@ export default function SalesPresentations() {
   function slideIcon(type) { return type === "image" ? <Image size={15} /> : type === "video" ? <Video size={15} /> : type === "stats" ? <BarChart3 size={15} /> : <FileText size={15} /> }
 
   if (preview && selectedPresentation) {
-    return <PresentationPreview presentation={selectedPresentation} slides={slides} onClose={() => setPreview(false)} />
+    const previewAppointment = selectedPresentation.presentation_type === "solar"
+      ? { name: "Presentation Preview", product: "Solar" }
+      : { name: "Presentation Preview", product: "Windows" }
+    return <SalesPresenter appointment={previewAppointment} onClose={() => setPreview(false)} />
   }
 
   return <section>
@@ -128,17 +132,8 @@ export default function SalesPresentations() {
   </section>
 }
 
-function PresentationPreview({ presentation, slides, onClose }) {
-  const [index, setIndex] = useState(0)
-  const slide = slides[index]
-  useEffect(() => { const onKey = (event) => { if (event.key === "Escape") onClose(); if (event.key === "ArrowRight") setIndex((i) => Math.min(i + 1, slides.length - 1)); if (event.key === "ArrowLeft") setIndex((i) => Math.max(i - 1, 0)) }; window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey) }, [onClose, slides.length])
-  if (!slide) return null
-  return <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "#101820", color: "#fff", display: "flex", flexDirection: "column" }}><div style={{ height: 54, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 24px", borderBottom: "1px solid rgba(255,255,255,.12)" }}><strong>{presentation.name}</strong><button onClick={onClose} style={{ ...buttonStyle, background: "transparent", color: "#fff", borderColor: "rgba(255,255,255,.3)" }}>Exit preview</button></div><div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 60, textAlign: "center" }}><div style={{ maxWidth: 1000, width: "100%" }}>{slide.image_url && <img src={slide.image_url} alt="" style={{ maxWidth: "100%", maxHeight: "42vh", objectFit: "contain", borderRadius: 12, marginBottom: 28 }} />}<h1 style={{ fontSize: "clamp(32px,5vw,64px)", margin: 0 }}>{slide.title}</h1>{slide.subtitle && <h2 style={{ fontWeight: 400, fontSize: "clamp(18px,2.5vw,30px)", opacity: .82, margin: "18px 0" }}>{slide.subtitle}</h2>}<div style={{ whiteSpace: "pre-wrap", fontSize: "clamp(15px,1.5vw,21px)", lineHeight: 1.7, opacity: .9 }}>{slide.body}</div>{slide.video_url && <video controls src={slide.video_url} style={{ maxWidth: "80%", maxHeight: "40vh", marginTop: 24 }} />}</div></div><div style={{ height: 72, display: "flex", alignItems: "center", justifyContent: "center", gap: 18, borderTop: "1px solid rgba(255,255,255,.12)" }}><button onClick={() => setIndex((i) => Math.max(i - 1, 0))} disabled={index === 0} style={navButton}><ChevronLeft size={20} /> Previous</button><span style={{ fontSize: 12, opacity: .75 }}>{index + 1} / {slides.length}</span><button onClick={() => setIndex((i) => Math.min(i + 1, slides.length - 1))} disabled={index === slides.length - 1} style={navButton}>Next <ChevronRight size={20} /></button></div></div>
-}
-
 const buttonStyle = { display: "inline-flex", alignItems: "center", gap: 7, height: 34, padding: "0 11px", border: "1px solid #d8e0e6", borderRadius: 7, background: "#fff", color: "#344454", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: 700 }
 const iconButton = { ...buttonStyle, width: 34, padding: 0, justifyContent: "center" }
-const navButton = { ...buttonStyle, height: 40, background: "transparent", color: "#fff", borderColor: "rgba(255,255,255,.25)" }
 const panelTitle = { fontSize: 11, fontWeight: 800, color: "#344454", marginBottom: 10, textTransform: "uppercase", letterSpacing: ".04em" }
 const listButton = { width: "100%", border: "1px solid", borderRadius: 7, padding: "10px 9px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, textAlign: "left", cursor: "pointer", fontFamily: "inherit", marginBottom: 6 }
 const slideRow = { width: "100%", border: "1px solid", borderRadius: 8, padding: "10px 9px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontFamily: "inherit" }
