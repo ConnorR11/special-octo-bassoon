@@ -38,6 +38,7 @@ const EPVS_ACTIONS = {
   "get current design": "get_current_design",
   "open design": "open_design",
   "get current rates": "get_current_rates",
+  "get current octopus flux rates": "get_current_rates",
   "save payment & calculation": "save_payment_calculation",
   "download epvs calc": "download_epvs_calc",
 }
@@ -83,9 +84,15 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
     if (!supabase || !entityId) return undefined
 
     const handleActionClick = async (event) => {
-      const element = event.target?.closest?.("button, a")
+      // Capture the click before any button/link handler can stop propagation.
+      // composedPath also handles clicks on nested SVG/icon elements.
+      const path = typeof event.composedPath === "function" ? event.composedPath() : []
+      const element =
+        path.find((node) => node?.tagName === "BUTTON" || node?.tagName === "A") ||
+        event.target?.closest?.("button, a")
+
       if (!element) return
-      if (element.disabled || element.getAttribute("aria-disabled") === "true") return
+      if (element.disabled || element.getAttribute?.("aria-disabled") === "true") return
 
       const label = String(element.textContent || "")
         .replace(/\s+/g, " ")
@@ -96,6 +103,20 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
       if (!actionType) return
 
       const now = new Date().toISOString()
+      const temporaryId = `local-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      const optimisticAction = {
+        id: temporaryId,
+        action_type: actionType,
+        status: "running",
+        triggered_by: "Recording…",
+        started_at: now,
+        completed_at: null,
+        created_at: now,
+      }
+
+      // Show the action immediately. This makes the activity row appear even
+      // while Supabase is processing the insert/update.
+      setActions((current) => [optimisticAction, ...current])
 
       try {
         const { data: userData } = await supabase.auth.getUser()
@@ -108,36 +129,59 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
             "Unknown"
           ).trim() || "Unknown"
 
-        const { error: insertError } = await supabase
+        const { data: action, error: insertError } = await supabase
           .from("action_runs")
           .insert({
             action_type: actionType,
-            status: "completed",
+            status: "running",
             entity_type: entityType,
             entity_id: entityId,
             triggered_by: triggeredBy,
             started_at: now,
-            completed_at: now,
             input_data: {
               source: "epvs_calculator",
               action_label: label,
             },
-            output_data: {
-              triggered: true,
-            },
           })
+          .select("id")
+          .single()
 
         if (insertError) throw insertError
 
-        // Refresh the Activity panel immediately after the action row is created.
+        const { error: updateError } = await supabase
+          .from("action_runs")
+          .update({
+            status: "completed",
+            completed_at: new Date().toISOString(),
+            output_data: { triggered: true },
+          })
+          .eq("id", action.id)
+
+        if (updateError) throw updateError
+
         await loadActions()
       } catch (actionError) {
         console.error("Error recording EPVS action:", actionError)
+        setActions((current) =>
+          current.map((item) =>
+            item.id === temporaryId
+              ? {
+                  ...item,
+                  status: "failed",
+                  triggered_by: "Action logging failed",
+                  completed_at: new Date().toISOString(),
+                }
+              : item
+          )
+        )
+        setError(`Could not save action history: ${actionError?.message || "Unknown error"}`)
       }
     }
 
-    document.addEventListener("click", handleActionClick)
-    return () => document.removeEventListener("click", handleActionClick)
+    // Use capture phase so the tracker still runs for buttons whose own
+    // handlers call stopPropagation().
+    document.addEventListener("click", handleActionClick, true)
+    return () => document.removeEventListener("click", handleActionClick, true)
   }, [entityType, entityId])
 
   return (
@@ -164,7 +208,29 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
       {loading ? (
         <div className="action-history-empty">Loading activity...</div>
       ) : error ? (
-        <div className="action-history-error">{error}</div>
+        <>
+          {actions.length > 0 && (
+            <div className="action-history-list">
+              {actions.map((action) => {
+                const status = display(action.status, "running").toLowerCase()
+                const label = display(action.action_type, "Action").replace(/_/g, " ")
+                const date = action.completed_at || action.started_at || action.created_at
+                return (
+                  <div className="action-history-row" key={action.id}>
+                    <div className="action-history-icon">{statusIcon(status)}</div>
+                    <div className="action-history-action">{label}</div>
+                    <div className={`action-history-status ${status}`}>
+                      {statusIcon(status)} {statusLabel(status)}
+                    </div>
+                    <div className="action-history-user">{display(action.triggered_by)}</div>
+                    <div className="action-history-date">{formatDate(date)}</div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          <div className="action-history-error">{error}</div>
+        </>
       ) : actions.length === 0 ? (
         <div className="action-history-empty">No actions have been run for this appointment.</div>
       ) : (
