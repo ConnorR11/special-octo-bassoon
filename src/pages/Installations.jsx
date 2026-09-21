@@ -18,9 +18,17 @@ function getCustomerName(deal) { return deal?.customer_name || deal?.name || "Un
 function getRepName(deal) { return deal?.salesperson || deal?.sales_rep || deal?.rep_name || deal?.rep_allocated || "Unallocated" }
 function getDealDate(deal) { return deal?.installation_date || deal?.appointment_date || deal?.sale_date || deal?.created_at }
 function getDealId(deal) { return deal?.id || deal?.deal_id }
+function getNetValue(deal) {
+  const value = deal?.net_value ?? deal?.netValue ?? deal?.net_amount
+  const parsed = Number(String(value ?? "").replace(/[^0-9.-]/g, ""))
+  return Number.isFinite(parsed) ? parsed : 0
+}
+function formatCurrency(value) {
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(value || 0)
+}
 
 const GROUPS = [
-  { key: "rts", label: "RTS", stages: ["Awaiting Funds", "Returned To Sales"], background: "#e0f2fe", border: "#bae6fd", text: "#075985", badge: "#bae6fd" },
+  { key: "rts", label: "Sales", stages: ["Awaiting Funds", "Returned To Sales"], background: "#e0f2fe", border: "#bae6fd", text: "#075985", badge: "#bae6fd" },
   { key: "surveys", label: "Surveys", stages: ["Book for Survey", "Survey Booked"], background: "#dcfce7", border: "#bbf7d0", text: "#166534", badge: "#bbf7d0" },
 ]
 const UNGROUPED = { key: "ungrouped", label: "Ungrouped", background: "#f1f5f9", border: "#e2e8f0", text: "#334155", badge: "#e2e8f0" }
@@ -104,7 +112,7 @@ export default function Installations({ setSelected }) {
     const assignedStageSet = new Set(GROUPS.flatMap((group) => group.stages.map(getStageKey)))
     const groupData = GROUPS.map((group) => {
       const columns = group.stages.map((stage) => ({ stage, items: stageMap.get(getStageKey(stage))?.items || [] }))
-      return { ...group, columns, count: columns.reduce((sum, column) => sum + column.items.length, 0) }
+      return { ...group, columns, count: columns.reduce((sum, column) => sum + column.items.length, 0), netValue: columns.flatMap((column) => column.items).reduce((sum, deal) => sum + getNetValue(deal), 0) }
     })
 
     const ungroupedStages = Array.from(stageMap.entries())
@@ -117,6 +125,7 @@ export default function Installations({ setSelected }) {
         ...UNGROUPED,
         columns: ungroupedStages,
         count: ungroupedStages.reduce((sum, column) => sum + column.items.length, 0),
+        netValue: ungroupedStages.flatMap((column) => column.items).reduce((sum, deal) => sum + getNetValue(deal), 0),
       },
     }
   }, [filteredDeals])
@@ -141,7 +150,7 @@ export default function Installations({ setSelected }) {
     return <div style={{ flex: collapsed ? "0 0 94px" : "0 0 auto", minWidth: collapsed ? 94 : 0, border: `1px solid ${group.border}`, borderRadius: 10, overflow: "hidden", background: "#fff", transition: "flex-basis .15s ease" }}>
       <button type="button" onClick={() => toggleGroup(group.key)} aria-expanded={!collapsed} style={{ width: "100%", minHeight: 48, display: "flex", alignItems: "center", gap: 8, padding: collapsed ? "10px 8px" : "0 14px", justifyContent: collapsed ? "center" : "flex-start", border: 0, borderBottom: collapsed ? 0 : `1px solid ${group.border}`, background: group.background, color: group.text, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
         <ChevronRight size={17} style={{ flex: "0 0 auto", transform: collapsed ? "none" : "rotate(90deg)", transition: "transform .15s ease" }} />
-        <span style={{ fontSize: 13, fontWeight: 800, flex: 1, whiteSpace: "nowrap" }}>{group.label}</span>
+        <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 800, whiteSpace: "nowrap" }}>{group.label}</div><div style={{ marginTop: 2, fontSize: 10, fontWeight: 600, opacity: 0.85, whiteSpace: "nowrap" }}>{formatCurrency(group.netValue)}</div></div>
         <span style={{ minWidth: 28, height: 24, padding: "0 7px", display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 12, background: group.badge, color: group.text, fontSize: 10, fontWeight: 800 }}>{group.count}</span>
       </button>
       {!collapsed && <div style={{ display: "flex", gap: 12, overflowX: "auto", padding: 12, background: "#f8fafc" }}>{group.columns.map((column) => <StageColumn key={column.stage} column={column} />)}</div>}
