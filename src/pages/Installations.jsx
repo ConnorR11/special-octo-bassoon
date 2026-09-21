@@ -18,6 +18,7 @@ const GROUPS = [
   { key: "surveys", label: "Surveys", stages: ["Book for Survey", "Book for Survey (S)", "Survey Booked"], background: "#dcfce7", border: "#bbf7d0", text: "#166534", badge: "#bbf7d0" },
   { key: "procurement", label: "Procurement", stages: ["To Be Ordered", "Awaiting Customer Confirmation", "Awaiting Manufacture Date"], background: "#ffedd5", border: "#fed7aa", text: "#9a3412", badge: "#fed7aa" },
   { key: "accounts", label: "Accounts", stages: ["Cancelled - Awaiting Refund", "Fit Complete - Accounts To Check", "Admin Fee Outstanding"], background: "#f3e8ff", border: "#e9d5ff", text: "#7e22ce", badge: "#e9d5ff" },
+  { key: "remedials", label: "Remedials", stages: ["Remedial To Check", "Remedial Ordered", "Engineer To Book (R)", "Engineer Booked (R)"], background: "#fef3c7", border: "#fde68a", text: "#92400e", badge: "#fde68a" },
   { key: "complete", label: "Complete", stages: ["Remedial Complete", "NAPIT Sign Off Complete", "Contract Complete"], background: "#e0e7ff", border: "#c7d2fe", text: "#4338ca", badge: "#c7d2fe" },
   { key: "deal-lost", label: "Deal Lost", stages: ["Customer Cancelled", "Decline"], background: "#fee2e2", border: "#fecaca", text: "#b91c1c", badge: "#fecaca" },
 ]
@@ -25,7 +26,7 @@ const UNGROUPED = { key: "ungrouped", label: "Ungrouped", background: "#f1f5f9",
 
 export default function Installations({ setSelected }) {
   const [deals, setDeals] = useState([]); const [loading, setLoading] = useState(true); const [refreshing, setRefreshing] = useState(false); const [error, setError] = useState(""); const [query, setQuery] = useState(""); const [profile, setProfile] = useState(null)
-  const [collapsedGroups, setCollapsedGroups] = useState({ rts: true, surveys: true, procurement: true, accounts: true, complete: true, "deal-lost": true })
+  const [collapsedGroups, setCollapsedGroups] = useState({ rts: true, surveys: true, procurement: true, accounts: true, remedials: true, complete: true, "deal-lost": true })
   async function loadInstallations(showRefresh = false) {
     if (!supabase) { setError("Supabase is not configured."); setLoading(false); return }
     if (showRefresh) setRefreshing(true); else setLoading(true); setError("")
