@@ -3,7 +3,7 @@ import { supabase } from "./lib/supabase"
 import EPVSCalculator from "./EPVSCalculator"
 import Sidebar from "./components/Sidebar"
 import Header from "./components/Header"
-import FitSheet from "./components/FitSheet"
+import FitSheet from "./FitSheet"
 import Dashboard from "./pages/Dashboard"
 import MarketingTV from "./pages/MarketingTV"
 import MarketingDashboard from "./pages/MarketingDashboard"
@@ -16,6 +16,7 @@ import PickupAppointment from "./pages/PickupAppointment"
 import Login from "./pages/Login"
 import SalesKPI from "./pages/SalesKPI"
 import Users from "./pages/Users"
+import Templates from "./pages/Templates"
 import AdminUserPreview from "./components/AdminUserPreview"
 
 const DEALS_PAGE_SIZE = 50
@@ -59,34 +60,14 @@ function App() {
     if (!session || !supabase) { setProfile(null); setPreviewUser(null); return }
     let mounted = true
     async function loadProfileAndPreview() {
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("auth_user_id", session.user.id)
-        .maybeSingle()
-
+      const { data: profileData, error: profileError } = await supabase.from("profiles").select("*").eq("auth_user_id", session.user.id).maybeSingle()
       if (!mounted) return
       if (profileError) console.error("Error loading user profile:", profileError)
       setProfile(profileData || null)
-
-      // Restore an active administrator preview after a reload. The preview is stored
-      // server-side so RLS applies the selected user's permissions to every query.
       const { data: previewId, error: previewError } = await supabase.rpc("current_preview_profile_id")
-      if (previewError) {
-        console.error("Error loading admin preview:", previewError)
-        return
-      }
-      if (!previewId) {
-        setPreviewUser(null)
-        return
-      }
-
-      const { data: previewProfile, error: previewProfileError } = await supabase
-        .from("profiles")
-        .select("id, full_name, display_name, email, role, permission_level, branch, active")
-        .eq("id", previewId)
-        .maybeSingle()
-
+      if (previewError) { console.error("Error loading admin preview:", previewError); return }
+      if (!previewId) { setPreviewUser(null); return }
+      const { data: previewProfile, error: previewProfileError } = await supabase.from("profiles").select("id, full_name, display_name, email, role, permission_level, branch, active").eq("id", previewId).maybeSingle()
       if (!mounted) return
       if (previewProfileError) console.error("Error loading preview profile:", previewProfileError)
       setPreviewUser(previewProfile || null)
@@ -96,13 +77,7 @@ function App() {
   }, [session])
 
   const isAdministrator = Number(profile?.permission_level) >= 4
-
-  useEffect(() => {
-    if (page === "users" && !isAdministrator) {
-      setPage("dashboard")
-      window.history.replaceState({}, "", "/")
-    }
-  }, [page, isAdministrator])
+  useEffect(() => { if (page === "users" && !isAdministrator) { setPage("dashboard"); window.history.replaceState({}, "", "/") } }, [page, isAdministrator])
 
   async function loadContracts(pageNumber = 0, searchValue = query, statusValue = status) {
     setLoading(true); setError("")
@@ -133,25 +108,13 @@ function App() {
 
   function handleBackToDeals() { setSelected(null); setPage("contracts"); window.history.pushState({}, "", "/contracts") }
   function handleDealUpdated(updatedDeal) { setContracts((current) => current.map((contract) => contract.id === updatedDeal.id ? updatedDeal : contract)); setAllDeals((current) => current.map((contract) => contract.id === updatedDeal.id ? updatedDeal : contract)); setSelected(updatedDeal) }
-  function handlePageChange(newPage) {
-    if (newPage === "users" && !isAdministrator) return
-    setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage(newPage)
-    if (newPage === "contracts") { setQuery(""); setStatus("all"); loadContracts(0, "", "all") }
-    window.history.pushState({}, "", newPage === "dashboard" ? "/" : `/${newPage}`)
-  }
+  function handlePageChange(newPage) { if (newPage === "users" && !isAdministrator) return; setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage(newPage); if (newPage === "contracts") { setQuery(""); setStatus("all"); loadContracts(0, "", "all") } window.history.pushState({}, "", newPage === "dashboard" ? "/" : `/${newPage}`) }
   function handleSearchChange(value) { setQuery(value); loadContracts(0, value, status) }
   function handleStatusChange(value) { setStatus(value); loadContracts(0, query, value) }
   function mapAppointment(appointment) { if (!appointment) return null; return { ...appointment, phone: appointment?.phone_number_1, email: appointment?.email_address } }
   function appointmentUrl(appointment) { return `/appointments/${encodeURIComponent(appointment.appointment_row_id)}` }
   function handleAppointmentSelect(appointment) { const mappedAppointment = mapAppointment(appointment); if (!mappedAppointment?.appointment_row_id) return; setSelected(null); setPickupAppointment(null); setSelectedAppointment(mappedAppointment); setPage("appointments"); window.history.pushState({}, "", appointmentUrl(mappedAppointment)) }
-  async function loadAppointmentFromUrl(appointmentId) {
-    if (!supabase || !appointmentId) return
-    setError("")
-    const { data, error: appointmentError } = await supabase.from("appointments").select("*").eq("appointment_row_id", appointmentId).maybeSingle()
-    if (appointmentError) { console.error("Error loading appointment from URL:", appointmentError); setError(appointmentError.message); return }
-    if (!data) { setError("Appointment not available in this user preview."); window.history.replaceState({}, "", "/appointments"); setPage("appointments"); return }
-    setSelected(null); setPickupAppointment(null); setSelectedAppointment(mapAppointment(data)); setPage("appointments")
-  }
+  async function loadAppointmentFromUrl(appointmentId) { if (!supabase || !appointmentId) return; setError(""); const { data, error: appointmentError } = await supabase.from("appointments").select("*").eq("appointment_row_id", appointmentId).maybeSingle(); if (appointmentError) { console.error("Error loading appointment from URL:", appointmentError); setError(appointmentError.message); return } if (!data) { setError("Appointment not available in this user preview."); window.history.replaceState({}, "", "/appointments"); setPage("appointments"); return } setSelected(null); setPickupAppointment(null); setSelectedAppointment(mapAppointment(data)); setPage("appointments") }
   useEffect(() => { if (!session) return; function handlePopState() { const path = window.location.pathname.replace(/\/+$/, "") || "/"; const appointmentMatch = path.match(/^\/appointments\/([^/]+)$/); if (appointmentMatch) { loadAppointmentFromUrl(decodeURIComponent(appointmentMatch[1])); return } setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage(path === "/" || path === "/dashboard" ? "dashboard" : path.slice(1)) } handlePopState(); window.addEventListener("popstate", handlePopState); return () => window.removeEventListener("popstate", handlePopState) }, [session, previewUser?.id])
   function handleOpenPickup() { if (selectedAppointment?.result) setPickupAppointment(selectedAppointment) }
   function handleBackToAppointments() { setPickupAppointment(null); setSelectedAppointment(null); setPage("appointments"); window.history.pushState({}, "", "/appointments") }
@@ -165,6 +128,7 @@ function App() {
   const headerPage = selected ? "customer" : selectedAppointment ? "appointment" : page
   if (authLoading) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f7fa", color: "#002d49", fontFamily: "Inter, Arial, sans-serif", fontSize: 14 }}>Loading CRM...</div>
   if (!session) return <Login />
-  return <div className="app"><Sidebar page={page} setPage={handlePageChange} mobile={mobile} setMobile={setMobile} onSignOut={handleSignOut} permissionLevel={profile?.permission_level} /><main><Header page={headerPage} setMobile={setMobile} />{error && page !== "epvs" && <div className="error"><b>Database error</b><span>{error}</span></div>}{isAdministrator && page === "users" && <AdminUserPreview activeUser={previewUser} onStart={(user) => { setPreviewUser(user); setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("appointments"); window.history.pushState({}, "", "/appointments") }} onStop={async () => { setPreviewUser(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("users"); window.history.pushState({}, "", "/users") }} />}{isAdministrator && previewUser && page !== "users" && <AdminUserPreview activeUser={previewUser} onStart={() => {}} onStop={async () => { setPreviewUser(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("users"); window.history.pushState({}, "", "/users") }} />}{pickupAppointment ? <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated} /> : selectedAppointment ? <div style={{ position: "relative" }}><style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}</style><div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 24px 0", background: "#fff" }}><AppointmentActions appointment={selectedAppointment} onUpdated={handleAppointmentUpdated} onConfirmLegacy={handleLegacyConfirm} onResultLegacy={handleLegacyResult} onOpenPickup={handleOpenPickup} /></div><div className="appointment-detail-host"><AppointmentDetail appointment={selectedAppointment} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated} /></div></div> : selected ? <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated} /> : page === "dashboard" ? <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={reportingLoading} setPage={handlePageChange} setSelected={setSelected} /> : page === "marketing-tv" ? <MarketingTV onSelectAppointment={handleAppointmentSelect} /> : page === "marketing-dashboard" ? <MarketingDashboard contracts={contracts} loading={loading} onSelectAppointment={handleAppointmentSelect} /> : page === "sales-kpi" ? <SalesKPI /> : page === "users" && isAdministrator ? <Users /> : page === "contracts" ? <Contracts filtered={filteredContracts} loading={loading} query={query} setQuery={handleSearchChange} status={status} setStatus={setStatus} setSelected={setSelected} page={contractsPage} pageSize={DEALS_PAGE_SIZE} hasMore={hasMoreContracts} onPreviousPage={() => loadContracts(Math.max(contractsPage - 1, 0), query, status)} onNextPage={() => loadContracts(contractsPage + 1, query, status)} /> : page === "appointments" ? <Appointments onSelectAppointment={handleAppointmentSelect} previewUser={previewUser} /> : page === "fitsheet" ? <FitSheet contracts={allDeals} loading={reportingLoading} setSelected={setSelected} onSelectDeal={setSelected} /> : page === "epvs" ? <EPVSCalculator /> : <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setPage={handlePageChange} setSelected={setSelected} />}</main></div>
+  return <div className="app"><Sidebar page={page} setPage={handlePageChange} mobile={mobile} setMobile={setMobile} onSignOut={handleSignOut} permissionLevel={profile?.permission_level} /><main><Header page={headerPage} setMobile={setMobile} />{error && page !== "epvs" && <div className="error"><b>Database error</b><span>{error}</span></div>}{isAdministrator && page === "users" && <AdminUserPreview activeUser={previewUser} onStart={(user) => { setPreviewUser(user); setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("appointments"); window.history.pushState({}, "", "/appointments") }} onStop={async () => { setPreviewUser(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("users"); window.history.pushState({}, "", "/users") }} />}{isAdministrator && previewUser && page !== "users" && <AdminUserPreview activeUser={previewUser} onStart={() => {}} onStop={async () => { setPreviewUser(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("users"); window.history.pushState({}, "", "/users") }} />}{pickupAppointment ? <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated} /> : selectedAppointment ? <div style={{ position: "relative" }}><style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}</style><div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 24px 0", background: "#fff" }}><AppointmentActions appointment={selectedAppointment} onUpdated={handleAppointmentUpdated} onConfirmLegacy={handleLegacyConfirm} onResultLegacy={handleLegacyResult} onOpenPickup={handleOpenPickup} /></div><div className="appointment-detail-host"><AppointmentDetail appointment={selectedAppointment} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated} /></div></div> : selected ? <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated} /> : page === "dashboard" ? <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={reportingLoading} setPage={handlePageChange} setSelected={setSelected} /> : page === "marketing-tv" ? <MarketingTV onSelectAppointment={handleAppointmentSelect} /> : page === "marketing-dashboard" ? <MarketingDashboard contracts={contracts} loading={loading} onSelectAppointment={handleAppointmentSelect} /> : page === "sales-kpi" ? <SalesKPI /> : page === "users" && isAdministrator ? <Users /> : page === "templates" ? <Templates /> : page === "contracts" ? <Contracts filtered={filteredContracts} loading={loading} query={query} setQuery={handleSearchChange} status={status} setStatus={setStatus} setSelected={setSelected} page={contractsPage} pageSize={DEALS_PAGE_SIZE} hasMore={hasMoreContracts} onPreviousPage={() => loadContracts(Math.max(contractsPage - 1, 0), query, status)} onNextPage={() => loadContracts(contractsPage + 1, query, status)} /> : page === "appointments" ? <Appointments onSelectAppointment={handleAppointmentSelect} previewUser={previewUser} /> : page === "fitsheet" ? <FitSheet contracts={allDeals} loading={reportingLoading} setSelected={setSelected} onSelectDeal={setSelected} /> : page === "epvs" ? <EPVSCalculator /> : <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setPage={handlePageChange} setSelected={setSelected} />}
+    </main></div>
 }
 export default App
