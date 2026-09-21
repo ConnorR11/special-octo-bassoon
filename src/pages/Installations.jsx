@@ -33,8 +33,7 @@ function formatDate(value) {
 }
 
 function getStageLabel(value) {
-  const stage = String(value || "").trim()
-  return stage || "No Stage"
+  return String(value || "").trim()
 }
 
 function getRepName(appointment) {
@@ -127,6 +126,8 @@ export default function Installations() {
       let request = supabase
         .from("appointments")
         .select("*")
+        .not("pipedrive_stage", "is", null)
+        .neq("pipedrive_stage", "")
         .order("appointment_date", { ascending: true, nullsFirst: false })
 
       if (!canViewAll) {
@@ -193,6 +194,8 @@ export default function Installations() {
 
     filteredAppointments.forEach((appointment) => {
       const stage = getStageLabel(appointment?.pipedrive_stage)
+
+      if (!stage) return
 
       if (!grouped.has(stage)) grouped.set(stage, [])
       grouped.get(stage).push(appointment)
