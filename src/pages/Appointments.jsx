@@ -44,6 +44,76 @@ function Appointments({
       const from = page * pageSize
       const to = from + pageSize
 
+      // Work out who is viewing the appointments. In admin preview mode
+      // previewUser is the profile being previewed; otherwise use the
+      // currently authenticated user's profile.
+      let viewerProfile = previewUser || null
+
+      if (!viewerProfile) {
+        const { data: authData, error: authError } =
+          await supabase.auth.getUser()
+
+        if (authError) throw authError
+
+        const authUserId = authData?.user?.id
+
+        if (authUserId) {
+          const { data: currentProfile, error: profileError } =
+            await supabase
+              .from("profiles")
+              .select("id, auth_user_id, email, full_name, role, permission_level, branch_manager, sales_manager")
+              .eq("auth_user_id", authUserId)
+              .maybeSingle()
+
+          if (profileError) throw profileError
+          viewerProfile = currentProfile || null
+        }
+      }
+
+      // For managers we need the profiles of the reps they are responsible
+      // for. Both profile UUIDs and auth UUIDs are supported because the
+      // manager columns have been used with auth UUIDs in the CRM.
+      let managedRepEmails = []
+
+      if (!canViewAllAppointments && viewerProfile) {
+        const viewerProfileId = String(viewerProfile.id || "").trim()
+        const viewerAuthId = String(viewerProfile.auth_user_id || "").trim()
+        const viewerEmail = String(viewerProfile.email || "").trim().toLowerCase()
+
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, auth_user_id, email, branch_manager, sales_manager")
+
+        if (profilesError) throw profilesError
+
+        const viewerIds = new Set(
+          [viewerProfileId, viewerAuthId]
+            .filter(Boolean)
+            .map((value) => String(value).trim())
+        )
+
+        managedRepEmails = (profiles || [])
+          .filter((repProfile) => {
+            const branchManager = String(repProfile.branch_manager || "").trim()
+            const salesManager = String(repProfile.sales_manager || "").trim()
+
+            return (
+              viewerIds.has(branchManager) ||
+              viewerIds.has(salesManager)
+            )
+          })
+          .map((repProfile) => String(repProfile.email || "").trim().toLowerCase())
+          .filter(Boolean)
+
+        // Managers may also have their own appointments, so include their
+        // own email in addition to the reps they manage.
+        if (viewerEmail) {
+          managedRepEmails.push(viewerEmail)
+        }
+
+        managedRepEmails = [...new Set(managedRepEmails)]
+      }
+
       // Fetch one extra row so we can determine whether another page exists.
       // This avoids an expensive count(*) query on every search/page change.
       let request = supabase
@@ -52,10 +122,20 @@ function Appointments({
         .order("appointment_date", { ascending: false, nullsFirst: false })
         .range(from, to)
 
-      // Normal users are restricted to appointments allocated to them.
-      // Central Confirmation Manager and permission 3+ users see all.
-      if (previewUser?.email && !canViewAllAppointments) {
-        request = request.eq("rep_allocated", previewUser.email)
+      if (!canViewAllAppointments) {
+        // Managers see appointments for reps they manage. Everyone else sees
+        // only appointments allocated to themselves.
+        if (managedRepEmails.length > 0) {
+          request = request.in("rep_allocated", managedRepEmails)
+        } else {
+          const ownEmail = String(viewerProfile?.email || previewUser?.email || "")
+            .trim()
+            .toLowerCase()
+
+          if (ownEmail) {
+            request = request.eq("rep_allocated", ownEmail)
+          }
+        }
       }
 
       const search = query.trim()
