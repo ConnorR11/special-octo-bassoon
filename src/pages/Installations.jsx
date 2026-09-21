@@ -28,7 +28,7 @@ function formatCurrency(value) {
 }
 
 const GROUPS = [
-  { key: "rts", label: "Sales", stages: ["Awaiting Funds", "Returned To Sales"], background: "#e0f2fe", border: "#bae6fd", text: "#075985", badge: "#bae6fd" },
+  { key: "rts", label: "Sales", stages: ["Awaiting Funds", "Returned To Sales", "Pending Cancellation"], background: "#e0f2fe", border: "#bae6fd", text: "#075985", badge: "#bae6fd" },
   { key: "surveys", label: "Surveys", stages: ["Book for Survey", "Book for Survey (S)", "Survey Booked"], background: "#dcfce7", border: "#bbf7d0", text: "#166534", badge: "#bbf7d0" },
 ]
 const UNGROUPED = { key: "ungrouped", label: "Ungrouped", background: "#f1f5f9", border: "#e2e8f0", text: "#334155", badge: "#e2e8f0" }
@@ -40,7 +40,7 @@ export default function Installations({ setSelected }) {
   const [error, setError] = useState("")
   const [query, setQuery] = useState("")
   const [profile, setProfile] = useState(null)
-  const [collapsedGroups, setCollapsedGroups] = useState({})
+  const [collapsedGroups, setCollapsedGroups] = useState({ rts: true, surveys: true })
 
   async function loadInstallations(showRefresh = false) {
     if (!supabase) { setError("Supabase is not configured."); setLoading(false); return }
