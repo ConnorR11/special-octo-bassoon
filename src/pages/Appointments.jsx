@@ -36,6 +36,11 @@ function Appointments({
     numericPermissionLevel >= 3 ||
     isCentralConfirmationManager(role)
 
+  // Level 2 managers see every appointment belonging to their branch.
+  // This deliberately does NOT check manager_id, sales_manager, or the
+  // individual reps managed by the user. Branch is the only manager filter.
+  const canViewBranchAppointments = numericPermissionLevel >= 2
+
   async function loadAppointments() {
     setLoading(true)
     setError("")
@@ -61,7 +66,7 @@ function Appointments({
           const { data: currentProfile, error: profileError } =
             await supabase
               .from("profiles")
-              .select("id, auth_user_id, email, full_name, role, permission_level, branch_manager, sales_manager")
+              .select("id, auth_user_id, email, full_name, role, permission_level, branch")
               .eq("auth_user_id", authUserId)
               .maybeSingle()
 
@@ -70,52 +75,7 @@ function Appointments({
         }
       }
 
-      // For managers we need the profiles of the reps they are responsible
-      // for. Both profile UUIDs and auth UUIDs are supported because the
-      // manager columns have been used with auth UUIDs in the CRM.
-      let managedRepEmails = []
-
-      if (!canViewAllAppointments && viewerProfile) {
-        const viewerProfileId = String(viewerProfile.id || "").trim()
-        const viewerAuthId = String(viewerProfile.auth_user_id || "").trim()
-        const viewerEmail = String(viewerProfile.email || "").trim().toLowerCase()
-
-        const { data: profiles, error: profilesError } = await supabase
-          .from("profiles")
-          .select("id, auth_user_id, email, branch_manager, sales_manager")
-
-        if (profilesError) throw profilesError
-
-        const viewerIds = new Set(
-          [viewerProfileId, viewerAuthId]
-            .filter(Boolean)
-            .map((value) => String(value).trim())
-        )
-
-        managedRepEmails = (profiles || [])
-          .filter((repProfile) => {
-            const branchManager = String(repProfile.branch_manager || "").trim()
-            const salesManager = String(repProfile.sales_manager || "").trim()
-
-            return (
-              viewerIds.has(branchManager) ||
-              viewerIds.has(salesManager)
-            )
-          })
-          .map((repProfile) => String(repProfile.email || "").trim().toLowerCase())
-          .filter(Boolean)
-
-        // Managers may also have their own appointments, so include their
-        // own email in addition to the reps they manage.
-        if (viewerEmail) {
-          managedRepEmails.push(viewerEmail)
-        }
-
-        managedRepEmails = [...new Set(managedRepEmails)]
-      }
-
       // Fetch one extra row so we can determine whether another page exists.
-      // This avoids an expensive count(*) query on every search/page change.
       let request = supabase
         .from("appointments")
         .select("*")
@@ -123,12 +83,17 @@ function Appointments({
         .range(from, to)
 
       if (!canViewAllAppointments) {
-        // Managers see appointments for reps they manage. Everyone else sees
-        // only appointments allocated to themselves.
-        if (managedRepEmails.length > 0) {
-          request = request.in("rep_allocated", managedRepEmails)
+        const viewerBranch = String(viewerProfile?.branch || "").trim()
+
+        if (canViewBranchAppointments && viewerBranch) {
+          // Managers see the entire branch. There is intentionally no
+          // manager_id or sales_manager filtering here.
+          request = request.eq("branch", viewerBranch)
         } else {
-          const ownEmail = String(viewerProfile?.email || previewUser?.email || "")
+          // Non-managers continue to see only appointments allocated to them.
+          const ownEmail = String(
+            viewerProfile?.email || previewUser?.email || ""
+          )
             .trim()
             .toLowerCase()
 
@@ -174,14 +139,13 @@ function Appointments({
     setPage(0)
   }, [previewUser?.id])
 
-  // Debounce search so we don't issue a database query for every keystroke.
   useEffect(() => {
     const timer = window.setTimeout(() => {
       loadAppointments()
     }, query ? 300 : 0)
 
     return () => window.clearTimeout(timer)
-  }, [page, query, previewUser?.id, previewUser?.email, canViewAllAppointments])
+  }, [page, query, previewUser?.id, previewUser?.email, canViewAllAppointments, canViewBranchAppointments])
 
   function handleSearch(value) {
     setQuery(value)
@@ -248,7 +212,9 @@ function Appointments({
               ? `Viewing ${previewUser.full_name || previewUser.email}`
               : canViewAllAppointments
                 ? "All appointments · 50 per page"
-                : "50 appointments per page"}
+                : canViewBranchAppointments
+                  ? "Branch appointments · 50 per page"
+                  : "50 appointments per page"}
           </p>
         </div>
 
