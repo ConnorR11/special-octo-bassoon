@@ -1,42 +1,10 @@
-import React, { useEffect, useState } from "react"
+import React, { useState } from "react"
 import {
   LayoutDashboard, FileText, ChevronDown, ChevronRight, BarChart3, CalendarDays,
   Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck,
   Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound,
   MessageCircle, Files, FilePlus, UserCog, FileCheck, LogOut,
 } from "lucide-react"
-import { supabase } from "../lib/supabase"
-
-function normaliseDepartment(value) {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ")
-}
-
-function getDepartmentFolder(department) {
-  const value = normaliseDepartment(department)
-
-  const departmentMap = {
-    marketing: "marketing",
-    sales: "sales",
-    "central confirmation": "sales",
-    "central confirmation manager": "sales",
-    procurement: "procurement",
-    installations: "installation",
-    installation: "installation",
-    remedials: "customerService",
-    "customer service": "customerService",
-    accounts: "finance",
-    finance: "finance",
-    solar: "solar",
-    documents: "documents",
-  }
-
-  return departmentMap[value] || null
-}
 
 function Sidebar({
   page,
@@ -48,72 +16,7 @@ function Sidebar({
   department = "",
 }) {
   const numericPermissionLevel = Number(permissionLevel) || 0
-  const isRestrictedDepartmentUser =
-    numericPermissionLevel === 1 || numericPermissionLevel === 2
-
-  const [effectiveDepartment, setEffectiveDepartment] = useState(department)
-
-  useEffect(() => {
-    let mounted = true
-
-    async function loadDepartment() {
-      if (!supabase) return
-
-      try {
-        const { data: authData, error: authError } =
-          await supabase.auth.getUser()
-
-        if (authError || !authData?.user) return
-
-        const { data: previewId, error: previewError } =
-          await supabase.rpc("current_preview_profile_id")
-
-        if (previewError) {
-          console.error("Error loading sidebar preview profile:", previewError)
-        }
-
-        const profileId = previewId || null
-
-        let query = supabase
-          .from("profiles")
-          .select("department")
-
-        if (profileId) {
-          query = query.eq("id", profileId)
-        } else {
-          query = query.eq("auth_user_id", authData.user.id)
-        }
-
-        const { data, error } = await query.maybeSingle()
-
-        if (error) {
-          console.error("Error loading sidebar department:", error)
-          return
-        }
-
-        if (mounted) {
-          setEffectiveDepartment(
-            data?.department || department || ""
-          )
-        }
-      } catch (error) {
-        console.error("Error loading sidebar department:", error)
-      }
-    }
-
-    loadDepartment()
-
-    return () => {
-      mounted = false
-    }
-  }, [department])
-
-  const departmentFolder = getDepartmentFolder(effectiveDepartment)
-
-  const canSeeFolder = (folder) => {
-    if (!isRestrictedDepartmentUser) return true
-    return departmentFolder === folder
-  }
+  const isAdministrator = numericPermissionLevel >= 4
 
   const [openFolders, setOpenFolders] = useState({
     sales: false,
@@ -127,15 +30,6 @@ function Sidebar({
     procurement: false,
   })
 
-  useEffect(() => {
-    if (!isRestrictedDepartmentUser || !departmentFolder) return
-
-    setOpenFolders((current) => ({
-      ...current,
-      [departmentFolder]: true,
-    }))
-  }, [isRestrictedDepartmentUser, departmentFolder])
-
   const toggleFolder = (folder) =>
     setOpenFolders((current) => ({
       ...current,
@@ -148,7 +42,6 @@ function Sidebar({
   }
 
   const isActive = (pageName) => page === pageName
-  const isAdministrator = numericPermissionLevel >= 4
 
   return (
     <>
@@ -180,105 +73,91 @@ function Sidebar({
 
           <div className="sidebar-divider" />
 
-          {canSeeFolder("marketing") && (
-            <Folder
-              title="Marketing"
-              icon={Megaphone}
-              open={openFolders.marketing}
-              onClick={() => toggleFolder("marketing")}
-            >
-              <NavItem icon={BarChart3} label="Marketing Dashboard" active={isActive("marketing-dashboard")} onClick={() => navigate("marketing-dashboard")} />
-              <NavItem icon={Target} label="Leads" disabled />
-              <NavItem icon={Phone} label="Call Log" disabled />
-              <NavItem icon={CalendarDays} label="Booked Leads" disabled />
-              <NavItem icon={Handshake} label="Commissions" disabled />
-              <NavItem icon={Trophy} label="Canvasser KPI" disabled />
-            </Folder>
-          )}
+          <Folder
+            title="Marketing"
+            icon={Megaphone}
+            open={openFolders.marketing}
+            onClick={() => toggleFolder("marketing")}
+          >
+            <NavItem icon={BarChart3} label="Marketing Dashboard" active={isActive("marketing-dashboard")} onClick={() => navigate("marketing-dashboard")} />
+            <NavItem icon={Target} label="Leads" disabled />
+            <NavItem icon={Phone} label="Call Log" disabled />
+            <NavItem icon={CalendarDays} label="Booked Leads" disabled />
+            <NavItem icon={Handshake} label="Commissions" disabled />
+            <NavItem icon={Trophy} label="Canvasser KPI" disabled />
+          </Folder>
 
-          {canSeeFolder("sales") && (
-            <Folder
-              title="Sales"
-              icon={Target}
-              open={openFolders.sales}
-              onClick={() => toggleFolder("sales")}
-            >
-              <NavItem icon={LayoutDashboard} label="Mastersheet" active={isActive("marketing-tv")} onClick={() => navigate("marketing-tv")} />
-              <NavItem icon={CalendarDays} label="Appointments" active={isActive("appointments")} onClick={() => navigate("appointments")} />
-              <NavItem icon={FileText} label="Deals" active={isActive("contracts")} onClick={() => navigate("contracts")} />
-              <NavItem icon={FileCheck} label="Overstays" disabled />
-              <NavItem icon={FileCheck} label="ECOFs" disabled />
-              <NavItem icon={PoundSterling} label="Commissions" disabled />
-              <NavItem icon={Trophy} label="Sales KPI" active={isActive("sales-kpi")} onClick={() => navigate("sales-kpi")} />
-              <NavItem icon={BarChart3} label="Sales Performance" disabled />
-            </Folder>
-          )}
+          <Folder
+            title="Sales"
+            icon={Target}
+            open={openFolders.sales}
+            onClick={() => toggleFolder("sales")}
+          >
+            <NavItem icon={LayoutDashboard} label="Mastersheet" active={isActive("marketing-tv")} onClick={() => navigate("marketing-tv")} />
+            <NavItem icon={CalendarDays} label="Appointments" active={isActive("appointments")} onClick={() => navigate("appointments")} />
+            <NavItem icon={FileText} label="Deals" active={isActive("contracts")} onClick={() => navigate("contracts")} />
+            <NavItem icon={FileCheck} label="Overstays" disabled />
+            <NavItem icon={FileCheck} label="ECOFs" disabled />
+            <NavItem icon={PoundSterling} label="Commissions" disabled />
+            <NavItem icon={Trophy} label="Sales KPI" active={isActive("sales-kpi")} onClick={() => navigate("sales-kpi")} />
+            <NavItem icon={BarChart3} label="Sales Performance" disabled />
+          </Folder>
 
-          {canSeeFolder("procurement") && (
-            <Folder
-              title="Procurement"
-              icon={Wrench}
-              open={openFolders.procurement}
-              onClick={() => toggleFolder("procurement")}
-            >
-              <NavItem icon={ClipboardCheck} label="Surveys" disabled />
-              <NavItem icon={CalendarDays} label="Cover Calls" disabled />
-              <NavItem icon={AlertTriangle} label="Costing" disabled />
-              <NavItem icon={AlertTriangle} label="Ordering" disabled />
-            </Folder>
-          )}
+          <Folder
+            title="Procurement"
+            icon={Wrench}
+            open={openFolders.procurement}
+            onClick={() => toggleFolder("procurement")}
+          >
+            <NavItem icon={ClipboardCheck} label="Surveys" disabled />
+            <NavItem icon={CalendarDays} label="Cover Calls" disabled />
+            <NavItem icon={AlertTriangle} label="Costing" disabled />
+            <NavItem icon={AlertTriangle} label="Ordering" disabled />
+          </Folder>
 
-          {canSeeFolder("installation") && (
-            <Folder
-              title="Installations"
-              icon={Wrench}
-              open={openFolders.installation}
-              onClick={() => toggleFolder("installation")}
-            >
-              <NavItem icon={ClipboardCheck} label="Fit Sheet" active={isActive("fitsheet")} onClick={() => navigate("fitsheet")} />
-              <NavItem icon={CalendarDays} label="Installations" disabled />
-              <NavItem icon={AlertTriangle} label="Installation Issues" disabled />
-            </Folder>
-          )}
+          <Folder
+            title="Installations"
+            icon={Wrench}
+            open={openFolders.installation}
+            onClick={() => toggleFolder("installation")}
+          >
+            <NavItem icon={ClipboardCheck} label="Fit Sheet" active={isActive("fitsheet")} onClick={() => navigate("fitsheet")} />
+            <NavItem icon={CalendarDays} label="Installations" disabled />
+            <NavItem icon={AlertTriangle} label="Installation Issues" disabled />
+          </Folder>
 
-          {canSeeFolder("customerService") && (
-            <Folder
-              title="Remedials"
-              icon={Headphones}
-              open={openFolders.customerService}
-              onClick={() => toggleFolder("customerService")}
-            >
-              <NavItem icon={UserRound} label="Customers" disabled />
-              <NavItem icon={MessageCircle} label="Follow-ups" disabled />
-              <NavItem icon={AlertTriangle} label="Complaints" disabled />
-            </Folder>
-          )}
+          <Folder
+            title="Remedials"
+            icon={Headphones}
+            open={openFolders.customerService}
+            onClick={() => toggleFolder("customerService")}
+          >
+            <NavItem icon={UserRound} label="Customers" disabled />
+            <NavItem icon={MessageCircle} label="Follow-ups" disabled />
+            <NavItem icon={AlertTriangle} label="Complaints" disabled />
+          </Folder>
 
-          {canSeeFolder("finance") && (
-            <Folder
-              title="Accounts"
-              icon={PoundSterling}
-              open={openFolders.finance}
-              onClick={() => toggleFolder("finance")}
-            >
-              <NavItem icon={PoundSterling} label="Revenue" disabled />
-              <NavItem icon={CreditCard} label="Payments" disabled />
-              <NavItem icon={Receipt} label="Invoices" disabled />
-            </Folder>
-          )}
+          <Folder
+            title="Accounts"
+            icon={PoundSterling}
+            open={openFolders.finance}
+            onClick={() => toggleFolder("finance")}
+          >
+            <NavItem icon={PoundSterling} label="Revenue" disabled />
+            <NavItem icon={CreditCard} label="Payments" disabled />
+            <NavItem icon={Receipt} label="Invoices" disabled />
+          </Folder>
 
-          {canSeeFolder("documents") && (
-            <Folder
-              title="Documents"
-              icon={Files}
-              open={openFolders.documents}
-              onClick={() => toggleFolder("documents")}
-            >
-              <NavItem icon={FileText} label="Company Brochures" disabled />
-              <NavItem icon={Files} label="Customer Documents" disabled />
-              <NavItem icon={FilePlus} label="Templates" active={isActive("templates")} onClick={() => navigate("templates")} />
-            </Folder>
-          )}
+          <Folder
+            title="Documents"
+            icon={Files}
+            open={openFolders.documents}
+            onClick={() => toggleFolder("documents")}
+          >
+            <NavItem icon={FileText} label="Company Brochures" disabled />
+            <NavItem icon={Files} label="Customer Documents" disabled />
+            <NavItem icon={FilePlus} label="Templates" active={isActive("templates")} onClick={() => navigate("templates")} />
+          </Folder>
 
           {isAdministrator && (
             <Folder
