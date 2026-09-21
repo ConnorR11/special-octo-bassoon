@@ -17,6 +17,7 @@ function Sidebar({
 }) {
   const numericPermissionLevel = Number(permissionLevel) || 0
   const isAdministrator = numericPermissionLevel >= 4
+  const canAccessMarketingDashboard = numericPermissionLevel >= 3
 
   const [openFolders, setOpenFolders] = useState({
     sales: false,
@@ -74,7 +75,14 @@ function Sidebar({
           <div className="sidebar-divider" />
 
           <Folder title="Marketing" icon={Megaphone} open={openFolders.marketing} onClick={() => toggleFolder("marketing")}>
-            <NavItem icon={BarChart3} label="Marketing Dashboard" active={isActive("marketing-dashboard")} onClick={() => navigate("marketing-dashboard")} />
+            <NavItem
+              icon={BarChart3}
+              label="Marketing Dashboard"
+              active={isActive("marketing-dashboard")}
+              onClick={() => navigate("marketing-dashboard")}
+              disabled={!canAccessMarketingDashboard}
+              locked={!canAccessMarketingDashboard}
+            />
             <NavItem icon={Target} label="Leads" disabled />
             <NavItem icon={Phone} label="Call Log" disabled />
             <NavItem icon={CalendarDays} label="Booked Leads" disabled />
@@ -160,12 +168,12 @@ function Folder({ title, icon: Icon, open, onClick, children }) {
   )
 }
 
-function NavItem({ icon: Icon, label, active = false, onClick, disabled = false }) {
+function NavItem({ icon: Icon, label, active = false, onClick, disabled = false, locked = false }) {
   return (
     <button type="button" className={`sidebar-subitem ${active ? "active" : ""} ${disabled ? "disabled" : ""}`} onClick={disabled ? undefined : onClick} disabled={disabled}>
       <span className="sidebar-subitem-icon"><Icon size={15} /></span>
       <span>{label}</span>
-      {disabled && <span className="coming-soon">Soon</span>}
+      {locked ? <span className="coming-soon">Locked</span> : disabled && <span className="coming-soon">Soon</span>}
     </button>
   )
 }
