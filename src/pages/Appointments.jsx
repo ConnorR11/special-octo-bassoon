@@ -3,7 +3,21 @@ import { Search, CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-re
 import { supabase } from "../lib/supabase"
 import CreateAppointment from "./CreateAppointment"
 
-function Appointments({ onSelectAppointment, previewUser = null }) {
+function isCentralConfirmationManager(role) {
+  const normalized = String(role || "").trim().toLowerCase()
+
+  return (
+    normalized === "central confirmation manager" ||
+    normalized === "central confirmer manager"
+  )
+}
+
+function Appointments({
+  onSelectAppointment,
+  previewUser = null,
+  permissionLevel = 0,
+  role = "",
+}) {
   const [appointments, setAppointments] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -12,6 +26,15 @@ function Appointments({ onSelectAppointment, previewUser = null }) {
   const [hasMore, setHasMore] = useState(false)
   const [showCreateAppointment, setShowCreateAppointment] = useState(false)
   const pageSize = 50
+
+  const numericPermissionLevel = Number(permissionLevel) || 0
+
+  // Permission 3+ can see everything. The Central Confirmation Manager
+  // can also see every appointment, even though their normal permission
+  // level is lower.
+  const canViewAllAppointments =
+    numericPermissionLevel >= 3 ||
+    isCentralConfirmationManager(role)
 
   async function loadAppointments() {
     setLoading(true)
@@ -29,7 +52,9 @@ function Appointments({ onSelectAppointment, previewUser = null }) {
         .order("appointment_date", { ascending: false, nullsFirst: false })
         .range(from, to)
 
-      if (previewUser?.email) {
+      // Normal users are restricted to appointments allocated to them.
+      // Central Confirmation Manager and permission 3+ users see all.
+      if (previewUser?.email && !canViewAllAppointments) {
         request = request.eq("rep_allocated", previewUser.email)
       }
 
@@ -76,7 +101,7 @@ function Appointments({ onSelectAppointment, previewUser = null }) {
     }, query ? 300 : 0)
 
     return () => window.clearTimeout(timer)
-  }, [page, query, previewUser?.id, previewUser?.email])
+  }, [page, query, previewUser?.id, previewUser?.email, canViewAllAppointments])
 
   function handleSearch(value) {
     setQuery(value)
@@ -141,7 +166,9 @@ function Appointments({ onSelectAppointment, previewUser = null }) {
           <p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>
             {previewUser
               ? `Viewing ${previewUser.full_name || previewUser.email}`
-              : "50 appointments per page"}
+              : canViewAllAppointments
+                ? "All appointments · 50 per page"
+                : "50 appointments per page"}
           </p>
         </div>
 
