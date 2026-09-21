@@ -95,12 +95,24 @@ export default function Installations({ setSelected }) {
       if (!stageMap.has(stage)) stageMap.set(stage, [])
       stageMap.get(stage).push(deal)
     })
-    const rtsStages = GROUPS[0].stages.map((stage) => ({ stage, items: stageMap.get(stage) || [] }))
-    const rtsDeals = rtsStages.flatMap((column) => column.items)
-    const ungroupedStages = Array.from(stageMap.entries()).filter(([stage]) => !GROUPS[0].stages.includes(stage)).map(([stage, items]) => ({ stage, items }))
+
+    const assignedStageSet = new Set(GROUPS.flatMap((group) => group.stages))
+    const groupData = GROUPS.map((group) => {
+      const columns = group.stages.map((stage) => ({ stage, items: stageMap.get(stage) || [] }))
+      return { ...group, columns, count: columns.reduce((sum, column) => sum + column.items.length, 0) }
+    })
+
+    const ungroupedStages = Array.from(stageMap.entries())
+      .filter(([stage]) => !assignedStageSet.has(stage))
+      .map(([stage, items]) => ({ stage, items }))
+
     return {
-      rts: { ...GROUPS[0], columns: rtsStages, count: rtsDeals.length },
-      ungrouped: { ...UNGROUPED, columns: ungroupedStages, count: ungroupedStages.reduce((sum, column) => sum + column.items.length, 0) },
+      groups: groupData,
+      ungrouped: {
+        ...UNGROUPED,
+        columns: ungroupedStages,
+        count: ungroupedStages.reduce((sum, column) => sum + column.items.length, 0),
+      },
     }
   }, [filteredDeals])
 
@@ -131,7 +143,7 @@ export default function Installations({ setSelected }) {
     </div>
   }
 
-  const visibleGroups = [groupedStages.rts, groupedStages.ungrouped].filter((group) => group.count > 0 || group.key === "ungrouped")
+  const visibleGroups = [...groupedStages.groups, groupedStages.ungrouped].filter((group) => group.count > 0 || group.key === "ungrouped")
 
   return <section>
     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 18 }}><div style={{ display: "flex", alignItems: "center", gap: 10 }}><KanbanSquare size={24} color="#2499ed" /><div><h1 style={{ margin: 0, fontSize: 22, color: "#222" }}>Kanban</h1><p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>Read-only installation board grouped by Pipedrive stage</p></div></div><button type="button" onClick={() => loadInstallations(true)} disabled={loading || refreshing} style={{ display: "inline-flex", alignItems: "center", gap: 7, height: 36, padding: "0 12px", border: "1px solid #dfe4e8", borderRadius: 7, background: "#fff", color: "#344454", cursor: loading || refreshing ? "default" : "pointer", opacity: loading || refreshing ? 0.6 : 1, fontFamily: "inherit", fontSize: 11, fontWeight: 600 }}><RefreshCw size={14} />Refresh</button></div>
