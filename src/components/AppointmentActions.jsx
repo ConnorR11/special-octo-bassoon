@@ -1,4 +1,3 @@
-```jsx
 import React, { useEffect, useState } from "react"
 import { jsPDF } from "jspdf"
 import {
@@ -21,8 +20,8 @@ import RepConfirmation from "./RepConfirmation"
 function getSubmittedBy(user) {
   const metadataName = String(
     user?.user_metadata?.full_name ||
-    user?.user_metadata?.name ||
-    ""
+      user?.user_metadata?.name ||
+      ""
   ).trim()
 
   return metadataName || user?.email || "Unknown"
@@ -64,11 +63,21 @@ function isSolarAppointment(appointment) {
   return text.includes("solar")
 }
 
+/*
+ * IMPORTANT:
+ * This deliberately does NOT use a template literal.
+ * This avoids the esbuild parser error around the £ symbol.
+ */
 function pdfMoney(value) {
-  return `£${Number(value || 0).toLocaleString("en-GB", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`
+  const amount = Number(value || 0)
+
+  return (
+    "£" +
+    amount.toLocaleString("en-GB", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  )
 }
 
 function pdfNumber(value, digits = 2) {
@@ -108,10 +117,14 @@ function drawPdfHeader(doc, title, customer, postcode) {
   doc.setFont(undefined, "normal")
   doc.setFontSize(7)
   doc.text(
-    `${customer || "Customer"} · ${postcode || "No postcode"}`,
+    String(customer || "Customer") +
+      " · " +
+      String(postcode || "No postcode"),
     200,
     8.5,
-    { align: "right" }
+    {
+      align: "right",
+    }
   )
 
   doc.setTextColor(30, 41, 59)
@@ -138,16 +151,21 @@ function drawPdfFooter(doc) {
     doc.setTextColor(100, 116, 139)
 
     doc.text(
-      `EPVS calculation · Exported ${exportedAt}`,
+      "EPVS calculation · Exported " + exportedAt,
       10,
       291
     )
 
     doc.text(
-      `Page ${page} of ${pageCount}`,
+      "Page " +
+        String(page) +
+        " of " +
+        String(pageCount),
       200,
       291,
-      { align: "right" }
+      {
+        align: "right",
+      }
     )
   }
 }
@@ -166,7 +184,15 @@ function downloadEpvsCalc(appointment) {
   const results = calculation.results || {}
   const projection = calculation.thirtyYearProjection || {}
 
-  const scenario = projection.scenarios?.averageInflation
+  /*
+   * Keep these available because they may exist in the
+   * saved EPVS calculation structure even if they are not
+   * currently displayed directly in the PDF.
+   */
+  void results
+
+  const scenario =
+    projection.scenarios?.averageInflation
 
   const rows = Array.isArray(scenario?.rows)
     ? scenario.rows
@@ -196,6 +222,9 @@ function downloadEpvsCalc(appointment) {
   const text = [30, 41, 59]
   const muted = [100, 116, 139]
 
+  /*
+   * PDF header
+   */
   doc.setFillColor(23, 37, 84)
   doc.rect(0, 0, 210, 10, "F")
 
@@ -212,9 +241,14 @@ function downloadEpvsCalc(appointment) {
       String(postcode || "No postcode"),
     200,
     6.4,
-    { align: "right" }
+    {
+      align: "right",
+    }
   )
 
+  /*
+   * Summary calculations
+   */
   let cardCumulativeBenefit = 0
   let paybackYear = null
   let firstYearBenefit = 0
@@ -222,19 +256,41 @@ function downloadEpvsCalc(appointment) {
 
   const totalPayments = rows.reduce(
     (total, row) =>
-      total + pdfValue(row, "yearlyPayment", "payment"),
+      total +
+      pdfValue(
+        row,
+        "yearlyPayment",
+        "payment"
+      ),
     0
   )
 
   rows.forEach((row, index) => {
-    const solar = pdfValue(row, "solarBenefit", "solar")
+    const solar = pdfValue(
+      row,
+      "solarBenefit",
+      "solar"
+    )
 
     const battery =
-      pdfValue(row, "batteryBenefit", "battery") ||
-      pdfValue(row, "batterySelfConsumptionBenefit") +
-      pdfValue(row, "forceChargeBenefit")
+      pdfValue(
+        row,
+        "batteryBenefit",
+        "battery"
+      ) ||
+      pdfValue(
+        row,
+        "batterySelfConsumptionBenefit"
+      ) +
+        pdfValue(
+          row,
+          "forceChargeBenefit"
+        )
 
-    const exportBenefit = pdfValue(row, "exportBenefit")
+    const exportBenefit = pdfValue(
+      row,
+      "exportBenefit"
+    )
 
     const annualBenefit =
       solar +
@@ -255,12 +311,17 @@ function downloadEpvsCalc(appointment) {
       paybackYear === null &&
       netPosition >= 0
     ) {
-      paybackYear = Number(row.year || 0)
+      paybackYear = Number(
+        row.year || 0
+      )
     }
 
     finalNetPosition = netPosition
   })
 
+  /*
+   * Summary heading
+   */
   doc.setTextColor(...text)
   doc.setFont(undefined, "bold")
   doc.setFontSize(8)
@@ -271,62 +332,93 @@ function downloadEpvsCalc(appointment) {
     15
   )
 
+  /*
+   * Summary cards
+   */
   const cardY = 18
   const cardH = 18
   const cardGap = 4
-  const cardW = (196 - cardGap * 3) / 4
+  const cardW =
+    (196 - cardGap * 3) / 4
 
   const cards = [
-    ["First year total benefit:", pdfMoney(firstYearBenefit)],
+    [
+      "First year total benefit:",
+      pdfMoney(firstYearBenefit),
+    ],
     [
       "Payback period:",
       paybackYear
         ? String(paybackYear) + " years"
         : "—",
     ],
-    ["Total net savings:", pdfMoney(finalNetPosition)],
-    ["Total net return:", pdfMoney(finalNetPosition)],
+    [
+      "Total net savings:",
+      pdfMoney(finalNetPosition),
+    ],
+    [
+      "Total net return:",
+      pdfMoney(finalNetPosition),
+    ],
   ]
 
-  cards.forEach(([label, value], index) => {
-    const x =
-      7 +
-      index *
-        (cardW + cardGap)
+  cards.forEach(
+    ([label, value], index) => {
+      const x =
+        7 +
+        index *
+          (cardW + cardGap)
 
-    doc.setFillColor(...green)
+      doc.setFillColor(...green)
 
-    doc.roundedRect(
-      x,
-      cardY,
-      cardW,
-      cardH,
-      2.5,
-      2.5,
-      "F"
-    )
+      doc.roundedRect(
+        x,
+        cardY,
+        cardW,
+        cardH,
+        2.5,
+        2.5,
+        "F"
+      )
 
-    doc.setTextColor(255, 255, 255)
-    doc.setFont(undefined, "bold")
-    doc.setFontSize(7.2)
+      doc.setTextColor(
+        255,
+        255,
+        255
+      )
 
-    doc.text(
-      label,
-      x + cardW / 2,
-      cardY + 7,
-      { align: "center" }
-    )
+      doc.setFont(
+        undefined,
+        "bold"
+      )
 
-    doc.setFontSize(9)
+      doc.setFontSize(7.2)
 
-    doc.text(
-      value,
-      x + cardW / 2,
-      cardY + 13.5,
-      { align: "center" }
-    )
-  })
+      doc.text(
+        label,
+        x + cardW / 2,
+        cardY + 7,
+        {
+          align: "center",
+        }
+      )
 
+      doc.setFontSize(9)
+
+      doc.text(
+        value,
+        x + cardW / 2,
+        cardY + 13.5,
+        {
+          align: "center",
+        }
+      )
+    }
+  )
+
+  /*
+   * Table
+   */
   let y = 40
 
   const headers = [
@@ -358,7 +450,8 @@ function downloadEpvsCalc(appointment) {
   ]
 
   const totalWidth = widths.reduce(
-    (sum, width) => sum + width,
+    (sum, width) =>
+      sum + width,
     0
   )
 
@@ -368,56 +461,92 @@ function downloadEpvsCalc(appointment) {
   let x = startX
 
   doc.setFontSize(6.2)
-  doc.setFont(undefined, "bold")
+  doc.setFont(
+    undefined,
+    "bold"
+  )
 
-  headers.forEach((header, index) => {
-    doc.setFillColor(75, 75, 75)
-    doc.setDrawColor(75, 75, 75)
-
-    doc.rect(
-      x,
-      y,
-      widths[index],
-      10,
-      "FD"
-    )
-
-    doc.setTextColor(255, 255, 255)
-
-    const lines = header.split(" ")
-
-    if (lines.length > 1) {
-      const midpoint =
-        Math.ceil(lines.length / 2)
-
-      doc.text(
-        lines
-          .slice(0, midpoint)
-          .join(" "),
-        x + widths[index] / 2,
-        y + 3.5,
-        { align: "center" }
+  headers.forEach(
+    (header, index) => {
+      doc.setFillColor(
+        75,
+        75,
+        75
       )
 
-      doc.text(
-        lines
-          .slice(midpoint)
-          .join(" "),
-        x + widths[index] / 2,
-        y + 7,
-        { align: "center" }
+      doc.setDrawColor(
+        75,
+        75,
+        75
       )
-    } else {
-      doc.text(
-        header,
-        x + widths[index] / 2,
-        y + 5.5,
-        { align: "center" }
+
+      doc.rect(
+        x,
+        y,
+        widths[index],
+        10,
+        "FD"
       )
+
+      doc.setTextColor(
+        255,
+        255,
+        255
+      )
+
+      const lines =
+        header.split(" ")
+
+      if (lines.length > 1) {
+        const midpoint =
+          Math.ceil(
+            lines.length / 2
+          )
+
+        doc.text(
+          lines
+            .slice(
+              0,
+              midpoint
+            )
+            .join(" "),
+          x +
+            widths[index] /
+              2,
+          y + 3.5,
+          {
+            align: "center",
+          }
+        )
+
+        doc.text(
+          lines
+            .slice(midpoint)
+            .join(" "),
+          x +
+            widths[index] /
+              2,
+          y + 7,
+          {
+            align: "center",
+          }
+        )
+      } else {
+        doc.text(
+          header,
+          x +
+            widths[index] /
+              2,
+          y + 5.5,
+          {
+            align: "center",
+          }
+        )
+      }
+
+      x += widths[index]
     }
-
-    x += widths[index]
-  })
+  )
 
   y += 10
 
@@ -437,8 +566,11 @@ function downloadEpvsCalc(appointment) {
   }
 
   rows.forEach((row) => {
-    const solar =
-      pdfValue(row, "solarBenefit", "solar")
+    const solar = pdfValue(
+      row,
+      "solarBenefit",
+      "solar"
+    )
 
     const battery =
       pdfValue(
@@ -450,55 +582,73 @@ function downloadEpvsCalc(appointment) {
         row,
         "batterySelfConsumptionBenefit"
       ) +
-      pdfValue(
-        row,
-        "forceChargeBenefit"
-      )
+        pdfValue(
+          row,
+          "forceChargeBenefit"
+        )
 
     const exportBenefit =
-      pdfValue(row, "exportBenefit")
+      pdfValue(
+        row,
+        "exportBenefit"
+      )
 
     const annualBenefit =
       solar +
       battery +
       exportBenefit
 
-    const payment =
-      pdfValue(
-        row,
-        "yearlyPayment",
-        "payment"
-      )
+    const payment = pdfValue(
+      row,
+      "yearlyPayment",
+      "payment"
+    )
 
     const netAnnual =
       annualBenefit +
       payment
 
-    cumulativeBenefit += annualBenefit
+    cumulativeBenefit +=
+      annualBenefit
 
     const netPosition =
       totalPayments +
       cumulativeBenefit
 
     totals.generation +=
-      Number(row.generation || 0)
+      Number(
+        row.generation || 0
+      )
 
     totals.solar += solar
     totals.battery += battery
-    totals.exportBenefit += exportBenefit
-    totals.annualBenefit += annualBenefit
+    totals.exportBenefit +=
+      exportBenefit
+    totals.annualBenefit +=
+      annualBenefit
     totals.payments += payment
-    totals.netAnnual += netAnnual
+    totals.netAnnual +=
+      netAnnual
+
     totals.billPre +=
-      Number(row.billPreInstall || 0)
+      Number(
+        row.billPreInstall || 0
+      )
+
     totals.billPost +=
-      Number(row.billPostInstall || 0)
+      Number(
+        row.billPostInstall || 0
+      )
+
     totals.finalNetPosition =
       netPosition
 
     const values = [
       String(row.year || ""),
-      pdfNumber(row.generation, 2),
+      pdfNumber(
+        row.generation,
+        2
+      ),
       pdfMoney(solar),
       pdfMoney(battery),
       pdfMoney(exportBenefit),
@@ -506,111 +656,166 @@ function downloadEpvsCalc(appointment) {
       pdfMoney(payment),
       pdfMoney(netAnnual),
       pdfMoney(netPosition),
-      pdfMoney(row.billPreInstall),
-      pdfMoney(row.billPostInstall),
+      pdfMoney(
+        row.billPreInstall
+      ),
+      pdfMoney(
+        row.billPostInstall
+      ),
     ]
 
     x = startX
 
     doc.setFontSize(7)
-    doc.setFont(undefined, "normal")
+    doc.setFont(
+      undefined,
+      "normal"
+    )
 
-    values.forEach((value, index) => {
-      const highlighted =
-        index === 5 ||
-        index === 8
+    values.forEach(
+      (value, index) => {
+        const highlighted =
+          index === 5 ||
+          index === 8
 
-      doc.setFillColor(
-        ...(highlighted
-          ? lightGreen
-          : [255, 255, 255])
-      )
-
-      if (
-        netAnnual < 0 &&
-        (index === 7 ||
-          index === 8)
-      ) {
-        doc.setTextColor(
-          255,
-          0,
-          0
+        doc.setFillColor(
+          ...(highlighted
+            ? lightGreen
+            : [255, 255, 255])
         )
-      } else {
-        doc.setTextColor(...text)
+
+        if (
+          netAnnual < 0 &&
+          (index === 7 ||
+            index === 8)
+        ) {
+          doc.setTextColor(
+            255,
+            0,
+            0
+          )
+        } else {
+          doc.setTextColor(
+            ...text
+          )
+        }
+
+        doc.rect(
+          x,
+          y,
+          widths[index],
+          4.5,
+          "FD"
+        )
+
+        doc.text(
+          value,
+          x +
+            widths[index] -
+            1,
+          y + 3.05,
+          {
+            align: "right",
+          }
+        )
+
+        x += widths[index]
       }
-
-      doc.rect(
-        x,
-        y,
-        widths[index],
-        4.5,
-        "FD"
-      )
-
-      doc.text(
-        value,
-        x + widths[index] - 1,
-        y + 3.05,
-        { align: "right" }
-      )
-
-      x += widths[index]
-    })
+    )
 
     y += 4.5
   })
 
+  /*
+   * Totals row
+   */
   if (rows.length) {
     const totalValues = [
       "TOTAL",
-      pdfNumber(totals.generation, 2),
-      pdfMoney(totals.solar),
-      pdfMoney(totals.battery),
-      pdfMoney(totals.exportBenefit),
-      pdfMoney(totals.annualBenefit),
-      pdfMoney(totals.payments),
-      pdfMoney(totals.netAnnual),
-      pdfMoney(totals.finalNetPosition),
-      pdfMoney(totals.billPre),
-      pdfMoney(totals.billPost),
+      pdfNumber(
+        totals.generation,
+        2
+      ),
+      pdfMoney(
+        totals.solar
+      ),
+      pdfMoney(
+        totals.battery
+      ),
+      pdfMoney(
+        totals.exportBenefit
+      ),
+      pdfMoney(
+        totals.annualBenefit
+      ),
+      pdfMoney(
+        totals.payments
+      ),
+      pdfMoney(
+        totals.netAnnual
+      ),
+      pdfMoney(
+        totals.finalNetPosition
+      ),
+      pdfMoney(
+        totals.billPre
+      ),
+      pdfMoney(
+        totals.billPost
+      ),
     ]
 
     x = startX
 
     doc.setFontSize(7)
-    doc.setFont(undefined, "bold")
-    doc.setTextColor(255, 255, 255)
+    doc.setFont(
+      undefined,
+      "bold"
+    )
+    doc.setTextColor(
+      255,
+      255,
+      255
+    )
 
-    totalValues.forEach((value, index) => {
-      doc.setFillColor(
-        ...(index === 5 ||
-        index === 8
-          ? green
-          : dark)
-      )
+    totalValues.forEach(
+      (value, index) => {
+        doc.setFillColor(
+          ...(index === 5 ||
+          index === 8
+            ? green
+            : dark)
+        )
 
-      doc.rect(
-        x,
-        y,
-        widths[index],
-        5.2,
-        "FD"
-      )
+        doc.rect(
+          x,
+          y,
+          widths[index],
+          5.2,
+          "FD"
+        )
 
-      doc.text(
-        value,
-        x + widths[index] - 1,
-        y + 3.55,
-        { align: "right" }
-      )
+        doc.text(
+          value,
+          x +
+            widths[index] -
+            1,
+          y + 3.55,
+          {
+            align: "right",
+          }
+        )
 
-      x += widths[index]
-    })
+        x += widths[index]
+      }
+    )
 
     y += 5.2
   }
 
+  /*
+   * Empty projection message
+   */
   if (!rows.length) {
     doc.setFontSize(7)
     doc.setTextColor(
@@ -626,6 +831,9 @@ function downloadEpvsCalc(appointment) {
     )
   }
 
+  /*
+   * Footer
+   */
   doc.setDrawColor(
     226,
     232,
@@ -640,7 +848,10 @@ function downloadEpvsCalc(appointment) {
   )
 
   doc.setTextColor(...muted)
-  doc.setFont(undefined, "normal")
+  doc.setFont(
+    undefined,
+    "normal"
+  )
   doc.setFontSize(5.5)
 
   const exportedAt =
@@ -664,12 +875,20 @@ function downloadEpvsCalc(appointment) {
 
   const safeName =
     String(customer)
-      .replace(/[^a-z0-9]+/gi, "-")
-      .replace(/^-|-$/g, "") ||
+      .replace(
+        /[^a-z0-9]+/gi,
+        "-"
+      )
+      .replace(
+        /^-|-$/g,
+        ""
+      ) ||
     "customer"
 
   doc.save(
-    `EPVS-Calculation-${safeName}.pdf`
+    "EPVS-Calculation-" +
+      safeName +
+      ".pdf"
   )
 }
 
@@ -700,33 +919,12 @@ export default function AppointmentActions({
   const [showEditDetails, setShowEditDetails] =
     useState(false)
 
-  /*
-   * Permission rules
-   *
-   * Confirm Appointment:
-   * Central Confirmation Manager OR permission level 3+
-   *
-   * Allocate Branch:
-   * Central Confirmation Manager OR permission level 3+
-   *
-   * Allocate Sales Rep:
-   * permission level 2+
-   *
-   * Rep Confirmation:
-   * only the rep whose email is stored in rep_allocated
-   *
-   * Edit Appointment:
-   * permission level 2+
-   *
-   * Result Appointment:
-   * everyone
-   */
-
   const numericPermissionLevel =
     Number(permissionLevel) || 0
 
   const isCentralConfirmationManager =
-    role === "Central Confirmation Manager"
+    role ===
+    "Central Confirmation Manager"
 
   const canConfirmAppointment =
     isCentralConfirmationManager ||
@@ -745,25 +943,25 @@ export default function AppointmentActions({
   const hasResult = Boolean(
     String(
       appointment?.result ||
-      appointment?.status ||
-      ""
+        appointment?.status ||
+        ""
     ).trim()
   )
 
   const confirmed =
     appointment?.cps_c === true
 
-  const hasBranch =
-    Boolean(
-      String(
-        appointment?.branch || ""
-      ).trim()
-    )
+  const hasBranch = Boolean(
+    String(
+      appointment?.branch || ""
+    ).trim()
+  )
 
   const hasAllocatedRep =
     Boolean(
       String(
-        appointment?.rep_allocated || ""
+        appointment?.rep_allocated ||
+          ""
       ).trim()
     )
 
@@ -772,8 +970,10 @@ export default function AppointmentActions({
       appointment
     )
 
-  const [currentUserEmail, setCurrentUserEmail] =
-    useState("")
+  const [
+    currentUserEmail,
+    setCurrentUserEmail,
+  ] = useState("")
 
   useEffect(() => {
     let mounted = true
@@ -805,14 +1005,10 @@ export default function AppointmentActions({
     }
   }, [])
 
-  /*
-   * rep_allocated contains the rep's email address.
-   * Compare case-insensitively so that capitalisation
-   * differences in email addresses do not prevent access.
-   */
   const allocatedRepEmail =
     String(
-      appointment?.rep_allocated || ""
+      appointment?.rep_allocated ||
+        ""
     )
       .trim()
       .toLowerCase()
@@ -820,9 +1016,9 @@ export default function AppointmentActions({
   const isAllocatedRep =
     Boolean(
       currentUserEmail &&
-      allocatedRepEmail &&
-      currentUserEmail ===
-        allocatedRepEmail
+        allocatedRepEmail &&
+        currentUserEmail ===
+          allocatedRepEmail
     )
 
   const canRepConfirm =
@@ -878,6 +1074,7 @@ export default function AppointmentActions({
     updatedAppointment
   ) => {
     setOpen(false)
+
     onUpdated?.(
       updatedAppointment
     )
@@ -1002,8 +1199,7 @@ export default function AppointmentActions({
         throw actionError
       }
 
-      actionId =
-        action.id
+      actionId = action.id
 
       const updatePayload = {
         name:
@@ -1059,7 +1255,9 @@ export default function AppointmentActions({
       } =
         await supabase
           .from("appointments")
-          .update(updatePayload)
+          .update(
+            updatePayload
+          )
           .eq(
             "appointment_row_id",
             appointment.appointment_row_id
@@ -1166,28 +1364,35 @@ export default function AppointmentActions({
     <>
       <div
         style={{
-          position: "relative",
+          position:
+            "relative",
         }}
       >
         <button
           type="button"
           onClick={() =>
             setOpen(
-              (value) => !value
+              (value) =>
+                !value
             )
           }
           style={{
             display: "flex",
-            alignItems: "center",
+            alignItems:
+              "center",
             gap: 7,
             height: 40,
-            padding: "0 15px",
+            padding:
+              "0 15px",
             border: "none",
             borderRadius: 8,
-            background: "#2499ed",
+            background:
+              "#2499ed",
             color: "#fff",
-            cursor: "pointer",
-            fontFamily: "inherit",
+            cursor:
+              "pointer",
+            fontFamily:
+              "inherit",
             fontSize: 12,
             fontWeight: 700,
           }}
@@ -1199,9 +1404,10 @@ export default function AppointmentActions({
           <ChevronDown
             size={15}
             style={{
-              transform: open
-                ? "rotate(180deg)"
-                : "none",
+              transform:
+                open
+                  ? "rotate(180deg)"
+                  : "none",
               transition:
                 "transform .15s",
             }}
@@ -1217,7 +1423,8 @@ export default function AppointmentActions({
                 setOpen(false)
               }
               style={{
-                position: "fixed",
+                position:
+                  "fixed",
                 inset: 0,
                 zIndex: 998,
                 border: 0,
@@ -1250,7 +1457,8 @@ export default function AppointmentActions({
                     "7px 10px 6px",
                   fontSize: 9,
                   fontWeight: 800,
-                  color: "#94a3b8",
+                  color:
+                    "#94a3b8",
                   textTransform:
                     "uppercase",
                   letterSpacing:
@@ -1260,7 +1468,6 @@ export default function AppointmentActions({
                 Appointment actions
               </div>
 
-              {/* CONFIRM APPOINTMENT */}
               <MenuButton
                 icon={Check}
                 disabled={
@@ -1292,7 +1499,6 @@ export default function AppointmentActions({
                 ) : null}
               </MenuButton>
 
-              {/* ALLOCATE BRANCH */}
               {confirmed &&
               canAllocateBranch ? (
                 <AllocateBranch
@@ -1320,7 +1526,6 @@ export default function AppointmentActions({
                 </MenuButton>
               )}
 
-              {/* ALLOCATE SALES REP */}
               {hasBranch &&
               canAllocateSalesRep ? (
                 <AllocateSalesRep
@@ -1348,7 +1553,6 @@ export default function AppointmentActions({
                 </MenuButton>
               )}
 
-              {/* REP CONFIRMATION */}
               {hasAllocatedRep &&
               canRepConfirm ? (
                 <RepConfirmation
@@ -1374,7 +1578,6 @@ export default function AppointmentActions({
                 </MenuButton>
               )}
 
-              {/* EDIT APPOINTMENT */}
               <MenuButton
                 icon={Pencil}
                 disabled={
@@ -1400,7 +1603,6 @@ export default function AppointmentActions({
                 )}
               </MenuButton>
 
-              {/* RESULT APPOINTMENT - EVERYONE */}
               <MenuButton
                 icon={Plus}
                 onClick={() =>
@@ -1428,7 +1630,8 @@ export default function AppointmentActions({
                     "7px 10px 5px",
                   fontSize: 9,
                   fontWeight: 800,
-                  color: "#94a3b8",
+                  color:
+                    "#94a3b8",
                   textTransform:
                     "uppercase",
                   letterSpacing:
@@ -1499,11 +1702,13 @@ export default function AppointmentActions({
       {showEdit && (
         <div
           style={{
-            position: "fixed",
+            position:
+              "fixed",
             inset: 0,
             background:
               "rgba(0,0,0,.4)",
-            display: "flex",
+            display:
+              "flex",
             alignItems:
               "center",
             justifyContent:
@@ -1533,7 +1738,8 @@ export default function AppointmentActions({
                   "18px 20px",
                 borderBottom:
                   "1px solid #eee",
-                display: "flex",
+                display:
+                  "flex",
                 justifyContent:
                   "space-between",
                 alignItems:
@@ -1545,7 +1751,8 @@ export default function AppointmentActions({
                   style={{
                     margin: 0,
                     fontSize: 16,
-                    color: "#172033",
+                    color:
+                      "#172033",
                   }}
                 >
                   Edit Appointment
@@ -1556,7 +1763,8 @@ export default function AppointmentActions({
                     margin:
                       "4px 0 0",
                     fontSize: 10,
-                    color: "#888",
+                    color:
+                      "#888",
                   }}
                 >
                   {appointment?.name ||
@@ -1567,7 +1775,9 @@ export default function AppointmentActions({
               <button
                 type="button"
                 onClick={() =>
-                  setShowEdit(false)
+                  setShowEdit(
+                    false
+                  )
                 }
                 style={{
                   border: 0,
@@ -1708,7 +1918,8 @@ export default function AppointmentActions({
                   background:
                     "transparent",
                   padding: 0,
-                  color: "#1679bd",
+                  color:
+                    "#1679bd",
                   fontSize: 10,
                   fontWeight: 700,
                   cursor:
@@ -1834,7 +2045,9 @@ export default function AppointmentActions({
                 <button
                   type="button"
                   onClick={() =>
-                    setShowEdit(false)
+                    setShowEdit(
+                      false
+                    )
                   }
                   style={{
                     height: 36,
@@ -1866,7 +2079,8 @@ export default function AppointmentActions({
                     borderRadius: 7,
                     background:
                       "#172554",
-                    color: "#fff",
+                    color:
+                      "#fff",
                     cursor:
                       savingEdit
                         ? "default"
@@ -1905,12 +2119,14 @@ function MenuButton({
       onClick={onClick}
       style={{
         width: "100%",
-        display: "flex",
+        display:
+          "flex",
         alignItems:
           "center",
         gap: 9,
         minHeight: 38,
-        padding: "0 10px",
+        padding:
+          "0 10px",
         border: 0,
         borderRadius: 7,
         background:
@@ -1929,7 +2145,8 @@ function MenuButton({
           "inherit",
         fontSize: 11,
         fontWeight: 600,
-        textAlign: "left",
+        textAlign:
+          "left",
       }}
       onMouseEnter={(e) => {
         if (!disabled) {
@@ -1968,10 +2185,12 @@ function Done() {
   return (
     <span
       style={{
-        marginLeft: "auto",
+        marginLeft:
+          "auto",
         fontSize: 9,
         fontWeight: 700,
-        color: "#16a34a",
+        color:
+          "#16a34a",
       }}
     >
       Completed
@@ -2035,4 +2254,3 @@ function Field({
     </label>
   )
 }
-``
