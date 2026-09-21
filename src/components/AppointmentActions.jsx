@@ -37,9 +37,17 @@ function toDateTimeLocal(value) {
 
   const pad = (n) => String(n).padStart(2, "0")
 
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
-    date.getDate()
-  )}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+  return (
+    String(date.getFullYear()) +
+    "-" +
+    pad(date.getMonth() + 1) +
+    "-" +
+    pad(date.getDate()) +
+    "T" +
+    pad(date.getHours()) +
+    ":" +
+    pad(date.getMinutes())
+  )
 }
 
 function isSolarAppointment(appointment) {
