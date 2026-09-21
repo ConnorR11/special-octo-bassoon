@@ -147,11 +147,11 @@ export default function Installations({ setSelected }) {
 
   function KanbanGroup({ group }) {
     const collapsed = Boolean(collapsedGroups[group.key])
-    return <div style={{ flex: collapsed ? "0 0 94px" : "0 0 auto", minWidth: collapsed ? 94 : 0, border: `1px solid ${group.border}`, borderRadius: 10, overflow: "hidden", background: "#fff", transition: "flex-basis .15s ease" }}>
-      <button type="button" onClick={() => toggleGroup(group.key)} aria-expanded={!collapsed} style={{ width: "100%", minHeight: 48, display: "flex", alignItems: "center", gap: 8, padding: collapsed ? "10px 8px" : "0 14px", justifyContent: collapsed ? "center" : "flex-start", border: 0, borderBottom: collapsed ? 0 : `1px solid ${group.border}`, background: group.background, color: group.text, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+    return <div style={{ flex: collapsed ? "0 0 200px" : "0 0 auto", minWidth: collapsed ? 200 : 0, border: `1px solid ${group.border}`, borderRadius: 10, overflow: "hidden", background: "#fff", transition: "flex-basis .15s ease" }}>
+      <button type="button" onClick={() => toggleGroup(group.key)} aria-expanded={!collapsed} style={{ width: "100%", minHeight: 48, display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", justifyContent: "flex-start", border: 0, borderBottom: collapsed ? 0 : `1px solid ${group.border}`, background: group.background, color: group.text, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
         <ChevronRight size={17} style={{ flex: "0 0 auto", transform: collapsed ? "none" : "rotate(90deg)", transition: "transform .15s ease" }} />
         <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 800, whiteSpace: "nowrap" }}>{group.label}</div><div style={{ marginTop: 2, fontSize: 10, fontWeight: 600, opacity: 0.85, whiteSpace: "nowrap" }}>{formatCurrency(group.netValue)}</div></div>
-        <span style={{ minWidth: 28, height: 24, padding: "0 7px", display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 12, background: group.badge, color: group.text, fontSize: 10, fontWeight: 800 }}>{group.count}</span>
+        <span style={{ minWidth: 28, height: 24, padding: "0 7px", display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 12, background: group.badge, color: group.text, fontSize: 10, fontWeight: 800, flex: "0 0 auto" }}>{group.count}</span>
       </button>
       {!collapsed && <div style={{ display: "flex", gap: 12, overflowX: "auto", padding: 12, background: "#f8fafc" }}>{group.columns.map((column) => <StageColumn key={column.stage} column={column} />)}</div>}
     </div>
