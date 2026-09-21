@@ -13,6 +13,7 @@ function formatDate(value) {
   return date.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
 }
 function getStageLabel(value) { return String(value || "").trim() }
+function getStageKey(value) { return getStageLabel(value).toLowerCase() }
 function getCustomerName(deal) { return deal?.customer_name || deal?.name || "Unnamed customer" }
 function getRepName(deal) { return deal?.salesperson || deal?.sales_rep || deal?.rep_name || deal?.rep_allocated || "Unallocated" }
 function getDealDate(deal) { return deal?.installation_date || deal?.appointment_date || deal?.sale_date || deal?.created_at }
@@ -91,20 +92,21 @@ export default function Installations({ setSelected }) {
     const stageMap = new Map()
     filteredDeals.forEach((deal) => {
       const stage = getStageLabel(deal?.pipedrive_stage)
-      if (!stage) return
-      if (!stageMap.has(stage)) stageMap.set(stage, [])
-      stageMap.get(stage).push(deal)
+      const stageKey = getStageKey(deal?.pipedrive_stage)
+      if (!stageKey) return
+      if (!stageMap.has(stageKey)) stageMap.set(stageKey, { stage, items: [] })
+      stageMap.get(stageKey).items.push(deal)
     })
 
-    const assignedStageSet = new Set(GROUPS.flatMap((group) => group.stages))
+    const assignedStageSet = new Set(GROUPS.flatMap((group) => group.stages.map(getStageKey)))
     const groupData = GROUPS.map((group) => {
-      const columns = group.stages.map((stage) => ({ stage, items: stageMap.get(stage) || [] }))
+      const columns = group.stages.map((stage) => ({ stage, items: stageMap.get(getStageKey(stage))?.items || [] }))
       return { ...group, columns, count: columns.reduce((sum, column) => sum + column.items.length, 0) }
     })
 
     const ungroupedStages = Array.from(stageMap.entries())
-      .filter(([stage]) => !assignedStageSet.has(stage))
-      .map(([stage, items]) => ({ stage, items }))
+      .filter(([stageKey]) => !assignedStageSet.has(stageKey))
+      .map(([, value]) => value)
 
     return {
       groups: groupData,
