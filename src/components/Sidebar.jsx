@@ -7,11 +7,12 @@ import {
   PanelsTopLeft, UserRound, MessageCircle, Files, FilePlus, UserCog, FileCheck, LogOut,
 } from "lucide-react"
 
-function Sidebar({ page, setPage, mobile, setMobile, onSignOut }) {
+function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel = 1 }) {
   const [openFolders, setOpenFolders] = useState({ sales:false, marketing:false, installation:false, finance:false, solar:false, customerService:false, documents:false, admin:false, procurement:false })
   const toggleFolder = (folder) => setOpenFolders((current) => ({ ...current, [folder]: !current[folder] }))
   const navigate = (pageName) => { setPage(pageName); setMobile(false) }
   const isActive = (pageName) => page === pageName
+  const isAdministrator = Number(permissionLevel) >= 4
 
   return <>
     {mobile && <div className="sidebar-overlay" onClick={() => setMobile(false)} />}
@@ -36,7 +37,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut }) {
         <Folder title="Solar / EPVS" icon={Sun} open={openFolders.solar} onClick={() => toggleFolder("solar")}><NavItem icon={Calculator} label="EPVS Calculator" active={isActive("epvs")} onClick={() => navigate("epvs")} /><NavItem icon={FileText} label="EPVS Calculations" disabled /><NavItem icon={PanelsTopLeft} label="Solar Systems" disabled /></Folder>
         <Folder title="Customer Service" icon={Headphones} open={openFolders.customerService} onClick={() => toggleFolder("customerService")}><NavItem icon={UserRound} label="Customers" disabled /><NavItem icon={MessageCircle} label="Follow-ups" disabled /><NavItem icon={AlertTriangle} label="Complaints" disabled /></Folder>
         <Folder title="Documents" icon={Files} open={openFolders.documents} onClick={() => toggleFolder("documents")}><NavItem icon={FileText} label="Company Brochures" disabled /><NavItem icon={Files} label="Customer Documents" disabled /><NavItem icon={FilePlus} label="Templates" disabled /></Folder>
-        <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}><NavItem icon={UserCog} label="Users" active={isActive("users")} onClick={() => navigate("users")} /><NavItem icon={Settings} label="Settings" disabled /></Folder>
+        {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}><NavItem icon={UserCog} label="Users" active={isActive("users")} onClick={() => navigate("users")} /><NavItem icon={Settings} label="Settings" disabled /></Folder>}
       </nav>
       <div className="sidebar-footer" style={{ marginTop: "auto", flexDirection: "column", alignItems: "stretch", gap: 10 }}>
         <button type="button" onClick={onSignOut} style={{ width: "100%", border: 0, background: "transparent", color: "inherit", display: "flex", alignItems: "center", gap: 10, padding: "8px 0", cursor: "pointer", font: "inherit", textAlign: "left" }}><LogOut size={16} /><span style={{ fontWeight: 600 }}>Sign out</span></button>
