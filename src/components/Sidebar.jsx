@@ -4,7 +4,7 @@ import {
   Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck,
   Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound,
   MessageCircle, Files, FilePlus, UserCog, FileCheck, LogOut, ClipboardList,
-  Lock,
+  Lock, KanbanSquare,
 } from "lucide-react"
 
 function Sidebar({
@@ -33,10 +33,7 @@ function Sidebar({
   })
 
   const toggleFolder = (folder) =>
-    setOpenFolders((current) => ({
-      ...current,
-      [folder]: !current[folder],
-    }))
+    setOpenFolders((current) => ({ ...current, [folder]: !current[folder] }))
 
   const navigate = (pageName) => {
     setPage(pageName)
@@ -47,43 +44,21 @@ function Sidebar({
 
   return (
     <>
-      {mobile && (
-        <div
-          className="sidebar-overlay"
-          onClick={() => setMobile(false)}
-        />
-      )}
-
+      {mobile && <div className="sidebar-overlay" onClick={() => setMobile(false)} />}
       <aside className={`sidebar ${mobile ? "sidebar-open" : ""}`}>
         <div className="sidebar-brand">
           <div className="brand-mark">C</div>
-          <div>
-            <strong>Homeshield Scotland</strong>
-            <span>CRM</span>
-          </div>
+          <div><strong>Homeshield Scotland</strong><span>CRM</span></div>
         </div>
 
         <nav className="sidebar-nav">
-          <button
-            type="button"
-            className={`sidebar-item ${isActive("dashboard") ? "active" : ""}`}
-            onClick={() => navigate("dashboard")}
-          >
-            <LayoutDashboard size={18} />
-            <span>Home</span>
+          <button type="button" className={`sidebar-item ${isActive("dashboard") ? "active" : ""}`} onClick={() => navigate("dashboard")}>
+            <LayoutDashboard size={18} /><span>Home</span>
           </button>
-
           <div className="sidebar-divider" />
 
           <Folder title="Marketing" icon={Megaphone} open={openFolders.marketing} onClick={() => toggleFolder("marketing")}>
-            <NavItem
-              icon={BarChart3}
-              label="Marketing Dashboard"
-              active={isActive("marketing-dashboard")}
-              onClick={() => navigate("marketing-dashboard")}
-              disabled={!canAccessMarketingDashboard}
-              locked={!canAccessMarketingDashboard}
-            />
+            <NavItem icon={BarChart3} label="Marketing Dashboard" active={isActive("marketing-dashboard")} onClick={() => navigate("marketing-dashboard")} disabled={!canAccessMarketingDashboard} locked={!canAccessMarketingDashboard} />
             <NavItem icon={Target} label="Leads" disabled />
             <NavItem icon={Phone} label="Call Log" disabled />
             <NavItem icon={CalendarDays} label="Booked Leads" disabled />
@@ -111,7 +86,7 @@ function Sidebar({
 
           <Folder title="Installations" icon={Wrench} open={openFolders.installation} onClick={() => toggleFolder("installation")}>
             <NavItem icon={ClipboardCheck} label="Fit Sheet" active={isActive("fitsheet")} onClick={() => navigate("fitsheet")} />
-            <NavItem icon={CalendarDays} label="Installations" active={isActive("installations")} onClick={() => navigate("installations")} />
+            <NavItem icon={KanbanSquare} label="Kanban" active={isActive("installations")} onClick={() => navigate("installations")} />
             <NavItem icon={AlertTriangle} label="Installation Issues" disabled />
           </Folder>
 
@@ -144,8 +119,7 @@ function Sidebar({
 
         <div className="sidebar-footer" style={{ marginTop: "auto", flexDirection: "column", alignItems: "stretch", gap: 10 }}>
           <button type="button" onClick={onSignOut} style={{ width: "100%", border: 0, background: "transparent", color: "inherit", display: "flex", alignItems: "center", gap: 10, padding: "8px 0", cursor: "pointer", font: "inherit", textAlign: "left" }}>
-            <LogOut size={16} />
-            <span style={{ fontWeight: 600 }}>Sign out</span>
+            <LogOut size={16} /><span style={{ fontWeight: 600 }}>Sign out</span>
           </button>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div className="sidebar-footer-icon"><Settings size={16} /></div>
@@ -174,11 +148,7 @@ function NavItem({ icon: Icon, label, active = false, onClick, disabled = false,
     <button type="button" className={`sidebar-subitem ${active ? "active" : ""} ${disabled ? "disabled" : ""}`} onClick={disabled ? undefined : onClick} disabled={disabled}>
       <span className="sidebar-subitem-icon"><Icon size={15} /></span>
       <span>{label}</span>
-      {locked ? (
-        <Lock size={13} color="#b8c0c8" style={{ marginLeft: "auto" }} />
-      ) : disabled ? (
-        <span className="coming-soon">Soon</span>
-      ) : null}
+      {locked ? <Lock size={13} color="#b8c0c8" style={{ marginLeft: "auto" }} /> : disabled ? <span className="coming-soon">Soon</span> : null}
     </button>
   )
 }
