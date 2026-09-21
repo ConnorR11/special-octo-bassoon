@@ -16,6 +16,7 @@ import PickupAppointment from "./pages/PickupAppointment"
 import Login from "./pages/Login"
 import SalesKPI from "./pages/SalesKPI"
 import Users from "./pages/Users"
+import Tasks from "./pages/Tasks"
 import Templates from "./pages/Templates"
 import AdminUserPreview from "./components/AdminUserPreview"
 
@@ -165,7 +166,7 @@ function App() {
     previewUser?.email ?? session?.user?.email ?? ""
 
   useEffect(() => {
-    if (page === "users" && !isAdministrator) {
+    if ((page === "users" || page === "tasks") && !isAdministrator) {
       setPage("dashboard")
       window.history.replaceState({}, "", "/")
     }
@@ -331,7 +332,7 @@ function App() {
   }
 
   function handlePageChange(newPage) {
-    if (newPage === "users" && !isAdministrator) return
+    if ((newPage === "users" || newPage === "tasks") && !isAdministrator) return
 
     setSelected(null)
     setSelectedAppointment(null)
@@ -755,6 +756,8 @@ function App() {
           <SalesKPI />
         ) : page === "users" && isAdministrator ? (
           <Users />
+        ) : page === "tasks" && isAdministrator ? (
+          <Tasks />
         ) : page === "templates" ? (
           <Templates />
         ) : page === "contracts" ? (
@@ -811,6 +814,7 @@ function App() {
             total={totalValue}
             avg={averageValue}
             upcoming={upcomingInstallations}
+            loading={reportingLoading}
             setPage={handlePageChange}
             setSelected={setSelected}
           />
