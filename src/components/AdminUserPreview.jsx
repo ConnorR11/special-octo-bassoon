@@ -6,11 +6,13 @@ export default function AdminUserPreview({ activeUser, onStart, onStop }) {
   const [users, setUsers] = useState([])
   const [selectedId, setSelectedId] = useState("")
   const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     if (!supabase) return
-    supabase.from("profiles").select("id, full_name, display_name, email, role, permission_level, branch, active").order("full_name", { ascending: true }).then(({ data, error }) => {
-      if (error) console.error("Unable to load users for preview:", error)
+    supabase.from("profiles").select("id, full_name, display_name, email, role, permission_level, branch, active").order("full_name", { ascending: true }).then(({ data, error: loadError }) => {
+      if (loadError) console.error("Unable to load users for preview:", loadError)
       else setUsers((data || []).filter((user) => user.active !== false && user.email))
     })
   }, [])
@@ -19,9 +21,45 @@ export default function AdminUserPreview({ activeUser, onStart, onStop }) {
     if (activeUser) setSelectedId(String(activeUser.id))
   }, [activeUser])
 
-  if (activeUser) {
-    return <div style={{ margin: "0 24px 12px", padding: "10px 14px", borderRadius: 8, background: "#fff4d6", border: "1px solid #f0d27a", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, color: "#684d03", fontSize: 12, fontWeight: 600 }}><span><strong>Viewing as {activeUser.full_name || activeUser.email}</strong> · {activeUser.role || "User"} · Permission {activeUser.permission_level ?? 1}</span><button type="button" onClick={onStop} style={{ display: "inline-flex", alignItems: "center", gap: 5, border: 0, borderRadius: 6, padding: "6px 9px", background: "#684d03", color: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 700 }}><X size={13} /> Exit preview</button></div>
+  async function startPreview() {
+    const user = users.find((item) => String(item.id) === selectedId)
+    if (!user || !supabase || busy) return
+
+    setBusy(true)
+    setError("")
+    const { error: previewError } = await supabase.rpc("set_admin_preview", { target_profile_id: user.id })
+    setBusy(false)
+
+    if (previewError) {
+      console.error("Unable to start user preview:", previewError)
+      setError(previewError.message || "Unable to start preview.")
+      return
+    }
+
+    onStart(user)
+    setOpen(false)
   }
 
-  return <div style={{ position: "fixed", right: 170, top: 74, zIndex: 900, width: 180, background: "#fff", border: "1px solid #dfe3e8", borderRadius: 9, boxShadow: "0 8px 28px rgba(0,0,0,.12)" }}><button type="button" onClick={() => setOpen((value) => !value)} style={{ width: "100%", height: 40, border: 0, borderRadius: 9, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "0 12px", cursor: "pointer", fontSize: 11, fontWeight: 700, color: "#172033", whiteSpace: "nowrap" }}><Eye size={15} /> View CRM as user</button>{open && <div style={{ position: "absolute", top: 44, right: 0, width: 260, padding: "10px 12px", border: "1px solid #eee", borderRadius: 8, background: "#fff", boxShadow: "0 8px 28px rgba(0,0,0,.12)" }}><select value={selectedId} onChange={(e) => setSelectedId(e.target.value)} style={{ width: "100%", height: 34, border: "1px solid #d9dadd", borderRadius: 6, padding: "0 8px", fontSize: 11 }}><option value="">Select user...</option>{users.map((user) => <option key={user.id} value={user.id}>{user.full_name || user.email} · {user.role || "User"}</option>)}</select><button type="button" disabled={!selectedId} onClick={() => { const user = users.find((item) => String(item.id) === selectedId); if (user) { onStart(user); setOpen(false) } }} style={{ width: "100%", marginTop: 8, height: 34, border: 0, borderRadius: 6, background: selectedId ? "#172554" : "#cbd5e1", color: "#fff", cursor: selectedId ? "pointer" : "default", fontSize: 11, fontWeight: 700 }}>Start preview</button></div>}</div>
+  async function stopPreview() {
+    if (!supabase || busy) return
+
+    setBusy(true)
+    setError("")
+    const { error: previewError } = await supabase.rpc("clear_admin_preview")
+    setBusy(false)
+
+    if (previewError) {
+      console.error("Unable to stop user preview:", previewError)
+      setError(previewError.message || "Unable to exit preview.")
+      return
+    }
+
+    onStop()
+  }
+
+  if (activeUser) {
+    return <div style={{ margin: "0 24px 12px", padding: "10px 14px", borderRadius: 8, background: "#fff4d6", border: "1px solid #f0d27a", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, color: "#684d03", fontSize: 12, fontWeight: 600 }}><span><strong>Viewing as {activeUser.full_name || activeUser.email}</strong> · {activeUser.role || "User"} · Permission {activeUser.permission_level ?? 1}{error && <span style={{ display: "block", color: "#991b1b", marginTop: 4 }}>{error}</span>}</span><button type="button" disabled={busy} onClick={stopPreview} style={{ display: "inline-flex", alignItems: "center", gap: 5, border: 0, borderRadius: 6, padding: "6px 9px", background: "#684d03", color: "#fff", cursor: busy ? "default" : "pointer", opacity: busy ? .65 : 1, fontSize: 11, fontWeight: 700 }}><X size={13} /> {busy ? "Exiting..." : "Exit preview"}</button></div>
+  }
+
+  return <div style={{ position: "fixed", right: 170, top: 74, zIndex: 900, width: 180, background: "#fff", border: "1px solid #dfe3e8", borderRadius: 9, boxShadow: "0 8px 28px rgba(0,0,0,.12)" }}><button type="button" onClick={() => setOpen((value) => !value)} style={{ width: "100%", height: 40, border: 0, borderRadius: 9, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "0 12px", cursor: "pointer", fontSize: 11, fontWeight: 700, color: "#172033", whiteSpace: "nowrap" }}><Eye size={15} /> View CRM as user</button>{open && <div style={{ position: "absolute", top: 44, right: 0, width: 260, padding: "10px 12px", border: "1px solid #eee", borderRadius: 8, background: "#fff", boxShadow: "0 8px 28px rgba(0,0,0,.12)" }}><select value={selectedId} onChange={(e) => setSelectedId(e.target.value)} style={{ width: "100%", height: 34, border: "1px solid #d9dadd", borderRadius: 6, padding: "0 8px", fontSize: 11 }}><option value="">Select user...</option>{users.map((user) => <option key={user.id} value={user.id}>{user.full_name || user.email} · {user.role || "User"}</option>)}</select><button type="button" disabled={!selectedId || busy} onClick={startPreview} style={{ width: "100%", marginTop: 8, height: 34, border: 0, borderRadius: 6, background: selectedId && !busy ? "#172554" : "#cbd5e1", color: "#fff", cursor: selectedId && !busy ? "pointer" : "default", fontSize: 11, fontWeight: 700 }}>{busy ? "Starting..." : "Start preview"}</button>{error && <div style={{ marginTop: 8, color: "#991b1b", fontSize: 10 }}>{error}</div>}</div>}</div>
 }
