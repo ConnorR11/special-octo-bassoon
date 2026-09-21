@@ -4,6 +4,7 @@ import {
   Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck,
   Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound,
   MessageCircle, Files, FilePlus, UserCog, FileCheck, LogOut, ClipboardList,
+  Lock,
 } from "lucide-react"
 
 function Sidebar({
@@ -173,7 +174,11 @@ function NavItem({ icon: Icon, label, active = false, onClick, disabled = false,
     <button type="button" className={`sidebar-subitem ${active ? "active" : ""} ${disabled ? "disabled" : ""}`} onClick={disabled ? undefined : onClick} disabled={disabled}>
       <span className="sidebar-subitem-icon"><Icon size={15} /></span>
       <span>{label}</span>
-      {locked ? <span className="coming-soon">Locked</span> : disabled && <span className="coming-soon">Soon</span>}
+      {locked ? (
+        <Lock size={13} color="#b8c0c8" style={{ marginLeft: "auto" }} />
+      ) : disabled ? (
+        <span className="coming-soon">Soon</span>
+      ) : null}
     </button>
   )
 }
