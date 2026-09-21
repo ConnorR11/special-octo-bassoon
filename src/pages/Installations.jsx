@@ -19,7 +19,10 @@ function getRepName(deal) { return deal?.salesperson || deal?.sales_rep || deal?
 function getDealDate(deal) { return deal?.installation_date || deal?.appointment_date || deal?.sale_date || deal?.created_at }
 function getDealId(deal) { return deal?.id || deal?.deal_id }
 
-const GROUPS = [{ key: "rts", label: "RTS", stages: ["Awaiting Funds", "Returned To Sales"], background: "#e0f2fe", border: "#bae6fd", text: "#075985", badge: "#bae6fd" }]
+const GROUPS = [
+  { key: "rts", label: "RTS", stages: ["Awaiting Funds", "Returned To Sales"], background: "#e0f2fe", border: "#bae6fd", text: "#075985", badge: "#bae6fd" },
+  { key: "surveys", label: "Surveys", stages: ["Book for Survey", "Survey Booked"], background: "#dcfce7", border: "#bbf7d0", text: "#166534", badge: "#bbf7d0" },
+]
 const UNGROUPED = { key: "ungrouped", label: "Ungrouped", background: "#f1f5f9", border: "#e2e8f0", text: "#334155", badge: "#e2e8f0" }
 
 export default function Installations({ setSelected }) {
