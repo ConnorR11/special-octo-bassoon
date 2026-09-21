@@ -57,10 +57,23 @@ function App() {
 
   useEffect(() => {
     if (!session || !supabase) { setProfile(null); return }
-    supabase.from("profiles").select("*").eq("email", session.user.email).maybeSingle().then(({ data, error: profileError }) => {
+    let mounted = true
+    async function loadProfile() {
+      // auth_user_id is the authoritative link between Supabase Auth and the CRM profile.
+      // Using it avoids duplicate-name/email ambiguity and keeps admin visibility tied to the
+      // same identity used by the RLS policies.
+      const { data, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("auth_user_id", session.user.id)
+        .maybeSingle()
+
+      if (!mounted) return
       if (profileError) console.error("Error loading user profile:", profileError)
       setProfile(data || null)
-    })
+    }
+    loadProfile()
+    return () => { mounted = false }
   }, [session])
 
   const isAdministrator = Number(profile?.permission_level) >= 4
