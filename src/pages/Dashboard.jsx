@@ -11,9 +11,9 @@ import SalesChart from "../components/SalesChart"
 import Installations from "./Installations"
 import { money } from "../utils/formatters"
 
-function Dashboard({ contracts, total, avg, upcoming, loading }) {
+function Dashboard({ contracts, total, avg, upcoming, loading, setSelected }) {
   if (window.location.pathname === "/installations") {
-    return <Installations />
+    return <Installations setSelected={setSelected} />
   }
 
   return (
