@@ -34,7 +34,6 @@ const date = (v) => {
   if (!v) return "—"
   const d = new Date(v)
   if (Number.isNaN(d.getTime())) return String(v)
-
   return d.toLocaleDateString("en-GB", {
     day: "numeric",
     month: "long",
@@ -47,9 +46,9 @@ function getOpenSolarImageUrl(appointment, epvs) {
   const openSolar = data?.openSolar || {}
 
   return String(
-    openSolar.systemImageUrl ||
+    appointment?.open_solar_image ||
+      openSolar.systemImageUrl ||
       openSolar.imageUrl ||
-      appointment?.open_solar_image ||
       appointment?.openSolarImageUrl ||
       ""
   ).trim()
@@ -130,20 +129,19 @@ async function imageData(url) {
   try {
     let imageSource = source
 
-    // OpenSolar's image endpoint does not reliably expose the CORS headers
-    // required by a browser canvas. Proxy it through our same-origin Vercel
-    // endpoint instead.
     try {
       const parsed = new URL(source, window.location.origin)
-      if (parsed.hostname === "api.opensolar.com") {
+      if (
+        parsed.hostname === "api.opensolar.com" ||
+        parsed.hostname.endsWith(".opensolar.com")
+      ) {
         imageSource = `/api/opensolar-image?url=${encodeURIComponent(source)}`
       }
     } catch {
-      // Leave non-URL sources unchanged.
+      // Leave non-URL/data sources unchanged.
     }
 
     const response = await fetch(imageSource)
-
     if (!response.ok) {
       throw new Error(`Image request returned ${response.status}`)
     }
@@ -181,14 +179,7 @@ async function imageData(url) {
   }
 }
 
-async function drawImage(
-  pdf,
-  url,
-  x,
-  y,
-  width,
-  maxHeight = 82
-) {
+async function drawImage(pdf, url, x, y, width, maxHeight = 82) {
   const image = await imageData(url)
   if (!image) return y
 
@@ -204,16 +195,7 @@ async function drawImage(
   const drawX = x + (width - w) / 2
 
   pdf.setFillColor(245, 247, 249)
-  pdf.roundedRect(
-    x,
-    y,
-    width,
-    h + 4,
-    2.5,
-    2.5,
-    "F"
-  )
-
+  pdf.roundedRect(x, y, width, h + 4, 2.5, 2.5, "F")
   pdf.addImage(
     image.dataUrl,
     "PNG",
@@ -235,32 +217,19 @@ function header(pdf, settings) {
   const text = rgb(settings.text_color, [16, 33, 43])
   const padding = Number(settings.padding_mm || 18)
 
-  pdf.setFillColor(
-    ...rgb(settings.background, [255, 255, 255])
-  )
+  pdf.setFillColor(...rgb(settings.background, [255, 255, 255]))
   pdf.rect(0, 0, width, height, "F")
 
   if (settings.show_header !== false) {
     pdf.setFillColor(...accent)
     pdf.rect(0, 0, width, 14, "F")
-
     pdf.setTextColor(255, 255, 255)
     pdf.setFont("helvetica", "bold")
     pdf.setFontSize(8)
-    pdf.text(
-      "HOMESHIELD SCOTLAND LTD",
-      padding,
-      9
-    )
-
+    pdf.text("HOMESHIELD SCOTLAND LTD", padding, 9)
     pdf.setFont("helvetica", "normal")
     pdf.setFontSize(7)
-    pdf.text(
-      CONTRACT_NAME,
-      width - padding,
-      9,
-      { align: "right" }
-    )
+    pdf.text(CONTRACT_NAME, width - padding, 9, { align: "right" })
   }
 
   return {
@@ -277,56 +246,26 @@ function title(pdf, page, ctx) {
   pdf.setTextColor(...ctx.text)
   pdf.setFont("helvetica", "bold")
   pdf.setFontSize(22)
-  pdf.text(
-    page.title || "",
-    ctx.padding,
-    ctx.y + 4
-  )
+  pdf.text(page.title || "", ctx.padding, ctx.y + 4)
 
   if (page.subtitle) {
     pdf.setFont("helvetica", "normal")
     pdf.setFontSize(9)
     pdf.setTextColor(100, 112, 120)
-    pdf.text(
-      page.subtitle,
-      ctx.padding,
-      ctx.y + 11
-    )
+    pdf.text(page.subtitle, ctx.padding, ctx.y + 11)
   }
 
   pdf.setFillColor(...ctx.accent)
-  pdf.rect(
-    ctx.padding,
-    ctx.y + 15,
-    28,
-    1.2,
-    "F"
-  )
+  pdf.rect(ctx.padding, ctx.y + 15, 28, 1.2, "F")
 }
 
-function rows(
-  pdf,
-  values,
-  x,
-  y,
-  width,
-  text,
-  compact = false
-) {
+function rows(pdf, values, x, y, width, text, compact = false) {
   const h = compact ? 8 : 10
 
   values.forEach(([label, value], i) => {
     if (i % 2 === 0) {
       pdf.setFillColor(246, 248, 250)
-      pdf.roundedRect(
-        x,
-        y - 5.5,
-        width,
-        h,
-        1.5,
-        1.5,
-        "F"
-      )
+      pdf.roundedRect(x, y - 5.5, width, h, 1.5, 1.5, "F")
     }
 
     pdf.setTextColor(...text)
@@ -336,29 +275,14 @@ function rows(
 
     pdf.setFont("helvetica", "normal")
     pdf.setTextColor(72, 84, 92)
-    pdf.text(
-      String(value),
-      x + width - 4,
-      y,
-      { align: "right" }
-    )
-
+    pdf.text(String(value), x + width - 4, y, { align: "right" })
     y += h
   })
 
   return y
 }
 
-function body(
-  pdf,
-  content,
-  x,
-  y,
-  width,
-  textRgb,
-  appointment,
-  epvs
-) {
+function body(pdf, content, x, y, width, textRgb, appointment, epvs) {
   if (!content) return y
 
   const withoutImageToken = String(content).replace(
@@ -366,11 +290,7 @@ function body(
     "$1"
   )
 
-  const lines = interpolate(
-    withoutImageToken,
-    appointment,
-    epvs
-  ).split(/\r?\n/)
+  const lines = interpolate(withoutImageToken, appointment, epvs).split(/\r?\n/)
 
   pdf.setFont("helvetica", "normal")
   pdf.setFontSize(9)
@@ -386,25 +306,15 @@ function body(
       pdf.text(part, x, y)
       y += 4.8
     })
-
     y += 2
   })
 
   return y
 }
 
-function drawItemisedBreakdown(
-  pdf,
-  page,
-  ctx,
-  appointment,
-  epvs,
-  startY = ctx.y
-) {
+function drawItemisedBreakdown(pdf, page, ctx, appointment, epvs, startY = ctx.y) {
   const width = ctx.width - ctx.padding * 2
-  const configuredItems = Array.isArray(
-    page.settings?.included_items
-  )
+  const configuredItems = Array.isArray(page.settings?.included_items)
     ? page.settings.included_items
     : []
 
@@ -421,83 +331,38 @@ function drawItemisedBreakdown(
   const headerY = startY + 28
 
   pdf.setFillColor(...ctx.accent)
-  pdf.roundedRect(
-    ctx.padding,
-    headerY - 7,
-    width,
-    11,
-    2,
-    2,
-    "F"
-  )
-
+  pdf.roundedRect(ctx.padding, headerY - 7, width, 11, 2, 2, "F")
   pdf.setTextColor(255, 255, 255)
   pdf.setFont("helvetica", "bold")
   pdf.setFontSize(8)
-  pdf.text(
-    "PRODUCT / SERVICE",
-    ctx.padding + 7,
-    headerY
-  )
+  pdf.text("PRODUCT / SERVICE", ctx.padding + 7, headerY)
 
   const typeX = ctx.padding + width - 43
-  pdf.text("TYPE", typeX, headerY, {
-    align: "center",
-  })
-  pdf.text(
-    "QTY",
-    ctx.padding + width - 7,
-    headerY,
-    { align: "right" }
-  )
+  pdf.text("TYPE", typeX, headerY, { align: "center" })
+  pdf.text("QTY", ctx.padding + width - 7, headerY, { align: "right" })
 
   let y = headerY + 9
   const rowHeight = 7.15
 
   items.forEach((item, index) => {
-    const itemName = interpolate(
-      item.name,
-      appointment,
-      epvs
-    )
-    const itemType = interpolate(
-      String(item.type),
-      appointment,
-      epvs
-    )
-    const itemQuantity = interpolate(
-      String(item.quantity),
-      appointment,
-      epvs
-    )
+    const itemName = interpolate(item.name, appointment, epvs)
+    const itemType = interpolate(String(item.type), appointment, epvs)
+    const itemQuantity = interpolate(String(item.quantity), appointment, epvs)
 
     if (index % 2 === 0) {
       pdf.setFillColor(247, 249, 250)
-      pdf.roundedRect(
-        ctx.padding,
-        y - 5.2,
-        width,
-        rowHeight,
-        1.2,
-        1.2,
-        "F"
-      )
+      pdf.roundedRect(ctx.padding, y - 5.2, width, rowHeight, 1.2, 1.2, "F")
     }
 
     pdf.setTextColor(...ctx.text)
     pdf.setFont("helvetica", "normal")
     pdf.setFontSize(8.1)
-    pdf.text(
-      String(itemName),
-      ctx.padding + 7,
-      y
-    )
+    pdf.text(String(itemName), ctx.padding + 7, y)
 
     if (itemType) {
       const typeText = String(itemType)
       pdf.setFont("helvetica", "bold")
       pdf.setFontSize(6.5)
-
       const textWidth = pdf.getTextWidth(typeText)
       const tagWidth = textWidth + 6
       const tagX = typeX - tagWidth / 2
@@ -514,34 +379,14 @@ function drawItemisedBreakdown(
         pdf.setTextColor(75, 85, 92)
       }
 
-      pdf.roundedRect(
-        tagX,
-        tagY,
-        tagWidth,
-        4.5,
-        2,
-        2,
-        "F"
-      )
-
-      pdf.text(
-        typeText,
-        typeX,
-        y - 0.5,
-        { align: "center" }
-      )
+      pdf.roundedRect(tagX, tagY, tagWidth, 4.5, 2, 2, "F")
+      pdf.text(typeText, typeX, y - 0.5, { align: "center" })
     }
 
     pdf.setTextColor(...ctx.text)
     pdf.setFont("helvetica", "bold")
     pdf.setFontSize(8.1)
-    pdf.text(
-      String(itemQuantity),
-      ctx.padding + width - 7,
-      y,
-      { align: "right" }
-    )
-
+    pdf.text(String(itemQuantity), ctx.padding + width - 7, y, { align: "right" })
     y += rowHeight
   })
 
@@ -558,179 +403,85 @@ function drawItemisedBreakdown(
     appointment?.price
 
   pdf.setFillColor(...ctx.accent)
-  pdf.roundedRect(
-    ctx.padding,
-    y,
-    width,
-    25,
-    3,
-    3,
-    "F"
-  )
-
+  pdf.roundedRect(ctx.padding, y, width, 25, 3, 3, "F")
   pdf.setTextColor(255, 255, 255)
   pdf.setFont("helvetica", "normal")
   pdf.setFontSize(8)
-  pdf.text(
-    "TOTAL SYSTEM PRICE",
-    ctx.padding + 8,
-    y + 10
-  )
-
+  pdf.text("TOTAL SYSTEM PRICE", ctx.padding + 8, y + 10)
   pdf.setFont("helvetica", "bold")
   pdf.setFontSize(18)
-  pdf.text(
-    money(price),
-    ctx.padding + width - 8,
-    y + 15,
-    { align: "right" }
-  )
+  pdf.text(money(price), ctx.padding + width - 8, y + 15, { align: "right" })
 }
 
-async function renderPage(
-  pdf,
-  page,
-  appointment,
-  epvs
-) {
+async function renderPage(pdf, page, appointment, epvs) {
   const settings = page.settings || {}
   const ctx = header(pdf, settings)
   const kind = settings.page_kind || "standard"
   const data = epvs?.data || {}
   const results = epvs?.results || {}
-  const openSolarImageUrl = getOpenSolarImageUrl(
-    appointment,
-    epvs
-  )
+  const openSolarImageUrl = getOpenSolarImageUrl(appointment, epvs)
 
   if (kind === "cover") {
-    const bg = rgb(
-      settings.background,
-      [6, 47, 79]
-    )
-
+    const bg = rgb(settings.background, [6, 47, 79])
     pdf.setFillColor(...bg)
-    pdf.rect(
-      0,
-      0,
-      ctx.width,
-      ctx.height,
-      "F"
-    )
-
+    pdf.rect(0, 0, ctx.width, ctx.height, "F")
     pdf.setTextColor(255, 255, 255)
     pdf.setFont("helvetica", "bold")
     pdf.setFontSize(28)
-    pdf.text(
-      "Digital Solar Contract",
-      ctx.padding,
-      70
-    )
-
+    pdf.text("Digital Solar Contract", ctx.padding, 70)
     pdf.setFont("helvetica", "normal")
     pdf.setFontSize(13)
-    pdf.text(
-      "Prepared for",
-      ctx.padding,
-      83
-    )
-
+    pdf.text("Prepared for", ctx.padding, 83)
     pdf.setFont("helvetica", "bold")
     pdf.setFontSize(20)
-    pdf.text(
-      textValue(appointment?.name, "Customer"),
-      ctx.padding,
-      94
-    )
-
+    pdf.text(textValue(appointment?.name, "Customer"), ctx.padding, 94)
     pdf.setFont("helvetica", "normal")
     pdf.setFontSize(9)
     pdf.setTextColor(205, 222, 232)
     pdf.text(
-      [appointment?.address, appointment?.postcode]
-        .filter(Boolean)
-        .join(", "),
+      [appointment?.address, appointment?.postcode].filter(Boolean).join(", "),
       ctx.padding,
       103
     )
-
     return
   }
 
   title(pdf, page, ctx)
-
   let y = ctx.y + 28
   const width = ctx.width - ctx.padding * 2
 
-  // The OpenSolar image is part of the saved EPVS calculation, not normally
-  // a column on appointments. It is therefore resolved from
-  // epvs.data.openSolar first.
-  //
-  // The System Overview page is the second page of the solar contract and
-  // should always show the design image when one is available. Other pages
-  // can opt in by putting {{open_solar_image}} in their template body.
   const shouldRenderImage =
     kind === "system_overview" ||
-    String(page.body || "").includes(
-      "{{open_solar_image}}"
-    )
+    String(page.body || "").includes("{{open_solar_image}}")
 
   if (shouldRenderImage && openSolarImageUrl) {
-    y = await drawImage(
-      pdf,
-      openSolarImageUrl,
-      ctx.padding,
-      y,
-      width,
-      82
-    )
+    y = await drawImage(pdf, openSolarImageUrl, ctx.padding, y, width, 82)
   }
 
   if (kind === "system_overview") {
     y = rows(
       pdf,
       [
-        [
-          "Customer",
-          textValue(appointment?.name),
-        ],
+        ["Customer", textValue(appointment?.name)],
         [
           "System size",
-          results.systemSize
-            ? `${num(results.systemSize, 2)} kWp`
-            : "—",
+          results.systemSize ? `${num(results.systemSize, 2)} kWp` : "—",
         ],
         [
           "Solar panels",
-          `${num(data.panelCount)} × ${num(
-            data.panelWattage
-          )} W`,
+          `${num(data.panelCount)} × ${num(data.panelWattage)} W`,
         ],
         [
           "Inverter",
-          data.inverterCapacity
-            ? `${num(
-                data.inverterCapacity,
-                1
-              )} kW`
-            : "—",
+          data.inverterCapacity ? `${num(data.inverterCapacity, 1)} kW` : "—",
         ],
         [
           "Battery",
-          data.batteryEnabled
-            ? `${num(
-                data.batteryCapacity,
-                1
-              )} kWh`
-            : "Not included",
+          data.batteryEnabled ? `${num(data.batteryCapacity, 1)} kWh` : "Not included",
         ],
         [
           "Estimated generation",
-          results.generation
-            ? `${num(
-                results.generation
-              )} kWh / year`
-            : "—",
+          results.generation ? `${num(results.generation)} kWh / year` : "—",
         ],
       ],
       ctx.padding,
@@ -739,135 +490,52 @@ async function renderPage(
       ctx.text
     )
 
-    body(
-      pdf,
-      page.body,
-      ctx.padding,
-      y + 8,
-      width,
-      ctx.text,
-      appointment,
-      epvs
-    )
+    body(pdf, page.body, ctx.padding, y + 8, width, ctx.text, appointment, epvs)
   } else if (kind === "itemised_breakdown") {
-    drawItemisedBreakdown(
-      pdf,
-      page,
-      ctx,
-      appointment,
-      epvs,
-      y
-    )
+    drawItemisedBreakdown(pdf, page, ctx, appointment, epvs, y)
   } else if (kind === "accreditations") {
-    const items = Array.isArray(settings.items)
-      ? settings.items
-      : []
+    const items = Array.isArray(settings.items) ? settings.items : []
 
     items.forEach((item) => {
       pdf.setFillColor(246, 248, 250)
-      pdf.roundedRect(
-        ctx.padding,
-        y,
-        width,
-        20,
-        3,
-        3,
-        "F"
-      )
-
+      pdf.roundedRect(ctx.padding, y, width, 20, 3, 3, "F")
       pdf.setTextColor(...ctx.text)
       pdf.setFont("helvetica", "bold")
       pdf.setFontSize(10)
-      pdf.text(
-        textValue(
-          item.name,
-          "Accreditation"
-        ),
-        ctx.padding + 7,
-        y + 8
-      )
-
+      pdf.text(textValue(item.name, "Accreditation"), ctx.padding + 7, y + 8)
       pdf.setFont("helvetica", "normal")
       pdf.setFontSize(8)
       pdf.setTextColor(100, 112, 120)
-      pdf.text(
-        textValue(item.description, ""),
-        ctx.padding + 7,
-        y + 14
-      )
-
+      pdf.text(textValue(item.description, ""), ctx.padding + 7, y + 14)
       y += 25
     })
 
-    body(
-      pdf,
-      page.body,
-      ctx.padding,
-      y + 4,
-      width,
-      ctx.text,
-      appointment,
-      epvs
-    )
+    body(pdf, page.body, ctx.padding, y + 4, width, ctx.text, appointment, epvs)
   } else if (kind === "epvs") {
     rows(
       pdf,
       [
-        [
-          "System size",
-          results.systemSize
-            ? `${num(results.systemSize, 2)} kWp`
-            : "—",
-        ],
+        ["System size", results.systemSize ? `${num(results.systemSize, 2)} kWp` : "—"],
         [
           "Annual consumption",
-          data.annualConsumption
-            ? `${num(
-                data.annualConsumption
-              )} kWh`
-            : "—",
+          data.annualConsumption ? `${num(data.annualConsumption)} kWh` : "—",
         ],
         [
           "Estimated generation",
-          results.generation
-            ? `${num(results.generation)} kWh`
-            : "—",
+          results.generation ? `${num(results.generation)} kWh` : "—",
         ],
         [
           "Solar self-consumption",
-          results.solarSelfConsumption
-            ? `${num(
-                results.solarSelfConsumption
-              )} kWh`
-            : "—",
+          results.solarSelfConsumption ? `${num(results.solarSelfConsumption)} kWh` : "—",
         ],
-        [
-          "Estimated export",
-          results.exportKwh
-            ? `${num(results.exportKwh)} kWh`
-            : "—",
-        ],
-        [
-          "Annual saving",
-          money(results.annualSaving),
-        ],
+        ["Estimated export", results.exportKwh ? `${num(results.exportKwh)} kWh` : "—"],
+        ["Annual saving", money(results.annualSaving)],
         [
           "Simple payback",
-          results.simplePayback
-            ? `${num(
-                results.simplePayback,
-                1
-              )} years`
-            : "—",
+          results.simplePayback ? `${num(results.simplePayback, 1)} years` : "—",
         ],
-        [
-          "30 year saving",
-          money(results.thirtyYearSavings),
-        ],
-        [
-          "30 year return",
-          money(results.thirtyYearProfit),
-        ],
+        ["30 year saving", money(results.thirtyYearSavings)],
+        ["30 year return", money(results.thirtyYearProfit)],
       ],
       ctx.padding,
       y,
@@ -876,105 +544,75 @@ async function renderPage(
       true
     )
   } else if (kind === "datasheets") {
-    const docs = Array.isArray(
-      settings.documents
-    )
-      ? settings.documents
-      : []
+    const docs = Array.isArray(settings.documents) ? settings.documents : []
 
     docs.forEach((doc) => {
       pdf.setTextColor(...ctx.text)
       pdf.setFont("helvetica", "bold")
       pdf.setFontSize(9)
-      pdf.text(
-        textValue(doc.title, "Datasheet"),
-        ctx.padding,
-        y
-      )
-
+      pdf.text(textValue(doc.title, "Datasheet"), ctx.padding, y)
       pdf.setFont("helvetica", "normal")
       pdf.setFontSize(7)
       pdf.setTextColor(105, 116, 124)
-      pdf.text(
-        textValue(doc.description, ""),
-        ctx.padding,
-        y + 5
-      )
-
+      pdf.text(textValue(doc.description, ""), ctx.padding, y + 5)
       y += 14
     })
 
-    body(
-      pdf,
-      page.body,
-      ctx.padding,
-      y + 4,
-      width,
-      ctx.text,
-      appointment,
-      epvs
-    )
+    body(pdf, page.body, ctx.padding, y + 4, width, ctx.text, appointment, epvs)
   } else {
-    body(
-      pdf,
-      page.body,
-      ctx.padding,
-      y,
-      width,
-      ctx.text,
-      appointment,
-      epvs
-    )
+    body(pdf, page.body, ctx.padding, y, width, ctx.text, appointment, epvs)
   }
 }
 
-function footer(
-  pdf,
-  index,
-  count,
-  settings,
-  appointment
-) {
+function footer(pdf, index, count, settings, appointment) {
   if (settings.show_footer === false) return
 
   const width = pdf.internal.pageSize.getWidth()
   const height = pdf.internal.pageSize.getHeight()
-  const padding = Number(
-    settings.padding_mm || 18
-  )
+  const padding = Number(settings.padding_mm || 18)
 
   pdf.setDrawColor(...rgb(settings.accent))
   pdf.setLineWidth(0.25)
-  pdf.line(
-    padding,
-    height - 13,
-    width - padding,
-    height - 13
-  )
-
+  pdf.line(padding, height - 13, width - padding, height - 13)
   pdf.setTextColor(120, 130, 138)
   pdf.setFont("helvetica", "normal")
   pdf.setFontSize(6.5)
-
-  pdf.text(
-    textValue(appointment?.name, "Customer"),
-    padding,
-    height - 8
-  )
-
-  pdf.text(
-    `Page ${index + 1} of ${count}`,
-    width - padding,
-    height - 8,
-    { align: "right" }
-  )
+  pdf.text(textValue(appointment?.name, "Customer"), padding, height - 8)
+  pdf.text(`Page ${index + 1} of ${count}`, width - padding, height - 8, {
+    align: "right",
+  })
 }
 
-export async function GenerateSolarContract({
-  appointment,
-  epvsCalculation,
-}) {
+export async function GenerateSolarContract({ appointment, epvsCalculation }) {
   if (!appointment) return
+
+  // The OpenSolar image is stored on the appointments table. The appointment
+  // object supplied by the UI is not guaranteed to contain every column, so
+  // explicitly read the current appointments row before rendering the PDF.
+  let contractAppointment = appointment
+
+  if (appointment?.appointment_row_id) {
+    const {
+      data: appointmentRow,
+      error: appointmentRowError,
+    } = await supabase
+      .from("appointments")
+      .select("open_solar_image")
+      .eq("appointment_row_id", appointment.appointment_row_id)
+      .maybeSingle()
+
+    if (appointmentRowError) {
+      console.warn(
+        "Unable to load appointments.open_solar_image:",
+        appointmentRowError
+      )
+    } else if (appointmentRow) {
+      contractAppointment = {
+        ...appointment,
+        open_solar_image: appointmentRow.open_solar_image,
+      }
+    }
+  }
 
   const {
     data: template,
@@ -999,27 +637,20 @@ export async function GenerateSolarContract({
     error: pagesError,
   } = await supabase
     .from("template_pages")
-    .select(
-      "id,slide_order,title,subtitle,body,settings"
-    )
+    .select("id,slide_order,title,subtitle,body,settings")
     .eq("presentation_id", template.id)
-    .order("slide_order", {
-      ascending: true,
-    })
+    .order("slide_order", { ascending: true })
 
   if (pagesError) throw pagesError
 
   if (!pages?.length) {
-    throw new Error(
-      `${CONTRACT_NAME} has no pages configured.`
-    )
+    throw new Error(`${CONTRACT_NAME} has no pages configured.`)
   }
 
   const first = pages[0]?.settings || {}
 
   const pdf = new jsPDF({
-    orientation:
-      first.orientation || "portrait",
+    orientation: first.orientation || "portrait",
     unit: "mm",
     format: first.page_size || "a4",
   })
@@ -1038,7 +669,7 @@ export async function GenerateSolarContract({
     await renderPage(
       pdf,
       page,
-      appointment,
+      contractAppointment,
       epvsCalculation
     )
   }
@@ -1050,17 +681,15 @@ export async function GenerateSolarContract({
       i,
       pages.length,
       page.settings || {},
-      appointment
+      contractAppointment
     )
   })
 
   const safeName = String(
-    appointment.name || "Customer"
+    contractAppointment.name || "Customer"
   )
     .replace(/[^a-z0-9]+/gi, "-")
     .replace(/^-|-$/g, "") || "Customer"
 
-  pdf.save(
-    `${safeName}-Digital-Solar-Contract.pdf`
-  )
+  pdf.save(`${safeName}-Digital-Solar-Contract.pdf`)
 }
