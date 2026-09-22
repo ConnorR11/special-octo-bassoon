@@ -72,38 +72,7 @@ export async function generateEpvsPdf(appointment, calculation, settings, page) 
   rows.forEach(row=>{const solar=pdfValue(row,"solarBenefit","solar"),battery=pdfValue(row,"batteryBenefit","battery")||pdfValue(row,"batterySelfConsumptionBenefit")+pdfValue(row,"forceChargeBenefit"),exportBenefit=pdfValue(row,"exportBenefit"),annualBenefit=solar+battery+exportBenefit,payment=pdfValue(row,"yearlyPayment","payment"),netAnnual=annualBenefit+payment;cumulativeBenefit+=annualBenefit;const netPosition=totalPayments+cumulativeBenefit;totals.generation+=Number(row.generation||0);totals.solar+=solar;totals.battery+=battery;totals.exportBenefit+=exportBenefit;totals.annualBenefit+=annualBenefit;totals.payments+=payment;totals.netAnnual+=netAnnual;totals.billPre+=Number(row.billPreInstall||0);totals.billPost+=Number(row.billPostInstall||0);totals.finalNetPosition=netPosition;const values=[String(row.year||""),pdfNumber(row.generation,settings),pdfMoney(solar,settings),pdfMoney(battery,settings),pdfMoney(exportBenefit,settings),pdfMoney(annualBenefit,settings),pdfMoney(payment,settings),pdfMoney(netAnnual,settings),pdfMoney(netPosition,settings),pdfMoney(row.billPreInstall,settings),pdfMoney(row.billPostInstall,settings)];x=startX;doc.setFont(undefined,"normal");doc.setFontSize(rowFontSize);values.forEach((value,index)=>{doc.setFillColor(...(highlightColumns.has(index)?rowHighlight:[255,255,255]));doc.setTextColor(...(netAnnual<0&&negativeColumns.has(index)?negativeText:rowText));doc.rect(x,y,widths[index],rowHeight,"FD");doc.text(value,x+widths[index]-1,y+rowHeight-1.45,{align:"right"});x+=widths[index]});y+=rowHeight})
   if(rows.length){const values=["TOTAL",pdfNumber(totals.generation,settings),pdfMoney(totals.solar,settings),pdfMoney(totals.battery,settings),pdfMoney(totals.exportBenefit,settings),pdfMoney(totals.annualBenefit,settings),pdfMoney(totals.payments,settings),pdfMoney(totals.netAnnual,settings),pdfMoney(totals.finalNetPosition,settings),pdfMoney(totals.billPre,settings),pdfMoney(totals.billPost,settings)];x=startX;doc.setFont(undefined,"bold");doc.setFontSize(rowFontSize);values.forEach((value,index)=>{doc.setFillColor(...(index===5||index===8?totalHighlight:totalBg));doc.setTextColor(...totalText);doc.rect(x,y,widths[index],totalHeight,"FD");doc.text(value,x+widths[index]-1,y+totalHeight-1.65,{align:"right"});x+=widths[index]})}else{doc.setFontSize(7);doc.setTextColor(...footerText);doc.text("No 30 year projection is currently saved.",10,y+8)}
 
-  const solarArrays = Array.isArray(data.arrays) ? data.arrays.map((array, index) => ({ ...array, ...(Array.isArray(results.arrays) ? (results.arrays[index] || {}) : {}) })).filter((array) => Number(array?.panelCount || 0) > 0) : []
-
-  if (solarArrays.length) {
-    const arrayHeaderHeight = 8
-    const arrayRowHeight = 5.5
-    const arrayFontSize = 6.2
-    const arrayWidths = [16, 17, 18, 24, 19, 25, 15, 25, 29]
-    const arrayTotalWidth = arrayWidths.reduce((sum, width) => sum + width, 0)
-    const arrayStartX = (pageWidth - arrayTotalWidth) / 2
-    const requiredHeight = 13 + arrayHeaderHeight + arrayRowHeight * solarArrays.length + 8
-
-    if (y + requiredHeight > pageHeight - 18) {
-      doc.addPage()
-      y = 20
-    }
-
-    doc.setTextColor(...headingText)
-    doc.setFont(undefined, "bold")
-    doc.setFontSize(8)
-    doc.text("Solar PV array", 7, y + 5)
-    y += 9
-
-    const arrayHeaders = ["Array", "Panels", "Panel Wp", "Orientation (°)", "Pitch (°)", "Irradiance / Kk", "SF", "System size (kWp)", "Generation (kWh)"]
-    x = arrayStartX
-    doc.setFont(undefined, "bold")
-    doc.setFontSize(arrayFontSize)
-    arrayHeaders.forEach((headerValue,index)=>{doc.setFillColor(...tableHeaderBg);doc.setDrawColor(...tableHeaderBg);doc.rect(x,y,arrayWidths[index],arrayHeaderHeight,"FD");doc.setTextColor(...tableHeaderText);const lines=String(headerValue).split(" ");if(lines.length>1){const midpoint=Math.ceil(lines.length/2);doc.text(lines.slice(0,midpoint).join(" "),x+arrayWidths[index]/2,y+3,{align:"center"});doc.text(lines.slice(midpoint).join(" "),x+arrayWidths[index]/2,y+6,{align:"center"})}else{doc.text(String(headerValue),x+arrayWidths[index]/2,y+5,{align:"center"})}x+=arrayWidths[index]})
-    y += arrayHeaderHeight
-
-    solarArrays.forEach((array,index)=>{const values=[`Array ${index+1}`,String(Number(array.panelCount||0)),`${Number(array.panelWattage||0).toFixed(0)} W`,`${Number(array.orientation||0).toFixed(0)}°`,`${Number(array.pitch||0).toFixed(0)}°`,pdfNumber(array.irradiance,settings),pdfNumber(array.shading,settings),`${Number(array.systemSize||0).toFixed(2)} kWp`,pdfNumber(array.generation,settings)];x=arrayStartX;doc.setFont(undefined,"normal");doc.setFontSize(arrayFontSize);values.forEach((value,cellIndex)=>{doc.setFillColor(255,255,255);doc.setDrawColor(...hexToRgb("#eef2f7",[238,242,247]));doc.rect(x,y,arrayWidths[cellIndex],arrayRowHeight,"FD");doc.setTextColor(...rowText);doc.text(String(value),x+arrayWidths[cellIndex]-1,y+arrayRowHeight-1.7,{align:"right"});x+=arrayWidths[cellIndex]});y+=arrayRowHeight})
-  }
-
+  
   if(footer.page_number){const pageCount=doc.internal.getNumberOfPages(),exportedAt=new Date().toLocaleString("en-GB",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});for(let pageNumber=1;pageNumber<=pageCount;pageNumber+=1){doc.setPage(pageNumber);doc.setDrawColor(...footerLine);doc.line(7,pageHeight-14,pageWidth-7,pageHeight-14);doc.setTextColor(...footerText);doc.setFont(undefined,"normal");doc.setFontSize(Number(footer.font_size ?? 5.5));doc.text(String(footer.text||"").replace("{exported_at}",exportedAt),7,pageHeight-9);doc.text("Page "+String(pageNumber)+" of "+String(pageCount),pageWidth-7,pageHeight-9,{align:"right"})}}
   const safeName=String(customer).replace(/[^a-z0-9]+/gi,"-").replace(/^-|-$/g,"")||"customer"
   doc.save("EPVS-Calculation-"+safeName+".pdf")
