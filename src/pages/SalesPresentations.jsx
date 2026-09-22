@@ -4,193 +4,42 @@ import { supabase } from "../lib/supabase"
 import SalesPresenter from "../components/SalesPresenter"
 
 const EMPTY_PAGE = { title: "", subtitle: "", body: "", settings: {} }
-
-function templateTypeLabel(type) {
-  if (type === "solar") return "Solar"
-  if (type === "windows") return "Windows & Doors"
-  return type || "Other"
-}
+function templateTypeLabel(type) { if (type === "solar") return "Solar"; if (type === "windows") return "Windows & Doors"; return type || "Other" }
 
 export default function SalesPresentations() {
-  const [templates, setTemplates] = useState([])
-  const [selectedId, setSelectedId] = useState(null)
-  const [pages, setPages] = useState([])
-  const [selectedPageId, setSelectedPageId] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState("")
-  const [preview, setPreview] = useState(false)
-  const [settingsText, setSettingsText] = useState("{}")
-  const [expandedTypes, setExpandedTypes] = useState({})
-
-  const selectedTemplate = useMemo(() => templates.find((item) => item.id === selectedId) || null, [templates, selectedId])
-  const selectedPage = useMemo(() => pages.find((item) => item.id === selectedPageId) || null, [pages, selectedPageId])
-
-  const templateGroups = useMemo(() => {
-    const groups = new Map()
-    templates.forEach((item) => {
-      const type = item.template_type || "other"
-      if (!groups.has(type)) groups.set(type, [])
-      groups.get(type).push(item)
-    })
-    return Array.from(groups.entries()).sort(([a], [b]) => {
-      const order = { windows: 1, solar: 2, other: 3 }
-      return (order[a] || 99) - (order[b] || 99) || a.localeCompare(b)
-    })
-  }, [templates])
-
-  async function loadTemplates() {
-    setLoading(true); setError("")
-    const { data, error: queryError } = await supabase.from("templates").select("*").order("created_at")
-    if (queryError) { setError(queryError.message); setLoading(false); return }
-    const list = data || []
-    setTemplates(list)
-    const nextId = selectedId && list.some((item) => item.id === selectedId) ? selectedId : list[0]?.id || null
-    setSelectedId(nextId)
-    setExpandedTypes((current) => {
-      const next = { ...current }
-      list.forEach((item) => { next[item.template_type || "other"] = true })
-      return next
-    })
-    setLoading(false)
-  }
-
-  async function loadPages(templateId) {
-    if (!templateId) { setPages([]); setSelectedPageId(null); return }
-    const { data, error: queryError } = await supabase.from("template_pages").select("*").eq("presentation_id", templateId).order("slide_order")
-    if (queryError) { setError(queryError.message); return }
-    const list = data || []
-    setPages(list); setSelectedPageId(list[0]?.id || null)
-  }
-
-  useEffect(() => { loadTemplates() }, [])
-  useEffect(() => { loadPages(selectedId) }, [selectedId])
-  useEffect(() => { setSettingsText(selectedPage ? JSON.stringify(selectedPage.settings || {}, null, 2) : "{}") }, [selectedPageId])
-
-  async function updateTemplate(changes) {
-    if (!selectedTemplate) return
-    setSaving(true); setError("")
-    const { data, error: updateError } = await supabase.from("templates").update({ ...changes, updated_at: new Date().toISOString() }).eq("id", selectedTemplate.id).select().single()
-    if (updateError) setError(updateError.message); else setTemplates((current) => current.map((item) => item.id === data.id ? data : item))
-    setSaving(false)
-  }
-
-  async function addPage() {
-    if (!selectedTemplate) return
-    setSaving(true); setError("")
-    const nextOrder = pages.length ? Math.max(...pages.map((item) => item.slide_order || 0)) + 1 : 1
-    const { data, error: insertError } = await supabase.from("template_pages").insert({ presentation_id: selectedTemplate.id, slide_order: nextOrder, ...EMPTY_PAGE }).select().single()
-    if (insertError) setError(insertError.message); else { setPages((current) => [...current, data]); setSelectedPageId(data.id) }
-    setSaving(false)
-  }
-
-  async function savePage() {
-    if (!selectedPage) return
-    let parsedSettings
-    try {
-      parsedSettings = settingsText.trim() ? JSON.parse(settingsText) : {}
-      if (!parsedSettings || typeof parsedSettings !== "object" || Array.isArray(parsedSettings)) throw new Error("Settings must be a JSON object.")
-    } catch (err) { setError(`Settings must contain valid JSON: ${err.message}`); return }
-    setSaving(true); setError("")
-    const { data, error: updateError } = await supabase.from("template_pages").update({ title: selectedPage.title, subtitle: selectedPage.subtitle, body: selectedPage.body, settings: parsedSettings, updated_at: new Date().toISOString() }).eq("id", selectedPage.id).select().single()
-    if (updateError) setError(updateError.message); else { setPages((current) => current.map((item) => item.id === data.id ? data : item)); setSettingsText(JSON.stringify(data.settings || {}, null, 2)) }
-    setSaving(false)
-  }
-
-  async function resequence(items) {
-    await Promise.all(items.map((item, index) => supabase.from("template_pages").update({ slide_order: index + 1 }).eq("id", item.id)))
-  }
-
-  async function deletePage() {
-    if (!selectedPage || !window.confirm("Delete this page?")) return
-    setSaving(true); setError("")
-    const { error: deleteError } = await supabase.from("template_pages").delete().eq("id", selectedPage.id)
-    if (deleteError) setError(deleteError.message); else { const remaining = pages.filter((item) => item.id !== selectedPage.id); await resequence(remaining); setPages(remaining.map((item, index) => ({ ...item, slide_order: index + 1 }))); setSelectedPageId(remaining[0]?.id || null) }
-    setSaving(false)
-  }
-
-  async function movePage(direction) {
-    if (!selectedPage) return
-    const index = pages.findIndex((item) => item.id === selectedPage.id); const target = index + direction
-    if (target < 0 || target >= pages.length) return
-    const next = [...pages]; [next[index], next[target]] = [next[target], next[index]]
-    setPages(next.map((item, position) => ({ ...item, slide_order: position + 1 }))); await resequence(next)
-  }
-
+  const [templates, setTemplates] = useState([]); const [selectedId, setSelectedId] = useState(null); const [pages, setPages] = useState([]); const [selectedPageId, setSelectedPageId] = useState(null); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [error, setError] = useState(""); const [preview, setPreview] = useState(false); const [settingsText, setSettingsText] = useState("{}"); const [expandedTypes, setExpandedTypes] = useState({})
+  const selectedTemplate = useMemo(() => templates.find((item) => item.id === selectedId) || null, [templates, selectedId]); const selectedPage = useMemo(() => pages.find((item) => item.id === selectedPageId) || null, [pages, selectedPageId])
+  const templateGroups = useMemo(() => { const groups = new Map(); templates.forEach((item) => { const type = item.template_type || "other"; if (!groups.has(type)) groups.set(type, []); groups.get(type).push(item) }); return Array.from(groups.entries()).sort(([a], [b]) => { const order = { windows: 1, solar: 2, other: 3 }; return (order[a] || 99) - (order[b] || 99) || a.localeCompare(b) }) }, [templates])
+  async function loadTemplates() { setLoading(true); setError(""); const { data, error: queryError } = await supabase.from("templates").select("*").order("created_at"); if (queryError) { setError(queryError.message); setLoading(false); return }; const list = data || []; setTemplates(list); const nextId = selectedId && list.some((item) => item.id === selectedId) ? selectedId : list[0]?.id || null; setSelectedId(nextId); setExpandedTypes((current) => { const next = { ...current }; list.forEach((item) => { next[item.template_type || "other"] = true }); return next }); setLoading(false) }
+  async function loadPages(templateId) { if (!templateId) { setPages([]); setSelectedPageId(null); return }; const { data, error: queryError } = await supabase.from("template_pages").select("*").eq("presentation_id", templateId).order("slide_order"); if (queryError) { setError(queryError.message); return }; const list = data || []; setPages(list); setSelectedPageId(list[0]?.id || null) }
+  useEffect(() => { loadTemplates() }, []); useEffect(() => { loadPages(selectedId) }, [selectedId]); useEffect(() => { setSettingsText(selectedPage ? JSON.stringify(selectedPage.settings || {}, null, 2) : "{}") }, [selectedPageId])
+  async function updateTemplate(changes) { if (!selectedTemplate) return; setSaving(true); setError(""); const { data, error: updateError } = await supabase.from("templates").update({ ...changes, updated_at: new Date().toISOString() }).eq("id", selectedTemplate.id).select().single(); if (updateError) setError(updateError.message); else setTemplates((current) => current.map((item) => item.id === data.id ? data : item)); setSaving(false) }
+  async function addPage() { if (!selectedTemplate) return; setSaving(true); setError(""); const nextOrder = pages.length ? Math.max(...pages.map((item) => item.slide_order || 0)) + 1 : 1; const { data, error: insertError } = await supabase.from("template_pages").insert({ presentation_id: selectedTemplate.id, slide_order: nextOrder, ...EMPTY_PAGE }).select().single(); if (insertError) setError(insertError.message); else { setPages((current) => [...current, data]); setSelectedPageId(data.id) }; setSaving(false) }
+  async function savePage() { if (!selectedPage) return; let parsedSettings; try { parsedSettings = settingsText.trim() ? JSON.parse(settingsText) : {}; if (!parsedSettings || typeof parsedSettings !== "object" || Array.isArray(parsedSettings)) throw new Error("Settings must be a JSON object.") } catch (err) { setError(`Settings must contain valid JSON: ${err.message}`); return }; setSaving(true); setError(""); const { data, error: updateError } = await supabase.from("template_pages").update({ title: selectedPage.title, subtitle: selectedPage.subtitle, body: selectedPage.body, settings: parsedSettings, updated_at: new Date().toISOString() }).eq("id", selectedPage.id).select().single(); if (updateError) setError(updateError.message); else { setPages((current) => current.map((item) => item.id === data.id ? data : item)); setSettingsText(JSON.stringify(data.settings || {}, null, 2)) }; setSaving(false) }
+  async function resequence(items) { await Promise.all(items.map((item, index) => supabase.from("template_pages").update({ slide_order: index + 1 }).eq("id", item.id))) }
+  async function deletePage() { if (!selectedPage || !window.confirm("Delete this page?")) return; setSaving(true); setError(""); const { error: deleteError } = await supabase.from("template_pages").delete().eq("id", selectedPage.id); if (deleteError) setError(deleteError.message); else { const remaining = pages.filter((item) => item.id !== selectedPage.id); await resequence(remaining); setPages(remaining.map((item, index) => ({ ...item, slide_order: index + 1 }))); setSelectedPageId(remaining[0]?.id || null) }; setSaving(false) }
+  async function movePage(direction) { if (!selectedPage) return; const index = pages.findIndex((item) => item.id === selectedPage.id); const target = index + direction; if (target < 0 || target >= pages.length) return; const next = [...pages]; [next[index], next[target]] = [next[target], next[index]]; setPages(next.map((item, position) => ({ ...item, slide_order: position + 1 }))); await resequence(next) }
   function updatePage(field, value) { setPages((current) => current.map((item) => item.id === selectedPageId ? { ...item, [field]: value } : item)) }
-
-  function toggleType(type) {
-    setExpandedTypes((current) => ({ ...current, [type]: !current[type] }))
-  }
-
-  function selectTemplate(item) {
-    setSelectedId(item.id)
-    setExpandedTypes((current) => ({ ...current, [item.template_type || "other"]: true }))
-  }
-
-  if (preview && selectedTemplate) {
-    const type = selectedTemplate.template_type || "windows"
-    const previewAppointment = type === "solar" ? { name: "Presentation Preview", product: "Solar" } : { name: "Presentation Preview", product: "Windows" }
-    return <SalesPresenter appointment={previewAppointment} onClose={() => setPreview(false)} />
-  }
-
+  function toggleType(type) { setExpandedTypes((current) => ({ ...current, [type]: !current[type] })) }
+  function selectTemplate(item) { setSelectedId(item.id); setExpandedTypes((current) => ({ ...current, [item.template_type || "other"]: true })) }
+  if (preview && selectedTemplate) { const type = selectedTemplate.template_type || "windows"; const previewAppointment = type === "solar" ? { name: "Presentation Preview", product: "Solar" } : { name: "Presentation Preview", product: "Windows" }; return <SalesPresenter appointment={previewAppointment} onClose={() => setPreview(false)} /> }
   return <section>
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 18 }}>
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}><Presentation size={24} color="#2499ed" /><div><h1 style={{ margin: 0, fontSize: 22 }}>Templates</h1><p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>Manage the templates and pages used by sales appointments.</p></div></div>
-      {selectedTemplate && <button onClick={() => setPreview(true)} style={buttonStyle}><Eye size={14} /> Preview</button>}
-    </div>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 18 }}><div style={{ display: "flex", gap: 10, alignItems: "center" }}><Presentation size={24} color="#2499ed" /><div><h1 style={{ margin: 0, fontSize: 22 }}>Templates</h1><p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>Manage the templates and pages used by sales appointments.</p></div></div>{selectedTemplate && <button onClick={() => setPreview(true)} style={buttonStyle}><Eye size={14} /> Preview</button>}</div>
     {error && <div className="error" style={{ marginBottom: 16 }}><b>Database error</b><span>{error}</span></div>}
     {loading ? <div className="card" style={{ padding: 50, textAlign: "center" }}>Loading templates...</div> : <div style={{ display: "grid", gridTemplateColumns: "270px minmax(0,1fr) 340px", gap: 14, alignItems: "start" }}>
-      <div className="card" style={{ padding: 10, overflow: "hidden" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "3px 4px 10px" }}>
-          <div style={panelTitle}>Templates</div>
-          <span style={{ fontSize: 9, color: "#94a3b8" }}>{templates.length} {templates.length === 1 ? "template" : "templates"}</span>
-        </div>
-        <div style={{ display: "grid", gap: 7 }}>
-          {templateGroups.map(([type, items]) => {
-            const expanded = Boolean(expandedTypes[type])
-            const activeCount = items.filter((item) => item.active).length
-            return <div key={type} style={{ border: "1px solid #e7ebef", borderRadius: 9, overflow: "hidden", background: "#fff" }}>
-              <button type="button" onClick={() => toggleType(type)} style={folderButton}>
-                <span style={folderIcon}>{expanded ? <ChevronDown size={14} /> : <ChevronRightIcon size={14} />}</span>
-                <span style={{ flex: 1, minWidth: 0 }}><strong>{templateTypeLabel(type)}</strong><small>{items.length} {items.length === 1 ? "template" : "templates"}</small></span>
-                <span style={folderCount}>{activeCount} active</span>
-              </button>
-              {expanded && <div style={{ padding: "4px 6px 7px", background: "#fafbfd", borderTop: "1px solid #eef1f4" }}>
-                {items.map((item) => <button key={item.id} onClick={() => selectTemplate(item)} style={{ ...listButton, background: item.id === selectedId ? "#eef6ff" : "#fff", borderColor: item.id === selectedId ? "#b8dcff" : "#e8ecef", marginBottom: 4 }}>
-                  <span style={{ minWidth: 0 }}><strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</strong><small>{item.description || (item.active ? "Active template" : "Inactive template")}</small></span>
-                  <span style={{ width: 7, height: 7, flex: "0 0 7px", borderRadius: 99, background: item.active ? "#22a06b" : "#cbd5e1" }} />
-                </button>)}
-              </div>}
-            </div>
-          })}
-        </div>
-      </div>
-      {selectedTemplate ? <>
-        <div className="card" style={{ padding: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}><div><input value={selectedTemplate.name} onChange={(e) => setTemplates((current) => current.map((item) => item.id === selectedId ? { ...item, name: e.target.value } : item))} onBlur={() => updateTemplate({ name: selectedTemplate.name })} style={titleInput} /><div style={{ fontSize: 10, color: "#8b949e", marginTop: 4 }}>{templateTypeLabel(selectedTemplate.template_type)}</div></div><label style={{ display: "flex", gap: 7, alignItems: "center", fontSize: 11 }}><input type="checkbox" checked={Boolean(selectedTemplate.active)} onChange={(e) => updateTemplate({ active: e.target.checked })} /> Active</label></div>
-          <div style={{ display: "grid", gap: 8 }}>{pages.map((page, index) => <button key={page.id} onClick={() => setSelectedPageId(page.id)} style={{ ...slideRow, background: page.id === selectedPageId ? "#f4f8fc" : "#fff", borderColor: page.id === selectedPageId ? "#b8dcff" : "#e5e9ed" }}><GripVertical size={15} color="#aab2b9" /><span style={slideNumber}>{index + 1}</span><span style={{ flex: 1, minWidth: 0, textAlign: "left" }}><strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{page.title || `Untitled page ${index + 1}`}</strong><small style={{ color: "#8b949e", display: "block", marginTop: 3 }}>Page {index + 1}</small></span></button>)}</div>
-          <button onClick={addPage} disabled={saving} style={{ ...buttonStyle, marginTop: 12, width: "100%", justifyContent: "center" }}><Plus size={14} /> Add page</button>
-        </div>
-        <div className="card" style={{ padding: 14 }}>{selectedPage ? <>
-          <div style={panelTitle}>Page {pages.findIndex((item) => item.id === selectedPageId) + 1}</div>
-          <label style={labelStyle}>Title<input value={selectedPage.title} onChange={(e) => updatePage("title", e.target.value)} style={fieldStyle} /></label>
-          <label style={labelStyle}>Subtitle<input value={selectedPage.subtitle || ""} onChange={(e) => updatePage("subtitle", e.target.value)} style={fieldStyle} /></label>
-          <label style={labelStyle}>Body<textarea value={selectedPage.body || ""} onChange={(e) => updatePage("body", e.target.value)} rows={7} style={{ ...fieldStyle, resize: "vertical" }} /></label>
-          <label style={labelStyle}>Settings<textarea value={settingsText} onChange={(e) => setSettingsText(e.target.value)} rows={14} spellCheck={false} style={{ ...fieldStyle, resize: "vertical", fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace", fontSize: 10, lineHeight: 1.45 }} /><small style={{ fontSize: 9, fontWeight: 500, color: "#8b949e" }}>Edit the page settings as JSON. These values control the page's visual styling and configuration.</small></label>
-          <div style={{ display: "flex", gap: 7, marginTop: 14 }}><button onClick={() => movePage(-1)} style={iconButton} title="Move up"><ChevronLeft size={15} /></button><button onClick={() => movePage(1)} style={iconButton} title="Move down"><ChevronRight size={15} /></button><button onClick={deletePage} style={{ ...iconButton, color: "#b42318" }} title="Delete"><Trash2 size={15} /></button><button onClick={savePage} disabled={saving} style={{ ...buttonStyle, marginLeft: "auto" }}><Save size={14} /> {saving ? "Saving..." : "Save page"}</button></div>
-        </> : <div style={{ padding: 40, textAlign: "center", color: "#8a939a", fontSize: 11 }}>Select a page to edit it.</div>}</div>
-      </> : <div className="card" style={{ gridColumn: "2 / span 2", padding: 50, textAlign: "center" }}>No template selected.</div>}
+      <div className="card" style={{ padding: 10, overflow: "hidden" }}><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "3px 4px 10px" }}><div style={panelTitle}>Templates</div><span style={{ fontSize: 9, color: "#94a3b8" }}>{templates.length} {templates.length === 1 ? "template" : "templates"}</span></div><div style={{ display: "grid", gap: 7 }}>
+        {templateGroups.map(([type, items]) => { const expanded = Boolean(expandedTypes[type]); const activeCount = items.filter((item) => item.active).length; return <div key={type} style={{ border: "1px solid #e7ebef", borderRadius: 9, overflow: "hidden", background: "#fff" }}><button type="button" onClick={() => toggleType(type)} style={folderButton}><span style={folderIcon}>{expanded ? <ChevronDown size={14} /> : <ChevronRightIcon size={14} />}</span><span style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}><strong>{templateTypeLabel(type)}</strong><small style={{ whiteSpace: "nowrap", marginLeft: "auto" }}>{items.length} {items.length === 1 ? "template" : "templates"}</small></span><span style={folderCount}>{activeCount} active</span></button>{expanded && <div style={{ padding: "4px 6px 7px", background: "#fafbfd", borderTop: "1px solid #eef1f4" }}>{items.map((item) => <button key={item.id} onClick={() => selectTemplate(item)} style={{ ...listButton, background: item.id === selectedId ? "#eef6ff" : "#fff", borderColor: item.id === selectedId ? "#b8dcff" : "#e8ecef", marginBottom: 4 }}><span style={{ minWidth: 0 }}><strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</strong></span><span style={{ width: 7, height: 7, flex: "0 0 7px", borderRadius: 99, background: item.active ? "#22a06b" : "#cbd5e1" }} /></button>)}</div>}</div> })}
+      </div></div>
+      {selectedTemplate ? <><div className="card" style={{ padding: 14 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}><div><input value={selectedTemplate.name} onChange={(e) => setTemplates((current) => current.map((item) => item.id === selectedId ? { ...item, name: e.target.value } : item))} onBlur={() => updateTemplate({ name: selectedTemplate.name })} style={titleInput} /><div style={{ fontSize: 10, color: "#8b949e", marginTop: 4 }}>{templateTypeLabel(selectedTemplate.template_type)}</div></div><label style={{ display: "flex", gap: 7, alignItems: "center", fontSize: 11 }}><input type="checkbox" checked={Boolean(selectedTemplate.active)} onChange={(e) => updateTemplate({ active: e.target.checked })} /> Active</label></div><div style={{ display: "grid", gap: 8 }}>{pages.map((page, index) => <button key={page.id} onClick={() => setSelectedPageId(page.id)} style={{ ...slideRow, background: page.id === selectedPageId ? "#f4f8fc" : "#fff", borderColor: page.id === selectedPageId ? "#b8dcff" : "#e5e9ed" }}><GripVertical size={15} color="#aab2b9" /><span style={slideNumber}>{index + 1}</span><span style={{ flex: 1, minWidth: 0, textAlign: "left" }}><strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{page.title || `Untitled page ${index + 1}`}</strong><small style={{ color: "#8b949e", display: "block", marginTop: 3 }}>Page {index + 1}</small></span></button>)}</div><button onClick={addPage} disabled={saving} style={{ ...buttonStyle, marginTop: 12, width: "100%", justifyContent: "center" }}><Plus size={14} /> Add page</button></div><div className="card" style={{ padding: 14 }}>{selectedPage ? <><div style={panelTitle}>Page {pages.findIndex((item) => item.id === selectedPageId) + 1}</div><label style={labelStyle}>Title<input value={selectedPage.title} onChange={(e) => updatePage("title", e.target.value)} style={fieldStyle} /></label><label style={labelStyle}>Subtitle<input value={selectedPage.subtitle || ""} onChange={(e) => updatePage("subtitle", e.target.value)} style={fieldStyle} /></label><label style={labelStyle}>Body<textarea value={selectedPage.body || ""} onChange={(e) => updatePage("body", e.target.value)} rows={7} style={{ ...fieldStyle, resize: "vertical" }} /></label><label style={labelStyle}>Settings<textarea value={settingsText} onChange={(e) => setSettingsText(e.target.value)} rows={14} spellCheck={false} style={{ ...fieldStyle, resize: "vertical", fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace", fontSize: 10, lineHeight: 1.45 }} /><small style={{ fontSize: 9, fontWeight: 500, color: "#8b949e" }}>Edit the page settings as JSON. These values control the page's visual styling and configuration.</small></label><div style={{ display: "flex", gap: 7, marginTop: 14 }}><button onClick={() => movePage(-1)} style={iconButton} title="Move up"><ChevronLeft size={15} /></button><button onClick={() => movePage(1)} style={iconButton} title="Move down"><ChevronRight size={15} /></button><button onClick={deletePage} style={{ ...iconButton, color: "#b42318" }} title="Delete"><Trash2 size={15} /></button><button onClick={savePage} disabled={saving} style={{ ...buttonStyle, marginLeft: "auto" }}><Save size={14} /> {saving ? "Saving..." : "Save page"}</button></div></> : <div style={{ padding: 40, textAlign: "center", color: "#8a939a", fontSize: 11 }}>Select a page to edit it.</div>}</div></> : <div className="card" style={{ gridColumn: "2 / span 2", padding: 50, textAlign: "center" }}>No template selected.</div>}
     </div>}
   </section>
 }
-
 const buttonStyle = { display: "inline-flex", alignItems: "center", gap: 7, height: 34, padding: "0 11px", border: "1px solid #d8e0e6", borderRadius: 7, background: "#fff", color: "#344454", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: 700 }
 const iconButton = { ...buttonStyle, width: 34, padding: 0, justifyContent: "center" }
 const panelTitle = { fontSize: 11, fontWeight: 800, color: "#344454", marginBottom: 0, textTransform: "uppercase", letterSpacing: ".04em" }
 const folderButton = { width: "100%", border: 0, background: "#fff", padding: "10px 9px", display: "flex", alignItems: "center", gap: 8, textAlign: "left", cursor: "pointer", fontFamily: "inherit" }
 const folderIcon = { width: 22, height: 22, borderRadius: 6, background: "#f0f4f7", color: "#52606d", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "0 0 22px" }
-const folderCount = { fontSize: 8.5, color: "#8b949e", fontWeight: 600 }
+const folderCount = { fontSize: 8.5, color: "#8b949e", fontWeight: 600, whiteSpace: "nowrap", marginLeft: 8 }
 const listButton = { width: "100%", border: "1px solid", borderRadius: 7, padding: "9px 9px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, textAlign: "left", cursor: "pointer", fontFamily: "inherit" }
 const slideRow = { width: "100%", border: "1px solid", borderRadius: 8, padding: "10px 9px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontFamily: "inherit" }
 const slideNumber = { width: 24, height: 24, borderRadius: 6, background: "#eef2f5", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: "#52606d" }
