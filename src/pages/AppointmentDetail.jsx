@@ -37,50 +37,29 @@ function AppointmentDetail({ appointment, onBack, onUpdated, permissionLevel }) 
   const [cpsValues, setCpsValues] = useState({ cps_h: appointment?.cps_h === true, cps_c: appointment?.cps_c === true, cps_p: appointment?.cps_p === true, cps_s: appointment?.cps_s === true })
   const [savingCps, setSavingCps] = useState(false)
   const [cpsError, setCpsError] = useState("")
+  const [epvsCalculation, setEpvsCalculation] = useState(appointment?.epvs_calculation || null)
+  const isSolar = String(appointment?.product || appointment?.type || appointment?.appointment_type || "").toLowerCase().includes("solar")
+  const mapQuery = [appointment?.address, appointment?.postcode].filter(Boolean).join(", ")
 
   useEffect(() => {
+    setResult(appointment?.result || appointment?.status || "")
     setCpsValues({ cps_h: appointment?.cps_h === true, cps_c: appointment?.cps_c === true, cps_p: appointment?.cps_p === true, cps_s: appointment?.cps_s === true })
-    setCpsError("")
-    setConfirmError("")
+    setEpvsCalculation(appointment?.epvs_calculation || null)
   }, [appointment])
 
-  const [epvsCalculation, setEpvsCalculation] = useState(null)
-  const isSolar = String(appointment?.job_type || "").toLowerCase().trim() === "solar"
-
-  function formatDate(value) {
-    if (!value) return "—"
-    const date = new Date(value)
-    if (Number.isNaN(date.getTime())) return String(value)
-    return date.toLocaleString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })
-  }
-
   async function confirmAppointment() {
-    if (!canViewCPS || !appointment?.appointment_row_id || appointment.cps_c || confirming) return
-
+    if (!appointment?.appointment_row_id || confirming) return
     setConfirming(true)
     setConfirmError("")
     let actionId = null
-    const now = new Date().toISOString()
-
     try {
       const { data: userData, error: userError } = await supabase.auth.getUser()
       if (userError) throw userError
       const submittedBy = getSubmittedBy(userData?.user)
-
+      const now = new Date().toISOString()
       const { data: action, error: actionError } = await supabase
         .from("action_runs")
-        .insert({
-          action_type: "confirm_appointment",
-          status: "running",
-          entity_type: "appointment",
-          entity_id: appointment.appointment_row_id,
-          triggered_by: submittedBy,
-          started_at: now,
-          input_data: {
-            appointment_row_id: appointment.appointment_row_id,
-            previous_cps_c: appointment.cps_c === true,
-          },
-        })
+        .insert({ action_type: "confirm_appointment", status: "running", entity_type: "appointment", entity_id: appointment.appointment_row_id, triggered_by: submittedBy, started_at: now, input_data: { appointment_row_id: appointment.appointment_row_id } })
         .select("id")
         .single()
 
@@ -152,7 +131,8 @@ function AppointmentDetail({ appointment, onBack, onUpdated, permissionLevel }) 
           await GenerateSolarContract({ appointment: updatedAppointment, epvsCalculation })
         } catch (contractError) {
           console.error("Error generating solar contract:", contractError)
-          setError("Appointment was saved as Sold, but the solar contract could not be generated.")
+          const detail = contractError?.message || String(contractError || "Unknown error")
+          setError(`Appointment was saved as Sold, but the solar contract could not be generated: ${detail}`)
           return
         }
       }
@@ -173,28 +153,38 @@ function AppointmentDetail({ appointment, onBack, onUpdated, permissionLevel }) 
 
   async function saveCpsStatus() {
     if (!canViewCPS) return
-    if (!appointment?.appointment_row_id) {
-      setCpsError("This appointment does not have an appointment_row_id.")
-      return
-    }
     setSavingCps(true)
     setCpsError("")
     try {
-      const { data, error: updateError } = await supabase.from("appointments").update({ cps_h: cpsValues.cps_h, cps_c: cpsValues.cps_c, cps_p: cpsValues.cps_p, cps_s: cpsValues.cps_s }).eq("appointment_row_id", appointment.appointment_row_id).select()
+      const { data: userData, error: userError } = await supabase.auth.getUser()
+      if (userError) throw userError
+      const submittedBy = getSubmittedBy(userData?.user)
+      const now = new Date().toISOString()
+      const { data: action, error: actionError } = await supabase
+        .from("action_runs")
+        .insert({ action_type: "update_cps_status", status: "running", entity_type: "appointment", entity_id: appointment.appointment_row_id, triggered_by: submittedBy, started_at: now, input_data: { appointment_row_id: appointment.appointment_row_id, cps_h: cpsValues.cps_h, cps_c: cpsValues.cps_c, cps_p: cpsValues.cps_p, cps_s: cpsValues.cps_s } })
+        .select("id")
+        .single()
+      if (actionError) throw actionError
+      const { data: updatedAppointment, error: updateError } = await supabase.from("appointments").update({ cps_h: cpsValues.cps_h, cps_c: cpsValues.cps_c, cps_p: cpsValues.cps_p, cps_s: cpsValues.cps_s }).eq("appointment_row_id", appointment.appointment_row_id).select("*").single()
       if (updateError) throw updateError
-      if (!data || data.length === 0) throw new Error("No appointment was updated. Check that appointment_row_id matches a row in the appointments table.")
-      const updatedAppointment = data[0]
+      const { error: actionUpdateError } = await supabase.from("action_runs").update({ status: "completed", completed_at: new Date().toISOString(), output_data: { appointment_row_id: updatedAppointment.appointment_row_id, cps_h: updatedAppointment.cps_h, cps_c: updatedAppointment.cps_c, cps_p: updatedAppointment.cps_p, cps_s: updatedAppointment.cps_s } }).eq("id", action.id)
+      if (actionUpdateError) throw actionUpdateError
       onUpdated?.(updatedAppointment)
-      setCpsValues({ cps_h: updatedAppointment.cps_h === true, cps_c: updatedAppointment.cps_c === true, cps_p: updatedAppointment.cps_p === true, cps_s: updatedAppointment.cps_s === true })
     } catch (err) {
-      console.error("Error updating CPS status:", err)
+      console.error("Save CPS status failed:", err)
       setCpsError(err?.message || "Unable to save CPS status.")
     } finally {
       setSavingCps(false)
     }
   }
 
-  const mapQuery = appointment?.postcode || ""
+  function formatDate(value) {
+    if (!value) return "—"
+    const dateValue = new Date(value)
+    if (Number.isNaN(dateValue.getTime())) return String(value)
+    return dateValue.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+  }
 
   function getResultStyle() {
     const value = String(result || "").toLowerCase()
@@ -278,19 +268,19 @@ function AppointmentDetail({ appointment, onBack, onUpdated, permissionLevel }) 
       </div>
 
       {showResult && <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px" }}>
-        <div style={{ width: "100%", maxWidth: "440px", background: "#fff", borderRadius: "10px", boxShadow: "0 15px 50px rgba(0,0,0,0.20)", overflow: "hidden" }}>
-          <div style={{ padding: "18px 20px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", justifyContent: "space-between" }}><div><h2 style={{ margin: 0, fontSize: "16px" }}>Result appointment</h2><p style={{ margin: "4px 0 0", fontSize: "10px", color: "#888" }}>{appointment.name}</p></div><button type="button" onClick={() => setShowResult(false)} style={{ border: 0, background: "transparent", cursor: "pointer", color: "#888" }}><X size={18} /></button></div>
-          <div style={{ padding: "20px" }}>
-            <label style={{ display: "block", fontSize: "10px", fontWeight: 700, color: "#555", marginBottom: "7px", textTransform: "uppercase" }}>Result</label>
-            <select value={result} onChange={(e) => setResult(e.target.value)} style={{ width: "100%", height: "40px", border: "1px solid #d9dadd", borderRadius: "7px", padding: "0 10px", fontFamily: "inherit", fontSize: "12px", background: "#fff" }}>
-              <option value="">Select result...</option><option value="Sold">Sold</option><option value="Not Sold">Not Sold</option><option value="No Contact">No Contact</option><option value="Cancelled">Cancelled</option><option value="Rescheduled">Rescheduled</option>
-            </select>
-            {result.toLowerCase().trim() === "sold" && isSolar && <div style={{ marginTop: "12px", padding: "10px", background: "#eef7ff", borderRadius: "6px", color: "#245579", fontSize: "10px" }}>{epvsCalculation ? <>Saving as Sold will generate the solar contract PDF using the completed EPVS calculation, including the 30-year benefit projection.</> : <>Please complete the EPVS calculation before saving this appointment as Sold.</>}</div>}
-            {error && <div style={{ marginTop: "12px", padding: "10px", background: "#fbeaea", borderRadius: "6px", color: "#8b3333", fontSize: "10px" }}>{error}</div>}
-          </div>
-          <div style={{ padding: "14px 20px", borderTop: "1px solid #eee", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-            <button type="button" onClick={() => setShowResult(false)} style={{ height: "36px", padding: "0 13px", border: "1px solid #dddfe3", borderRadius: "7px", background: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: "11px" }}>Cancel</button>
-            <button type="button" disabled={!result || saving || (result.toLowerCase().trim() === "sold" && isSolar && !epvsCalculation)} onClick={saveResult} style={{ height: "36px", padding: "0 15px", border: 0, borderRadius: "7px", background: "#172554", color: "#fff", cursor: result && !saving && !(result.toLowerCase().trim() === "sold" && isSolar && !epvsCalculation) ? "pointer" : "default", opacity: result && !saving && !(result.toLowerCase().trim() === "sold" && isSolar && !epvsCalculation) ? 1 : 0.5, fontFamily: "inherit", fontSize: "11px", fontWeight: 600 }}>{saving ? "Saving..." : "Save result"}</button>
+        <div style={{ width: "420px", background: "#fff", borderRadius: "10px", padding: "20px", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
+          <h3 style={{ margin: "0 0 15px", fontSize: "15px" }}>Set Appointment Result</h3>
+          <label style={{ display: "block", fontSize: "10px", color: "#666", marginBottom: "6px" }}>Result</label>
+          <select value={result} onChange={(event) => setResult(event.target.value)} style={{ width: "100%", height: "36px", border: "1px solid #d8dde1", borderRadius: "6px", padding: "0 9px", fontFamily: "inherit", fontSize: "11px", background: "#fff" }}>
+            <option value="">Select result...</option>
+            <option value="Sold">Sold</option>
+            <option value="No Sale">No Sale</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+          {error && <div style={{ marginTop: "12px", padding: "10px", background: "#fbeaea", color: "#8b3333", borderRadius: "6px", fontSize: "10px", lineHeight: 1.5 }}>{error}</div>}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "18px" }}>
+            <button type="button" onClick={() => setShowResult(false)} style={{ height: "34px", padding: "0 12px", border: "1px solid #d8dde1", borderRadius: "6px", background: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: "10px" }}>Cancel</button>
+            <button type="button" onClick={saveResult} disabled={saving} style={{ height: "34px", padding: "0 14px", border: 0, borderRadius: "6px", background: "#2499ed", color: "#fff", cursor: saving ? "default" : "pointer", opacity: saving ? 0.65 : 1, fontFamily: "inherit", fontSize: "10px", fontWeight: 700 }}>{saving ? "Saving..." : "Save Result"}</button>
           </div>
         </div>
       </div>}
@@ -299,11 +289,11 @@ function AppointmentDetail({ appointment, onBack, onUpdated, permissionLevel }) 
 }
 
 function InfoCard({ title, icon: Icon, children }) {
-  return <div className="card" style={{ padding: "16px" }}><div style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: "14px" }}><Icon size={15} color="#172554" /><h3 style={{ margin: 0, fontSize: "12px", fontWeight: 700 }}>{title}</h3></div><div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>{children}</div></div>
+  return <div style={{ background: "#fff", border: "1px solid #e2e5e8", borderRadius: "8px", padding: "14px" }}><div style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: "11px" }}><Icon size={14} color="#2d9bf0" /><span style={{ fontSize: "11px", fontWeight: 700, color: "#222" }}>{title}</span></div>{children}</div>
 }
 
 function InfoRow({ label, value, icon: Icon }) {
-  return <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}><span style={{ fontSize: "9px", color: "#999", display: "flex", alignItems: "center", gap: "4px" }}>{Icon && <Icon size={11} />}{label}</span><span style={{ fontSize: "10px", color: "#333", fontWeight: 500, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value || "—"}</span></div>
+  return <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "5px 0", borderBottom: "1px solid #f0f1f2" }}><span style={{ fontSize: "9px", color: "#999" }}>{label}</span><span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10px", color: "#333", textAlign: "right" }}>{Icon && <Icon size={11} color="#999" />}{value || "—"}</span></div>
 }
 
 export default AppointmentDetail
