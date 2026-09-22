@@ -22,8 +22,13 @@ export default async function handler(req, res) {
   try {
     // The URL comes directly from appointments.open_solar_image and is
     // already signed by OpenSolar. Do not use the OpenSolar API token.
+    // OpenSolar can reject an image/* Accept header with HTTP 406, so use
+    // a general Accept header and let the endpoint return its image type.
     const response = await fetch(imageUrl.toString(), {
-      headers: { Accept: "image/*" },
+      headers: {
+        Accept: "*/*",
+        "User-Agent": "Mozilla/5.0 (compatible; Homeshield CRM)",
+      },
       redirect: "follow",
     })
 
