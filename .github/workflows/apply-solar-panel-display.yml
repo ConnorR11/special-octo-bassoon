@@ -1,0 +1,36 @@
+name: Apply solar contract panel display
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update solar panel display
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/contracts/GenerateSolarContract.js')
+          text = path.read_text()
+          old = 'const batteryCapacity=Number(data.batteryCapacity||0);const systemRows=[["Customer",textValue(appointment?.name)],["System size",results.systemSize?`${num(results.systemSize,2)} kWp`:"—"],["Solar panels",`${num(data.panelCount)} × ${num(data.panelWattage)} W`],["Inverter",data.inverterCapacity?`${num(data.inverterCapacity,1)} kW`:"—"],["Battery",batteryCapacity>0?`${num(batteryCapacity,1)} kWh`:"Not included"],["Estimated generation",results.generation?`${num(results.generation)} kWh / year`:"—"]];'
+          new = 'const batteryCapacity=Number(data.batteryCapacity||0);const solarArrays=Array.isArray(data.arrays)?data.arrays.filter(array=>Number(array?.panelCount||0)>0):[];const totalPanelCount=solarArrays.reduce((total,array)=>total+Number(array?.panelCount||0),0);const panelWattages=solarArrays.map(array=>Number(array?.panelWattage||0)).filter(value=>value>0);const panelWattage=panelWattages[0]||Number(data.panelWattage||0);const solarPanelDisplay=totalPanelCount>0?`${num(totalPanelCount)} × ${num(panelWattage)} W`:data.panelCount||data.panelWattage?`${num(data.panelCount)} × ${num(data.panelWattage)} W`:"—";const systemRows=[["Customer",textValue(appointment?.name)],["System size",results.systemSize?`${num(results.systemSize,2)} kWp`:"—"],["Solar panels",solarPanelDisplay],["Inverter",data.inverterCapacity?`${num(data.inverterCapacity,1)} kW`:"—"],["Battery",batteryCapacity>0?`${num(batteryCapacity,1)} kWh`:"Not included"],["Estimated generation",results.generation?`${num(results.generation)} kWh / year`:"—"]];'
+          if old not in text:
+              raise SystemExit('Expected solar panel renderer code was not found; refusing to modify the file.')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Commit and remove temporary workflow
+        run: |
+          rm -f .github/workflows/apply-solar-panel-display.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/contracts/GenerateSolarContract.js .github/workflows/apply-solar-panel-display.yml
+          git diff --cached --quiet && exit 0
+          git commit -m 'Update solar panel total in contract'
+          git push
