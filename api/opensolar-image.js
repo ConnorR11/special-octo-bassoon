@@ -20,28 +20,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    // The image URL stored in appointments.open_solar_image is already a
-    // signed OpenSolar URL, so try it directly first. This is important
-    // because the signature is the authorisation for the image endpoint.
-    let response = await fetch(imageUrl.toString(), {
+    // The URL comes directly from appointments.open_solar_image and is
+    // already signed by OpenSolar. Do not use the OpenSolar API token.
+    const response = await fetch(imageUrl.toString(), {
       headers: { Accept: "image/*" },
       redirect: "follow",
     })
-
-    // Some OpenSolar endpoints require the API token instead. Retry with
-    // the configured token only when the signed request is rejected.
-    if (!response.ok && (response.status === 401 || response.status === 403)) {
-      const token = String(process.env.OPENSOLAR_API_TOKEN || "").trim()
-      if (token) {
-        response = await fetch(imageUrl.toString(), {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "image/*",
-          },
-          redirect: "follow",
-        })
-      }
-    }
 
     if (!response.ok) {
       return res.status(response.status).json({
