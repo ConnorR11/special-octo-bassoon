@@ -45,7 +45,7 @@ function StandardSlide({ slide, appointment }) {
   return <div style={{ width: visual.width || "min(1200px,94vw)", height: visual.height || "min(675px,76vh)", background: visual.background || "#fff", color: visual.text_color || "#172033", borderRadius: visual.border_radius ?? 16, overflow: "hidden", boxShadow: visual.box_shadow || "0 25px 80px rgba(0,0,0,.35)", display: "flex", flexDirection: visual.flex_direction || "column" }}><div style={{ flex: 1, minHeight: 0, padding: visual.content_padding || "clamp(28px,5vw,64px)", display: "flex", flexDirection: "column", justifyContent: visual.content_justify || "center" }}>{settings.eyebrow && <div style={{ marginBottom: visual.eyebrow_margin_bottom ?? 14, color: visual.accent || settings.accent || "#2499ed", fontSize: visual.eyebrow_size || "clamp(10px,1vw,13px)", fontWeight: visual.eyebrow_weight || 800, letterSpacing: visual.eyebrow_letter_spacing || ".12em", textTransform: "uppercase" }}>{interpolate(settings.eyebrow, appointment)}</div>}<div style={{ fontSize: visual.title_size || "clamp(28px,4vw,54px)", lineHeight: visual.title_line_height || 1.05, fontWeight: visual.title_weight || 800 }}>{interpolate(slide.title, appointment)}</div>{slide.subtitle && <div style={{ marginTop: visual.subtitle_margin_top ?? 14, fontSize: visual.subtitle_size || "clamp(16px,2vw,24px)", color: visual.accent || settings.accent || "#2499ed", fontWeight: visual.subtitle_weight || 700 }}>{interpolate(slide.subtitle, appointment)}</div>}{slide.body && <div style={{ marginTop: visual.body_margin_top ?? 22, maxWidth: visual.body_max_width || 850, whiteSpace: "pre-wrap", fontSize: visual.body_size || "clamp(14px,1.5vw,19px)", lineHeight: visual.body_line_height || 1.6, color: visual.body_color || "#52606d" }}>{interpolate(slide.body, appointment)}</div>}</div></div>
 }
 
-export default function DatabaseSalesPresenterV2({ appointment, onClose }) {
+export default function DatabaseSalesPresenterV2({ appointment, onClose, templateId }) {
   const [template, setTemplate] = useState(null)
   const [pages, setPages] = useState([])
   const [index, setIndex] = useState(0)
@@ -57,15 +57,21 @@ export default function DatabaseSalesPresenterV2({ appointment, onClose }) {
     let mounted = true
     async function load() {
       setLoading(true); setError("")
-      const { data: templateData, error: templateError } = await supabase.from("templates").select("id,name,presentation_type,description").eq("presentation_type", type).eq("active", true).order("created_at", { ascending: true }).limit(1).maybeSingle()
+      let templateQuery = supabase.from("templates").select("id,name,template_type,description")
+      if (templateId) {
+        templateQuery = templateQuery.eq("id", templateId).maybeSingle()
+      } else {
+        templateQuery = templateQuery.eq("template_type", type).eq("active", true).order("created_at", { ascending: true }).limit(1).maybeSingle()
+      }
+      const { data: templateData, error: templateError } = await templateQuery
       if (templateError) { if (mounted) { setError(templateError.message); setLoading(false) }; return }
-      if (!templateData) { if (mounted) { setError("No active sales template is configured for this appointment."); setLoading(false) }; return }
+      if (!templateData) { if (mounted) { setError("No sales template could be found for this preview."); setLoading(false) }; return }
       const { data: pageData, error: pageError } = await supabase.from("template_pages").select("id,slide_order,title,subtitle,body,settings").eq("presentation_id", templateData.id).order("slide_order", { ascending: true })
       if (pageError) { if (mounted) { setError(pageError.message); setLoading(false) }; return }
       if (mounted) { setTemplate(templateData); setPages(pageData || []); setIndex(0); setLoading(false) }
     }
     load(); return () => { mounted = false }
-  }, [type])
+  }, [type, templateId])
 
   useEffect(() => { const onKeyDown = (event) => { if (event.key === "Escape") onClose?.(); if (event.key === "ArrowRight") setIndex(v => Math.min(v + 1, Math.max(pages.length - 1, 0))); if (event.key === "ArrowLeft") setIndex(v => Math.max(v - 1, 0)) }; window.addEventListener("keydown", onKeyDown); return () => window.removeEventListener("keydown", onKeyDown) }, [onClose, pages.length])
 
