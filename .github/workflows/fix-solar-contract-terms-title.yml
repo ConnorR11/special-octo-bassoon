@@ -1,0 +1,79 @@
+name: Fix solar contract terms title
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update Terms & Conditions title renderer
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/contracts/GenerateSolarContractLegacy.js')
+          s = p.read_text()
+          old = '''function title(pdf, page, ctx) {
+            pdf.setTextColor(...ctx.text)
+            pdf.setFont("helvetica", "bold")
+            pdf.setFontSize(22)
+            pdf.text(page.title || "", ctx.padding, ctx.y + 4)
+
+            if (page.subtitle) {
+              pdf.setFont("helvetica", "normal")
+              pdf.setFontSize(9)
+              pdf.setTextColor(100, 112, 120)
+              pdf.text(page.subtitle, ctx.padding, ctx.y + 11)
+            }
+
+            pdf.setFillColor(...ctx.accent)
+            pdf.rect(ctx.padding, ctx.y + 15, 28, 1.2, "F")
+          }'''
+          new = '''function title(pdf, page, ctx) {
+            const terms = page?.settings?.page_kind === "terms_conditions"
+            const titleY = ctx.y + 4
+
+            pdf.setTextColor(...ctx.text)
+            pdf.setFont("helvetica", "bold")
+            pdf.setFontSize(terms ? 16 : 22)
+            pdf.text(page.title || "", ctx.padding, titleY)
+
+            if (page.subtitle) {
+              pdf.setFont("helvetica", "normal")
+              pdf.setFontSize(terms ? 7.5 : 9)
+              pdf.setTextColor(100, 112, 120)
+              if (terms) {
+                pdf.text(page.subtitle, ctx.width - ctx.padding, titleY, { align: "right" })
+              } else {
+                pdf.text(page.subtitle, ctx.padding, ctx.y + 11)
+              }
+            }
+
+            pdf.setFillColor(...ctx.accent)
+            if (terms) {
+              pdf.rect(ctx.padding, ctx.y + 11, ctx.width - (ctx.padding * 2), 1.2, "F")
+            } else {
+              pdf.rect(ctx.padding, ctx.y + 15, 28, 1.2, "F")
+            }
+          }'''
+          if old not in s:
+              raise SystemExit('Expected title function was not found; refusing to modify the file.')
+          p.write_text(s.replace(old, new, 1))
+          PY
+
+      - name: Commit renderer change and remove temporary workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/contracts/GenerateSolarContractLegacy.js .github/workflows/fix-solar-contract-terms-title.yml
+          git commit -m 'Fix T&C title and subtitle row in solar contract'
+          git rm .github/workflows/fix-solar-contract-terms-title.yml
+          git commit -m 'Remove temporary solar contract fix workflow'
+          git push
