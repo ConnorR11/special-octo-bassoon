@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react"
-import { CheckCircle2, Clock3, XCircle } from "lucide-react"
+import { CheckCircle2, ChevronLeft, ChevronRight, Clock3, XCircle } from "lucide-react"
 import { supabase } from "../lib/supabase"
+
+const PAGE_SIZE = 10
 
 function display(value, fallback = "—") {
   const text = String(value ?? "").trim()
@@ -47,6 +49,7 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
   const [actions, setActions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
 
   async function loadActions() {
     if (!supabase || !entityId) {
@@ -71,14 +74,21 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
       setActions([])
     } else {
       setActions(data || [])
+      setCurrentPage(1)
     }
 
     setLoading(false)
   }
 
   useEffect(() => {
+    setCurrentPage(1)
     loadActions()
   }, [entityType, entityId])
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(actions.length / PAGE_SIZE))
+    setCurrentPage((page) => Math.min(page, totalPages))
+  }, [actions.length])
 
   useEffect(() => {
     if (!supabase || !entityId) return undefined
@@ -117,6 +127,7 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
       // Show the action immediately. This makes the activity row appear even
       // while Supabase is processing the insert/update.
       setActions((current) => [optimisticAction, ...current])
+      setCurrentPage(1)
 
       try {
         const { data: userData } = await supabase.auth.getUser()
@@ -184,6 +195,33 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
     return () => document.removeEventListener("click", handleActionClick, true)
   }, [entityType, entityId])
 
+  const totalPages = Math.max(1, Math.ceil(actions.length / PAGE_SIZE))
+  const pageStart = (currentPage - 1) * PAGE_SIZE
+  const visibleActions = actions.slice(pageStart, pageStart + PAGE_SIZE)
+  const showingStart = actions.length ? pageStart + 1 : 0
+  const showingEnd = Math.min(pageStart + PAGE_SIZE, actions.length)
+
+  function renderActionRows(items) {
+    return items.map((action) => {
+      const status = display(action.status, "running").toLowerCase()
+      const label = display(action.action_type, "Action").replace(/_/g, " ")
+      const date = action.completed_at || action.started_at || action.created_at
+
+      return (
+        <div className="action-history-row" key={action.id}>
+          <div className="action-history-icon">{statusIcon(status)}</div>
+          <div className="action-history-action">{label}</div>
+          <div className={`action-history-status ${status}`}>
+            {statusIcon(status)}
+            {statusLabel(status)}
+          </div>
+          <div className="action-history-user">{display(action.triggered_by)}</div>
+          <div className="action-history-date">{formatDate(date)}</div>
+        </div>
+      )
+    })
+  }
+
   return (
     <section className="action-history">
       <style>{`
@@ -200,7 +238,14 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
         .action-history-status.completed{color:#16834a}
         .action-history-status.failed{color:#b42318}
         .action-history-user,.action-history-date{color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        @media(max-width:800px){.action-history-row{grid-template-columns:32px minmax(130px,1fr) 100px;gap:8px}.action-history-user,.action-history-date{display:none}}
+        .action-history-pagination{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid #e8ebef;background:#fafbfc}
+        .action-history-pagination-info{font-size:11px;color:#64748b}
+        .action-history-pagination-controls{display:flex;align-items:center;gap:6px}
+        .action-history-page-button{display:flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 8px;border:1px solid #d9dee5;border-radius:6px;background:#fff;color:#334155;cursor:pointer;font-size:11px;font-weight:700}
+        .action-history-page-button:hover:not(:disabled){background:#f1f5f9}
+        .action-history-page-button:disabled{opacity:.4;cursor:not-allowed}
+        .action-history-page-number{font-size:11px;color:#475569;min-width:55px;text-align:center}
+        @media(max-width:800px){.action-history-row{grid-template-columns:32px minmax(130px,1fr) 100px;gap:8px}.action-history-user,.action-history-date{display:none}.action-history-pagination{padding:10px 12px}}
       `}</style>
 
       <div className="action-history-header">Activity</div>
@@ -211,22 +256,35 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
         <>
           {actions.length > 0 && (
             <div className="action-history-list">
-              {actions.map((action) => {
-                const status = display(action.status, "running").toLowerCase()
-                const label = display(action.action_type, "Action").replace(/_/g, " ")
-                const date = action.completed_at || action.started_at || action.created_at
-                return (
-                  <div className="action-history-row" key={action.id}>
-                    <div className="action-history-icon">{statusIcon(status)}</div>
-                    <div className="action-history-action">{label}</div>
-                    <div className={`action-history-status ${status}`}>
-                      {statusIcon(status)} {statusLabel(status)}
-                    </div>
-                    <div className="action-history-user">{display(action.triggered_by)}</div>
-                    <div className="action-history-date">{formatDate(date)}</div>
-                  </div>
-                )
-              })}
+              {renderActionRows(visibleActions)}
+            </div>
+          )}
+          {actions.length > PAGE_SIZE && (
+            <div className="action-history-pagination">
+              <div className="action-history-pagination-info">
+                Showing {showingStart}–{showingEnd} of {actions.length}
+              </div>
+              <div className="action-history-pagination-controls">
+                <button
+                  type="button"
+                  className="action-history-page-button"
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  disabled={currentPage === 1}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft size={15} />
+                </button>
+                <span className="action-history-page-number">{currentPage} / {totalPages}</span>
+                <button
+                  type="button"
+                  className="action-history-page-button"
+                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                  disabled={currentPage === totalPages}
+                  aria-label="Next page"
+                >
+                  <ChevronRight size={15} />
+                </button>
+              </div>
             </div>
           )}
           <div className="action-history-error">{error}</div>
@@ -234,26 +292,40 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
       ) : actions.length === 0 ? (
         <div className="action-history-empty">No actions have been run for this appointment.</div>
       ) : (
-        <div className="action-history-list">
-          {actions.map((action) => {
-            const status = display(action.status, "running").toLowerCase()
-            const label = display(action.action_type, "Action").replace(/_/g, " ")
-            const date = action.completed_at || action.started_at || action.created_at
+        <>
+          <div className="action-history-list">
+            {renderActionRows(visibleActions)}
+          </div>
 
-            return (
-              <div className="action-history-row" key={action.id}>
-                <div className="action-history-icon">{statusIcon(status)}</div>
-                <div className="action-history-action">{label}</div>
-                <div className={`action-history-status ${status}`}>
-                  {statusIcon(status)}
-                  {statusLabel(status)}
-                </div>
-                <div className="action-history-user">{display(action.triggered_by)}</div>
-                <div className="action-history-date">{formatDate(date)}</div>
+          {actions.length > PAGE_SIZE && (
+            <div className="action-history-pagination">
+              <div className="action-history-pagination-info">
+                Showing {showingStart}–{showingEnd} of {actions.length}
               </div>
-            )
-          })}
-        </div>
+              <div className="action-history-pagination-controls">
+                <button
+                  type="button"
+                  className="action-history-page-button"
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  disabled={currentPage === 1}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft size={15} />
+                </button>
+                <span className="action-history-page-number">{currentPage} / {totalPages}</span>
+                <button
+                  type="button"
+                  className="action-history-page-button"
+                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                  disabled={currentPage === totalPages}
+                  aria-label="Next page"
+                >
+                  <ChevronRight size={15} />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </section>
   )
