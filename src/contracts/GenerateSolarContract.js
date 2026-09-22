@@ -3,56 +3,42 @@ import { GenerateSolarContract as generateOriginal } from "./GenerateSolarContra
 
 const originalText = jsPDF.prototype.text
 const originalRect = jsPDF.prototype.rect
-const originalSetPage = jsPDF.prototype.setPage
-const originalAddPage = jsPDF.prototype.addPage
+
+function getPageNumber(pdf) {
+  return pdf.internal?.getCurrentPageInfo?.()?.pageNumber || 1
+}
 
 function installTermsLayoutPatch() {
-  if (jsPDF.prototype.__hsTermsPatchInstalled) return
-  jsPDF.prototype.__hsTermsPatchInstalled = true
+  if (jsPDF.prototype.__hsTermsPatchInstalledV2) return
+  jsPDF.prototype.__hsTermsPatchInstalledV2 = true
 
-  let termsPage = null
-  let termsTitleY = null
-  let termsSubtitleSeen = false
-  let currentPage = 1
-
-  jsPDF.prototype.addPage = function() {
-    currentPage += 1
-    termsPage = null
-    termsTitleY = null
-    termsSubtitleSeen = false
-    return originalAddPage.apply(this, arguments)
-  }
-
-  jsPDF.prototype.setPage = function(pageNumber) {
-    currentPage = pageNumber
-    termsPage = null
-    termsTitleY = null
-    termsSubtitleSeen = false
-    return originalSetPage.apply(this, arguments)
-  }
+  const termsPages = new Set()
+  const termsTitleY = new Map()
 
   jsPDF.prototype.text = function(text, x, y, options, transform) {
     const value = Array.isArray(text) ? text.join(" ") : String(text ?? "")
     const normalized = value.trim().toLowerCase()
+    const pageNumber = getPageNumber(this)
 
-    // T&C title: smaller than the standard page title so the complete
-    // terms document has more vertical space available.
+    // This is the actual title emitted by GenerateSolarContractLegacy.
+    // Mark the current PDF page as the Terms & Conditions page and render
+    // the title at the smaller size requested for the one-page T&C layout.
     if (normalized === "terms & conditions") {
-      termsPage = currentPage
-      termsTitleY = typeof y === "number" ? y + 1 : null
+      termsPages.add(pageNumber)
+      const titleY = typeof y === "number" ? y + 1 : y
+      termsTitleY.set(pageNumber, titleY)
+      this.setFont("helvetica", "bold")
       this.setFontSize(16)
-      return originalText.call(this, text, x, termsTitleY ?? y, options, transform)
+      this.setTextColor(16, 33, 43)
+      return originalText.call(this, text, x, titleY, options, transform)
     }
 
-    // T&C subtitle: explicitly place it on the same baseline as the title,
-    // aligned to the right-hand page padding. This deliberately ignores the
-    // original subtitle Y position from the legacy renderer.
-    if (normalized === "please read before signing") {
-      termsPage = termsPage ?? currentPage
-      termsSubtitleSeen = true
+    // The legacy renderer emits the subtitle underneath the title. Replace
+    // that position with a right-aligned subtitle on the same title row.
+    if (normalized === "please read before signing" && termsPages.has(pageNumber)) {
       const pageWidth = this.internal.pageSize.getWidth()
       const rightPadding = 18
-      const subtitleY = termsTitleY ?? (typeof y === "number" ? y - 10 : 25)
+      const titleY = termsTitleY.get(pageNumber) ?? y
       this.setFont("helvetica", "normal")
       this.setFontSize(7.5)
       this.setTextColor(100, 112, 120)
@@ -60,15 +46,16 @@ function installTermsLayoutPatch() {
         this,
         text,
         pageWidth - rightPadding,
-        subtitleY,
+        titleY,
         { ...(options || {}), align: "right" },
         transform
       )
     }
 
-    // Pull the T&C body upward so there is only a small amount of padding
-    // below the full-width title rule and more room remains for the terms.
-    if (currentPage === termsPage && typeof y === "number") {
+    // The T&C renderer starts its two-column body at ctx.y + 28. Pull it
+    // upward so there is only a small gap below the full-width title rule.
+    // Footer text is lower than this threshold and is therefore untouched.
+    if (termsPages.has(pageNumber) && typeof y === "number") {
       const pageHeight = this.internal.pageSize.getHeight()
       if (y < pageHeight - 22) {
         return originalText.call(this, text, x, y - 16, options, transform)
@@ -78,9 +65,11 @@ function installTermsLayoutPatch() {
     return originalText.apply(this, arguments)
   }
 
-  // Replace the short title underline with a full-width rule.
+  // The legacy title renderer draws a 28mm accent rule. On the T&C page,
+  // replace it with a rule spanning the complete content width.
   jsPDF.prototype.rect = function(x, y, w, h, style) {
-    if ((currentPage === termsPage || termsSubtitleSeen) && Math.abs(w - 28) < 0.1 && Math.abs(h - 1.2) < 0.1) {
+    const pageNumber = getPageNumber(this)
+    if (termsPages.has(pageNumber) && Math.abs(w - 28) < 0.1 && Math.abs(h - 1.2) < 0.1) {
       const pageWidth = this.internal.pageSize.getWidth()
       const rightPadding = 18
       return originalRect.call(this, x, y, pageWidth - x - rightPadding, h, style)
