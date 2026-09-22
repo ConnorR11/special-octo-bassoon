@@ -1,0 +1,169 @@
+name: Add contract EPVS array table
+
+on:
+  push:
+    paths:
+      - '.github/contract-epvs-array-table-trigger.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch GenerateSolarContract
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('src/contracts/GenerateSolarContract.js')
+          text = path.read_text()
+
+          if '/* CONTRACT_EPVS_SOLAR_ARRAY_TABLE */' in text:
+              print('Contract EPVS array table already present.')
+              raise SystemExit(0)
+
+          helper = r'''
+          /* CONTRACT_EPVS_SOLAR_ARRAY_TABLE */
+          function drawEpvsSolarArrayTable(pdf, ctx, data, results, startY) {
+            const arrays = (Array.isArray(data?.arrays) ? data.arrays : [])
+              .slice(0, Number(data?.numberOfArrays || data.arrays?.length || 0))
+              .map((array, index) => ({
+                input: array || {},
+                calculated: Array.isArray(results?.arrays) ? (results.arrays[index] || {}) : {},
+                index,
+              }))
+              .filter(({ input, calculated }) =>
+                Number(input.panelCount || calculated.panelCount || 0) > 0
+              )
+
+            if (!arrays.length) return startY
+
+            const width = ctx.width - (ctx.padding * 2)
+            const rowH = 7
+            const titleH = 8
+            const headerH = 8
+            const bottom = ctx.height - 17
+            let y = Number(startY || (ctx.y + 60))
+
+            if (y + titleH + headerH + (arrays.length * rowH) + 8 > bottom) {
+              pdf.addPage()
+              const pageWidth = pdf.internal.pageSize.getWidth()
+              const pageHeight = pdf.internal.pageSize.getHeight()
+              pdf.setFillColor(...rgb("#ffffff", [255,255,255]))
+              pdf.rect(0, 0, pageWidth, pageHeight, "F")
+              if (ctx) {
+                pdf.setFillColor(...ctx.accent)
+                pdf.rect(0, 0, pageWidth, 14, "F")
+                pdf.setTextColor(255,255,255)
+                pdf.setFont("helvetica","bold")
+                pdf.setFontSize(8)
+                pdf.text("HOMESHIELD SCOTLAND LTD",ctx.padding,9)
+                pdf.setFont("helvetica","normal")
+                pdf.setFontSize(7)
+                pdf.text(CONTRACT_NAME,pageWidth-ctx.padding,9,{align:"right"})
+              }
+              y = 28
+            }
+
+            pdf.setTextColor(...ctx.text)
+            pdf.setFont("helvetica","bold")
+            pdf.setFontSize(10)
+            pdf.text("Solar PV array", ctx.padding, y)
+            y += titleH
+
+            const columns = [
+              ["Array", 16],
+              ["Panels", 14],
+              ["Wp", 13],
+              ["Orientation", 20],
+              ["Pitch", 13],
+              ["Irradiance", 20],
+              ["SF", 13],
+              ["System size", 25],
+              ["Generation", 30],
+            ]
+            const totalUnits = columns.reduce((sum, [, units]) => sum + units, 0)
+            const widths = columns.map(([, units]) => width * (units / totalUnits))
+            let x = ctx.padding
+
+            pdf.setFillColor(...ctx.accent)
+            pdf.roundedRect(ctx.padding, y, width, headerH, 1.5, 1.5, "F")
+            pdf.setTextColor(255,255,255)
+            pdf.setFont("helvetica","bold")
+            pdf.setFontSize(5.6)
+            columns.forEach(([label], i) => {
+              pdf.text(label, x + 1.5, y + 5.2)
+              x += widths[i]
+            })
+            y += headerH
+
+            arrays.forEach(({ input, calculated, index }, rowIndex) => {
+              x = ctx.padding
+              if (rowIndex % 2 === 0) {
+                pdf.setFillColor(246,248,250)
+                pdf.rect(ctx.padding, y, width, rowH, "F")
+              }
+
+              const values = [
+                `Array ${index + 1}`,
+                num(input.panelCount || calculated.panelCount || 0),
+                num(input.panelWattage || calculated.panelWattage || 0),
+                input.orientation === undefined || input.orientation === "" ? "—" : `${num(input.orientation)}°`,
+                input.pitch === undefined || input.pitch === "" ? "—" : `${num(input.pitch)}°`,
+                input.irradiance === undefined || input.irradiance === "" ? "—" : num(input.irradiance, 2),
+                input.shading === undefined || input.shading === "" ? "—" : num(input.shading, 2),
+                calculated.systemSize === undefined ? "—" : `${num(calculated.systemSize, 2)} kWp`,
+                calculated.generation === undefined ? "—" : `${num(calculated.generation)} kWh`,
+              ]
+
+              pdf.setTextColor(...ctx.text)
+              pdf.setFont("helvetica","normal")
+              pdf.setFontSize(5.8)
+              values.forEach((value, i) => {
+                pdf.text(String(value), x + 1.5, y + 5.1)
+                x += widths[i]
+              })
+              y += rowH
+            })
+
+            return y + 7
+          }
+'''
+
+          marker = 'async function renderPage(pdf,page,index,pageCount,appointment,epvs){'
+          if marker not in text:
+              raise SystemExit('Could not locate renderPage marker.')
+          text = text.replace(marker, helper + '\n' + marker, 1)
+
+          start = text.find('if(kind==="epvs"){')
+          if start == -1:
+              start = text.find('if(kind === "epvs"){')
+          if start == -1:
+              start = text.find("if(kind==='epvs'{")
+          if start == -1:
+              raise SystemExit('Could not locate EPVS render branch.')
+
+          candidates = [text.find('}else if(kind===', start + 1), text.find('} else if(kind===', start + 1), text.find('}else{', start + 1), text.find('} else {', start + 1)]
+          candidates = [p for p in candidates if p != -1]
+          if not candidates:
+              raise SystemExit('Could not locate end of EPVS render branch.')
+          branch_end = min(candidates)
+
+          call = '''\n    /* CONTRACT_EPVS_SOLAR_ARRAY_TABLE_CALL */\n    drawEpvsSolarArrayTable(pdf, ctx, data, results, typeof y === "number" ? y + 8 : ctx.y + 70)\n'''
+          text = text[:branch_end] + call + text[branch_end:]
+          path.write_text(text)
+          print('Patched GenerateSolarContract.js')
+
+      - name: Commit and clean up
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm .github/workflows/add-contract-epvs-array-table.yml .github/contract-epvs-array-table-trigger.txt
+          git add src/contracts/GenerateSolarContract.js .github/workflows/add-contract-epvs-array-table.yml .github/contract-epvs-array-table-trigger.txt
+          git commit -m 'Add solar PV array table to digital contract EPVS page'
+          git push
