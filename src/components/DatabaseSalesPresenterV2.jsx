@@ -46,8 +46,8 @@ function StandardSlide({ slide, appointment }) {
 }
 
 export default function DatabaseSalesPresenterV2({ appointment, onClose }) {
-  const [presentation, setPresentation] = useState(null)
-  const [slides, setSlides] = useState([])
+  const [template, setTemplate] = useState(null)
+  const [pages, setPages] = useState([])
   const [index, setIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -57,23 +57,23 @@ export default function DatabaseSalesPresenterV2({ appointment, onClose }) {
     let mounted = true
     async function load() {
       setLoading(true); setError("")
-      const { data: presentationData, error: presentationError } = await supabase.from("sales_presentations").select("id,name,presentation_type,description").eq("presentation_type", type).eq("active", true).order("created_at", { ascending: true }).limit(1).maybeSingle()
-      if (presentationError) { if (mounted) { setError(presentationError.message); setLoading(false) }; return }
-      if (!presentationData) { if (mounted) { setError("No active sales presentation is configured for this appointment."); setLoading(false) }; return }
-      const { data: slideData, error: slideError } = await supabase.from("sales_presentation_slides").select("id,slide_order,title,subtitle,body,settings").eq("presentation_id", presentationData.id).order("slide_order", { ascending: true })
-      if (slideError) { if (mounted) { setError(slideError.message); setLoading(false) }; return }
-      if (mounted) { setPresentation(presentationData); setSlides(slideData || []); setIndex(0); setLoading(false) }
+      const { data: templateData, error: templateError } = await supabase.from("templates").select("id,name,presentation_type,description").eq("presentation_type", type).eq("active", true).order("created_at", { ascending: true }).limit(1).maybeSingle()
+      if (templateError) { if (mounted) { setError(templateError.message); setLoading(false) }; return }
+      if (!templateData) { if (mounted) { setError("No active sales template is configured for this appointment."); setLoading(false) }; return }
+      const { data: pageData, error: pageError } = await supabase.from("template_pages").select("id,slide_order,title,subtitle,body,settings").eq("presentation_id", templateData.id).order("slide_order", { ascending: true })
+      if (pageError) { if (mounted) { setError(pageError.message); setLoading(false) }; return }
+      if (mounted) { setTemplate(templateData); setPages(pageData || []); setIndex(0); setLoading(false) }
     }
     load(); return () => { mounted = false }
   }, [type])
 
-  useEffect(() => { const onKeyDown = (event) => { if (event.key === "Escape") onClose?.(); if (event.key === "ArrowRight") setIndex(v => Math.min(v + 1, Math.max(slides.length - 1, 0))); if (event.key === "ArrowLeft") setIndex(v => Math.max(v - 1, 0)) }; window.addEventListener("keydown", onKeyDown); return () => window.removeEventListener("keydown", onKeyDown) }, [onClose, slides.length])
+  useEffect(() => { const onKeyDown = (event) => { if (event.key === "Escape") onClose?.(); if (event.key === "ArrowRight") setIndex(v => Math.min(v + 1, Math.max(pages.length - 1, 0))); if (event.key === "ArrowLeft") setIndex(v => Math.max(v - 1, 0)) }; window.addEventListener("keydown", onKeyDown); return () => window.removeEventListener("keydown", onKeyDown) }, [onClose, pages.length])
 
-  const slide = slides[index]
-  const isSlideOne = index === 0 && Boolean(slide?.settings?.visual || slide?.settings?.cover)
+  const page = pages[index]
+  const isSlideOne = index === 0 && Boolean(page?.settings?.visual || page?.settings?.cover)
   return <div style={{ position: "fixed", inset: 0, zIndex: 3000, background: "#07111c", color: "#fff", display: "flex", flexDirection: "column" }}>
-    <div style={{ height: 58, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 22px", borderBottom: "1px solid rgba(255,255,255,.12)", flex: "0 0 auto" }}><div><div style={{ fontSize: 14, fontWeight: 800 }}>{presentation?.name || (type === "solar" ? "Solar Presentation" : "Windows & Doors Presentation")}</div><div style={{ fontSize: 10, opacity: .65, marginTop: 3 }}>{appointment?.name || appointment?.customer_name || "Customer"}</div></div><button type="button" onClick={onClose} style={{ border: 0, background: "rgba(255,255,255,.08)", color: "#fff", width: 36, height: 36, borderRadius: 8, cursor: "pointer" }} aria-label="Close presenter"><X size={18} /></button></div>
-    <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: isSlideOne ? 0 : 28 }}>{loading ? <div style={{ fontSize: 14, opacity: .7 }}>Loading presentation...</div> : error ? <div style={{ maxWidth: 520, textAlign: "center" }}><div style={{ fontSize: 18, fontWeight: 800, marginBottom: 10 }}>Presenter unavailable</div><div style={{ fontSize: 12, opacity: .7 }}>{error}</div></div> : slide ? (isSlideOne ? <SlideOne slide={slide} appointment={appointment} /> : <StandardSlide slide={slide} appointment={appointment} />) : <div style={{ fontSize: 14, opacity: .7 }}>This presentation has no slides yet.</div>}</div>
-    <div style={{ height: 68, display: "flex", alignItems: "center", justifyContent: "center", gap: 18, flex: "0 0 auto" }}><button type="button" disabled={index === 0 || !slides.length} onClick={() => setIndex(v => Math.max(v - 1, 0))} style={{ width: 42, height: 42, border: 0, borderRadius: 21, background: index === 0 ? "rgba(255,255,255,.06)" : "rgba(255,255,255,.12)", color: "#fff" }}><ChevronLeft size={20} /></button><div style={{ minWidth: 80, textAlign: "center", fontSize: 11, opacity: .7 }}>{slides.length ? `${index + 1} / ${slides.length}` : "0 / 0"}</div><button type="button" disabled={index >= slides.length - 1 || !slides.length} onClick={() => setIndex(v => Math.min(v + 1, slides.length - 1))} style={{ width: 42, height: 42, border: 0, borderRadius: 21, background: index >= slides.length - 1 ? "rgba(255,255,255,.06)" : "rgba(255,255,255,.12)", color: "#fff" }}><ChevronRight size={20} /></button></div>
+    <div style={{ height: 58, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 22px", borderBottom: "1px solid rgba(255,255,255,.12)", flex: "0 0 auto" }}><div><div style={{ fontSize: 14, fontWeight: 800 }}>{template?.name || (type === "solar" ? "Solar Presentation" : "Windows & Doors Presentation")}</div><div style={{ fontSize: 10, opacity: .65, marginTop: 3 }}>{appointment?.name || appointment?.customer_name || "Customer"}</div></div><button type="button" onClick={onClose} style={{ border: 0, background: "rgba(255,255,255,.08)", color: "#fff", width: 36, height: 36, borderRadius: 8, cursor: "pointer" }} aria-label="Close presenter"><X size={18} /></button></div>
+    <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: isSlideOne ? 0 : 28 }}>{loading ? <div style={{ fontSize: 14, opacity: .7 }}>Loading presentation...</div> : error ? <div style={{ maxWidth: 520, textAlign: "center" }}><div style={{ fontSize: 18, fontWeight: 800, marginBottom: 10 }}>Presenter unavailable</div><div style={{ fontSize: 12, opacity: .7 }}>{error}</div></div> : page ? (isSlideOne ? <SlideOne slide={page} appointment={appointment} /> : <StandardSlide slide={page} appointment={appointment} />) : <div style={{ fontSize: 14, opacity: .7 }}>This template has no pages yet.</div>}</div>
+    <div style={{ height: 68, display: "flex", alignItems: "center", justifyContent: "center", gap: 18, flex: "0 0 auto" }}><button type="button" disabled={index === 0 || !pages.length} onClick={() => setIndex(v => Math.max(v - 1, 0))} style={{ width: 42, height: 42, border: 0, borderRadius: 21, background: index === 0 ? "rgba(255,255,255,.06)" : "rgba(255,255,255,.12)", color: "#fff" }}><ChevronLeft size={20} /></button><div style={{ minWidth: 80, textAlign: "center", fontSize: 11, opacity: .7 }}>{pages.length ? `${index + 1} / ${pages.length}` : "0 / 0"}</div><button type="button" disabled={index >= pages.length - 1 || !pages.length} onClick={() => setIndex(v => Math.min(v + 1, pages.length - 1))} style={{ width: 42, height: 42, border: 0, borderRadius: 21, background: index >= pages.length - 1 ? "rgba(255,255,255,.06)" : "rgba(255,255,255,.12)", color: "#fff" }}><ChevronRight size={20} /></button></div>
   </div>
 }
