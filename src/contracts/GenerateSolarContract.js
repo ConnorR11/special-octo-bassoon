@@ -1,4 +1,3 @@
-```javascript
 import jsPDF from "jspdf"
 import { supabase } from "../lib/supabase"
 
@@ -50,6 +49,21 @@ const date = (v) => {
   })
 }
 
+/*
+ * --------------------------------------------------------------------------
+ * INTERPOLATION
+ * --------------------------------------------------------------------------
+ *
+ * Template values can contain variables such as:
+ *
+ * {{customer_name}}
+ * {{panel_count}}
+ * {{system_size}}
+ * {{appointment_date}}
+ *
+ * These are resolved here from the appointment / EPVS data.
+ */
+
 function interpolate(body, appointment, epvs) {
   const data = epvs?.data || {}
   const results = epvs?.results || {}
@@ -86,31 +100,36 @@ function interpolate(body, appointment, epvs) {
       appointment?.open_solar_image ||
       "",
 
-    system_size: results.systemSize
-      ? `${num(results.systemSize, 2)} kWp`
-      : "—",
+    system_size:
+      results.systemSize
+        ? `${num(results.systemSize, 2)} kWp`
+        : "—",
 
     panel_count:
       num(data.panelCount),
 
-    panel_wattage: data.panelWattage
-      ? `${num(data.panelWattage)} W`
-      : "—",
+    panel_wattage:
+      data.panelWattage
+        ? `${num(data.panelWattage)} W`
+        : "—",
 
-    inverter_capacity: data.inverterCapacity
-      ? `${num(data.inverterCapacity, 1)} kW`
-      : "—",
+    inverter_capacity:
+      data.inverterCapacity
+        ? `${num(data.inverterCapacity, 1)} kW`
+        : "—",
 
-    battery_capacity: data.batteryEnabled
-      ? `${num(data.batteryCapacity, 1)} kWh`
-      : "Not included",
+    battery_capacity:
+      data.batteryEnabled
+        ? `${num(data.batteryCapacity, 1)} kWh`
+        : "Not included",
 
     system_cost:
       money(data.systemCost),
 
-    annual_generation: results.generation
-      ? `${num(results.generation)} kWh`
-      : "—",
+    annual_generation:
+      results.generation
+        ? `${num(results.generation)} kWh`
+        : "—",
 
     annual_saving:
       money(results.annualSaving),
@@ -121,6 +140,12 @@ function interpolate(body, appointment, epvs) {
     (_, key) => textValue(values[key])
   )
 }
+
+/*
+ * --------------------------------------------------------------------------
+ * IMAGE LOADING
+ * --------------------------------------------------------------------------
+ */
 
 async function imageData(url) {
   const source = String(url || "").trim()
@@ -247,6 +272,12 @@ async function drawImage(
   return y + h + 8
 }
 
+/*
+ * --------------------------------------------------------------------------
+ * PAGE HEADER
+ * --------------------------------------------------------------------------
+ */
+
 function header(pdf, settings) {
   const width =
     pdf.internal.pageSize.getWidth()
@@ -283,8 +314,12 @@ function header(pdf, settings) {
     "F"
   )
 
-  if (settings.show_header !== false) {
-    pdf.setFillColor(...accent)
+  if (
+    settings.show_header !== false
+  ) {
+    pdf.setFillColor(
+      ...accent
+    )
 
     pdf.rect(
       0,
@@ -343,8 +378,16 @@ function header(pdf, settings) {
   }
 }
 
+/*
+ * --------------------------------------------------------------------------
+ * PAGE TITLE
+ * --------------------------------------------------------------------------
+ */
+
 function title(pdf, page, ctx) {
-  pdf.setTextColor(...ctx.text)
+  pdf.setTextColor(
+    ...ctx.text
+  )
 
   pdf.setFont(
     "helvetica",
@@ -380,7 +423,9 @@ function title(pdf, page, ctx) {
     )
   }
 
-  pdf.setFillColor(...ctx.accent)
+  pdf.setFillColor(
+    ...ctx.accent
+  )
 
   pdf.rect(
     ctx.padding,
@@ -390,6 +435,12 @@ function title(pdf, page, ctx) {
     "F"
   )
 }
+
+/*
+ * --------------------------------------------------------------------------
+ * STANDARD ROWS
+ * --------------------------------------------------------------------------
+ */
 
 function rows(
   pdf,
@@ -423,7 +474,9 @@ function rows(
         )
       }
 
-      pdf.setTextColor(...text)
+      pdf.setTextColor(
+        ...text
+      )
 
       pdf.setFont(
         "helvetica",
@@ -467,6 +520,12 @@ function rows(
   return y
 }
 
+/*
+ * --------------------------------------------------------------------------
+ * BODY TEXT
+ * --------------------------------------------------------------------------
+ */
+
 function body(
   pdf,
   content,
@@ -501,34 +560,63 @@ function body(
 
   pdf.setFontSize(9)
 
-  pdf.setTextColor(...textRgb)
+  pdf.setTextColor(
+    ...textRgb
+  )
 
-  lines.forEach((line) => {
-    if (!line.trim()) {
-      y += 4
-      return
-    }
+  lines.forEach(
+    (line) => {
+      if (!line.trim()) {
+        y += 4
+        return
+      }
 
-    pdf
-      .splitTextToSize(
-        line,
-        width
-      )
-      .forEach((part) => {
-        pdf.text(
-          part,
-          x,
-          y
+      pdf
+        .splitTextToSize(
+          line,
+          width
+        )
+        .forEach(
+          (part) => {
+            pdf.text(
+              part,
+              x,
+              y
+            )
+
+            y += 4.8
+          }
         )
 
-        y += 4.8
-      })
-
-    y += 2
-  })
+      y += 2
+    }
+  )
 
   return y
 }
+
+/*
+ * --------------------------------------------------------------------------
+ * ITEMISED BREAKDOWN
+ * --------------------------------------------------------------------------
+ *
+ * IMPORTANT:
+ *
+ * There are NO hard-coded products here.
+ *
+ * The source of truth is:
+ *
+ * template_pages.settings.included_items
+ *
+ * Example:
+ *
+ * {
+ *   "name": "Panels",
+ *   "quantity": "{{panel_count}}"
+ * }
+ *
+ * The renderer simply reads that configuration and renders it.
+ */
 
 function drawItemisedBreakdown(
   pdf,
@@ -536,83 +624,22 @@ function drawItemisedBreakdown(
   ctx,
   data,
   results,
-  appointment
+  appointment,
+  epvs
 ) {
   const width =
     ctx.width -
     ctx.padding * 2
 
-  const defaultItems = [
-    "Panels",
-    "Roof Hooks",
-    "Rail Fix Kit",
-    "Inverter",
-    "Battery",
-    "24 Month Workmanship Warranty",
-    "System Design",
-    "Generation Meter",
-    "Bird Proofing",
-    "DC cable",
-    "EPVS Validation",
-    "HIES Warranty",
-    "Installation",
-    "Lifetime Monitoring",
-    "MCS Building Control Registration",
-    "Pair of A/C Isolators 32A",
-    "Pair of D/C 80A Isolators",
-    "Panel Installation",
-    "PV on Roof and Hazards Label Pack",
-    "Scaffolding (Where required)",
-    "Electrical Connections",
-  ]
-
-  /*
-   * Supports either:
-   *
-   * [
-   *   "Panels",
-   *   "Inverter"
-   * ]
-   *
-   * OR:
-   *
-   * [
-   *   { name: "Panels", quantity: 12 },
-   *   { name: "Inverter", quantity: 1 }
-   * ]
-   */
+  const settings =
+    page.settings || {}
 
   const configuredItems =
     Array.isArray(
-      page.settings?.included_items
-    ) &&
-    page.settings.included_items.length
-      ? page.settings.included_items
-      : defaultItems
-
-  const items =
-    configuredItems.map(
-      (item) => {
-        if (
-          typeof item === "string"
-        ) {
-          return {
-            name: item,
-            quantity: 1,
-          }
-        }
-
-        return {
-          name:
-            item.name ||
-            item.product ||
-            "—",
-
-          quantity:
-            item.quantity ?? 1,
-        }
-      }
+      settings.included_items
     )
+      ? settings.included_items
+      : []
 
   const headerY =
     ctx.y + 28
@@ -673,8 +700,55 @@ function drawItemisedBreakdown(
    * TABLE ROWS
    */
 
-  items.forEach(
+  configuredItems.forEach(
     (item, index) => {
+      /*
+       * The template supports:
+       *
+       * {
+       *   "name": "Panels",
+       *   "quantity": "{{panel_count}}"
+       * }
+       *
+       * We also allow a plain string for
+       * backwards compatibility.
+       */
+
+      const itemName =
+        typeof item === "string"
+          ? item
+          : item?.name ||
+            item?.product ||
+            "—"
+
+      const rawQuantity =
+        typeof item === "string"
+          ? 1
+          : item?.quantity ?? 1
+
+      /*
+       * Resolve template variables in
+       * both the product name and quantity.
+       */
+
+      const resolvedName =
+        interpolate(
+          String(itemName),
+          appointment,
+          epvs
+        )
+
+      const resolvedQuantity =
+        interpolate(
+          String(rawQuantity),
+          appointment,
+          epvs
+        )
+
+      /*
+       * Alternating row background
+       */
+
       if (index % 2 === 0) {
         pdf.setFillColor(
           247,
@@ -693,6 +767,10 @@ function drawItemisedBreakdown(
         )
       }
 
+      /*
+       * PRODUCT / SERVICE
+       */
+
       pdf.setTextColor(
         ...ctx.text
       )
@@ -705,10 +783,14 @@ function drawItemisedBreakdown(
       pdf.setFontSize(8.1)
 
       pdf.text(
-        String(item.name),
+        resolvedName,
         ctx.padding + 7,
         y
       )
+
+      /*
+       * QUANTITY
+       */
 
       pdf.setFont(
         "helvetica",
@@ -718,7 +800,7 @@ function drawItemisedBreakdown(
       pdf.setFontSize(8.1)
 
       pdf.text(
-        String(item.quantity),
+        resolvedQuantity,
         ctx.padding + width - 7,
         y,
         {
@@ -730,11 +812,11 @@ function drawItemisedBreakdown(
     }
   )
 
-  y += 7
-
   /*
    * TOTAL SYSTEM PRICE
    */
+
+  y += 7
 
   const price =
     results?.systemCost ??
@@ -744,7 +826,8 @@ function drawItemisedBreakdown(
     appointment?.sale_value ??
     appointment?.price
 
-  const boxHeight = 25
+  const boxHeight =
+    25
 
   pdf.setFillColor(
     ...ctx.accent
@@ -798,6 +881,12 @@ function drawItemisedBreakdown(
   return y + boxHeight
 }
 
+/*
+ * --------------------------------------------------------------------------
+ * PAGE RENDERER
+ * --------------------------------------------------------------------------
+ */
+
 async function renderPage(
   pdf,
   page,
@@ -829,14 +918,18 @@ async function renderPage(
    * COVER
    */
 
-  if (kind === "cover") {
+  if (
+    kind === "cover"
+  ) {
     const bg =
       rgb(
         settings.background,
         [6, 47, 79]
       )
 
-    pdf.setFillColor(...bg)
+    pdf.setFillColor(
+      ...bg
+    )
 
     pdf.rect(
       0,
@@ -1050,7 +1143,8 @@ async function renderPage(
       ctx,
       data,
       results,
-      appointment
+      appointment,
+      epvs
     )
   }
 
@@ -1308,7 +1402,7 @@ async function renderPage(
   }
 
   /*
-   * STANDARD
+   * STANDARD PAGE
    */
 
   else {
@@ -1324,6 +1418,12 @@ async function renderPage(
     )
   }
 }
+
+/*
+ * --------------------------------------------------------------------------
+ * FOOTER
+ * --------------------------------------------------------------------------
+ */
 
 function footer(
   pdf,
@@ -1354,7 +1454,9 @@ function footer(
     ...rgb(settings.accent)
   )
 
-  pdf.setLineWidth(0.25)
+  pdf.setLineWidth(
+    0.25
+  )
 
   pdf.line(
     padding,
@@ -1374,7 +1476,9 @@ function footer(
     "normal"
   )
 
-  pdf.setFontSize(6.5)
+  pdf.setFontSize(
+    6.5
+  )
 
   pdf.text(
     textValue(
@@ -1394,6 +1498,12 @@ function footer(
     }
   )
 }
+
+/*
+ * --------------------------------------------------------------------------
+ * GENERATE SOLAR CONTRACT
+ * --------------------------------------------------------------------------
+ */
 
 export async function GenerateSolarContract({
   appointment,
@@ -1436,7 +1546,12 @@ export async function GenerateSolarContract({
   }
 
   /*
-   * LOAD PAGES
+   * LOAD TEMPLATE PAGES
+   *
+   * settings is deliberately loaded here.
+   *
+   * The PDF renderer receives the settings
+   * directly from template_pages.
    */
 
   const {
@@ -1470,6 +1585,9 @@ export async function GenerateSolarContract({
 
   /*
    * CREATE PDF
+   *
+   * First page controls the initial
+   * PDF page size and orientation.
    */
 
   const first =
@@ -1490,7 +1608,7 @@ export async function GenerateSolarContract({
     })
 
   /*
-   * RENDER PAGES
+   * RENDER EVERY TEMPLATE PAGE
    */
 
   for (
@@ -1525,7 +1643,10 @@ export async function GenerateSolarContract({
   }
 
   /*
-   * FOOTERS
+   * ADD FOOTERS
+   *
+   * Footer configuration also comes from
+   * each template_pages.settings object.
    */
 
   pages.forEach(
@@ -1545,7 +1666,7 @@ export async function GenerateSolarContract({
   )
 
   /*
-   * SAVE
+   * SAVE PDF
    */
 
   const safeName =
@@ -1567,4 +1688,3 @@ export async function GenerateSolarContract({
     `${safeName}-Digital-Solar-Contract.pdf`
   )
 }
-```
