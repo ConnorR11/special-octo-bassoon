@@ -19,19 +19,29 @@ export default async function handler(req, res) {
     return res.status(400).json({ success: false, error: "Only OpenSolar image URLs are supported." })
   }
 
-  const token = String(process.env.OPENSOLAR_API_TOKEN || "").trim()
-  if (!token) {
-    return res.status(500).json({ success: false, error: "OpenSolar API credentials are not configured on Vercel." })
-  }
-
   try {
-    const response = await fetch(imageUrl.toString(), {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "image/*",
-      },
+    // The image URL stored in appointments.open_solar_image is already a
+    // signed OpenSolar URL, so try it directly first. This is important
+    // because the signature is the authorisation for the image endpoint.
+    let response = await fetch(imageUrl.toString(), {
+      headers: { Accept: "image/*" },
       redirect: "follow",
     })
+
+    // Some OpenSolar endpoints require the API token instead. Retry with
+    // the configured token only when the signed request is rejected.
+    if (!response.ok && (response.status === 401 || response.status === 403)) {
+      const token = String(process.env.OPENSOLAR_API_TOKEN || "").trim()
+      if (token) {
+        response = await fetch(imageUrl.toString(), {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "image/*",
+          },
+          redirect: "follow",
+        })
+      }
+    }
 
     if (!response.ok) {
       return res.status(response.status).json({
