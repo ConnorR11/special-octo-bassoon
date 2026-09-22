@@ -56,16 +56,22 @@ const date = (v) => {
  *
  * Values used by template_pages.settings and page.body.
  *
- * The template_pages JSON is the source of truth.
+ * template_pages is the source of truth.
  *
- * Supported dynamic product variables:
+ * Supported dynamic variables:
  *
  * {{panel_type}}
  * {{panel_count}}
+ * {{panel_wattage}}
  * {{inverter_type}}
  * {{inverter_quantity}}
  * {{battery_type}}
  * {{battery_quantity}}
+ * {{battery_capacity}}
+ * {{system_size}}
+ * {{system_cost}}
+ * {{annual_generation}}
+ * {{annual_saving}}
  *
  * --------------------------------------------------------------------------
  */
@@ -107,9 +113,7 @@ function interpolate(body, appointment, epvs) {
       "",
 
     /*
-     * ----------------------------------------------------------------------
      * SYSTEM
-     * ----------------------------------------------------------------------
      */
 
     system_size:
@@ -118,9 +122,7 @@ function interpolate(body, appointment, epvs) {
         : "—",
 
     /*
-     * ----------------------------------------------------------------------
      * SOLAR PANEL
-     * ----------------------------------------------------------------------
      */
 
     panel_type:
@@ -141,9 +143,7 @@ function interpolate(body, appointment, epvs) {
         : "—",
 
     /*
-     * ----------------------------------------------------------------------
      * INVERTER
-     * ----------------------------------------------------------------------
      */
 
     inverter_type:
@@ -166,9 +166,7 @@ function interpolate(body, appointment, epvs) {
         : "—",
 
     /*
-     * ----------------------------------------------------------------------
      * BATTERY
-     * ----------------------------------------------------------------------
      */
 
     battery_type:
@@ -191,9 +189,7 @@ function interpolate(body, appointment, epvs) {
         : "Not included",
 
     /*
-     * ----------------------------------------------------------------------
      * FINANCIAL / EPVS
-     * ----------------------------------------------------------------------
      */
 
     system_cost:
@@ -657,25 +653,24 @@ function body(
  * ITEMISED BREAKDOWN
  * --------------------------------------------------------------------------
  *
- * IMPORTANT:
- *
  * template_pages.settings.included_items is the source of truth.
  *
- * Each item can be either:
- *
- * {
- *   "name": "Panels",
- *   "quantity": 12
- * }
- *
- * or:
+ * Example:
  *
  * {
  *   "name": "{{panel_type}}",
  *   "quantity": "{{panel_count}}"
  * }
  *
- * All name and quantity values are interpolated before being rendered.
+ * {
+ *   "name": "{{inverter_type}} Inverter",
+ *   "quantity": "{{inverter_quantity}}"
+ * }
+ *
+ * {
+ *   "name": "{{battery_type}} Battery",
+ *   "quantity": "{{battery_quantity}}"
+ * }
  *
  * --------------------------------------------------------------------------
  */
@@ -694,10 +689,8 @@ function drawItemisedBreakdown(
     ctx.padding * 2
 
   /*
-   * No hard-coded product list here.
-   *
-   * The template_pages.settings.included_items
-   * array is the source of truth.
+   * template_pages.settings.included_items
+   * is the only source for the breakdown.
    */
 
   const configuredItems =
@@ -710,16 +703,6 @@ function drawItemisedBreakdown(
   const items =
     configuredItems.map(
       (item) => {
-        /*
-         * Backwards compatibility:
-         *
-         * If an old template contains:
-         *
-         * "Panels"
-         *
-         * convert it to an object.
-         */
-
         if (
           typeof item === "string"
         ) {
@@ -745,9 +728,7 @@ function drawItemisedBreakdown(
     ctx.y + 28
 
   /*
-   * ------------------------------------------------------------------------
    * TABLE HEADER
-   * ------------------------------------------------------------------------
    */
 
   pdf.setFillColor(
@@ -799,18 +780,11 @@ function drawItemisedBreakdown(
     7.15
 
   /*
-   * ------------------------------------------------------------------------
    * TABLE ROWS
-   * ------------------------------------------------------------------------
    */
 
   items.forEach(
     (item, index) => {
-      /*
-       * Interpolate both the product name
-       * and quantity from the template.
-       */
-
       const itemName =
         interpolate(
           item.name,
@@ -883,9 +857,7 @@ function drawItemisedBreakdown(
   y += 7
 
   /*
-   * ------------------------------------------------------------------------
    * TOTAL SYSTEM PRICE
-   * ------------------------------------------------------------------------
    */
 
   const price =
@@ -955,13 +927,15 @@ function drawItemisedBreakdown(
  * --------------------------------------------------------------------------
  * RENDER PAGE
  * --------------------------------------------------------------------------
+ *
+ * Only the parameters actually used by the renderer are passed here.
+ *
+ * --------------------------------------------------------------------------
  */
 
 async function renderPage(
   pdf,
   page,
-  index,
-  pageCount,
   appointment,
   epvs
 ) {
@@ -985,9 +959,7 @@ async function renderPage(
     epvs?.results || {}
 
   /*
-   * ------------------------------------------------------------------------
    * COVER
-   * ------------------------------------------------------------------------
    */
 
   if (kind === "cover") {
@@ -1083,9 +1055,7 @@ async function renderPage(
   }
 
   /*
-   * ------------------------------------------------------------------------
    * PAGE TITLE
-   * ------------------------------------------------------------------------
    */
 
   title(
@@ -1102,9 +1072,7 @@ async function renderPage(
     ctx.padding * 2
 
   /*
-   * ------------------------------------------------------------------------
    * SYSTEM OVERVIEW
-   * ------------------------------------------------------------------------
    */
 
   if (
@@ -1202,9 +1170,7 @@ async function renderPage(
   }
 
   /*
-   * ------------------------------------------------------------------------
    * ITEMISED BREAKDOWN
-   * ------------------------------------------------------------------------
    */
 
   else if (
@@ -1223,9 +1189,7 @@ async function renderPage(
   }
 
   /*
-   * ------------------------------------------------------------------------
    * ACCREDITATIONS
-   * ------------------------------------------------------------------------
    */
 
   else if (
@@ -1316,9 +1280,7 @@ async function renderPage(
   }
 
   /*
-   * ------------------------------------------------------------------------
    * EPVS
-   * ------------------------------------------------------------------------
    */
 
   else if (
@@ -1405,9 +1367,7 @@ async function renderPage(
   }
 
   /*
-   * ------------------------------------------------------------------------
    * DATASHEETS
-   * ------------------------------------------------------------------------
    */
 
   else if (
@@ -1482,9 +1442,7 @@ async function renderPage(
   }
 
   /*
-   * ------------------------------------------------------------------------
    * STANDARD
-   * ------------------------------------------------------------------------
    */
 
   else {
@@ -1592,9 +1550,7 @@ export async function GenerateSolarContract({
   }
 
   /*
-   * ------------------------------------------------------------------------
    * LOAD TEMPLATE
-   * ------------------------------------------------------------------------
    */
 
   const {
@@ -1626,9 +1582,7 @@ export async function GenerateSolarContract({
   }
 
   /*
-   * ------------------------------------------------------------------------
    * LOAD TEMPLATE PAGES
-   * ------------------------------------------------------------------------
    *
    * template_pages is the source of truth for:
    *
@@ -1639,8 +1593,6 @@ export async function GenerateSolarContract({
    * - page settings
    * - included items
    * - quantities
-   *
-   * ------------------------------------------------------------------------
    */
 
   const {
@@ -1673,9 +1625,7 @@ export async function GenerateSolarContract({
   }
 
   /*
-   * ------------------------------------------------------------------------
    * CREATE PDF
-   * ------------------------------------------------------------------------
    */
 
   const first =
@@ -1696,9 +1646,7 @@ export async function GenerateSolarContract({
     })
 
   /*
-   * ------------------------------------------------------------------------
    * RENDER PAGES
-   * ------------------------------------------------------------------------
    */
 
   for (
@@ -1725,17 +1673,13 @@ export async function GenerateSolarContract({
     await renderPage(
       pdf,
       page,
-      i,
-      pages.length,
       appointment,
       epvsCalculation
     )
   }
 
   /*
-   * ------------------------------------------------------------------------
    * FOOTERS
-   * ------------------------------------------------------------------------
    */
 
   pages.forEach(
@@ -1755,9 +1699,7 @@ export async function GenerateSolarContract({
   )
 
   /*
-   * ------------------------------------------------------------------------
    * SAVE
-   * ------------------------------------------------------------------------
    */
 
   const safeName =
