@@ -334,7 +334,7 @@ function drawTermsConditions(pdf, page, ctx, appointment, epvs) {
   const width = ctx.width - ctx.padding * 2
   const gap = Number(settings.column_gap_mm || 6)
   const columnWidth = (width - gap) / 2
-  const top = ctx.y + 28
+  const top = ctx.y + 15
   const bottom = ctx.height - 17
   const available = bottom - top
   let fontSize = Number(settings.font_size || 6.5)
