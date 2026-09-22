@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useState } from "react"
 import { supabase } from "./lib/supabase"
 import EPVSCalculator from "./EPVSCalculator"
 import Sidebar from "./components/Sidebar"
@@ -209,7 +209,6 @@ function App() {
     window.history.pushState({}, "", newPage === "dashboard" ? "/" : `/${newPage}`)
   }
   function handleSearchChange(value) { setQuery(value); loadContracts(0, value, status) }
-  function handleStatusChange(value) { setStatus(value); loadContracts(0, query, value) }
   function mapAppointment(appointment) {
     if (!appointment) return null
     return { ...appointment, phone: appointment?.phone_number_1, email: appointment?.email_address }
@@ -258,7 +257,7 @@ function App() {
   function handleOpenPickup() { if (selectedAppointment?.result) setPickupAppointment(selectedAppointment) }
   function handleBackToAppointments() { setPickupAppointment(null); setSelectedAppointment(null); setPage("appointments"); window.history.pushState({}, "", "/appointments") }
   function handleBackFromPickup() { setPickupAppointment(null) }
-  function handlePickupCreated(created, updatedOriginal) {
+  function handlePickupCreated(updatedOriginal) {
     setSelectedAppointment({ ...selectedAppointment, ...updatedOriginal, phone: updatedOriginal?.phone_number_1, email: updatedOriginal?.email_address })
     setPickupAppointment(null)
   }
@@ -303,7 +302,7 @@ function App() {
         ) : selected ? (
           <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated} />
         ) : page === "dashboard" ? (
-          <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={reportingLoading} setPage={handlePageChange} setSelected={setSelected} />
+          <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setSelected={setSelected} />
         ) : page === "marketing-tv" ? (
           <MarketingTV onSelectAppointment={handleAppointmentSelect} />
         ) : page === "marketing-dashboard" ? (
@@ -323,7 +322,7 @@ function App() {
         ) : page === "epvs" ? (
           <EPVSCalculator />
         ) : (
-          <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={reportingLoading} setPage={handlePageChange} setSelected={setSelected} />
+          <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setSelected={setSelected} />
         )}
       </main>
     </div>
