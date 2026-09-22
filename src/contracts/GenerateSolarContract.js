@@ -51,17 +51,23 @@ const date = (v) => {
 
 /*
  * --------------------------------------------------------------------------
- * INTERPOLATION
+ * TEMPLATE VARIABLE INTERPOLATION
  * --------------------------------------------------------------------------
  *
- * Template values can contain variables such as:
+ * Values used by template_pages.settings and page.body.
  *
- * {{customer_name}}
+ * The template_pages JSON is the source of truth.
+ *
+ * Supported dynamic product variables:
+ *
+ * {{panel_type}}
  * {{panel_count}}
- * {{system_size}}
- * {{appointment_date}}
+ * {{inverter_type}}
+ * {{inverter_quantity}}
+ * {{battery_type}}
+ * {{battery_quantity}}
  *
- * These are resolved here from the appointment / EPVS data.
+ * --------------------------------------------------------------------------
  */
 
 function interpolate(body, appointment, epvs) {
@@ -100,10 +106,31 @@ function interpolate(body, appointment, epvs) {
       appointment?.open_solar_image ||
       "",
 
+    /*
+     * ----------------------------------------------------------------------
+     * SYSTEM
+     * ----------------------------------------------------------------------
+     */
+
     system_size:
       results.systemSize
         ? `${num(results.systemSize, 2)} kWp`
         : "—",
+
+    /*
+     * ----------------------------------------------------------------------
+     * SOLAR PANEL
+     * ----------------------------------------------------------------------
+     */
+
+    panel_type:
+      data.panelType ||
+      data.panel_type ||
+      data.panelModel ||
+      data.panel_model ||
+      data.panelName ||
+      data.panel_name ||
+      "Panels",
 
     panel_count:
       num(data.panelCount),
@@ -113,15 +140,61 @@ function interpolate(body, appointment, epvs) {
         ? `${num(data.panelWattage)} W`
         : "—",
 
+    /*
+     * ----------------------------------------------------------------------
+     * INVERTER
+     * ----------------------------------------------------------------------
+     */
+
+    inverter_type:
+      data.inverterType ||
+      data.inverter_type ||
+      data.inverterModel ||
+      data.inverter_model ||
+      data.inverterName ||
+      data.inverter_name ||
+      "Inverter",
+
+    inverter_quantity:
+      data.inverterQuantity ??
+      data.inverter_quantity ??
+      1,
+
     inverter_capacity:
       data.inverterCapacity
         ? `${num(data.inverterCapacity, 1)} kW`
         : "—",
 
+    /*
+     * ----------------------------------------------------------------------
+     * BATTERY
+     * ----------------------------------------------------------------------
+     */
+
+    battery_type:
+      data.batteryType ||
+      data.battery_type ||
+      data.batteryModel ||
+      data.battery_model ||
+      data.batteryName ||
+      data.battery_name ||
+      "Battery",
+
+    battery_quantity:
+      data.batteryQuantity ??
+      data.battery_quantity ??
+      1,
+
     battery_capacity:
       data.batteryEnabled
         ? `${num(data.batteryCapacity, 1)} kWh`
         : "Not included",
+
+    /*
+     * ----------------------------------------------------------------------
+     * FINANCIAL / EPVS
+     * ----------------------------------------------------------------------
+     */
 
     system_cost:
       money(data.systemCost),
@@ -143,7 +216,7 @@ function interpolate(body, appointment, epvs) {
 
 /*
  * --------------------------------------------------------------------------
- * IMAGE LOADING
+ * IMAGE HANDLING
  * --------------------------------------------------------------------------
  */
 
@@ -274,7 +347,7 @@ async function drawImage(
 
 /*
  * --------------------------------------------------------------------------
- * PAGE HEADER
+ * HEADER
  * --------------------------------------------------------------------------
  */
 
@@ -314,12 +387,8 @@ function header(pdf, settings) {
     "F"
   )
 
-  if (
-    settings.show_header !== false
-  ) {
-    pdf.setFillColor(
-      ...accent
-    )
+  if (settings.show_header !== false) {
+    pdf.setFillColor(...accent)
 
     pdf.rect(
       0,
@@ -385,9 +454,7 @@ function header(pdf, settings) {
  */
 
 function title(pdf, page, ctx) {
-  pdf.setTextColor(
-    ...ctx.text
-  )
+  pdf.setTextColor(...ctx.text)
 
   pdf.setFont(
     "helvetica",
@@ -423,9 +490,7 @@ function title(pdf, page, ctx) {
     )
   }
 
-  pdf.setFillColor(
-    ...ctx.accent
-  )
+  pdf.setFillColor(...ctx.accent)
 
   pdf.rect(
     ctx.padding,
@@ -474,9 +539,7 @@ function rows(
         )
       }
 
-      pdf.setTextColor(
-        ...text
-      )
+      pdf.setTextColor(...text)
 
       pdf.setFont(
         "helvetica",
@@ -560,37 +623,31 @@ function body(
 
   pdf.setFontSize(9)
 
-  pdf.setTextColor(
-    ...textRgb
-  )
+  pdf.setTextColor(...textRgb)
 
-  lines.forEach(
-    (line) => {
-      if (!line.trim()) {
-        y += 4
-        return
-      }
-
-      pdf
-        .splitTextToSize(
-          line,
-          width
-        )
-        .forEach(
-          (part) => {
-            pdf.text(
-              part,
-              x,
-              y
-            )
-
-            y += 4.8
-          }
-        )
-
-      y += 2
+  lines.forEach((line) => {
+    if (!line.trim()) {
+      y += 4
+      return
     }
-  )
+
+    pdf
+      .splitTextToSize(
+        line,
+        width
+      )
+      .forEach((part) => {
+        pdf.text(
+          part,
+          x,
+          y
+        )
+
+        y += 4.8
+      })
+
+    y += 2
+  })
 
   return y
 }
@@ -602,20 +659,25 @@ function body(
  *
  * IMPORTANT:
  *
- * There are NO hard-coded products here.
+ * template_pages.settings.included_items is the source of truth.
  *
- * The source of truth is:
- *
- * template_pages.settings.included_items
- *
- * Example:
+ * Each item can be either:
  *
  * {
  *   "name": "Panels",
+ *   "quantity": 12
+ * }
+ *
+ * or:
+ *
+ * {
+ *   "name": "{{panel_type}}",
  *   "quantity": "{{panel_count}}"
  * }
  *
- * The renderer simply reads that configuration and renders it.
+ * All name and quantity values are interpolated before being rendered.
+ *
+ * --------------------------------------------------------------------------
  */
 
 function drawItemisedBreakdown(
@@ -631,21 +693,61 @@ function drawItemisedBreakdown(
     ctx.width -
     ctx.padding * 2
 
-  const settings =
-    page.settings || {}
+  /*
+   * No hard-coded product list here.
+   *
+   * The template_pages.settings.included_items
+   * array is the source of truth.
+   */
 
   const configuredItems =
     Array.isArray(
-      settings.included_items
+      page.settings?.included_items
     )
-      ? settings.included_items
+      ? page.settings.included_items
       : []
+
+  const items =
+    configuredItems.map(
+      (item) => {
+        /*
+         * Backwards compatibility:
+         *
+         * If an old template contains:
+         *
+         * "Panels"
+         *
+         * convert it to an object.
+         */
+
+        if (
+          typeof item === "string"
+        ) {
+          return {
+            name: item,
+            quantity: 1,
+          }
+        }
+
+        return {
+          name:
+            item?.name ??
+            "—",
+
+          quantity:
+            item?.quantity ??
+            1,
+        }
+      }
+    )
 
   const headerY =
     ctx.y + 28
 
   /*
+   * ------------------------------------------------------------------------
    * TABLE HEADER
+   * ------------------------------------------------------------------------
    */
 
   pdf.setFillColor(
@@ -697,57 +799,31 @@ function drawItemisedBreakdown(
     7.15
 
   /*
+   * ------------------------------------------------------------------------
    * TABLE ROWS
+   * ------------------------------------------------------------------------
    */
 
-  configuredItems.forEach(
+  items.forEach(
     (item, index) => {
       /*
-       * The template supports:
-       *
-       * {
-       *   "name": "Panels",
-       *   "quantity": "{{panel_count}}"
-       * }
-       *
-       * We also allow a plain string for
-       * backwards compatibility.
+       * Interpolate both the product name
+       * and quantity from the template.
        */
 
       const itemName =
-        typeof item === "string"
-          ? item
-          : item?.name ||
-            item?.product ||
-            "—"
-
-      const rawQuantity =
-        typeof item === "string"
-          ? 1
-          : item?.quantity ?? 1
-
-      /*
-       * Resolve template variables in
-       * both the product name and quantity.
-       */
-
-      const resolvedName =
         interpolate(
-          String(itemName),
+          item.name,
           appointment,
           epvs
         )
 
-      const resolvedQuantity =
+      const itemQuantity =
         interpolate(
-          String(rawQuantity),
+          String(item.quantity),
           appointment,
           epvs
         )
-
-      /*
-       * Alternating row background
-       */
 
       if (index % 2 === 0) {
         pdf.setFillColor(
@@ -767,10 +843,6 @@ function drawItemisedBreakdown(
         )
       }
 
-      /*
-       * PRODUCT / SERVICE
-       */
-
       pdf.setTextColor(
         ...ctx.text
       )
@@ -783,14 +855,10 @@ function drawItemisedBreakdown(
       pdf.setFontSize(8.1)
 
       pdf.text(
-        resolvedName,
+        String(itemName),
         ctx.padding + 7,
         y
       )
-
-      /*
-       * QUANTITY
-       */
 
       pdf.setFont(
         "helvetica",
@@ -800,7 +868,7 @@ function drawItemisedBreakdown(
       pdf.setFontSize(8.1)
 
       pdf.text(
-        resolvedQuantity,
+        String(itemQuantity),
         ctx.padding + width - 7,
         y,
         {
@@ -812,11 +880,13 @@ function drawItemisedBreakdown(
     }
   )
 
-  /*
-   * TOTAL SYSTEM PRICE
-   */
-
   y += 7
+
+  /*
+   * ------------------------------------------------------------------------
+   * TOTAL SYSTEM PRICE
+   * ------------------------------------------------------------------------
+   */
 
   const price =
     results?.systemCost ??
@@ -883,7 +953,7 @@ function drawItemisedBreakdown(
 
 /*
  * --------------------------------------------------------------------------
- * PAGE RENDERER
+ * RENDER PAGE
  * --------------------------------------------------------------------------
  */
 
@@ -915,21 +985,19 @@ async function renderPage(
     epvs?.results || {}
 
   /*
+   * ------------------------------------------------------------------------
    * COVER
+   * ------------------------------------------------------------------------
    */
 
-  if (
-    kind === "cover"
-  ) {
+  if (kind === "cover") {
     const bg =
       rgb(
         settings.background,
         [6, 47, 79]
       )
 
-    pdf.setFillColor(
-      ...bg
-    )
+    pdf.setFillColor(...bg)
 
     pdf.rect(
       0,
@@ -1015,7 +1083,9 @@ async function renderPage(
   }
 
   /*
+   * ------------------------------------------------------------------------
    * PAGE TITLE
+   * ------------------------------------------------------------------------
    */
 
   title(
@@ -1032,7 +1102,9 @@ async function renderPage(
     ctx.padding * 2
 
   /*
+   * ------------------------------------------------------------------------
    * SYSTEM OVERVIEW
+   * ------------------------------------------------------------------------
    */
 
   if (
@@ -1130,7 +1202,9 @@ async function renderPage(
   }
 
   /*
+   * ------------------------------------------------------------------------
    * ITEMISED BREAKDOWN
+   * ------------------------------------------------------------------------
    */
 
   else if (
@@ -1149,7 +1223,9 @@ async function renderPage(
   }
 
   /*
+   * ------------------------------------------------------------------------
    * ACCREDITATIONS
+   * ------------------------------------------------------------------------
    */
 
   else if (
@@ -1240,7 +1316,9 @@ async function renderPage(
   }
 
   /*
+   * ------------------------------------------------------------------------
    * EPVS
+   * ------------------------------------------------------------------------
    */
 
   else if (
@@ -1327,7 +1405,9 @@ async function renderPage(
   }
 
   /*
+   * ------------------------------------------------------------------------
    * DATASHEETS
+   * ------------------------------------------------------------------------
    */
 
   else if (
@@ -1402,7 +1482,9 @@ async function renderPage(
   }
 
   /*
-   * STANDARD PAGE
+   * ------------------------------------------------------------------------
+   * STANDARD
+   * ------------------------------------------------------------------------
    */
 
   else {
@@ -1454,9 +1536,7 @@ function footer(
     ...rgb(settings.accent)
   )
 
-  pdf.setLineWidth(
-    0.25
-  )
+  pdf.setLineWidth(0.25)
 
   pdf.line(
     padding,
@@ -1476,9 +1556,7 @@ function footer(
     "normal"
   )
 
-  pdf.setFontSize(
-    6.5
-  )
+  pdf.setFontSize(6.5)
 
   pdf.text(
     textValue(
@@ -1514,7 +1592,9 @@ export async function GenerateSolarContract({
   }
 
   /*
+   * ------------------------------------------------------------------------
    * LOAD TEMPLATE
+   * ------------------------------------------------------------------------
    */
 
   const {
@@ -1546,12 +1626,21 @@ export async function GenerateSolarContract({
   }
 
   /*
+   * ------------------------------------------------------------------------
    * LOAD TEMPLATE PAGES
+   * ------------------------------------------------------------------------
    *
-   * settings is deliberately loaded here.
+   * template_pages is the source of truth for:
    *
-   * The PDF renderer receives the settings
-   * directly from template_pages.
+   * - page order
+   * - page title
+   * - page subtitle
+   * - page body
+   * - page settings
+   * - included items
+   * - quantities
+   *
+   * ------------------------------------------------------------------------
    */
 
   const {
@@ -1584,10 +1673,9 @@ export async function GenerateSolarContract({
   }
 
   /*
+   * ------------------------------------------------------------------------
    * CREATE PDF
-   *
-   * First page controls the initial
-   * PDF page size and orientation.
+   * ------------------------------------------------------------------------
    */
 
   const first =
@@ -1608,7 +1696,9 @@ export async function GenerateSolarContract({
     })
 
   /*
-   * RENDER EVERY TEMPLATE PAGE
+   * ------------------------------------------------------------------------
+   * RENDER PAGES
+   * ------------------------------------------------------------------------
    */
 
   for (
@@ -1643,10 +1733,9 @@ export async function GenerateSolarContract({
   }
 
   /*
-   * ADD FOOTERS
-   *
-   * Footer configuration also comes from
-   * each template_pages.settings object.
+   * ------------------------------------------------------------------------
+   * FOOTERS
+   * ------------------------------------------------------------------------
    */
 
   pages.forEach(
@@ -1666,7 +1755,9 @@ export async function GenerateSolarContract({
   )
 
   /*
-   * SAVE PDF
+   * ------------------------------------------------------------------------
+   * SAVE
+   * ------------------------------------------------------------------------
    */
 
   const safeName =
