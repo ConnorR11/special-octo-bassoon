@@ -1,173 +1,30 @@
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ success: false, error: "Method not allowed" })
-  }
-
+  if (req.method !== "POST") return res.status(405).json({ success: false, error: "Method not allowed" })
   const projectId = String(req.body?.projectId || "").trim()
   const orgId = String(process.env.OPENSOLAR_ORG_ID || "").trim()
   const token = String(process.env.OPENSOLAR_API_TOKEN || "").trim()
-
-  if (!projectId) {
-    return res.status(400).json({ success: false, error: "OpenSolar project ID is required." })
-  }
-
-  if (!orgId || !token) {
-    return res.status(500).json({
-      success: false,
-      error: "OpenSolar API credentials are not configured on Vercel.",
-    })
-  }
-
-  const url = new URL(
-    `https://api.opensolar.com/api/orgs/${encodeURIComponent(orgId)}/projects/${encodeURIComponent(projectId)}/systems/details/`
-  )
-  url.searchParams.set("include_parts", "mcs")
-
+  if (!projectId) return res.status(400).json({ success: false, error: "OpenSolar project ID is required." })
+  if (!orgId || !token) return res.status(500).json({ success: false, error: "OpenSolar API credentials are not configured on Vercel." })
+  const headers = { Authorization: `Bearer ${token}`, Accept: "application/json" }
   try {
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/json",
-      },
-    })
-
+    const url = new URL(`https://api.opensolar.com/api/orgs/${encodeURIComponent(orgId)}/projects/${encodeURIComponent(projectId)}/systems/details/`)
+    url.searchParams.set("include_parts", "mcs")
+    const response = await fetch(url, { headers })
     const text = await response.text()
-    let payload
-    try {
-      payload = JSON.parse(text)
-    } catch {
-      payload = null
-    }
-
-    if (!response.ok) {
-      return res.status(response.status).json({
-        success: false,
-        error:
-          payload?.detail ||
-          payload?.error ||
-          `OpenSolar returned HTTP ${response.status}.`,
-      })
-    }
-
+    let payload; try { payload = JSON.parse(text) } catch { payload = null }
+    if (!response.ok) return res.status(response.status).json({ success: false, error: payload?.detail || payload?.error || `OpenSolar returned HTTP ${response.status}.` })
     const systems = Array.isArray(payload?.systems) ? payload.systems : []
-
-    const arrays = systems.flatMap((system) => {
-      const moduleQuantityFromParts = Array.isArray(system?.modules)
-        ? system.modules.reduce(
-            (total, module) => total + Number(module?.quantity || 0),
-            0
-          )
-        : 0
-      const moduleQuantityFromGroups = Array.isArray(system?.module_groups)
-        ? system.module_groups.reduce(
-            (total, group) => total + Number(group?.module_quantity || 0),
-            0
-          )
-        : 0
-      const totalModuleQuantity =
-        Number(system?.total_module_quantity || 0) ||
-        moduleQuantityFromParts ||
-        moduleQuantityFromGroups
-      const kwStc = Number(system?.kw_stc || 0)
-      const derivedPanelWattage =
-        totalModuleQuantity > 0 && kwStc > 0
-          ? (kwStc * 1000) / totalModuleQuantity
-          : 0
-      const modules = Array.isArray(system?.modules)
-        ? system.modules.map((module) => ({
-            manufacturer: module?.manufacturer_name || "",
-            model: module?.code || "",
-            quantity: Number(module?.quantity || 0),
-          }))
-        : []
-
-      const shadeFactor = Number(system?.data?.mcs?.shadingFactor ?? 1)
-      const specificYield = String(system?.data?.mcs?.mcsSpecificYieldBeforeShading || "")
-        .split(/\n+/)
-        .map((line) => {
-          const match = line.match(/:\s*([0-9]+(?:\.[0-9]+)?)/)
-          return match ? Number(match[1]) : null
-        })
-        .filter((value) => Number.isFinite(value))
-
-      return (Array.isArray(system?.module_groups) ? system.module_groups : []).map(
-        (group, index) => {
-          const azimuth = Number(group?.azimuth ?? 180)
-          const orientation = Math.round(Math.abs(((azimuth - 180 + 540) % 360) - 180))
-
-          return {
-            panelCount: Number(group?.module_quantity || 0),
-            panelWattage: derivedPanelWattage,
-            modules,
-            orientation,
-            pitch: Math.round(Number(group?.slope || 0)),
-            shading: Number.isFinite(shadeFactor) ? shadeFactor : 1,
-            irradiance: Number(specificYield[index] || 0),
-          }
-        }
-      )
-    })
-
+    const firstSystem = systems.find(system => system?.uuid)
     let systemImageUrl = ""
-    const firstSystem = systems.find((system) => system?.uuid)
-
     if (firstSystem?.uuid) {
-      const imageUrl = new URL(
-        `https://api.opensolar.com/api/orgs/${encodeURIComponent(orgId)}/projects/${encodeURIComponent(projectId)}/systems/${encodeURIComponent(firstSystem.uuid)}/image/`
-      )
-      imageUrl.searchParams.set("width", "1200")
-      imageUrl.searchParams.set("height", "800")
-
-      try {
-        const imageResponse = await fetch(imageUrl, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "image/*",
-          },
-          redirect: "follow",
-        })
-
-        if (imageResponse.ok) {
-          systemImageUrl = imageResponse.url || ""
-        }
-      } catch (imageError) {
-        console.warn("OpenSolar system image lookup failed", imageError)
-      }
+      const imageUrl = new URL(`https://api.opensolar.com/api/orgs/${encodeURIComponent(orgId)}/projects/${encodeURIComponent(projectId)}/systems/${encodeURIComponent(firstSystem.uuid)}/image/`)
+      imageUrl.searchParams.set("width", "1200"); imageUrl.searchParams.set("height", "800")
+      const imageResponse = await fetch(imageUrl, { headers: { Authorization: `Bearer ${token}`, Accept: "image/*" }, redirect: "follow" })
+      if (imageResponse.ok) systemImageUrl = imageResponse.url || imageUrl.toString()
     }
-
-    return res.status(200).json({
-      success: true,
-      projectId,
-      numberOfArrays: arrays.length,
-      arrays: arrays.slice(0, 3),
-      truncated: arrays.length > 3,
-      systemImageUrl,
-      systems: systems.map((system) => ({
-        id: system?.id,
-        uuid: system?.uuid,
-        name: system?.name,
-        kwStc: system?.kw_stc,
-        totalModuleQuantity: system?.total_module_quantity,
-        modules: Array.isArray(system?.modules)
-          ? system.modules.map((module) => ({
-              manufacturer: module?.manufacturer_name || "",
-              model: module?.code || "",
-              quantity: Number(module?.quantity || 0),
-            }))
-          : [],
-        panelWattage:
-          Number(system?.total_module_quantity || 0) > 0 &&
-          Number(system?.kw_stc || 0) > 0
-            ? (Number(system?.kw_stc || 0) * 1000) /
-              Number(system?.total_module_quantity || 0)
-            : 0,
-      })),
-    })
+    return res.status(200).json({ success: true, projectId, systemImageUrl })
   } catch (error) {
     console.error("OpenSolar design lookup failed", error)
-    return res.status(500).json({
-      success: false,
-      error: error?.message || "Unable to retrieve the OpenSolar design.",
-    })
+    return res.status(500).json({ success: false, error: error?.message || "Unable to retrieve the OpenSolar design." })
   }
 }
