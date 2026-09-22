@@ -1,0 +1,64 @@
+name: Move EPVS array table to contract
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/move-epvs-array-table-trigger.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  move:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Move table
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          standalone = Path('src/components/EpvsPdfRenderer.jsx')
+          contract = Path('src/contracts/GenerateSolarContract.js')
+          s = standalone.read_text()
+          c = contract.read_text()
+
+          marker = 'const solarArrays = Array.isArray(data.arrays)'
+          start = s.find(marker)
+          if start < 0:
+              raise SystemExit('Standalone solar array block not found')
+          end = s.find('\n  if(footer.page_number)', start)
+          if end < 0:
+              raise SystemExit('Standalone solar array block end not found')
+          block = s[start:end]
+          s = s[:start] + s[end:]
+
+          if 'CONTRACT_SOLAR_PV_ARRAY_TABLE' not in c:
+              helper = r'''\n\nfunction drawContractSolarPvArrayTable(pdf, ctx, data, results, startY) {\n  const arrays = (Array.isArray(data?.arrays) ? data.arrays : []).map((input, index) => ({ input: input || {}, calculated: Array.isArray(results?.arrays) ? (results.arrays[index] || {}) : {}, index })).filter(({ input, calculated }) => Number(input.panelCount || calculated.panelCount || 0) > 0)\n  if (!arrays.length) return startY\n  const width = ctx.width - ctx.padding * 2\n  const widths = [16,17,18,24,19,25,15,25,29]\n  const total = widths.reduce((a,b)=>a+b,0)\n  const scale = width / total\n  const ws = widths.map(v=>v*scale)\n  const x0 = ctx.padding\n  const rowH = 5.5\n  const headH = 8\n  const bottom = ctx.height - 17\n  let y = Number(startY || ctx.y) + 6\n  if (y + 8 + headH + rowH * arrays.length > bottom) {\n    pdf.addPage(); y = 28\n    pdf.setFillColor(...ctx.accent); pdf.rect(0,0,ctx.width,14,'F')\n    pdf.setTextColor(255,255,255); pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.text('HOMESHIELD SCOTLAND LTD',ctx.padding,9)\n  }\n  pdf.setTextColor(...ctx.text); pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.text('Solar PV array',x0,y); y += 4\n  const headers=['Array','Panels','Panel Wp','Orientation (°)','Pitch (°)','Irradiance / Kk','SF','System size (kWp)','Generation (kWh)']\n  let x=x0; pdf.setFillColor(...ctx.accent); pdf.setTextColor(255,255,255); pdf.setFont('helvetica','bold'); pdf.setFontSize(5.5)\n  headers.forEach((h,i)=>{pdf.rect(x,y,ws[i],headH,'F'); pdf.text(h,x+ws[i]/2,y+5,{align:'center'}); x+=ws[i]})\n  y+=headH\n  arrays.forEach(({input,calculated,index},ri)=>{\n    const vals=[`Array ${index+1}`,num(input.panelCount||calculated.panelCount),`${num(input.panelWattage||calculated.panelWattage)} W`,`${num(input.orientation)}°`,`${num(input.pitch)}°`,num(input.irradiance,2),num(input.shading,2),`${num(calculated.systemSize,2)} kWp`,`${num(calculated.generation)} kWh`]\n    x=x0; pdf.setFont('helvetica','normal'); pdf.setFontSize(5.7); vals.forEach((v,i)=>{if(ri%2===0){pdf.setFillColor(246,248,250)}else{pdf.setFillColor(255,255,255)} pdf.setDrawColor(238,242,247); pdf.rect(x,y,ws[i],rowH,'FD'); pdf.setTextColor(...ctx.text); pdf.text(String(v),x+ws[i]-1,y+rowH-1.7,{align:'right'}); x+=ws[i]}); y+=rowH\n  })\n  return y+6\n}\n'''
+              branch = re.search(r'if\(kind===\"epvs\"\)\{', c)
+              if not branch:
+                  raise SystemExit('Contract EPVS branch not found')
+              c = c[:branch.start()] + helper + c[branch.start():]
+              call = '\n    drawContractSolarPvArrayTable(pdf,ctx,data,results,typeof y === "number" ? y : ctx.y+70)\n'
+              # Put the call at the end of the EPVS branch, before its next else-if/else.
+              pos = branch.end()
+              nxt = re.search(r'\}\s*else if\(kind===|\}\s*else\{', c[pos:])
+              if not nxt:
+                  raise SystemExit('Contract EPVS branch end not found')
+              insert_at = pos + nxt.start()
+              c = c[:insert_at] + call + c[insert_at:]
+
+          standalone.write_text(s)
+          contract.write_text(c)
+
+          wf = Path('.github/workflows/move-epvs-array-table.yml')
+          trigger = Path('.github/move-epvs-array-table-trigger.txt')
+          wf.unlink(missing_ok=True); trigger.unlink(missing_ok=True)
+          import subprocess
+          subprocess.run(['git','config','user.name','github-actions[bot]'],check=True)
+          subprocess.run(['git','config','user.email','41898282+github-actions[bot]@users.noreply.github.com'],check=True)
+          subprocess.run(['git','add','src/components/EpvsPdfRenderer.jsx','src/contracts/GenerateSolarContract.js','.github/workflows/move-epvs-array-table.yml','.github/move-epvs-array-table-trigger.txt'],check=True)
+          subprocess.run(['git','commit','-m','Move EPVS array table to solar contract [skip ci]'],check=True)
+          subprocess.run(['git','push'],check=True)
