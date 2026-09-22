@@ -66,11 +66,12 @@ function installTermsLayoutPatch() {
       )
     }
 
-    // Pull the T&C body upward to make the complete document fit on one page.
+    // Pull the T&C body upward so there is only a small amount of padding
+    // below the full-width title rule and more room remains for the terms.
     if (currentPage === termsPage && typeof y === "number") {
       const pageHeight = this.internal.pageSize.getHeight()
       if (y < pageHeight - 22) {
-        return originalText.call(this, text, x, y - 10, options, transform)
+        return originalText.call(this, text, x, y - 16, options, transform)
       }
     }
 
