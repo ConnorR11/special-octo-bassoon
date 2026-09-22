@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useState } from "react"
 import { supabase } from "./lib/supabase"
 import EPVSCalculator from "./EPVSCalculator"
 import Sidebar from "./components/Sidebar"
@@ -209,7 +209,6 @@ function App() {
     window.history.pushState({}, "", newPage === "dashboard" ? "/" : `/${newPage}`)
   }
   function handleSearchChange(value) { setQuery(value); loadContracts(0, value, status) }
-  function handleStatusChange(value) { setStatus(value); loadContracts(0, query, value) }
   function mapAppointment(appointment) {
     if (!appointment) return null
     return { ...appointment, phone: appointment?.phone_number_1, email: appointment?.email_address }
