@@ -1,1 +1,1 @@
-export { default } from "./DatabaseSalesPresenterV2"
+export { default } from "./DatabaseSalesPresenter"
