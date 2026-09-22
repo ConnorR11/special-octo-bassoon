@@ -3,70 +3,73 @@ import { Plus, Save, Trash2, GripVertical, ChevronLeft, ChevronRight, Eye, Prese
 import { supabase } from "../lib/supabase"
 import SalesPresenter from "../components/SalesPresenter"
 
-const EMPTY_SLIDE = { title: "", subtitle: "", body: "", settings: {} }
+const EMPTY_PAGE = { title: "", subtitle: "", body: "", settings: {} }
 
 export default function SalesPresentations() {
-  const [presentations, setPresentations] = useState([])
+  const [templates, setTemplates] = useState([])
   const [selectedId, setSelectedId] = useState(null)
-  const [slides, setSlides] = useState([])
-  const [selectedSlideId, setSelectedSlideId] = useState(null)
+  const [pages, setPages] = useState([])
+  const [selectedPageId, setSelectedPageId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [preview, setPreview] = useState(false)
   const [settingsText, setSettingsText] = useState("{}")
 
-  const selectedPresentation = useMemo(() => presentations.find((item) => item.id === selectedId) || null, [presentations, selectedId])
-  const selectedSlide = useMemo(() => slides.find((item) => item.id === selectedSlideId) || null, [slides, selectedSlideId])
+  const selectedTemplate = useMemo(() => templates.find((item) => item.id === selectedId) || null, [templates, selectedId])
+  const selectedPage = useMemo(() => pages.find((item) => item.id === selectedPageId) || null, [pages, selectedPageId])
 
-  async function loadPresentations() {
-    setLoading(true); setError("")
-    const { data, error: queryError } = await supabase.from("sales_presentations").select("*").order("created_at")
+  async function loadTemplates() {
+    setLoading(true)
+    setError("")
+    const { data, error: queryError } = await supabase.from("templates").select("*").order("created_at")
     if (queryError) { setError(queryError.message); setLoading(false); return }
     const list = data || []
-    setPresentations(list)
+    setTemplates(list)
     const nextId = selectedId && list.some((item) => item.id === selectedId) ? selectedId : list[0]?.id || null
     setSelectedId(nextId)
     setLoading(false)
   }
 
-  async function loadSlides(presentationId) {
-    if (!presentationId) { setSlides([]); setSelectedSlideId(null); return }
-    const { data, error: queryError } = await supabase.from("sales_presentation_slides").select("*").eq("presentation_id", presentationId).order("slide_order")
+  async function loadPages(templateId) {
+    if (!templateId) { setPages([]); setSelectedPageId(null); return }
+    const { data, error: queryError } = await supabase.from("template_pages").select("*").eq("template_id", templateId).order("page_order")
     if (queryError) { setError(queryError.message); return }
     const list = data || []
-    setSlides(list)
-    setSelectedSlideId(list[0]?.id || null)
+    setPages(list)
+    setSelectedPageId(list[0]?.id || null)
   }
 
-  useEffect(() => { loadPresentations() }, [])
-  useEffect(() => { loadSlides(selectedId) }, [selectedId])
+  useEffect(() => { loadTemplates() }, [])
+  useEffect(() => { loadPages(selectedId) }, [selectedId])
   useEffect(() => {
-    if (selectedSlide) setSettingsText(JSON.stringify(selectedSlide.settings || {}, null, 2))
+    if (selectedPage) setSettingsText(JSON.stringify(selectedPage.settings || {}, null, 2))
     else setSettingsText("{}")
-  }, [selectedSlideId])
+  }, [selectedPageId])
 
-  async function updatePresentation(changes) {
-    if (!selectedPresentation) return
-    setSaving(true); setError("")
-    const { data, error: updateError } = await supabase.from("sales_presentations").update({ ...changes, updated_at: new Date().toISOString() }).eq("id", selectedPresentation.id).select().single()
+  async function updateTemplate(changes) {
+    if (!selectedTemplate) return
+    setSaving(true)
+    setError("")
+    const { data, error: updateError } = await supabase.from("templates").update({ ...changes, updated_at: new Date().toISOString() }).eq("id", selectedTemplate.id).select().single()
     if (updateError) setError(updateError.message)
-    else setPresentations((current) => current.map((item) => item.id === data.id ? data : item))
+    else setTemplates((current) => current.map((item) => item.id === data.id ? data : item))
     setSaving(false)
   }
 
-  async function addSlide() {
-    if (!selectedPresentation) return
-    setSaving(true); setError("")
-    const nextOrder = slides.length ? Math.max(...slides.map((item) => item.slide_order || 0)) + 1 : 1
-    const { data, error: insertError } = await supabase.from("sales_presentation_slides").insert({ presentation_id: selectedPresentation.id, slide_order: nextOrder, ...EMPTY_SLIDE }).select().single()
+  async function addPage() {
+    if (!selectedTemplate) return
+    setSaving(true)
+    setError("")
+    const nextOrder = pages.length ? Math.max(...pages.map((item) => item.page_order || 0)) + 1 : 1
+    const { data, error: insertError } = await supabase.from("template_pages").insert({ template_id: selectedTemplate.id, page_order: nextOrder, ...EMPTY_PAGE }).select().single()
     if (insertError) setError(insertError.message)
-    else { setSlides((current) => [...current, data]); setSelectedSlideId(data.id) }
+    else { setPages((current) => [...current, data]); setSelectedPageId(data.id) }
     setSaving(false)
   }
 
-  async function saveSlide() {
-    if (!selectedSlide) return
+  async function savePage() {
+    if (!selectedPage) return
     let parsedSettings
     try {
       parsedSettings = settingsText.trim() ? JSON.parse(settingsText) : {}
@@ -75,40 +78,43 @@ export default function SalesPresentations() {
       setError(`Settings must contain valid JSON: ${err.message}`)
       return
     }
-    setSaving(true); setError("")
-    const { data, error: updateError } = await supabase.from("sales_presentation_slides").update({ title: selectedSlide.title, subtitle: selectedSlide.subtitle, body: selectedSlide.body, settings: parsedSettings, updated_at: new Date().toISOString() }).eq("id", selectedSlide.id).select().single()
+    setSaving(true)
+    setError("")
+    const { data, error: updateError } = await supabase.from("template_pages").update({ title: selectedPage.title, subtitle: selectedPage.subtitle, body: selectedPage.body, settings: parsedSettings, updated_at: new Date().toISOString() }).eq("id", selectedPage.id).select().single()
     if (updateError) setError(updateError.message)
-    else { setSlides((current) => current.map((item) => item.id === data.id ? data : item)); setSettingsText(JSON.stringify(data.settings || {}, null, 2)) }
-    setSaving(false)
-  }
-
-  async function deleteSlide() {
-    if (!selectedSlide || !window.confirm("Delete this slide?")) return
-    setSaving(true); setError("")
-    const { error: deleteError } = await supabase.from("sales_presentation_slides").delete().eq("id", selectedSlide.id)
-    if (deleteError) setError(deleteError.message)
-    else { const remaining = slides.filter((item) => item.id !== selectedSlide.id); await resequence(remaining); setSlides(remaining.map((item, index) => ({ ...item, slide_order: index + 1 }))); setSelectedSlideId(remaining[0]?.id || null) }
+    else { setPages((current) => current.map((item) => item.id === data.id ? data : item)); setSettingsText(JSON.stringify(data.settings || {}, null, 2)) }
     setSaving(false)
   }
 
   async function resequence(items) {
-    await Promise.all(items.map((item, index) => supabase.from("sales_presentation_slides").update({ slide_order: index + 1 }).eq("id", item.id)))
+    await Promise.all(items.map((item, index) => supabase.from("template_pages").update({ page_order: index + 1 }).eq("id", item.id)))
   }
 
-  async function moveSlide(direction) {
-    if (!selectedSlide) return
-    const index = slides.findIndex((item) => item.id === selectedSlide.id)
+  async function deletePage() {
+    if (!selectedPage || !window.confirm("Delete this page?")) return
+    setSaving(true)
+    setError("")
+    const { error: deleteError } = await supabase.from("template_pages").delete().eq("id", selectedPage.id)
+    if (deleteError) setError(deleteError.message)
+    else { const remaining = pages.filter((item) => item.id !== selectedPage.id); await resequence(remaining); setPages(remaining.map((item, index) => ({ ...item, page_order: index + 1 }))); setSelectedPageId(remaining[0]?.id || null) }
+    setSaving(false)
+  }
+
+  async function movePage(direction) {
+    if (!selectedPage) return
+    const index = pages.findIndex((item) => item.id === selectedPage.id)
     const target = index + direction
-    if (target < 0 || target >= slides.length) return
-    const next = [...slides]; [next[index], next[target]] = [next[target], next[index]]
-    setSlides(next.map((item, position) => ({ ...item, slide_order: position + 1 })))
+    if (target < 0 || target >= pages.length) return
+    const next = [...pages]
+    ;[next[index], next[target]] = [next[target], next[index]]
+    setPages(next.map((item, position) => ({ ...item, page_order: position + 1 })))
     await resequence(next)
   }
 
-  function updateSlide(field, value) { setSlides((current) => current.map((item) => item.id === selectedSlideId ? { ...item, [field]: value } : item)) }
+  function updatePage(field, value) { setPages((current) => current.map((item) => item.id === selectedPageId ? { ...item, [field]: value } : item)) }
 
-  if (preview && selectedPresentation) {
-    const previewAppointment = selectedPresentation.presentation_type === "solar"
+  if (preview && selectedTemplate) {
+    const previewAppointment = selectedTemplate.template_type === "solar" || selectedTemplate.presentation_type === "solar"
       ? { name: "Presentation Preview", product: "Solar" }
       : { name: "Presentation Preview", product: "Windows" }
     return <SalesPresenter appointment={previewAppointment} onClose={() => setPreview(false)} />
@@ -116,27 +122,27 @@ export default function SalesPresentations() {
 
   return <section>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 18 }}>
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}><Presentation size={24} color="#2499ed" /><div><h1 style={{ margin: 0, fontSize: 22 }}>Sales Presentations</h1><p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>Manage the presentations used by sales appointments.</p></div></div>
-      {selectedPresentation && <button onClick={() => setPreview(true)} style={buttonStyle}><Eye size={14} /> Preview</button>}
+      <div style={{ display: "flex", gap: 10, alignItems: "center" }}><Presentation size={24} color="#2499ed" /><div><h1 style={{ margin: 0, fontSize: 22 }}>Sales Presenters</h1><p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>Manage the templates and pages used by sales appointments.</p></div></div>
+      {selectedTemplate && <button onClick={() => setPreview(true)} style={buttonStyle}><Eye size={14} /> Preview</button>}
     </div>
     {error && <div className="error" style={{ marginBottom: 16 }}><b>Database error</b><span>{error}</span></div>}
-    {loading ? <div className="card" style={{ padding: 50, textAlign: "center" }}>Loading presentations...</div> : <div style={{ display: "grid", gridTemplateColumns: "260px minmax(0,1fr) 340px", gap: 14, alignItems: "start" }}>
-      <div className="card" style={{ padding: 10 }}><div style={panelTitle}>Presentations</div>{presentations.map((item) => <button key={item.id} onClick={() => setSelectedId(item.id)} style={{ ...listButton, background: item.id === selectedId ? "#eef6ff" : "#fff", borderColor: item.id === selectedId ? "#b8dcff" : "#e8ecef" }}><span><strong>{item.name}</strong><small>{item.presentation_type === "solar" ? "Solar" : "Windows & Doors"}</small></span><span style={{ fontSize: 9, color: item.active ? "#198754" : "#999" }}>{item.active ? "Active" : "Off"}</span></button>)}</div>
-      {selectedPresentation ? <>
+    {loading ? <div className="card" style={{ padding: 50, textAlign: "center" }}>Loading templates...</div> : <div style={{ display: "grid", gridTemplateColumns: "260px minmax(0,1fr) 340px", gap: 14, alignItems: "start" }}>
+      <div className="card" style={{ padding: 10 }}><div style={panelTitle}>Templates</div>{templates.map((item) => { const type = item.template_type || item.presentation_type; return <button key={item.id} onClick={() => setSelectedId(item.id)} style={{ ...listButton, background: item.id === selectedId ? "#eef6ff" : "#fff", borderColor: item.id === selectedId ? "#b8dcff" : "#e8ecef" }}><span><strong>{item.name}</strong><small>{type === "solar" ? "Solar" : type === "windows" ? "Windows & Doors" : type || "Template"}</small></span><span style={{ fontSize: 9, color: item.active ? "#198754" : "#999" }}>{item.active ? "Active" : "Off"}</span></button> })}</div>
+      {selectedTemplate ? <>
         <div className="card" style={{ padding: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}><div><input value={selectedPresentation.name} onChange={(e) => setPresentations((current) => current.map((item) => item.id === selectedId ? { ...item, name: e.target.value } : item))} onBlur={() => updatePresentation({ name: selectedPresentation.name })} style={titleInput} /><div style={{ fontSize: 10, color: "#8b949e", marginTop: 4 }}>{selectedPresentation.presentation_type === "solar" ? "Solar presentation" : "Windows & Doors presentation"}</div></div><label style={{ display: "flex", gap: 7, alignItems: "center", fontSize: 11 }}><input type="checkbox" checked={selectedPresentation.active} onChange={(e) => updatePresentation({ active: e.target.checked })} /> Active</label></div>
-          <div style={{ display: "grid", gap: 8 }}>{slides.map((slide, index) => <button key={slide.id} onClick={() => setSelectedSlideId(slide.id)} style={{ ...slideRow, background: slide.id === selectedSlideId ? "#f4f8fc" : "#fff", borderColor: slide.id === selectedSlideId ? "#b8dcff" : "#e5e9ed" }}><GripVertical size={15} color="#aab2b9" /><span style={slideNumber}>{index + 1}</span><span style={{ flex: 1, minWidth: 0, textAlign: "left" }}><strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{slide.title || "Untitled slide"}</strong><small style={{ color: "#8b949e", display: "block", marginTop: 3 }}>Slide {index + 1}</small></span></button>)}</div>
-          <button onClick={addSlide} disabled={saving} style={{ ...buttonStyle, marginTop: 12, width: "100%", justifyContent: "center" }}><Plus size={14} /> Add slide</button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}><div><input value={selectedTemplate.name} onChange={(e) => setTemplates((current) => current.map((item) => item.id === selectedId ? { ...item, name: e.target.value } : item))} onBlur={() => updateTemplate({ name: selectedTemplate.name })} style={titleInput} /><div style={{ fontSize: 10, color: "#8b949e", marginTop: 4 }}>{selectedTemplate.template_type || selectedTemplate.presentation_type || "Template"}</div></div><label style={{ display: "flex", gap: 7, alignItems: "center", fontSize: 11 }}><input type="checkbox" checked={Boolean(selectedTemplate.active)} onChange={(e) => updateTemplate({ active: e.target.checked })} /> Active</label></div>
+          <div style={{ display: "grid", gap: 8 }}>{pages.map((page, index) => <button key={page.id} onClick={() => setSelectedPageId(page.id)} style={{ ...slideRow, background: page.id === selectedPageId ? "#f4f8fc" : "#fff", borderColor: page.id === selectedPageId ? "#b8dcff" : "#e5e9ed" }}><GripVertical size={15} color="#aab2b9" /><span style={slideNumber}>{index + 1}</span><span style={{ flex: 1, minWidth: 0, textAlign: "left" }}><strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{page.title || `Untitled page ${index + 1}`}</strong><small style={{ color: "#8b949e", display: "block", marginTop: 3 }}>Page {index + 1}</small></span></button>)}</div>
+          <button onClick={addPage} disabled={saving} style={{ ...buttonStyle, marginTop: 12, width: "100%", justifyContent: "center" }}><Plus size={14} /> Add page</button>
         </div>
-        <div className="card" style={{ padding: 14 }}>{selectedSlide ? <>
-          <div style={panelTitle}>Slide {slides.findIndex((item) => item.id === selectedSlideId) + 1}</div>
-          <label style={labelStyle}>Title<input value={selectedSlide.title} onChange={(e) => updateSlide("title", e.target.value)} style={fieldStyle} /></label>
-          <label style={labelStyle}>Subtitle<input value={selectedSlide.subtitle || ""} onChange={(e) => updateSlide("subtitle", e.target.value)} style={fieldStyle} /></label>
-          <label style={labelStyle}>Body<textarea value={selectedSlide.body || ""} onChange={(e) => updateSlide("body", e.target.value)} rows={7} style={{ ...fieldStyle, resize: "vertical" }} /></label>
-          <label style={labelStyle}>Settings<textarea value={settingsText} onChange={(e) => setSettingsText(e.target.value)} rows={14} spellCheck={false} style={{ ...fieldStyle, resize: "vertical", fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace", fontSize: 10, lineHeight: 1.45 }} /><small style={{ fontSize: 9, fontWeight: 500, color: "#8b949e" }}>Edit the slide settings as JSON. These values control the slide's visual styling and configuration.</small></label>
-          <div style={{ display: "flex", gap: 7, marginTop: 14 }}><button onClick={() => moveSlide(-1)} style={iconButton} title="Move up"><ChevronLeft size={15} /></button><button onClick={() => moveSlide(1)} style={iconButton} title="Move down"><ChevronRight size={15} /></button><button onClick={deleteSlide} style={{ ...iconButton, color: "#b42318" }} title="Delete"><Trash2 size={15} /></button><button onClick={saveSlide} disabled={saving} style={{ ...buttonStyle, marginLeft: "auto" }}><Save size={14} /> {saving ? "Saving..." : "Save slide"}</button></div>
-        </> : <div style={{ padding: 40, textAlign: "center", color: "#8a939a", fontSize: 11 }}>Select a slide to edit it.</div>}</div>
-      </> : <div className="card" style={{ gridColumn: "2 / span 2", padding: 50, textAlign: "center" }}>No presentation selected.</div>}
+        <div className="card" style={{ padding: 14 }}>{selectedPage ? <>
+          <div style={panelTitle}>Page {pages.findIndex((item) => item.id === selectedPageId) + 1}</div>
+          <label style={labelStyle}>Title<input value={selectedPage.title} onChange={(e) => updatePage("title", e.target.value)} style={fieldStyle} /></label>
+          <label style={labelStyle}>Subtitle<input value={selectedPage.subtitle || ""} onChange={(e) => updatePage("subtitle", e.target.value)} style={fieldStyle} /></label>
+          <label style={labelStyle}>Body<textarea value={selectedPage.body || ""} onChange={(e) => updatePage("body", e.target.value)} rows={7} style={{ ...fieldStyle, resize: "vertical" }} /></label>
+          <label style={labelStyle}>Settings<textarea value={settingsText} onChange={(e) => setSettingsText(e.target.value)} rows={14} spellCheck={false} style={{ ...fieldStyle, resize: "vertical", fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace", fontSize: 10, lineHeight: 1.45 }} /><small style={{ fontSize: 9, fontWeight: 500, color: "#8b949e" }}>Edit the page settings as JSON. These values control the page's visual styling and configuration.</small></label>
+          <div style={{ display: "flex", gap: 7, marginTop: 14 }}><button onClick={() => movePage(-1)} style={iconButton} title="Move up"><ChevronLeft size={15} /></button><button onClick={() => movePage(1)} style={iconButton} title="Move down"><ChevronRight size={15} /></button><button onClick={deletePage} style={{ ...iconButton, color: "#b42318" }} title="Delete"><Trash2 size={15} /></button><button onClick={savePage} disabled={saving} style={{ ...buttonStyle, marginLeft: "auto" }}><Save size={14} /> {saving ? "Saving..." : "Save page"}</button></div>
+        </> : <div style={{ padding: 40, textAlign: "center", color: "#8a939a", fontSize: 11 }}>Select a page to edit it.</div>}</div>
+      </> : <div className="card" style={{ gridColumn: "2 / span 2", padding: 50, textAlign: "center" }}>No template selected.</div>}
     </div>}
   </section>
 }
