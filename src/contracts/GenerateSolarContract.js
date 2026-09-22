@@ -51,7 +51,7 @@ function interpolate(body, appointment, epvs) {
 
 async function imageData(url) {
   const source = String(url || "").trim()
-  if (!source) throw new Error("No appointments.open_solar_image value was provided.")
+  if (!source) throw new Error("No image URL was provided.")
   try {
     let requestUrl = source
     const parsed = new URL(source, window.location.origin)
@@ -59,7 +59,7 @@ async function imageData(url) {
       requestUrl = `/api/opensolar-image?url=${encodeURIComponent(source)}`
     }
     const response = await fetch(requestUrl)
-    if (!response.ok) throw new Error(`OpenSolar image request returned HTTP ${response.status}`)
+    if (!response.ok) throw new Error(`Image request returned HTTP ${response.status}`)
     const blob = await response.blob()
     const objectUrl = URL.createObjectURL(blob)
     try {
@@ -69,7 +69,7 @@ async function imageData(url) {
       const canvas = document.createElement("canvas")
       canvas.width = image.naturalWidth || image.width
       canvas.height = image.naturalHeight || image.height
-      if (!canvas.width || !canvas.height) throw new Error("OpenSolar image returned no dimensions.")
+      if (!canvas.width || !canvas.height) throw new Error("Image returned no dimensions.")
       const context = canvas.getContext("2d")
       if (!context) throw new Error("Unable to create image canvas.")
       context.drawImage(image, 0, 0)
@@ -78,7 +78,7 @@ async function imageData(url) {
       URL.revokeObjectURL(objectUrl)
     }
   } catch (error) {
-    console.error("Unable to load appointments.open_solar_image", error)
+    console.error("Unable to load contract image", error)
     throw error
   }
 }
@@ -99,6 +99,71 @@ async function drawImage(pdf, url, x, y, width, maxHeight = 110) {
   pdf.roundedRect(x, y, width, h + 4, 2.5, 2.5, "F")
   pdf.addImage(image.dataUrl, "PNG", imageX, imageY, w, h, undefined, "FAST")
   return y + h + 12
+}
+
+function drawBlueprintHouse(pdf, x, y, width, height, accent) {
+  pdf.setDrawColor(...accent)
+  pdf.setLineWidth(0.32)
+
+  const roofPeakX = x + width * 0.58
+  const roofY = y + height * 0.08
+  const eaveY = y + height * 0.32
+  const baseY = y + height * 0.82
+  const leftX = x + width * 0.12
+  const rightX = x + width * 0.92
+
+  // Main house outline.
+  pdf.line(leftX, eaveY, roofPeakX, roofY)
+  pdf.line(roofPeakX, roofY, rightX, eaveY)
+  pdf.line(leftX, eaveY, leftX, baseY)
+  pdf.line(rightX, eaveY, rightX, baseY)
+  pdf.line(leftX, baseY, rightX, baseY)
+
+  // Front gable.
+  const gableLeft = x + width * 0.26
+  const gableRight = x + width * 0.67
+  const gablePeak = x + width * 0.47
+  pdf.line(gableLeft, baseY, gableLeft, eaveY + height * 0.06)
+  pdf.line(gableLeft, eaveY + height * 0.06, gablePeak, y + height * 0.21)
+  pdf.line(gablePeak, y + height * 0.21, gableRight, eaveY + height * 0.06)
+  pdf.line(gableRight, eaveY + height * 0.06, gableRight, baseY)
+  pdf.line(gablePeak, y + height * 0.21, gablePeak, baseY)
+
+  // Door.
+  pdf.rect(x + width * 0.36, y + height * 0.50, width * 0.13, height * 0.32)
+  pdf.line(x + width * 0.425, y + height * 0.50, x + width * 0.425, y + height * 0.82)
+  pdf.line(x + width * 0.36, y + height * 0.66, x + width * 0.49, y + height * 0.66)
+
+  // Windows.
+  pdf.rect(x + width * 0.20, y + height * 0.49, width * 0.13, height * 0.16)
+  pdf.line(x + width * 0.265, y + height * 0.49, x + width * 0.265, y + height * 0.65)
+  pdf.line(x + width * 0.20, y + height * 0.57, x + width * 0.33, y + height * 0.57)
+  pdf.rect(x + width * 0.72, y + height * 0.49, width * 0.13, height * 0.16)
+  pdf.line(x + width * 0.785, y + height * 0.49, x + width * 0.785, y + height * 0.65)
+  pdf.line(x + width * 0.72, y + height * 0.57, x + width * 0.85, y + height * 0.57)
+
+  // Solar panel array on the main roof.
+  const panelLeft = x + width * 0.54
+  const panelRight = x + width * 0.88
+  const panelTop = y + height * 0.10
+  const panelBottom = y + height * 0.28
+  pdf.line(panelLeft, panelTop, panelRight, panelTop + height * 0.04)
+  pdf.line(panelLeft, panelBottom, panelRight, panelBottom + height * 0.04)
+  pdf.line(panelLeft, panelTop, panelLeft, panelBottom)
+  pdf.line(panelRight, panelTop + height * 0.04, panelRight, panelBottom + height * 0.04)
+  for (let i = 1; i < 6; i += 1) {
+    const px = panelLeft + ((panelRight - panelLeft) * i / 6)
+    pdf.line(px, panelTop + (px - panelLeft) * 0.12, px, panelBottom + (px - panelLeft) * 0.12)
+  }
+  pdf.line(panelLeft, panelTop + height * 0.09, panelRight, panelTop + height * 0.13)
+
+  // Subtle Scottish landscape / ground lines.
+  const groundY = y + height * 0.91
+  pdf.line(x, groundY, x + width * 0.30, groundY - 5)
+  pdf.line(x + width * 0.30, groundY - 5, x + width * 0.57, groundY + 2)
+  pdf.line(x + width * 0.57, groundY + 2, x + width, groundY - 4)
+  pdf.line(x, groundY + 5, x + width * 0.23, groundY + 2)
+  pdf.line(x + width * 0.76, groundY + 4, x + width, groundY + 1)
 }
 
 function header(pdf, settings) {
@@ -124,7 +189,32 @@ function parseTermsSections(raw){const sections=[];let current=[];String(raw||""
 function buildTermsLines(pdf,sections,columnWidth,fontSize,headingSize,sectionSpacing){const lines=[];sections.forEach(section=>{const normal=String(section).replace(/\s+/g," ").trim();const numbered=normal.match(/^(\d+\.\s+)(.*)$/);if(!numbered){pdf.setFont("helvetica","normal");pdf.setFontSize(fontSize);pdf.splitTextToSize(normal,columnWidth).forEach(text=>lines.push({text,boldPrefix:""}));lines.push({spacing:sectionSpacing});return}const headingMatch=numbered[2].match(/^(.+?\.)\s+(.*)$/);const prefix=numbered[1]+(headingMatch?headingMatch[1]+" ":"");const bodyText=headingMatch?headingMatch[2]:numbered[2];pdf.setFont("helvetica","bold");pdf.setFontSize(headingSize);const prefixWidth=pdf.getTextWidth(prefix);pdf.setFont("helvetica","normal");pdf.setFontSize(fontSize);if(prefixWidth<columnWidth-10){const first=pdf.splitTextToSize(bodyText,Math.max(10,columnWidth-prefixWidth))[0]||"";lines.push({text:first,boldPrefix:prefix});const rest=bodyText.slice(first.length).trim();if(rest)pdf.splitTextToSize(rest,columnWidth).forEach(text=>lines.push({text,boldPrefix:""}))}else{lines.push({text:prefix,boldPrefix:""});pdf.splitTextToSize(bodyText,columnWidth).forEach(text=>lines.push({text,boldPrefix:""}))}lines.push({spacing:sectionSpacing})});return lines}
 function drawTermsConditions(pdf,page,ctx,appointment,epvs){const settings=page.settings||{};const width=ctx.width-ctx.padding*2;const gap=Number(settings.column_gap_mm||6);const columnWidth=(width-gap)/2;const top=ctx.y+10;const bottom=ctx.height-17;let fontSize=Number(settings.font_size||6.5);let lineHeight=Number(settings.line_height||3.1);const sectionSpacing=Number(settings.section_spacing||2);const headingSize=Number(settings.heading_font_size||7);const sections=parseTermsSections(interpolate(String(page.body||""),appointment,epvs));let lines=buildTermsLines(pdf,sections,columnWidth,fontSize,headingSize,sectionSpacing);for(let i=0;i<12;i+=1){const capacity=Math.floor((bottom-top)/lineHeight)*2;const required=lines.reduce((count,line)=>count+(line.spacing?0:1),0);if(required<=capacity)break;fontSize=Math.max(5.15,fontSize*.96);lineHeight=Math.max(2.35,lineHeight*.96);lines=buildTermsLines(pdf,sections,columnWidth,fontSize,headingSize,sectionSpacing)}let column=0;let x=ctx.padding;let y=top;for(const line of lines){if(column>1)break;if(line.spacing){if(y+line.spacing>bottom){column+=1;x=ctx.padding+columnWidth+gap;y=top}else y+=line.spacing;continue}if(y+lineHeight>bottom){column+=1;x=ctx.padding+columnWidth+gap;y=top}if(column>1)break;pdf.setTextColor(...ctx.text);if(line.boldPrefix){pdf.setFont("helvetica","bold");pdf.setFontSize(headingSize);const prefixWidth=pdf.getTextWidth(line.boldPrefix);pdf.text(line.boldPrefix,x,y);pdf.setFont("helvetica","normal");pdf.setFontSize(fontSize);pdf.text(line.text,x+prefixWidth,y)}else{pdf.setFont("helvetica","normal");pdf.setFontSize(fontSize);pdf.text(line.text,x,y)}y+=lineHeight}}
 
-async function renderPage(pdf,page,index,pageCount,appointment,epvs){const settings=page.settings||{};const ctx=header(pdf,settings);const kind=settings.page_kind||"standard";const data=epvs?.data||{};const results=epvs?.results||{};if(kind==="cover"){pdf.setFillColor(...rgb(settings.background,[6,47,79]));pdf.rect(0,0,ctx.width,ctx.height,"F");pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(28);pdf.text("Digital Solar Contract",ctx.padding,70);pdf.setFont("helvetica","normal");pdf.setFontSize(13);pdf.text("Prepared for",ctx.padding,83);pdf.setFont("helvetica","bold");pdf.setFontSize(20);pdf.text(textValue(appointment?.name,"Customer"),ctx.padding,94);pdf.setFont("helvetica","normal");pdf.setFontSize(9);pdf.setTextColor(205,222,232);pdf.text([appointment?.address,appointment?.postcode].filter(Boolean).join(", "),ctx.padding,103);return}title(pdf,page,ctx);let y=ctx.y+28;const width=ctx.width-ctx.padding*2;if(kind==="system_overview"){const image=getOpenSolarImageUrl(appointment);if(!image)throw new Error("appointments.open_solar_image is empty on this appointment.");y=await drawImage(pdf,image,ctx.padding,y,width,110);const batteryCapacity=Number(data.batteryCapacity||0);const solarArrays=Array.isArray(data.arrays)?data.arrays.filter(array=>Number(array?.panelCount||0)>0):[];const totalPanelCount=solarArrays.reduce((total,array)=>total+Number(array?.panelCount||0),0);const panelWattages=solarArrays.map(array=>Number(array?.panelWattage||0)).filter(value=>value>0);const panelWattage=panelWattages[0]||Number(data.panelWattage||0);const solarPanelDisplay=totalPanelCount>0?`${num(totalPanelCount)} × ${num(panelWattage)} W`:data.panelCount||data.panelWattage?`${num(data.panelCount)} × ${num(data.panelWattage)} W`:"—";const systemRows=[["Customer",textValue(appointment?.name)],["System size",results.systemSize?`${num(results.systemSize,2)} kWp`:"—"],["Solar panels",solarPanelDisplay],["Inverter",data.inverterCapacity?`${num(data.inverterCapacity,1)} kW`:"—"],["Battery",batteryCapacity>0?`${num(batteryCapacity,1)} kWh`:"Not included"],["Estimated generation",results.generation?`${num(results.generation)} kWh / year`:"—"]];const tableTop=y+2;const tableHeight=systemRows.length*10+5;pdf.setFillColor(252,253,254);pdf.roundedRect(ctx.padding,tableTop-7,width,tableHeight,2.5,2.5,"F");y=rows(pdf,systemRows,ctx.padding,tableTop,width,ctx.text);body(pdf,page.body,ctx.padding,y+8,width,ctx.text,appointment,epvs)}else if(kind==="itemised_breakdown"){drawItemisedBreakdown(pdf,page,ctx,data,results,appointment,epvs)}else if(kind==="terms_conditions"){drawTermsConditions(pdf,page,ctx,appointment,epvs)}else if(kind==="accreditations"){const items=Array.isArray(settings.items)?settings.items:[];items.forEach(item=>{pdf.setFillColor(246,248,250);pdf.roundedRect(ctx.padding,y,width,20,3,3,"F");pdf.setTextColor(...ctx.text);pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text(textValue(item.name,"Accreditation"),ctx.padding+7,y+8);pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(100,112,120);pdf.text(textValue(item.description,""),ctx.padding+7,y+14);y+=25});body(pdf,page.body,ctx.padding,y+4,width,ctx.text,appointment,epvs)}else if(kind==="epvs"){rows(pdf,[["System size",results.systemSize?`${num(results.systemSize,2)} kWp`:"—"],["Annual consumption",data.annualConsumption?`${num(data.annualConsumption)} kWh`:"—"],["Estimated generation",results.generation?`${num(results.generation)} kWh`:"—"],["Solar self-consumption",results.solarSelfConsumption?`${num(results.solarSelfConsumption)} kWh`:"—"],["Estimated export",results.exportKwh?`${num(results.exportKwh)} kWh`:"—"],["Annual saving",money(results.annualSaving)],["Simple payback",results.simplePayback?`${num(results.simplePayback,1)} years`:"—"],["30 year saving",money(results.thirtyYearSavings)],["30 year return",money(results.thirtyYearProfit)]],ctx.padding,y,width,ctx.text,true)}else if(kind==="datasheets"){const documents=Array.isArray(settings.documents)?settings.documents:[];documents.forEach(doc=>{pdf.setTextColor(...ctx.text);pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.text(textValue(doc.title,"Datasheet"),ctx.padding,y);pdf.setFont("helvetica","normal");pdf.setFontSize(7);pdf.setTextColor(105,116,124);pdf.text(textValue(doc.description,""),ctx.padding,y+5);y+=14});body(pdf,page.body,ctx.padding,y+4,width,ctx.text,appointment,epvs)}else body(pdf,page.body,ctx.padding,y,width,ctx.text,appointment,epvs)}
+async function renderPage(pdf,page,index,pageCount,appointment,epvs){const settings=page.settings||{};const ctx=header(pdf,settings);const kind=settings.page_kind||"standard";const data=epvs?.data||{};const results=epvs?.results||{};
+  if(kind==="cover"){
+    const navy=rgb(settings.background,[5,47,79]);
+    const cyan=[52,190,245];
+    pdf.setFillColor(...navy);pdf.rect(0,0,ctx.width,ctx.height,"F");
+    let logo=null;
+    try{logo=await imageData("/homeshield-logo.png")}catch(error){console.warn("Homeshield logo could not be loaded:",error)}
+    if(logo){const logoWidth=55;const logoHeight=logoWidth*(logo.height/logo.width);pdf.addImage(logo.dataUrl,"PNG",ctx.padding,18,logoWidth,logoHeight,undefined,"FAST")}
+    else{pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(13);pdf.text("HOMESHIELD SCOTLAND LTD",ctx.padding,27)}
+    pdf.setTextColor(210,225,235);pdf.setFont("helvetica","normal");pdf.setFontSize(6.5);pdf.text("WINDOWS   |   DOORS   |   SOLAR   |   RENEWABLES",ctx.width-ctx.padding,24,{align:"right"});
+    pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(27);pdf.text("Digital Solar Contract",ctx.padding,78);
+    pdf.setFont("helvetica","normal");pdf.setFontSize(11);pdf.text("Prepared for",ctx.padding,91);
+    pdf.setFont("helvetica","bold");pdf.setFontSize(17);pdf.text(textValue(appointment?.name||data.customerName,"Customer"),ctx.padding,103);
+    pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(205,221,232);const address=[appointment?.address,appointment?.postcode].filter(Boolean).join(", ");if(address)pdf.text(address,ctx.padding,113);
+    pdf.setFillColor(...cyan);pdf.rect(ctx.padding,122,26,1.2,"F");
+    pdf.setTextColor(205,221,232);pdf.setFontSize(7);pdf.text("CLEANER HOMES",ctx.width-ctx.padding,54,{align:"right"});pdf.text("BRIGHTER FUTURES",ctx.width-ctx.padding,61,{align:"right"});pdf.text("A GREENER SCOTLAND",ctx.width-ctx.padding,68,{align:"right"});
+    pdf.setDrawColor(...cyan);pdf.setLineWidth(0.3);pdf.line(ctx.width-ctx.padding-16,71,ctx.width-ctx.padding,71);
+    drawBlueprintHouse(pdf,ctx.padding-3,145,ctx.width-ctx.padding*2+6,105,cyan);
+    pdf.setFillColor(...navy);pdf.rect(0,ctx.height-57,ctx.width,57,"F");pdf.setFillColor(...cyan);pdf.rect(ctx.padding,ctx.height-51,1.3,32,"F");
+    pdf.setTextColor(215,229,238);pdf.setFont("helvetica","normal");pdf.setFontSize(7);pdf.text("INVESTING IN",ctx.padding+8,ctx.height-43);pdf.text("A CLEANER, GREENER",ctx.padding+8,ctx.height-34);pdf.text("SCOTLAND",ctx.padding+8,ctx.height-25);
+    const benefits=[["CLEANER","ENERGY"],["LOWER","BILLS"],["WARMER","HOMES"],["BRIGHTER","FUTURES"]];const startX=ctx.width-ctx.padding-64;benefits.forEach((item,i)=>{const bx=startX+i*17;pdf.setDrawColor(...cyan);pdf.setLineWidth(0.45);pdf.circle(bx,ctx.height-42,3.5,"S");pdf.setTextColor(220,233,241);pdf.setFont("helvetica","normal");pdf.setFontSize(5.2);pdf.text(item[0],bx,ctx.height-31,{align:"center"});pdf.text(item[1],bx,ctx.height-24,{align:"center"})})
+    return
+  }
+  title(pdf,page,ctx);let y=ctx.y+28;const width=ctx.width-ctx.padding*2;
+  if(kind==="system_overview"){const image=getOpenSolarImageUrl(appointment);if(!image)throw new Error("appointments.open_solar_image is empty on this appointment.");y=await drawImage(pdf,image,ctx.padding,y,width,110);const batteryCapacity=Number(data.batteryCapacity||0);const solarArrays=Array.isArray(data.arrays)?data.arrays.filter(array=>Number(array?.panelCount||0)>0):[];const totalPanelCount=solarArrays.reduce((total,array)=>total+Number(array?.panelCount||0),0);const panelWattages=solarArrays.map(array=>Number(array?.panelWattage||0)).filter(value=>value>0);const panelWattage=panelWattages[0]||Number(data.panelWattage||0);const solarPanelDisplay=totalPanelCount>0?`${num(totalPanelCount)} × ${num(panelWattage)} W`:data.panelCount||data.panelWattage?`${num(data.panelCount)} × ${num(data.panelWattage)} W`:"—";const systemRows=[["Customer",textValue(appointment?.name)],["System size",results.systemSize?`${num(results.systemSize,2)} kWp`:"—"],["Solar panels",solarPanelDisplay],["Inverter",data.inverterCapacity?`${num(data.inverterCapacity,1)} kW`:"—"],["Battery",batteryCapacity>0?`${num(batteryCapacity,1)} kWh`:"Not included"],["Estimated generation",results.generation?`${num(results.generation)} kWh / year`:"—"]];const tableTop=y+2;const tableHeight=systemRows.length*10+5;pdf.setFillColor(252,253,254);pdf.roundedRect(ctx.padding,tableTop-7,width,tableHeight,2.5,2.5,"F");y=rows(pdf,systemRows,ctx.padding,tableTop,width,ctx.text);body(pdf,page.body,ctx.padding,y+8,width,ctx.text,appointment,epvs)}else if(kind==="itemised_breakdown"){drawItemisedBreakdown(pdf,page,ctx,data,results,appointment,epvs)}else if(kind==="terms_conditions"){drawTermsConditions(pdf,page,ctx,appointment,epvs)}else if(kind==="accreditations"){const items=Array.isArray(settings.items)?settings.items:[];items.forEach(item=>{pdf.setFillColor(246,248,250);pdf.roundedRect(ctx.padding,y,width,20,3,3,"F");pdf.setTextColor(...ctx.text);pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text(textValue(item.name,"Accreditation"),ctx.padding+7,y+8);pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(100,112,120);pdf.text(textValue(item.description,""),ctx.padding+7,y+14);y+=25});body(pdf,page.body,ctx.padding,y+4,width,ctx.text,appointment,epvs)}else if(kind==="epvs"){rows(pdf,[["System size",results.systemSize?`${num(results.systemSize,2)} kWp`:"—"],["Annual consumption",data.annualConsumption?`${num(data.annualConsumption)} kWh`:"—"],["Estimated generation",results.generation?`${num(results.generation)} kWh`:"—"],["Solar self-consumption",results.solarSelfConsumption?`${num(results.solarSelfConsumption)} kWh`:"—"],["Estimated export",results.exportKwh?`${num(results.exportKwh)} kWh`:"—"],["Annual saving",money(results.annualSaving)],["Simple payback",results.simplePayback?`${num(results.simplePayback,1)} years`:"—"],["30 year saving",money(results.thirtyYearSavings)],["30 year return",money(results.thirtyYearProfit)]],ctx.padding,y,width,ctx.text,true)}else if(kind==="datasheets"){const documents=Array.isArray(settings.documents)?settings.documents:[];documents.forEach(doc=>{pdf.setTextColor(...ctx.text);pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.text(textValue(doc.title,"Datasheet"),ctx.padding,y);pdf.setFont("helvetica","normal");pdf.setFontSize(7);pdf.setTextColor(105,116,124);pdf.text(textValue(doc.description,""),ctx.padding,y+5);y+=14});body(pdf,page.body,ctx.padding,y+4,width,ctx.text,appointment,epvs)}else body(pdf,page.body,ctx.padding,y,width,ctx.text,appointment,epvs)
+}
 
 function footer(pdf,index,count,settings,appointment){if(settings.show_footer===false)return;const width=pdf.internal.pageSize.getWidth();const height=pdf.internal.pageSize.getHeight();const padding=Number(settings.padding_mm||18);pdf.setDrawColor(...rgb(settings.accent));pdf.setLineWidth(.25);pdf.line(padding,height-13,width-padding,height-13);pdf.setTextColor(120,130,138);pdf.setFont("helvetica","normal");pdf.setFontSize(6.5);pdf.text(textValue(appointment?.name,"Customer"),padding,height-8);pdf.text(`Page ${index+1} of ${count}`,width-padding,height-8,{align:"right"})}
 
