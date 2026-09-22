@@ -5,7 +5,7 @@ import SalesPresenter from "../components/SalesPresenter"
 
 const EMPTY_PAGE = { title: "", subtitle: "", body: "", settings: {} }
 
-function presentationTypeLabel(type) {
+function templateTypeLabel(type) {
   if (type === "solar") return "Solar"
   if (type === "windows") return "Windows & Doors"
   return type || "Other"
@@ -29,7 +29,7 @@ export default function SalesPresentations() {
   const templateGroups = useMemo(() => {
     const groups = new Map()
     templates.forEach((item) => {
-      const type = item.presentation_type || "other"
+      const type = item.template_type || "other"
       if (!groups.has(type)) groups.set(type, [])
       groups.get(type).push(item)
     })
@@ -49,7 +49,7 @@ export default function SalesPresentations() {
     setSelectedId(nextId)
     setExpandedTypes((current) => {
       const next = { ...current }
-      list.forEach((item) => { next[item.presentation_type || "other"] = true })
+      list.forEach((item) => { next[item.template_type || "other"] = true })
       return next
     })
     setLoading(false)
@@ -125,11 +125,11 @@ export default function SalesPresentations() {
 
   function selectTemplate(item) {
     setSelectedId(item.id)
-    setExpandedTypes((current) => ({ ...current, [item.presentation_type || "other"]: true }))
+    setExpandedTypes((current) => ({ ...current, [item.template_type || "other"]: true }))
   }
 
   if (preview && selectedTemplate) {
-    const type = selectedTemplate.presentation_type || "windows"
+    const type = selectedTemplate.template_type || "windows"
     const previewAppointment = type === "solar" ? { name: "Presentation Preview", product: "Solar" } : { name: "Presentation Preview", product: "Windows" }
     return <SalesPresenter appointment={previewAppointment} onClose={() => setPreview(false)} />
   }
@@ -153,7 +153,7 @@ export default function SalesPresentations() {
             return <div key={type} style={{ border: "1px solid #e7ebef", borderRadius: 9, overflow: "hidden", background: "#fff" }}>
               <button type="button" onClick={() => toggleType(type)} style={folderButton}>
                 <span style={folderIcon}>{expanded ? <ChevronDown size={14} /> : <ChevronRightIcon size={14} />}</span>
-                <span style={{ flex: 1, minWidth: 0 }}><strong>{presentationTypeLabel(type)}</strong><small>{items.length} {items.length === 1 ? "template" : "templates"}</small></span>
+                <span style={{ flex: 1, minWidth: 0 }}><strong>{templateTypeLabel(type)}</strong><small>{items.length} {items.length === 1 ? "template" : "templates"}</small></span>
                 <span style={folderCount}>{activeCount} active</span>
               </button>
               {expanded && <div style={{ padding: "4px 6px 7px", background: "#fafbfd", borderTop: "1px solid #eef1f4" }}>
@@ -168,7 +168,7 @@ export default function SalesPresentations() {
       </div>
       {selectedTemplate ? <>
         <div className="card" style={{ padding: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}><div><input value={selectedTemplate.name} onChange={(e) => setTemplates((current) => current.map((item) => item.id === selectedId ? { ...item, name: e.target.value } : item))} onBlur={() => updateTemplate({ name: selectedTemplate.name })} style={titleInput} /><div style={{ fontSize: 10, color: "#8b949e", marginTop: 4 }}>{presentationTypeLabel(selectedTemplate.presentation_type)}</div></div><label style={{ display: "flex", gap: 7, alignItems: "center", fontSize: 11 }}><input type="checkbox" checked={Boolean(selectedTemplate.active)} onChange={(e) => updateTemplate({ active: e.target.checked })} /> Active</label></div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}><div><input value={selectedTemplate.name} onChange={(e) => setTemplates((current) => current.map((item) => item.id === selectedId ? { ...item, name: e.target.value } : item))} onBlur={() => updateTemplate({ name: selectedTemplate.name })} style={titleInput} /><div style={{ fontSize: 10, color: "#8b949e", marginTop: 4 }}>{templateTypeLabel(selectedTemplate.template_type)}</div></div><label style={{ display: "flex", gap: 7, alignItems: "center", fontSize: 11 }}><input type="checkbox" checked={Boolean(selectedTemplate.active)} onChange={(e) => updateTemplate({ active: e.target.checked })} /> Active</label></div>
           <div style={{ display: "grid", gap: 8 }}>{pages.map((page, index) => <button key={page.id} onClick={() => setSelectedPageId(page.id)} style={{ ...slideRow, background: page.id === selectedPageId ? "#f4f8fc" : "#fff", borderColor: page.id === selectedPageId ? "#b8dcff" : "#e5e9ed" }}><GripVertical size={15} color="#aab2b9" /><span style={slideNumber}>{index + 1}</span><span style={{ flex: 1, minWidth: 0, textAlign: "left" }}><strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{page.title || `Untitled page ${index + 1}`}</strong><small style={{ color: "#8b949e", display: "block", marginTop: 3 }}>Page {index + 1}</small></span></button>)}</div>
           <button onClick={addPage} disabled={saving} style={{ ...buttonStyle, marginTop: 12, width: "100%", justifyContent: "center" }}><Plus size={14} /> Add page</button>
         </div>
