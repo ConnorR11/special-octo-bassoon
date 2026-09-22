@@ -16,7 +16,7 @@ function formatCurrency(value) { return new Intl.NumberFormat("en-GB", { style: 
 const GROUPS = [
   { key: "rts", label: "Sales", stages: ["Awaiting Funds", "Returned To Sales", "Pending Cancellation", "Long Term"], background: "#e0f2fe", border: "#bae6fd", text: "#075985", badge: "#bae6fd" },
   { key: "surveys", label: "Surveys", stages: ["Book for Survey", "Book for Survey (S)", "Survey Booked"], background: "#dcfce7", border: "#bbf7d0", text: "#166534", badge: "#bbf7d0" },
-  { key: "procurement", label: "Procurement", stages: ["To Be Ordered", "Awaiting Customer Confirmation", "Awaiting Manufacture Date"], background: "#ffedd5", border: "#fed7aa", text: "#9a3412", badge: "#fed7aa" },
+  { key: "procurement", label: "Procurement", stages: ["Costing", "To Be Ordered", "Awaiting Customer Confirmation", "Awaiting Manufacture Date"], background: "#ffedd5", border: "#fed7aa", text: "#9a3412", badge: "#fed7aa" },
   { key: "accounts", label: "Accounts", stages: ["Cancelled - Awaiting Refund", "Fit Complete - Accounts To Check", "Admin Fee Outstanding", "Accounts To Check (S)"], background: "#f3e8ff", border: "#e9d5ff", text: "#7e22ce", badge: "#e9d5ff" },
   { key: "remedials", label: "Remedials", stages: ["Remedial To Check", "Remedial Ordered", "Engineer To Book (R)", "Engineer Booked (R)"], background: "#fef3c7", border: "#fde68a", text: "#92400e", badge: "#fde68a" },
   { key: "complete", label: "Complete", stages: ["Remedial Complete", "NAPIT Sign Off Complete", "Contract Complete"], background: "#e0e7ff", border: "#c7d2fe", text: "#4338ca", badge: "#c7d2fe" },
