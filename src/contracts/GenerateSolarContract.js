@@ -162,7 +162,7 @@ function title(pdf, page, ctx) {
 
   pdf.setFillColor(...ctx.accent)
   if (terms) {
-    pdf.rect(ctx.padding, ctx.y + 5, ctx.width - (ctx.padding * 2), 1.2, "F")
+    pdf.rect(ctx.padding, ctx.y + 2, ctx.width - (ctx.padding * 2), 1.2, "F")
   } else {
     pdf.rect(ctx.padding, ctx.y + 15, 28, 1.2, "F")
   }
@@ -334,7 +334,7 @@ function drawTermsConditions(pdf, page, ctx, appointment, epvs) {
   const width = ctx.width - ctx.padding * 2
   const gap = Number(settings.column_gap_mm || 6)
   const columnWidth = (width - gap) / 2
-  const top = ctx.y + 17
+  const top = ctx.y + 10
   const bottom = ctx.height - 17
   const available = bottom - top
   let fontSize = Number(settings.font_size || 6.5)
