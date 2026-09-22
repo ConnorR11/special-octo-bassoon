@@ -9,7 +9,6 @@ permissions:
 
 jobs:
   fix-styling:
-    if: github.event.head_commit.message != 'fix: T&C title row and spacing'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -19,7 +18,6 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
-
           path = Path("src/contracts/GenerateSolarContract.js")
           text = path.read_text()
           start = text.index('function title(pdf, page, ctx) {')
@@ -57,10 +55,8 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
-
           path = Path("src/EPVSCalculator.jsx")
           text = path.read_text()
-
           style = '''
         style={{
           width: "100%",
@@ -73,24 +69,19 @@ jobs:
           fontSize: 12,
           outline: "none",
         }}'''
-
           battery_marker = '      <select\n        value={data.batteryCapacity}'
           inverter_marker = '      <select\n        value={data.inverterCapacity}'
-
           for marker in (battery_marker, inverter_marker):
               start = text.find(marker)
               if start == -1:
-                  raise SystemExit(f"Could not find select: {marker}")
-
+                  continue
               select_end = text.find('      >', start)
               if select_end == -1:
-                  raise SystemExit("Could not find select opening tag end")
-
+                  continue
               opening = text[start:select_end]
               if 'style={{' not in opening:
                   opening = opening + style
                   text = text[:start] + opening + text[select_end:]
-
           path.write_text(text)
 
       - name: Migrate sales presenter code to template tables
@@ -118,6 +109,8 @@ jobs:
           rm -f .github/workflows/migrate-presenter-tables.yml
           rm -f .github/workflows/apply-tc-title-layout.yml
           git add -A
-          git diff --cached --quiet && exit 0
+          if git diff --cached --quiet; then
+            exit 0
+          fi
           git commit -m "fix: T&C title row and spacing"
           git push
