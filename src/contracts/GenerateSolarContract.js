@@ -142,7 +142,7 @@ function header(pdf, settings) {
 
 function title(pdf, page, ctx) {
   const terms = page?.settings?.page_kind === "terms_conditions"
-  const titleY = ctx.y + 4
+  const titleY = terms ? ctx.y - 2 : ctx.y + 4
 
   pdf.setTextColor(...ctx.text)
   pdf.setFont("helvetica", "bold")
@@ -162,7 +162,7 @@ function title(pdf, page, ctx) {
 
   pdf.setFillColor(...ctx.accent)
   if (terms) {
-    pdf.rect(ctx.padding, ctx.y + 11, ctx.width - (ctx.padding * 2), 1.2, "F")
+    pdf.rect(ctx.padding, ctx.y + 5, ctx.width - (ctx.padding * 2), 1.2, "F")
   } else {
     pdf.rect(ctx.padding, ctx.y + 15, 28, 1.2, "F")
   }
