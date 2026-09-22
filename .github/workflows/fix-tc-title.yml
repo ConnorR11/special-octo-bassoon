@@ -1,0 +1,89 @@
+name: Adjust T&C title layout
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-tc-title.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.event.head_commit.message != 'fix: adjust T&C title layout [skip ci]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update renderer
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('src/contracts/GenerateSolarContract.js')
+          text = path.read_text()
+
+          old_title = '''function title(pdf, page, ctx) {
+            pdf.setTextColor(...ctx.text)
+            pdf.setFont("helvetica", "bold")
+            pdf.setFontSize(22)
+            pdf.text(page.title || "", ctx.padding, ctx.y + 4)
+
+            if (page.subtitle) {
+              pdf.setFont("helvetica", "normal")
+              pdf.setFontSize(9)
+              pdf.setTextColor(100, 112, 120)
+              pdf.text(page.subtitle, ctx.padding, ctx.y + 11)
+            }
+
+            pdf.setFillColor(...ctx.accent)
+            pdf.rect(ctx.padding, ctx.y + 15, 28, 1.2, "F")
+          }'''
+
+          new_title = '''function title(pdf, page, ctx) {
+            const terms = page.settings?.page_kind === "terms_conditions"
+            const titleSize = terms ? 16 : 22
+            const titleY = ctx.y + 5
+
+            pdf.setTextColor(...ctx.text)
+            pdf.setFont("helvetica", "bold")
+            pdf.setFontSize(titleSize)
+            pdf.text(page.title || "", ctx.padding, titleY)
+
+            if (page.subtitle) {
+              pdf.setFont("helvetica", "normal")
+              pdf.setFontSize(7)
+              pdf.setTextColor(100, 112, 120)
+              if (terms) {
+                pdf.text(page.subtitle, ctx.width - ctx.padding, titleY, { align: "right" })
+              } else {
+                pdf.setFontSize(9)
+                pdf.text(page.subtitle, ctx.padding, ctx.y + 11)
+              }
+            }
+
+            pdf.setFillColor(...ctx.accent)
+            pdf.rect(ctx.padding, ctx.y + (terms ? 10 : 15), ctx.width - ctx.padding * 2, 1.2, "F")
+          }'''
+
+          if old_title not in text:
+              raise SystemExit('Expected title function was not found')
+          text = text.replace(old_title, new_title, 1)
+
+          old_top = 'const top = ctx.y + 28'
+          new_top = 'const top = ctx.y + 18'
+          if old_top not in text:
+              raise SystemExit('Expected T&C top position was not found')
+          text = text.replace(old_top, new_top, 1)
+
+          path.write_text(text)
+          PY
+
+      - name: Commit changes and remove temporary workflow
+        run: |
+          rm .github/workflows/fix-tc-title.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/contracts/GenerateSolarContract.js .github/workflows/fix-tc-title.yml
+          git commit -m 'fix: adjust T&C title layout [skip ci]'
+          git push
