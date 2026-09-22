@@ -1,0 +1,37 @@
+name: Repair EPVS renderers
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Restore known-good contract renderer
+        run: git checkout 9418f0f160a6c35087a0fac5e2a8fce3bac46cdf -- src/contracts/GenerateSolarContract.js
+
+      - name: Remove standalone EPVS array table
+        run: git checkout 69a841318588b4cf7314a6419b99f35ba8ed40b2 -- src/components/EpvsPdfRenderer.jsx
+
+      - name: Verify build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Commit repaired renderers and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/repair-epvs-renderers.yml
+          git add src/contracts/GenerateSolarContract.js src/components/EpvsPdfRenderer.jsx
+          git commit -m "Repair EPVS renderers [skip ci]"
+          git push origin main
