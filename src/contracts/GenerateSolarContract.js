@@ -6,6 +6,7 @@ const CONTRACT_NAME = "Digital Solar Contract"
 
 const rgb = (value, fallback = [11, 93, 138]) => {
   const hex = String(value || "").replace("#", "")
+
   return /^[0-9a-f]{6}$/i.test(hex)
     ? [
         parseInt(hex.slice(0, 2), 16),
@@ -16,7 +17,9 @@ const rgb = (value, fallback = [11, 93, 138]) => {
 }
 
 const textValue = (v, fallback = "—") =>
-  v === undefined || v === null || v === "" ? fallback : String(v)
+  v === undefined || v === null || v === ""
+    ? fallback
+    : String(v)
 
 const num = (v, d = 0) =>
   Number(v || 0).toLocaleString("en-GB", {
@@ -36,13 +39,15 @@ const date = (v) => {
 
   const d = new Date(v)
 
-  return Number.isNaN(d.getTime())
-    ? String(v)
-    : d.toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      })
+  if (Number.isNaN(d.getTime())) {
+    return String(v)
+  }
+
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })
 }
 
 function interpolate(body, appointment, epvs) {
@@ -81,36 +86,31 @@ function interpolate(body, appointment, epvs) {
       appointment?.open_solar_image ||
       "",
 
-    system_size:
-      results.systemSize
-        ? `${num(results.systemSize, 2)} kWp`
-        : "—",
+    system_size: results.systemSize
+      ? `${num(results.systemSize, 2)} kWp`
+      : "—",
 
     panel_count:
       num(data.panelCount),
 
-    panel_wattage:
-      data.panelWattage
-        ? `${num(data.panelWattage)} W`
-        : "—",
+    panel_wattage: data.panelWattage
+      ? `${num(data.panelWattage)} W`
+      : "—",
 
-    inverter_capacity:
-      data.inverterCapacity
-        ? `${num(data.inverterCapacity, 1)} kW`
-        : "—",
+    inverter_capacity: data.inverterCapacity
+      ? `${num(data.inverterCapacity, 1)} kW`
+      : "—",
 
-    battery_capacity:
-      data.batteryEnabled
-        ? `${num(data.batteryCapacity, 1)} kWh`
-        : "Not included",
+    battery_capacity: data.batteryEnabled
+      ? `${num(data.batteryCapacity, 1)} kWh`
+      : "Not included",
 
     system_cost:
       money(data.systemCost),
 
-    annual_generation:
-      results.generation
-        ? `${num(results.generation)} kWh`
-        : "—",
+    annual_generation: results.generation
+      ? `${num(results.generation)} kWh`
+      : "—",
 
     annual_saving:
       money(results.annualSaving),
@@ -125,7 +125,9 @@ function interpolate(body, appointment, epvs) {
 async function imageData(url) {
   const source = String(url || "").trim()
 
-  if (!source) return null
+  if (!source) {
+    return null
+  }
 
   try {
     const response = await fetch(source, {
@@ -149,7 +151,8 @@ async function imageData(url) {
 
       await image.decode()
 
-      const canvas = document.createElement("canvas")
+      const canvas =
+        document.createElement("canvas")
 
       canvas.width =
         image.naturalWidth ||
@@ -168,7 +171,8 @@ async function imageData(url) {
         .drawImage(image, 0, 0)
 
       return {
-        dataUrl: canvas.toDataURL("image/png"),
+        dataUrl:
+          canvas.toDataURL("image/png"),
         width: canvas.width,
         height: canvas.height,
       }
@@ -195,7 +199,9 @@ async function drawImage(
 ) {
   const image = await imageData(url)
 
-  if (!image) return y
+  if (!image) {
+    return y
+  }
 
   const ratio =
     image.width / image.height
@@ -395,9 +401,7 @@ function rows(
   compact = false
 ) {
   const h =
-    compact
-      ? 8
-      : 10
+    compact ? 8 : 10
 
   values.forEach(
     ([label, value], i) => {
@@ -427,9 +431,7 @@ function rows(
       )
 
       pdf.setFontSize(
-        compact
-          ? 7.5
-          : 8.5
+        compact ? 7.5 : 8.5
       )
 
       pdf.text(
@@ -475,7 +477,9 @@ function body(
   appointment,
   epvs
 ) {
-  if (!content) return y
+  if (!content) {
+    return y
+  }
 
   const withoutImageToken =
     String(content).replace(
@@ -532,8 +536,7 @@ function drawItemisedBreakdown(
   ctx,
   data,
   results,
-  appointment,
-  epvs
+  appointment
 ) {
   const width =
     ctx.width -
@@ -564,20 +567,18 @@ function drawItemisedBreakdown(
   ]
 
   /*
-   * Supports both formats:
+   * Supports either:
    *
-   * Old:
    * [
    *   "Panels",
-   *   "Inverter",
-   *   "Battery"
+   *   "Inverter"
    * ]
    *
-   * New:
+   * OR:
+   *
    * [
    *   { name: "Panels", quantity: 12 },
-   *   { name: "Inverter", quantity: 1 },
-   *   { name: "Battery", quantity: 1 }
+   *   { name: "Inverter", quantity: 1 }
    * ]
    */
 
@@ -593,8 +594,7 @@ function drawItemisedBreakdown(
     configuredItems.map(
       (item) => {
         if (
-          typeof item ===
-          "string"
+          typeof item === "string"
         ) {
           return {
             name: item,
@@ -609,8 +609,7 @@ function drawItemisedBreakdown(
             "—",
 
           quantity:
-            item.quantity ??
-            1,
+            item.quantity ?? 1,
         }
       }
     )
@@ -649,14 +648,12 @@ function drawItemisedBreakdown(
 
   pdf.setFontSize(8)
 
-  // Product / service heading
   pdf.text(
     "PRODUCT / SERVICE",
     ctx.padding + 7,
     headerY
   )
 
-  // Quantity heading
   pdf.text(
     "QTY",
     ctx.padding + width - 7,
@@ -678,7 +675,6 @@ function drawItemisedBreakdown(
 
   items.forEach(
     (item, index) => {
-      // Alternating row background
       if (index % 2 === 0) {
         pdf.setFillColor(
           247,
@@ -697,10 +693,6 @@ function drawItemisedBreakdown(
         )
       }
 
-      /*
-       * PRODUCT / SERVICE
-       */
-
       pdf.setTextColor(
         ...ctx.text
       )
@@ -717,10 +709,6 @@ function drawItemisedBreakdown(
         ctx.padding + 7,
         y
       )
-
-      /*
-       * QUANTITY
-       */
 
       pdf.setFont(
         "helvetica",
@@ -756,8 +744,7 @@ function drawItemisedBreakdown(
     appointment?.sale_value ??
     appointment?.price
 
-  const boxHeight =
-    25
+  const boxHeight = 25
 
   pdf.setFillColor(
     ...ctx.accent
@@ -1063,8 +1050,7 @@ async function renderPage(
       ctx,
       data,
       results,
-      appointment,
-      epvs
+      appointment
     )
   }
 
@@ -1322,7 +1308,7 @@ async function renderPage(
   }
 
   /*
-   * STANDARD PAGE
+   * STANDARD
    */
 
   else {
@@ -1413,7 +1399,9 @@ export async function GenerateSolarContract({
   appointment,
   epvsCalculation,
 }) {
-  if (!appointment) return
+  if (!appointment) {
+    return
+  }
 
   /*
    * LOAD TEMPLATE
@@ -1448,7 +1436,7 @@ export async function GenerateSolarContract({
   }
 
   /*
-   * LOAD TEMPLATE PAGES
+   * LOAD PAGES
    */
 
   const {
@@ -1557,7 +1545,7 @@ export async function GenerateSolarContract({
   )
 
   /*
-   * SAVE PDF
+   * SAVE
    */
 
   const safeName =
