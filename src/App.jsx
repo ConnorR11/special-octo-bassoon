@@ -258,7 +258,7 @@ function App() {
   function handleOpenPickup() { if (selectedAppointment?.result) setPickupAppointment(selectedAppointment) }
   function handleBackToAppointments() { setPickupAppointment(null); setSelectedAppointment(null); setPage("appointments"); window.history.pushState({}, "", "/appointments") }
   function handleBackFromPickup() { setPickupAppointment(null) }
-  function handlePickupCreated(created, updatedOriginal) {
+  function handlePickupCreated(updatedOriginal) {
     setSelectedAppointment({ ...selectedAppointment, ...updatedOriginal, phone: updatedOriginal?.phone_number_1, email: updatedOriginal?.email_address })
     setPickupAppointment(null)
   }
@@ -303,7 +303,7 @@ function App() {
         ) : selected ? (
           <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated} />
         ) : page === "dashboard" ? (
-          <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={reportingLoading} setPage={handlePageChange} setSelected={setSelected} />
+          <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setSelected={setSelected} />
         ) : page === "marketing-tv" ? (
           <MarketingTV onSelectAppointment={handleAppointmentSelect} />
         ) : page === "marketing-dashboard" ? (
@@ -323,7 +323,7 @@ function App() {
         ) : page === "epvs" ? (
           <EPVSCalculator />
         ) : (
-          <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} loading={reportingLoading} setPage={handlePageChange} setSelected={setSelected} />
+          <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setSelected={setSelected} />
         )}
       </main>
     </div>
