@@ -2,11 +2,7 @@ import jsPDF from "jspdf"
 import { supabase } from "../lib/supabase"
 
 const CONTRACT_NAME = "Digital Solar Contract"
-
-const rgb = (value, fallback = [11, 93, 138]) => {
-  const hex = String(value || "").replace("#", "")
-  return /^[0-9a-f]{6}$/i.test(hex) ? [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)] : fallback
-}
+const rgb = (value, fallback = [11, 93, 138]) => { const hex = String(value || "").replace("#", ""); return /^[0-9a-f]{6}$/i.test(hex) ? [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)] : fallback }
 const textValue = (v, fallback = "—") => v === undefined || v === null || v === "" ? fallback : String(v)
 const num = (v, d = 0) => Number(v || 0).toLocaleString("en-GB", { minimumFractionDigits: d, maximumFractionDigits: d })
 const money = v => new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(Number(v || 0))
@@ -14,166 +10,30 @@ const date = v => { if (!v) return "—"; const d = new Date(v); return Number.i
 
 function interpolate(body, appointment, epvs) {
   const data = epvs?.data || {}, results = epvs?.results || {}
-  const values = {
-    customer_name: appointment?.name || data.customerName,
-    customer_address: appointment?.address || data.address,
-    postcode: appointment?.postcode || data.postcode,
-    phone: appointment?.phone || appointment?.phone_number_1,
-    email: appointment?.email || appointment?.email_address,
-    appointment_date: date(appointment?.appointment_date),
-    salesperson: appointment?.salesperson || appointment?.rep_allocated,
-    open_solar_image: appointment?.open_solar_image || "",
-    system_size: results.systemSize ? `${num(results.systemSize, 2)} kWp` : "—",
-    panel_count: num(data.panelCount),
-    panel_wattage: data.panelWattage ? `${num(data.panelWattage)} W` : "—",
-    inverter_capacity: data.inverterCapacity ? `${num(data.inverterCapacity, 1)} kW` : "—",
-    battery_capacity: data.batteryEnabled ? `${num(data.batteryCapacity, 1)} kWh` : "Not included",
-    system_cost: money(data.systemCost),
-    annual_generation: results.generation ? `${num(results.generation)} kWh` : "—",
-    annual_saving: money(results.annualSaving),
-  }
+  const values = { customer_name: appointment?.name || data.customerName, customer_address: appointment?.address || data.address, postcode: appointment?.postcode || data.postcode, phone: appointment?.phone || appointment?.phone_number_1, email: appointment?.email || appointment?.email_address, appointment_date: date(appointment?.appointment_date), salesperson: appointment?.salesperson || appointment?.rep_allocated, open_solar_image: appointment?.open_solar_image || "", system_size: results.systemSize ? `${num(results.systemSize, 2)} kWp` : "—", panel_count: num(data.panelCount), panel_wattage: data.panelWattage ? `${num(data.panelWattage)} W` : "—", inverter_capacity: data.inverterCapacity ? `${num(data.inverterCapacity, 1)} kW` : "—", battery_capacity: data.batteryEnabled ? `${num(data.batteryCapacity, 1)} kWh` : "Not included", system_cost: money(data.systemCost), annual_generation: results.generation ? `${num(results.generation)} kWh` : "—", annual_saving: money(results.annualSaving) }
   return String(body || "").replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, key) => textValue(values[key]))
 }
 
 async function imageData(url) {
-  const source = String(url || "").trim()
-  if (!source) return null
-  try {
-    const response = await fetch(source, { mode: "cors" })
-    if (!response.ok) throw new Error(`Image request returned ${response.status}`)
-    const blob = await response.blob()
-    const objectUrl = URL.createObjectURL(blob)
-    try {
-      const image = new Image()
-      image.crossOrigin = "anonymous"
-      image.src = objectUrl
-      await image.decode()
-      const canvas = document.createElement("canvas")
-      canvas.width = image.naturalWidth || image.width
-      canvas.height = image.naturalHeight || image.height
-      if (!canvas.width || !canvas.height) return null
-      canvas.getContext("2d").drawImage(image, 0, 0)
-      return { dataUrl: canvas.toDataURL("image/png"), width: canvas.width, height: canvas.height }
-    } finally { URL.revokeObjectURL(objectUrl) }
-  } catch (error) {
-    console.warn("Unable to load OpenSolar design image", error)
-    return null
-  }
+  const source = String(url || "").trim(); if (!source) return null
+  try { const response = await fetch(source, { mode: "cors" }); if (!response.ok) throw new Error(`Image request returned ${response.status}`); const blob = await response.blob(); const objectUrl = URL.createObjectURL(blob); try { const image = new Image(); image.crossOrigin = "anonymous"; image.src = objectUrl; await image.decode(); const canvas = document.createElement("canvas"); canvas.width = image.naturalWidth || image.width; canvas.height = image.naturalHeight || image.height; if (!canvas.width || !canvas.height) return null; canvas.getContext("2d").drawImage(image, 0, 0); return { dataUrl: canvas.toDataURL("image/png"), width: canvas.width, height: canvas.height } } finally { URL.revokeObjectURL(objectUrl) } } catch (error) { console.warn("Unable to load OpenSolar design image", error); return null }
 }
-
-async function drawImage(pdf, url, x, y, width, maxHeight = 72) {
-  const image = await imageData(url)
-  if (!image) return y
-  const ratio = image.width / image.height
-  let w = width, h = w / ratio
-  if (h > maxHeight) { h = maxHeight; w = h * ratio }
-  const drawX = x + (width - w) / 2
-  pdf.setFillColor(245, 247, 249)
-  pdf.roundedRect(x, y, width, h + 4, 2.5, 2.5, "F")
-  pdf.addImage(image.dataUrl, "PNG", drawX, y + 2, w, h, undefined, "FAST")
-  return y + h + 8
-}
-
-function header(pdf, settings) {
-  const width = pdf.internal.pageSize.getWidth(), height = pdf.internal.pageSize.getHeight()
-  const accent = rgb(settings.accent), text = rgb(settings.text_color, [16, 33, 43]), padding = Number(settings.padding_mm || 18)
-  pdf.setFillColor(...rgb(settings.background, [255, 255, 255])); pdf.rect(0, 0, width, height, "F")
-  if (settings.show_header !== false) {
-    pdf.setFillColor(...accent); pdf.rect(0, 0, width, 14, "F")
-    pdf.setTextColor(255, 255, 255); pdf.setFont("helvetica", "bold"); pdf.setFontSize(8); pdf.text("HOMESHIELD SCOTLAND LTD", padding, 9)
-    pdf.setFont("helvetica", "normal"); pdf.setFontSize(7); pdf.text(CONTRACT_NAME, width - padding, 9, { align: "right" })
-  }
-  return { width, height, accent, text, padding, y: settings.show_header === false ? padding : 24 }
-}
-
-function title(pdf, page, ctx) {
-  pdf.setTextColor(...ctx.text); pdf.setFont("helvetica", "bold"); pdf.setFontSize(22); pdf.text(page.title || "", ctx.padding, ctx.y + 4)
-  if (page.subtitle) { pdf.setFont("helvetica", "normal"); pdf.setFontSize(9); pdf.setTextColor(100, 112, 120); pdf.text(page.subtitle, ctx.padding, ctx.y + 11) }
-  pdf.setFillColor(...ctx.accent); pdf.rect(ctx.padding, ctx.y + 15, 28, 1.2, "F")
-}
-
-function rows(pdf, values, x, y, width, text, compact = false) {
-  const h = compact ? 8 : 10
-  values.forEach(([label, value], i) => {
-    if (i % 2 === 0) { pdf.setFillColor(246, 248, 250); pdf.roundedRect(x, y - 5.5, width, h, 1.5, 1.5, "F") }
-    pdf.setTextColor(...text); pdf.setFont("helvetica", "bold"); pdf.setFontSize(compact ? 7.5 : 8.5); pdf.text(String(label), x + 4, y)
-    pdf.setFont("helvetica", "normal"); pdf.setTextColor(72, 84, 92); pdf.text(String(value), x + width - 4, y, { align: "right" }); y += h
-  })
-  return y
-}
-
-function body(pdf, content, x, y, width, textRgb, appointment, epvs) {
-  const token = "{{open_solar_image}}"
-  if (!content) return y
-  const lines = interpolate(content, appointment, epvs).split(/\r?\n/)
-  pdf.setFont("helvetica", "normal"); pdf.setFontSize(9); pdf.setTextColor(...textRgb)
-  lines.forEach(line => {
-    if (!line.trim() || line.trim() === token) { if (!line.trim()) y += 4; return }
-    pdf.splitTextToSize(line, width).forEach(part => { pdf.text(part, x, y); y += 4.8 }); y += 2
-  })
-  return y
-}
+async function drawImage(pdf, url, x, y, width, maxHeight = 72) { const image = await imageData(url); if (!image) return y; const ratio = image.width / image.height; let w = width, h = w / ratio; if (h > maxHeight) { h = maxHeight; w = h * ratio }; const drawX = x + (width - w) / 2; pdf.setFillColor(245, 247, 249); pdf.roundedRect(x, y, width, h + 4, 2.5, 2.5, "F"); pdf.addImage(image.dataUrl, "PNG", drawX, y + 2, w, h, undefined, "FAST"); return y + h + 8 }
+function header(pdf, settings) { const width = pdf.internal.pageSize.getWidth(), height = pdf.internal.pageSize.getHeight(), accent = rgb(settings.accent), text = rgb(settings.text_color, [16, 33, 43]), padding = Number(settings.padding_mm || 18); pdf.setFillColor(...rgb(settings.background, [255, 255, 255])); pdf.rect(0, 0, width, height, "F"); if (settings.show_header !== false) { pdf.setFillColor(...accent); pdf.rect(0, 0, width, 14, "F"); pdf.setTextColor(255, 255, 255); pdf.setFont("helvetica", "bold"); pdf.setFontSize(8); pdf.text("HOMESHIELD SCOTLAND LTD", padding, 9); pdf.setFont("helvetica", "normal"); pdf.setFontSize(7); pdf.text(CONTRACT_NAME, width - padding, 9, { align: "right" }) }; return { width, height, accent, text, padding, y: settings.show_header === false ? padding : 24 } }
+function title(pdf, page, ctx) { pdf.setTextColor(...ctx.text); pdf.setFont("helvetica", "bold"); pdf.setFontSize(22); pdf.text(page.title || "", ctx.padding, ctx.y + 4); if (page.subtitle) { pdf.setFont("helvetica", "normal"); pdf.setFontSize(9); pdf.setTextColor(100, 112, 120); pdf.text(page.subtitle, ctx.padding, ctx.y + 11) }; pdf.setFillColor(...ctx.accent); pdf.rect(ctx.padding, ctx.y + 15, 28, 1.2, "F") }
+function rows(pdf, values, x, y, width, text, compact = false) { const h = compact ? 8 : 10; values.forEach(([label, value], i) => { if (i % 2 === 0) { pdf.setFillColor(246, 248, 250); pdf.roundedRect(x, y - 5.5, width, h, 1.5, 1.5, "F") }; pdf.setTextColor(...text); pdf.setFont("helvetica", "bold"); pdf.setFontSize(compact ? 7.5 : 8.5); pdf.text(String(label), x + 4, y); pdf.setFont("helvetica", "normal"); pdf.setTextColor(72, 84, 92); pdf.text(String(value), x + width - 4, y, { align: "right" }); y += h }); return y }
+function body(pdf, content, x, y, width, textRgb, appointment, epvs) { if (!content) return y; const withoutImageToken = String(content).replace(/(^|\r?\n)\s*{{open_solar_image}}\s*(?=\r?\n|$)/g, "$1"); const lines = interpolate(withoutImageToken, appointment, epvs).split(/\r?\n/); pdf.setFont("helvetica", "normal"); pdf.setFontSize(9); pdf.setTextColor(...textRgb); lines.forEach(line => { if (!line.trim()) { y += 4; return }; pdf.splitTextToSize(line, width).forEach(part => { pdf.text(part, x, y); y += 4.8 }); y += 2 }); return y }
 
 async function renderPage(pdf, page, index, pageCount, appointment, epvs) {
-  const settings = page.settings || {}, ctx = header(pdf, settings), kind = settings.page_kind || "standard"
-  const data = epvs?.data || {}, results = epvs?.results || {}
-  if (kind === "cover") {
-    const bg = rgb(settings.background, [6, 47, 79]); pdf.setFillColor(...bg); pdf.rect(0, 0, ctx.width, ctx.height, "F")
-    pdf.setTextColor(255, 255, 255); pdf.setFont("helvetica", "bold"); pdf.setFontSize(28); pdf.text("Digital Solar Contract", ctx.padding, 70)
-    pdf.setFont("helvetica", "normal"); pdf.setFontSize(13); pdf.text("Prepared for", ctx.padding, 83); pdf.setFont("helvetica", "bold"); pdf.setFontSize(20); pdf.text(textValue(appointment?.name, "Customer"), ctx.padding, 94)
-    pdf.setFont("helvetica", "normal"); pdf.setFontSize(9); pdf.setTextColor(205, 222, 232); pdf.text([appointment?.address, appointment?.postcode].filter(Boolean).join(", "), ctx.padding, 103)
-    return
-  }
-  title(pdf, page, ctx)
-  let y = ctx.y + 28, width = ctx.width - ctx.padding * 2
-
-  if (kind === "system_overview") {
-    // The body contains {{open_solar_image}} as the database-driven image placeholder.
-    // The actual image comes from the appointment, never from the template record.
-    if (String(page.body || "").includes("{{open_solar_image}}")) y = await drawImage(pdf, appointment?.open_solar_image, ctx.padding, y, width, 72)
-    y = rows(pdf, [["Customer", textValue(appointment?.name)], ["System size", results.systemSize ? `${num(results.systemSize, 2)} kWp` : "—"], ["Solar panels", `${num(data.panelCount)} × ${num(data.panelWattage)} W`], ["Inverter", data.inverterCapacity ? `${num(data.inverterCapacity, 1)} kW` : "—"], ["Battery", data.batteryEnabled ? `${num(data.batteryCapacity, 1)} kWh` : "Not included"], ["Estimated generation", results.generation ? `${num(results.generation)} kWh / year` : "—"]], ctx.padding, y, width, ctx.text)
-    y += 8; body(pdf, page.body, ctx.padding, y, width, ctx.text, appointment, epvs)
-  } else if (kind === "itemised_breakdown") {
-    y = rows(pdf, [["Solar PV panels", `${num(data.panelCount)} × ${num(data.panelWattage)} W`], ["Inverter", data.inverterCapacity ? `${num(data.inverterCapacity, 1)} kW` : "—"], ["Battery storage", data.batteryEnabled ? `${num(data.batteryCapacity, 1)} kWh` : "Not included"], ["System cost", money(data.systemCost)], ["Deposit", money(data.deposit)], ["Finance term", data.financeTerm ? `${num(data.financeTerm)} years` : "—"], ["Monthly finance", results.monthlyPayment ? money(results.monthlyPayment) : "—"]], ctx.padding, y, width, ctx.text)
-    body(pdf, page.body, ctx.padding, y + 8, width, ctx.text, appointment, epvs)
-  } else if (kind === "accreditations") {
-    const items = Array.isArray(settings.items) ? settings.items : []
-    items.forEach(item => { pdf.setFillColor(246, 248, 250); pdf.roundedRect(ctx.padding, y, width, 20, 3, 3, "F"); pdf.setTextColor(...ctx.text); pdf.setFont("helvetica", "bold"); pdf.setFontSize(10); pdf.text(textValue(item.name, "Accreditation"), ctx.padding + 7, y + 8); pdf.setFont("helvetica", "normal"); pdf.setFontSize(8); pdf.setTextColor(100, 112, 120); pdf.text(textValue(item.description, ""), ctx.padding + 7, y + 14); y += 25 })
-    body(pdf, page.body, ctx.padding, y + 4, width, ctx.text, appointment, epvs)
-  } else if (kind === "epvs") {
-    rows(pdf, [["System size", results.systemSize ? `${num(results.systemSize, 2)} kWp` : "—"], ["Annual consumption", data.annualConsumption ? `${num(data.annualConsumption)} kWh` : "—"], ["Estimated generation", results.generation ? `${num(results.generation)} kWh` : "—"], ["Solar self-consumption", results.solarSelfConsumption ? `${num(results.solarSelfConsumption)} kWh` : "—"], ["Estimated export", results.exportKwh ? `${num(results.exportKwh)} kWh` : "—"], ["Annual saving", money(results.annualSaving)], ["Simple payback", results.simplePayback ? `${num(results.simplePayback, 1)} years` : "—"], ["30 year saving", money(results.thirtyYearSavings)], ["30 year return", money(results.thirtyYearProfit)]], ctx.padding, y, width, ctx.text, true)
-  } else if (kind === "datasheets") {
-    const docs = Array.isArray(settings.documents) ? settings.documents : []
-    docs.forEach(doc => { pdf.setTextColor(...ctx.text); pdf.setFont("helvetica", "bold"); pdf.setFontSize(9); pdf.text(textValue(doc.title, "Datasheet"), ctx.padding, y); pdf.setFont("helvetica", "normal"); pdf.setFontSize(7); pdf.setTextColor(105, 116, 124); pdf.text(textValue(doc.description, ""), ctx.padding, y + 5); y += 14 })
-    body(pdf, page.body, ctx.padding, y + 4, width, ctx.text, appointment, epvs)
-  } else {
-    body(pdf, page.body, ctx.padding, y, width, ctx.text, appointment, epvs)
-  }
+  const settings = page.settings || {}, ctx = header(pdf, settings), kind = settings.page_kind || "standard", data = epvs?.data || {}, results = epvs?.results || {}
+  if (kind === "cover") { const bg = rgb(settings.background, [6, 47, 79]); pdf.setFillColor(...bg); pdf.rect(0, 0, ctx.width, ctx.height, "F"); pdf.setTextColor(255, 255, 255); pdf.setFont("helvetica", "bold"); pdf.setFontSize(28); pdf.text("Digital Solar Contract", ctx.padding, 70); pdf.setFont("helvetica", "normal"); pdf.setFontSize(13); pdf.text("Prepared for", ctx.padding, 83); pdf.setFont("helvetica", "bold"); pdf.setFontSize(20); pdf.text(textValue(appointment?.name, "Customer"), ctx.padding, 94); pdf.setFont("helvetica", "normal"); pdf.setFontSize(9); pdf.setTextColor(205, 222, 232); pdf.text([appointment?.address, appointment?.postcode].filter(Boolean).join(", "), ctx.padding, 103); return }
+  title(pdf, page, ctx); let y = ctx.y + 28, width = ctx.width - ctx.padding * 2
+  if (kind === "system_overview") { if (String(page.body || "").includes("{{open_solar_image}}")) y = await drawImage(pdf, appointment?.open_solar_image, ctx.padding, y, width, 72); y = rows(pdf, [["Customer", textValue(appointment?.name)], ["System size", results.systemSize ? `${num(results.systemSize, 2)} kWp` : "—"], ["Solar panels", `${num(data.panelCount)} × ${num(data.panelWattage)} W`], ["Inverter", data.inverterCapacity ? `${num(data.inverterCapacity, 1)} kW` : "—"], ["Battery", data.batteryEnabled ? `${num(data.batteryCapacity, 1)} kWh` : "Not included"], ["Estimated generation", results.generation ? `${num(results.generation)} kWh / year` : "—"]], ctx.padding, y, width, ctx.text); body(pdf, page.body, ctx.padding, y + 8, width, ctx.text, appointment, epvs) }
+  else if (kind === "itemised_breakdown") { y = rows(pdf, [["Solar PV panels", `${num(data.panelCount)} × ${num(data.panelWattage)} W`], ["Inverter", data.inverterCapacity ? `${num(data.inverterCapacity, 1)} kW` : "—"], ["Battery storage", data.batteryEnabled ? `${num(data.batteryCapacity, 1)} kWh` : "Not included"], ["System cost", money(data.systemCost)], ["Deposit", money(data.deposit)], ["Finance term", data.financeTerm ? `${num(data.financeTerm)} years` : "—"], ["Monthly finance", results.monthlyPayment ? money(results.monthlyPayment) : "—"]], ctx.padding, y, width, ctx.text); body(pdf, page.body, ctx.padding, y + 8, width, ctx.text, appointment, epvs) }
+  else if (kind === "accreditations") { const items = Array.isArray(settings.items) ? settings.items : []; items.forEach(item => { pdf.setFillColor(246, 248, 250); pdf.roundedRect(ctx.padding, y, width, 20, 3, 3, "F"); pdf.setTextColor(...ctx.text); pdf.setFont("helvetica", "bold"); pdf.setFontSize(10); pdf.text(textValue(item.name, "Accreditation"), ctx.padding + 7, y + 8); pdf.setFont("helvetica", "normal"); pdf.setFontSize(8); pdf.setTextColor(100, 112, 120); pdf.text(textValue(item.description, ""), ctx.padding + 7, y + 14); y += 25 }); body(pdf, page.body, ctx.padding, y + 4, width, ctx.text, appointment, epvs) }
+  else if (kind === "epvs") { rows(pdf, [["System size", results.systemSize ? `${num(results.systemSize, 2)} kWp` : "—"], ["Annual consumption", data.annualConsumption ? `${num(data.annualConsumption)} kWh` : "—"], ["Estimated generation", results.generation ? `${num(results.generation)} kWh` : "—"], ["Solar self-consumption", results.solarSelfConsumption ? `${num(results.solarSelfConsumption)} kWh` : "—"], ["Estimated export", results.exportKwh ? `${num(results.exportKwh)} kWh` : "—"], ["Annual saving", money(results.annualSaving)], ["Simple payback", results.simplePayback ? `${num(results.simplePayback, 1)} years` : "—"], ["30 year saving", money(results.thirtyYearSavings)], ["30 year return", money(results.thirtyYearProfit)]], ctx.padding, y, width, ctx.text, true) }
+  else if (kind === "datasheets") { const docs = Array.isArray(settings.documents) ? settings.documents : []; docs.forEach(doc => { pdf.setTextColor(...ctx.text); pdf.setFont("helvetica", "bold"); pdf.setFontSize(9); pdf.text(textValue(doc.title, "Datasheet"), ctx.padding, y); pdf.setFont("helvetica", "normal"); pdf.setFontSize(7); pdf.setTextColor(105, 116, 124); pdf.text(textValue(doc.description, ""), ctx.padding, y + 5); y += 14 }); body(pdf, page.body, ctx.padding, y + 4, width, ctx.text, appointment, epvs) }
+  else body(pdf, page.body, ctx.padding, y, width, ctx.text, appointment, epvs)
 }
-
-function footer(pdf, index, count, settings, appointment) {
-  if (settings.show_footer === false) return
-  const width = pdf.internal.pageSize.getWidth(), height = pdf.internal.pageSize.getHeight(), padding = Number(settings.padding_mm || 18)
-  pdf.setDrawColor(...rgb(settings.accent)); pdf.setLineWidth(0.25); pdf.line(padding, height - 13, width - padding, height - 13)
-  pdf.setTextColor(120, 130, 138); pdf.setFont("helvetica", "normal"); pdf.setFontSize(6.5); pdf.text(textValue(appointment?.name, "Customer"), padding, height - 8); pdf.text(`Page ${index + 1} of ${count}`, width - padding, height - 8, { align: "right" })
-}
-
-export async function GenerateSolarContract({ appointment, epvsCalculation }) {
-  if (!appointment) return
-  const { data: template, error: templateError } = await supabase.from("templates").select("id,name,template_type,active").eq("name", CONTRACT_NAME).eq("active", true).maybeSingle()
-  if (templateError) throw templateError
-  if (!template) throw new Error(`Active ${CONTRACT_NAME} template could not be found.`)
-  const { data: pages, error: pagesError } = await supabase.from("template_pages").select("id,slide_order,title,subtitle,body,settings").eq("presentation_id", template.id).order("slide_order", { ascending: true })
-  if (pagesError) throw pagesError
-  if (!pages?.length) throw new Error(`${CONTRACT_NAME} has no pages configured.`)
-  const first = pages[0]?.settings || {}
-  const pdf = new jsPDF({ orientation: first.orientation || "portrait", unit: "mm", format: first.page_size || "a4" })
-  for (let i = 0; i < pages.length; i += 1) {
-    const page = pages[i]
-    if (i > 0) { const settings = page.settings || {}; pdf.addPage(settings.page_size || "a4", settings.orientation || "portrait") }
-    await renderPage(pdf, page, i, pages.length, appointment, epvsCalculation)
-  }
-  pages.forEach((page, i) => { pdf.setPage(i + 1); footer(pdf, i, pages.length, page.settings || {}, appointment) })
-  const safeName = String(appointment.name || "Customer").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "Customer"
-  pdf.save(`${safeName}-Digital-Solar-Contract.pdf`)
-}
+function footer(pdf, index, count, settings, appointment) { if (settings.show_footer === false) return; const width = pdf.internal.pageSize.getWidth(), height = pdf.internal.pageSize.getHeight(), padding = Number(settings.padding_mm || 18); pdf.setDrawColor(...rgb(settings.accent)); pdf.setLineWidth(0.25); pdf.line(padding, height - 13, width - padding, height - 13); pdf.setTextColor(120, 130, 138); pdf.setFont("helvetica", "normal"); pdf.setFontSize(6.5); pdf.text(textValue(appointment?.name, "Customer"), padding, height - 8); pdf.text(`Page ${index + 1} of ${count}`, width - padding, height - 8, { align: "right" }) }
+export async function GenerateSolarContract({ appointment, epvsCalculation }) { if (!appointment) return; const { data: template, error: templateError } = await supabase.from("templates").select("id,name,template_type,active").eq("name", CONTRACT_NAME).eq("active", true).maybeSingle(); if (templateError) throw templateError; if (!template) throw new Error(`Active ${CONTRACT_NAME} template could not be found.`); const { data: pages, error: pagesError } = await supabase.from("template_pages").select("id,slide_order,title,subtitle,body,settings").eq("presentation_id", template.id).order("slide_order", { ascending: true }); if (pagesError) throw pagesError; if (!pages?.length) throw new Error(`${CONTRACT_NAME} has no pages configured.`); const first = pages[0]?.settings || {}; const pdf = new jsPDF({ orientation: first.orientation || "portrait", unit: "mm", format: first.page_size || "a4" }); for (let i = 0; i < pages.length; i += 1) { const page = pages[i]; if (i > 0) { const settings = page.settings || {}; pdf.addPage(settings.page_size || "a4", settings.orientation || "portrait") } await renderPage(pdf, page, i, pages.length, appointment, epvsCalculation) } pages.forEach((page, i) => { pdf.setPage(i + 1); footer(pdf, i, pages.length, page.settings || {}, appointment) }); const safeName = String(appointment.name || "Customer").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "Customer"; pdf.save(`${safeName}-Digital-Solar-Contract.pdf`) }
