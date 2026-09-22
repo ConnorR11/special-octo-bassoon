@@ -54,24 +54,36 @@ const date = (v) => {
  * TEMPLATE VARIABLE INTERPOLATION
  * --------------------------------------------------------------------------
  *
- * Values used by template_pages.settings and page.body.
+ * The template_pages.settings JSON is the source of truth.
  *
- * template_pages is the source of truth.
+ * Supported variables include:
  *
- * Supported dynamic variables:
+ * {{customer_name}}
+ * {{customer_address}}
+ * {{postcode}}
+ * {{phone}}
+ * {{email}}
+ * {{appointment_date}}
+ * {{salesperson}}
  *
  * {{panel_type}}
  * {{panel_count}}
  * {{panel_wattage}}
+ *
  * {{inverter_type}}
  * {{inverter_quantity}}
+ * {{inverter_capacity}}
+ *
  * {{battery_type}}
  * {{battery_quantity}}
  * {{battery_capacity}}
+ *
  * {{system_size}}
  * {{system_cost}}
  * {{annual_generation}}
  * {{annual_saving}}
+ *
+ * {{open_solar_image}}
  *
  * --------------------------------------------------------------------------
  */
@@ -653,23 +665,26 @@ function body(
  * ITEMISED BREAKDOWN
  * --------------------------------------------------------------------------
  *
- * template_pages.settings.included_items is the source of truth.
+ * IMPORTANT:
  *
- * Example:
+ * template_pages.settings.included_items
+ * is the ONLY source of truth for the
+ * itemised breakdown.
+ *
+ * Each item can contain:
+ *
+ * {
+ *   "name": "Panels",
+ *   "quantity": 12,
+ *   "type": "Product"
+ * }
+ *
+ * Dynamic values also work:
  *
  * {
  *   "name": "{{panel_type}}",
- *   "quantity": "{{panel_count}}"
- * }
- *
- * {
- *   "name": "{{inverter_type}} Inverter",
- *   "quantity": "{{inverter_quantity}}"
- * }
- *
- * {
- *   "name": "{{battery_type}} Battery",
- *   "quantity": "{{battery_quantity}}"
+ *   "quantity": "{{panel_count}}",
+ *   "type": "Product"
  * }
  *
  * --------------------------------------------------------------------------
@@ -679,8 +694,6 @@ function drawItemisedBreakdown(
   pdf,
   page,
   ctx,
-  data,
-  results,
   appointment,
   epvs
 ) {
@@ -689,8 +702,8 @@ function drawItemisedBreakdown(
     ctx.padding * 2
 
   /*
-   * template_pages.settings.included_items
-   * is the only source for the breakdown.
+   * Read items directly from
+   * template_pages.settings.
    */
 
   const configuredItems =
@@ -699,6 +712,11 @@ function drawItemisedBreakdown(
     )
       ? page.settings.included_items
       : []
+
+  /*
+   * Convert legacy string entries
+   * into the current object structure.
+   */
 
   const items =
     configuredItems.map(
@@ -709,6 +727,7 @@ function drawItemisedBreakdown(
           return {
             name: item,
             quantity: 1,
+            type: "",
           }
         }
 
@@ -720,16 +739,22 @@ function drawItemisedBreakdown(
           quantity:
             item?.quantity ??
             1,
+
+          type:
+            item?.type ??
+            "",
         }
       }
     )
 
+  /*
+   * ------------------------------------------------------------------------
+   * TABLE HEADER
+   * ------------------------------------------------------------------------
+   */
+
   const headerY =
     ctx.y + 28
-
-  /*
-   * TABLE HEADER
-   */
 
   pdf.setFillColor(
     ...ctx.accent
@@ -758,11 +783,43 @@ function drawItemisedBreakdown(
 
   pdf.setFontSize(8)
 
+  /*
+   * PRODUCT / SERVICE
+   *
+   * Left column.
+   */
+
   pdf.text(
     "PRODUCT / SERVICE",
     ctx.padding + 7,
     headerY
   )
+
+  /*
+   * TYPE
+   *
+   * Middle column.
+   */
+
+  const typeX =
+    ctx.padding +
+    width -
+    43
+
+  pdf.text(
+    "TYPE",
+    typeX,
+    headerY,
+    {
+      align: "center",
+    }
+  )
+
+  /*
+   * QTY
+   *
+   * Right column.
+   */
 
   pdf.text(
     "QTY",
@@ -780,14 +837,28 @@ function drawItemisedBreakdown(
     7.15
 
   /*
+   * ------------------------------------------------------------------------
    * TABLE ROWS
+   * ------------------------------------------------------------------------
    */
 
   items.forEach(
     (item, index) => {
+      /*
+       * Interpolate the values from
+       * the template and EPVS/OpenSolar data.
+       */
+
       const itemName =
         interpolate(
           item.name,
+          appointment,
+          epvs
+        )
+
+      const itemType =
+        interpolate(
+          String(item.type),
           appointment,
           epvs
         )
@@ -798,6 +869,10 @@ function drawItemisedBreakdown(
           appointment,
           epvs
         )
+
+      /*
+       * Alternating row background.
+       */
 
       if (index % 2 === 0) {
         pdf.setFillColor(
@@ -817,6 +892,10 @@ function drawItemisedBreakdown(
         )
       }
 
+      /*
+       * PRODUCT / SERVICE
+       */
+
       pdf.setTextColor(
         ...ctx.text
       )
@@ -832,6 +911,123 @@ function drawItemisedBreakdown(
         String(itemName),
         ctx.padding + 7,
         y
+      )
+
+      /*
+       * TYPE
+       *
+       * Rendered as a small pill/tag.
+       */
+
+      if (itemType) {
+        const typeText =
+          String(itemType)
+
+        pdf.setFont(
+          "helvetica",
+          "bold"
+        )
+
+        pdf.setFontSize(6.5)
+
+        const textWidth =
+          pdf.getTextWidth(
+            typeText
+          )
+
+        const tagPadding = 3
+
+        const tagWidth =
+          textWidth +
+          tagPadding * 2
+
+        const tagHeight = 4.5
+
+        const tagX =
+          typeX -
+          tagWidth / 2
+
+        const tagY =
+          y - 3.8
+
+        /*
+         * Product and Service use
+         * slightly different neutral styling.
+         *
+         * The actual classification
+         * still comes entirely from JSON.
+         */
+
+        if (
+          typeText.toLowerCase() ===
+          "product"
+        ) {
+          pdf.setFillColor(
+            231,
+            242,
+            248
+          )
+
+          pdf.setTextColor(
+            11,
+            93,
+            138
+          )
+        } else if (
+          typeText.toLowerCase() ===
+          "service"
+        ) {
+          pdf.setFillColor(
+            240,
+            240,
+            240
+          )
+
+          pdf.setTextColor(
+            75,
+            85,
+            92
+          )
+        } else {
+          pdf.setFillColor(
+            238,
+            240,
+            242
+          )
+
+          pdf.setTextColor(
+            75,
+            85,
+            92
+          )
+        }
+
+        pdf.roundedRect(
+          tagX,
+          tagY,
+          tagWidth,
+          tagHeight,
+          2,
+          2,
+          "F"
+        )
+
+        pdf.text(
+          typeText,
+          typeX,
+          y - 0.5,
+          {
+            align: "center",
+          }
+        )
+      }
+
+      /*
+       * QUANTITY
+       */
+
+      pdf.setTextColor(
+        ...ctx.text
       )
 
       pdf.setFont(
@@ -857,8 +1053,24 @@ function drawItemisedBreakdown(
   y += 7
 
   /*
+   * ------------------------------------------------------------------------
    * TOTAL SYSTEM PRICE
+   * ------------------------------------------------------------------------
+   *
+   * This still uses the existing EPVS /
+   * appointment values.
+   *
+   * The itemised list itself comes only
+   * from template_pages.settings.
+   *
+   * ------------------------------------------------------------------------
    */
+
+  const data =
+    epvs?.data || {}
+
+  const results =
+    epvs?.results || {}
 
   const price =
     results?.systemCost ??
@@ -927,10 +1139,6 @@ function drawItemisedBreakdown(
  * --------------------------------------------------------------------------
  * RENDER PAGE
  * --------------------------------------------------------------------------
- *
- * Only the parameters actually used by the renderer are passed here.
- *
- * --------------------------------------------------------------------------
  */
 
 async function renderPage(
@@ -959,7 +1167,9 @@ async function renderPage(
     epvs?.results || {}
 
   /*
+   * ------------------------------------------------------------------------
    * COVER
+   * ------------------------------------------------------------------------
    */
 
   if (kind === "cover") {
@@ -1055,7 +1265,9 @@ async function renderPage(
   }
 
   /*
+   * ------------------------------------------------------------------------
    * PAGE TITLE
+   * ------------------------------------------------------------------------
    */
 
   title(
@@ -1072,7 +1284,9 @@ async function renderPage(
     ctx.padding * 2
 
   /*
+   * ------------------------------------------------------------------------
    * SYSTEM OVERVIEW
+   * ------------------------------------------------------------------------
    */
 
   if (
@@ -1170,7 +1384,9 @@ async function renderPage(
   }
 
   /*
+   * ------------------------------------------------------------------------
    * ITEMISED BREAKDOWN
+   * ------------------------------------------------------------------------
    */
 
   else if (
@@ -1181,15 +1397,15 @@ async function renderPage(
       pdf,
       page,
       ctx,
-      data,
-      results,
       appointment,
       epvs
     )
   }
 
   /*
+   * ------------------------------------------------------------------------
    * ACCREDITATIONS
+   * ------------------------------------------------------------------------
    */
 
   else if (
@@ -1280,7 +1496,9 @@ async function renderPage(
   }
 
   /*
+   * ------------------------------------------------------------------------
    * EPVS
+   * ------------------------------------------------------------------------
    */
 
   else if (
@@ -1367,7 +1585,9 @@ async function renderPage(
   }
 
   /*
+   * ------------------------------------------------------------------------
    * DATASHEETS
+   * ------------------------------------------------------------------------
    */
 
   else if (
@@ -1442,7 +1662,9 @@ async function renderPage(
   }
 
   /*
+   * ------------------------------------------------------------------------
    * STANDARD
+   * ------------------------------------------------------------------------
    */
 
   else {
@@ -1550,7 +1772,9 @@ export async function GenerateSolarContract({
   }
 
   /*
+   * ------------------------------------------------------------------------
    * LOAD TEMPLATE
+   * ------------------------------------------------------------------------
    */
 
   const {
@@ -1582,7 +1806,9 @@ export async function GenerateSolarContract({
   }
 
   /*
+   * ------------------------------------------------------------------------
    * LOAD TEMPLATE PAGES
+   * ------------------------------------------------------------------------
    *
    * template_pages is the source of truth for:
    *
@@ -1593,6 +1819,9 @@ export async function GenerateSolarContract({
    * - page settings
    * - included items
    * - quantities
+   * - item types
+   *
+   * ------------------------------------------------------------------------
    */
 
   const {
@@ -1625,7 +1854,9 @@ export async function GenerateSolarContract({
   }
 
   /*
+   * ------------------------------------------------------------------------
    * CREATE PDF
+   * ------------------------------------------------------------------------
    */
 
   const first =
@@ -1646,7 +1877,9 @@ export async function GenerateSolarContract({
     })
 
   /*
+   * ------------------------------------------------------------------------
    * RENDER PAGES
+   * ------------------------------------------------------------------------
    */
 
   for (
@@ -1679,7 +1912,9 @@ export async function GenerateSolarContract({
   }
 
   /*
+   * ------------------------------------------------------------------------
    * FOOTERS
+   * ------------------------------------------------------------------------
    */
 
   pages.forEach(
@@ -1699,7 +1934,9 @@ export async function GenerateSolarContract({
   )
 
   /*
+   * ------------------------------------------------------------------------
    * SAVE
+   * ------------------------------------------------------------------------
    */
 
   const safeName =
