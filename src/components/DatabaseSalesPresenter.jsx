@@ -105,7 +105,7 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
       setLoading(true)
       setError("")
       const { data: presentationData, error: presentationError } = await supabase
-        .from("sales_presentations")
+        .from("templates")
         .select("id,name,presentation_type,description")
         .eq("presentation_type", type)
         .eq("active", true)
@@ -115,7 +115,7 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
       if (presentationError) { if (mounted) { setError(presentationError.message); setLoading(false) }; return }
       if (!presentationData) { if (mounted) { setError("No active sales presentation is configured for this appointment."); setLoading(false) }; return }
       const { data: slideData, error: slideError } = await supabase
-        .from("sales_presentation_slides")
+        .from("template_pages")
         .select("id,slide_order,title,subtitle,body,image_url,video_url,slide_type,settings")
         .eq("presentation_id", presentationData.id)
         .order("slide_order", { ascending: true })

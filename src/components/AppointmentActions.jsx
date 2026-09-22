@@ -1363,7 +1363,7 @@ export default function AppointmentActions({
       if (userError) throw userError
       const triggeredBy = getSubmittedBy(userData?.user)
       const { data: presentation, error: presentationError } = await supabase
-        .from("sales_presentations")
+        .from("templates")
         .select("id,name,presentation_type")
         .eq("presentation_type", presentationType)
         .eq("active", true)
