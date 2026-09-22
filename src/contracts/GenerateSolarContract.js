@@ -101,71 +101,6 @@ async function drawImage(pdf, url, x, y, width, maxHeight = 110) {
   return y + h + 12
 }
 
-function drawBlueprintHouse(pdf, x, y, width, height, accent) {
-  pdf.setDrawColor(...accent)
-  pdf.setLineWidth(0.32)
-
-  const roofPeakX = x + width * 0.58
-  const roofY = y + height * 0.08
-  const eaveY = y + height * 0.32
-  const baseY = y + height * 0.82
-  const leftX = x + width * 0.12
-  const rightX = x + width * 0.92
-
-  // Main house outline.
-  pdf.line(leftX, eaveY, roofPeakX, roofY)
-  pdf.line(roofPeakX, roofY, rightX, eaveY)
-  pdf.line(leftX, eaveY, leftX, baseY)
-  pdf.line(rightX, eaveY, rightX, baseY)
-  pdf.line(leftX, baseY, rightX, baseY)
-
-  // Front gable.
-  const gableLeft = x + width * 0.26
-  const gableRight = x + width * 0.67
-  const gablePeak = x + width * 0.47
-  pdf.line(gableLeft, baseY, gableLeft, eaveY + height * 0.06)
-  pdf.line(gableLeft, eaveY + height * 0.06, gablePeak, y + height * 0.21)
-  pdf.line(gablePeak, y + height * 0.21, gableRight, eaveY + height * 0.06)
-  pdf.line(gableRight, eaveY + height * 0.06, gableRight, baseY)
-  pdf.line(gablePeak, y + height * 0.21, gablePeak, baseY)
-
-  // Door.
-  pdf.rect(x + width * 0.36, y + height * 0.50, width * 0.13, height * 0.32)
-  pdf.line(x + width * 0.425, y + height * 0.50, x + width * 0.425, y + height * 0.82)
-  pdf.line(x + width * 0.36, y + height * 0.66, x + width * 0.49, y + height * 0.66)
-
-  // Windows.
-  pdf.rect(x + width * 0.20, y + height * 0.49, width * 0.13, height * 0.16)
-  pdf.line(x + width * 0.265, y + height * 0.49, x + width * 0.265, y + height * 0.65)
-  pdf.line(x + width * 0.20, y + height * 0.57, x + width * 0.33, y + height * 0.57)
-  pdf.rect(x + width * 0.72, y + height * 0.49, width * 0.13, height * 0.16)
-  pdf.line(x + width * 0.785, y + height * 0.49, x + width * 0.785, y + height * 0.65)
-  pdf.line(x + width * 0.72, y + height * 0.57, x + width * 0.85, y + height * 0.57)
-
-  // Solar panel array on the main roof.
-  const panelLeft = x + width * 0.54
-  const panelRight = x + width * 0.88
-  const panelTop = y + height * 0.10
-  const panelBottom = y + height * 0.28
-  pdf.line(panelLeft, panelTop, panelRight, panelTop + height * 0.04)
-  pdf.line(panelLeft, panelBottom, panelRight, panelBottom + height * 0.04)
-  pdf.line(panelLeft, panelTop, panelLeft, panelBottom)
-  pdf.line(panelRight, panelTop + height * 0.04, panelRight, panelBottom + height * 0.04)
-  for (let i = 1; i < 6; i += 1) {
-    const px = panelLeft + ((panelRight - panelLeft) * i / 6)
-    pdf.line(px, panelTop + (px - panelLeft) * 0.12, px, panelBottom + (px - panelLeft) * 0.12)
-  }
-  pdf.line(panelLeft, panelTop + height * 0.09, panelRight, panelTop + height * 0.13)
-
-  // Subtle Scottish landscape / ground lines.
-  const groundY = y + height * 0.91
-  pdf.line(x, groundY, x + width * 0.30, groundY - 5)
-  pdf.line(x + width * 0.30, groundY - 5, x + width * 0.57, groundY + 2)
-  pdf.line(x + width * 0.57, groundY + 2, x + width, groundY - 4)
-  pdf.line(x, groundY + 5, x + width * 0.23, groundY + 2)
-  pdf.line(x + width * 0.76, groundY + 4, x + width, groundY + 1)
-}
-
 function header(pdf, settings) {
   const width = pdf.internal.pageSize.getWidth(); const height = pdf.internal.pageSize.getHeight(); const accent = rgb(settings.accent); const text = rgb(settings.text_color, [16, 33, 43]); const padding = Number(settings.padding_mm || 18)
   pdf.setFillColor(...rgb(settings.background, [255, 255, 255])); pdf.rect(0, 0, width, height, "F")
@@ -193,23 +128,23 @@ async function renderPage(pdf,page,index,pageCount,appointment,epvs){const setti
   if(kind==="cover"){
     const navy=rgb(settings.background,[5,47,79]);
     const cyan=[52,190,245];
+    const pale=[205,221,232];
     pdf.setFillColor(...navy);pdf.rect(0,0,ctx.width,ctx.height,"F");
     let logo=null;
     try{logo=await imageData("/homeshield-logo.png")}catch(error){console.warn("Homeshield logo could not be loaded:",error)}
-    if(logo){const logoWidth=55;const logoHeight=logoWidth*(logo.height/logo.width);pdf.addImage(logo.dataUrl,"PNG",ctx.padding,18,logoWidth,logoHeight,undefined,"FAST")}
-    else{pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(13);pdf.text("HOMESHIELD SCOTLAND LTD",ctx.padding,27)}
-    pdf.setTextColor(210,225,235);pdf.setFont("helvetica","normal");pdf.setFontSize(6.5);pdf.text("WINDOWS   |   DOORS   |   SOLAR   |   RENEWABLES",ctx.width-ctx.padding,24,{align:"right"});
-    pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(27);pdf.text("Digital Solar Contract",ctx.padding,78);
-    pdf.setFont("helvetica","normal");pdf.setFontSize(11);pdf.text("Prepared for",ctx.padding,91);
-    pdf.setFont("helvetica","bold");pdf.setFontSize(17);pdf.text(textValue(appointment?.name||data.customerName,"Customer"),ctx.padding,103);
-    pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(205,221,232);const address=[appointment?.address,appointment?.postcode].filter(Boolean).join(", ");if(address)pdf.text(address,ctx.padding,113);
+    if(logo){const logoWidth=38;const logoHeight=logoWidth*(logo.height/logo.width);pdf.addImage(logo.dataUrl,"PNG",ctx.padding,14,logoWidth,logoHeight,undefined,"FAST")}
+    else{pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text("HOMESHIELD SCOTLAND LTD",ctx.padding,24)}
+    pdf.setTextColor(...pale);pdf.setFont("helvetica","normal");pdf.setFontSize(6.5);pdf.text("WINDOWS   |   DOORS   |   SOLAR   |   RENEWABLES",ctx.width-ctx.padding,23,{align:"right"});
+    pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(27);pdf.text("Solar Contract",ctx.padding,76);
+    pdf.setFont("helvetica","normal");pdf.setFontSize(11);pdf.text("Prepared for",ctx.padding,89);
+    pdf.setFont("helvetica","bold");pdf.setFontSize(17);pdf.text(textValue(appointment?.name||data.customerName,"Customer"),ctx.padding,102);
+    pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(...pale);const address=[appointment?.address,appointment?.postcode].filter(Boolean).join(", ");if(address)pdf.text(address,ctx.padding,112);
     pdf.setFillColor(...cyan);pdf.rect(ctx.padding,122,26,1.2,"F");
-    pdf.setTextColor(205,221,232);pdf.setFontSize(7);pdf.text("CLEANER HOMES",ctx.width-ctx.padding,54,{align:"right"});pdf.text("BRIGHTER FUTURES",ctx.width-ctx.padding,61,{align:"right"});pdf.text("A GREENER SCOTLAND",ctx.width-ctx.padding,68,{align:"right"});
-    pdf.setDrawColor(...cyan);pdf.setLineWidth(0.3);pdf.line(ctx.width-ctx.padding-16,71,ctx.width-ctx.padding,71);
-    drawBlueprintHouse(pdf,ctx.padding-3,145,ctx.width-ctx.padding*2+6,105,cyan);
-    pdf.setFillColor(...navy);pdf.rect(0,ctx.height-57,ctx.width,57,"F");pdf.setFillColor(...cyan);pdf.rect(ctx.padding,ctx.height-51,1.3,32,"F");
-    pdf.setTextColor(215,229,238);pdf.setFont("helvetica","normal");pdf.setFontSize(7);pdf.text("INVESTING IN",ctx.padding+8,ctx.height-43);pdf.text("A CLEANER, GREENER",ctx.padding+8,ctx.height-34);pdf.text("SCOTLAND",ctx.padding+8,ctx.height-25);
-    const benefits=[["CLEANER","ENERGY"],["LOWER","BILLS"],["WARMER","HOMES"],["BRIGHTER","FUTURES"]];const startX=ctx.width-ctx.padding-64;benefits.forEach((item,i)=>{const bx=startX+i*17;pdf.setDrawColor(...cyan);pdf.setLineWidth(0.45);pdf.circle(bx,ctx.height-42,3.5,"S");pdf.setTextColor(220,233,241);pdf.setFont("helvetica","normal");pdf.setFontSize(5.2);pdf.text(item[0],bx,ctx.height-31,{align:"center"});pdf.text(item[1],bx,ctx.height-24,{align:"center"})})
+    pdf.setTextColor(...pale);pdf.setFontSize(7);pdf.text("CLEANER HOMES",ctx.width-ctx.padding,54,{align:"right"});pdf.text("BRIGHTER FUTURES",ctx.width-ctx.padding,61,{align:"right"});pdf.text("A GREENER SCOTLAND",ctx.width-ctx.padding,68,{align:"right"});
+    pdf.setDrawColor(...cyan);pdf.setLineWidth(0.3);pdf.line(ctx.width-ctx.padding-16,72,ctx.width-ctx.padding,72);
+    const bottomTop=ctx.height-57;pdf.setFillColor(...navy);pdf.rect(0,bottomTop,ctx.width,57,"F");pdf.setFillColor(...cyan);pdf.rect(ctx.padding,bottomTop+6,1.3,32,"F");
+    pdf.setTextColor(215,229,238);pdf.setFont("helvetica","normal");pdf.setFontSize(7);pdf.text("INVESTING IN",ctx.padding+8,bottomTop+14);pdf.text("A CLEANER, GREENER",ctx.padding+8,bottomTop+23);pdf.text("SCOTLAND",ctx.padding+8,bottomTop+32);
+    const benefits=[["CLEANER","ENERGY"],["LOWER","BILLS"],["WARMER","HOMES"],["BRIGHTER","FUTURES"]];const startX=ctx.width-ctx.padding-64;benefits.forEach((item,i)=>{const bx=startX+i*17;pdf.setDrawColor(...cyan);pdf.setLineWidth(0.45);pdf.circle(bx,bottomTop+15,3.5,"S");if(i===0){pdf.line(bx-1.5,bottomTop+17,bx+1.5,bottomTop+13);pdf.line(bx-1,bottomTop+17,bx+1,bottomTop+17)}if(i===1){pdf.setFont("helvetica","bold");pdf.setFontSize(5);pdf.setTextColor(...cyan);pdf.text("£",bx,bottomTop+17,{align:"center"})}if(i===2){pdf.line(bx,bottomTop+17,bx,bottomTop+13);pdf.line(bx-2,bottomTop+15,bx,bottomTop+13);pdf.line(bx+2,bottomTop+15,bx,bottomTop+13)}if(i===3){pdf.line(bx,bottomTop+17,bx,bottomTop+13);pdf.line(bx,bottomTop+14,bx-2,bottomTop+12);pdf.line(bx,bottomTop+14,bx+2,bottomTop+11)}pdf.setTextColor(220,233,241);pdf.setFont("helvetica","normal");pdf.setFontSize(5.2);pdf.text(item[0],bx,bottomTop+27,{align:"center"});pdf.text(item[1],bx,bottomTop+34,{align:"center"})});
     return
   }
   title(pdf,page,ctx);let y=ctx.y+28;const width=ctx.width-ctx.padding*2;
