@@ -1,9 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react"
-import { Plus, Save, Trash2, GripVertical, ChevronLeft, ChevronRight, Eye, Presentation } from "lucide-react"
+import { Plus, Save, Trash2, GripVertical, ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightIcon, Eye, Presentation } from "lucide-react"
 import { supabase } from "../lib/supabase"
 import SalesPresenter from "../components/SalesPresenter"
 
 const EMPTY_PAGE = { title: "", subtitle: "", body: "", settings: {} }
+
+function presentationTypeLabel(type) {
+  if (type === "solar") return "Solar"
+  if (type === "windows") return "Windows & Doors"
+  return type || "Other"
+}
 
 export default function SalesPresentations() {
   const [templates, setTemplates] = useState([])
@@ -15,9 +21,23 @@ export default function SalesPresentations() {
   const [error, setError] = useState("")
   const [preview, setPreview] = useState(false)
   const [settingsText, setSettingsText] = useState("{}")
+  const [expandedTypes, setExpandedTypes] = useState({})
 
   const selectedTemplate = useMemo(() => templates.find((item) => item.id === selectedId) || null, [templates, selectedId])
   const selectedPage = useMemo(() => pages.find((item) => item.id === selectedPageId) || null, [pages, selectedPageId])
+
+  const templateGroups = useMemo(() => {
+    const groups = new Map()
+    templates.forEach((item) => {
+      const type = item.presentation_type || "other"
+      if (!groups.has(type)) groups.set(type, [])
+      groups.get(type).push(item)
+    })
+    return Array.from(groups.entries()).sort(([a], [b]) => {
+      const order = { windows: 1, solar: 2, other: 3 }
+      return (order[a] || 99) - (order[b] || 99) || a.localeCompare(b)
+    })
+  }, [templates])
 
   async function loadTemplates() {
     setLoading(true); setError("")
@@ -27,6 +47,11 @@ export default function SalesPresentations() {
     setTemplates(list)
     const nextId = selectedId && list.some((item) => item.id === selectedId) ? selectedId : list[0]?.id || null
     setSelectedId(nextId)
+    setExpandedTypes((current) => {
+      const next = { ...current }
+      list.forEach((item) => { next[item.presentation_type || "other"] = true })
+      return next
+    })
     setLoading(false)
   }
 
@@ -94,6 +119,15 @@ export default function SalesPresentations() {
 
   function updatePage(field, value) { setPages((current) => current.map((item) => item.id === selectedPageId ? { ...item, [field]: value } : item)) }
 
+  function toggleType(type) {
+    setExpandedTypes((current) => ({ ...current, [type]: !current[type] }))
+  }
+
+  function selectTemplate(item) {
+    setSelectedId(item.id)
+    setExpandedTypes((current) => ({ ...current, [item.presentation_type || "other"]: true }))
+  }
+
   if (preview && selectedTemplate) {
     const type = selectedTemplate.presentation_type || "windows"
     const previewAppointment = type === "solar" ? { name: "Presentation Preview", product: "Solar" } : { name: "Presentation Preview", product: "Windows" }
@@ -106,11 +140,35 @@ export default function SalesPresentations() {
       {selectedTemplate && <button onClick={() => setPreview(true)} style={buttonStyle}><Eye size={14} /> Preview</button>}
     </div>
     {error && <div className="error" style={{ marginBottom: 16 }}><b>Database error</b><span>{error}</span></div>}
-    {loading ? <div className="card" style={{ padding: 50, textAlign: "center" }}>Loading templates...</div> : <div style={{ display: "grid", gridTemplateColumns: "260px minmax(0,1fr) 340px", gap: 14, alignItems: "start" }}>
-      <div className="card" style={{ padding: 10 }}><div style={panelTitle}>Templates</div>{templates.map((item) => <button key={item.id} onClick={() => setSelectedId(item.id)} style={{ ...listButton, background: item.id === selectedId ? "#eef6ff" : "#fff", borderColor: item.id === selectedId ? "#b8dcff" : "#e8ecef" }}><span><strong>{item.name}</strong><small>{item.presentation_type === "solar" ? "Solar" : item.presentation_type === "windows" ? "Windows & Doors" : item.presentation_type || "Template"}</small></span><span style={{ fontSize: 9, color: item.active ? "#198754" : "#999" }}>{item.active ? "Active" : "Off"}</span></button>)}</div>
+    {loading ? <div className="card" style={{ padding: 50, textAlign: "center" }}>Loading templates...</div> : <div style={{ display: "grid", gridTemplateColumns: "270px minmax(0,1fr) 340px", gap: 14, alignItems: "start" }}>
+      <div className="card" style={{ padding: 10, overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "3px 4px 10px" }}>
+          <div style={panelTitle}>Templates</div>
+          <span style={{ fontSize: 9, color: "#94a3b8" }}>{templates.length} {templates.length === 1 ? "template" : "templates"}</span>
+        </div>
+        <div style={{ display: "grid", gap: 7 }}>
+          {templateGroups.map(([type, items]) => {
+            const expanded = Boolean(expandedTypes[type])
+            const activeCount = items.filter((item) => item.active).length
+            return <div key={type} style={{ border: "1px solid #e7ebef", borderRadius: 9, overflow: "hidden", background: "#fff" }}>
+              <button type="button" onClick={() => toggleType(type)} style={folderButton}>
+                <span style={folderIcon}>{expanded ? <ChevronDown size={14} /> : <ChevronRightIcon size={14} />}</span>
+                <span style={{ flex: 1, minWidth: 0 }}><strong>{presentationTypeLabel(type)}</strong><small>{items.length} {items.length === 1 ? "template" : "templates"}</small></span>
+                <span style={folderCount}>{activeCount} active</span>
+              </button>
+              {expanded && <div style={{ padding: "4px 6px 7px", background: "#fafbfd", borderTop: "1px solid #eef1f4" }}>
+                {items.map((item) => <button key={item.id} onClick={() => selectTemplate(item)} style={{ ...listButton, background: item.id === selectedId ? "#eef6ff" : "#fff", borderColor: item.id === selectedId ? "#b8dcff" : "#e8ecef", marginBottom: 4 }}>
+                  <span style={{ minWidth: 0 }}><strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</strong><small>{item.description || (item.active ? "Active template" : "Inactive template")}</small></span>
+                  <span style={{ width: 7, height: 7, flex: "0 0 7px", borderRadius: 99, background: item.active ? "#22a06b" : "#cbd5e1" }} />
+                </button>)}
+              </div>}
+            </div>
+          })}
+        </div>
+      </div>
       {selectedTemplate ? <>
         <div className="card" style={{ padding: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}><div><input value={selectedTemplate.name} onChange={(e) => setTemplates((current) => current.map((item) => item.id === selectedId ? { ...item, name: e.target.value } : item))} onBlur={() => updateTemplate({ name: selectedTemplate.name })} style={titleInput} /><div style={{ fontSize: 10, color: "#8b949e", marginTop: 4 }}>{selectedTemplate.presentation_type || "Template"}</div></div><label style={{ display: "flex", gap: 7, alignItems: "center", fontSize: 11 }}><input type="checkbox" checked={Boolean(selectedTemplate.active)} onChange={(e) => updateTemplate({ active: e.target.checked })} /> Active</label></div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}><div><input value={selectedTemplate.name} onChange={(e) => setTemplates((current) => current.map((item) => item.id === selectedId ? { ...item, name: e.target.value } : item))} onBlur={() => updateTemplate({ name: selectedTemplate.name })} style={titleInput} /><div style={{ fontSize: 10, color: "#8b949e", marginTop: 4 }}>{presentationTypeLabel(selectedTemplate.presentation_type)}</div></div><label style={{ display: "flex", gap: 7, alignItems: "center", fontSize: 11 }}><input type="checkbox" checked={Boolean(selectedTemplate.active)} onChange={(e) => updateTemplate({ active: e.target.checked })} /> Active</label></div>
           <div style={{ display: "grid", gap: 8 }}>{pages.map((page, index) => <button key={page.id} onClick={() => setSelectedPageId(page.id)} style={{ ...slideRow, background: page.id === selectedPageId ? "#f4f8fc" : "#fff", borderColor: page.id === selectedPageId ? "#b8dcff" : "#e5e9ed" }}><GripVertical size={15} color="#aab2b9" /><span style={slideNumber}>{index + 1}</span><span style={{ flex: 1, minWidth: 0, textAlign: "left" }}><strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{page.title || `Untitled page ${index + 1}`}</strong><small style={{ color: "#8b949e", display: "block", marginTop: 3 }}>Page {index + 1}</small></span></button>)}</div>
           <button onClick={addPage} disabled={saving} style={{ ...buttonStyle, marginTop: 12, width: "100%", justifyContent: "center" }}><Plus size={14} /> Add page</button>
         </div>
@@ -129,8 +187,11 @@ export default function SalesPresentations() {
 
 const buttonStyle = { display: "inline-flex", alignItems: "center", gap: 7, height: 34, padding: "0 11px", border: "1px solid #d8e0e6", borderRadius: 7, background: "#fff", color: "#344454", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: 700 }
 const iconButton = { ...buttonStyle, width: 34, padding: 0, justifyContent: "center" }
-const panelTitle = { fontSize: 11, fontWeight: 800, color: "#344454", marginBottom: 10, textTransform: "uppercase", letterSpacing: ".04em" }
-const listButton = { width: "100%", border: "1px solid", borderRadius: 7, padding: "10px 9px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, textAlign: "left", cursor: "pointer", fontFamily: "inherit", marginBottom: 6 }
+const panelTitle = { fontSize: 11, fontWeight: 800, color: "#344454", marginBottom: 0, textTransform: "uppercase", letterSpacing: ".04em" }
+const folderButton = { width: "100%", border: 0, background: "#fff", padding: "10px 9px", display: "flex", alignItems: "center", gap: 8, textAlign: "left", cursor: "pointer", fontFamily: "inherit" }
+const folderIcon = { width: 22, height: 22, borderRadius: 6, background: "#f0f4f7", color: "#52606d", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "0 0 22px" }
+const folderCount = { fontSize: 8.5, color: "#8b949e", fontWeight: 600 }
+const listButton = { width: "100%", border: "1px solid", borderRadius: 7, padding: "9px 9px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, textAlign: "left", cursor: "pointer", fontFamily: "inherit" }
 const slideRow = { width: "100%", border: "1px solid", borderRadius: 8, padding: "10px 9px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontFamily: "inherit" }
 const slideNumber = { width: 24, height: 24, borderRadius: 6, background: "#eef2f5", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: "#52606d" }
 const labelStyle = { display: "grid", gap: 5, fontSize: 10, fontWeight: 700, color: "#52606d", marginBottom: 11 }
