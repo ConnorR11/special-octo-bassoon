@@ -57,7 +57,6 @@ function getOpenSolarImageUrl(appointment, epvs) {
 function interpolate(body, appointment, epvs) {
   const data = epvs?.data || {}
   const results = epvs?.results || {}
-  const openSolarImageUrl = getOpenSolarImageUrl(appointment, epvs)
 
   const values = {
     customer_name: appointment?.name || data.customerName,
@@ -67,7 +66,7 @@ function interpolate(body, appointment, epvs) {
     email: appointment?.email || appointment?.email_address,
     appointment_date: date(appointment?.appointment_date),
     salesperson: appointment?.salesperson || appointment?.rep_allocated,
-    open_solar_image: openSolarImageUrl,
+    open_solar_image: getOpenSolarImageUrl(appointment, epvs),
     system_size: results.systemSize
       ? `${num(results.systemSize, 2)} kWp`
       : "—",
@@ -127,21 +126,8 @@ async function imageData(url) {
   if (!source) return null
 
   try {
-    let imageSource = source
+    const response = await fetch(source, { mode: "cors" })
 
-    try {
-      const parsed = new URL(source, window.location.origin)
-      if (
-        parsed.hostname === "api.opensolar.com" ||
-        parsed.hostname.endsWith(".opensolar.com")
-      ) {
-        imageSource = `/api/opensolar-image?url=${encodeURIComponent(source)}`
-      }
-    } catch {
-      // Leave non-URL/data sources unchanged.
-    }
-
-    const response = await fetch(imageSource)
     if (!response.ok) {
       throw new Error(`Image request returned ${response.status}`)
     }
@@ -306,6 +292,7 @@ function body(pdf, content, x, y, width, textRgb, appointment, epvs) {
       pdf.text(part, x, y)
       y += 4.8
     })
+
     y += 2
   })
 
@@ -314,6 +301,7 @@ function body(pdf, content, x, y, width, textRgb, appointment, epvs) {
 
 function drawItemisedBreakdown(pdf, page, ctx, appointment, epvs, startY = ctx.y) {
   const width = ctx.width - ctx.padding * 2
+
   const configuredItems = Array.isArray(page.settings?.included_items)
     ? page.settings.included_items
     : []
@@ -419,7 +407,6 @@ async function renderPage(pdf, page, appointment, epvs) {
   const kind = settings.page_kind || "standard"
   const data = epvs?.data || {}
   const results = epvs?.results || {}
-  const openSolarImageUrl = getOpenSolarImageUrl(appointment, epvs)
 
   if (kind === "cover") {
     const bg = rgb(settings.background, [6, 47, 79])
@@ -447,25 +434,38 @@ async function renderPage(pdf, page, appointment, epvs) {
   }
 
   title(pdf, page, ctx)
+
   let y = ctx.y + 28
   const width = ctx.width - ctx.padding * 2
 
-  const shouldRenderImage =
-    kind === "system_overview" ||
-    String(page.body || "").includes("{{open_solar_image}}")
-
-  if (shouldRenderImage && openSolarImageUrl) {
-    y = await drawImage(pdf, openSolarImageUrl, ctx.padding, y, width, 82)
-  }
-
   if (kind === "system_overview") {
+    /*
+     * System Overview is page 2 of the solar contract. The OpenSolar image
+     * is intentionally rendered here from appointments.open_solar_image.
+     * It no longer depends on the page body containing {{open_solar_image}}.
+     */
+    const openSolarImageUrl = getOpenSolarImageUrl(appointment, epvs)
+
+    if (openSolarImageUrl) {
+      y = await drawImage(
+        pdf,
+        openSolarImageUrl,
+        ctx.padding,
+        y,
+        width,
+        72
+      )
+    }
+
     y = rows(
       pdf,
       [
         ["Customer", textValue(appointment?.name)],
         [
           "System size",
-          results.systemSize ? `${num(results.systemSize, 2)} kWp` : "—",
+          results.systemSize
+            ? `${num(results.systemSize, 2)} kWp`
+            : "—",
         ],
         [
           "Solar panels",
@@ -473,15 +473,21 @@ async function renderPage(pdf, page, appointment, epvs) {
         ],
         [
           "Inverter",
-          data.inverterCapacity ? `${num(data.inverterCapacity, 1)} kW` : "—",
+          data.inverterCapacity
+            ? `${num(data.inverterCapacity, 1)} kW`
+            : "—",
         ],
         [
           "Battery",
-          data.batteryEnabled ? `${num(data.batteryCapacity, 1)} kWh` : "Not included",
+          data.batteryEnabled
+            ? `${num(data.batteryCapacity, 1)} kWh`
+            : "Not included",
         ],
         [
           "Estimated generation",
-          results.generation ? `${num(results.generation)} kWh / year` : "—",
+          results.generation
+            ? `${num(results.generation)} kWh / year`
+            : "—",
         ],
       ],
       ctx.padding,
@@ -490,9 +496,18 @@ async function renderPage(pdf, page, appointment, epvs) {
       ctx.text
     )
 
-    body(pdf, page.body, ctx.padding, y + 8, width, ctx.text, appointment, epvs)
+    body(
+      pdf,
+      page.body,
+      ctx.padding,
+      y + 8,
+      width,
+      ctx.text,
+      appointment,
+      epvs
+    )
   } else if (kind === "itemised_breakdown") {
-    drawItemisedBreakdown(pdf, page, ctx, appointment, epvs, y)
+    drawItemisedBreakdown(pdf, page, ctx, appointment, epvs)
   } else if (kind === "accreditations") {
     const items = Array.isArray(settings.items) ? settings.items : []
 
@@ -510,29 +525,56 @@ async function renderPage(pdf, page, appointment, epvs) {
       y += 25
     })
 
-    body(pdf, page.body, ctx.padding, y + 4, width, ctx.text, appointment, epvs)
+    body(
+      pdf,
+      page.body,
+      ctx.padding,
+      y + 4,
+      width,
+      ctx.text,
+      appointment,
+      epvs
+    )
   } else if (kind === "epvs") {
     rows(
       pdf,
       [
-        ["System size", results.systemSize ? `${num(results.systemSize, 2)} kWp` : "—"],
+        [
+          "System size",
+          results.systemSize
+            ? `${num(results.systemSize, 2)} kWp`
+            : "—",
+        ],
         [
           "Annual consumption",
-          data.annualConsumption ? `${num(data.annualConsumption)} kWh` : "—",
+          data.annualConsumption
+            ? `${num(data.annualConsumption)} kWh`
+            : "—",
         ],
         [
           "Estimated generation",
-          results.generation ? `${num(results.generation)} kWh` : "—",
+          results.generation
+            ? `${num(results.generation)} kWh`
+            : "—",
         ],
         [
           "Solar self-consumption",
-          results.solarSelfConsumption ? `${num(results.solarSelfConsumption)} kWh` : "—",
+          results.solarSelfConsumption
+            ? `${num(results.solarSelfConsumption)} kWh`
+            : "—",
         ],
-        ["Estimated export", results.exportKwh ? `${num(results.exportKwh)} kWh` : "—"],
+        [
+          "Estimated export",
+          results.exportKwh
+            ? `${num(results.exportKwh)} kWh`
+            : "—",
+        ],
         ["Annual saving", money(results.annualSaving)],
         [
           "Simple payback",
-          results.simplePayback ? `${num(results.simplePayback, 1)} years` : "—",
+          results.simplePayback
+            ? `${num(results.simplePayback, 1)} years`
+            : "—",
         ],
         ["30 year saving", money(results.thirtyYearSavings)],
         ["30 year return", money(results.thirtyYearProfit)],
@@ -558,9 +600,27 @@ async function renderPage(pdf, page, appointment, epvs) {
       y += 14
     })
 
-    body(pdf, page.body, ctx.padding, y + 4, width, ctx.text, appointment, epvs)
+    body(
+      pdf,
+      page.body,
+      ctx.padding,
+      y + 4,
+      width,
+      ctx.text,
+      appointment,
+      epvs
+    )
   } else {
-    body(pdf, page.body, ctx.padding, y, width, ctx.text, appointment, epvs)
+    body(
+      pdf,
+      page.body,
+      ctx.padding,
+      y,
+      width,
+      ctx.text,
+      appointment,
+      epvs
+    )
   }
 }
 
@@ -586,38 +646,7 @@ function footer(pdf, index, count, settings, appointment) {
 export async function GenerateSolarContract({ appointment, epvsCalculation }) {
   if (!appointment) return
 
-  // The OpenSolar image is stored on the appointments table. The appointment
-  // object supplied by the UI is not guaranteed to contain every column, so
-  // explicitly read the current appointments row before rendering the PDF.
-  let contractAppointment = appointment
-
-  if (appointment?.appointment_row_id) {
-    const {
-      data: appointmentRow,
-      error: appointmentRowError,
-    } = await supabase
-      .from("appointments")
-      .select("open_solar_image")
-      .eq("appointment_row_id", appointment.appointment_row_id)
-      .maybeSingle()
-
-    if (appointmentRowError) {
-      console.warn(
-        "Unable to load appointments.open_solar_image:",
-        appointmentRowError
-      )
-    } else if (appointmentRow) {
-      contractAppointment = {
-        ...appointment,
-        open_solar_image: appointmentRow.open_solar_image,
-      }
-    }
-  }
-
-  const {
-    data: template,
-    error: templateError,
-  } = await supabase
+  const { data: template, error: templateError } = await supabase
     .from("templates")
     .select("id,name,template_type,active")
     .eq("name", CONTRACT_NAME)
@@ -627,15 +656,10 @@ export async function GenerateSolarContract({ appointment, epvsCalculation }) {
   if (templateError) throw templateError
 
   if (!template) {
-    throw new Error(
-      `Active ${CONTRACT_NAME} template could not be found.`
-    )
+    throw new Error(`Active ${CONTRACT_NAME} template could not be found.`)
   }
 
-  const {
-    data: pages,
-    error: pagesError,
-  } = await supabase
+  const { data: pages, error: pagesError } = await supabase
     .from("template_pages")
     .select("id,slide_order,title,subtitle,body,settings")
     .eq("presentation_id", template.id)
@@ -645,6 +669,31 @@ export async function GenerateSolarContract({ appointment, epvsCalculation }) {
 
   if (!pages?.length) {
     throw new Error(`${CONTRACT_NAME} has no pages configured.`)
+  }
+
+  /*
+   * Always read the image directly from the appointments table. This is the
+   * authoritative source requested for the contract and avoids relying on
+   * whether the appointment object supplied by the calling page included
+   * the open_solar_image column.
+   */
+  let contractAppointment = appointment
+
+  if (appointment?.appointment_row_id) {
+    const { data: appointmentRow, error: appointmentError } = await supabase
+      .from("appointments")
+      .select("open_solar_image")
+      .eq("appointment_row_id", appointment.appointment_row_id)
+      .maybeSingle()
+
+    if (appointmentError) {
+      console.warn("Unable to load appointments.open_solar_image", appointmentError)
+    } else if (appointmentRow) {
+      contractAppointment = {
+        ...appointment,
+        open_solar_image: appointmentRow.open_solar_image,
+      }
+    }
   }
 
   const first = pages[0]?.settings || {}
@@ -685,9 +734,7 @@ export async function GenerateSolarContract({ appointment, epvsCalculation }) {
     )
   })
 
-  const safeName = String(
-    contractAppointment.name || "Customer"
-  )
+  const safeName = String(contractAppointment.name || "Customer")
     .replace(/[^a-z0-9]+/gi, "-")
     .replace(/^-|-$/g, "") || "Customer"
 
