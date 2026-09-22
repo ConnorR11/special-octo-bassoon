@@ -4,6 +4,7 @@ import { GenerateSolarContract as generateOriginal } from "./GenerateSolarContra
 const originalText = jsPDF.prototype.text
 const originalRect = jsPDF.prototype.rect
 const originalSetPage = jsPDF.prototype.setPage
+const originalAddPage = jsPDF.prototype.addPage
 
 function installTermsLayoutPatch() {
   if (jsPDF.prototype.__hsTermsPatchInstalled) return
@@ -12,8 +13,15 @@ function installTermsLayoutPatch() {
   let termsPage = null
   let currentPage = 1
 
+  jsPDF.prototype.addPage = function() {
+    currentPage += 1
+    termsPage = null
+    return originalAddPage.apply(this, arguments)
+  }
+
   jsPDF.prototype.setPage = function(pageNumber) {
     currentPage = pageNumber
+    termsPage = null
     return originalSetPage.apply(this, arguments)
   }
 
