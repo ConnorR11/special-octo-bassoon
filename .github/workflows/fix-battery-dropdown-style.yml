@@ -53,13 +53,32 @@ jobs:
                   text = text[:start] + opening + text[select_end:]
 
           path.write_text(text)
-      - name: Commit styling change and remove temporary workflow
+
+      - name: Migrate sales presenter code to template tables
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            src/components/AppointmentActions.jsx
+            src/components/DatabaseSalesPresenter.jsx
+            src/components/DatabaseSalesPresenterV2.jsx
+            src/pages/SalesPresentations.jsx
+          )
+          for file in "${files[@]}"; do
+            if [ -f "$file" ]; then
+              sed -i 's/sales_presentation_slides/template_pages/g; s/sales_presentations/templates/g' "$file"
+            fi
+          done
+
+      - name: Commit changes and remove temporary workflows
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           rm -f .github/workflows/fix-battery-dropdown-style.yml
-          git add src/EPVSCalculator.jsx .github/workflows/fix-battery-dropdown-style.yml
+          rm -f .github/workflows/migrate-presenter-tables.yml
+          rm -f MIGRATE_TRIGGER.md
+          git add src/EPVSCalculator.jsx src/components/AppointmentActions.jsx src/components/DatabaseSalesPresenter.jsx src/components/DatabaseSalesPresenterV2.jsx src/pages/SalesPresentations.jsx .github/workflows/fix-battery-dropdown-style.yml .github/workflows/migrate-presenter-tables.yml MIGRATE_TRIGGER.md
           git diff --cached --quiet && exit 0
-          git commit -m "Match battery and inverter dropdowns to PV inputs"
+          git commit -m "Migrate presenter code to template tables"
           git push
