@@ -1,4 +1,4 @@
-name: Reduce T&C top padding
+name: Reduce T&C spacing
 
 on:
   push:
@@ -11,27 +11,34 @@ permissions:
 
 jobs:
   fix:
-    if: github.event.head_commit.message != 'chore: reduce T&C top padding [skip ci]'
+    if: github.event.head_commit.message != 'chore: reduce T&C header spacing [skip ci]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Reduce Terms & Conditions padding
+      - name: Reduce Terms & Conditions header spacing
         run: |
           python - <<'PY'
           from pathlib import Path
           p = Path('src/contracts/GenerateSolarContract.js')
           s = p.read_text()
-          old = 'const top = ctx.y + 28'
-          new = 'const top = ctx.y + 17'
-          if old not in s:
-              raise SystemExit('Expected T&C top padding expression was not found')
-          p.write_text(s.replace(old, new, 1))
+
+          old_title = 'const titleY = ctx.y + 4'
+          new_title = 'const titleY = terms ? ctx.y - 1 : ctx.y + 4'
+          if old_title in s:
+              s = s.replace(old_title, new_title, 1)
+
+          old_rule = 'pdf.rect(ctx.padding, ctx.y + 11, ctx.width - (ctx.padding * 2), 1.2, "F")'
+          new_rule = 'pdf.rect(ctx.padding, ctx.y + 7, ctx.width - (ctx.padding * 2), 1.2, "F")'
+          if old_rule in s:
+              s = s.replace(old_rule, new_rule, 1)
+
+          p.write_text(s)
           PY
 
           rm .github/workflows/fix-terms-padding.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add src/contracts/GenerateSolarContract.js .github/workflows/fix-terms-padding.yml
-          git commit -m 'chore: reduce T&C top padding [skip ci]'
+          git commit -m 'chore: reduce T&C header spacing [skip ci]'
           git push
