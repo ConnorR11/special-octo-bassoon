@@ -12,6 +12,35 @@ function formatDate(value) { if (!value) return "—"; const date = new Date(val
 function money(value) { return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(Number(value || 0)) }
 function number(value, decimals = 0) { return Number(value || 0).toLocaleString("en-GB", { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) }
 function textValue(value, fallback = "—") { return value === undefined || value === null || value === "" ? fallback : String(value) }
+
+async function imageUrlToDataUrl(url) {
+  const source = String(url || "").trim()
+  if (!source) return null
+  try {
+    const response = await fetch(source, { mode: "cors" })
+    if (!response.ok) return null
+    const blob = await response.blob()
+    const objectUrl = URL.createObjectURL(blob)
+    try {
+      const image = new Image()
+      image.crossOrigin = "anonymous"
+      image.src = objectUrl
+      await image.decode()
+      const canvas = document.createElement("canvas")
+      canvas.width = image.naturalWidth || image.width
+      canvas.height = image.naturalHeight || image.height
+      if (!canvas.width || !canvas.height) return null
+      canvas.getContext("2d").drawImage(image, 0, 0)
+      return { dataUrl: canvas.toDataURL("image/png"), width: canvas.width, height: canvas.height }
+    } finally {
+      URL.revokeObjectURL(objectUrl)
+    }
+  } catch (error) {
+    console.warn("Unable to load OpenSolar design image for the contract PDF", error)
+    return null
+  }
+}
+
 function interpolate(text, appointment, epvs) {
   const data = epvs?.data || {}; const results = epvs?.results || {}
   const values = { customer_name: appointment?.name || data.customerName, customer_address: appointment?.address || data.address, postcode: appointment?.postcode || data.postcode, phone: appointment?.phone || appointment?.phone_number_1, email: appointment?.email || appointment?.email_address, appointment_date: formatDate(appointment?.appointment_date), salesperson: appointment?.salesperson || appointment?.rep_allocated, system_size: results.systemSize ? `${number(results.systemSize, 2)} kWp` : "—", panel_count: number(data.panelCount), panel_wattage: data.panelWattage ? `${number(data.panelWattage)} W` : "—", inverter_capacity: data.inverterCapacity ? `${number(data.inverterCapacity, 1)} kW` : "—", battery_capacity: data.batteryEnabled ? `${number(data.batteryCapacity, 1)} kWh` : "Not included", system_cost: money(data.systemCost), annual_generation: results.generation ? `${number(results.generation)} kWh` : "—", annual_saving: money(results.annualSaving) }
@@ -43,13 +72,30 @@ function drawBody(pdf, body, x, y, width, textRgb, appointment, epvs) {
   lines.forEach((line) => { if (!line.trim()) { y += 4; return } const wrapped = pdf.splitTextToSize(line, width); wrapped.forEach((part) => { pdf.text(part, x, y); y += 4.8 }); y += 2 })
   return y
 }
-function renderPage(pdf, page, index, pageCount, appointment, epvs) {
+
+async function drawOpenSolarImage(pdf, imageUrl, x, y, width, maxHeight = 68) {
+  const image = await imageUrlToDataUrl(imageUrl)
+  if (!image) return y
+  const ratio = image.width / image.height
+  let drawWidth = width
+  let drawHeight = drawWidth / ratio
+  if (drawHeight > maxHeight) { drawHeight = maxHeight; drawWidth = drawHeight * ratio }
+  const drawX = x + (width - drawWidth) / 2
+  pdf.setFillColor(245, 247, 249)
+  pdf.roundedRect(x, y, width, Math.min(maxHeight, drawHeight) + 4, 2.5, 2.5, "F")
+  pdf.addImage(image.dataUrl, "PNG", drawX, y + 2, drawWidth, drawHeight, undefined, "FAST")
+  return y + drawHeight + 8
+}
+
+async function renderPage(pdf, page, index, pageCount, appointment, epvs) {
   const settings = page.settings || {}; const pageWidth = pdf.internal.pageSize.getWidth(); const pageHeight = pdf.internal.pageSize.getHeight(); const { accent, text, padding, y: startY } = drawHeader(pdf, pageWidth, pageHeight, settings); const kind = settings.page_kind || "standard"; const data = epvs?.data || {}; const results = epvs?.results || {}
   if (kind === "cover") {
     const bg = hexToRgb(settings.background, [6, 47, 79]); pdf.setFillColor(...bg); pdf.rect(0, 0, pageWidth, pageHeight, "F"); pdf.setTextColor(255, 255, 255); pdf.setFont("helvetica", "bold"); pdf.setFontSize(28); pdf.text("Digital Solar Contract", padding, 70); pdf.setFont("helvetica", "normal"); pdf.setFontSize(13); pdf.text("Prepared for", padding, 83); pdf.setFont("helvetica", "bold"); pdf.setFontSize(20); pdf.text(textValue(appointment?.name, "Customer"), padding, 94); pdf.setFont("helvetica", "normal"); pdf.setFontSize(9); pdf.setTextColor(205, 222, 232); pdf.text([appointment?.address, appointment?.postcode].filter(Boolean).join(", ") || "", padding, 103); pdf.setFillColor(...accent); pdf.roundedRect(padding, 122, pageWidth - padding * 2, 34, 4, 4, "F"); pdf.setTextColor(255, 255, 255); pdf.setFont("helvetica", "bold"); pdf.setFontSize(10); pdf.text("YOUR SOLAR SYSTEM", padding + 8, 134); pdf.setFont("helvetica", "normal"); pdf.setFontSize(9); pdf.text(`${results.systemSize ? number(results.systemSize, 2) : "—"} kWp system`, padding + 8, 143); pdf.text(`${number(data.panelCount)} panels${data.batteryEnabled ? ` • ${number(data.batteryCapacity, 1)} kWh battery` : ""}`, padding + 8, 151); return
   }
   drawTitle(pdf, page.title || `Page ${index + 1}`, page.subtitle || "", padding, startY + 4, text, accent); let y = startY + 24; const width = pageWidth - padding * 2
   if (kind === "system_overview") {
+    const openSolarImageUrl = epvs?.data?.openSolar?.systemImageUrl || epvs?.data?.openSolar?.imageUrl || epvs?.openSolar?.systemImageUrl || epvs?.openSolar?.imageUrl || ""
+    if (openSolarImageUrl) y = await drawOpenSolarImage(pdf, openSolarImageUrl, padding, y, width, 72)
     y = drawRows(pdf, [["Customer", textValue(appointment?.name)], ["System size", results.systemSize ? `${number(results.systemSize, 2)} kWp` : "—"], ["Solar panels", `${number(data.panelCount)} × ${number(data.panelWattage)} W`], ["Inverter", data.inverterCapacity ? `${number(data.inverterCapacity, 1)} kW` : "—"], ["Battery", data.batteryEnabled ? `${number(data.batteryCapacity, 1)} kWh` : "Not included"], ["Estimated generation", results.generation ? `${number(results.generation)} kWh / year` : "—"]], padding, y, width, text); y += 8; y = drawBody(pdf, page.body, padding, y, width, text, appointment, epvs)
   } else if (kind === "itemised_breakdown") {
     y = drawRows(pdf, [["Solar PV panels", `${number(data.panelCount)} × ${number(data.panelWattage)} W`], ["Inverter", data.inverterCapacity ? `${number(data.inverterCapacity, 1)} kW` : "—"], ["Battery storage", data.batteryEnabled ? `${number(data.batteryCapacity, 1)} kWh` : "Not included"], ["System cost", money(data.systemCost)], ["Deposit", money(data.deposit)], ["Finance term", data.financeTerm ? `${number(data.financeTerm)} years` : "—"], ["Monthly finance", results.monthlyPayment ? money(results.monthlyPayment) : "—"]], padding, y, width, text); y += 8; y = drawBody(pdf, page.body, padding, y, width, text, appointment, epvs)
@@ -79,7 +125,11 @@ export async function GenerateSolarContract({ appointment, epvsCalculation }) {
   if (!pages?.length) throw new Error(`${CONTRACT_NAME} has no pages configured.`)
   const firstSettings = pages[0]?.settings || {}
   const pdf = new jsPDF({ orientation: firstSettings.orientation || "portrait", unit: "mm", format: firstSettings.page_size || "a4" })
-  pages.forEach((page, index) => { if (index > 0) { const settings = page.settings || {}; pdf.addPage(settings.page_size || "a4", settings.orientation || "portrait") } renderPage(pdf, page, index, pages.length, appointment, epvsCalculation) })
+  for (let index = 0; index < pages.length; index += 1) {
+    const page = pages[index]
+    if (index > 0) { const settings = page.settings || {}; pdf.addPage(settings.page_size || "a4", settings.orientation || "portrait") }
+    await renderPage(pdf, page, index, pages.length, appointment, epvsCalculation)
+  }
   pages.forEach((page, index) => { pdf.setPage(index + 1); drawFooter(pdf, index + 1, pages.length, pdf.internal.pageSize.getWidth(), pdf.internal.pageSize.getHeight(), page.settings || {}, appointment) })
   const safeName = String(appointment.name || "Customer").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "Customer"
   pdf.save(`${safeName}-Digital-Solar-Contract.pdf`)
