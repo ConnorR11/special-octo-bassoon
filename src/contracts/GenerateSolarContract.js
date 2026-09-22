@@ -12,12 +12,14 @@ function installTermsLayoutPatch() {
 
   let termsPage = null
   let termsTitleY = null
+  let termsSubtitleSeen = false
   let currentPage = 1
 
   jsPDF.prototype.addPage = function() {
     currentPage += 1
     termsPage = null
     termsTitleY = null
+    termsSubtitleSeen = false
     return originalAddPage.apply(this, arguments)
   }
 
@@ -25,6 +27,7 @@ function installTermsLayoutPatch() {
     currentPage = pageNumber
     termsPage = null
     termsTitleY = null
+    termsSubtitleSeen = false
     return originalSetPage.apply(this, arguments)
   }
 
@@ -41,12 +44,18 @@ function installTermsLayoutPatch() {
       return originalText.call(this, text, x, termsTitleY ?? y, options, transform)
     }
 
-    // T&C subtitle: force it onto the SAME ROW as the title and align it
-    // against the right page padding. Do not use the subtitle's original y.
-    if (normalized === "please read before signing" && termsPage === currentPage) {
+    // T&C subtitle: explicitly place it on the same baseline as the title,
+    // aligned to the right-hand page padding. This deliberately ignores the
+    // original subtitle Y position from the legacy renderer.
+    if (normalized === "please read before signing") {
+      termsPage = termsPage ?? currentPage
+      termsSubtitleSeen = true
       const pageWidth = this.internal.pageSize.getWidth()
       const rightPadding = 18
-      const subtitleY = termsTitleY ?? y
+      const subtitleY = termsTitleY ?? (typeof y === "number" ? y - 10 : 25)
+      this.setFont("helvetica", "normal")
+      this.setFontSize(7.5)
+      this.setTextColor(100, 112, 120)
       return originalText.call(
         this,
         text,
@@ -70,7 +79,7 @@ function installTermsLayoutPatch() {
 
   // Replace the short title underline with a full-width rule.
   jsPDF.prototype.rect = function(x, y, w, h, style) {
-    if (currentPage === termsPage && Math.abs(w - 28) < 0.1 && Math.abs(h - 1.2) < 0.1) {
+    if ((currentPage === termsPage || termsSubtitleSeen) && Math.abs(w - 28) < 0.1 && Math.abs(h - 1.2) < 0.1) {
       const pageWidth = this.internal.pageSize.getWidth()
       const rightPadding = 18
       return originalRect.call(this, x, y, pageWidth - x - rightPadding, h, style)
