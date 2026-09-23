@@ -680,6 +680,12 @@ function mapDatabaseUnit(row, index) {
       row.discountable !== undefined
         ? Number(row.discountable)
         : null,
+
+    nonDiscountable:
+      row.non_discountable !== null &&
+      row.non_discountable !== undefined
+        ? Number(row.non_discountable)
+        : null,
   }
 }
 
@@ -1574,7 +1580,7 @@ export default function WindowCosting({ appointment }) {
             style={{
               display: "grid",
               gridTemplateColumns:
-                "1.2fr .9fr 1fr 1fr .9fr .45fr .45fr .8fr .9fr 32px",
+                "1.2fr .9fr 1fr 1fr .9fr .45fr .45fr .8fr .9fr .9fr 32px",
               gap: "10px",
               alignItems: "center",
               padding: "10px 12px",
@@ -1597,6 +1603,7 @@ export default function WindowCosting({ appointment }) {
             <span>O</span>
             <span>Size Choice</span>
             <span>Discountable</span>
+            <span>NonDiscountable</span>
             <span />
           </div>
 
@@ -1606,7 +1613,7 @@ export default function WindowCosting({ appointment }) {
               style={{
                 display: "grid",
                 gridTemplateColumns:
-                  "1.2fr .9fr 1fr 1fr .9fr .45fr .45fr .8fr .9fr 32px",
+                  "1.2fr .9fr 1fr 1fr .9fr .45fr .45fr .8fr .9fr .9fr 32px",
                 gap: "10px",
                 alignItems: "center",
                 padding:
@@ -1658,6 +1665,16 @@ export default function WindowCosting({ appointment }) {
                 {unit.discountable !== null &&
                 unit.discountable !== undefined
                   ? unit.discountable.toLocaleString("en-GB", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })
+                  : "—"}
+              </strong>
+
+              <strong>
+                {unit.nonDiscountable !== null &&
+                unit.nonDiscountable !== undefined
+                  ? unit.nonDiscountable.toLocaleString("en-GB", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })
