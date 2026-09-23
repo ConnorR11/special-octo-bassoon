@@ -16,6 +16,7 @@ import {
 
 import { supabase } from "../lib/supabase"
 import EPVSCalculator from "../EPVSCalculator"
+import WindowCosting from "../WindowCosting"
 import { GenerateSolarContract } from "../contracts/GenerateSolarContract"
 import ActionHistory from "../components/ActionHistory"
 import AllocateBranch from "../components/AllocateBranch"
@@ -124,6 +125,13 @@ function AppointmentDetail({
 
   const isSolar = isSolarAppointment(appointment)
   const isSold = isSoldResult(result)
+
+  /*
+   * Windows section should only appear when the appointment
+   * job_type is Windows.
+   */
+  const isWindows =
+    normalise(appointment?.job_type) === "windows"
 
   const mapQuery = [appointment?.address, appointment?.postcode]
     .filter(Boolean)
@@ -1164,6 +1172,47 @@ function AppointmentDetail({
         </div>
       )}
 
+      {/* WINDOW COSTING */}
+      {isWindows && (
+        <div
+          style={{
+            marginTop: "24px",
+            paddingBottom: "20px",
+          }}
+        >
+          <div
+            style={{
+              marginBottom: "12px",
+            }}
+          >
+            <h2
+              style={{
+                margin: 0,
+                fontSize: "18px",
+                color: "#222",
+              }}
+            >
+              Windows
+            </h2>
+
+            <p
+              style={{
+                margin: "5px 0 0",
+                fontSize: "11px",
+                color: "#888",
+              }}
+            >
+              Add and price each window unit for this appointment.
+            </p>
+          </div>
+
+          <WindowCosting
+            appointment={appointment}
+            onUpdated={onUpdated}
+          />
+        </div>
+      )}
+
       {/* EPVS CALCULATOR */}
       {isSolar && (
         <div
@@ -1223,6 +1272,7 @@ function AppointmentDetail({
           }}
         >
           <strong>Appointment debug</strong>
+
           <pre
             style={{
               whiteSpace: "pre-wrap",
@@ -1244,6 +1294,7 @@ function AppointmentDetail({
                 has_epvs:
                   !!appointment.epvs_calculation,
                 isSolar,
+                isWindows,
                 isSold,
               },
               null,
