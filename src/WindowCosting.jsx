@@ -54,7 +54,6 @@ function Field({ label, required, children }) {
         }}
       >
         {label}
-
         {required && (
           <span style={{ color: "#2499ed" }}> *</span>
         )}
@@ -66,46 +65,41 @@ function Field({ label, required, children }) {
 }
 
 /*
- * Get choices for a particular category.
- *
- * Database columns:
- * unit_type
- * category
- * charge_type
- * choice
- * value_type
- * value
+ * Returns unique choices from unit_choices
+ * matching the selected unit type and category.
  */
-function getChoices(rows, categoryName, unitType) {
-  const selectedCategory = normalise(categoryName)
+function getChoices(rows, categories, unitType) {
+  const categorySet = new Set(
+    categories.map(normalise)
+  )
+
   const selectedType = normalise(unitType)
-
-  const filtered = rows.filter((row) => {
-    const rowCategory = normalise(row.category)
-    const rowType = normalise(row.unit_type)
-
-    if (rowCategory !== selectedCategory) {
-      return false
-    }
-
-    /*
-     * If the pricing row has a unit type,
-     * only show choices for the selected type.
-     */
-    if (
-      rowType &&
-      selectedType &&
-      rowType !== selectedType
-    ) {
-      return false
-    }
-
-    return true
-  })
 
   return Array.from(
     new Set(
-      filtered
+      rows
+        .filter((row) => {
+          const category = normalise(row.category)
+          const rowType = normalise(row.unit_type)
+
+          if (!categorySet.has(category)) {
+            return false
+          }
+
+          /*
+           * Only include rows for the currently
+           * selected unit type.
+           */
+          if (
+            selectedType &&
+            rowType &&
+            rowType !== selectedType
+          ) {
+            return false
+          }
+
+          return true
+        })
         .map((row) =>
           String(row.choice ?? "").trim()
         )
@@ -116,6 +110,7 @@ function getChoices(rows, categoryName, unitType) {
 
 export default function WindowCosting({ appointment }) {
   const [units, setUnits] = useState([])
+
   const [showForm, setShowForm] = useState(false)
 
   const [form, setForm] = useState({
@@ -123,7 +118,10 @@ export default function WindowCosting({ appointment }) {
   })
 
   const [choices, setChoices] = useState([])
-  const [loadingChoices, setLoadingChoices] = useState(false)
+
+  const [loadingChoices, setLoadingChoices] =
+    useState(false)
+
   const [error, setError] = useState("")
 
   /*
@@ -133,7 +131,7 @@ export default function WindowCosting({ appointment }) {
     normalise(appointment?.job_type) === "windows"
 
   /*
-   * Load unit_choices from Supabase.
+   * Load all unit choices from Supabase.
    */
   useEffect(() => {
     if (!isWindows) return
@@ -144,34 +142,61 @@ export default function WindowCosting({ appointment }) {
       setLoadingChoices(true)
       setError("")
 
-      const {
-        data,
-        error: fetchError,
-      } = await supabase
-        .from("unit_choices")
-        .select(
-          "unit_type, category, charge_type, choice, value_type, value"
-        )
+      try {
+        const {
+          data,
+          error: fetchError,
+        } = await supabase
+          .from("unit_choices")
+          .select(
+            "unit_type, category, charge_type, choice, value_type, value"
+          )
+          .order("unit_type", {
+            ascending: true,
+          })
+          .order("category", {
+            ascending: true,
+          })
+          .order("choice", {
+            ascending: true,
+          })
 
-      if (cancelled) return
+        if (cancelled) return
 
-      if (fetchError) {
+        if (fetchError) {
+          console.error(
+            "Unable to load unit choices:",
+            fetchError
+          )
+
+          setError(
+            fetchError.message ||
+              "Unable to load window choices."
+          )
+
+          setChoices([])
+        } else {
+          setChoices(data || [])
+        }
+      } catch (err) {
+        if (cancelled) return
+
         console.error(
-          "Unable to load unit choices:",
-          fetchError
+          "Error loading unit choices:",
+          err
         )
 
         setError(
-          fetchError.message ||
+          err?.message ||
             "Unable to load window choices."
         )
 
         setChoices([])
-      } else {
-        setChoices(data || [])
+      } finally {
+        if (!cancelled) {
+          setLoadingChoices(false)
+        }
       }
-
-      setLoadingChoices(false)
     }
 
     loadChoices()
@@ -184,80 +209,99 @@ export default function WindowCosting({ appointment }) {
   /*
    * TYPE OPTIONS
    *
-   * This is simply a unique list of every
-   * unit_type in unit_choices.
+   * This is deliberately just a unique list of
+   * values from unit_choices.unit_type.
    */
   const typeOptions = useMemo(() => {
-    const types = choices
-      .map((row) =>
-        String(row?.unit_type ?? "").trim()
-      )
-      .filter(Boolean)
-
     return Array.from(
-      new Set(types)
-    ).sort((a, b) =>
-      a.localeCompare(b)
+      new Set(
+        choices
+          .map((row) =>
+            String(row.unit_type ?? "").trim()
+          )
+          .filter(Boolean)
+      )
     )
   }, [choices])
 
   /*
-   * Other dropdown options.
+   * Dropdown options based on:
+   *
+   * category
+   * +
+   * selected unit_type
    */
   const options = useMemo(() => {
     return {
       colour: getChoices(
         choices,
-        "colour",
+        ["colour"],
         form.unitType
       ),
 
       shape: getChoices(
         choices,
-        "shape",
+        ["shape"],
         form.unitType
       ),
 
       finish: getChoices(
         choices,
-        "finish",
+        ["finish"],
         form.unitType
       ),
 
       glass: getChoices(
         choices,
-        "glass",
+        ["glass"],
         form.unitType
       ),
 
       style: getChoices(
         choices,
-        "style",
+        ["style"],
         form.unitType
       ),
 
       handle: getChoices(
         choices,
-        "handle",
+        ["handle"],
         form.unitType
       ),
 
       extras: getChoices(
         choices,
-        "extras",
+        ["extras"],
         form.unitType
       ),
     }
-  }, [
-    choices,
-    form.unitType,
-  ])
+  }, [choices, form.unitType])
 
+  /*
+   * Clear option selections when the Type changes.
+   *
+   * This prevents a choice belonging to one type
+   * remaining selected after switching to another.
+   */
   function updateForm(field, value) {
-    setForm((current) => ({
-      ...current,
-      [field]: value,
-    }))
+    if (field === "unitType") {
+      setForm((current) => ({
+        ...current,
+        unitType: value,
+        colour: "",
+        shape: "",
+        finish: "",
+        glass: "",
+        style: "",
+        handle: "",
+        extras: "",
+      }))
+    } else {
+      setForm((current) => ({
+        ...current,
+        [field]: value,
+      }))
+    }
 
     setError("")
   }
@@ -265,6 +309,15 @@ export default function WindowCosting({ appointment }) {
   function openForm() {
     setForm({
       ...EMPTY_FORM,
+
+      /*
+       * If there is only one type available,
+       * automatically select it.
+       */
+      unitType:
+        typeOptions.length === 1
+          ? typeOptions[0]
+          : "",
     })
 
     setError("")
@@ -346,19 +399,33 @@ export default function WindowCosting({ appointment }) {
   }
 
   /*
-   * Generic dropdown renderer.
+   * Render a dropdown.
+   *
+   * Important:
+   * If there are no options, we return null.
+   *
+   * This means the field itself is completely
+   * hidden rather than showing "No options".
    */
   const renderSelect = (
     field,
     label,
-    optionsList
+    optionsList,
+    required = false
   ) => {
-    const hasOptions =
-      optionsList &&
-      optionsList.length > 0
+    if (
+      loadingChoices ||
+      !optionsList ||
+      optionsList.length === 0
+    ) {
+      return null
+    }
 
     return (
-      <Field label={label}>
+      <Field
+        label={label}
+        required={required}
+      >
         <select
           value={form[field]}
           onChange={(event) =>
@@ -373,17 +440,9 @@ export default function WindowCosting({ appointment }) {
               ? "#222"
               : "#777",
           }}
-          disabled={
-            loadingChoices ||
-            !hasOptions
-          }
         >
           <option value="">
-            {loadingChoices
-              ? "Loading..."
-              : hasOptions
-              ? `Select ${label.toLowerCase()}...`
-              : `No ${label.toLowerCase()} options`}
+            Select {label.toLowerCase()}...
           </option>
 
           {optionsList.map(
@@ -414,7 +473,8 @@ export default function WindowCosting({ appointment }) {
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent:
+            "space-between",
           marginBottom: "12px",
         }}
       >
@@ -486,7 +546,8 @@ export default function WindowCosting({ appointment }) {
         <div
           style={{
             padding: "24px",
-            border: "1px dashed #d8dde1",
+            border:
+              "1px dashed #d8dde1",
             borderRadius: "8px",
             background: "#fafbfc",
             textAlign: "center",
@@ -499,7 +560,8 @@ export default function WindowCosting({ appointment }) {
               color: "#555",
             }}
           >
-            No Units added
+            No window units
+            added
           </div>
 
           <div
@@ -509,14 +571,15 @@ export default function WindowCosting({ appointment }) {
               color: "#999",
             }}
           >
-            Click “Add Unit” to add
-            the first window.
+            Click “Add Unit” to
+            add the first window.
           </div>
         </div>
       ) : (
         <div
           style={{
-            border: "1px solid #e2e5e8",
+            border:
+              "1px solid #e2e5e8",
             borderRadius: "8px",
             background: "#fff",
             overflow: "hidden",
@@ -536,7 +599,8 @@ export default function WindowCosting({ appointment }) {
               fontSize: "8px",
               fontWeight: 700,
               color: "#6d757c",
-              textTransform: "uppercase",
+              textTransform:
+                "uppercase",
             }}
           >
             <span>Location</span>
@@ -560,7 +624,8 @@ export default function WindowCosting({ appointment }) {
                   "1.2fr .9fr 1fr 1fr .9fr .45fr .45fr .8fr .9fr 32px",
                 gap: "10px",
                 alignItems: "center",
-                padding: "11px 12px",
+                padding:
+                  "11px 12px",
                 borderBottom:
                   "1px solid #eef0f2",
                 fontSize: "10px",
@@ -572,19 +637,23 @@ export default function WindowCosting({ appointment }) {
               </strong>
 
               <span>
-                {unit.unitType || "—"}
+                {unit.unitType ||
+                  "—"}
               </span>
 
               <span>
-                {unit.width} × {unit.height}
+                {unit.width} ×{" "}
+                {unit.height}
               </span>
 
               <span>
-                {unit.style || "—"}
+                {unit.style ||
+                  "—"}
               </span>
 
               <span>
-                {unit.colour || "—"}
+                {unit.colour ||
+                  "—"}
               </span>
 
               <span>
@@ -606,7 +675,9 @@ export default function WindowCosting({ appointment }) {
               <button
                 type="button"
                 onClick={() =>
-                  removeUnit(unit.id)
+                  removeUnit(
+                    unit.id
+                  )
                 }
                 title="Remove unit"
                 style={{
@@ -637,8 +708,10 @@ export default function WindowCosting({ appointment }) {
             background:
               "rgba(0,0,0,0.35)",
             display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            alignItems:
+              "center",
+            justifyContent:
+              "center",
             padding: "20px",
           }}
         >
@@ -660,9 +733,12 @@ export default function WindowCosting({ appointment }) {
             <div
               style={{
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "17px 20px",
+                alignItems:
+                  "center",
+                justifyContent:
+                  "space-between",
+                padding:
+                  "17px 20px",
                 borderBottom:
                   "1px solid #e6e8ea",
               }}
@@ -675,18 +751,20 @@ export default function WindowCosting({ appointment }) {
                     color: "#222",
                   }}
                 >
-                  Add Unit
+                  Add Window Unit
                 </h3>
 
                 <p
                   style={{
-                    margin: "4px 0 0",
+                    margin:
+                      "4px 0 0",
                     fontSize: "10px",
                     color: "#888",
                   }}
                 >
-                  Enter the details for
-                  this individual unit.
+                  Enter the details
+                  for this individual
+                  unit.
                 </p>
               </div>
 
@@ -695,7 +773,8 @@ export default function WindowCosting({ appointment }) {
                 onClick={closeForm}
                 style={{
                   border: 0,
-                  background: "transparent",
+                  background:
+                    "transparent",
                   color: "#777",
                   cursor: "pointer",
                   fontSize: "20px",
@@ -728,15 +807,22 @@ export default function WindowCosting({ appointment }) {
                   required
                 >
                   <input
-                    value={form.location}
-                    onChange={(event) =>
+                    value={
+                      form.location
+                    }
+                    onChange={(
+                      event
+                    ) =>
                       updateForm(
                         "location",
-                        event.target.value
+                        event.target
+                          .value
                       )
                     }
                     placeholder="e.g. Living room"
-                    style={inputStyle}
+                    style={
+                      inputStyle
+                    }
                     autoFocus
                   />
                 </Field>
@@ -748,27 +834,38 @@ export default function WindowCosting({ appointment }) {
                   required
                 >
                   <select
-                    value={form.unitType}
-                    onChange={(event) =>
+                    value={
+                      form.unitType
+                    }
+                    onChange={(
+                      event
+                    ) =>
                       updateForm(
                         "unitType",
-                        event.target.value
+                        event.target
+                          .value
                       )
                     }
                     style={{
                       ...selectStyle,
-                      color: form.unitType
-                        ? "#222"
-                        : "#777",
+                      color:
+                        form.unitType
+                          ? "#222"
+                          : "#777",
                     }}
-                    disabled={loadingChoices}
+                    disabled={
+                      loadingChoices ||
+                      typeOptions.length ===
+                        0
+                    }
                   >
                     <option value="">
                       {loadingChoices
                         ? "Loading..."
-                        : typeOptions.length > 0
-                        ? "Select type..."
-                        : "No types available"}
+                        : typeOptions.length ===
+                          0
+                        ? "No types available"
+                        : "Select type..."}
                     </option>
 
                     {typeOptions.map(
@@ -793,15 +890,22 @@ export default function WindowCosting({ appointment }) {
                   <input
                     type="number"
                     min="1"
-                    value={form.width}
-                    onChange={(event) =>
+                    value={
+                      form.width
+                    }
+                    onChange={(
+                      event
+                    ) =>
                       updateForm(
                         "width",
-                        event.target.value
+                        event.target
+                          .value
                       )
                     }
                     placeholder="e.g. 960"
-                    style={inputStyle}
+                    style={
+                      inputStyle
+                    }
                   />
                 </Field>
 
@@ -814,15 +918,22 @@ export default function WindowCosting({ appointment }) {
                   <input
                     type="number"
                     min="1"
-                    value={form.height}
-                    onChange={(event) =>
+                    value={
+                      form.height
+                    }
+                    onChange={(
+                      event
+                    ) =>
                       updateForm(
                         "height",
-                        event.target.value
+                        event.target
+                          .value
                       )
                     }
                     placeholder="e.g. 1440"
-                    style={inputStyle}
+                    style={
+                      inputStyle
+                    }
                   />
                 </Field>
 
@@ -873,14 +984,21 @@ export default function WindowCosting({ appointment }) {
                     type="number"
                     min="0"
                     step="1"
-                    value={form.openers}
-                    onChange={(event) =>
+                    value={
+                      form.openers
+                    }
+                    onChange={(
+                      event
+                    ) =>
                       updateForm(
                         "openers",
-                        event.target.value
+                        event.target
+                          .value
                       )
                     }
-                    style={inputStyle}
+                    style={
+                      inputStyle
+                    }
                   />
                 </Field>
 
@@ -891,14 +1009,21 @@ export default function WindowCosting({ appointment }) {
                     type="number"
                     min="0"
                     step="1"
-                    value={form.fixed}
-                    onChange={(event) =>
+                    value={
+                      form.fixed
+                    }
+                    onChange={(
+                      event
+                    ) =>
                       updateForm(
                         "fixed",
-                        event.target.value
+                        event.target
+                          .value
                       )
                     }
-                    style={inputStyle}
+                    style={
+                      inputStyle
+                    }
                   />
                 </Field>
 
@@ -924,12 +1049,15 @@ export default function WindowCosting({ appointment }) {
               {loadingChoices && (
                 <div
                   style={{
-                    marginTop: "14px",
-                    fontSize: "10px",
+                    marginTop:
+                      "14px",
+                    fontSize:
+                      "10px",
                     color: "#888",
                   }}
                 >
-                  Loading window choices...
+                  Loading window
+                  choices...
                 </div>
               )}
 
@@ -938,12 +1066,18 @@ export default function WindowCosting({ appointment }) {
               {error && (
                 <div
                   style={{
-                    marginTop: "14px",
-                    padding: "9px 10px",
-                    borderRadius: "6px",
-                    background: "#fbeaea",
-                    color: "#8b3333",
-                    fontSize: "10px",
+                    marginTop:
+                      "14px",
+                    padding:
+                      "9px 10px",
+                    borderRadius:
+                      "6px",
+                    background:
+                      "#fbeaea",
+                    color:
+                      "#8b3333",
+                    fontSize:
+                      "10px",
                   }}
                 >
                   {error}
@@ -956,12 +1090,15 @@ export default function WindowCosting({ appointment }) {
             <div
               style={{
                 display: "flex",
-                justifyContent: "flex-end",
+                justifyContent:
+                  "flex-end",
                 gap: "8px",
-                padding: "13px 20px",
+                padding:
+                  "13px 20px",
                 borderTop:
                   "1px solid #e6e8ea",
-                background: "#fafbfc",
+                background:
+                  "#fafbfc",
               }}
             >
               <button
@@ -969,15 +1106,21 @@ export default function WindowCosting({ appointment }) {
                 onClick={closeForm}
                 style={{
                   height: "34px",
-                  padding: "0 13px",
+                  padding:
+                    "0 13px",
                   border:
                     "1px solid #d8dde1",
-                  borderRadius: "6px",
-                  background: "#fff",
+                  borderRadius:
+                    "6px",
+                  background:
+                    "#fff",
                   color: "#555",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  fontSize: "10px",
+                  cursor:
+                    "pointer",
+                  fontFamily:
+                    "inherit",
+                  fontSize:
+                    "10px",
                   fontWeight: 600,
                 }}
               >
@@ -988,14 +1131,20 @@ export default function WindowCosting({ appointment }) {
                 type="submit"
                 style={{
                   height: "34px",
-                  padding: "0 15px",
+                  padding:
+                    "0 15px",
                   border: 0,
-                  borderRadius: "6px",
-                  background: "#2499ed",
+                  borderRadius:
+                    "6px",
+                  background:
+                    "#2499ed",
                   color: "#fff",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  fontSize: "10px",
+                  cursor:
+                    "pointer",
+                  fontFamily:
+                    "inherit",
+                  fontSize:
+                    "10px",
                   fontWeight: 700,
                 }}
               >
