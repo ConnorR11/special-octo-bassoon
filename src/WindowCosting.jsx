@@ -462,8 +462,8 @@ export default function WindowCosting({ appointment }) {
               <span>{unit.fixed ?? 0}</span>
               <span>{unit.openers ?? 0}</span>
               <span>{unit.sizeChoice || "—"}</span>
-              <strong>{unit.discountable !== null && unit.discountable !== undefined ? unit.discountable.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}</strong>
-              <strong>{unit.nonDiscountable !== null && unit.nonDiscountable !== undefined ? unit.nonDiscountable.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}</strong>
+              <strong>{unit.discountable !== null && unit.discountable !== undefined ? "£" + Math.round(Number(unit.discountable)).toLocaleString("en-GB") : "—"}</strong>
+              <strong>{unit.nonDiscountable !== null && unit.nonDiscountable !== undefined ? "£" + Math.round(Number(unit.nonDiscountable)).toLocaleString("en-GB") : "—"}</strong>
               <button type="button" onClick={() => removeUnit(unit)} title="Remove unit" style={{ border: 0, background: "transparent", color: "#888", cursor: "pointer", fontSize: "14px", padding: 0 }}>⋯</button>
             </div>
           ))}
@@ -472,10 +472,10 @@ export default function WindowCosting({ appointment }) {
           <div style={{ display: "grid", gridTemplateColumns: "1.2fr .9fr 1fr 1fr .9fr .45fr .45fr .8fr .9fr .9fr 32px", gap: "10px", alignItems: "center", padding: "12px 12px", background: "#f4f7f9", borderTop: "2px solid #e2e5e8", fontSize: "10px", fontWeight: 700, color: "#222" }}>
             <span style={{ gridColumn: "1 / span 8" }}>Total</span>
             <strong>
-              {units.reduce((total, unit) => total + (Number(unit.discountable) || 0), 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {"£" + Math.round(units.reduce((total, unit) => total + (Number(unit.discountable) || 0), 0)).toLocaleString("en-GB")}
             </strong>
             <strong>
-              {units.reduce((total, unit) => total + (Number(unit.nonDiscountable) || 0), 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {"£" + Math.round(units.reduce((total, unit) => total + (Number(unit.nonDiscountable) || 0), 0)).toLocaleString("en-GB")}
             </strong>
             <span />
           </div>
