@@ -56,6 +56,8 @@ const selectStyle = {
  * SIZE MATRIX
  * ============================================================
  *
+ * The size matrix ONLY applies to unit type "Window".
+ *
  * Widths run across the top.
  * Heights run down the left.
  *
@@ -135,7 +137,7 @@ const SIZE_MATRIX = {
   ],
 
   1000: [
-    "A", "A", "A", "A", "A", "A", "B", "B", "B", "B",
+    "A", "A", "A", "A", "A", "B", "B", "B", "B", "B",
     "B", "B", "B", "B", "B", "B", "B", "B", "C", "C", "C"
   ],
 
@@ -217,13 +219,6 @@ const SIZE_MATRIX = {
 
 /*
  * Round a measurement UP to the next matrix dimension.
- *
- * Example:
- *
- * 960  -> 1000
- * 1440 -> 1500
- * 500  -> 500
- * 501  -> 600
  */
 
 function roundUpToMatrixSize(value) {
@@ -351,13 +346,6 @@ function getChoices(rows, categories, unitType) {
 
 /*
  * Get the value attached to a Size Choice from unit_choices.
- *
- * Expected unit_choices structure:
- *
- * category   = Size
- * choice     = A / B / C / D / E / F / G / H
- * value      = numeric value
- * unit_type  = Window / etc.
  */
 
 function getSizeValue(rows, sizeChoice, unitType) {
@@ -494,8 +482,6 @@ export default function WindowCosting({ appointment }) {
    * ==========================================================
    * UNIT TYPES
    * ==========================================================
-   *
-   * This is a UNIQUE list of unit_choices.unit_type.
    */
 
   const typeOptions = useMemo(() => {
@@ -569,9 +555,16 @@ export default function WindowCosting({ appointment }) {
    * ==========================================================
    * CALCULATED SIZE
    * ==========================================================
+   *
+   * IMPORTANT:
+   * The size matrix ONLY applies to Windows.
    */
 
   const calculatedSize = useMemo(() => {
+    if (form.unitType !== "Window") {
+      return null
+    }
+
     return getSizeChoice(
       form.width,
       form.height
@@ -579,10 +572,14 @@ export default function WindowCosting({ appointment }) {
   }, [
     form.width,
     form.height,
+    form.unitType,
   ])
 
   const calculatedSizeValue = useMemo(() => {
-    if (!calculatedSize) {
+    if (
+      form.unitType !== "Window" ||
+      !calculatedSize
+    ) {
       return null
     }
 
@@ -663,18 +660,24 @@ export default function WindowCosting({ appointment }) {
       return
     }
 
-    if (!calculatedSize) {
-      setError(
-        "The entered dimensions are outside the available size matrix. Maximum size is 3250mm."
-      )
-      return
-    }
+    /*
+     * The size matrix is ONLY required for Windows.
+     */
 
-    if (calculatedSizeValue === null) {
-      setError(
-        `No Size value was found in unit_choices for Size Choice ${calculatedSize.choice} and type ${form.unitType}.`
-      )
-      return
+    if (form.unitType === "Window") {
+      if (!calculatedSize) {
+        setError(
+          "The entered dimensions are outside the available size matrix. Maximum size is 3250mm."
+        )
+        return
+      }
+
+      if (calculatedSizeValue === null) {
+        setError(
+          `No Size value was found in unit_choices for Size Choice ${calculatedSize.choice} and type ${form.unitType}.`
+        )
+        return
+      }
     }
 
     const appointmentId =
@@ -719,8 +722,15 @@ export default function WindowCosting({ appointment }) {
         unit_type:
           form.unitType,
 
+        /*
+         * Size Choice and Size Value only exist
+         * for Window units.
+         */
+
         size_choice:
-          calculatedSize.choice,
+          form.unitType === "Window"
+            ? calculatedSize?.choice || null
+            : null,
 
         height:
           Number(form.height),
@@ -729,9 +739,12 @@ export default function WindowCosting({ appointment }) {
           Number(form.width),
 
         size_value:
-          Math.round(
-            calculatedSizeValue
-          ),
+          form.unitType === "Window" &&
+          calculatedSizeValue !== null
+            ? Math.round(
+                calculatedSizeValue
+              )
+            : null,
 
         colour_choice:
           form.colour || null,
@@ -818,10 +831,14 @@ export default function WindowCosting({ appointment }) {
           Number(form.height),
 
         sizeChoice:
-          calculatedSize.choice,
+          form.unitType === "Window"
+            ? calculatedSize?.choice || null
+            : null,
 
         sizeValue:
-          calculatedSizeValue,
+          form.unitType === "Window"
+            ? calculatedSizeValue
+            : null,
 
         colour:
           form.colour,
@@ -888,11 +905,6 @@ export default function WindowCosting({ appointment }) {
 
     if (!confirmed) return
 
-    /*
-     * If we have a real UUID from Supabase,
-     * remove it from the database as well.
-     */
-
     if (unit.id) {
       const {
         error: deleteError,
@@ -934,8 +946,6 @@ export default function WindowCosting({ appointment }) {
    * ==========================================================
    * SELECT RENDERER
    * ==========================================================
-   *
-   * Dropdowns with no available options are hidden.
    */
 
   const renderSelect = (
@@ -1336,14 +1346,7 @@ export default function WindowCosting({ appointment }) {
                 padding: "20px",
               }}
             >
-              {/* ==================================================
-                  TOP SECTION
-
-                  Location
-                  Type
-                  Width
-                  Height
-                  ================================================== */}
+              {/* TOP SECTION */}
 
               <div
                 style={{
@@ -1487,9 +1490,7 @@ export default function WindowCosting({ appointment }) {
                 </Field>
               </div>
 
-              {/* ==================================================
-                  DIVIDER
-                  ================================================== */}
+              {/* DIVIDER */}
 
               <div
                 style={{
@@ -1504,86 +1505,84 @@ export default function WindowCosting({ appointment }) {
                 }}
               />
 
-              {/* ==================================================
-                  CALCULATED SIZE
-                  ================================================== */}
+              {/* CALCULATED SIZE */}
 
-              {calculatedSize && (
-                <div
-                  style={{
-                    marginBottom:
-                      "15px",
-                    padding:
-                      "10px 12px",
-                    border:
-                      "1px solid #dfe5ea",
-                    borderRadius:
-                      "7px",
-                    background:
-                      "#f8fafc",
-                    display: "flex",
-                    alignItems:
-                      "center",
-                    justifyContent:
-                      "space-between",
-                  }}
-                >
-                  <div>
-                    <div
-                      style={{
-                        fontSize:
-                          "10px",
-                        fontWeight:
-                          700,
-                        color:
-                          "#59636c",
-                      }}
-                    >
-                      Size Choice
-                    </div>
-
-                    <div
-                      style={{
-                        marginTop:
-                          "3px",
-                        fontSize:
-                          "9px",
-                        color:
-                          "#89939c",
-                      }}
-                    >
-                      Rounded up to{" "}
-                      {
-                        calculatedSize.roundedWidth
-                      }{" "}
-                      ×{" "}
-                      {
-                        calculatedSize.roundedHeight
-                      }{" "}
-                      mm
-                    </div>
-                  </div>
-
+              {form.unitType ===
+                "Window" &&
+                calculatedSize && (
                   <div
                     style={{
-                      fontSize:
-                        "20px",
-                      fontWeight:
-                        800,
-                      color:
-                        "#2499ed",
+                      marginBottom:
+                        "15px",
+                      padding:
+                        "10px 12px",
+                      border:
+                        "1px solid #dfe5ea",
+                      borderRadius:
+                        "7px",
+                      background:
+                        "#f8fafc",
+                      display: "flex",
+                      alignItems:
+                        "center",
+                      justifyContent:
+                        "space-between",
                     }}
                   >
-                    {
-                      calculatedSize.choice
-                    }
-                  </div>
-                </div>
-              )}
+                    <div>
+                      <div
+                        style={{
+                          fontSize:
+                            "10px",
+                          fontWeight:
+                            700,
+                          color:
+                            "#59636c",
+                        }}
+                      >
+                        Size Choice
+                      </div>
 
-              {/* ==================================================
-                  LOWER OPTIONS
-                  ================================================== */}
+                      <div
+                        style={{
+                          marginTop:
+                            "3px",
+                          fontSize:
+                            "9px",
+                          color:
+                            "#89939c",
+                        }}
+                      >
+                        Rounded up to{" "}
+                        {
+                          calculatedSize.roundedWidth
+                        }{" "}
+                        ×{" "}
+                        {
+                          calculatedSize.roundedHeight
+                        }{" "}
+                        mm
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        fontSize:
+                          "20px",
+                        fontWeight:
+                          800,
+                        color:
+                          "#2499ed",
+                      }}
+                    >
+                      {
+                        calculatedSize.choice
+                      }
+                    </div>
+                  </div>
+                )}
+
+              {/* LOWER OPTIONS */}
 
               <div
                 style={{
@@ -1593,15 +1592,11 @@ export default function WindowCosting({ appointment }) {
                   gap: "15px",
                 }}
               >
-                {/* COLOUR */}
-
                 {renderSelect(
                   "colour",
                   "Colour",
                   options.colour
                 )}
-
-                {/* SHAPE */}
 
                 {renderSelect(
                   "shape",
@@ -1609,23 +1604,17 @@ export default function WindowCosting({ appointment }) {
                   options.shape
                 )}
 
-                {/* FINISH */}
-
                 {renderSelect(
                   "finish",
                   "Finish",
                   options.finish
                 )}
 
-                {/* GLASS */}
-
                 {renderSelect(
                   "glass",
                   "Glass",
                   options.glass
                 )}
-
-                {/* STYLE */}
 
                 {renderSelect(
                   "style",
@@ -1689,15 +1678,11 @@ export default function WindowCosting({ appointment }) {
                   </Field>
                 )}
 
-                {/* HANDLE */}
-
                 {renderSelect(
                   "handle",
                   "Handle",
                   options.handle
                 )}
-
-                {/* EXTRAS */}
 
                 {renderSelect(
                   "extras",
@@ -1726,7 +1711,9 @@ export default function WindowCosting({ appointment }) {
 
               {/* SIZE VALUE */}
 
-              {calculatedSize &&
+              {form.unitType ===
+                "Window" &&
+                calculatedSize &&
                 calculatedSizeValue !==
                   null && (
                   <div
