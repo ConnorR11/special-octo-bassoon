@@ -17,12 +17,6 @@ const EMPTY_FORM = {
   extras: "",
 }
 
-/*
- * ============================================================
- * SHARED FORM STYLES
- * ============================================================
- */
-
 const inputStyle = {
   width: "100%",
   height: "36px",
@@ -51,214 +45,52 @@ const selectStyle = {
   outline: "none",
 }
 
-/*
- * ============================================================
- * SIZE MATRIX
- * ============================================================
- *
- * The size matrix ONLY applies to unit type "Window".
- *
- * Widths run across the top.
- * Heights run down the left.
- *
- * If an entered dimension sits between two matrix dimensions,
- * it is rounded UP to the next available matrix dimension.
- *
- * Example:
- *
- * Width  = 960  -> 1000
- * Height = 1440 -> 1500
- *
- * The matrix is then checked at:
- *
- * 1000 x 1500
- *
- * ============================================================
- */
-
 const SIZE_MATRIX_DIMENSIONS = [
-  500,
-  600,
-  700,
-  800,
-  900,
-  1000,
-  1100,
-  1200,
-  1300,
-  1400,
-  1500,
-  1600,
-  1700,
-  1800,
-  1900,
-  2000,
-  2250,
-  2500,
-  2750,
-  3000,
-  3250,
+  500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500,
+  1600, 1700, 1800, 1900, 2000, 2250, 2500, 2750, 3000, 3250,
 ]
 
-/*
- * Each row contains the matrix values from left to right.
- *
- * The order is:
- *
- * 500, 600, 700, 800, 900, 1000, 1100, 1200,
- * 1300, 1400, 1500, 1600, 1700, 1800, 1900,
- * 2000, 2250, 2500, 2750, 3000, 3250
- */
-
 const SIZE_MATRIX = {
-  500: [
-    "A", "A", "A", "A", "A", "A", "A", "A", "A", "A",
-    "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "B"
-  ],
-
-  600: [
-    "A", "A", "A", "A", "A", "A", "A", "A", "A", "A",
-    "A", "A", "A", "A", "A", "A", "A", "A", "B", "B", "B"
-  ],
-
-  700: [
-    "A", "A", "A", "A", "A", "A", "A", "A", "A", "A",
-    "A", "A", "A", "B", "B", "B", "B", "B", "B", "B", "B"
-  ],
-
-  800: [
-    "A", "A", "A", "A", "A", "A", "A", "A", "A", "A",
-    "A", "A", "A", "B", "B", "B", "B", "B", "B", "B", "C"
-  ],
-
-  900: [
-    "A", "A", "A", "A", "A", "A", "A", "A", "A", "A",
-    "B", "B", "B", "B", "B", "B", "B", "B", "B", "C", "C"
-  ],
-
-  1000: [
-    "A", "A", "A", "A", "A", "B", "B", "B", "B", "B",
-    "B", "B", "B", "B", "B", "B", "B", "B", "C", "C", "C"
-  ],
-
-  1100: [
-    "A", "A", "A", "A", "A", "B", "B", "B", "B", "B",
-    "B", "B", "B", "B", "B", "B", "B", "B", "C", "C", "C"
-  ],
-
-  1200: [
-    "A", "A", "A", "A", "A", "B", "B", "B", "B", "B",
-    "B", "B", "B", "B", "B", "B", "C", "C", "C", "C", "D"
-  ],
-
-  1300: [
-    "A", "A", "A", "A", "A", "B", "B", "B", "B", "B",
-    "B", "B", "B", "C", "C", "C", "C", "C", "C", "C", "D"
-  ],
-
-  1400: [
-    "A", "A", "A", "A", "A", "B", "B", "B", "B", "B",
-    "C", "C", "C", "C", "C", "C", "C", "C", "C", "C", "D"
-  ],
-
-  1500: [
-    "A", "A", "A", "A", "B", "B", "B", "B", "B", "C",
-    "C", "C", "C", "C", "C", "C", "D", "D", "D", "D"
-  ],
-
-  1600: [
-    "A", "A", "A", "A", "B", "B", "B", "B", "B", "C",
-    "C", "C", "C", "C", "C", "D", "D", "D", "D", "D", "E"
-  ],
-
-  1700: [
-    "A", "A", "A", "B", "B", "B", "B", "B", "B", "C",
-    "C", "C", "C", "C", "C", "D", "D", "D", "D", "D", "E"
-  ],
-
-  1800: [
-    "A", "A", "A", "B", "B", "B", "B", "B", "C", "C",
-    "C", "C", "C", "C", "D", "D", "D", "D", "D", "E", "E"
-  ],
-
-  1900: [
-    "A", "A", "A", "B", "B", "B", "B", "B", "C", "C",
-    "C", "C", "D", "D", "D", "D", "D", "E", "E", "E", "E"
-  ],
-
-  2000: [
-    "A", "A", "A", "B", "B", "B", "B", "C", "C", "C",
-    "C", "D", "D", "D", "D", "D", "E", "E", "E", "E", "F"
-  ],
-
-  2250: [
-    "A", "A", "B", "B", "B", "B", "B", "C", "C", "C",
-    "C", "D", "D", "D", "D", "E", "E", "E", "E", "F", "F"
-  ],
-
-  2500: [
-    "A", "B", "B", "B", "B", "B", "C", "C", "C", "C",
-    "D", "D", "D", "D", "D", "E", "E", "F", "G", "G", "G"
-  ],
-
-  2750: [
-    "A", "B", "B", "B", "B", "C", "C", "C", "C", "D",
-    "D", "D", "D", "D", "D", "E", "E", "E", "F", "G", "G"
-  ],
-
-  3000: [
-    "B", "B", "B", "B", "C", "C", "C", "C", "C", "D",
-    "D", "D", "D", "E", "E", "E", "F", "F", "G", "H", "H"
-  ],
-
-  3250: [
-    "B", "B", "B", "C", "C", "C", "C", "D", "D", "D",
-    "D", "D", "E", "E", "E", "F", "F", "G", "G", "H", "H"
-  ],
+  500: ["A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","B"],
+  600: ["A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","B","B","B"],
+  700: ["A","A","A","A","A","A","A","A","A","A","A","A","A","B","B","B","B","B","B","B","B"],
+  800: ["A","A","A","A","A","A","A","A","A","A","A","A","A","B","B","B","B","B","B","B","C"],
+  900: ["A","A","A","A","A","A","A","A","A","A","B","B","B","B","B","B","B","B","B","C","C"],
+  1000: ["A","A","A","A","A","A","B","B","B","B","B","B","B","B","B","B","B","B","C","C","C"],
+  1100: ["A","A","A","A","A","B","B","B","B","B","B","B","B","B","B","B","B","B","C","C","C"],
+  1200: ["A","A","A","A","A","B","B","B","B","B","B","B","B","B","B","B","C","C","C","C","D"],
+  1300: ["A","A","A","A","A","B","B","B","B","B","B","B","B","C","C","C","C","C","C","C","D"],
+  1400: ["A","A","A","A","A","B","B","B","B","B","C","C","C","C","C","C","C","C","C","C","D"],
+  1500: ["A","A","A","A","B","B","B","B","B","C","C","C","C","C","C","C","D","D","D","D"],
+  1600: ["A","A","A","A","B","B","B","B","B","C","C","C","C","C","C","D","D","D","D","D","E"],
+  1700: ["A","A","A","B","B","B","B","B","B","C","C","C","C","C","C","D","D","D","D","D","E"],
+  1800: ["A","A","A","B","B","B","B","B","C","C","C","C","C","C","D","D","D","D","D","E","E"],
+  1900: ["A","A","A","B","B","B","B","B","C","C","C","C","D","D","D","D","D","E","E","E","E"],
+  2000: ["A","A","A","B","B","B","B","C","C","C","C","D","D","D","D","D","E","E","E","E","F"],
+  2250: ["A","A","B","B","B","B","B","C","C","C","C","D","D","D","D","E","E","E","E","F","F"],
+  2500: ["A","B","B","B","B","B","C","C","C","C","D","D","D","D","D","E","E","F","G","G","G"],
+  2750: ["A","B","B","B","B","C","C","C","C","D","D","D","D","D","D","E","E","E","F","G","G"],
+  3000: ["B","B","B","B","C","C","C","C","C","D","D","D","E","E","E","F","F","G","H","H"],
+  3250: ["B","B","B","C","C","C","C","D","D","D","D","D","E","E","E","F","F","G","G","H","H"],
 }
-
-/*
- * Round a measurement UP to the next matrix dimension.
- */
 
 function roundUpToMatrixSize(value) {
   const numericValue = Number(value)
-
-  if (!Number.isFinite(numericValue) || numericValue <= 0) {
-    return null
-  }
-
-  return (
-    SIZE_MATRIX_DIMENSIONS.find(
-      (dimension) => numericValue <= dimension
-    ) || null
-  )
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return null
+  return SIZE_MATRIX_DIMENSIONS.find((dimension) => numericValue <= dimension) || null
 }
-
-/*
- * Get the Size Choice from the matrix.
- */
 
 function getSizeChoice(width, height) {
   const roundedWidth = roundUpToMatrixSize(width)
   const roundedHeight = roundUpToMatrixSize(height)
 
-  if (!roundedWidth || !roundedHeight) {
-    return null
-  }
+  if (!roundedWidth || !roundedHeight) return null
 
   const row = SIZE_MATRIX[roundedHeight]
+  if (!row) return null
 
-  if (!row) {
-    return null
-  }
-
-  const columnIndex =
-    SIZE_MATRIX_DIMENSIONS.indexOf(roundedWidth)
-
-  if (columnIndex === -1) {
-    return null
-  }
+  const columnIndex = SIZE_MATRIX_DIMENSIONS.indexOf(roundedWidth)
+  if (columnIndex === -1) return null
 
   return {
     choice: row[columnIndex],
@@ -267,16 +99,8 @@ function getSizeChoice(width, height) {
   }
 }
 
-/*
- * ============================================================
- * GENERAL HELPERS
- * ============================================================
- */
-
 function normalise(value) {
-  return String(value ?? "")
-    .trim()
-    .toLowerCase()
+  return String(value ?? "").trim().toLowerCase()
 }
 
 function Field({ label, required, children }) {
@@ -292,41 +116,24 @@ function Field({ label, required, children }) {
         }}
       >
         {label}
-
-        {required && (
-          <span style={{ color: "#2499ed" }}> *</span>
-        )}
+        {required && <span style={{ color: "#2499ed" }}> *</span>}
       </span>
-
       {children}
     </label>
   )
 }
 
-/*
- * Get normal dropdown choices from unit_choices.
- */
-
 function getChoices(rows, categories, unitType) {
-  const categorySet = new Set(
-    categories.map(normalise)
-  )
-
+  const categorySet = new Set(categories.map(normalise))
   const selectedType = normalise(unitType)
 
   const filtered = rows.filter((row) => {
     const category = normalise(row.category)
     const rowType = normalise(row.unit_type)
 
-    if (!categorySet.has(category)) {
-      return false
-    }
+    if (!categorySet.has(category)) return false
 
-    if (
-      rowType &&
-      selectedType &&
-      rowType !== selectedType
-    ) {
+    if (rowType && selectedType && rowType !== selectedType) {
       return false
     }
 
@@ -336,22 +143,14 @@ function getChoices(rows, categories, unitType) {
   return Array.from(
     new Set(
       filtered
-        .map((row) =>
-          String(row.choice ?? "").trim()
-        )
+        .map((row) => String(row.choice ?? "").trim())
         .filter(Boolean)
     )
   )
 }
 
-/*
- * Get the value attached to a Size Choice from unit_choices.
- */
-
 function getSizeValue(rows, sizeChoice, unitType) {
-  if (!sizeChoice) {
-    return null
-  }
+  if (!sizeChoice) return null
 
   const selectedType = normalise(unitType)
 
@@ -365,68 +164,33 @@ function getSizeValue(rows, sizeChoice, unitType) {
       category === "size choice" ||
       category === "size_choice"
 
-    if (!isSizeCategory) {
-      return false
-    }
+    if (!isSizeCategory) return false
+    if (choice !== normalise(sizeChoice)) return false
 
-    if (choice !== normalise(sizeChoice)) {
-      return false
-    }
-
-    if (
-      rowType &&
-      selectedType &&
-      rowType !== selectedType
-    ) {
+    if (rowType && selectedType && rowType !== selectedType) {
       return false
     }
 
     return true
   })
 
-  if (!sizeRows.length) {
-    return null
-  }
+  if (!sizeRows.length) return null
 
   const value = Number(sizeRows[0].value)
-
-  return Number.isFinite(value)
-    ? value
-    : null
+  return Number.isFinite(value) ? value : null
 }
-
-/*
- * ============================================================
- * COMPONENT
- * ============================================================
- */
 
 export default function WindowCosting({ appointment }) {
   const [units, setUnits] = useState([])
-
   const [showForm, setShowForm] = useState(false)
-
-  const [form, setForm] = useState({
-    ...EMPTY_FORM,
-  })
-
+  const [form, setForm] = useState({ ...EMPTY_FORM })
   const [choices, setChoices] = useState([])
-
-  const [loadingChoices, setLoadingChoices] =
-    useState(false)
-
+  const [loadingChoices, setLoadingChoices] = useState(false)
   const [saving, setSaving] = useState(false)
-
   const [error, setError] = useState("")
 
   const isWindows =
     normalise(appointment?.job_type) === "windows"
-
-  /*
-   * ==========================================================
-   * LOAD UNIT CHOICES
-   * ==========================================================
-   */
 
   useEffect(() => {
     if (!isWindows) return
@@ -478,12 +242,6 @@ export default function WindowCosting({ appointment }) {
     }
   }, [isWindows])
 
-  /*
-   * ==========================================================
-   * UNIT TYPES
-   * ==========================================================
-   */
-
   const typeOptions = useMemo(() => {
     return Array.from(
       new Set(
@@ -495,12 +253,6 @@ export default function WindowCosting({ appointment }) {
       )
     )
   }, [choices])
-
-  /*
-   * ==========================================================
-   * NORMAL DROPDOWN OPTIONS
-   * ==========================================================
-   */
 
   const options = useMemo(() => {
     return {
@@ -546,19 +298,7 @@ export default function WindowCosting({ appointment }) {
         form.unitType
       ),
     }
-  }, [
-    choices,
-    form.unitType,
-  ])
-
-  /*
-   * ==========================================================
-   * CALCULATED SIZE
-   * ==========================================================
-   *
-   * IMPORTANT:
-   * The size matrix ONLY applies to Windows.
-   */
+  }, [choices, form.unitType])
 
   const calculatedSize = useMemo(() => {
     if (form.unitType !== "Window") {
@@ -594,12 +334,6 @@ export default function WindowCosting({ appointment }) {
     form.unitType,
   ])
 
-  /*
-   * ==========================================================
-   * FORM
-   * ==========================================================
-   */
-
   function updateForm(field, value) {
     setForm((current) => ({
       ...current,
@@ -632,12 +366,6 @@ export default function WindowCosting({ appointment }) {
     setError("")
   }
 
-  /*
-   * ==========================================================
-   * SAVE UNIT
-   * ==========================================================
-   */
-
   async function addUnit(event) {
     event.preventDefault()
 
@@ -659,10 +387,6 @@ export default function WindowCosting({ appointment }) {
       )
       return
     }
-
-    /*
-     * The size matrix is ONLY required for Windows.
-     */
 
     if (form.unitType === "Window") {
       if (!calculatedSize) {
@@ -696,6 +420,24 @@ export default function WindowCosting({ appointment }) {
     setError("")
 
     try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
+
+      if (userError) {
+        throw new Error(
+          userError.message ||
+            "Unable to identify the current user."
+        )
+      }
+
+      if (!user) {
+        throw new Error(
+          "You must be logged in to create a unit."
+        )
+      }
+
       const unitId =
         typeof crypto !== "undefined" &&
         crypto.randomUUID
@@ -719,13 +461,11 @@ export default function WindowCosting({ appointment }) {
         created_date:
           new Date().toISOString(),
 
+        created_by:
+          user.id,
+
         unit_type:
           form.unitType,
-
-        /*
-         * Size Choice and Size Value only exist
-         * for Window units.
-         */
 
         size_choice:
           form.unitType === "Window"
@@ -804,11 +544,6 @@ export default function WindowCosting({ appointment }) {
             "Unable to save unit."
         )
       }
-
-      /*
-       * Add it to the local table only AFTER
-       * Supabase confirms the insert succeeded.
-       */
 
       const newUnit = {
         id:
@@ -889,12 +624,6 @@ export default function WindowCosting({ appointment }) {
     }
   }
 
-  /*
-   * ==========================================================
-   * REMOVE UNIT
-   * ==========================================================
-   */
-
   async function removeUnit(unit) {
     if (!unit) return
 
@@ -941,12 +670,6 @@ export default function WindowCosting({ appointment }) {
         }))
     )
   }
-
-  /*
-   * ==========================================================
-   * SELECT RENDERER
-   * ==========================================================
-   */
 
   const renderSelect = (
     field,
@@ -1003,12 +726,6 @@ export default function WindowCosting({ appointment }) {
     return null
   }
 
-  /*
-   * ==========================================================
-   * UI
-   * ==========================================================
-   */
-
   return (
     <section
       style={{
@@ -1016,8 +733,6 @@ export default function WindowCosting({ appointment }) {
         marginTop: "24px",
       }}
     >
-      {/* HEADER */}
-
       <div
         style={{
           display: "flex",
@@ -1072,8 +787,6 @@ export default function WindowCosting({ appointment }) {
         </button>
       </div>
 
-      {/* ERROR */}
-
       {error && !showForm && (
         <div
           style={{
@@ -1088,8 +801,6 @@ export default function WindowCosting({ appointment }) {
           {error}
         </div>
       )}
-
-      {/* UNITS TABLE */}
 
       {units.length === 0 ? (
         <div
@@ -1246,10 +957,6 @@ export default function WindowCosting({ appointment }) {
         </div>
       )}
 
-      {/* ======================================================
-          ADD UNIT MODAL
-          ====================================================== */}
-
       {showForm && (
         <div
           style={{
@@ -1279,8 +986,6 @@ export default function WindowCosting({ appointment }) {
                 "0 20px 60px rgba(0,0,0,0.25)",
             }}
           >
-            {/* MODAL HEADER */}
-
             <div
               style={{
                 display: "flex",
@@ -1339,15 +1044,11 @@ export default function WindowCosting({ appointment }) {
               </button>
             </div>
 
-            {/* FORM BODY */}
-
             <div
               style={{
                 padding: "20px",
               }}
             >
-              {/* TOP SECTION */}
-
               <div
                 style={{
                   display: "grid",
@@ -1356,8 +1057,6 @@ export default function WindowCosting({ appointment }) {
                   gap: "15px",
                 }}
               >
-                {/* LOCATION */}
-
                 <Field
                   label="Location"
                   required
@@ -1382,8 +1081,6 @@ export default function WindowCosting({ appointment }) {
                     autoFocus
                   />
                 </Field>
-
-                {/* TYPE */}
 
                 {typeOptions.length >
                   0 && (
@@ -1433,8 +1130,6 @@ export default function WindowCosting({ appointment }) {
                   </Field>
                 )}
 
-                {/* WIDTH */}
-
                 <Field
                   label="Width (mm)"
                   required
@@ -1460,8 +1155,6 @@ export default function WindowCosting({ appointment }) {
                     }
                   />
                 </Field>
-
-                {/* HEIGHT */}
 
                 <Field
                   label="Height (mm)"
@@ -1490,8 +1183,6 @@ export default function WindowCosting({ appointment }) {
                 </Field>
               </div>
 
-              {/* DIVIDER */}
-
               <div
                 style={{
                   height: "2px",
@@ -1504,8 +1195,6 @@ export default function WindowCosting({ appointment }) {
                     "2px",
                 }}
               />
-
-              {/* CALCULATED SIZE */}
 
               {form.unitType ===
                 "Window" &&
@@ -1582,8 +1271,6 @@ export default function WindowCosting({ appointment }) {
                   </div>
                 )}
 
-              {/* LOWER OPTIONS */}
-
               <div
                 style={{
                   display: "grid",
@@ -1622,8 +1309,6 @@ export default function WindowCosting({ appointment }) {
                   options.style
                 )}
 
-                {/* OPENERS */}
-
                 {form.unitType ===
                   "Window" && (
                   <Field label="Number of Openers">
@@ -1649,8 +1334,6 @@ export default function WindowCosting({ appointment }) {
                     />
                   </Field>
                 )}
-
-                {/* FIXED */}
 
                 {form.unitType ===
                   "Window" && (
@@ -1691,8 +1374,6 @@ export default function WindowCosting({ appointment }) {
                 )}
               </div>
 
-              {/* LOADING */}
-
               {loadingChoices && (
                 <div
                   style={{
@@ -1708,8 +1389,6 @@ export default function WindowCosting({ appointment }) {
                   choices...
                 </div>
               )}
-
-              {/* SIZE VALUE */}
 
               {form.unitType ===
                 "Window" &&
@@ -1737,8 +1416,6 @@ export default function WindowCosting({ appointment }) {
                   </div>
                 )}
 
-              {/* ERROR */}
-
               {error && (
                 <div
                   style={{
@@ -1760,8 +1437,6 @@ export default function WindowCosting({ appointment }) {
                 </div>
               )}
             </div>
-
-            {/* FOOTER */}
 
             <div
               style={{
