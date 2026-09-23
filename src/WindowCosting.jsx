@@ -1,553 +1,333 @@
 import React, { useState } from "react"
 
+const columns = [
+  ["location", "LOCATION", "14%"],
+  ["unitType", "CHOICE", "13%"],
+  ["size", "SIZE", "12%"],
+  ["product", "PRODUCT", "11%"],
+  ["finish", "CHOICE", "14%"],
+  ["finishFactor", "F", "5%"],
+  ["opener", "O", "5%"],
+  ["counts", "COUNTS", "9%"],
+  ["discountable", "DISCOUNTABLE", "10%"],
+  ["nonDiscountable", "NON DISCOUNTABLE", "10%"],
+]
+
+const grid = columns.map(column => column[2]).join(" ")
+
+function money(value) {
+  const number = Number(value)
+  if (!Number.isFinite(number)) return "£0"
+  return number.toLocaleString("en-GB", {
+    style: "currency",
+    currency: "GBP",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })
+}
+
+const cell = {
+  display: "flex",
+  alignItems: "center",
+  minWidth: 0,
+  padding: "0 5px",
+}
+
+const input = {
+  width: "100%",
+  minWidth: 0,
+  height: "28px",
+  padding: "0 6px",
+  border: "1px solid #e0e4e7",
+  borderRadius: "5px",
+  background: "#fff",
+  color: "#333",
+  fontFamily: "inherit",
+  fontSize: "9px",
+  outline: "none",
+  boxSizing: "border-box",
+}
+
 export default function WindowCosting({ appointment }) {
   const [units, setUnits] = useState([])
 
-  /*
-   * ADD UNIT
-   *
-   * Creates a new blank window unit in the UI.
-   * Pricing and Supabase saving will be added later.
-   */
-  const addUnit = () => {
-    const newUnit = {
-      id: crypto.randomUUID(),
-      unitNumber: units.length + 1,
-
-      unitType: "",
-      size: "",
-      finish: "",
-      style: "",
-      opener: "",
-      external: "",
-      colour: "",
-      shape: "",
-      glass: "",
-      extras: ""
-    }
-
-    setUnits(current => [
-      ...current,
-      newUnit
-    ])
-  }
-
-  /*
-   * REMOVE UNIT
-   */
-  const removeUnit = id => {
-    setUnits(current => {
-      const remaining = current.filter(
-        unit => unit.id !== id
-      )
-
-      return remaining.map(
-        (unit, index) => ({
-          ...unit,
-          unitNumber: index + 1
-        })
-      )
-    })
-  }
-
-  /*
-   * UPDATE UNIT
-   *
-   * This will be used when we add the
-   * dropdown choices.
-   */
-  const updateUnit = (id, field, value) => {
-    setUnits(current =>
-      current.map(unit =>
-        unit.id === id
-          ? {
-              ...unit,
-              [field]: value
-            }
-          : unit
-      )
-    )
-  }
-
-  /*
-   * Only display the Windows costing section
-   * for Windows appointments.
-   */
   if (
     appointment?.job_type &&
-    appointment.job_type !== "Windows"
+    String(appointment.job_type).trim().toLowerCase() !== "windows"
   ) {
     return null
   }
 
+  const addUnit = () => {
+    setUnits(current => [
+      ...current,
+      {
+        id: crypto.randomUUID(),
+        unitNumber: current.length + 1,
+        location: "",
+        unitType: "",
+        size: "",
+        product: "Window",
+        finish: "",
+        finishFactor: 0,
+        opener: 0,
+        counts: 1,
+        discountable: 0,
+        nonDiscountable: 0,
+      },
+    ])
+  }
+
+  const removeUnit = id => {
+    setUnits(current =>
+      current
+        .filter(unit => unit.id !== id)
+        .map((unit, index) => ({ ...unit, unitNumber: index + 1 }))
+    )
+  }
+
+  const updateUnit = (id, field, value) => {
+    setUnits(current =>
+      current.map(unit =>
+        unit.id === id ? { ...unit, [field]: value } : unit
+      )
+    )
+  }
+
+  const totalDiscountable = units.reduce(
+    (total, unit) => total + Number(unit.discountable || 0),
+    0
+  )
+
+  const totalNonDiscountable = units.reduce(
+    (total, unit) => total + Number(unit.nonDiscountable || 0),
+    0
+  )
+
   return (
-    <section className="w-full">
-
-      {/* HEADER */}
-      <div className="flex items-center justify-between mb-4">
-
+    <section
+      style={{
+        width: "100%",
+        marginTop: "14px",
+        background: "#fff",
+        border: "1px solid #e2e5e8",
+        borderRadius: "8px",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "13px 14px",
+          borderBottom: "1px solid #e6e8ea",
+        }}
+      >
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">
-            Windows
-          </h2>
-
-          <p className="text-sm text-slate-500 mt-1">
-            Add and configure individual window units.
-          </p>
+          <div style={{ fontSize: "13px", fontWeight: 700, color: "#2499ed" }}>
+            Units
+          </div>
+          <div style={{ marginTop: "2px", fontSize: "9px", color: "#92999f" }}>
+            {units.length === 0
+              ? "Add individual window units for this appointment."
+              : `${units.length} ${units.length === 1 ? "unit" : "units"}`}
+          </div>
         </div>
 
-        {/* ADD UNIT BUTTON */}
         <button
           type="button"
           onClick={addUnit}
-          className="
-            inline-flex
-            items-center
-            gap-2
-            rounded-lg
-            bg-sky-600
-            px-4
-            py-2.5
-            text-sm
-            font-semibold
-            text-white
-            shadow-sm
-            transition
-            hover:bg-sky-700
-            active:bg-sky-800
-          "
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            height: "30px",
+            padding: "0 13px",
+            border: 0,
+            borderRadius: "7px",
+            background: "#2499ed",
+            color: "#fff",
+            cursor: "pointer",
+            fontFamily: "inherit",
+            fontSize: "10px",
+            fontWeight: 700,
+            boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
+          }}
         >
-          <span className="text-lg leading-none">
-            +
-          </span>
-
+          <span style={{ fontSize: "15px", lineHeight: 1 }}>+</span>
           Add Unit
         </button>
-
       </div>
 
-
-      {/* NO UNITS */}
-      {units.length === 0 && (
-        <div
-          className="
-            rounded-xl
-            border
-            border-dashed
-            border-slate-300
-            bg-slate-50
-            px-6
-            py-10
-            text-center
-          "
-        >
-          <div className="text-sm font-medium text-slate-700">
-            No window units added
+      <div style={{ width: "100%", overflowX: "auto" }}>
+        <div style={{ minWidth: "1050px" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: grid,
+              alignItems: "center",
+              minHeight: "34px",
+              padding: "0 12px",
+              background: "#fafbfc",
+              borderBottom: "1px solid #e5e7e9",
+            }}
+          >
+            {columns.map(([key, label]) => (
+              <div
+                key={key}
+                style={{
+                  padding: "0 5px",
+                  fontSize: "8px",
+                  fontWeight: 700,
+                  color: "#68717a",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {label}
+              </div>
+            ))}
+            <div />
           </div>
 
-          <div className="mt-1 text-sm text-slate-500">
-            Click “Add Unit” to add the first window.
-          </div>
-        </div>
-      )}
+          {units.length === 0 && (
+            <div
+              style={{
+                padding: "25px 20px",
+                textAlign: "center",
+                borderBottom: "1px solid #edf0f2",
+              }}
+            >
+              <div style={{ fontSize: "11px", fontWeight: 600, color: "#59636c" }}>
+                No window units added
+              </div>
+              <div style={{ marginTop: "4px", fontSize: "9px", color: "#9aa1a7" }}>
+                Click “Add Unit” to add the first window.
+              </div>
+            </div>
+          )}
 
-
-      {/* UNITS */}
-      {units.length > 0 && (
-        <div className="space-y-4">
-
-          {units.map(unit => (
-
+          {units.map((unit, index) => (
             <div
               key={unit.id}
-              className="
-                rounded-xl
-                border
-                border-slate-200
-                bg-white
-                shadow-sm
-                overflow-hidden
-              "
+              style={{
+                display: "grid",
+                gridTemplateColumns: grid,
+                alignItems: "center",
+                minHeight: "47px",
+                padding: "0 12px",
+                borderBottom:
+                  index === units.length - 1 ? "none" : "1px solid #edf0f2",
+              }}
             >
-
-              {/* UNIT HEADER */}
-              <div
-                className="
-                  flex
-                  items-center
-                  justify-between
-                  border-b
-                  border-slate-200
-                  bg-slate-50
-                  px-5
-                  py-3
-                "
-              >
-
-                <div className="flex items-center gap-3">
-
-                  <div
-                    className="
-                      flex
-                      h-8
-                      w-8
-                      items-center
-                      justify-center
-                      rounded-lg
-                      bg-sky-100
-                      text-sm
-                      font-bold
-                      text-sky-700
-                    "
-                  >
-                    {unit.unitNumber}
-                  </div>
-
-                  <div>
-                    <div className="text-sm font-semibold text-slate-900">
-                      Window Unit {unit.unitNumber}
-                    </div>
-
-                    <div className="text-xs text-slate-500">
-                      Configure this individual unit
-                    </div>
-                  </div>
-
-                </div>
-
-
-                {/* REMOVE UNIT */}
+              <div style={cell}>
+                <input
+                  value={unit.location}
+                  onChange={event => updateUnit(unit.id, "location", event.target.value)}
+                  placeholder="Location"
+                  style={input}
+                />
+              </div>
+              <div style={cell}>
+                <input
+                  value={unit.unitType}
+                  onChange={event => updateUnit(unit.id, "unitType", event.target.value)}
+                  placeholder="Choice"
+                  style={input}
+                />
+              </div>
+              <div style={cell}>
+                <input
+                  value={unit.size}
+                  onChange={event => updateUnit(unit.id, "size", event.target.value)}
+                  placeholder="960 × 1440"
+                  style={input}
+                />
+              </div>
+              <div style={cell}>
+                <span style={{ fontSize: "10px", color: "#333" }}>
+                  {unit.product || "Window"}
+                </span>
+              </div>
+              <div style={cell}>
+                <input
+                  value={unit.finish}
+                  onChange={event => updateUnit(unit.id, "finish", event.target.value)}
+                  placeholder="Choice"
+                  style={input}
+                />
+              </div>
+              <div style={{ ...cell, justifyContent: "center" }}>
+                <span style={{ fontSize: "10px", color: "#333" }}>{unit.finishFactor || 0}</span>
+              </div>
+              <div style={{ ...cell, justifyContent: "center" }}>
+                <span style={{ fontSize: "10px", color: "#333" }}>{unit.opener || 0}</span>
+              </div>
+              <div style={{ ...cell, justifyContent: "center" }}>
+                <span style={{ fontSize: "10px", color: "#333" }}>{unit.counts || 1}</span>
+              </div>
+              <div style={cell}>
+                <span style={{ fontSize: "10px", color: "#333" }}>
+                  {money(unit.discountable)}
+                </span>
+              </div>
+              <div style={cell}>
+                <span style={{ fontSize: "10px", color: "#333" }}>
+                  {money(unit.nonDiscountable)}
+                </span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <button
                   type="button"
+                  title="Remove unit"
                   onClick={() => removeUnit(unit.id)}
-                  className="
-                    rounded-md
-                    px-2
-                    py-1.5
-                    text-xs
-                    font-medium
-                    text-red-600
-                    transition
-                    hover:bg-red-50
-                  "
+                  style={{
+                    border: 0,
+                    background: "transparent",
+                    color: "#858c92",
+                    cursor: "pointer",
+                    fontSize: "15px",
+                    lineHeight: 1,
+                    padding: "4px",
+                  }}
                 >
-                  Remove
+                  ⋯
                 </button>
-
               </div>
-
-
-              {/* UNIT CONTENT */}
-              <div className="p-5">
-
-                <div
-                  className="
-                    grid
-                    grid-cols-1
-                    gap-4
-                    sm:grid-cols-2
-                    lg:grid-cols-4
-                  "
-                >
-
-                  {/* UNIT TYPE */}
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-slate-600">
-                      Unit Type
-                    </label>
-
-                    <div
-                      className="
-                        rounded-lg
-                        border
-                        border-slate-200
-                        bg-slate-50
-                        px-3
-                        py-2.5
-                        text-sm
-                        text-slate-500
-                      "
-                    >
-                      {unit.unitType || "Not selected"}
-                    </div>
-                  </div>
-
-
-                  {/* SIZE */}
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-slate-600">
-                      Size
-                    </label>
-
-                    <div
-                      className="
-                        rounded-lg
-                        border
-                        border-slate-200
-                        bg-slate-50
-                        px-3
-                        py-2.5
-                        text-sm
-                        text-slate-500
-                      "
-                    >
-                      {unit.size || "Not selected"}
-                    </div>
-                  </div>
-
-
-                  {/* FINISH */}
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-slate-600">
-                      Finish
-                    </label>
-
-                    <div
-                      className="
-                        rounded-lg
-                        border
-                        border-slate-200
-                        bg-slate-50
-                        px-3
-                        py-2.5
-                        text-sm
-                        text-slate-500
-                      "
-                    >
-                      {unit.finish || "Not selected"}
-                    </div>
-                  </div>
-
-
-                  {/* STYLE */}
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-slate-600">
-                      Style
-                    </label>
-
-                    <div
-                      className="
-                        rounded-lg
-                        border
-                        border-slate-200
-                        bg-slate-50
-                        px-3
-                        py-2.5
-                        text-sm
-                        text-slate-500
-                      "
-                    >
-                      {unit.style || "Not selected"}
-                    </div>
-                  </div>
-
-
-                  {/* OPENER */}
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-slate-600">
-                      Opener
-                    </label>
-
-                    <div
-                      className="
-                        rounded-lg
-                        border
-                        border-slate-200
-                        bg-slate-50
-                        px-3
-                        py-2.5
-                        text-sm
-                        text-slate-500
-                      "
-                    >
-                      {unit.opener || "Not selected"}
-                    </div>
-                  </div>
-
-
-                  {/* EXTERNAL */}
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-slate-600">
-                      External
-                    </label>
-
-                    <div
-                      className="
-                        rounded-lg
-                        border
-                        border-slate-200
-                        bg-slate-50
-                        px-3
-                        py-2.5
-                        text-sm
-                        text-slate-500
-                      "
-                    >
-                      {unit.external || "Not selected"}
-                    </div>
-                  </div>
-
-
-                  {/* COLOUR */}
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-slate-600">
-                      Colour
-                    </label>
-
-                    <div
-                      className="
-                        rounded-lg
-                        border
-                        border-slate-200
-                        bg-slate-50
-                        px-3
-                        py-2.5
-                        text-sm
-                        text-slate-500
-                      "
-                    >
-                      {unit.colour || "Not selected"}
-                    </div>
-                  </div>
-
-
-                  {/* SHAPE */}
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-slate-600">
-                      Shape
-                    </label>
-
-                    <div
-                      className="
-                        rounded-lg
-                        border
-                        border-slate-200
-                        bg-slate-50
-                        px-3
-                        py-2.5
-                        text-sm
-                        text-slate-500
-                      "
-                    >
-                      {unit.shape || "Not selected"}
-                    </div>
-                  </div>
-
-
-                  {/* GLASS */}
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-slate-600">
-                      Glass
-                    </label>
-
-                    <div
-                      className="
-                        rounded-lg
-                        border
-                        border-slate-200
-                        bg-slate-50
-                        px-3
-                        py-2.5
-                        text-sm
-                        text-slate-500
-                      "
-                    >
-                      {unit.glass || "Not selected"}
-                    </div>
-                  </div>
-
-
-                  {/* EXTRAS */}
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-slate-600">
-                      Extras
-                    </label>
-
-                    <div
-                      className="
-                        rounded-lg
-                        border
-                        border-slate-200
-                        bg-slate-50
-                        px-3
-                        py-2.5
-                        text-sm
-                        text-slate-500
-                      "
-                    >
-                      {unit.extras || "Not selected"}
-                    </div>
-                  </div>
-
-                </div>
-
-
-                {/* FUTURE PRICE AREA */}
-                <div
-                  className="
-                    mt-5
-                    flex
-                    items-center
-                    justify-between
-                    border-t
-                    border-slate-100
-                    pt-4
-                  "
-                >
-
-                  <div className="text-xs text-slate-500">
-                    Unit price
-                  </div>
-
-                  <div className="text-lg font-bold text-slate-900">
-                    £0.00
-                  </div>
-
-                </div>
-
-              </div>
-
             </div>
-
           ))}
+        </div>
+      </div>
 
-
-          {/* TOTAL */}
-          <div
-            className="
-              flex
-              items-center
-              justify-between
-              rounded-xl
-              bg-slate-900
-              px-5
-              py-4
-              text-white
-            "
-          >
-
-            <div>
-              <div className="text-sm font-semibold">
-                Window Total
-              </div>
-
-              <div className="text-xs text-slate-300">
-                {units.length}{" "}
-                {units.length === 1
-                  ? "unit"
-                  : "units"}
-              </div>
+      {units.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "24px",
+            padding: "11px 14px",
+            background: "#fafbfc",
+            borderTop: "1px solid #e5e7e9",
+          }}
+        >
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: "8px", color: "#8b939a", fontWeight: 700 }}>
+              DISCOUNTABLE
             </div>
-
-            <div className="text-xl font-bold">
-              £0.00
+            <div style={{ marginTop: "2px", fontSize: "12px", fontWeight: 700 }}>
+              {money(totalDiscountable)}
             </div>
-
           </div>
-
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: "8px", color: "#8b939a", fontWeight: 700 }}>
+              NON DISCOUNTABLE
+            </div>
+            <div style={{ marginTop: "2px", fontSize: "12px", fontWeight: 700 }}>
+              {money(totalNonDiscountable)}
+            </div>
+          </div>
         </div>
       )}
-
     </section>
   )
 }
