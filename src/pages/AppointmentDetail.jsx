@@ -267,26 +267,259 @@ function AppointmentDetail({ appointment, onBack, onUpdated, permissionLevel }) 
         <ActionHistory entityType="appointment" entityId={appointment.appointment_row_id} />
       </div>
 
-      {showResult && <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px" }}>
-        <div style={{ width: "420px", background: "#fff", borderRadius: "10px", padding: "20px", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
-          <h3 style={{ margin: "0 0 15px", fontSize: "15px" }}>Set Appointment Result</h3>
-          <label style={{ display: "block", fontSize: "10px", color: "#666", marginBottom: "6px" }}>Result</label>
-          <select value={result} onChange={(event) => setResult(event.target.value)} style={{ width: "100%", height: "36px", border: "1px solid #d8dde1", borderRadius: "6px", padding: "0 9px", fontFamily: "inherit", fontSize: "11px", background: "#fff" }}>
-            <option value="">Select result...</option>
-            <option value="Sold">Sold</option>
-            <option value="No Sale">No Sale</option>
-            <option value="Cancelled">Cancelled</option>
-          </select>
-          {error && <div style={{ marginTop: "12px", padding: "10px", background: "#fbeaea", color: "#8b3333", borderRadius: "6px", fontSize: "10px", lineHeight: 1.5 }}>{error}</div>}
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "18px" }}>
-            <button type="button" onClick={() => setShowResult(false)} style={{ height: "34px", padding: "0 12px", border: "1px solid #d8dde1", borderRadius: "6px", background: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: "10px" }}>Cancel</button>
-            <button type="button" onClick={saveResult} disabled={saving} style={{ height: "34px", padding: "0 14px", border: 0, borderRadius: "6px", background: "#2499ed", color: "#fff", cursor: saving ? "default" : "pointer", opacity: saving ? 0.65 : 1, fontFamily: "inherit", fontSize: "10px", fontWeight: 700 }}>{saving ? "Saving..." : "Save Result"}</button>
+      {showResult && (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.35)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 1000,
+      padding: "20px",
+    }}
+  >
+    <div
+      style={{
+        width: "420px",
+        background: "#fff",
+        borderRadius: "10px",
+        padding: "20px",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+      }}
+    >
+      <h3 style={{ margin: "0 0 15px", fontSize: "15px" }}>
+        Set Appointment Result
+      </h3>
+
+      <label
+        style={{
+          display: "block",
+          fontSize: "10px",
+          color: "#666",
+          marginBottom: "6px",
+        }}
+      >
+        Result
+      </label>
+
+      <select
+        value={result}
+        onChange={(event) => {
+          setResult(event.target.value)
+
+          // Clear signature if the user changes away from Sold
+          if (event.target.value !== "Sold") {
+            setSignature("")
+          }
+        }}
+        style={{
+          width: "100%",
+          height: "36px",
+          border: "1px solid #d8dde1",
+          borderRadius: "6px",
+          padding: "0 9px",
+          fontFamily: "inherit",
+          fontSize: "11px",
+          background: "#fff",
+        }}
+      >
+        <option value="">Select result...</option>
+        <option value="Sold">Sold</option>
+        <option value="No Sale">No Sale</option>
+        <option value="Cancelled">Cancelled</option>
+      </select>
+
+      {result === "Sold" && (
+        <div style={{ marginTop: "16px" }}>
+          <label
+            style={{
+              display: "block",
+              fontSize: "10px",
+              color: "#666",
+              marginBottom: "6px",
+            }}
+          >
+            Customer Signature
+          </label>
+
+          <div
+            style={{
+              border: "1px solid #d8dde1",
+              borderRadius: "6px",
+              background: "#fff",
+              overflow: "hidden",
+              touchAction: "none",
+            }}
+          >
+            <canvas
+              ref={(canvas) => {
+                if (!canvas) return
+
+                const ctx = canvas.getContext("2d")
+                let drawing = false
+
+                const getPoint = (event) => {
+                  const rect = canvas.getBoundingClientRect()
+
+                  return {
+                    x:
+                      (event.clientX - rect.left) *
+                      (canvas.width / rect.width),
+                    y:
+                      (event.clientY - rect.top) *
+                      (canvas.height / rect.height),
+                  }
+                }
+
+                const start = (event) => {
+                  event.preventDefault()
+                  drawing = true
+
+                  const point = getPoint(event)
+
+                  ctx.beginPath()
+                  ctx.moveTo(point.x, point.y)
+                }
+
+                const move = (event) => {
+                  if (!drawing) return
+
+                  event.preventDefault()
+
+                  const point = getPoint(event)
+
+                  ctx.lineWidth = 2.2
+                  ctx.lineCap = "round"
+                  ctx.lineJoin = "round"
+                  ctx.strokeStyle = "#10212b"
+
+                  ctx.lineTo(point.x, point.y)
+                  ctx.stroke()
+
+                  setSignature(canvas.toDataURL("image/png"))
+                }
+
+                const end = () => {
+                  drawing = false
+                }
+
+                canvas.onpointerdown = start
+                canvas.onpointermove = move
+                canvas.onpointerup = end
+                canvas.onpointercancel = end
+                canvas.onpointerleave = end
+              }}
+              width={900}
+              height={240}
+              style={{
+                display: "block",
+                width: "100%",
+                height: "150px",
+                cursor: "crosshair",
+              }}
+            />
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              const canvas = document.querySelector(
+                'canvas[width="900"][height="240"]'
+              )
+
+              if (canvas) {
+                const ctx = canvas.getContext("2d")
+                ctx.clearRect(0, 0, canvas.width, canvas.height)
+              }
+
+              setSignature("")
+            }}
+            style={{
+              marginTop: "6px",
+              border: 0,
+              background: "transparent",
+              color: "#2499ed",
+              fontSize: "10px",
+              fontWeight: 700,
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            Clear signature
+          </button>
         </div>
-      </div>}
-    </section>
-  )
-}
+      )}
+
+      {error && (
+        <div
+          style={{
+            marginTop: "12px",
+            padding: "10px",
+            background: "#fbeaea",
+            color: "#8b3333",
+            borderRadius: "6px",
+            fontSize: "10px",
+            lineHeight: 1.5,
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: "8px",
+          marginTop: "18px",
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => {
+            setShowResult(false)
+            setSignature("")
+          }}
+          style={{
+            height: "34px",
+            padding: "0 12px",
+            border: "1px solid #d8dde1",
+            borderRadius: "6px",
+            background: "#fff",
+            cursor: "pointer",
+            fontFamily: "inherit",
+            fontSize: "10px",
+          }}
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          onClick={saveResult}
+          disabled={saving}
+          style={{
+            height: "34px",
+            padding: "0 14px",
+            border: 0,
+            borderRadius: "6px",
+            background: "#2499ed",
+            color: "#fff",
+            cursor: saving ? "default" : "pointer",
+            opacity: saving ? 0.65 : 1,
+            fontFamily: "inherit",
+            fontSize: "10px",
+            fontWeight: 700,
+          }}
+        >
+          {saving ? "Saving..." : "Save Result"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
 function InfoCard({ title, icon: Icon, children }) {
   return <div style={{ background: "#fff", border: "1px solid #e2e5e8", borderRadius: "8px", padding: "14px" }}><div style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: "11px" }}><Icon size={14} color="#2d9bf0" /><span style={{ fontSize: "11px", fontWeight: 700, color: "#222" }}>{title}</span></div>{children}</div>
