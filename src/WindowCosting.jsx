@@ -17,6 +17,12 @@ const EMPTY_FORM = {
   extras: "",
 }
 
+/*
+ * ============================================================
+ * SHARED FORM STYLES
+ * ============================================================
+ */
+
 const inputStyle = {
   width: "100%",
   height: "36px",
@@ -45,52 +51,177 @@ const selectStyle = {
   outline: "none",
 }
 
+/*
+ * ============================================================
+ * SIZE MATRIX
+ * ============================================================
+ */
+
 const SIZE_MATRIX_DIMENSIONS = [
-  500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500,
-  1600, 1700, 1800, 1900, 2000, 2250, 2500, 2750, 3000, 3250,
+  500,
+  600,
+  700,
+  800,
+  900,
+  1000,
+  1100,
+  1200,
+  1300,
+  1400,
+  1500,
+  1600,
+  1700,
+  1800,
+  1900,
+  2000,
+  2250,
+  2500,
+  2750,
+  3000,
+  3250,
 ]
 
 const SIZE_MATRIX = {
-  500: ["A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","B"],
-  600: ["A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","B","B","B"],
-  700: ["A","A","A","A","A","A","A","A","A","A","A","A","A","B","B","B","B","B","B","B","B"],
-  800: ["A","A","A","A","A","A","A","A","A","A","A","A","A","B","B","B","B","B","B","B","C"],
-  900: ["A","A","A","A","A","A","A","A","A","A","B","B","B","B","B","B","B","B","B","C","C"],
-  1000: ["A","A","A","A","A","A","B","B","B","B","B","B","B","B","B","B","B","B","C","C","C"],
-  1100: ["A","A","A","A","A","B","B","B","B","B","B","B","B","B","B","B","B","B","C","C","C"],
-  1200: ["A","A","A","A","A","B","B","B","B","B","B","B","B","B","B","B","C","C","C","C","D"],
-  1300: ["A","A","A","A","A","B","B","B","B","B","B","B","B","C","C","C","C","C","C","C","D"],
-  1400: ["A","A","A","A","A","B","B","B","B","B","C","C","C","C","C","C","C","C","C","C","D"],
-  1500: ["A","A","A","A","B","B","B","B","B","C","C","C","C","C","C","C","D","D","D","D"],
-  1600: ["A","A","A","A","B","B","B","B","B","C","C","C","C","C","C","D","D","D","D","D","E"],
-  1700: ["A","A","A","B","B","B","B","B","B","C","C","C","C","C","C","D","D","D","D","D","E"],
-  1800: ["A","A","A","B","B","B","B","B","C","C","C","C","C","C","D","D","D","D","D","E","E"],
-  1900: ["A","A","A","B","B","B","B","B","C","C","C","C","D","D","D","D","D","E","E","E","E"],
-  2000: ["A","A","A","B","B","B","B","C","C","C","C","D","D","D","D","D","E","E","E","E","F"],
-  2250: ["A","A","B","B","B","B","B","C","C","C","C","D","D","D","D","E","E","E","E","F","F"],
-  2500: ["A","B","B","B","B","B","C","C","C","C","D","D","D","D","D","E","E","F","G","G","G"],
-  2750: ["A","B","B","B","B","C","C","C","C","D","D","D","D","D","D","E","E","E","F","G","G"],
-  3000: ["B","B","B","B","C","C","C","C","C","D","D","D","E","E","E","F","F","G","H","H"],
-  3250: ["B","B","B","C","C","C","C","D","D","D","D","D","E","E","E","F","F","G","G","H","H"],
+  500: [
+    "A", "A", "A", "A", "A", "A", "A", "A", "A", "A",
+    "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "B"
+  ],
+
+  600: [
+    "A", "A", "A", "A", "A", "A", "A", "A", "A", "A",
+    "A", "A", "A", "A", "A", "A", "A", "A", "B", "B", "B"
+  ],
+
+  700: [
+    "A", "A", "A", "A", "A", "A", "A", "A", "A", "A",
+    "A", "A", "A", "B", "B", "B", "B", "B", "B", "B", "B"
+  ],
+
+  800: [
+    "A", "A", "A", "A", "A", "A", "A", "A", "A", "A",
+    "A", "A", "A", "B", "B", "B", "B", "B", "B", "B", "C"
+  ],
+
+  900: [
+    "A", "A", "A", "A", "A", "A", "A", "A", "A", "A",
+    "B", "B", "B", "B", "B", "B", "B", "B", "B", "C", "C"
+  ],
+
+  1000: [
+    "A", "A", "A", "A", "A", "B", "B", "B", "B", "B",
+    "B", "B", "B", "B", "B", "B", "B", "C", "C", "C"
+  ],
+
+  1100: [
+    "A", "A", "A", "A", "A", "B", "B", "B", "B", "B",
+    "B", "B", "B", "B", "B", "B", "B", "C", "C", "C"
+  ],
+
+  1200: [
+    "A", "A", "A", "A", "A", "B", "B", "B", "B", "B",
+    "B", "B", "B", "B", "B", "B", "C", "C", "C", "C", "D"
+  ],
+
+  1300: [
+    "A", "A", "A", "A", "A", "B", "B", "B", "B", "B",
+    "B", "B", "B", "C", "C", "C", "C", "C", "C", "C", "D"
+  ],
+
+  1400: [
+    "A", "A", "A", "A", "A", "B", "B", "B", "B", "B",
+    "C", "C", "C", "C", "C", "C", "C", "C", "C", "C", "D"
+  ],
+
+  1500: [
+    "A", "A", "A", "A", "B", "B", "B", "B", "B", "C",
+    "C", "C", "C", "C", "C", "C", "D", "D", "D", "D"
+  ],
+
+  1600: [
+    "A", "A", "A", "A", "B", "B", "B", "B", "B", "C",
+    "C", "C", "C", "C", "C", "D", "D", "D", "D", "D", "E"
+  ],
+
+  1700: [
+    "A", "A", "A", "B", "B", "B", "B", "B", "B", "C",
+    "C", "C", "C", "C", "C", "D", "D", "D", "D", "D", "E"
+  ],
+
+  1800: [
+    "A", "A", "A", "B", "B", "B", "B", "B", "C", "C",
+    "C", "C", "C", "C", "D", "D", "D", "D", "D", "E", "E"
+  ],
+
+  1900: [
+    "A", "A", "A", "B", "B", "B", "B", "B", "C", "C",
+    "C", "C", "D", "D", "D", "D", "D", "E", "E", "E", "E"
+  ],
+
+  2000: [
+    "A", "A", "A", "B", "B", "B", "B", "C", "C", "C",
+    "C", "D", "D", "D", "D", "D", "E", "E", "E", "E", "F"
+  ],
+
+  2250: [
+    "A", "A", "B", "B", "B", "B", "B", "C", "C", "C",
+    "C", "D", "D", "D", "D", "E", "E", "E", "E", "F", "F"
+  ],
+
+  2500: [
+    "A", "B", "B", "B", "B", "B", "C", "C", "C", "C",
+    "D", "D", "D", "D", "D", "E", "E", "F", "G", "G", "G"
+  ],
+
+  2750: [
+    "A", "B", "B", "B", "B", "C", "C", "C", "C", "D",
+    "D", "D", "D", "D", "D", "E", "E", "E", "F", "G", "G"
+  ],
+
+  3000: [
+    "B", "B", "B", "B", "C", "C", "C", "C", "C", "D",
+    "D", "D", "D", "E", "E", "E", "F", "F", "G", "H", "H"
+  ],
+
+  3250: [
+    "B", "B", "B", "C", "C", "C", "C", "D", "D", "D",
+    "D", "D", "E", "E", "E", "F", "F", "G", "G", "H", "H"
+  ],
 }
 
 function roundUpToMatrixSize(value) {
   const numericValue = Number(value)
-  if (!Number.isFinite(numericValue) || numericValue <= 0) return null
-  return SIZE_MATRIX_DIMENSIONS.find((dimension) => numericValue <= dimension) || null
+
+  if (!Number.isFinite(numericValue) || numericValue <= 0) {
+    return null
+  }
+
+  return (
+    SIZE_MATRIX_DIMENSIONS.find(
+      (dimension) => numericValue <= dimension
+    ) || null
+  )
 }
 
 function getSizeChoice(width, height) {
   const roundedWidth = roundUpToMatrixSize(width)
   const roundedHeight = roundUpToMatrixSize(height)
 
-  if (!roundedWidth || !roundedHeight) return null
+  if (!roundedWidth || !roundedHeight) {
+    return null
+  }
 
   const row = SIZE_MATRIX[roundedHeight]
-  if (!row) return null
 
-  const columnIndex = SIZE_MATRIX_DIMENSIONS.indexOf(roundedWidth)
-  if (columnIndex === -1) return null
+  if (!row) {
+    return null
+  }
+
+  const columnIndex =
+    SIZE_MATRIX_DIMENSIONS.indexOf(roundedWidth)
+
+  if (columnIndex === -1) {
+    return null
+  }
 
   return {
     choice: row[columnIndex],
@@ -99,8 +230,16 @@ function getSizeChoice(width, height) {
   }
 }
 
+/*
+ * ============================================================
+ * GENERAL HELPERS
+ * ============================================================
+ */
+
 function normalise(value) {
-  return String(value ?? "").trim().toLowerCase()
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
 }
 
 function Field({ label, required, children }) {
@@ -116,24 +255,37 @@ function Field({ label, required, children }) {
         }}
       >
         {label}
-        {required && <span style={{ color: "#2499ed" }}> *</span>}
+
+        {required && (
+          <span style={{ color: "#2499ed" }}> *</span>
+        )}
       </span>
+
       {children}
     </label>
   )
 }
 
 function getChoices(rows, categories, unitType) {
-  const categorySet = new Set(categories.map(normalise))
+  const categorySet = new Set(
+    categories.map(normalise)
+  )
+
   const selectedType = normalise(unitType)
 
   const filtered = rows.filter((row) => {
     const category = normalise(row.category)
     const rowType = normalise(row.unit_type)
 
-    if (!categorySet.has(category)) return false
+    if (!categorySet.has(category)) {
+      return false
+    }
 
-    if (rowType && selectedType && rowType !== selectedType) {
+    if (
+      rowType &&
+      selectedType &&
+      rowType !== selectedType
+    ) {
       return false
     }
 
@@ -143,14 +295,18 @@ function getChoices(rows, categories, unitType) {
   return Array.from(
     new Set(
       filtered
-        .map((row) => String(row.choice ?? "").trim())
+        .map((row) =>
+          String(row.choice ?? "").trim()
+        )
         .filter(Boolean)
     )
   )
 }
 
 function getSizeValue(rows, sizeChoice, unitType) {
-  if (!sizeChoice) return null
+  if (!sizeChoice) {
+    return null
+  }
 
   const selectedType = normalise(unitType)
 
@@ -164,36 +320,156 @@ function getSizeValue(rows, sizeChoice, unitType) {
       category === "size choice" ||
       category === "size_choice"
 
-    if (!isSizeCategory) return false
-    if (choice !== normalise(sizeChoice)) return false
+    if (!isSizeCategory) {
+      return false
+    }
 
-    if (rowType && selectedType && rowType !== selectedType) {
+    if (choice !== normalise(sizeChoice)) {
+      return false
+    }
+
+    if (
+      rowType &&
+      selectedType &&
+      rowType !== selectedType
+    ) {
       return false
     }
 
     return true
   })
 
-  if (!sizeRows.length) return null
+  if (!sizeRows.length) {
+    return null
+  }
 
   const value = Number(sizeRows[0].value)
-  return Number.isFinite(value) ? value : null
+
+  return Number.isFinite(value)
+    ? value
+    : null
 }
+
+/*
+ * ============================================================
+ * DATABASE UNIT MAPPER
+ * ============================================================
+ *
+ * Converts a Supabase `units` record into the format used
+ * by the React table.
+ */
+
+function mapDatabaseUnit(row, index) {
+  return {
+    id: row.UUID,
+
+    unitNumber: index + 1,
+
+    location:
+      row.location ?? "",
+
+    unitType:
+      row.unit_type ?? "",
+
+    width:
+      Number(row.width) || 0,
+
+    height:
+      Number(row.height) || 0,
+
+    sizeChoice:
+      row.size_choice ?? null,
+
+    sizeValue:
+      row.size_value !== null &&
+      row.size_value !== undefined
+        ? Number(row.size_value)
+        : null,
+
+    colour:
+      row.colour_choice ?? "",
+
+    shape:
+      row.shape_choice ?? "",
+
+    finish:
+      row.finish_choice ?? "",
+
+    glass:
+      row.glass_choice ?? "",
+
+    style:
+      row.style_choice ?? "",
+
+    openers:
+      Number(row.openers_choice) || 0,
+
+    fixed:
+      Number(row.fixed_choice) || 0,
+
+    handle:
+      row.handle_choice ?? "",
+
+    extras:
+      row.extras_choice ?? "",
+
+    createdBy:
+      row.created_by ?? null,
+  }
+}
+
+/*
+ * ============================================================
+ * COMPONENT
+ * ============================================================
+ */
 
 export default function WindowCosting({ appointment }) {
   const [units, setUnits] = useState([])
+
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ ...EMPTY_FORM })
+
+  const [form, setForm] = useState({
+    ...EMPTY_FORM,
+  })
+
   const [choices, setChoices] = useState([])
-  const [loadingChoices, setLoadingChoices] = useState(false)
+
+  const [loadingChoices, setLoadingChoices] =
+    useState(false)
+
+  const [loadingUnits, setLoadingUnits] =
+    useState(false)
+
   const [saving, setSaving] = useState(false)
+
   const [error, setError] = useState("")
 
   const isWindows =
     normalise(appointment?.job_type) === "windows"
 
+  /*
+   * ==========================================================
+   * APPOINTMENT ID
+   * ==========================================================
+   */
+
+  const appointmentId =
+    appointment?.appointment_row_id ??
+    appointment?.appointment_id ??
+    appointment?.id
+
+  /*
+   * ==========================================================
+   * LOAD UNIT CHOICES
+   * ==========================================================
+   */
+
   useEffect(() => {
-    if (!isWindows) return
+    if (!isWindows) {
+      setChoices([])
+      return
+    }
 
     let cancelled = false
 
@@ -242,17 +518,117 @@ export default function WindowCosting({ appointment }) {
     }
   }, [isWindows])
 
+  /*
+   * ==========================================================
+   * LOAD ALL EXISTING UNITS
+   * ==========================================================
+   *
+   * Every unit whose appointment_id matches the current
+   * appointment row ID is loaded.
+   */
+
+  useEffect(() => {
+    if (!isWindows || !appointmentId) {
+      setUnits([])
+      return
+    }
+
+    let cancelled = false
+
+    async function loadUnits() {
+      setLoadingUnits(true)
+      setError("")
+
+      console.log(
+        "Loading units for appointment:",
+        appointmentId
+      )
+
+      const {
+        data,
+        error: fetchError,
+      } = await supabase
+        .from("units")
+        .select("*")
+        .eq(
+          "appointment_id",
+          String(appointmentId)
+        )
+        .order("created_date", {
+          ascending: true,
+        })
+
+      if (cancelled) return
+
+      if (fetchError) {
+        console.error(
+          "Unable to load units:",
+          fetchError
+        )
+
+        setError(
+          fetchError.message ||
+            "Unable to load window units."
+        )
+
+        setUnits([])
+      } else {
+        console.log(
+          "Units loaded:",
+          data
+        )
+
+        const mappedUnits = (
+          data || []
+        ).map(
+          (row, index) =>
+            mapDatabaseUnit(
+              row,
+              index
+            )
+        )
+
+        setUnits(mappedUnits)
+      }
+
+      setLoadingUnits(false)
+    }
+
+    loadUnits()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    isWindows,
+    appointmentId,
+  ])
+
+  /*
+   * ==========================================================
+   * UNIT TYPES
+   * ==========================================================
+   */
+
   const typeOptions = useMemo(() => {
     return Array.from(
       new Set(
         choices
           .map((row) =>
-            String(row.unit_type ?? "").trim()
+            String(
+              row.unit_type ?? ""
+            ).trim()
           )
           .filter(Boolean)
       )
     )
   }, [choices])
+
+  /*
+   * ==========================================================
+   * NORMAL DROPDOWN OPTIONS
+   * ==========================================================
+   */
 
   const options = useMemo(() => {
     return {
@@ -298,7 +674,16 @@ export default function WindowCosting({ appointment }) {
         form.unitType
       ),
     }
-  }, [choices, form.unitType])
+  }, [
+    choices,
+    form.unitType,
+  ])
+
+  /*
+   * ==========================================================
+   * CALCULATED SIZE
+   * ==========================================================
+   */
 
   const calculatedSize = useMemo(() => {
     if (form.unitType !== "Window") {
@@ -334,6 +719,12 @@ export default function WindowCosting({ appointment }) {
     form.unitType,
   ])
 
+  /*
+   * ==========================================================
+   * FORM
+   * ==========================================================
+   */
+
   function updateForm(field, value) {
     setForm((current) => ({
       ...current,
@@ -366,18 +757,28 @@ export default function WindowCosting({ appointment }) {
     setError("")
   }
 
+  /*
+   * ==========================================================
+   * SAVE UNIT
+   * ==========================================================
+   */
+
   async function addUnit(event) {
     event.preventDefault()
 
     if (saving) return
 
     if (!form.location.trim()) {
-      setError("Please enter a location.")
+      setError(
+        "Please enter a location."
+      )
       return
     }
 
     if (!form.unitType) {
-      setError("Please select a type.")
+      setError(
+        "Please select a type."
+      )
       return
     }
 
@@ -404,11 +805,6 @@ export default function WindowCosting({ appointment }) {
       }
     }
 
-    const appointmentId =
-      appointment?.appointment_row_id ??
-      appointment?.appointment_id ??
-      appointment?.id
-
     if (!appointmentId) {
       setError(
         "Unable to save the unit because no appointment ID was found."
@@ -420,24 +816,6 @@ export default function WindowCosting({ appointment }) {
     setError("")
 
     try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
-
-      if (userError) {
-        throw new Error(
-          userError.message ||
-            "Unable to identify the current user."
-        )
-      }
-
-      if (!user) {
-        throw new Error(
-          "You must be logged in to create a unit."
-        )
-      }
-
       const unitId =
         typeof crypto !== "undefined" &&
         crypto.randomUUID
@@ -451,9 +829,8 @@ export default function WindowCosting({ appointment }) {
             }
           : {}),
 
-        appointment_id: String(
-          appointmentId
-        ),
+        appointment_id:
+          String(appointmentId),
 
         location:
           form.location.trim(),
@@ -461,15 +838,13 @@ export default function WindowCosting({ appointment }) {
         created_date:
           new Date().toISOString(),
 
-        created_by:
-          user.id,
-
         unit_type:
           form.unitType,
 
         size_choice:
           form.unitType === "Window"
-            ? calculatedSize?.choice || null
+            ? calculatedSize?.choice ||
+              null
             : null,
 
         height:
@@ -528,10 +903,13 @@ export default function WindowCosting({ appointment }) {
       )
 
       const {
+        data: savedUnit,
         error: insertError,
       } = await supabase
         .from("units")
         .insert(insertData)
+        .select("*")
+        .single()
 
       if (insertError) {
         console.error(
@@ -545,67 +923,18 @@ export default function WindowCosting({ appointment }) {
         )
       }
 
-      const newUnit = {
-        id:
-          unitId ||
-          crypto.randomUUID(),
-
-        unitNumber:
-          units.length + 1,
-
-        location:
-          form.location,
-
-        unitType:
-          form.unitType,
-
-        width:
-          Number(form.width),
-
-        height:
-          Number(form.height),
-
-        sizeChoice:
-          form.unitType === "Window"
-            ? calculatedSize?.choice || null
-            : null,
-
-        sizeValue:
-          form.unitType === "Window"
-            ? calculatedSizeValue
-            : null,
-
-        colour:
-          form.colour,
-
-        shape:
-          form.shape,
-
-        finish:
-          form.finish,
-
-        glass:
-          form.glass,
-
-        style:
-          form.style,
-
-        openers:
-          Number(form.openers) || 0,
-
-        fixed:
-          Number(form.fixed) || 0,
-
-        handle:
-          form.handle,
-
-        extras:
-          form.extras,
-      }
+      /*
+       * Use the actual database record returned by
+       * Supabase rather than constructing a separate
+       * local record.
+       */
 
       setUnits((current) => [
         ...current,
-        newUnit,
+        mapDatabaseUnit(
+          savedUnit,
+          current.length
+        ),
       ])
 
       closeForm()
@@ -623,6 +952,12 @@ export default function WindowCosting({ appointment }) {
       setSaving(false)
     }
   }
+
+  /*
+   * ==========================================================
+   * REMOVE UNIT
+   * ==========================================================
+   */
 
   async function removeUnit(unit) {
     if (!unit) return
@@ -670,6 +1005,12 @@ export default function WindowCosting({ appointment }) {
         }))
     )
   }
+
+  /*
+   * ==========================================================
+   * SELECT RENDERER
+   * ==========================================================
+   */
 
   const renderSelect = (
     field,
@@ -726,6 +1067,12 @@ export default function WindowCosting({ appointment }) {
     return null
   }
 
+  /*
+   * ==========================================================
+   * UI
+   * ==========================================================
+   */
+
   return (
     <section
       style={{
@@ -733,6 +1080,8 @@ export default function WindowCosting({ appointment }) {
         marginTop: "24px",
       }}
     >
+      {/* HEADER */}
+
       <div
         style={{
           display: "flex",
@@ -787,6 +1136,8 @@ export default function WindowCosting({ appointment }) {
         </button>
       </div>
 
+      {/* ERROR */}
+
       {error && !showForm && (
         <div
           style={{
@@ -802,7 +1153,24 @@ export default function WindowCosting({ appointment }) {
         </div>
       )}
 
-      {units.length === 0 ? (
+      {/* LOADING UNITS */}
+
+      {loadingUnits ? (
+        <div
+          style={{
+            padding: "24px",
+            border:
+              "1px dashed #d8dde1",
+            borderRadius: "8px",
+            background: "#fafbfc",
+            textAlign: "center",
+            fontSize: "10px",
+            color: "#888",
+          }}
+        >
+          Loading window units...
+        </div>
+      ) : units.length === 0 ? (
         <div
           style={{
             padding: "24px",
@@ -957,6 +1325,10 @@ export default function WindowCosting({ appointment }) {
         </div>
       )}
 
+      {/* ======================================================
+          ADD UNIT MODAL
+          ====================================================== */}
+
       {showForm && (
         <div
           style={{
@@ -986,6 +1358,8 @@ export default function WindowCosting({ appointment }) {
                 "0 20px 60px rgba(0,0,0,0.25)",
             }}
           >
+            {/* MODAL HEADER */}
+
             <div
               style={{
                 display: "flex",
@@ -1043,6 +1417,8 @@ export default function WindowCosting({ appointment }) {
                 ×
               </button>
             </div>
+
+            {/* FORM BODY */}
 
             <div
               style={{
@@ -1437,6 +1813,8 @@ export default function WindowCosting({ appointment }) {
                 </div>
               )}
             </div>
+
+            {/* FOOTER */}
 
             <div
               style={{
