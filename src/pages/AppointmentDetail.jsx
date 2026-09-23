@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 
 import {
   ArrowLeft,
@@ -39,14 +39,12 @@ function AppointmentDetail({
   const canViewCPS = Number(permissionLevel) >= 4
 
   const [showResult, setShowResult] = useState(false)
-  const [result, setResult] = useState(appointment?.result || appointment?.status || "")
+  const [result, setResult] = useState(
+    appointment?.result || appointment?.status || ""
+  )
   const [signature, setSignature] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
-
-  // Signature is currently local only.
-  // We will save it in a later step.
-  const [signature, setSignature] = useState("")
 
   const [confirming, setConfirming] = useState(false)
   const [confirmError, setConfirmError] = useState("")
@@ -79,7 +77,9 @@ function AppointmentDetail({
     .join(", ")
 
   useEffect(() => {
-    setResult(appointment?.result || appointment?.status || "")
+    setResult(
+      appointment?.result || appointment?.status || ""
+    )
 
     setCpsValues({
       cps_h: appointment?.cps_h === true,
@@ -88,7 +88,9 @@ function AppointmentDetail({
       cps_s: appointment?.cps_s === true,
     })
 
-    setEpvsCalculation(appointment?.epvs_calculation || null)
+    setEpvsCalculation(
+      appointment?.epvs_calculation || null
+    )
   }, [appointment])
 
   async function confirmAppointment() {
@@ -108,47 +110,56 @@ function AppointmentDetail({
       const submittedBy = getSubmittedBy(userData?.user)
       const now = new Date().toISOString()
 
-      const { data: action, error: actionError } = await supabase
-        .from("action_runs")
-        .insert({
-          action_type: "confirm_appointment",
-          status: "running",
-          entity_type: "appointment",
-          entity_id: appointment.appointment_row_id,
-          triggered_by: submittedBy,
-          started_at: now,
-          input_data: {
-            appointment_row_id: appointment.appointment_row_id,
-          },
-        })
-        .select("id")
-        .single()
+      const { data: action, error: actionError } =
+        await supabase
+          .from("action_runs")
+          .insert({
+            action_type: "confirm_appointment",
+            status: "running",
+            entity_type: "appointment",
+            entity_id: appointment.appointment_row_id,
+            triggered_by: submittedBy,
+            started_at: now,
+            input_data: {
+              appointment_row_id:
+                appointment.appointment_row_id,
+            },
+          })
+          .select("id")
+          .single()
 
       if (actionError) throw actionError
 
       actionId = action.id
 
-      const { data: updatedAppointment, error: updateError } =
-        await supabase
-          .from("appointments")
-          .update({ cps_c: true })
-          .eq("appointment_row_id", appointment.appointment_row_id)
-          .select("*")
-          .single()
+      const {
+        data: updatedAppointment,
+        error: updateError,
+      } = await supabase
+        .from("appointments")
+        .update({ cps_c: true })
+        .eq(
+          "appointment_row_id",
+          appointment.appointment_row_id
+        )
+        .select("*")
+        .single()
 
       if (updateError) throw updateError
 
-      const { error: actionUpdateError } = await supabase
-        .from("action_runs")
-        .update({
-          status: "completed",
-          completed_at: new Date().toISOString(),
-          output_data: {
-            appointment_row_id: updatedAppointment.appointment_row_id,
-            cps_c: true,
-          },
-        })
-        .eq("id", actionId)
+      const { error: actionUpdateError } =
+        await supabase
+          .from("action_runs")
+          .update({
+            status: "completed",
+            completed_at: new Date().toISOString(),
+            output_data: {
+              appointment_row_id:
+                updatedAppointment.appointment_row_id,
+              cps_c: true,
+            },
+          })
+          .eq("id", actionId)
 
       if (actionUpdateError) throw actionUpdateError
 
@@ -159,10 +170,14 @@ function AppointmentDetail({
 
       onUpdated?.(updatedAppointment)
     } catch (err) {
-      console.error("Confirm Appointment action failed:", err)
+      console.error(
+        "Confirm Appointment action failed:",
+        err
+      )
 
       const message =
-        err?.message || "Unable to confirm appointment."
+        err?.message ||
+        "Unable to confirm appointment."
 
       setConfirmError(message)
 
@@ -195,7 +210,10 @@ function AppointmentDetail({
     setError("")
 
     try {
-      const { data, error: updateError } = await supabase
+      const {
+        data,
+        error: updateError,
+      } = await supabase
         .from("appointments")
         .update({ result })
         .eq(
@@ -239,7 +257,9 @@ function AppointmentDetail({
 
           const detail =
             contractError?.message ||
-            String(contractError || "Unknown error")
+            String(
+              contractError || "Unknown error"
+            )
 
           setError(
             `Appointment was saved as Sold, but the solar contract could not be generated: ${detail}`
@@ -252,10 +272,14 @@ function AppointmentDetail({
       setShowResult(false)
       setSignature("")
     } catch (err) {
-      console.error("Error updating appointment:", err)
+      console.error(
+        "Error updating appointment:",
+        err
+      )
 
       setError(
-        err?.message || "Unable to save result."
+        err?.message ||
+          "Unable to save result."
       )
     } finally {
       setSaving(false)
@@ -280,57 +304,65 @@ function AppointmentDetail({
     setCpsError("")
 
     try {
-      const { data: userData, error: userError } =
-        await supabase.auth.getUser()
+      const {
+        data: userData,
+        error: userError,
+      } = await supabase.auth.getUser()
 
       if (userError) throw userError
 
       const submittedBy = getSubmittedBy(userData?.user)
       const now = new Date().toISOString()
 
-      const { data: action, error: actionError } =
-        await supabase
-          .from("action_runs")
-          .insert({
-            action_type: "update_cps_status",
-            status: "running",
-            entity_type: "appointment",
-            entity_id: appointment.appointment_row_id,
-            triggered_by: submittedBy,
-            started_at: now,
-            input_data: {
-              appointment_row_id:
-                appointment.appointment_row_id,
-              cps_h: cpsValues.cps_h,
-              cps_c: cpsValues.cps_c,
-              cps_p: cpsValues.cps_p,
-              cps_s: cpsValues.cps_s,
-            },
-          })
-          .select("id")
-          .single()
-
-      if (actionError) throw actionError
-
-      const { data: updatedAppointment, error: updateError } =
-        await supabase
-          .from("appointments")
-          .update({
+      const {
+        data: action,
+        error: actionError,
+      } = await supabase
+        .from("action_runs")
+        .insert({
+          action_type: "update_cps_status",
+          status: "running",
+          entity_type: "appointment",
+          entity_id: appointment.appointment_row_id,
+          triggered_by: submittedBy,
+          started_at: now,
+          input_data: {
+            appointment_row_id:
+              appointment.appointment_row_id,
             cps_h: cpsValues.cps_h,
             cps_c: cpsValues.cps_c,
             cps_p: cpsValues.cps_p,
             cps_s: cpsValues.cps_s,
-          })
-          .eq(
-            "appointment_row_id",
-            appointment.appointment_row_id
-          )
-          .select("*")
-          .single()
+          },
+        })
+        .select("id")
+        .single()
+
+      if (actionError) throw actionError
+
+      const {
+        data: updatedAppointment,
+        error: updateError,
+      } = await supabase
+        .from("appointments")
+        .update({
+          cps_h: cpsValues.cps_h,
+          cps_c: cpsValues.cps_c,
+          cps_p: cpsValues.cps_p,
+          cps_s: cpsValues.cps_s,
+        })
+        .eq(
+          "appointment_row_id",
+          appointment.appointment_row_id
+        )
+        .select("*")
+        .single()
 
       if (updateError) throw updateError
 
-      const { error: actionUpdateError } = await supabase
+      const {
+        error: actionUpdateError,
+      } = await supabase
         .from("action_runs")
         .update({
           status: "completed",
@@ -346,14 +378,19 @@ function AppointmentDetail({
         })
         .eq("id", action.id)
 
-      if (actionUpdateError) throw actionUpdateError
+      if (actionUpdateError)
+        throw actionUpdateError
 
       onUpdated?.(updatedAppointment)
     } catch (err) {
-      console.error("Save CPS status failed:", err)
+      console.error(
+        "Save CPS status failed:",
+        err
+      )
 
       setCpsError(
-        err?.message || "Unable to save CPS status."
+        err?.message ||
+          "Unable to save CPS status."
       )
     } finally {
       setSavingCps(false)
@@ -369,11 +406,14 @@ function AppointmentDetail({
       return String(value)
     }
 
-    return dateValue.toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    })
+    return dateValue.toLocaleDateString(
+      "en-GB",
+      {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }
+    )
   }
 
   function getResultStyle() {
@@ -468,7 +508,8 @@ function AppointmentDetail({
                 fontWeight: 700,
               }}
             >
-              {appointment.name || "Unnamed customer"}
+              {appointment.name ||
+                "Unnamed customer"}
             </h1>
 
             <div
@@ -478,7 +519,9 @@ function AppointmentDetail({
                 color: "#c9d8e1",
               }}
             >
-              {formatDate(appointment.appointment_date)}
+              {formatDate(
+                appointment.appointment_date
+              )}
             </div>
           </div>
 
@@ -538,7 +581,9 @@ function AppointmentDetail({
                     fontFamily: "inherit",
                     fontSize: "12px",
                     fontWeight: 700,
-                    opacity: confirming ? 0.65 : 1,
+                    opacity: confirming
+                      ? 0.65
+                      : 1,
                   }}
                 >
                   <Check size={17} />
@@ -591,7 +636,8 @@ function AppointmentDetail({
                   gap: "7px",
                   height: "40px",
                   padding: "0 15px",
-                  border: "1px solid #557287",
+                  border:
+                    "1px solid #557287",
                   borderRadius: "8px",
                   background: "#173f59",
                   color: "#fff",
@@ -674,7 +720,10 @@ function AppointmentDetail({
           marginTop: "18px",
         }}
       >
-        <InfoCard title="Customer" icon={UserRound}>
+        <InfoCard
+          title="Customer"
+          icon={UserRound}
+        >
           <InfoRow
             label="Name"
             value={appointment.name}
@@ -683,25 +732,34 @@ function AppointmentDetail({
           <InfoRow
             label="Phone"
             value={appointment.phone}
-            icon={appointment.phone ? Phone : null}
+            icon={
+              appointment.phone ? Phone : null
+            }
           />
 
           <InfoRow
             label="Email"
             value={appointment.email}
-            icon={appointment.email ? Mail : null}
+            icon={
+              appointment.email ? Mail : null
+            }
           />
 
           <InfoRow
             label="Postcode"
             value={appointment.postcode}
             icon={
-              appointment.postcode ? MapPin : null
+              appointment.postcode
+                ? MapPin
+                : null
             }
           />
         </InfoCard>
 
-        <InfoCard title="Appointment" icon={CalendarDays}>
+        <InfoCard
+          title="Appointment"
+          icon={CalendarDays}
+        >
           <InfoRow
             label="Date"
             value={formatDate(
@@ -729,12 +787,16 @@ function AppointmentDetail({
           />
         </InfoCard>
 
-        <InfoCard title="Result" icon={Check}>
+        <InfoCard
+          title="Result"
+          icon={Check}
+        >
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
+              justifyContent:
+                "space-between",
               gap: "10px",
             }}
           >
@@ -780,7 +842,8 @@ function AppointmentDetail({
             marginTop: "14px",
             padding: "16px",
             background: "#fff",
-            border: "1px solid #e2e5e8",
+            border:
+              "1px solid #e2e5e8",
             borderRadius: "8px",
           }}
         >
@@ -788,7 +851,8 @@ function AppointmentDetail({
             style={{
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
+              justifyContent:
+                "space-between",
               marginBottom: "14px",
             }}
           >
@@ -811,7 +875,8 @@ function AppointmentDetail({
                   color: "#999",
                 }}
               >
-                Update the CPS flags for this appointment.
+                Update the CPS flags for
+                this appointment.
               </p>
             </div>
 
@@ -829,7 +894,9 @@ function AppointmentDetail({
                 cursor: savingCps
                   ? "default"
                   : "pointer",
-                opacity: savingCps ? 0.6 : 1,
+                opacity: savingCps
+                  ? 0.6
+                  : 1,
                 fontFamily: "inherit",
                 fontSize: "10px",
                 fontWeight: 700,
@@ -850,18 +917,33 @@ function AppointmentDetail({
             }}
           >
             {[
-              { field: "cps_h", label: "H" },
-              { field: "cps_c", label: "C" },
-              { field: "cps_p", label: "P" },
-              { field: "cps_s", label: "S" },
+              {
+                field: "cps_h",
+                label: "H",
+              },
+              {
+                field: "cps_c",
+                label: "C",
+              },
+              {
+                field: "cps_p",
+                label: "P",
+              },
+              {
+                field: "cps_s",
+                label: "S",
+              },
             ].map(({ field, label }) => {
-              const active = cpsValues[field]
+              const active =
+                cpsValues[field]
 
               return (
                 <button
                   key={field}
                   type="button"
-                  onClick={() => toggleCps(field)}
+                  onClick={() =>
+                    toggleCps(field)
+                  }
                   style={{
                     border: active
                       ? "1px solid #2499ed"
@@ -874,9 +956,11 @@ function AppointmentDetail({
                     cursor: "pointer",
                     fontFamily: "inherit",
                     display: "flex",
-                    flexDirection: "column",
+                    flexDirection:
+                      "column",
                     alignItems: "center",
-                    justifyContent: "center",
+                    justifyContent:
+                      "center",
                     gap: "7px",
                     minHeight: "65px",
                   }}
@@ -897,7 +981,8 @@ function AppointmentDetail({
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
-                      justifyContent: "center",
+                      justifyContent:
+                        "center",
                       width: "22px",
                       height: "22px",
                       borderRadius: "50%",
@@ -925,7 +1010,9 @@ function AppointmentDetail({
                         : "#999",
                     }}
                   >
-                    {active ? "True" : "False"}
+                    {active
+                      ? "True"
+                      : "False"}
                   </span>
                 </button>
               )
@@ -950,8 +1037,16 @@ function AppointmentDetail({
       )}
 
       {isSolar && (
-        <div style={{ marginTop: "24px" }}>
-          <div style={{ marginBottom: "12px" }}>
+        <div
+          style={{
+            marginTop: "24px",
+          }}
+        >
+          <div
+            style={{
+              marginBottom: "12px",
+            }}
+          >
             <h2
               style={{
                 margin: 0,
@@ -969,22 +1064,30 @@ function AppointmentDetail({
                 color: "#888",
               }}
             >
-              Complete the EPVS calculation for this
-              solar appointment.
+              Complete the EPVS calculation
+              for this solar appointment.
             </p>
           </div>
 
           <EPVSCalculator
             appointment={appointment}
-            onCalculationChange={setEpvsCalculation}
+            onCalculationChange={
+              setEpvsCalculation
+            }
           />
         </div>
       )}
 
-      <div style={{ marginTop: "24px" }}>
+      <div
+        style={{
+          marginTop: "24px",
+        }}
+      >
         <ActionHistory
           entityType="appointment"
-          entityId={appointment.appointment_row_id}
+          entityId={
+            appointment.appointment_row_id
+          }
         />
       </div>
 
@@ -993,10 +1096,12 @@ function AppointmentDetail({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.35)",
+            background:
+              "rgba(0,0,0,0.35)",
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
+            justifyContent:
+              "center",
             zIndex: 1000,
             padding: "20px",
           }}
@@ -1036,18 +1141,22 @@ function AppointmentDetail({
             <select
               value={result}
               onChange={(event) => {
-                const newResult = event.target.value
+                const newResult =
+                  event.target.value
 
                 setResult(newResult)
 
-                if (newResult !== "Sold") {
+                if (
+                  newResult !== "Sold"
+                ) {
                   setSignature("")
                 }
               }}
               style={{
                 width: "100%",
                 height: "36px",
-                border: "1px solid #d8dde1",
+                border:
+                  "1px solid #d8dde1",
                 borderRadius: "6px",
                 padding: "0 9px",
                 fontFamily: "inherit",
@@ -1059,8 +1168,14 @@ function AppointmentDetail({
                 Select result...
               </option>
 
-              <option value="Sold">Sold</option>
-              <option value="No Sale">No Sale</option>
+              <option value="Sold">
+                Sold
+              </option>
+
+              <option value="No Sale">
+                No Sale
+              </option>
+
               <option value="Cancelled">
                 Cancelled
               </option>
@@ -1092,7 +1207,8 @@ function AppointmentDetail({
             <div
               style={{
                 display: "flex",
-                justifyContent: "flex-end",
+                justifyContent:
+                  "flex-end",
                 gap: "8px",
                 marginTop: "18px",
               }}
@@ -1133,7 +1249,9 @@ function AppointmentDetail({
                   cursor: saving
                     ? "default"
                     : "pointer",
-                  opacity: saving ? 0.65 : 1,
+                  opacity: saving
+                    ? 0.65
+                    : 1,
                   fontFamily: "inherit",
                   fontSize: "10px",
                   fontWeight: 700,
@@ -1151,20 +1269,26 @@ function AppointmentDetail({
   )
 }
 
-function SignaturePad({ signature, setSignature }) {
-  const canvasRef = React.useRef(null)
-  const drawingRef = React.useRef(false)
+function SignaturePad({
+  signature,
+  setSignature,
+}) {
+  const canvasRef = useRef(null)
+  const drawingRef = useRef(false)
 
   function getPoint(event) {
     const canvas = canvasRef.current
+
     if (!canvas) return null
 
-    const rect = canvas.getBoundingClientRect()
+    const rect =
+      canvas.getBoundingClientRect()
 
     return {
       x:
         (event.clientX - rect.left) *
         (canvas.width / rect.width),
+
       y:
         (event.clientY - rect.top) *
         (canvas.height / rect.height),
@@ -1175,7 +1299,8 @@ function SignaturePad({ signature, setSignature }) {
     event.preventDefault()
 
     const canvas = canvasRef.current
-    const ctx = canvas?.getContext("2d")
+    const ctx =
+      canvas?.getContext("2d")
 
     if (!canvas || !ctx) return
 
@@ -1188,7 +1313,9 @@ function SignaturePad({ signature, setSignature }) {
     ctx.beginPath()
     ctx.moveTo(point.x, point.y)
 
-    canvas.setPointerCapture?.(event.pointerId)
+    canvas.setPointerCapture?.(
+      event.pointerId
+    )
   }
 
   function draw(event) {
@@ -1197,7 +1324,8 @@ function SignaturePad({ signature, setSignature }) {
     event.preventDefault()
 
     const canvas = canvasRef.current
-    const ctx = canvas?.getContext("2d")
+    const ctx =
+      canvas?.getContext("2d")
 
     if (!canvas || !ctx) return
 
@@ -1213,7 +1341,9 @@ function SignaturePad({ signature, setSignature }) {
     ctx.lineTo(point.x, point.y)
     ctx.stroke()
 
-    setSignature(canvas.toDataURL("image/png"))
+    setSignature(
+      canvas.toDataURL("image/png")
+    )
   }
 
   function stopDrawing(event) {
@@ -1237,7 +1367,8 @@ function SignaturePad({ signature, setSignature }) {
 
     if (!canvas) return
 
-    const ctx = canvas.getContext("2d")
+    const ctx =
+      canvas.getContext("2d")
 
     if (!ctx) return
 
@@ -1252,7 +1383,11 @@ function SignaturePad({ signature, setSignature }) {
   }
 
   return (
-    <div style={{ marginTop: "16px" }}>
+    <div
+      style={{
+        marginTop: "16px",
+      }}
+    >
       <label
         style={{
           display: "block",
@@ -1266,7 +1401,8 @@ function SignaturePad({ signature, setSignature }) {
 
       <div
         style={{
-          border: "1px solid #d8dde1",
+          border:
+            "1px solid #d8dde1",
           borderRadius: "6px",
           background: "#fff",
           overflow: "hidden",
@@ -1277,10 +1413,16 @@ function SignaturePad({ signature, setSignature }) {
           ref={canvasRef}
           width={900}
           height={240}
-          onPointerDown={startDrawing}
+          onPointerDown={
+            startDrawing
+          }
           onPointerMove={draw}
-          onPointerUp={stopDrawing}
-          onPointerCancel={stopDrawing}
+          onPointerUp={
+            stopDrawing
+          }
+          onPointerCancel={
+            stopDrawing
+          }
           style={{
             display: "block",
             width: "100%",
@@ -1294,7 +1436,8 @@ function SignaturePad({ signature, setSignature }) {
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
+          justifyContent:
+            "space-between",
           alignItems: "center",
           marginTop: "6px",
         }}
@@ -1317,7 +1460,8 @@ function SignaturePad({ signature, setSignature }) {
           onClick={clearSignature}
           style={{
             border: 0,
-            background: "transparent",
+            background:
+              "transparent",
             color: "#2499ed",
             fontSize: "10px",
             fontWeight: 700,
@@ -1332,12 +1476,17 @@ function SignaturePad({ signature, setSignature }) {
   )
 }
 
-function InfoCard({ title, icon: Icon, children }) {
+function InfoCard({
+  title,
+  icon: Icon,
+  children,
+}) {
   return (
     <div
       style={{
         background: "#fff",
-        border: "1px solid #e2e5e8",
+        border:
+          "1px solid #e2e5e8",
         borderRadius: "8px",
         padding: "14px",
       }}
@@ -1350,7 +1499,10 @@ function InfoCard({ title, icon: Icon, children }) {
           marginBottom: "11px",
         }}
       >
-        <Icon size={14} color="#2d9bf0" />
+        <Icon
+          size={14}
+          color="#2d9bf0"
+        />
 
         <span
           style={{
@@ -1368,16 +1520,22 @@ function InfoCard({ title, icon: Icon, children }) {
   )
 }
 
-function InfoRow({ label, value, icon: Icon }) {
+function InfoRow({
+  label,
+  value,
+  icon: Icon,
+}) {
   return (
     <div
       style={{
         display: "flex",
         alignItems: "center",
-        justifyContent: "space-between",
+        justifyContent:
+          "space-between",
         gap: "10px",
         padding: "5px 0",
-        borderBottom: "1px solid #f0f1f2",
+        borderBottom:
+          "1px solid #f0f1f2",
       }}
     >
       <span
@@ -1399,7 +1557,13 @@ function InfoRow({ label, value, icon: Icon }) {
           textAlign: "right",
         }}
       >
-        {Icon && <Icon size={11} color="#999" />}
+        {Icon && (
+          <Icon
+            size={11}
+            color="#999"
+          />
+        )}
+
         {value || "—"}
       </span>
     </div>
