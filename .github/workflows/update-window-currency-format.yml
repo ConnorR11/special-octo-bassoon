@@ -1,0 +1,91 @@
+name: Format Window Costing Currency
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.event.head_commit.message != 'chore: apply window costing currency format'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update currency formatting
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('src/WindowCosting.jsx')
+          text = path.read_text(encoding='utf-8')
+
+          old_discountable = '''{unit.discountable !== null &&
+                unit.discountable !== undefined
+                  ? unit.discountable.toLocaleString("en-GB", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })
+                  : "—"}'''
+          new_discountable = '''{unit.discountable !== null &&
+                unit.discountable !== undefined
+                  ? `£${Math.round(Number(unit.discountable)).toLocaleString("en-GB")}`
+                  : "—"}'''
+
+          old_non_discountable = '''{unit.nonDiscountable !== null &&
+                unit.nonDiscountable !== undefined
+                  ? unit.nonDiscountable.toLocaleString("en-GB", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })
+                  : "—"}'''
+          new_non_discountable = '''{unit.nonDiscountable !== null &&
+                unit.nonDiscountable !== undefined
+                  ? `£${Math.round(Number(unit.nonDiscountable)).toLocaleString("en-GB")}`
+                  : "—"}'''
+
+          old_total_discountable = '''{unitTotals.discountable.toLocaleString("en-GB", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}'''
+          new_total_discountable = '''£{Math.round(unitTotals.discountable).toLocaleString("en-GB")}'''
+
+          old_total_non_discountable = '''{unitTotals.nonDiscountable.toLocaleString("en-GB", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}'''
+          new_total_non_discountable = '''£{Math.round(unitTotals.nonDiscountable).toLocaleString("en-GB")}'''
+
+          replacements = [
+              (old_discountable, new_discountable),
+              (old_non_discountable, new_non_discountable),
+              (old_total_discountable, new_total_discountable),
+              (old_total_non_discountable, new_total_non_discountable),
+          ]
+
+          for old, new in replacements:
+              if old in text:
+                  text = text.replace(old, new, 1)
+              else:
+                  print('Pattern not found; skipping:', old[:80].replace('\n', ' '))
+
+          path.write_text(text, encoding='utf-8')
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/WindowCosting.jsx
+          git diff --cached --quiet || git commit -m "chore: apply window costing currency format"
+          git push origin main
+
+      - name: Remove temporary workflow
+        if: success()
+        run: |
+          git rm .github/workflows/update-window-currency-format.yml
+          git commit -m "chore: remove temporary currency workflow"
+          git push origin main
