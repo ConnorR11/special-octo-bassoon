@@ -1,25 +1,23 @@
 name: Apply Window Cost Totals
 
 on:
-  pull_request:
-    types: [opened, synchronize]
+  push:
+    branches:
+      - feat/window-cost-totals
 
 permissions:
   contents: write
 
 jobs:
   update-window-costing:
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout PR branch
+      - name: Checkout branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ github.ref_name }}
 
-      - name: Add unit totals row
-        env:
-          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+      - name: Add unit totals row and remove temporary workflow
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -157,21 +155,10 @@ jobs:
           path.write_text(text)
           PY
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/WindowCosting.jsx
-          git diff --cached --quiet && exit 0
-          git commit -m "feat: add window unit cost totals"
-          git push origin HEAD:${PR_BRANCH}
-
-      - name: Remove temporary workflow
-        env:
-          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
-        run: |
           rm -f .github/workflows/tmp-window-cost-totals.yml
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A .github/workflows/tmp-window-cost-totals.yml
-          git diff --cached --quiet && exit 0
-          git commit -m "chore: remove temporary window totals workflow"
-          git push origin HEAD:${PR_BRANCH}
+          git add src/WindowCosting.jsx .github/workflows/tmp-window-cost-totals.yml
+          git commit -m "feat: add window unit cost totals"
+          git push origin HEAD:${GITHUB_REF_NAME}
