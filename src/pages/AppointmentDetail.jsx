@@ -30,6 +30,62 @@ function getSubmittedBy(user) {
   return metadataName || user?.email || "Unknown"
 }
 
+/*
+ * Normalise values before checking them.
+ * This prevents problems caused by:
+ * "Sold"
+ * "sold"
+ * " SOLD "
+ * etc.
+ */
+function normalise(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+}
+
+/*
+ * Check whether an appointment is Sold.
+ */
+function isSoldResult(value) {
+  return normalise(value) === "sold"
+}
+
+/*
+ * Determine whether this is a solar appointment.
+
+ * We check all of the likely appointment fields rather than relying
+ * on only one field.
+ *
+ * We also treat an appointment with an existing EPVS calculation
+ * as solar, which helps preserve the calculator when the appointment
+ * data has already been calculated.
+ */
+function isSolarAppointment(appointment) {
+  if (!appointment) return false
+
+  const fieldsToCheck = [
+    appointment.product,
+    appointment.type,
+    appointment.appointment_type,
+    appointment.job_type,
+    appointment.product_type,
+    appointment.service,
+  ]
+
+  const hasSolarValue = fieldsToCheck.some((value) =>
+    normalise(value).includes("solar")
+  )
+
+  if (hasSolarValue) return true
+
+  if (appointment.epvs_calculation) {
+    return true
+  }
+
+  return false
+}
+
 function AppointmentDetail({
   appointment,
   onBack,
@@ -39,10 +95,13 @@ function AppointmentDetail({
   const canViewCPS = Number(permissionLevel) >= 4
 
   const [showResult, setShowResult] = useState(false)
+
   const [result, setResult] = useState(
     appointment?.result || appointment?.status || ""
   )
+
   const [signature, setSignature] = useState("")
+
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
@@ -63,23 +122,18 @@ function AppointmentDetail({
     appointment?.epvs_calculation || null
   )
 
-  const isSolar = String(
-    appointment?.product ||
-      appointment?.type ||
-      appointment?.appointment_type ||
-      ""
-  )
-    .toLowerCase()
-    .includes("solar")
+  const isSolar = isSolarAppointment(appointment)
+  const isSold = isSoldResult(result)
 
   const mapQuery = [appointment?.address, appointment?.postcode]
     .filter(Boolean)
     .join(", ")
 
   useEffect(() => {
-    setResult(
+    const appointmentResult =
       appointment?.result || appointment?.status || ""
-    )
+
+    setResult(appointmentResult)
 
     setCpsValues({
       cps_h: appointment?.cps_h === true,
@@ -91,6 +145,13 @@ function AppointmentDetail({
     setEpvsCalculation(
       appointment?.epvs_calculation || null
     )
+
+    /*
+     * Do not clear the signature here.
+     *
+     * The signature is local to the result modal and should only
+     * be cleared when the user closes/cancels the modal.
+     */
   }, [appointment])
 
   async function confirmAppointment() {
@@ -102,31 +163,35 @@ function AppointmentDetail({
     let actionId = null
 
     try {
-      const { data: userData, error: userError } =
-        await supabase.auth.getUser()
+      const {
+        data: userData,
+        error: userError,
+      } = await supabase.auth.getUser()
 
       if (userError) throw userError
 
       const submittedBy = getSubmittedBy(userData?.user)
       const now = new Date().toISOString()
 
-      const { data: action, error: actionError } =
-        await supabase
-          .from("action_runs")
-          .insert({
-            action_type: "confirm_appointment",
-            status: "running",
-            entity_type: "appointment",
-            entity_id: appointment.appointment_row_id,
-            triggered_by: submittedBy,
-            started_at: now,
-            input_data: {
-              appointment_row_id:
-                appointment.appointment_row_id,
-            },
-          })
-          .select("id")
-          .single()
+      const {
+        data: action,
+        error: actionError,
+      } = await supabase
+        .from("action_runs")
+        .insert({
+          action_type: "confirm_appointment",
+          status: "running",
+          entity_type: "appointment",
+          entity_id: appointment.appointment_row_id,
+          triggered_by: submittedBy,
+          started_at: now,
+          input_data: {
+            appointment_row_id:
+              appointment.appointment_row_id,
+          },
+        })
+        .select("id")
+        .single()
 
       if (actionError) throw actionError
 
@@ -137,7 +202,9 @@ function AppointmentDetail({
         error: updateError,
       } = await supabase
         .from("appointments")
-        .update({ cps_c: true })
+        .update({
+          cps_c: true,
+        })
         .eq(
           "appointment_row_id",
           appointment.appointment_row_id
@@ -147,19 +214,20 @@ function AppointmentDetail({
 
       if (updateError) throw updateError
 
-      const { error: actionUpdateError } =
-        await supabase
-          .from("action_runs")
-          .update({
-            status: "completed",
-            completed_at: new Date().toISOString(),
-            output_data: {
-              appointment_row_id:
-                updatedAppointment.appointment_row_id,
-              cps_c: true,
-            },
-          })
-          .eq("id", actionId)
+      const {
+        error: actionUpdateError,
+      } = await supabase
+        .from("action_runs")
+        .update({
+          status: "completed",
+          completed_at: new Date().toISOString(),
+          output_data: {
+            appointment_row_id:
+              updatedAppointment.appointment_row_id,
+            cps_c: true,
+          },
+        })
+        .eq("id", actionId)
 
       if (actionUpdateError) throw actionUpdateError
 
@@ -210,17 +278,22 @@ function AppointmentDetail({
     setError("")
 
     try {
+      /*
+       * Save the result first.
+       */
       const {
         data,
         error: updateError,
       } = await supabase
         .from("appointments")
-        .update({ result })
+        .update({
+          result,
+        })
         .eq(
           "appointment_row_id",
           appointment.appointment_row_id
         )
-        .select()
+        .select("*")
 
       if (updateError) throw updateError
 
@@ -232,11 +305,21 @@ function AppointmentDetail({
 
       const updatedAppointment = data[0]
 
+      /*
+       * Update the parent immediately.
+       */
       onUpdated?.(updatedAppointment)
 
+      /*
+       * If this is a sold solar appointment, generate
+       * the solar contract.
+       */
       if (
-        String(result).toLowerCase().trim() === "sold" &&
-        isSolar
+        isSoldResult(result) &&
+        isSolarAppointment({
+          ...appointment,
+          ...updatedAppointment,
+        })
       ) {
         if (!epvsCalculation) {
           throw new Error(
@@ -417,7 +500,7 @@ function AppointmentDetail({
   }
 
   function getResultStyle() {
-    const value = String(result || "").toLowerCase()
+    const value = normalise(result)
 
     if (value.includes("sold")) {
       return {
@@ -446,6 +529,7 @@ function AppointmentDetail({
 
   return (
     <section>
+      {/* HEADER */}
       <div
         style={{
           margin: "-24px -24px 0",
@@ -671,6 +755,7 @@ function AppointmentDetail({
         </div>
       </div>
 
+      {/* MAP */}
       <div
         style={{
           marginTop: "8px",
@@ -711,6 +796,7 @@ function AppointmentDetail({
         )}
       </div>
 
+      {/* INFORMATION CARDS */}
       <div
         style={{
           display: "grid",
@@ -836,6 +922,7 @@ function AppointmentDetail({
         </InfoCard>
       </div>
 
+      {/* CPS */}
       {canViewCPS && (
         <div
           style={{
@@ -1036,10 +1123,12 @@ function AppointmentDetail({
         </div>
       )}
 
+      {/* EPVS CALCULATOR */}
       {isSolar && (
         <div
           style={{
             marginTop: "24px",
+            paddingBottom: "20px",
           }}
         >
           <div
@@ -1078,6 +1167,52 @@ function AppointmentDetail({
         </div>
       )}
 
+      {/* DEBUG INFORMATION
+          Remove this block once everything is confirmed working.
+      */}
+      {false && (
+        <div
+          style={{
+            marginTop: "20px",
+            padding: "10px",
+            background: "#fff7ed",
+            border: "1px solid #fed7aa",
+            borderRadius: "8px",
+            fontSize: "10px",
+          }}
+        >
+          <strong>Appointment debug</strong>
+          <pre
+            style={{
+              whiteSpace: "pre-wrap",
+              marginTop: "8px",
+            }}
+          >
+            {JSON.stringify(
+              {
+                product: appointment.product,
+                type: appointment.type,
+                appointment_type:
+                  appointment.appointment_type,
+                job_type: appointment.job_type,
+                product_type:
+                  appointment.product_type,
+                service: appointment.service,
+                result: appointment.result,
+                status: appointment.status,
+                has_epvs:
+                  !!appointment.epvs_calculation,
+                isSolar,
+                isSold,
+              },
+              null,
+              2
+            )}
+          </pre>
+        </div>
+      )}
+
+      {/* ACTION HISTORY */}
       <div
         style={{
           marginTop: "24px",
@@ -1091,6 +1226,7 @@ function AppointmentDetail({
         />
       </div>
 
+      {/* RESULT MODAL */}
       {showResult && (
         <div
           style={{
@@ -1146,9 +1282,11 @@ function AppointmentDetail({
 
                 setResult(newResult)
 
-                if (
-                  newResult !== "Sold"
-                ) {
+                /*
+                 * Clear the signature when the user
+                 * changes away from Sold.
+                 */
+                if (!isSoldResult(newResult)) {
                   setSignature("")
                 }
               }}
@@ -1181,7 +1319,7 @@ function AppointmentDetail({
               </option>
             </select>
 
-            {result === "Sold" && (
+            {isSold && (
               <SignaturePad
                 signature={signature}
                 setSignature={setSignature}
