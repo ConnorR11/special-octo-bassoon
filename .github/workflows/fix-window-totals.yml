@@ -21,7 +21,6 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
-          import re
 
           path = Path('src/WindowCosting.jsx')
           text = path.read_text(encoding='utf-8')
@@ -30,7 +29,11 @@ jobs:
               print('Totals row already present')
               raise SystemExit(0)
 
-          marker = '''          {/* TOTALS ROW - DISCOUNTABLE */}
+          table_start = text.index('          {units.map((unit) => (')
+          table_end = text.index('        </div>\n      )\n      }', table_start)
+
+          marker = '''
+          {/* TOTALS ROW - DISCOUNTABLE */}
           <div
             style={{
               display: "grid",
@@ -80,14 +83,7 @@ jobs:
           </div>
 '''
 
-          pattern = re.compile(r'(          \{units\.map\(\(unit\) => \([\s\S]*?          \}\))\n        </div>\n      \)\n      \}\n\n      /\* ======================================================)', re.MULTILINE)
-          match = pattern.search(text)
-          if not match:
-              raise SystemExit('Could not find WindowCosting units table insertion point')
-
-          replacement = match.group(1) + '\n\n' + marker + '        </div>\n      )\n      }\n\n      /* ======================================================'
-          text = text[:match.start()] + replacement + text[match.end():]
-
+          text = text[:table_end] + marker + text[table_end:]
           path.write_text(text, encoding='utf-8')
           print('Totals row inserted')
 
@@ -96,7 +92,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/WindowCosting.jsx
-          git commit -m "fix: show window costing totals row" || exit 0
+          git commit -m "fix: show window costing totals row"
           git push origin main
 
       - name: Remove temporary workflow
