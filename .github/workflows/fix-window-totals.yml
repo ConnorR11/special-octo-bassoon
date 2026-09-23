@@ -30,7 +30,8 @@ jobs:
               raise SystemExit(0)
 
           table_start = text.index('          {units.map((unit) => (')
-          table_end = text.index('        </div>\n      )\n      }', table_start)
+          map_end = text.index('          ))}', table_start)
+          insert_at = text.index('\n        </div>', map_end)
 
           marker = '''
           {/* TOTALS ROW - DISCOUNTABLE */}
@@ -49,7 +50,7 @@ jobs:
               color: "#222",
             }}
           >
-            <span style={{ gridColumn: "1 / span 8" }}>
+            <span style={{ gridColumn: "1 / span 9" }}>
               Total
             </span>
 
@@ -83,7 +84,7 @@ jobs:
           </div>
 '''
 
-          text = text[:table_end] + marker + text[table_end:]
+          text = text[:insert_at] + marker + text[insert_at:]
           path.write_text(text, encoding='utf-8')
           print('Totals row inserted')
 
