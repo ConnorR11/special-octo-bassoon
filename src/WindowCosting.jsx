@@ -1,3 +1,4 @@
+```jsx
 import React, { useEffect, useMemo, useState } from "react"
 import { supabase } from "./lib/supabase"
 
@@ -89,7 +90,7 @@ const SIZE_MATRIX = {
 
   600: [
     "A", "A", "A", "A", "A", "A", "A", "A", "A", "A",
-    "A", "A", "A", "A", "A", "A", "A", "B", "B", "B", "B"
+    "A", "A", "A", "A", "A", "A", "A", "A", "B", "B", "B"
   ],
 
   700: [
@@ -109,7 +110,7 @@ const SIZE_MATRIX = {
 
   1000: [
     "A", "A", "A", "A", "A", "B", "B", "B", "B", "B",
-    "B", "B", "B", "B", "B", "B", "C", "C", "C", "C"
+    "B", "B", "B", "B", "B", "B", "B", "C", "C", "C"
   ],
 
   1100: [
@@ -352,6 +353,210 @@ function getSizeValue(rows, sizeChoice, unitType) {
 
 /*
  * ============================================================
+ * GET NUMERIC VALUE FOR A SELECTED CHOICE
+ * ============================================================
+ *
+ * Looks up the value in unit_choices for a particular
+ * category + selected choice + unit type.
+ */
+
+function getChoiceValue(
+  rows,
+  category,
+  choice,
+  unitType
+) {
+  if (
+    choice === null ||
+    choice === undefined ||
+    String(choice).trim() === ""
+  ) {
+    return 0
+  }
+
+  const selectedCategory = normalise(category)
+  const selectedChoice = normalise(choice)
+  const selectedType = normalise(unitType)
+
+  const matchingRows = rows.filter((row) => {
+    const rowCategory = normalise(row.category)
+    const rowChoice = normalise(row.choice)
+    const rowType = normalise(row.unit_type)
+
+    if (rowCategory !== selectedCategory) {
+      return false
+    }
+
+    if (rowChoice !== selectedChoice) {
+      return false
+    }
+
+    if (
+      rowType &&
+      selectedType &&
+      rowType !== selectedType
+    ) {
+      return false
+    }
+
+    return true
+  })
+
+  if (!matchingRows.length) {
+    return 0
+  }
+
+  const value = Number(matchingRows[0].value)
+
+  return Number.isFinite(value)
+    ? value
+    : 0
+}
+
+/*
+ * ============================================================
+ * OPENERS VALUE
+ * ============================================================
+ *
+ * Openers =
+ *
+ * (Openers × 360) + ((Fixed - 1) × 110) - x
+ *
+ * x =
+ *   0 when Style is empty
+ *   0 when Style is "Fixed Unit"
+ *   250 otherwise
+ */
+
+function calculateOpenersValue({
+  openers,
+  fixed,
+  style,
+}) {
+  const openerCount = Number(openers) || 0
+  const fixedCount = Number(fixed) || 0
+  const selectedStyle = String(style ?? "").trim()
+
+  const x =
+    !selectedStyle ||
+    normalise(selectedStyle) === "fixed unit"
+      ? 0
+      : 250
+
+  return (
+    openerCount * 360 +
+    (fixedCount - 1) * 110 -
+    x
+  )
+}
+
+/*
+ * ============================================================
+ * DISCOUNTABLE CALCULATION
+ * ============================================================
+ *
+ * Discountable =
+ *
+ * ((Size + Finish + Style + Openers + Extras)
+ *   × Colour × Shape)
+ *   + Glass
+ */
+
+function calculateDiscountable({
+  choices,
+  unitType,
+  sizeValue,
+  finish,
+  style,
+  openers,
+  fixed,
+  extras,
+  colour,
+  shape,
+  glass,
+}) {
+  const size = Number(sizeValue) || 0
+
+  const finishValue = getChoiceValue(
+    choices,
+    "finish",
+    finish,
+    unitType
+  )
+
+  const styleValue = getChoiceValue(
+    choices,
+    "style",
+    style,
+    unitType
+  )
+
+  const extrasValue = getChoiceValue(
+    choices,
+    "extras",
+    extras,
+    unitType
+  )
+
+  const colourValue = getChoiceValue(
+    choices,
+    "colour",
+    colour,
+    unitType
+  )
+
+  const shapeValue = getChoiceValue(
+    choices,
+    "shape",
+    shape,
+    unitType
+  )
+
+  const glassValue = getChoiceValue(
+    choices,
+    "glass",
+    glass,
+    unitType
+  )
+
+  const openersValue =
+    calculateOpenersValue({
+      openers,
+      fixed,
+      style,
+    })
+
+  const discountable =
+    (
+      (
+        size +
+        finishValue +
+        styleValue +
+        openersValue +
+        extrasValue
+      ) *
+      colourValue *
+      shapeValue
+    ) +
+    glassValue
+
+  return {
+    discountable,
+    components: {
+      size,
+      finish: finishValue,
+      style: styleValue,
+      openers: openersValue,
+      extras: extrasValue,
+      colour: colourValue,
+      shape: shapeValue,
+      glass: glassValue,
+    },
+  }
+}
+
+/*
+ * ============================================================
  * DATABASE UNIT MAPPER
  * ============================================================
  */
@@ -410,6 +615,12 @@ function mapDatabaseUnit(row, index) {
     extras:
       row.extras_choice ?? "",
 
+    discountable:
+      row.discountable !== null &&
+      row.discountable !== undefined
+        ? Number(row.discountable)
+        : null,
+
     createdBy:
       row.created_by ?? null,
   }
@@ -421,16 +632,20 @@ function mapDatabaseUnit(row, index) {
  * ============================================================
  */
 
-export default function WindowCosting({ appointment }) {
+export default function WindowCosting({
+  appointment,
+}) {
   const [units, setUnits] = useState([])
 
-  const [showForm, setShowForm] = useState(false)
+  const [showForm, setShowForm] =
+    useState(false)
 
   const [form, setForm] = useState({
     ...EMPTY_FORM,
   })
 
-  const [choices, setChoices] = useState([])
+  const [choices, setChoices] =
+    useState([])
 
   const [loadingChoices, setLoadingChoices] =
     useState(false)
@@ -438,12 +653,16 @@ export default function WindowCosting({ appointment }) {
   const [loadingUnits, setLoadingUnits] =
     useState(false)
 
-  const [saving, setSaving] = useState(false)
+  const [saving, setSaving] =
+    useState(false)
 
-  const [error, setError] = useState("")
+  const [error, setError] =
+    useState("")
 
   const isWindows =
-    normalise(appointment?.job_type) === "windows"
+    normalise(
+      appointment?.job_type
+    ) === "windows"
 
   /*
    * ==========================================================
@@ -519,12 +738,15 @@ export default function WindowCosting({ appointment }) {
 
   /*
    * ==========================================================
-   * LOAD ALL EXISTING UNITS
+   * LOAD EXISTING UNITS
    * ==========================================================
    */
 
   useEffect(() => {
-    if (!isWindows || !appointmentId) {
+    if (
+      !isWindows ||
+      !appointmentId
+    ) {
       setUnits([])
       return
     }
@@ -574,15 +796,14 @@ export default function WindowCosting({ appointment }) {
           data
         )
 
-        const mappedUnits = (
-          data || []
-        ).map(
-          (row, index) =>
-            mapDatabaseUnit(
-              row,
-              index
-            )
-        )
+        const mappedUnits =
+          (data || []).map(
+            (row, index) =>
+              mapDatabaseUnit(
+                row,
+                index
+              )
+          )
 
         setUnits(mappedUnits)
       }
@@ -648,7 +869,10 @@ export default function WindowCosting({ appointment }) {
 
       glass: getChoices(
         choices,
-        ["glass", "glass optionals"],
+        [
+          "glass",
+          "glass optionals",
+        ],
         form.unitType
       ),
 
@@ -681,39 +905,107 @@ export default function WindowCosting({ appointment }) {
    * ==========================================================
    */
 
-  const calculatedSize = useMemo(() => {
-    if (form.unitType !== "Window") {
-      return null
-    }
+  const calculatedSize =
+    useMemo(() => {
+      if (
+        form.unitType !==
+        "Window"
+      ) {
+        return null
+      }
 
-    return getSizeChoice(
+      return getSizeChoice(
+        form.width,
+        form.height
+      )
+    }, [
       form.width,
-      form.height
-    )
-  }, [
-    form.width,
-    form.height,
-    form.unitType,
-  ])
+      form.height,
+      form.unitType,
+    ])
 
-  const calculatedSizeValue = useMemo(() => {
-    if (
-      form.unitType !== "Window" ||
-      !calculatedSize
-    ) {
-      return null
-    }
+  const calculatedSizeValue =
+    useMemo(() => {
+      if (
+        form.unitType !==
+          "Window" ||
+        !calculatedSize
+      ) {
+        return null
+      }
 
-    return getSizeValue(
+      return getSizeValue(
+        choices,
+        calculatedSize.choice,
+        form.unitType
+      )
+    }, [
       choices,
-      calculatedSize.choice,
-      form.unitType
-    )
-  }, [
-    choices,
-    calculatedSize,
-    form.unitType,
-  ])
+      calculatedSize,
+      form.unitType,
+    ])
+
+  /*
+   * ==========================================================
+   * LIVE DISCOUNTABLE CALCULATION
+   * ==========================================================
+   */
+
+  const calculatedDiscountable =
+    useMemo(() => {
+      if (
+        !form.unitType ||
+        calculatedSizeValue ===
+          null
+      ) {
+        return null
+      }
+
+      return calculateDiscountable({
+        choices,
+        unitType:
+          form.unitType,
+
+        sizeValue:
+          calculatedSizeValue,
+
+        finish:
+          form.finish,
+
+        style:
+          form.style,
+
+        openers:
+          form.openers,
+
+        fixed:
+          form.fixed,
+
+        extras:
+          form.extras,
+
+        colour:
+          form.colour,
+
+        shape:
+          form.shape,
+
+        glass:
+          form.glass,
+      })
+    }, [
+      choices,
+      form.unitType,
+      calculatedSizeValue,
+      form.finish,
+      form.style,
+      form.openers,
+      form.fixed,
+      form.extras,
+      form.colour,
+      form.shape,
+      form.glass,
+    ])
 
   /*
    * ==========================================================
@@ -721,7 +1013,10 @@ export default function WindowCosting({ appointment }) {
    * ==========================================================
    */
 
-  function updateForm(field, value) {
+  function updateForm(
+    field,
+    value
+  ) {
     setForm((current) => ({
       ...current,
       [field]: value,
@@ -778,14 +1073,20 @@ export default function WindowCosting({ appointment }) {
       return
     }
 
-    if (!form.width || !form.height) {
+    if (
+      !form.width ||
+      !form.height
+    ) {
       setError(
         "Please enter the width and height."
       )
       return
     }
 
-    if (form.unitType === "Window") {
+    if (
+      form.unitType ===
+      "Window"
+    ) {
       if (!calculatedSize) {
         setError(
           "The entered dimensions are outside the available size matrix. Maximum size is 3250mm."
@@ -793,7 +1094,10 @@ export default function WindowCosting({ appointment }) {
         return
       }
 
-      if (calculatedSizeValue === null) {
+      if (
+        calculatedSizeValue ===
+        null
+      ) {
         setError(
           `No Size value was found in unit_choices for Size Choice ${calculatedSize.choice} and type ${form.unitType}.`
         )
@@ -813,12 +1117,9 @@ export default function WindowCosting({ appointment }) {
 
     try {
       /*
-       * ======================================================
-       * GET CURRENT SUPABASE USER
-       * ======================================================
-       *
-       * created_by will store the authenticated user's
-       * email address.
+       * --------------------------------------------------------
+       * GET CURRENT AUTH USER
+       * --------------------------------------------------------
        */
 
       const {
@@ -826,7 +1127,8 @@ export default function WindowCosting({ appointment }) {
           user,
         },
         error: userError,
-      } = await supabase.auth.getUser()
+      } =
+        await supabase.auth.getUser()
 
       if (userError) {
         console.error(
@@ -835,35 +1137,80 @@ export default function WindowCosting({ appointment }) {
         )
 
         throw new Error(
-          userError.message ||
-            "Unable to identify the current user."
+          "Unable to determine the current user."
         )
       }
 
       const createdBy =
-        user?.email ?? null
+        user?.email || null
+
+      /*
+       * --------------------------------------------------------
+       * CALCULATE DISCOUNTABLE
+       * --------------------------------------------------------
+       */
+
+      const discountableResult =
+        calculateDiscountable({
+          choices,
+          unitType:
+            form.unitType,
+
+          sizeValue:
+            calculatedSizeValue,
+
+          finish:
+            form.finish,
+
+          style:
+            form.style,
+
+          openers:
+            form.openers,
+
+          fixed:
+            form.fixed,
+
+          extras:
+            form.extras,
+
+          colour:
+            form.colour,
+
+          shape:
+            form.shape,
+
+          glass:
+            form.glass,
+        })
+
+      const discountable =
+        Number(
+          discountableResult.discountable
+        ) || 0
 
       console.log(
-        "Creating unit for user:",
-        createdBy
+        "Discountable calculation:",
+        discountableResult
       )
 
       /*
-       * ======================================================
-       * GENERATE UNIT ID
-       * ======================================================
+       * --------------------------------------------------------
+       * CREATE UNIT ID
+       * --------------------------------------------------------
        */
 
       const unitId =
-        typeof crypto !== "undefined" &&
+        typeof crypto !==
+          "undefined" &&
         crypto.randomUUID
           ? crypto.randomUUID()
           : undefined
 
       /*
-       * ======================================================
-       * BUILD INSERT
-       * ======================================================
+       * --------------------------------------------------------
+       * INSERT DATA
+       * --------------------------------------------------------
        */
 
       const insertData = {
@@ -889,8 +1236,10 @@ export default function WindowCosting({ appointment }) {
           form.unitType,
 
         size_choice:
-          form.unitType === "Window"
-            ? calculatedSize?.choice ||
+          form.unitType ===
+          "Window"
+            ? calculatedSize
+                ?.choice ||
               null
             : null,
 
@@ -901,47 +1250,65 @@ export default function WindowCosting({ appointment }) {
           Number(form.width),
 
         size_value:
-          form.unitType === "Window" &&
-          calculatedSizeValue !== null
+          form.unitType ===
+            "Window" &&
+          calculatedSizeValue !==
+            null
             ? Math.round(
                 calculatedSizeValue
               )
             : null,
 
         colour_choice:
-          form.colour || null,
+          form.colour ||
+          null,
 
         shape_choice:
-          form.shape || null,
+          form.shape ||
+          null,
 
         finish_choice:
-          form.finish || null,
+          form.finish ||
+          null,
 
         style_choice:
-          form.style || null,
+          form.style ||
+          null,
 
         glass_choice:
-          form.glass || null,
+          form.glass ||
+          null,
 
         handle_choice:
-          form.handle || null,
+          form.handle ||
+          null,
 
         fixed_choice:
-          form.unitType === "Window"
+          form.unitType ===
+          "Window"
             ? String(
-                Number(form.fixed) || 0
+                Number(
+                  form.fixed
+                ) || 0
               )
             : null,
 
         openers_choice:
-          form.unitType === "Window"
+          form.unitType ===
+          "Window"
             ? String(
-                Number(form.openers) || 0
+                Number(
+                  form.openers
+                ) || 0
               )
             : null,
 
         extras_choice:
-          form.extras || null,
+          form.extras ||
+          null,
+
+        discountable:
+          discountable,
       }
 
       console.log(
@@ -950,19 +1317,22 @@ export default function WindowCosting({ appointment }) {
       )
 
       /*
-       * ======================================================
-       * INSERT UNIT
-       * ======================================================
+       * --------------------------------------------------------
+       * INSERT INTO SUPABASE
+       * --------------------------------------------------------
        */
 
       const {
         data: savedUnit,
         error: insertError,
-      } = await supabase
-        .from("units")
-        .insert(insertData)
-        .select("*")
-        .single()
+      } =
+        await supabase
+          .from("units")
+          .insert(
+            insertData
+          )
+          .select("*")
+          .single()
 
       if (insertError) {
         console.error(
@@ -977,18 +1347,20 @@ export default function WindowCosting({ appointment }) {
       }
 
       /*
-       * ======================================================
+       * --------------------------------------------------------
        * UPDATE LOCAL STATE
-       * ======================================================
+       * --------------------------------------------------------
        */
 
-      setUnits((current) => [
-        ...current,
-        mapDatabaseUnit(
-          savedUnit,
-          current.length
-        ),
-      ])
+      setUnits(
+        (current) => [
+          ...current,
+          mapDatabaseUnit(
+            savedUnit,
+            current.length
+          ),
+        ]
+      )
 
       closeForm()
     } catch (err) {
@@ -1025,10 +1397,14 @@ export default function WindowCosting({ appointment }) {
     if (unit.id) {
       const {
         error: deleteError,
-      } = await supabase
-        .from("units")
-        .delete()
-        .eq("UUID", unit.id)
+      } =
+        await supabase
+          .from("units")
+          .delete()
+          .eq(
+            "UUID",
+            unit.id
+          )
 
       if (deleteError) {
         console.error(
@@ -1045,17 +1421,21 @@ export default function WindowCosting({ appointment }) {
       }
     }
 
-    setUnits((current) =>
-      current
-        .filter(
-          (item) =>
-            item.id !== unit.id
-        )
-        .map((item, index) => ({
-          ...item,
-          unitNumber:
-            index + 1,
-        }))
+    setUnits(
+      (current) =>
+        current
+          .filter(
+            (item) =>
+              item.id !==
+              unit.id
+          )
+          .map(
+            (item, index) => ({
+              ...item,
+              unitNumber:
+                index + 1,
+            })
+          )
     )
   }
 
@@ -1093,7 +1473,9 @@ export default function WindowCosting({ appointment }) {
               ? "#222"
               : "#777",
           }}
-          disabled={loadingChoices}
+          disabled={
+            loadingChoices
+          }
         >
           <option value="">
             Select{" "}
@@ -1115,12 +1497,6 @@ export default function WindowCosting({ appointment }) {
       </Field>
     )
   }
-
-  /*
-   * ============================================================
-   * NON-WINDOW APPOINTMENTS
-   * ============================================================
-   */
 
   if (!isWindows) {
     return null
@@ -1144,10 +1520,12 @@ export default function WindowCosting({ appointment }) {
       <div
         style={{
           display: "flex",
-          alignItems: "center",
+          alignItems:
+            "center",
           justifyContent:
             "space-between",
-          marginBottom: "12px",
+          marginBottom:
+            "12px",
         }}
       >
         <div>
@@ -1164,7 +1542,8 @@ export default function WindowCosting({ appointment }) {
 
           <p
             style={{
-              margin: "5px 0 0",
+              margin:
+                "5px 0 0",
               fontSize: "11px",
               color: "#888",
             }}
@@ -1180,14 +1559,20 @@ export default function WindowCosting({ appointment }) {
           onClick={openForm}
           style={{
             height: "34px",
-            padding: "0 14px",
+            padding:
+              "0 14px",
             border: 0,
-            borderRadius: "7px",
-            background: "#2499ed",
+            borderRadius:
+              "7px",
+            background:
+              "#2499ed",
             color: "#fff",
-            cursor: "pointer",
-            fontFamily: "inherit",
-            fontSize: "10px",
+            cursor:
+              "pointer",
+            fontFamily:
+              "inherit",
+            fontSize:
+              "10px",
             fontWeight: 700,
           }}
         >
@@ -1197,54 +1582,76 @@ export default function WindowCosting({ appointment }) {
 
       {/* ERROR */}
 
-      {error && !showForm && (
-        <div
-          style={{
-            marginBottom: "10px",
-            padding: "9px 10px",
-            borderRadius: "6px",
-            background: "#fbeaea",
-            color: "#8b3333",
-            fontSize: "10px",
-          }}
-        >
-          {error}
-        </div>
-      )}
+      {error &&
+        !showForm && (
+          <div
+            style={{
+              marginBottom:
+                "10px",
+              padding:
+                "9px 10px",
+              borderRadius:
+                "6px",
+              background:
+                "#fbeaea",
+              color:
+                "#8b3333",
+              fontSize:
+                "10px",
+            }}
+          >
+            {error}
+          </div>
+        )}
 
-      {/* LOADING UNITS */}
+      {/* LOADING / EMPTY / TABLE */}
 
       {loadingUnits ? (
         <div
           style={{
-            padding: "24px",
+            padding:
+              "24px",
             border:
               "1px dashed #d8dde1",
-            borderRadius: "8px",
-            background: "#fafbfc",
-            textAlign: "center",
-            fontSize: "10px",
-            color: "#888",
+            borderRadius:
+              "8px",
+            background:
+              "#fafbfc",
+            textAlign:
+              "center",
+            fontSize:
+              "10px",
+            color:
+              "#888",
           }}
         >
-          Loading window units...
+          Loading window
+          units...
         </div>
-      ) : units.length === 0 ? (
+      ) : units.length ===
+        0 ? (
         <div
           style={{
-            padding: "24px",
+            padding:
+              "24px",
             border:
               "1px dashed #d8dde1",
-            borderRadius: "8px",
-            background: "#fafbfc",
-            textAlign: "center",
+            borderRadius:
+              "8px",
+            background:
+              "#fafbfc",
+            textAlign:
+              "center",
           }}
         >
           <div
             style={{
-              fontSize: "11px",
-              fontWeight: 700,
-              color: "#555",
+              fontSize:
+                "11px",
+              fontWeight:
+                700,
+              color:
+                "#555",
             }}
           >
             No window units
@@ -1253,13 +1660,17 @@ export default function WindowCosting({ appointment }) {
 
           <div
             style={{
-              marginTop: "4px",
-              fontSize: "10px",
-              color: "#999",
+              marginTop:
+                "4px",
+              fontSize:
+                "10px",
+              color:
+                "#999",
             }}
           >
-            Click “Add Unit” to
-            add the first window.
+            Click “Add Unit”
+            to add the first
+            window.
           </div>
         </div>
       ) : (
@@ -1267,120 +1678,183 @@ export default function WindowCosting({ appointment }) {
           style={{
             border:
               "1px solid #e2e5e8",
-            borderRadius: "8px",
-            background: "#fff",
-            overflow: "hidden",
+            borderRadius:
+              "8px",
+            background:
+              "#fff",
+            overflow:
+              "hidden",
           }}
         >
           <div
             style={{
-              display: "grid",
+              display:
+                "grid",
               gridTemplateColumns:
-                "1.2fr .9fr 1fr 1fr .9fr .45fr .45fr .8fr .9fr 32px",
-              gap: "10px",
-              alignItems: "center",
-              padding: "10px 12px",
+                "1.2fr .9fr 1fr 1fr .9fr .45fr .45fr .8fr .9fr .9fr 32px",
+              gap:
+                "10px",
+              alignItems:
+                "center",
+              padding:
+                "10px 12px",
               borderBottom:
                 "1px solid #e5e7e9",
-              background: "#fafbfc",
-              fontSize: "8px",
-              fontWeight: 700,
-              color: "#6d757c",
+              background:
+                "#fafbfc",
+              fontSize:
+                "8px",
+              fontWeight:
+                700,
+              color:
+                "#6d757c",
               textTransform:
                 "uppercase",
             }}
           >
-            <span>Location</span>
-            <span>Type</span>
-            <span>Size</span>
-            <span>Style</span>
-            <span>Colour</span>
-            <span>F</span>
-            <span>O</span>
-            <span>Size Choice</span>
-            <span>Size Value</span>
+            <span>
+              Location
+            </span>
+
+            <span>
+              Type
+            </span>
+
+            <span>
+              Size
+            </span>
+
+            <span>
+              Style
+            </span>
+
+            <span>
+              Colour
+            </span>
+
+            <span>
+              F
+            </span>
+
+            <span>
+              O
+            </span>
+
+            <span>
+              Size Choice
+            </span>
+
+            <span>
+              Size Value
+            </span>
+
+            <span>
+              Discountable
+            </span>
+
             <span />
           </div>
 
-          {units.map((unit) => (
-            <div
-              key={unit.id}
-              style={{
-                display: "grid",
-                gridTemplateColumns:
-                  "1.2fr .9fr 1fr 1fr .9fr .45fr .45fr .8fr .9fr 32px",
-                gap: "10px",
-                alignItems: "center",
-                padding:
-                  "11px 12px",
-                borderBottom:
-                  "1px solid #eef0f2",
-                fontSize: "10px",
-                color: "#333",
-              }}
-            >
-              <strong>
-                {unit.location}
-              </strong>
-
-              <span>
-                {unit.unitType ||
-                  "—"}
-              </span>
-
-              <span>
-                {unit.width} ×{" "}
-                {unit.height}
-              </span>
-
-              <span>
-                {unit.style ||
-                  "—"}
-              </span>
-
-              <span>
-                {unit.colour ||
-                  "—"}
-              </span>
-
-              <span>
-                {unit.fixed ?? 0}
-              </span>
-
-              <span>
-                {unit.openers ?? 0}
-              </span>
-
-              <span>
-                {unit.sizeChoice ||
-                  "—"}
-              </span>
-
-              <strong>
-                {unit.sizeValue ??
-                  "—"}
-              </strong>
-
-              <button
-                type="button"
-                onClick={() =>
-                  removeUnit(unit)
-                }
-                title="Remove unit"
+          {units.map(
+            (unit) => (
+              <div
+                key={unit.id}
                 style={{
-                  border: 0,
-                  background:
-                    "transparent",
-                  color: "#888",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  padding: 0,
+                  display:
+                    "grid",
+                  gridTemplateColumns:
+                    "1.2fr .9fr 1fr 1fr .9fr .45fr .45fr .8fr .9fr .9fr 32px",
+                  gap:
+                    "10px",
+                  alignItems:
+                    "center",
+                  padding:
+                    "11px 12px",
+                  borderBottom:
+                    "1px solid #eef0f2",
+                  fontSize:
+                    "10px",
+                  color:
+                    "#333",
                 }}
               >
-                ⋯
-              </button>
-            </div>
-          ))}
+                <strong>
+                  {unit.location}
+                </strong>
+
+                <span>
+                  {unit.unitType ||
+                    "—"}
+                </span>
+
+                <span>
+                  {unit.width} ×{" "}
+                  {unit.height}
+                </span>
+
+                <span>
+                  {unit.style ||
+                    "—"}
+                </span>
+
+                <span>
+                  {unit.colour ||
+                    "—"}
+                </span>
+
+                <span>
+                  {unit.fixed ??
+                    0}
+                </span>
+
+                <span>
+                  {unit.openers ??
+                    0}
+                </span>
+
+                <span>
+                  {unit.sizeChoice ||
+                    "—"}
+                </span>
+
+                <strong>
+                  {unit.sizeValue ??
+                    "—"}
+                </strong>
+
+                <strong>
+                  {unit.discountable ??
+                    "—"}
+                </strong>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    removeUnit(
+                      unit
+                    )
+                  }
+                  title="Remove unit"
+                  style={{
+                    border:
+                      0,
+                    background:
+                      "transparent",
+                    color:
+                      "#888",
+                    cursor:
+                      "pointer",
+                    fontSize:
+                      "14px",
+                    padding:
+                      0,
+                  }}
+                >
+                  ⋯
+                </button>
+              </div>
+            )
+          )}
         </div>
       )}
 
@@ -1391,28 +1865,40 @@ export default function WindowCosting({ appointment }) {
       {showForm && (
         <div
           style={{
-            position: "fixed",
+            position:
+              "fixed",
             inset: 0,
-            zIndex: 1100,
+            zIndex:
+              1100,
             background:
               "rgba(0,0,0,0.35)",
-            display: "flex",
+            display:
+              "flex",
             alignItems:
               "center",
             justifyContent:
               "center",
-            padding: "20px",
+            padding:
+              "20px",
           }}
         >
           <form
-            onSubmit={addUnit}
+            onSubmit={
+              addUnit
+            }
             style={{
-              width: "680px",
-              maxWidth: "100%",
-              maxHeight: "90vh",
-              overflowY: "auto",
-              background: "#fff",
-              borderRadius: "10px",
+              width:
+                "680px",
+              maxWidth:
+                "100%",
+              maxHeight:
+                "90vh",
+              overflowY:
+                "auto",
+              background:
+                "#fff",
+              borderRadius:
+                "10px",
               boxShadow:
                 "0 20px 60px rgba(0,0,0,0.25)",
             }}
@@ -1421,7 +1907,8 @@ export default function WindowCosting({ appointment }) {
 
             <div
               style={{
-                display: "flex",
+                display:
+                  "flex",
                 alignItems:
                   "center",
                 justifyContent:
@@ -1436,41 +1923,56 @@ export default function WindowCosting({ appointment }) {
                 <h3
                   style={{
                     margin: 0,
-                    fontSize: "15px",
-                    color: "#222",
+                    fontSize:
+                      "15px",
+                    color:
+                      "#222",
                   }}
                 >
-                  Add Window Unit
+                  Add Window
+                  Unit
                 </h3>
 
                 <p
                   style={{
                     margin:
                       "4px 0 0",
-                    fontSize: "10px",
-                    color: "#888",
+                    fontSize:
+                      "10px",
+                    color:
+                      "#888",
                   }}
                 >
-                  Enter the details
-                  for this individual
+                  Enter the
+                  details for
+                  this individual
                   unit.
                 </p>
               </div>
 
               <button
                 type="button"
-                onClick={closeForm}
-                disabled={saving}
+                onClick={
+                  closeForm
+                }
+                disabled={
+                  saving
+                }
                 style={{
-                  border: 0,
+                  border:
+                    0,
                   background:
                     "transparent",
-                  color: "#777",
-                  cursor: saving
-                    ? "default"
-                    : "pointer",
-                  fontSize: "20px",
-                  lineHeight: 1,
+                  color:
+                    "#777",
+                  cursor:
+                    saving
+                      ? "default"
+                      : "pointer",
+                  fontSize:
+                    "20px",
+                  lineHeight:
+                    1,
                 }}
               >
                 ×
@@ -1481,15 +1983,18 @@ export default function WindowCosting({ appointment }) {
 
             <div
               style={{
-                padding: "20px",
+                padding:
+                  "20px",
               }}
             >
               <div
                 style={{
-                  display: "grid",
+                  display:
+                    "grid",
                   gridTemplateColumns:
                     "repeat(2, minmax(0, 1fr))",
-                  gap: "15px",
+                  gap:
+                    "15px",
                 }}
               >
                 <Field
@@ -1505,7 +2010,8 @@ export default function WindowCosting({ appointment }) {
                     ) =>
                       updateForm(
                         "location",
-                        event.target
+                        event
+                          .target
                           .value
                       )
                     }
@@ -1532,7 +2038,8 @@ export default function WindowCosting({ appointment }) {
                       ) =>
                         updateForm(
                           "unitType",
-                          event.target
+                          event
+                            .target
                             .value
                         )
                       }
@@ -1544,11 +2051,14 @@ export default function WindowCosting({ appointment }) {
                       }
                     >
                       <option value="">
-                        Select type...
+                        Select
+                        type...
                       </option>
 
                       {typeOptions.map(
-                        (option) => (
+                        (
+                          option
+                        ) => (
                           <option
                             key={
                               option
@@ -1557,7 +2067,9 @@ export default function WindowCosting({ appointment }) {
                               option
                             }
                           >
-                            {option}
+                            {
+                              option
+                            }
                           </option>
                         )
                       )}
@@ -1580,7 +2092,8 @@ export default function WindowCosting({ appointment }) {
                     ) =>
                       updateForm(
                         "width",
-                        event.target
+                        event
+                          .target
                           .value
                       )
                     }
@@ -1606,7 +2119,8 @@ export default function WindowCosting({ appointment }) {
                     ) =>
                       updateForm(
                         "height",
-                        event.target
+                        event
+                          .target
                           .value
                       )
                     }
@@ -1620,10 +2134,12 @@ export default function WindowCosting({ appointment }) {
 
               <div
                 style={{
-                  height: "2px",
+                  height:
+                    "2px",
                   background:
                     "#2499ed",
-                  opacity: 0.25,
+                  opacity:
+                    0.25,
                   margin:
                     "22px 0",
                   borderRadius:
@@ -1646,7 +2162,8 @@ export default function WindowCosting({ appointment }) {
                         "7px",
                       background:
                         "#f8fafc",
-                      display: "flex",
+                      display:
+                        "flex",
                       alignItems:
                         "center",
                       justifyContent:
@@ -1677,7 +2194,8 @@ export default function WindowCosting({ appointment }) {
                             "#89939c",
                         }}
                       >
-                        Rounded up to{" "}
+                        Rounded
+                        up to{" "}
                         {
                           calculatedSize.roundedWidth
                         }{" "}
@@ -1708,10 +2226,12 @@ export default function WindowCosting({ appointment }) {
 
               <div
                 style={{
-                  display: "grid",
+                  display:
+                    "grid",
                   gridTemplateColumns:
                     "repeat(2, minmax(0, 1fr))",
-                  gap: "15px",
+                  gap:
+                    "15px",
                 }}
               >
                 {renderSelect(
@@ -1759,7 +2279,8 @@ export default function WindowCosting({ appointment }) {
                       ) =>
                         updateForm(
                           "openers",
-                          event.target
+                          event
+                            .target
                             .value
                         )
                       }
@@ -1785,7 +2306,8 @@ export default function WindowCosting({ appointment }) {
                       ) =>
                         updateForm(
                           "fixed",
-                          event.target
+                          event
+                            .target
                             .value
                         )
                       }
@@ -1820,7 +2342,8 @@ export default function WindowCosting({ appointment }) {
                       "#888",
                   }}
                 >
-                  Loading window
+                  Loading
+                  window
                   choices...
                 </div>
               )}
@@ -1851,6 +2374,84 @@ export default function WindowCosting({ appointment }) {
                   </div>
                 )}
 
+              {/* DISCOUNTABLE PREVIEW */}
+
+              {calculatedDiscountable &&
+                form.unitType && (
+                  <div
+                    style={{
+                      marginTop:
+                        "16px",
+                      padding:
+                        "12px 14px",
+                      border:
+                        "1px solid #dfe5ea",
+                      borderRadius:
+                        "7px",
+                      background:
+                        "#f8fafc",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display:
+                          "flex",
+                        alignItems:
+                          "center",
+                        justifyContent:
+                          "space-between",
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            fontSize:
+                              "10px",
+                            fontWeight:
+                              700,
+                            color:
+                              "#59636c",
+                          }}
+                        >
+                          Discountable
+                        </div>
+
+                        <div
+                          style={{
+                            marginTop:
+                              "3px",
+                            fontSize:
+                              "9px",
+                            color:
+                              "#89939c",
+                          }}
+                        >
+                          Calculated
+                          from the
+                          selected
+                          unit
+                          options
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          fontSize:
+                            "20px",
+                          fontWeight:
+                            800,
+                          color:
+                            "#2499ed",
+                        }}
+                      >
+                        {
+                          calculatedDiscountable.discountable
+                        }
+                      </div>
+                    </div>
+                  </div>
+                )}
+
               {error && (
                 <div
                   style={{
@@ -1877,10 +2478,12 @@ export default function WindowCosting({ appointment }) {
 
             <div
               style={{
-                display: "flex",
+                display:
+                  "flex",
                 justifyContent:
                   "flex-end",
-                gap: "8px",
+                gap:
+                  "8px",
                 padding:
                   "13px 20px",
                 borderTop:
@@ -1891,10 +2494,15 @@ export default function WindowCosting({ appointment }) {
             >
               <button
                 type="button"
-                onClick={closeForm}
-                disabled={saving}
+                onClick={
+                  closeForm
+                }
+                disabled={
+                  saving
+                }
                 style={{
-                  height: "34px",
+                  height:
+                    "34px",
                   padding:
                     "0 13px",
                   border:
@@ -1903,15 +2511,18 @@ export default function WindowCosting({ appointment }) {
                     "6px",
                   background:
                     "#fff",
-                  color: "#555",
-                  cursor: saving
-                    ? "default"
-                    : "pointer",
+                  color:
+                    "#555",
+                  cursor:
+                    saving
+                      ? "default"
+                      : "pointer",
                   fontFamily:
                     "inherit",
                   fontSize:
                     "10px",
-                  fontWeight: 600,
+                  fontWeight:
+                    600,
                 }}
               >
                 Cancel
@@ -1919,9 +2530,12 @@ export default function WindowCosting({ appointment }) {
 
               <button
                 type="submit"
-                disabled={saving}
+                disabled={
+                  saving
+                }
                 style={{
-                  height: "34px",
+                  height:
+                    "34px",
                   padding:
                     "0 15px",
                   border: 0,
@@ -1931,15 +2545,18 @@ export default function WindowCosting({ appointment }) {
                     saving
                       ? "#9acff5"
                       : "#2499ed",
-                  color: "#fff",
-                  cursor: saving
-                    ? "default"
-                    : "pointer",
+                  color:
+                    "#fff",
+                  cursor:
+                    saving
+                      ? "default"
+                      : "pointer",
                   fontFamily:
                     "inherit",
                   fontSize:
                     "10px",
-                  fontWeight: 700,
+                  fontWeight:
+                    700,
                 }}
               >
                 {saving
@@ -1953,3 +2570,4 @@ export default function WindowCosting({ appointment }) {
     </section>
   )
 }
+```
