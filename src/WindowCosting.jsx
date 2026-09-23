@@ -499,7 +499,7 @@ export default function WindowCosting({ appointment }) {
               color: "#555",
             }}
           >
-            No window units added
+            No Units added
           </div>
 
           <div
@@ -675,7 +675,7 @@ export default function WindowCosting({ appointment }) {
                     color: "#222",
                   }}
                 >
-                  Add Window Unit
+                  Add Unit
                 </h3>
 
                 <p
