@@ -66,22 +66,16 @@ function Field({ label, required, children }) {
 }
 
 /*
- * Get unique choices from unit_choices.
-
+ * Get choices for a particular category and unit type.
+ *
  * Database columns:
-
+ *
  * unit_type
  * category
  * charge_type
  * choice
  * value_type
  * value
-
- * Example:
-
- * unit_type = Window
- * category = colour
- * choice = White
  */
 function getChoices(rows, categories, unitType) {
   const categorySet = new Set(
@@ -90,22 +84,20 @@ function getChoices(rows, categories, unitType) {
 
   const selectedType = normalise(unitType)
 
-  const filteredRows = rows.filter((row) => {
-    const rowCategory = normalise(row.category)
+  const filtered = rows.filter((row) => {
+    const category = normalise(row.category)
     const rowType = normalise(row.unit_type)
 
-    /*
-     * Category must match.
-     */
-    if (!categorySet.has(rowCategory)) {
+    // Category must match
+    if (!categorySet.has(category)) {
       return false
     }
 
     /*
      * If the pricing row has a unit type,
-     * only show rows matching the selected type.
+     * it must match the selected type.
      *
-     * If unit_type is blank, allow the row.
+     * Blank unit_type rows are allowed.
      */
     if (
       rowType &&
@@ -120,14 +112,12 @@ function getChoices(rows, categories, unitType) {
 
   return Array.from(
     new Set(
-      filteredRows
+      filtered
         .map((row) =>
           String(row.choice ?? "").trim()
         )
         .filter(Boolean)
     )
-  ).sort((a, b) =>
-    a.localeCompare(b)
   )
 }
 
@@ -140,101 +130,163 @@ export default function WindowCosting({ appointment }) {
     ...EMPTY_FORM,
   })
 
+  // All pricing/choice rows
   const [choices, setChoices] = useState([])
+
+  // Unique unit types from unit_choices.unit_type
+  const [unitTypes, setUnitTypes] = useState([])
 
   const [loadingChoices, setLoadingChoices] =
     useState(false)
 
+  const [loadingTypes, setLoadingTypes] =
+    useState(false)
+
   const [error, setError] = useState("")
 
-  /*
-   * Only show Window Costing for Windows jobs.
-   */
   const isWindows =
     normalise(appointment?.job_type) === "windows"
 
   /*
-   * Load unit_choices from Supabase.
+   * LOAD UNIT TYPES
    *
-   * IMPORTANT:
-   * These are the current database column names.
+   * This is deliberately a separate query.
+   *
+   * It reads ONLY:
+   *
+   * unit_choices.unit_type
+   *
+   * and creates a unique list.
    */
   useEffect(() => {
-    if (!isWindows) {
-      return
+    if (!isWindows) return
+
+    let cancelled = false
+
+    async function loadUnitTypes() {
+      setLoadingTypes(true)
+
+      const {
+        data,
+        error: fetchError,
+      } = await supabase
+        .from("unit_choices")
+        .select("unit_type")
+        .not("unit_type", "is", null)
+        .order("unit_type", {
+          ascending: true,
+        })
+
+      if (cancelled) return
+
+      if (fetchError) {
+        console.error(
+          "Unable to load unit types:",
+          fetchError
+        )
+
+        setError(
+          fetchError.message ||
+            "Unable to load unit types."
+        )
+
+        setUnitTypes([])
+      } else {
+        console.log(
+          "UNIT TYPES FROM DATABASE:",
+          data
+        )
+
+        const uniqueTypes = Array.from(
+          new Set(
+            (data || [])
+              .map((row) =>
+                String(
+                  row.unit_type ?? ""
+                ).trim()
+              )
+              .filter(Boolean)
+          )
+        )
+
+        console.log(
+          "UNIQUE UNIT TYPES:",
+          uniqueTypes
+        )
+
+        setUnitTypes(uniqueTypes)
+      }
+
+      setLoadingTypes(false)
     }
+
+    loadUnitTypes()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isWindows])
+
+  /*
+   * LOAD ALL UNIT CHOICES
+   *
+   * These rows are used for:
+   *
+   * Colour
+   * Shape
+   * Finish
+   * Glass
+   * Style
+   * Handle
+   * Extras
+   */
+  useEffect(() => {
+    if (!isWindows) return
 
     let cancelled = false
 
     async function loadChoices() {
       setLoadingChoices(true)
-      setError("")
 
-      try {
-        const {
-          data,
-          error: fetchError,
-        } = await supabase
-          .from("unit_choices")
-          .select(
-            "unit_type, category, charge_type, choice, value_type, value"
-          )
-          .order("unit_type", {
-            ascending: true,
-          })
-          .order("category", {
-            ascending: true,
-          })
-          .order("choice", {
-            ascending: true,
-          })
-
-        if (cancelled) {
-          return
-        }
-
-        if (fetchError) {
-          console.error(
-            "Unable to load unit choices:",
-            fetchError
-          )
-
-          setError(
-            fetchError.message ||
-              "Unable to load window choices."
-          )
-
-          setChoices([])
-          return
-        }
-
-        console.log(
-          "Window unit choices loaded:",
-          data
+      const {
+        data,
+        error: fetchError,
+      } = await supabase
+        .from("unit_choices")
+        .select(
+          "unit_type, category, charge_type, choice, value_type, value"
         )
+        .order("category", {
+          ascending: true,
+        })
+        .order("choice", {
+          ascending: true,
+        })
 
-        setChoices(data || [])
-      } catch (err) {
-        if (cancelled) {
-          return
-        }
+      if (cancelled) return
 
+      if (fetchError) {
         console.error(
-          "Error loading unit choices:",
-          err
+          "Unable to load unit choices:",
+          fetchError
         )
 
         setError(
-          err?.message ||
+          fetchError.message ||
             "Unable to load window choices."
         )
 
         setChoices([])
-      } finally {
-        if (!cancelled) {
-          setLoadingChoices(false)
-        }
+      } else {
+        console.log(
+          "ALL UNIT CHOICES:",
+          data
+        )
+
+        setChoices(data || [])
       }
+
+      setLoadingChoices(false)
     }
 
     loadChoices()
@@ -245,37 +297,7 @@ export default function WindowCosting({ appointment }) {
   }, [isWindows])
 
   /*
-   * TYPE DROPDOWN
-   *
-   * This is deliberately very simple.
-   *
-   * It takes unit_choices.unit_type,
-   * removes blanks,
-   * removes duplicates,
-   * and sorts the results.
-   */
-  const typeOptions = useMemo(() => {
-    return Array.from(
-      new Set(
-        choices
-          .map((row) =>
-            String(row.unit_type ?? "").trim()
-          )
-          .filter(Boolean)
-      )
-    ).sort((a, b) =>
-      a.localeCompare(b)
-    )
-  }, [choices])
-
-  /*
-   * OTHER DROPDOWNS
-   *
-   * These are driven from:
-   *
-   * category
-   * choice
-   * unit_type
+   * Dropdown options.
    */
   const options = useMemo(() => {
     return {
@@ -299,11 +321,7 @@ export default function WindowCosting({ appointment }) {
 
       glass: getChoices(
         choices,
-        [
-          "glass",
-          "glass optional",
-          "glass optionals",
-        ],
+        ["glass", "glass optionals"],
         form.unitType
       ),
 
@@ -331,36 +349,19 @@ export default function WindowCosting({ appointment }) {
   ])
 
   /*
-   * Useful debugging information.
+   * Debug categories.
    */
   const loadedCategories = useMemo(() => {
     return Array.from(
       new Set(
         choices
           .map((row) =>
-            String(row.category ?? "").trim()
+            String(
+              row.category ?? ""
+            ).trim()
           )
           .filter(Boolean)
       )
-    ).sort((a, b) =>
-      a.localeCompare(b)
-    )
-  }, [choices])
-
-  /*
-   * Useful debugging information for unit types.
-   */
-  const loadedUnitTypes = useMemo(() => {
-    return Array.from(
-      new Set(
-        choices
-          .map((row) =>
-            String(row.unit_type ?? "").trim()
-          )
-          .filter(Boolean)
-      )
-    ).sort((a, b) =>
-      a.localeCompare(b)
     )
   }, [choices])
 
@@ -376,15 +377,6 @@ export default function WindowCosting({ appointment }) {
   function openForm() {
     setForm({
       ...EMPTY_FORM,
-
-      /*
-       * Automatically select the first
-       * available type when opening the form.
-       */
-      unitType:
-        typeOptions.length > 0
-          ? typeOptions[0]
-          : "",
     })
 
     setError("")
@@ -405,16 +397,12 @@ export default function WindowCosting({ appointment }) {
     event.preventDefault()
 
     if (!form.location.trim()) {
-      setError(
-        "Please enter a location."
-      )
+      setError("Please enter a location.")
       return
     }
 
     if (!form.unitType) {
-      setError(
-        "Please select a type."
-      )
+      setError("Please select a type.")
       return
     }
 
@@ -465,15 +453,12 @@ export default function WindowCosting({ appointment }) {
     )
   }
 
-  /*
-   * Don't render anything for non-window jobs.
-   */
   if (!isWindows) {
     return null
   }
 
   /*
-   * Reusable dropdown renderer.
+   * Generic dropdown renderer.
    */
   const renderSelect = (
     field,
@@ -654,8 +639,6 @@ export default function WindowCosting({ appointment }) {
             overflow: "hidden",
           }}
         >
-          {/* TABLE HEADER */}
-
           <div
             style={{
               display: "grid",
@@ -685,8 +668,6 @@ export default function WindowCosting({ appointment }) {
             <span>Price</span>
             <span />
           </div>
-
-          {/* TABLE ROWS */}
 
           {units.map((unit) => (
             <div
@@ -919,33 +900,33 @@ export default function WindowCosting({ appointment }) {
                           .value
                       )
                     }
-                    style={
-                      selectStyle
-                    }
+                    style={{
+                      ...selectStyle,
+                      color:
+                        form.unitType
+                          ? "#222"
+                          : "#777",
+                    }}
                     disabled={
-                      loadingChoices ||
-                      typeOptions.length ===
-                        0
+                      loadingTypes
                     }
                   >
                     <option value="">
-                      {loadingChoices
-                        ? "Loading..."
-                        : typeOptions.length ===
+                      {loadingTypes
+                        ? "Loading types..."
+                        : unitTypes.length >
                           0
-                        ? "No types available"
-                        : "Select type..."}
+                        ? "Select type..."
+                        : "No types available"}
                     </option>
 
-                    {typeOptions.map(
-                      (option) => (
+                    {unitTypes.map(
+                      (type) => (
                         <option
-                          key={option}
-                          value={
-                            option
-                          }
+                          key={type}
+                          value={type}
                         >
-                          {option}
+                          {type}
                         </option>
                       )
                     )}
@@ -1050,9 +1031,7 @@ export default function WindowCosting({ appointment }) {
 
                 {/* OPENERS */}
 
-                <Field
-                  label="Number of Openers"
-                >
+                <Field label="Number of Openers">
                   <input
                     type="number"
                     min="0"
@@ -1077,9 +1056,7 @@ export default function WindowCosting({ appointment }) {
 
                 {/* FIXED */}
 
-                <Field
-                  label="Number of Fixed"
-                >
+                <Field label="Number of Fixed">
                   <input
                     type="number"
                     min="0"
@@ -1121,7 +1098,8 @@ export default function WindowCosting({ appointment }) {
 
               {/* LOADING */}
 
-              {loadingChoices && (
+              {(loadingTypes ||
+                loadingChoices) && (
                 <div
                   style={{
                     marginTop:
@@ -1136,10 +1114,11 @@ export default function WindowCosting({ appointment }) {
                 </div>
               )}
 
-              {/* DATABASE INFO */}
+              {/* DEBUG */}
 
-              {!loadingChoices &&
-                choices.length > 0 && (
+              {!loadingTypes &&
+                unitTypes.length >
+                  0 && (
                   <div
                     style={{
                       marginTop:
@@ -1156,8 +1135,10 @@ export default function WindowCosting({ appointment }) {
                         "#89939c",
                     }}
                   >
-                    {choices.length} pricing
-                    choices loaded
+                    Unit types:{" "}
+                    {unitTypes.join(
+                      ", "
+                    )}
                   </div>
                 )}
 
@@ -1184,7 +1165,7 @@ export default function WindowCosting({ appointment }) {
                 </div>
               )}
 
-              {/* DEBUG */}
+              {/* DEBUG CATEGORIES */}
 
               {!loadingChoices &&
                 choices.length > 0 && (
@@ -1204,34 +1185,18 @@ export default function WindowCosting({ appointment }) {
                           "pointer",
                       }}
                     >
-                      Database information
+                      Database categories
                     </summary>
 
                     <div
                       style={{
                         marginTop:
                           "6px",
-                        lineHeight:
-                          "1.6",
                       }}
                     >
-                      <div>
-                        <strong>
-                          Unit types:
-                        </strong>{" "}
-                        {loadedUnitTypes.join(
-                          ", "
-                        )}
-                      </div>
-
-                      <div>
-                        <strong>
-                          Categories:
-                        </strong>{" "}
-                        {loadedCategories.join(
-                          ", "
-                        )}
-                      </div>
+                      {loadedCategories.join(
+                        ", "
+                      )}
                     </div>
                   </details>
                 )}
