@@ -974,11 +974,14 @@ export default function WindowCosting({
 
       if (calculatedSizeValue === null) {
         setError(
-          `No Size value was found in unit_choices for Size Choice ${calculatedSize.choice} and type ${form.unitType}.`
+          "No Size value was found in unit_choices for Size Choice " +
+            calculatedSize.choice +
+            " and type " +
+            form.unitType +
+            "."
         )
         return
       }
-    }
 
     if (!appointmentId) {
       setError(
