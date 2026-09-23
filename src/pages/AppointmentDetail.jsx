@@ -53,7 +53,7 @@ function isSoldResult(value) {
 
 /*
  * Determine whether this is a solar appointment.
-
+ *
  * We check all of the likely appointment fields rather than relying
  * on only one field.
  *
@@ -264,6 +264,29 @@ function AppointmentDetail({
     }
   }
 
+  async function uploadSignature() {
+    if (!signature) return null
+
+    const response = await fetch(signature)
+    const blob = await response.blob()
+
+    const filePath =
+      `appointments/${appointment.appointment_row_id}/signature.png`
+
+    const { error: uploadError } = await supabase.storage
+      .from("signatures")
+      .upload(filePath, blob, {
+        contentType: "image/png",
+        upsert: true,
+      })
+
+    if (uploadError) {
+      throw uploadError
+    }
+
+    return filePath
+  }
+
   async function saveResult() {
     if (!result) return
 
@@ -274,12 +297,28 @@ function AppointmentDetail({
       return
     }
 
+    if (isSoldResult(result) && !signature) {
+      setError(
+        "A customer signature is required when marking the appointment as Sold."
+      )
+      return
+    }
+
     setSaving(true)
     setError("")
 
     try {
+      let signaturePath = null
+
       /*
-       * Save the result first.
+       * Upload signature when the appointment is Sold.
+       */
+      if (isSoldResult(result) && signature) {
+        signaturePath = await uploadSignature()
+      }
+
+      /*
+       * Save result and signature path.
        */
       const {
         data,
@@ -288,6 +327,7 @@ function AppointmentDetail({
         .from("appointments")
         .update({
           result,
+          signature_path: signaturePath,
         })
         .eq(
           "appointment_row_id",
@@ -331,6 +371,7 @@ function AppointmentDetail({
           await GenerateSolarContract({
             appointment: updatedAppointment,
             epvsCalculation,
+            signaturePath,
           })
         } catch (contractError) {
           console.error(
