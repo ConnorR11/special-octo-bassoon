@@ -17,414 +17,1798 @@ const EMPTY_FORM = {
   extras: "",
 }
 
-const inputStyle = {
-  width: "100%",
-  height: "38px",
-  boxSizing: "border-box",
-  border: "1px solid #d8dde1",
-  borderRadius: "7px",
-  background: "#fff",
-  padding: "0 10px",
-  fontFamily: "inherit",
-  fontSize: "11px",
-  color: "#222",
+/*
+ * ============================================================
+ * SIZE MATRIX
+ * ============================================================
+ *
+ * Widths run across the top.
+ * Heights run down the left.
+ *
+ * If an entered dimension sits between two matrix dimensions,
+ * it is rounded UP to the next available matrix dimension.
+ *
+ * Example:
+ *
+ * Width  = 960  -> 1000
+ * Height = 1440 -> 1500
+ *
+ * The matrix is then checked at:
+ *
+ * 1000 x 1500
+ *
+ * ============================================================
+ */
+
+const SIZE_MATRIX_DIMENSIONS = [
+  500,
+  600,
+  700,
+  800,
+  900,
+  1000,
+  1100,
+  1200,
+  1300,
+  1400,
+  1500,
+  1600,
+  1700,
+  1800,
+  1900,
+  2000,
+  2250,
+  2500,
+  2750,
+  3000,
+  3250,
+]
+
+/*
+ * Each row contains the matrix values from left to right.
+ *
+ * The order is:
+ *
+ * 500, 600, 700, 800, 900, 1000, 1100, 1200,
+ * 1300, 1400, 1500, 1600, 1700, 1800, 1900,
+ * 2000, 2250, 2500, 2750, 3000, 3250
+ */
+
+const SIZE_MATRIX = {
+  500: [
+    "A","A","A","A","A","A","A","A","A","A",
+    "A","A","A","A","A","A","A","A","A","A","B"
+  ],
+
+  600: [
+    "A","A","A","A","A","A","A","A","A","A",
+    "A","A","A","A","A","A","A","A","B","B","B"
+  ],
+
+  700: [
+    "A","A","A","A","A","A","A","A","A","A",
+    "A","A","A","B","B","B","B","B","B","B","B"
+  ],
+
+  800: [
+    "A","A","A","A","A","A","A","A","A","A",
+    "A","A","A","B","B","B","B","B","B","B","C"
+  ],
+
+  900: [
+    "A","A","A","A","A","A","A","A","A","A",
+    "B","B","B","B","B","B","B","B","B","C","C"
+  ],
+
+  1000: [
+    "A","A","A","A","A","A","B","B","B","B",
+    "B","B","B","B","B","B","B","B","C","C","C"
+  ],
+
+  1100: [
+    "A","A","A","A","A","B","B","B","B","B",
+    "B","B","B","B","B","B","B","B","C","C","C"
+  ],
+
+  1200: [
+    "A","A","A","A","A","B","B","B","B","B",
+    "B","B","B","B","B","B","C","C","C","C","D"
+  ],
+
+  1300: [
+    "A","A","A","A","A","B","B","B","B","B",
+    "B","B","B","C","C","C","C","C","C","C","D"
+  ],
+
+  1400: [
+    "A","A","A","A","A","B","B","B","B","B",
+    "C","C","C","C","C","C","C","C","C","C","D"
+  ],
+
+  1500: [
+    "A","A","A","A","B","B","B","B","B","C",
+    "C","C","C","C","C","C","C","D","D","D","D"
+  ],
+
+  1600: [
+    "A","A","A","A","B","B","B","B","B","C",
+    "C","C","C","C","C","D","D","D","D","D","E"
+  ],
+
+  1700: [
+    "A","A","A","B","B","B","B","B","B","C",
+    "C","C","C","C","C","D","D","D","D","D","E"
+  ],
+
+  1800: [
+    "A","A","A","B","B","B","B","B","C","C",
+    "C","C","C","C","D","D","D","D","D","E","E"
+  ],
+
+  1900: [
+    "A","A","A","B","B","B","B","B","C","C",
+    "C","C","D","D","D","D","D","E","E","E","E"
+  ],
+
+  2000: [
+    "A","A","A","B","B","B","B","C","C","C",
+    "C","D","D","D","D","D","E","E","E","E","F"
+  ],
+
+  2250: [
+    "A","A","B","B","B","B","B","C","C","C",
+    "C","D","D","D","D","E","E","E","E","F","F"
+  ],
+
+  2500: [
+    "A","B","B","B","B","B","C","C","C","C",
+    "D","D","D","D","D","E","E","F","G","G","G"
+  ],
+
+  2750: [
+    "A","B","B","B","B","C","C","C","C","D",
+    "D","D","D","D","D","E","E","E","F","G","G"
+  ],
+
+  3000: [
+    "B","B","B","B","C","C","C","C","C","D",
+    "D","D","D","E","E","E","F","F","G","H","H"
+  ],
+
+  3250: [
+    "B","B","B","C","C","C","C","D","D","D",
+    "D","D","E","E","E","F","F","G","G","H","H"
+  ],
 }
 
-const selectStyle = { ...inputStyle, cursor: "pointer" }
+/*
+ * Round a measurement UP to the next matrix dimension.
+ *
+ * Example:
+ *
+ * 960  -> 1000
+ * 1440 -> 1500
+ * 500  -> 500
+ * 501  -> 600
+ */
+function roundUpToMatrixSize(value) {
+  const numericValue = Number(value)
+
+  if (!Number.isFinite(numericValue) || numericValue <= 0) {
+    return null
+  }
+
+  return (
+    SIZE_MATRIX_DIMENSIONS.find(
+      (dimension) => numericValue <= dimension
+    ) || null
+  )
+}
+
+/*
+ * Get the Size Choice from the matrix.
+ */
+function getSizeChoice(width, height) {
+  const roundedWidth = roundUpToMatrixSize(width)
+  const roundedHeight = roundUpToMatrixSize(height)
+
+  if (!roundedWidth || !roundedHeight) {
+    return null
+  }
+
+  const row = SIZE_MATRIX[roundedHeight]
+
+  if (!row) {
+    return null
+  }
+
+  const columnIndex =
+    SIZE_MATRIX_DIMENSIONS.indexOf(roundedWidth)
+
+  if (columnIndex === -1) {
+    return null
+  }
+
+  return {
+    choice: row[columnIndex],
+    roundedWidth,
+    roundedHeight,
+  }
+}
+
+/*
+ * ============================================================
+ * GENERAL HELPERS
+ * ============================================================
+ */
 
 function normalise(value) {
-  return String(value ?? "").trim().toLowerCase()
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
 }
 
 function Field({ label, required, children }) {
   return (
     <label style={{ display: "block" }}>
-      <span style={{ display: "block", marginBottom: "6px", fontSize: "10px", fontWeight: 700, color: "#59636c" }}>
-        {label}{required && <span style={{ color: "#2499ed" }}> *</span>}
+      <span
+        style={{
+          display: "block",
+          marginBottom: "6px",
+          fontSize: "10px",
+          fontWeight: 700,
+          color: "#59636c",
+        }}
+      >
+        {label}
+
+        {required && (
+          <span style={{ color: "#2499ed" }}> *</span>
+        )}
       </span>
+
       {children}
     </label>
   )
 }
 
+/*
+ * Get normal dropdown choices from unit_choices.
+ */
 function getChoices(rows, categories, unitType) {
-  const categorySet = new Set(categories.map(normalise))
+  const categorySet = new Set(
+    categories.map(normalise)
+  )
+
   const selectedType = normalise(unitType)
 
-  return Array.from(new Set(
-    rows
-      .filter((row) => {
-        if (!categorySet.has(normalise(row.category))) return false
-        const rowType = normalise(row.unit_type)
-        return !rowType || !selectedType || rowType === selectedType
-      })
-      .map((row) => String(row.choice ?? "").trim())
-      .filter(Boolean)
-  ))
-}
-
-function getChoiceRow(rows, categories, unitType, selectedChoice) {
-  if (!selectedChoice) return null
-  const categorySet = new Set(categories.map(normalise))
-  const selectedType = normalise(unitType)
-  const selected = normalise(selectedChoice)
-
-  return rows.find((row) => {
-    if (!categorySet.has(normalise(row.category))) return false
-    if (normalise(row.choice) !== selected) return false
+  const filtered = rows.filter((row) => {
+    const category = normalise(row.category)
     const rowType = normalise(row.unit_type)
-    return !rowType || !selectedType || rowType === selectedType
-  }) || null
+
+    if (!categorySet.has(category)) {
+      return false
+    }
+
+    if (
+      rowType &&
+      selectedType &&
+      rowType !== selectedType
+    ) {
+      return false
+    }
+
+    return true
+  })
+
+  return Array.from(
+    new Set(
+      filtered
+        .map((row) =>
+          String(row.choice ?? "").trim()
+        )
+        .filter(Boolean)
+    )
+  )
 }
 
-function getSubmittedBy(user) {
-  const name = String(user?.user_metadata?.full_name || user?.user_metadata?.name || "").trim()
-  return name || user?.email || user?.id || "Unknown"
-}
-
-function mapDatabaseUnit(row) {
-  return {
-    id: row.UUID,
-    unitNumber: 0,
-    location: row.location || "",
-    unitType: row.unit_type || "",
-    width: row.width ?? "",
-    height: row.height ?? "",
-    colour: row.colour_choice || "",
-    shape: row.shape_choice || "",
-    finish: row.finish_choice || "",
-    glass: row.glass_choice || "",
-    style: row.style_choice || "",
-    openers: Number(row.openers_choice) || 0,
-    fixed: Number(row.fixed_choice) || 0,
-    handle: row.handle_choice || "",
-    extras: row.extras_choice || "",
-    discountable: row.discountable,
-    netProductCost: row.net_product_cost,
+/*
+ * Get the value attached to a Size Choice from unit_choices.
+ *
+ * Expected unit_choices structure:
+ *
+ * category   = Size
+ * choice     = A / B / C / D / E / F / G / H
+ * value      = numeric value
+ * unit_type  = Window / etc.
+ */
+function getSizeValue(rows, sizeChoice, unitType) {
+  if (!sizeChoice) {
+    return null
   }
+
+  const selectedType = normalise(unitType)
+
+  const sizeRows = rows.filter((row) => {
+    const category = normalise(row.category)
+    const choice = normalise(row.choice)
+    const rowType = normalise(row.unit_type)
+
+    const isSizeCategory =
+      category === "size" ||
+      category === "size choice" ||
+      category === "size_choice"
+
+    if (!isSizeCategory) {
+      return false
+    }
+
+    if (choice !== normalise(sizeChoice)) {
+      return false
+    }
+
+    if (
+      rowType &&
+      selectedType &&
+      rowType !== selectedType
+    ) {
+      return false
+    }
+
+    return true
+  })
+
+  if (!sizeRows.length) {
+    return null
+  }
+
+  const value = Number(sizeRows[0].value)
+
+  return Number.isFinite(value)
+    ? value
+    : null
 }
 
-export default function WindowCosting({ appointment, onUpdated }) {
+/*
+ * ============================================================
+ * COMPONENT
+ * ============================================================
+ */
+
+export default function WindowCosting({ appointment }) {
   const [units, setUnits] = useState([])
+
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ ...EMPTY_FORM })
+
+  const [form, setForm] = useState({
+    ...EMPTY_FORM,
+  })
+
   const [choices, setChoices] = useState([])
-  const [loadingChoices, setLoadingChoices] = useState(false)
-  const [loadingUnits, setLoadingUnits] = useState(false)
-  const [savingUnit, setSavingUnit] = useState(false)
+
+  const [loadingChoices, setLoadingChoices] =
+    useState(false)
+
+  const [saving, setSaving] = useState(false)
+
   const [error, setError] = useState("")
 
-  const isWindows = normalise(appointment?.job_type) === "windows"
-  const appointmentId = appointment?.appointment_row_id
+  const isWindows =
+    normalise(appointment?.job_type) === "windows"
+
+  /*
+   * ==========================================================
+   * LOAD UNIT CHOICES
+   * ==========================================================
+   */
 
   useEffect(() => {
     if (!isWindows) return
+
     let cancelled = false
 
     async function loadChoices() {
       setLoadingChoices(true)
-      const { data, error: fetchError } = await supabase
-        .from("unit_choices")
-        .select("unit_type, category, charge_type, choice, value_type, value")
-        .order("unit_type", { ascending: true })
-        .order("category", { ascending: true })
-        .order("choice", { ascending: true })
+      setError("")
+
+      const { data, error: fetchError } =
+        await supabase
+          .from("unit_choices")
+          .select(
+            "unit_type, category, charge_type, choice, value_type, value"
+          )
+          .order("category", {
+            ascending: true,
+          })
+          .order("choice", {
+            ascending: true,
+          })
 
       if (cancelled) return
+
       if (fetchError) {
-        console.error("Unable to load unit choices:", fetchError)
-        setError(fetchError.message || "Unable to load window choices.")
+        console.error(
+          "Unable to load unit choices:",
+          fetchError
+        )
+
+        setError(
+          fetchError.message ||
+            "Unable to load window choices."
+        )
+
         setChoices([])
       } else {
         setChoices(data || [])
       }
+
       setLoadingChoices(false)
     }
 
     loadChoices()
-    return () => { cancelled = true }
+
+    return () => {
+      cancelled = true
+    }
   }, [isWindows])
 
-  useEffect(() => {
-    if (!isWindows || !appointmentId) return
-    let cancelled = false
+  /*
+   * ==========================================================
+   * UNIT TYPES
+   * ==========================================================
+   *
+   * This is a UNIQUE list of unit_choices.unit_type.
+   */
 
-    async function loadUnits() {
-      setLoadingUnits(true)
-      const { data, error: fetchError } = await supabase
-        .from("units")
-        .select("*")
-        .eq("appointment_id", String(appointmentId))
-        .order("created_date", { ascending: true })
+  const typeOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        choices
+          .map((row) =>
+            String(row.unit_type ?? "").trim()
+          )
+          .filter(Boolean)
+      )
+    )
+  }, [choices])
 
-      if (cancelled) return
-      if (fetchError) {
-        console.error("Unable to load units:", fetchError)
-        setError(fetchError.message || "Unable to load saved units.")
-        setUnits([])
-      } else {
-        setUnits((data || []).map(mapDatabaseUnit).map((unit, index) => ({ ...unit, unitNumber: index + 1 })))
-      }
-      setLoadingUnits(false)
+  /*
+   * ==========================================================
+   * NORMAL DROPDOWN OPTIONS
+   * ==========================================================
+   */
+
+  const options = useMemo(() => {
+    return {
+      colour: getChoices(
+        choices,
+        ["colour"],
+        form.unitType
+      ),
+
+      shape: getChoices(
+        choices,
+        ["shape"],
+        form.unitType
+      ),
+
+      finish: getChoices(
+        choices,
+        ["finish"],
+        form.unitType
+      ),
+
+      glass: getChoices(
+        choices,
+        ["glass", "glass optionals"],
+        form.unitType
+      ),
+
+      style: getChoices(
+        choices,
+        ["style"],
+        form.unitType
+      ),
+
+      handle: getChoices(
+        choices,
+        ["handle"],
+        form.unitType
+      ),
+
+      extras: getChoices(
+        choices,
+        ["extras"],
+        form.unitType
+      ),
+    }
+  }, [
+    choices,
+    form.unitType,
+  ])
+
+  /*
+   * ==========================================================
+   * CALCULATED SIZE
+   * ==========================================================
+   */
+
+  const calculatedSize = useMemo(() => {
+    return getSizeChoice(
+      form.width,
+      form.height
+    )
+  }, [
+    form.width,
+    form.height,
+  ])
+
+  const calculatedSizeValue = useMemo(() => {
+    if (!calculatedSize) {
+      return null
     }
 
-    loadUnits()
-    return () => { cancelled = true }
-  }, [isWindows, appointmentId])
+    return getSizeValue(
+      choices,
+      calculatedSize.choice,
+      form.unitType
+    )
+  }, [
+    choices,
+    calculatedSize,
+    form.unitType,
+  ])
 
-  const typeOptions = useMemo(() => Array.from(new Set(
-    choices.map((row) => String(row.unit_type ?? "").trim()).filter(Boolean)
-  )), [choices])
-
-  const options = useMemo(() => ({
-    colour: getChoices(choices, ["colour"], form.unitType),
-    shape: getChoices(choices, ["shape"], form.unitType),
-    finish: getChoices(choices, ["finish"], form.unitType),
-    glass: getChoices(choices, ["glass", "glass optionals"], form.unitType),
-    style: getChoices(choices, ["style"], form.unitType),
-    handle: getChoices(choices, ["handle"], form.unitType),
-    extras: getChoices(choices, ["extras"], form.unitType),
-  }), [choices, form.unitType])
+  /*
+   * ==========================================================
+   * FORM
+   * ==========================================================
+   */
 
   function updateForm(field, value) {
-    setForm((current) => ({ ...current, [field]: value }))
+    setForm((current) => ({
+      ...current,
+      [field]: value,
+    }))
+
     setError("")
   }
 
   function openForm() {
-    setForm({ ...EMPTY_FORM, unitType: typeOptions[0] || "" })
+    setForm({
+      ...EMPTY_FORM,
+      unitType:
+        typeOptions[0] || "",
+    })
+
     setError("")
     setShowForm(true)
   }
 
   function closeForm() {
-    if (savingUnit) return
+    if (saving) return
+
     setShowForm(false)
-    setForm({ ...EMPTY_FORM })
+
+    setForm({
+      ...EMPTY_FORM,
+    })
+
     setError("")
   }
+
+  /*
+   * ==========================================================
+   * SAVE UNIT
+   * ==========================================================
+   */
 
   async function addUnit(event) {
     event.preventDefault()
 
-    if (!appointmentId) return setError("This appointment does not have an appointment ID.")
-    if (!form.location.trim()) return setError("Please enter a location.")
-    if (!form.unitType) return setError("Please select a type.")
-    if (!form.width || !form.height) return setError("Please enter the width and height.")
+    if (saving) return
 
-    const width = Number(form.width)
-    const height = Number(form.height)
-    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
-      return setError("Width and height must be valid numbers.")
+    if (!form.location.trim()) {
+      setError("Please enter a location.")
+      return
     }
 
-    setSavingUnit(true)
+    if (!form.unitType) {
+      setError("Please select a type.")
+      return
+    }
+
+    if (!form.width || !form.height) {
+      setError(
+        "Please enter the width and height."
+      )
+      return
+    }
+
+    if (!calculatedSize) {
+      setError(
+        "The entered dimensions are outside the available size matrix. Maximum size is 3250mm."
+      )
+      return
+    }
+
+    if (calculatedSizeValue === null) {
+      setError(
+        `No Size value was found in unit_choices for Size Choice ${calculatedSize.choice} and type ${form.unitType}.`
+      )
+      return
+    }
+
+    const appointmentId =
+      appointment?.appointment_row_id ??
+      appointment?.appointment_id ??
+      appointment?.id
+
+    if (!appointmentId) {
+      setError(
+        "Unable to save the unit because no appointment ID was found."
+      )
+      return
+    }
+
+    setSaving(true)
     setError("")
 
     try {
-      const { data: userData, error: userError } = await supabase.auth.getUser()
-      if (userError) throw userError
+      const unitId =
+        typeof crypto !== "undefined" &&
+        crypto.randomUUID
+          ? crypto.randomUUID()
+          : undefined
 
-      const createdBy = getSubmittedBy(userData?.user)
-      const uuid = crypto.randomUUID()
-      const openers = Number(form.openers) || 0
-      const fixed = Number(form.fixed) || 0
+      const insertData = {
+        ...(unitId
+          ? {
+              UUID: unitId,
+            }
+          : {}),
 
-      const colourRow = getChoiceRow(choices, ["colour"], form.unitType, form.colour)
-      const shapeRow = getChoiceRow(choices, ["shape"], form.unitType, form.shape)
-      const finishRow = getChoiceRow(choices, ["finish"], form.unitType, form.finish)
-      const glassRow = getChoiceRow(choices, ["glass", "glass optionals"], form.unitType, form.glass)
-      const styleRow = getChoiceRow(choices, ["style"], form.unitType, form.style)
-      const handleRow = getChoiceRow(choices, ["handle"], form.unitType, form.handle)
-      const extrasRow = getChoiceRow(choices, ["extras"], form.unitType, form.extras)
+        appointment_id: String(
+          appointmentId
+        ),
 
-      const unitToInsert = {
-        UUID: uuid,
-        appointment_id: String(appointmentId),
-        location: form.location.trim(),
-        created_by: createdBy,
-        created_date: new Date().toISOString(),
-        unit_type: form.unitType,
-        size_choice: `${width} x ${height}`,
-        height,
-        width,
-        colour_choice: form.colour || null,
-        colour_value: colourRow?.value ?? null,
-        shape_choice: form.shape || null,
-        shape_value: shapeRow?.value ?? null,
-        finish_choice: form.finish || null,
-        finish_value: finishRow?.value ?? null,
-        style_choice: form.style || null,
-        style_value: styleRow?.value ?? null,
-        glass_choice: form.glass || null,
-        glass_value: glassRow?.value ?? null,
-        handle_choice: form.handle || null,
-        handle_value: handleRow?.value ?? null,
-        fixed_choice: form.unitType === "Window" ? String(fixed) : null,
-        openers_choice: form.unitType === "Window" ? String(openers) : null,
-        fix_openers_value: null,
-        extras_choice: form.extras || null,
-        extras_value: extrasRow?.value ?? null,
+        location:
+          form.location.trim(),
+
+        created_date:
+          new Date().toISOString(),
+
+        unit_type:
+          form.unitType,
+
+        size_choice:
+          calculatedSize.choice,
+
+        height:
+          Number(form.height),
+
+        width:
+          Number(form.width),
+
+        size_value:
+          Math.round(
+            calculatedSizeValue
+          ),
+
+        colour_choice:
+          form.colour || null,
+
+        shape_choice:
+          form.shape || null,
+
+        finish_choice:
+          form.finish || null,
+
+        style_choice:
+          form.style || null,
+
+        glass_choice:
+          form.glass || null,
+
+        handle_choice:
+          form.handle || null,
+
+        fixed_choice:
+          form.unitType === "Window"
+            ? String(
+                Number(form.fixed) || 0
+              )
+            : null,
+
+        openers_choice:
+          form.unitType === "Window"
+            ? String(
+                Number(form.openers) || 0
+              )
+            : null,
+
+        extras_choice:
+          form.extras || null,
       }
 
-      // Deliberately do not chain .select() here. The INSERT only needs INSERT permission;
-      // requiring a follow-up SELECT can make a successful insert look like a failed save.
-      const { error: insertError } = await supabase
+      console.log(
+        "Saving unit:",
+        insertData
+      )
+
+      const {
+        error: insertError,
+      } = await supabase
         .from("units")
-        .insert(unitToInsert)
+        .insert(insertData)
 
-      if (insertError) throw insertError
+      if (insertError) {
+        console.error(
+          "Unable to save unit:",
+          insertError
+        )
 
-      const savedUnit = {
-        ...mapDatabaseUnit(unitToInsert),
-        unitNumber: units.length + 1,
+        throw new Error(
+          insertError.message ||
+            "Unable to save unit."
+        )
       }
 
-      setUnits((current) => [...current, savedUnit].map((unit, index) => ({ ...unit, unitNumber: index + 1 })))
-      setShowForm(false)
-      setForm({ ...EMPTY_FORM })
-      if (typeof onUpdated === "function") onUpdated()
+      /*
+       * Add it to the local table only AFTER
+       * Supabase confirms the insert succeeded.
+       */
+
+      const newUnit = {
+        id:
+          unitId ||
+          crypto.randomUUID(),
+
+        unitNumber:
+          units.length + 1,
+
+        location:
+          form.location,
+
+        unitType:
+          form.unitType,
+
+        width:
+          Number(form.width),
+
+        height:
+          Number(form.height),
+
+        sizeChoice:
+          calculatedSize.choice,
+
+        sizeValue:
+          calculatedSizeValue,
+
+        colour:
+          form.colour,
+
+        shape:
+          form.shape,
+
+        finish:
+          form.finish,
+
+        glass:
+          form.glass,
+
+        style:
+          form.style,
+
+        openers:
+          Number(form.openers) || 0,
+
+        fixed:
+          Number(form.fixed) || 0,
+
+        handle:
+          form.handle,
+
+        extras:
+          form.extras,
+      }
+
+      setUnits((current) => [
+        ...current,
+        newUnit,
+      ])
+
+      closeForm()
     } catch (err) {
-      console.error("Unable to save unit:", err)
-      setError(err?.message || "Unable to save the unit.")
+      console.error(
+        "Error saving unit:",
+        err
+      )
+
+      setError(
+        err?.message ||
+          "Unable to save unit."
+      )
     } finally {
-      setSavingUnit(false)
+      setSaving(false)
     }
   }
 
-  async function removeUnit(id) {
-    setError("")
-    const { error: deleteError } = await supabase.from("units").delete().eq("UUID", id)
-    if (deleteError) {
-      console.error("Unable to delete unit:", deleteError)
-      setError(deleteError.message || "Unable to delete the unit.")
-      return
+  /*
+   * ==========================================================
+   * REMOVE UNIT
+   * ==========================================================
+   */
+
+  async function removeUnit(unit) {
+    if (!unit) return
+
+    const confirmed =
+      window.confirm(
+        "Remove this unit?"
+      )
+
+    if (!confirmed) return
+
+    /*
+     * If we have a real UUID from Supabase,
+     * remove it from the database as well.
+     */
+
+    if (unit.id) {
+      const {
+        error: deleteError,
+      } = await supabase
+        .from("units")
+        .delete()
+        .eq("UUID", unit.id)
+
+      if (deleteError) {
+        console.error(
+          "Unable to delete unit:",
+          deleteError
+        )
+
+        setError(
+          deleteError.message ||
+            "Unable to delete unit."
+        )
+
+        return
+      }
     }
-    setUnits((current) => current.filter((unit) => unit.id !== id).map((unit, index) => ({ ...unit, unitNumber: index + 1 })))
-    if (typeof onUpdated === "function") onUpdated()
+
+    setUnits((current) =>
+      current
+        .filter(
+          (item) =>
+            item.id !== unit.id
+        )
+        .map((item, index) => ({
+          ...item,
+          unitNumber:
+            index + 1,
+        }))
+    )
   }
 
-  if (!isWindows) return null
+  /*
+   * ==========================================================
+   * SELECT RENDERER
+   * ==========================================================
+   *
+   * Dropdowns with no available options are hidden.
+   */
 
-  const renderSelect = (field, label, optionsList) => {
-    if (loadingChoices || !optionsList?.length) return null
+  const renderSelect = (
+    field,
+    label,
+    optionsList
+  ) => {
+    if (
+      !optionsList ||
+      optionsList.length === 0
+    ) {
+      return null
+    }
+
     return (
       <Field label={label}>
-        <select value={form[field]} onChange={(event) => updateForm(field, event.target.value)} style={{ ...selectStyle, color: form[field] ? "#222" : "#777" }}>
-          <option value="">Select {label.toLowerCase()}...</option>
-          {optionsList.map((option) => <option key={option} value={option}>{option}</option>)}
+        <select
+          value={form[field]}
+          onChange={(event) =>
+            updateForm(
+              field,
+              event.target.value
+            )
+          }
+          style={{
+            ...selectStyle,
+            color: form[field]
+              ? "#222"
+              : "#777",
+          }}
+          disabled={loadingChoices}
+        >
+          <option value="">
+            Select{" "}
+            {label.toLowerCase()}
+            ...
+          </option>
+
+          {optionsList.map(
+            (option) => (
+              <option
+                key={option}
+                value={option}
+              >
+                {option}
+              </option>
+            )
+          )}
         </select>
       </Field>
     )
   }
 
-  const divider = (
-    <div style={{ gridColumn: "1 / -1", height: "2px", background: "#2499ed", opacity: 0.25, margin: "2px 0 1px" }} />
-  )
+  if (!isWindows) {
+    return null
+  }
+
+  /*
+   * ==========================================================
+   * UI
+   * ==========================================================
+   */
 
   return (
-    <section style={{ width: "100%", marginTop: "24px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+    <section
+      style={{
+        width: "100%",
+        marginTop: "24px",
+      }}
+    >
+      {/* HEADER */}
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent:
+            "space-between",
+          marginBottom: "12px",
+        }}
+      >
         <div>
-          <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 700, color: "#222" }}>Windows</h2>
-          <p style={{ margin: "5px 0 0", fontSize: "11px", color: "#888" }}>Add and configure individual window units.</p>
+          <h2
+            style={{
+              margin: 0,
+              fontSize: "18px",
+              fontWeight: 700,
+              color: "#222",
+            }}
+          >
+            Windows
+          </h2>
+
+          <p
+            style={{
+              margin: "5px 0 0",
+              fontSize: "11px",
+              color: "#888",
+            }}
+          >
+            Add and configure
+            individual window
+            units.
+          </p>
         </div>
-        <button type="button" onClick={openForm} style={{ height: "34px", padding: "0 14px", border: 0, borderRadius: "7px", background: "#2499ed", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontSize: "10px", fontWeight: 700 }}>+ Add Unit</button>
+
+        <button
+          type="button"
+          onClick={openForm}
+          style={{
+            height: "34px",
+            padding: "0 14px",
+            border: 0,
+            borderRadius: "7px",
+            background: "#2499ed",
+            color: "#fff",
+            cursor: "pointer",
+            fontFamily: "inherit",
+            fontSize: "10px",
+            fontWeight: 700,
+          }}
+        >
+          + Add Unit
+        </button>
       </div>
 
-      {error && !showForm && <div style={{ marginBottom: "10px", padding: "9px 10px", borderRadius: "6px", background: "#fbeaea", color: "#8b3333", fontSize: "10px" }}>{error}</div>}
+      {/* ERROR */}
 
-      {loadingUnits ? (
-        <div style={{ padding: "24px", border: "1px dashed #d8dde1", borderRadius: "8px", background: "#fafbfc", textAlign: "center", fontSize: "10px", color: "#888" }}>Loading saved units...</div>
-      ) : units.length === 0 ? (
-        <div style={{ padding: "24px", border: "1px dashed #d8dde1", borderRadius: "8px", background: "#fafbfc", textAlign: "center" }}>
-          <div style={{ fontSize: "11px", fontWeight: 700, color: "#555" }}>No window units added</div>
-          <div style={{ marginTop: "4px", fontSize: "10px", color: "#999" }}>Click “Add Unit” to add the first window.</div>
+      {error && !showForm && (
+        <div
+          style={{
+            marginBottom: "10px",
+            padding: "9px 10px",
+            borderRadius: "6px",
+            background: "#fbeaea",
+            color: "#8b3333",
+            fontSize: "10px",
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      {/* UNITS TABLE */}
+
+      {units.length === 0 ? (
+        <div
+          style={{
+            padding: "24px",
+            border:
+              "1px dashed #d8dde1",
+            borderRadius: "8px",
+            background: "#fafbfc",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              color: "#555",
+            }}
+          >
+            No window units
+            added
+          </div>
+
+          <div
+            style={{
+              marginTop: "4px",
+              fontSize: "10px",
+              color: "#999",
+            }}
+          >
+            Click “Add Unit” to
+            add the first window.
+          </div>
         </div>
       ) : (
-        <div style={{ border: "1px solid #e2e5e8", borderRadius: "8px", background: "#fff", overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1.2fr .9fr 1fr 1fr .9fr .45fr .45fr .8fr .9fr 32px", gap: "10px", alignItems: "center", padding: "10px 12px", borderBottom: "1px solid #e5e7e9", background: "#fafbfc", fontSize: "8px", fontWeight: 700, color: "#6d757c", textTransform: "uppercase" }}>
-            <span>Location</span><span>Type</span><span>Size</span><span>Style</span><span>Colour</span><span>F</span><span>O</span><span>Discountable</span><span>Price</span><span />
+        <div
+          style={{
+            border:
+              "1px solid #e2e5e8",
+            borderRadius: "8px",
+            background: "#fff",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "1.2fr .9fr 1fr 1fr .9fr .45fr .45fr .8fr .9fr 32px",
+              gap: "10px",
+              alignItems: "center",
+              padding: "10px 12px",
+              borderBottom:
+                "1px solid #e5e7e9",
+              background: "#fafbfc",
+              fontSize: "8px",
+              fontWeight: 700,
+              color: "#6d757c",
+              textTransform:
+                "uppercase",
+            }}
+          >
+            <span>Location</span>
+            <span>Type</span>
+            <span>Size</span>
+            <span>Style</span>
+            <span>Colour</span>
+            <span>F</span>
+            <span>O</span>
+            <span>Size Choice</span>
+            <span>Size Value</span>
+            <span />
           </div>
+
           {units.map((unit) => (
-            <div key={unit.id} style={{ display: "grid", gridTemplateColumns: "1.2fr .9fr 1fr 1fr .9fr .45fr .45fr .8fr .9fr 32px", gap: "10px", alignItems: "center", padding: "11px 12px", borderBottom: "1px solid #eef0f2", fontSize: "10px", color: "#333" }}>
-              <strong>{unit.location}</strong>
-              <span>{unit.unitType || "—"}</span>
-              <span>{unit.width} × {unit.height}</span>
-              <span>{unit.style || "—"}</span>
-              <span>{unit.colour || "—"}</span>
-              <span>{unit.fixed}</span>
-              <span>{unit.openers}</span>
-              <span>{unit.discountable ?? "—"}</span>
-              <strong>{unit.netProductCost ?? "—"}</strong>
-              <button type="button" onClick={() => removeUnit(unit.id)} title="Remove unit" style={{ border: 0, background: "transparent", color: "#888", cursor: "pointer", fontSize: "14px", padding: 0 }}>×</button>
+            <div
+              key={unit.id}
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "1.2fr .9fr 1fr 1fr .9fr .45fr .45fr .8fr .9fr 32px",
+                gap: "10px",
+                alignItems: "center",
+                padding:
+                  "11px 12px",
+                borderBottom:
+                  "1px solid #eef0f2",
+                fontSize: "10px",
+                color: "#333",
+              }}
+            >
+              <strong>
+                {unit.location}
+              </strong>
+
+              <span>
+                {unit.unitType ||
+                  "—"}
+              </span>
+
+              <span>
+                {unit.width} ×{" "}
+                {unit.height}
+              </span>
+
+              <span>
+                {unit.style ||
+                  "—"}
+              </span>
+
+              <span>
+                {unit.colour ||
+                  "—"}
+              </span>
+
+              <span>
+                {unit.fixed ?? 0}
+              </span>
+
+              <span>
+                {unit.openers ?? 0}
+              </span>
+
+              <span>
+                {unit.sizeChoice ||
+                  "—"}
+              </span>
+
+              <strong>
+                {unit.sizeValue ??
+                  "—"}
+              </strong>
+
+              <button
+                type="button"
+                onClick={() =>
+                  removeUnit(unit)
+                }
+                title="Remove unit"
+                style={{
+                  border: 0,
+                  background:
+                    "transparent",
+                  color: "#888",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  padding: 0,
+                }}
+              >
+                ⋯
+              </button>
             </div>
           ))}
         </div>
       )}
 
+      {/* ======================================================
+          ADD UNIT MODAL
+          ====================================================== */}
+
       {showForm && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
-          <form onSubmit={addUnit} style={{ width: "680px", maxWidth: "100%", maxHeight: "90vh", overflowY: "auto", background: "#fff", borderRadius: "10px", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "17px 20px", borderBottom: "1px solid #e6e8ea" }}>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1100,
+            background:
+              "rgba(0,0,0,0.35)",
+            display: "flex",
+            alignItems:
+              "center",
+            justifyContent:
+              "center",
+            padding: "20px",
+          }}
+        >
+          <form
+            onSubmit={addUnit}
+            style={{
+              width: "680px",
+              maxWidth: "100%",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              background: "#fff",
+              borderRadius: "10px",
+              boxShadow:
+                "0 20px 60px rgba(0,0,0,0.25)",
+            }}
+          >
+            {/* MODAL HEADER */}
+
+            <div
+              style={{
+                display: "flex",
+                alignItems:
+                  "center",
+                justifyContent:
+                  "space-between",
+                padding:
+                  "17px 20px",
+                borderBottom:
+                  "1px solid #e6e8ea",
+              }}
+            >
               <div>
-                <h3 style={{ margin: 0, fontSize: "15px", color: "#222" }}>Add Window Unit</h3>
-                <p style={{ margin: "4px 0 0", fontSize: "10px", color: "#888" }}>Enter the details for this individual unit.</p>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: "15px",
+                    color: "#222",
+                  }}
+                >
+                  Add Window Unit
+                </h3>
+
+                <p
+                  style={{
+                    margin:
+                      "4px 0 0",
+                    fontSize: "10px",
+                    color: "#888",
+                  }}
+                >
+                  Enter the details
+                  for this individual
+                  unit.
+                </p>
               </div>
-              <button type="button" onClick={closeForm} disabled={savingUnit} style={{ border: 0, background: "transparent", color: "#777", cursor: "pointer", fontSize: "20px", lineHeight: 1 }}>×</button>
+
+              <button
+                type="button"
+                onClick={closeForm}
+                disabled={saving}
+                style={{
+                  border: 0,
+                  background:
+                    "transparent",
+                  color: "#777",
+                  cursor: saving
+                    ? "default"
+                    : "pointer",
+                  fontSize: "20px",
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
             </div>
 
-            <div style={{ padding: "20px" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "15px" }}>
-                <Field label="Location" required>
-                  <input value={form.location} onChange={(event) => updateForm("location", event.target.value)} placeholder="e.g. Living room" style={inputStyle} autoFocus />
+            {/* FORM BODY */}
+
+            <div
+              style={{
+                padding: "20px",
+              }}
+            >
+              {/* ==================================================
+                  TOP SECTION
+
+                  Location
+                  Type
+                  Width
+                  Height
+                  ================================================== */}
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(2, minmax(0, 1fr))",
+                  gap: "15px",
+                }}
+              >
+                {/* LOCATION */}
+
+                <Field
+                  label="Location"
+                  required
+                >
+                  <input
+                    value={
+                      form.location
+                    }
+                    onChange={(
+                      event
+                    ) =>
+                      updateForm(
+                        "location",
+                        event.target
+                          .value
+                      )
+                    }
+                    placeholder="e.g. Living room"
+                    style={
+                      inputStyle
+                    }
+                    autoFocus
+                  />
                 </Field>
 
-                <Field label="Type" required>
-                  <select value={form.unitType} onChange={(event) => updateForm("unitType", event.target.value)} style={{ ...selectStyle, color: form.unitType ? "#222" : "#777" }} disabled={loadingChoices || !typeOptions.length}>
-                    <option value="">{loadingChoices ? "Loading..." : typeOptions.length ? "Select type..." : "No types available"}</option>
-                    {typeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                  </select>
-                </Field>
+                {/* TYPE */}
 
-                <Field label="Width (mm)" required>
-                  <input type="number" min="1" value={form.width} onChange={(event) => updateForm("width", event.target.value)} placeholder="e.g. 960" style={inputStyle} />
-                </Field>
+                {typeOptions.length >
+                0 && (
+                  <Field
+                    label="Type"
+                    required
+                  >
+                    <select
+                      value={
+                        form.unitType
+                      }
+                      onChange={(
+                        event
+                      ) =>
+                        updateForm(
+                          "unitType",
+                          event.target
+                            .value
+                        )
+                      }
+                      style={
+                        selectStyle
+                      }
+                      disabled={
+                        loadingChoices
+                      }
+                    >
+                      <option value="">
+                        Select type...
+                      </option>
 
-                <Field label="Height (mm)" required>
-                  <input type="number" min="1" value={form.height} onChange={(event) => updateForm("height", event.target.value)} placeholder="e.g. 1440" style={inputStyle} />
-                </Field>
-
-                {divider}
-
-                {renderSelect("colour", "Colour", options.colour)}
-                {renderSelect("shape", "Shape", options.shape)}
-                {renderSelect("finish", "Finish", options.finish)}
-                {renderSelect("glass", "Glass", options.glass)}
-                {renderSelect("style", "Style", options.style)}
-
-                {normalise(form.unitType) === "window" && (
-                  <>
-                    <Field label="Number of Openers">
-                      <input type="number" min="0" step="1" value={form.openers} onChange={(event) => updateForm("openers", event.target.value)} style={inputStyle} />
-                    </Field>
-                    <Field label="Number of Fixed">
-                      <input type="number" min="0" step="1" value={form.fixed} onChange={(event) => updateForm("fixed", event.target.value)} style={inputStyle} />
-                    </Field>
-                  </>
+                      {typeOptions.map(
+                        (option) => (
+                          <option
+                            key={
+                              option
+                            }
+                            value={
+                              option
+                            }
+                          >
+                            {option}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </Field>
                 )}
 
-                {renderSelect("handle", "Handle", options.handle)}
-                {renderSelect("extras", "Extras", options.extras)}
+                {/* WIDTH */}
+
+                <Field
+                  label="Width (mm)"
+                  required
+                >
+                  <input
+                    type="number"
+                    min="1"
+                    value={
+                      form.width
+                    }
+                    onChange={(
+                      event
+                    ) =>
+                      updateForm(
+                        "width",
+                        event.target
+                          .value
+                      )
+                    }
+                    placeholder="e.g. 960"
+                    style={
+                      inputStyle
+                    }
+                  />
+                </Field>
+
+                {/* HEIGHT */}
+
+                <Field
+                  label="Height (mm)"
+                  required
+                >
+                  <input
+                    type="number"
+                    min="1"
+                    value={
+                      form.height
+                    }
+                    onChange={(
+                      event
+                    ) =>
+                      updateForm(
+                        "height",
+                        event.target
+                          .value
+                      )
+                    }
+                    placeholder="e.g. 1440"
+                    style={
+                      inputStyle
+                    }
+                  />
+                </Field>
               </div>
 
-              {loadingChoices && <div style={{ marginTop: "14px", fontSize: "10px", color: "#888" }}>Loading window choices...</div>}
-              {error && <div style={{ marginTop: "14px", padding: "9px 10px", borderRadius: "6px", background: "#fbeaea", color: "#8b3333", fontSize: "10px" }}>{error}</div>}
+              {/* ==================================================
+                  DIVIDER
+                  ================================================== */}
+
+              <div
+                style={{
+                  height: "2px",
+                  background:
+                    "#2499ed",
+                  opacity: 0.25,
+                  margin:
+                    "22px 0",
+                  borderRadius:
+                    "2px",
+                }}
+              />
+
+              {/* ==================================================
+                  CALCULATED SIZE
+                  ================================================== */}
+
+              {calculatedSize && (
+                <div
+                  style={{
+                    marginBottom:
+                      "15px",
+                    padding:
+                      "10px 12px",
+                    border:
+                      "1px solid #dfe5ea",
+                    borderRadius:
+                      "7px",
+                    background:
+                      "#f8fafc",
+                    display: "flex",
+                    alignItems:
+                      "center",
+                    justifyContent:
+                      "space-between",
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        fontSize:
+                          "10px",
+                        fontWeight:
+                          700,
+                        color:
+                          "#59636c",
+                      }}
+                    >
+                      Size Choice
+                    </div>
+
+                    <div
+                      style={{
+                        marginTop:
+                          "3px",
+                        fontSize:
+                          "9px",
+                        color:
+                          "#89939c",
+                      }}
+                    >
+                      Rounded up to{" "}
+                      {
+                        calculatedSize.roundedWidth
+                      }{" "}
+                      ×{" "}
+                      {
+                        calculatedSize.roundedHeight
+                      }{" "}
+                      mm
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize:
+                        "20px",
+                      fontWeight:
+                        800,
+                      color:
+                        "#2499ed",
+                    }}
+                  >
+                    {
+                      calculatedSize.choice
+                    }
+                  </div>
+                </div>
+              )}
+
+              {/* ==================================================
+                  LOWER OPTIONS
+                  ================================================== */}
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(2, minmax(0, 1fr))",
+                  gap: "15px",
+                }}
+              >
+                {/* COLOUR */}
+
+                {renderSelect(
+                  "colour",
+                  "Colour",
+                  options.colour
+                )}
+
+                {/* SHAPE */}
+
+                {renderSelect(
+                  "shape",
+                  "Shape",
+                  options.shape
+                )}
+
+                {/* FINISH */}
+
+                {renderSelect(
+                  "finish",
+                  "Finish",
+                  options.finish
+                )}
+
+                {/* GLASS */}
+
+                {renderSelect(
+                  "glass",
+                  "Glass",
+                  options.glass
+                )}
+
+                {/* STYLE */}
+
+                {renderSelect(
+                  "style",
+                  "Style",
+                  options.style
+                )}
+
+                {/* OPENERS */}
+
+                {form.unitType ===
+                  "Window" && (
+                  <Field label="Number of Openers">
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={
+                        form.openers
+                      }
+                      onChange={(
+                        event
+                      ) =>
+                        updateForm(
+                          "openers",
+                          event.target
+                            .value
+                        )
+                      }
+                      style={
+                        inputStyle
+                      }
+                    />
+                  </Field>
+                )}
+
+                {/* FIXED */}
+
+                {form.unitType ===
+                  "Window" && (
+                  <Field label="Number of Fixed">
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={
+                        form.fixed
+                      }
+                      onChange={(
+                        event
+                      ) =>
+                        updateForm(
+                          "fixed",
+                          event.target
+                            .value
+                        )
+                      }
+                      style={
+                        inputStyle
+                      }
+                    />
+                  </Field>
+                )}
+
+                {/* HANDLE */}
+
+                {renderSelect(
+                  "handle",
+                  "Handle",
+                  options.handle
+                )}
+
+                {/* EXTRAS */}
+
+                {renderSelect(
+                  "extras",
+                  "Extras",
+                  options.extras
+                )}
+              </div>
+
+              {/* LOADING */}
+
+              {loadingChoices && (
+                <div
+                  style={{
+                    marginTop:
+                      "14px",
+                    fontSize:
+                      "10px",
+                    color:
+                      "#888",
+                  }}
+                >
+                  Loading window
+                  choices...
+                </div>
+              )}
+
+              {/* SIZE VALUE */}
+
+              {calculatedSize &&
+                calculatedSizeValue !==
+                  null && (
+                  <div
+                    style={{
+                      marginTop:
+                        "14px",
+                      fontSize:
+                        "10px",
+                      color:
+                        "#89939c",
+                    }}
+                  >
+                    Size{" "}
+                    {
+                      calculatedSize.choice
+                    }{" "}
+                    value:{" "}
+                    {
+                      calculatedSizeValue
+                    }
+                  </div>
+                )}
+
+              {/* ERROR */}
+
+              {error && (
+                <div
+                  style={{
+                    marginTop:
+                      "14px",
+                    padding:
+                      "9px 10px",
+                    borderRadius:
+                      "6px",
+                    background:
+                      "#fbeaea",
+                    color:
+                      "#8b3333",
+                    fontSize:
+                      "10px",
+                  }}
+                >
+                  {error}
+                </div>
+              )}
             </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", padding: "13px 20px", borderTop: "1px solid #e6e8ea", background: "#fafbfc" }}>
-              <button type="button" onClick={closeForm} disabled={savingUnit} style={{ height: "34px", padding: "0 13px", border: "1px solid #d8dde1", borderRadius: "6px", background: "#fff", color: "#555", cursor: savingUnit ? "not-allowed" : "pointer", fontFamily: "inherit", fontSize: "10px", fontWeight: 600 }}>Cancel</button>
-              <button type="submit" disabled={savingUnit} style={{ height: "34px", padding: "0 15px", border: 0, borderRadius: "6px", background: "#2499ed", color: "#fff", cursor: savingUnit ? "not-allowed" : "pointer", fontFamily: "inherit", fontSize: "10px", fontWeight: 700 }}>{savingUnit ? "Saving..." : "Add Unit"}</button>
+            {/* FOOTER */}
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent:
+                  "flex-end",
+                gap: "8px",
+                padding:
+                  "13px 20px",
+                borderTop:
+                  "1px solid #e6e8ea",
+                background:
+                  "#fafbfc",
+              }}
+            >
+              <button
+                type="button"
+                onClick={closeForm}
+                disabled={saving}
+                style={{
+                  height: "34px",
+                  padding:
+                    "0 13px",
+                  border:
+                    "1px solid #d8dde1",
+                  borderRadius:
+                    "6px",
+                  background:
+                    "#fff",
+                  color: "#555",
+                  cursor: saving
+                    ? "default"
+                    : "pointer",
+                  fontFamily:
+                    "inherit",
+                  fontSize:
+                    "10px",
+                  fontWeight: 600,
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                disabled={saving}
+                style={{
+                  height: "34px",
+                  padding:
+                    "0 15px",
+                  border: 0,
+                  borderRadius:
+                    "6px",
+                  background:
+                    saving
+                      ? "#9acff5"
+                      : "#2499ed",
+                  color: "#fff",
+                  cursor: saving
+                    ? "default"
+                    : "pointer",
+                  fontFamily:
+                    "inherit",
+                  fontSize:
+                    "10px",
+                  fontWeight: 700,
+                }}
+              >
+                {saving
+                  ? "Saving..."
+                  : "Add Unit"}
+              </button>
             </div>
           </form>
         </div>
