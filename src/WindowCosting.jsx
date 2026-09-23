@@ -19,6 +19,40 @@ const EMPTY_FORM = {
 
 /*
  * ============================================================
+ * SHARED FORM STYLES
+ * ============================================================
+ */
+
+const inputStyle = {
+  width: "100%",
+  height: "36px",
+  padding: "0 10px",
+  border: "1px solid #d8dde1",
+  borderRadius: "6px",
+  background: "#fff",
+  color: "#222",
+  fontFamily: "inherit",
+  fontSize: "11px",
+  boxSizing: "border-box",
+  outline: "none",
+}
+
+const selectStyle = {
+  width: "100%",
+  height: "36px",
+  padding: "0 10px",
+  border: "1px solid #d8dde1",
+  borderRadius: "6px",
+  background: "#fff",
+  color: "#222",
+  fontFamily: "inherit",
+  fontSize: "11px",
+  boxSizing: "border-box",
+  outline: "none",
+}
+
+/*
+ * ============================================================
  * SIZE MATRIX
  * ============================================================
  *
@@ -76,108 +110,108 @@ const SIZE_MATRIX_DIMENSIONS = [
 
 const SIZE_MATRIX = {
   500: [
-    "A","A","A","A","A","A","A","A","A","A",
-    "A","A","A","A","A","A","A","A","A","A","B"
+    "A", "A", "A", "A", "A", "A", "A", "A", "A", "A",
+    "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "B"
   ],
 
   600: [
-    "A","A","A","A","A","A","A","A","A","A",
-    "A","A","A","A","A","A","A","A","B","B","B"
+    "A", "A", "A", "A", "A", "A", "A", "A", "A", "A",
+    "A", "A", "A", "A", "A", "A", "A", "A", "B", "B", "B"
   ],
 
   700: [
-    "A","A","A","A","A","A","A","A","A","A",
-    "A","A","A","B","B","B","B","B","B","B","B"
+    "A", "A", "A", "A", "A", "A", "A", "A", "A", "A",
+    "A", "A", "A", "B", "B", "B", "B", "B", "B", "B", "B"
   ],
 
   800: [
-    "A","A","A","A","A","A","A","A","A","A",
-    "A","A","A","B","B","B","B","B","B","B","C"
+    "A", "A", "A", "A", "A", "A", "A", "A", "A", "A",
+    "A", "A", "A", "B", "B", "B", "B", "B", "B", "B", "C"
   ],
 
   900: [
-    "A","A","A","A","A","A","A","A","A","A",
-    "B","B","B","B","B","B","B","B","B","C","C"
+    "A", "A", "A", "A", "A", "A", "A", "A", "A", "A",
+    "B", "B", "B", "B", "B", "B", "B", "B", "B", "C", "C"
   ],
 
   1000: [
-    "A","A","A","A","A","A","B","B","B","B",
-    "B","B","B","B","B","B","B","B","C","C","C"
+    "A", "A", "A", "A", "A", "A", "B", "B", "B", "B",
+    "B", "B", "B", "B", "B", "B", "B", "B", "C", "C", "C"
   ],
 
   1100: [
-    "A","A","A","A","A","B","B","B","B","B",
-    "B","B","B","B","B","B","B","B","C","C","C"
+    "A", "A", "A", "A", "A", "B", "B", "B", "B", "B",
+    "B", "B", "B", "B", "B", "B", "B", "B", "C", "C", "C"
   ],
 
   1200: [
-    "A","A","A","A","A","B","B","B","B","B",
-    "B","B","B","B","B","B","C","C","C","C","D"
+    "A", "A", "A", "A", "A", "B", "B", "B", "B", "B",
+    "B", "B", "B", "B", "B", "B", "C", "C", "C", "C", "D"
   ],
 
   1300: [
-    "A","A","A","A","A","B","B","B","B","B",
-    "B","B","B","C","C","C","C","C","C","C","D"
+    "A", "A", "A", "A", "A", "B", "B", "B", "B", "B",
+    "B", "B", "B", "C", "C", "C", "C", "C", "C", "C", "D"
   ],
 
   1400: [
-    "A","A","A","A","A","B","B","B","B","B",
-    "C","C","C","C","C","C","C","C","C","C","D"
+    "A", "A", "A", "A", "A", "B", "B", "B", "B", "B",
+    "C", "C", "C", "C", "C", "C", "C", "C", "C", "C", "D"
   ],
 
   1500: [
-    "A","A","A","A","B","B","B","B","B","C",
-    "C","C","C","C","C","C","C","D","D","D","D"
+    "A", "A", "A", "A", "B", "B", "B", "B", "B", "C",
+    "C", "C", "C", "C", "C", "C", "D", "D", "D", "D"
   ],
 
   1600: [
-    "A","A","A","A","B","B","B","B","B","C",
-    "C","C","C","C","C","D","D","D","D","D","E"
+    "A", "A", "A", "A", "B", "B", "B", "B", "B", "C",
+    "C", "C", "C", "C", "C", "D", "D", "D", "D", "D", "E"
   ],
 
   1700: [
-    "A","A","A","B","B","B","B","B","B","C",
-    "C","C","C","C","C","D","D","D","D","D","E"
+    "A", "A", "A", "B", "B", "B", "B", "B", "B", "C",
+    "C", "C", "C", "C", "C", "D", "D", "D", "D", "D", "E"
   ],
 
   1800: [
-    "A","A","A","B","B","B","B","B","C","C",
-    "C","C","C","C","D","D","D","D","D","E","E"
+    "A", "A", "A", "B", "B", "B", "B", "B", "C", "C",
+    "C", "C", "C", "C", "D", "D", "D", "D", "D", "E", "E"
   ],
 
   1900: [
-    "A","A","A","B","B","B","B","B","C","C",
-    "C","C","D","D","D","D","D","E","E","E","E"
+    "A", "A", "A", "B", "B", "B", "B", "B", "C", "C",
+    "C", "C", "D", "D", "D", "D", "D", "E", "E", "E", "E"
   ],
 
   2000: [
-    "A","A","A","B","B","B","B","C","C","C",
-    "C","D","D","D","D","D","E","E","E","E","F"
+    "A", "A", "A", "B", "B", "B", "B", "C", "C", "C",
+    "C", "D", "D", "D", "D", "D", "E", "E", "E", "E", "F"
   ],
 
   2250: [
-    "A","A","B","B","B","B","B","C","C","C",
-    "C","D","D","D","D","E","E","E","E","F","F"
+    "A", "A", "B", "B", "B", "B", "B", "C", "C", "C",
+    "C", "D", "D", "D", "D", "E", "E", "E", "E", "F", "F"
   ],
 
   2500: [
-    "A","B","B","B","B","B","C","C","C","C",
-    "D","D","D","D","D","E","E","F","G","G","G"
+    "A", "B", "B", "B", "B", "B", "C", "C", "C", "C",
+    "D", "D", "D", "D", "D", "E", "E", "F", "G", "G", "G"
   ],
 
   2750: [
-    "A","B","B","B","B","C","C","C","C","D",
-    "D","D","D","D","D","E","E","E","F","G","G"
+    "A", "B", "B", "B", "B", "C", "C", "C", "C", "D",
+    "D", "D", "D", "D", "D", "E", "E", "E", "F", "G", "G"
   ],
 
   3000: [
-    "B","B","B","B","C","C","C","C","C","D",
-    "D","D","D","E","E","E","F","F","G","H","H"
+    "B", "B", "B", "B", "C", "C", "C", "C", "C", "D",
+    "D", "D", "D", "E", "E", "E", "F", "F", "G", "H", "H"
   ],
 
   3250: [
-    "B","B","B","C","C","C","C","D","D","D",
-    "D","D","E","E","E","F","F","G","G","H","H"
+    "B", "B", "B", "C", "C", "C", "C", "D", "D", "D",
+    "D", "D", "E", "E", "E", "F", "F", "G", "G", "H", "H"
   ],
 }
 
@@ -191,6 +225,7 @@ const SIZE_MATRIX = {
  * 500  -> 500
  * 501  -> 600
  */
+
 function roundUpToMatrixSize(value) {
   const numericValue = Number(value)
 
@@ -208,6 +243,7 @@ function roundUpToMatrixSize(value) {
 /*
  * Get the Size Choice from the matrix.
  */
+
 function getSizeChoice(width, height) {
   const roundedWidth = roundUpToMatrixSize(width)
   const roundedHeight = roundUpToMatrixSize(height)
@@ -275,6 +311,7 @@ function Field({ label, required, children }) {
 /*
  * Get normal dropdown choices from unit_choices.
  */
+
 function getChoices(rows, categories, unitType) {
   const categorySet = new Set(
     categories.map(normalise)
@@ -322,6 +359,7 @@ function getChoices(rows, categories, unitType) {
  * value      = numeric value
  * unit_type  = Window / etc.
  */
+
 function getSizeValue(rows, sizeChoice, unitType) {
   if (!sizeChoice) {
     return null
@@ -1345,7 +1383,7 @@ export default function WindowCosting({ appointment }) {
                 {/* TYPE */}
 
                 {typeOptions.length >
-                0 && (
+                  0 && (
                   <Field
                     label="Type"
                     required
