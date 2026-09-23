@@ -941,49 +941,51 @@ export default function WindowCosting({ appointment }) {
                   options.style
                 )}
 
-                {/* OPENERS */}
+                {/* OPENERS / FIXED */}
 
-                <Field label="Number of Openers">
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={
-                      form.openers
-                    }
-                    onChange={(event) =>
-                      updateForm(
-                        "openers",
-                        event.target.value
-                      )
-                    }
-                    style={
-                      inputStyle
-                    }
-                  />
-                </Field>
+                {normalise(form.unitType) === "window" && (
+                  <>
+                    <Field label="Number of Openers">
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={
+                          form.openers
+                        }
+                        onChange={(event) =>
+                          updateForm(
+                            "openers",
+                            event.target.value
+                          )
+                        }
+                        style={
+                          inputStyle
+                        }
+                      />
+                    </Field>
 
-                {/* FIXED */}
-
-                <Field label="Number of Fixed">
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={
-                      form.fixed
-                    }
-                    onChange={(event) =>
-                      updateForm(
-                        "fixed",
-                        event.target.value
-                      )
-                    }
-                    style={
-                      inputStyle
-                    }
-                  />
-                </Field>
+                    <Field label="Number of Fixed">
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={
+                          form.fixed
+                        }
+                        onChange={(event) =>
+                          updateForm(
+                            "fixed",
+                            event.target.value
+                          )
+                        }
+                        style={
+                          inputStyle
+                        }
+                      />
+                    </Field>
+                  </>
+                )
 
                 {/* HANDLE */}
 
