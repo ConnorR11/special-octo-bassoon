@@ -1,0 +1,117 @@
+name: Add Window Totals
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add totals row to WindowCosting
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path("src/WindowCosting.jsx")
+          text = path.read_text()
+
+          marker = """          ))}
+        </div>
+      )}
+"""
+
+          total = """          ))}
+
+          {/* TOTALS */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "1.2fr .9fr 1fr 1fr .9fr .45fr .45fr .8fr .9fr .9fr 32px",
+              gap: "10px",
+              alignItems: "center",
+              padding: "12px",
+              borderTop: "2px solid #e2e5e8",
+              background: "#fafbfc",
+              fontSize: "10px",
+              color: "#333",
+            }}
+          >
+            <strong
+              style={{
+                gridColumn: "1 / span 9",
+                fontSize: "10px",
+                color: "#59636c",
+                textTransform: "uppercase",
+              }}
+            >
+              Total
+            </strong>
+
+            <strong>
+              {units
+                .reduce(
+                  (total, unit) =>
+                    total + (Number(unit.discountable) || 0),
+                  0
+                )
+                .toLocaleString("en-GB", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+            </strong>
+
+            <strong>
+              {units
+                .reduce(
+                  (total, unit) =>
+                    total + (Number(unit.nonDiscountable) || 0),
+                  0
+                )
+                .toLocaleString("en-GB", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+            </strong>
+          </div>
+        </div>
+      )}
+"""
+
+          if marker not in text:
+              raise SystemExit("Could not find WindowCosting units table insertion point")
+
+          if "{/* TOTALS */}" in text:
+              raise SystemExit("Totals row already exists")
+
+          text = text.replace(marker, total, 1)
+          path.write_text(text)
+          PY
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/WindowCosting.jsx
+          git commit -m "Add window unit totals row"
+          git push
+
+      - name: Remove patch workflow
+        if: always()
+        run: |
+          git rm .github/workflows/add-window-totals.yml || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --cached --quiet; then
+            git commit -m "Remove temporary window totals patch workflow"
+            git push
+          fi
