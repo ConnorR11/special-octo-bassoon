@@ -1,0 +1,164 @@
+name: Apply Window Cost Totals To Main
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  update-window-costing:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Add unit totals row and remove temporary workflow
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/WindowCosting.jsx")
+          text = path.read_text()
+
+          totals_marker = '''  /*
+   * ==========================================================
+   * FORM
+   * ==========================================================
+   */'''
+
+          totals_code = '''  const unitTotals = useMemo(() => {
+    return units.reduce(
+      (totals, unit) => ({
+        discountable:
+          totals.discountable +
+          (Number(unit.discountable) || 0),
+        nonDiscountable:
+          totals.nonDiscountable +
+          (Number(unit.nonDiscountable) || 0),
+      }),
+      {
+        discountable: 0,
+        nonDiscountable: 0,
+      }
+    )
+  }, [units])
+
+'''
+
+          if "const unitTotals = useMemo" not in text:
+              if totals_marker not in text:
+                  raise SystemExit("FORM marker not found")
+              text = text.replace(
+                  totals_marker,
+                  totals_code + totals_marker,
+                  1,
+              )
+
+          old = '''              <button
+                type="button"
+                onClick={() =>
+                  removeUnit(unit)
+                }
+                title="Remove unit"
+                style={{
+                  border: 0,
+                  background:
+                    "transparent",
+                  color: "#888",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  padding: 0,
+                }}
+              >
+                ⋯
+              </button>
+            </div>
+          ))}
+        </div>
+      )}'''
+
+          new = '''              <button
+                type="button"
+                onClick={() =>
+                  removeUnit(unit)
+                }
+                title="Remove unit"
+                style={{
+                  border: 0,
+                  background:
+                    "transparent",
+                  color: "#888",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  padding: 0,
+                }}
+              >
+                ⋯
+              </button>
+            </div>
+          ))}
+
+          {/* TOTALS */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "1.2fr .9fr 1fr 1fr .9fr .45fr .45fr .8fr .9fr .9fr 32px",
+              gap: "10px",
+              alignItems: "center",
+              padding: "12px",
+              background: "#fafbfc",
+              borderTop: "2px solid #e2e5e8",
+              fontSize: "10px",
+              color: "#333",
+            }}
+          >
+            <strong
+              style={{
+                gridColumn: "1 / span 8",
+                fontSize: "10px",
+                textTransform: "uppercase",
+                color: "#59636c",
+              }}
+            >
+              Total
+            </strong>
+
+            <strong>
+              {unitTotals.discountable.toLocaleString("en-GB", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </strong>
+
+            <strong>
+              {unitTotals.nonDiscountable.toLocaleString("en-GB", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </strong>
+
+            <span />
+          </div>
+        </div>
+      )}'''
+
+          if old not in text:
+              raise SystemExit("Unit table closing marker not found")
+
+          text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
+
+          rm -f .github/workflows/tmp-window-cost-totals-main.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/WindowCosting.jsx .github/workflows/tmp-window-cost-totals-main.yml
+          git commit -m "feat: add window unit cost totals"
+          git push origin HEAD:main
