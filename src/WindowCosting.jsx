@@ -36,9 +36,7 @@ const selectStyle = {
 }
 
 function normalise(value) {
-  return String(value ?? "")
-    .trim()
-    .toLowerCase()
+  return String(value ?? "").trim().toLowerCase()
 }
 
 function Field({ label, required, children }) {
@@ -54,33 +52,15 @@ function Field({ label, required, children }) {
         }}
       >
         {label}
-        {required && (
-          <span style={{ color: "#2499ed" }}> *</span>
-        )}
+        {required && <span style={{ color: "#2499ed" }}> *</span>}
       </span>
-
       {children}
     </label>
   )
 }
 
-/*
- * Get choices from unit_choices.
-
- * Database columns:
- *
- * unit_type
- * category
- * charge_type
- * choice
- * value_type
- * value
- */
 function getChoices(rows, categories, unitType) {
-  const categorySet = new Set(
-    categories.map(normalise)
-  )
-
+  const categorySet = new Set(categories.map(normalise))
   const selectedType = normalise(unitType)
 
   return Array.from(
@@ -90,15 +70,8 @@ function getChoices(rows, categories, unitType) {
           const category = normalise(row.category)
           const rowType = normalise(row.unit_type)
 
-          if (!categorySet.has(category)) {
-            return false
-          }
+          if (!categorySet.has(category)) return false
 
-          /*
-           * If the database row has a unit type,
-           * only show it when it matches the
-           * selected unit type.
-           */
           if (
             rowType &&
             selectedType &&
@@ -109,35 +82,86 @@ function getChoices(rows, categories, unitType) {
 
           return true
         })
-        .map((row) =>
-          String(row.choice ?? "").trim()
-        )
+        .map((row) => String(row.choice ?? "").trim())
         .filter(Boolean)
     )
   )
 }
 
+function getChoiceRow(rows, categories, unitType, selectedChoice) {
+  if (!selectedChoice) return null
+
+  const categorySet = new Set(categories.map(normalise))
+  const selectedType = normalise(unitType)
+  const selected = normalise(selectedChoice)
+
+  return (
+    rows.find((row) => {
+      const category = normalise(row.category)
+      const rowType = normalise(row.unit_type)
+      const choice = normalise(row.choice)
+
+      if (!categorySet.has(category)) return false
+      if (choice !== selected) return false
+
+      if (
+        rowType &&
+        selectedType &&
+        rowType !== selectedType
+      ) {
+        return false
+      }
+
+      return true
+    }) || null
+  )
+}
+
+function getSubmittedBy(user) {
+  const metadataName = String(
+    user?.user_metadata?.full_name ||
+      user?.user_metadata?.name ||
+      ""
+  ).trim()
+
+  return metadataName || user?.email || user?.id || "Unknown"
+}
+
+function mapDatabaseUnit(row) {
+  return {
+    id: row.UUID,
+    unitNumber: 0,
+    location: row.location || "",
+    unitType: row.unit_type || "",
+    width: row.width ?? "",
+    height: row.height ?? "",
+    colour: row.colour_choice || "",
+    shape: row.shape_choice || "",
+    finish: row.finish_choice || "",
+    glass: row.glass_choice || "",
+    style: row.style_choice || "",
+    openers: Number(row.openers_choice) || 0,
+    fixed: Number(row.fixed_choice) || 0,
+    handle: row.handle_choice || "",
+    extras: row.extras_choice || "",
+    discountable: row.discountable,
+    netProductCost: row.net_product_cost,
+  }
+}
+
 export default function WindowCosting({ appointment }) {
   const [units, setUnits] = useState([])
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({
-    ...EMPTY_FORM,
-  })
-
+  const [form, setForm] = useState({ ...EMPTY_FORM })
   const [choices, setChoices] = useState([])
-  const [loadingChoices, setLoadingChoices] =
-    useState(false)
+  const [loadingChoices, setLoadingChoices] = useState(false)
+  const [loadingUnits, setLoadingUnits] = useState(false)
+  const [savingUnit, setSavingUnit] = useState(false)
   const [error, setError] = useState("")
 
-  /*
-   * Only show Window Costing for Windows jobs.
-   */
-  const isWindows =
-    normalise(appointment?.job_type) === "windows"
+  const isWindows = normalise(appointment?.job_type) === "windows"
+  const appointmentId = appointment?.appointment_row_id
 
-  /*
-   * Load unit choices from Supabase.
-   */
   useEffect(() => {
     if (!isWindows) return
 
@@ -147,35 +171,20 @@ export default function WindowCosting({ appointment }) {
       setLoadingChoices(true)
       setError("")
 
-      const { data, error: fetchError } =
-        await supabase
-          .from("unit_choices")
-          .select(
-            "unit_type, category, charge_type, choice, value_type, value"
-          )
-          .order("unit_type", {
-            ascending: true,
-          })
-          .order("category", {
-            ascending: true,
-          })
-          .order("choice", {
-            ascending: true,
-          })
+      const { data, error: fetchError } = await supabase
+        .from("unit_choices")
+        .select(
+          "unit_type, category, charge_type, choice, value_type, value"
+        )
+        .order("unit_type", { ascending: true })
+        .order("category", { ascending: true })
+        .order("choice", { ascending: true })
 
       if (cancelled) return
 
       if (fetchError) {
-        console.error(
-          "Unable to load unit choices:",
-          fetchError
-        )
-
-        setError(
-          fetchError.message ||
-            "Unable to load window choices."
-        )
-
+        console.error("Unable to load unit choices:", fetchError)
+        setError(fetchError.message || "Unable to load window choices.")
         setChoices([])
       } else {
         setChoices(data || [])
@@ -191,70 +200,63 @@ export default function WindowCosting({ appointment }) {
     }
   }, [isWindows])
 
-  /*
-   * TYPE DROPDOWN
-   *
-   * This is deliberately just a unique list of
-   * unit_choices.unit_type.
-   */
+  useEffect(() => {
+    if (!isWindows || !appointmentId) return
+
+    let cancelled = false
+
+    async function loadUnits() {
+      setLoadingUnits(true)
+
+      const { data, error: fetchError } = await supabase
+        .from("units")
+        .select("*")
+        .eq("appointment_id", String(appointmentId))
+        .order("created_date", { ascending: true })
+
+      if (cancelled) return
+
+      if (fetchError) {
+        console.error("Unable to load units:", fetchError)
+        setError(fetchError.message || "Unable to load saved units.")
+        setUnits([])
+      } else {
+        const mapped = (data || []).map(mapDatabaseUnit).map((unit, index) => ({
+          ...unit,
+          unitNumber: index + 1,
+        }))
+        setUnits(mapped)
+      }
+
+      setLoadingUnits(false)
+    }
+
+    loadUnits()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isWindows, appointmentId])
+
   const typeOptions = useMemo(() => {
     return Array.from(
       new Set(
         choices
-          .map((row) =>
-            String(row.unit_type ?? "").trim()
-          )
+          .map((row) => String(row.unit_type ?? "").trim())
           .filter(Boolean)
       )
     )
   }, [choices])
 
-  /*
-   * Other dropdown options.
-   */
   const options = useMemo(() => {
     return {
-      colour: getChoices(
-        choices,
-        ["colour"],
-        form.unitType
-      ),
-
-      shape: getChoices(
-        choices,
-        ["shape"],
-        form.unitType
-      ),
-
-      finish: getChoices(
-        choices,
-        ["finish"],
-        form.unitType
-      ),
-
-      glass: getChoices(
-        choices,
-        ["glass", "glass optionals"],
-        form.unitType
-      ),
-
-      style: getChoices(
-        choices,
-        ["style"],
-        form.unitType
-      ),
-
-      handle: getChoices(
-        choices,
-        ["handle"],
-        form.unitType
-      ),
-
-      extras: getChoices(
-        choices,
-        ["extras"],
-        form.unitType
-      ),
+      colour: getChoices(choices, ["colour"], form.unitType),
+      shape: getChoices(choices, ["shape"], form.unitType),
+      finish: getChoices(choices, ["finish"], form.unitType),
+      glass: getChoices(choices, ["glass", "glass optionals"], form.unitType),
+      style: getChoices(choices, ["style"], form.unitType),
+      handle: getChoices(choices, ["handle"], form.unitType),
+      extras: getChoices(choices, ["extras"], form.unitType),
     }
   }, [choices, form.unitType])
 
@@ -263,7 +265,6 @@ export default function WindowCosting({ appointment }) {
       ...current,
       [field]: value,
     }))
-
     setError("")
   }
 
@@ -272,23 +273,25 @@ export default function WindowCosting({ appointment }) {
       ...EMPTY_FORM,
       unitType: typeOptions[0] || "",
     })
-
     setError("")
     setShowForm(true)
   }
 
   function closeForm() {
+    if (savingUnit) return
+
     setShowForm(false)
-
-    setForm({
-      ...EMPTY_FORM,
-    })
-
+    setForm({ ...EMPTY_FORM })
     setError("")
   }
 
-  function addUnit(event) {
+  async function addUnit(event) {
     event.preventDefault()
+
+    if (!appointmentId) {
+      setError("This appointment does not have an appointment ID.")
+      return
+    }
 
     if (!form.location.trim()) {
       setError("Please enter a location.")
@@ -301,76 +304,151 @@ export default function WindowCosting({ appointment }) {
     }
 
     if (!form.width || !form.height) {
-      setError(
-        "Please enter the width and height."
-      )
+      setError("Please enter the width and height.")
       return
     }
 
-    const newUnit = {
-      id: crypto.randomUUID(),
+    setSavingUnit(true)
+    setError("")
 
-      unitNumber:
-        units.length + 1,
+    try {
+      const { data: userData, error: userError } =
+        await supabase.auth.getUser()
 
-      ...form,
+      if (userError) throw userError
 
-      width: Number(form.width),
+      const createdBy = getSubmittedBy(userData?.user)
+      const now = new Date().toISOString()
+      const width = Number(form.width)
+      const height = Number(form.height)
+      const openers = Number(form.openers) || 0
+      const fixed = Number(form.fixed) || 0
 
-      height: Number(form.height),
+      const colourRow = getChoiceRow(
+        choices,
+        ["colour"],
+        form.unitType,
+        form.colour
+      )
+      const shapeRow = getChoiceRow(
+        choices,
+        ["shape"],
+        form.unitType,
+        form.shape
+      )
+      const finishRow = getChoiceRow(
+        choices,
+        ["finish"],
+        form.unitType,
+        form.finish
+      )
+      const glassRow = getChoiceRow(
+        choices,
+        ["glass", "glass optionals"],
+        form.unitType,
+        form.glass
+      )
+      const styleRow = getChoiceRow(
+        choices,
+        ["style"],
+        form.unitType,
+        form.style
+      )
+      const handleRow = getChoiceRow(
+        choices,
+        ["handle"],
+        form.unitType,
+        form.handle
+      )
+      const extrasRow = getChoiceRow(
+        choices,
+        ["extras"],
+        form.unitType,
+        form.extras
+      )
 
-      openers:
-        Number(form.openers) || 0,
+      const unitToInsert = {
+        appointment_id: String(appointmentId),
+        location: form.location.trim(),
+        created_by: createdBy,
+        created_date: now,
+        unit_type: form.unitType,
+        size_choice: `${width} x ${height}`,
+        height,
+        width,
+        colour_choice: form.colour || null,
+        colour_value: colourRow?.value ?? null,
+        shape_choice: form.shape || null,
+        shape_value: shapeRow?.value ?? null,
+        finish_choice: form.finish || null,
+        finish_value: finishRow?.value ?? null,
+        style_choice: form.style || null,
+        style_value: styleRow?.value ?? null,
+        glass_choice: form.glass || null,
+        glass_value: glassRow?.value ?? null,
+        handle_choice: form.handle || null,
+        handle_value: handleRow?.value ?? null,
+        fixed_choice: form.unitType === "" ? null : String(fixed),
+        openers_choice: form.unitType === "" ? null : String(openers),
+        extras_choice: form.extras || null,
+        extras_value: extrasRow?.value ?? null,
+      }
 
-      fixed:
-        Number(form.fixed) || 0,
+      const { data, error: insertError } = await supabase
+        .from("units")
+        .insert(unitToInsert)
+        .select("*")
+        .single()
+
+      if (insertError) throw insertError
+
+      const savedUnit = {
+        ...mapDatabaseUnit(data),
+        unitNumber: units.length + 1,
+      }
+
+      setUnits((current) => [...current, savedUnit])
+      setShowForm(false)
+      setForm({ ...EMPTY_FORM })
+    } catch (err) {
+      console.error("Unable to save unit:", err)
+      setError(err?.message || "Unable to save the unit.")
+    } finally {
+      setSavingUnit(false)
     }
-
-    setUnits((current) => [
-      ...current,
-      newUnit,
-    ])
-
-    closeForm()
   }
 
-  function removeUnit(id) {
+  async function removeUnit(id) {
+    setError("")
+
+    const unit = units.find((item) => item.id === id)
+    if (!unit) return
+
+    const { error: deleteError } = await supabase
+      .from("units")
+      .delete()
+      .eq("UUID", id)
+
+    if (deleteError) {
+      console.error("Unable to delete unit:", deleteError)
+      setError(deleteError.message || "Unable to delete the unit.")
+      return
+    }
+
     setUnits((current) =>
       current
-        .filter(
-          (unit) => unit.id !== id
-        )
-        .map((unit, index) => ({
-          ...unit,
+        .filter((item) => item.id !== id)
+        .map((item, index) => ({
+          ...item,
           unitNumber: index + 1,
         }))
     )
   }
 
-  /*
-   * Don't display anything for non-window appointments.
-   */
-  if (!isWindows) {
-    return null
-  }
+  if (!isWindows) return null
 
-  /*
-   * Reusable dropdown.
-   *
-   * If there are no options, the entire field
-   * is hidden rather than displaying an empty
-   * dropdown.
-   */
-  const renderSelect = (
-    field,
-    label,
-    optionsList
-  ) => {
-    if (
-      loadingChoices ||
-      !optionsList ||
-      optionsList.length === 0
-    ) {
+  const renderSelect = (field, label, optionsList) => {
+    if (loadingChoices || !optionsList || optionsList.length === 0) {
       return null
     }
 
@@ -378,28 +456,15 @@ export default function WindowCosting({ appointment }) {
       <Field label={label}>
         <select
           value={form[field]}
-          onChange={(event) =>
-            updateForm(
-              field,
-              event.target.value
-            )
-          }
+          onChange={(event) => updateForm(field, event.target.value)}
           style={{
             ...selectStyle,
-            color: form[field]
-              ? "#222"
-              : "#777",
+            color: form[field] ? "#222" : "#777",
           }}
         >
-          <option value="">
-            Select {label.toLowerCase()}...
-          </option>
-
+          <option value="">Select {label.toLowerCase()}...</option>
           {optionsList.map((option) => (
-            <option
-              key={option}
-              value={option}
-            >
+            <option key={option} value={option}>
               {option}
             </option>
           ))}
@@ -409,45 +474,21 @@ export default function WindowCosting({ appointment }) {
   }
 
   return (
-    <section
-      style={{
-        width: "100%",
-        marginTop: "24px",
-      }}
-    >
-      {/* HEADER */}
-
+    <section style={{ width: "100%", marginTop: "24px" }}>
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent:
-            "space-between",
+          justifyContent: "space-between",
           marginBottom: "12px",
         }}
       >
         <div>
-          <h2
-            style={{
-              margin: 0,
-              fontSize: "18px",
-              fontWeight: 700,
-              color: "#222",
-            }}
-          >
+          <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 700, color: "#222" }}>
             Windows
           </h2>
-
-          <p
-            style={{
-              margin: "5px 0 0",
-              fontSize: "11px",
-              color: "#888",
-            }}
-          >
-            Add and configure
-            individual window
-            units.
+          <p style={{ margin: "5px 0 0", fontSize: "11px", color: "#888" }}>
+            Add and configure individual window units.
           </p>
         </div>
 
@@ -471,8 +512,6 @@ export default function WindowCosting({ appointment }) {
         </button>
       </div>
 
-      {/* ERROR */}
-
       {error && !showForm && (
         <div
           style={{
@@ -488,46 +527,41 @@ export default function WindowCosting({ appointment }) {
         </div>
       )}
 
-      {/* UNITS TABLE */}
-
-      {units.length === 0 ? (
+      {loadingUnits ? (
         <div
           style={{
             padding: "24px",
-            border:
-              "1px dashed #d8dde1",
+            border: "1px dashed #d8dde1",
+            borderRadius: "8px",
+            background: "#fafbfc",
+            textAlign: "center",
+            fontSize: "10px",
+            color: "#888",
+          }}
+        >
+          Loading saved units...
+        </div>
+      ) : units.length === 0 ? (
+        <div
+          style={{
+            padding: "24px",
+            border: "1px dashed #d8dde1",
             borderRadius: "8px",
             background: "#fafbfc",
             textAlign: "center",
           }}
         >
-          <div
-            style={{
-              fontSize: "11px",
-              fontWeight: 700,
-              color: "#555",
-            }}
-          >
-            No window units
-            added
+          <div style={{ fontSize: "11px", fontWeight: 700, color: "#555" }}>
+            No window units added
           </div>
-
-          <div
-            style={{
-              marginTop: "4px",
-              fontSize: "10px",
-              color: "#999",
-            }}
-          >
-            Click “Add Unit” to
-            add the first window.
+          <div style={{ marginTop: "4px", fontSize: "10px", color: "#999" }}>
+            Click “Add Unit” to add the first window.
           </div>
         </div>
       ) : (
         <div
           style={{
-            border:
-              "1px solid #e2e5e8",
+            border: "1px solid #e2e5e8",
             borderRadius: "8px",
             background: "#fff",
             overflow: "hidden",
@@ -536,19 +570,16 @@ export default function WindowCosting({ appointment }) {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns:
-                "1.2fr .9fr 1fr 1fr .9fr .45fr .45fr .8fr .9fr 32px",
+              gridTemplateColumns: "1.2fr .9fr 1fr 1fr .9fr .45fr .45fr .8fr .9fr 32px",
               gap: "10px",
               alignItems: "center",
               padding: "10px 12px",
-              borderBottom:
-                "1px solid #e5e7e9",
+              borderBottom: "1px solid #e5e7e9",
               background: "#fafbfc",
               fontSize: "8px",
               fontWeight: 700,
               color: "#6d757c",
-              textTransform:
-                "uppercase",
+              textTransform: "uppercase",
             }}
           >
             <span>Location</span>
@@ -568,66 +599,35 @@ export default function WindowCosting({ appointment }) {
               key={unit.id}
               style={{
                 display: "grid",
-                gridTemplateColumns:
-                  "1.2fr .9fr 1fr 1fr .9fr .45fr .45fr .8fr .9fr 32px",
+                gridTemplateColumns: "1.2fr .9fr 1fr 1fr .9fr .45fr .45fr .8fr .9fr 32px",
                 gap: "10px",
                 alignItems: "center",
-                padding:
-                  "11px 12px",
-                borderBottom:
-                  "1px solid #eef0f2",
+                padding: "11px 12px",
+                borderBottom: "1px solid #eef0f2",
                 fontSize: "10px",
                 color: "#333",
               }}
             >
+              <strong>{unit.location}</strong>
+              <span>{unit.unitType || "—"}</span>
+              <span>{unit.width} × {unit.height}</span>
+              <span>{unit.style || "—"}</span>
+              <span>{unit.colour || "—"}</span>
+              <span>{unit.fixed}</span>
+              <span>{unit.openers}</span>
+              <span>{unit.discountable ?? "—"}</span>
               <strong>
-                {unit.location}
+                {unit.netProductCost != null
+                  ? `£${Number(unit.netProductCost).toFixed(2)}`
+                  : "—"}
               </strong>
-
-              <span>
-                {unit.unitType ||
-                  "—"}
-              </span>
-
-              <span>
-                {unit.width} ×{" "}
-                {unit.height}
-              </span>
-
-              <span>
-                {unit.style ||
-                  "—"}
-              </span>
-
-              <span>
-                {unit.colour ||
-                  "—"}
-              </span>
-
-              <span>
-                {unit.fixed}
-              </span>
-
-              <span>
-                {unit.openers}
-              </span>
-
-              <span>—</span>
-
-              <strong>—</strong>
-
               <button
                 type="button"
-                onClick={() =>
-                  removeUnit(
-                    unit.id
-                  )
-                }
+                onClick={() => removeUnit(unit.id)}
                 title="Remove unit"
                 style={{
                   border: 0,
-                  background:
-                    "transparent",
+                  background: "transparent",
                   color: "#888",
                   cursor: "pointer",
                   fontSize: "14px",
@@ -641,21 +641,16 @@ export default function WindowCosting({ appointment }) {
         </div>
       )}
 
-      {/* ADD UNIT MODAL */}
-
       {showForm && (
         <div
           style={{
             position: "fixed",
             inset: 0,
             zIndex: 1100,
-            background:
-              "rgba(0,0,0,0.35)",
+            background: "rgba(0,0,0,0.35)",
             display: "flex",
-            alignItems:
-              "center",
-            justifyContent:
-              "center",
+            alignItems: "center",
+            justifyContent: "center",
             padding: "20px",
           }}
         >
@@ -668,59 +663,36 @@ export default function WindowCosting({ appointment }) {
               overflowY: "auto",
               background: "#fff",
               borderRadius: "10px",
-              boxShadow:
-                "0 20px 60px rgba(0,0,0,0.25)",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
             }}
           >
-            {/* MODAL HEADER */}
-
             <div
               style={{
                 display: "flex",
-                alignItems:
-                  "center",
-                justifyContent:
-                  "space-between",
-                padding:
-                  "17px 20px",
-                borderBottom:
-                  "1px solid #e6e8ea",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "17px 20px",
+                borderBottom: "1px solid #e6e8ea",
               }}
             >
               <div>
-                <h3
-                  style={{
-                    margin: 0,
-                    fontSize: "15px",
-                    color: "#222",
-                  }}
-                >
+                <h3 style={{ margin: 0, fontSize: "15px", color: "#222" }}>
                   Add Window Unit
                 </h3>
-
-                <p
-                  style={{
-                    margin:
-                      "4px 0 0",
-                    fontSize: "10px",
-                    color: "#888",
-                  }}
-                >
-                  Enter the details
-                  for this individual
-                  unit.
+                <p style={{ margin: "4px 0 0", fontSize: "10px", color: "#888" }}>
+                  Enter the details for this individual unit.
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={closeForm}
+                disabled={savingUnit}
                 style={{
                   border: 0,
-                  background:
-                    "transparent",
+                  background: "transparent",
                   color: "#777",
-                  cursor: "pointer",
+                  cursor: savingUnit ? "default" : "pointer",
                   fontSize: "20px",
                   lineHeight: 1,
                 }}
@@ -729,219 +701,105 @@ export default function WindowCosting({ appointment }) {
               </button>
             </div>
 
-            {/* FORM BODY */}
-
-            <div
-              style={{
-                padding: "20px",
-              }}
-            >
-              {/* ===================================== */}
-              {/* TOP SECTION                            */}
-              {/* Location / Type / Width / Height      */}
-              {/* ===================================== */}
-
+            <div style={{ padding: "20px" }}>
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns:
-                    "repeat(2, minmax(0, 1fr))",
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
                   gap: "15px",
                 }}
               >
-                {/* LOCATION */}
-
-                <Field
-                  label="Location"
-                  required
-                >
+                <Field label="Location" required>
                   <input
-                    value={
-                      form.location
-                    }
-                    onChange={(event) =>
-                      updateForm(
-                        "location",
-                        event.target.value
-                      )
-                    }
+                    value={form.location}
+                    onChange={(event) => updateForm("location", event.target.value)}
                     placeholder="e.g. Living room"
-                    style={
-                      inputStyle
-                    }
+                    style={inputStyle}
                     autoFocus
                   />
                 </Field>
 
-                {/* TYPE */}
-
-                <Field
-                  label="Type"
-                  required
-                >
+                <Field label="Type" required>
                   <select
-                    value={
-                      form.unitType
-                    }
-                    onChange={(event) =>
-                      updateForm(
-                        "unitType",
-                        event.target.value
-                      )
-                    }
-                    style={
-                      selectStyle
-                    }
-                    disabled={
-                      loadingChoices ||
-                      typeOptions.length === 0
-                    }
+                    value={form.unitType}
+                    onChange={(event) => {
+                      updateForm("unitType", event.target.value)
+                      setForm((current) => ({
+                        ...current,
+                        unitType: event.target.value,
+                        colour: "",
+                        shape: "",
+                        finish: "",
+                        glass: "",
+                        style: "",
+                        handle: "",
+                        extras: "",
+                      }))
+                    }}
+                    style={selectStyle}
+                    disabled={loadingChoices || typeOptions.length === 0}
                   >
                     <option value="">
                       {loadingChoices
                         ? "Loading..."
-                        : typeOptions.length ===
-                          0
+                        : typeOptions.length === 0
                         ? "No types available"
                         : "Select type..."}
                     </option>
-
-                    {typeOptions.map(
-                      (option) => (
-                        <option
-                          key={option}
-                          value={
-                            option
-                          }
-                        >
-                          {option}
-                        </option>
-                      )
-                    )}
+                    {typeOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
                   </select>
                 </Field>
 
-                {/* WIDTH */}
-
-                <Field
-                  label="Width (mm)"
-                  required
-                >
+                <Field label="Width (mm)" required>
                   <input
                     type="number"
                     min="1"
-                    value={
-                      form.width
-                    }
-                    onChange={(event) =>
-                      updateForm(
-                        "width",
-                        event.target.value
-                      )
-                    }
+                    value={form.width}
+                    onChange={(event) => updateForm("width", event.target.value)}
                     placeholder="e.g. 960"
-                    style={
-                      inputStyle
-                    }
+                    style={inputStyle}
                   />
                 </Field>
 
-                {/* HEIGHT */}
-
-                <Field
-                  label="Height (mm)"
-                  required
-                >
+                <Field label="Height (mm)" required>
                   <input
                     type="number"
                     min="1"
-                    value={
-                      form.height
-                    }
-                    onChange={(event) =>
-                      updateForm(
-                        "height",
-                        event.target.value
-                      )
-                    }
+                    value={form.height}
+                    onChange={(event) => updateForm("height", event.target.value)}
                     placeholder="e.g. 1440"
-                    style={
-                      inputStyle
-                    }
+                    style={inputStyle}
                   />
                 </Field>
               </div>
-
-              {/* ===================================== */}
-              {/* BLUE SEPARATOR                         */}
-              {/* ===================================== */}
 
               <div
                 style={{
                   width: "100%",
                   height: "2px",
-                  background:
-                    "#2499ed",
+                  background: "#2499ed",
                   opacity: 0.35,
-                  margin:
-                    "22px 0",
+                  margin: "22px 0",
                   borderRadius: "2px",
                 }}
               />
 
-              {/* ===================================== */}
-              {/* LOWER SECTION                          */}
-              {/* ===================================== */}
-
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns:
-                    "repeat(2, minmax(0, 1fr))",
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
                   gap: "15px",
                 }}
               >
-                {/* COLOUR */}
-
-                {renderSelect(
-                  "colour",
-                  "Colour",
-                  options.colour
-                )}
-
-                {/* SHAPE */}
-
-                {renderSelect(
-                  "shape",
-                  "Shape",
-                  options.shape
-                )}
-
-                {/* FINISH */}
-
-                {renderSelect(
-                  "finish",
-                  "Finish",
-                  options.finish
-                )}
-
-                {/* GLASS */}
-
-                {renderSelect(
-                  "glass",
-                  "Glass",
-                  options.glass
-                )}
-
-                {/* STYLE */}
-
-                {renderSelect(
-                  "style",
-                  "Style",
-                  options.style
-                )}
-
-                {/* OPENERS / FIXED */}
+                {renderSelect("colour", "Colour", options.colour)}
+                {renderSelect("shape", "Shape", options.shape)}
+                {renderSelect("finish", "Finish", options.finish)}
+                {renderSelect("glass", "Glass", options.glass)}
+                {renderSelect("style", "Style", options.style)}
 
                 {normalise(form.unitType) === "window" && (
                   <>
@@ -950,18 +808,9 @@ export default function WindowCosting({ appointment }) {
                         type="number"
                         min="0"
                         step="1"
-                        value={
-                          form.openers
-                        }
-                        onChange={(event) =>
-                          updateForm(
-                            "openers",
-                            event.target.value
-                          )
-                        }
-                        style={
-                          inputStyle
-                        }
+                        value={form.openers}
+                        onChange={(event) => updateForm("openers", event.target.value)}
+                        style={inputStyle}
                       />
                     </Field>
 
@@ -970,74 +819,39 @@ export default function WindowCosting({ appointment }) {
                         type="number"
                         min="0"
                         step="1"
-                        value={
-                          form.fixed
-                        }
-                        onChange={(event) =>
-                          updateForm(
-                            "fixed",
-                            event.target.value
-                          )
-                        }
-                        style={
-                          inputStyle
-                        }
+                        value={form.fixed}
+                        onChange={(event) => updateForm("fixed", event.target.value)}
+                        style={inputStyle}
                       />
                     </Field>
                   </>
-                )
-
-                {/* HANDLE */}
-
-                {renderSelect(
-                  "handle",
-                  "Handle",
-                  options.handle
                 )}
 
-                {/* EXTRAS */}
-
-                {renderSelect(
-                  "extras",
-                  "Extras",
-                  options.extras
-                )}
+                {renderSelect("handle", "Handle", options.handle)}
+                {renderSelect("extras", "Extras", options.extras)}
               </div>
 
-              {/* LOADING */}
-
               {loadingChoices && (
-                <div
-                  style={{
-                    marginTop:
-                      "14px",
-                    fontSize:
-                      "10px",
-                    color: "#888",
-                  }}
-                >
-                  Loading window
-                  choices...
+                <div style={{ marginTop: "14px", fontSize: "10px", color: "#888" }}>
+                  Loading window choices...
                 </div>
               )}
 
-              {/* ERROR */}
+              {savingUnit && (
+                <div style={{ marginTop: "14px", fontSize: "10px", color: "#2499ed" }}>
+                  Saving unit...
+                </div>
+              )}
 
               {error && (
                 <div
                   style={{
-                    marginTop:
-                      "14px",
-                    padding:
-                      "9px 10px",
-                    borderRadius:
-                      "6px",
-                    background:
-                      "#fbeaea",
-                    color:
-                      "#8b3333",
-                    fontSize:
-                      "10px",
+                    marginTop: "14px",
+                    padding: "9px 10px",
+                    borderRadius: "6px",
+                    background: "#fbeaea",
+                    color: "#8b3333",
+                    fontSize: "10px",
                   }}
                 >
                   {error}
@@ -1045,42 +859,30 @@ export default function WindowCosting({ appointment }) {
               )}
             </div>
 
-            {/* FOOTER */}
-
             <div
               style={{
                 display: "flex",
-                justifyContent:
-                  "flex-end",
+                justifyContent: "flex-end",
                 gap: "8px",
-                padding:
-                  "13px 20px",
-                borderTop:
-                  "1px solid #e6e8ea",
-                background:
-                  "#fafbfc",
+                padding: "13px 20px",
+                borderTop: "1px solid #e6e8ea",
+                background: "#fafbfc",
               }}
             >
               <button
                 type="button"
                 onClick={closeForm}
+                disabled={savingUnit}
                 style={{
                   height: "34px",
-                  padding:
-                    "0 13px",
-                  border:
-                    "1px solid #d8dde1",
-                  borderRadius:
-                    "6px",
-                  background:
-                    "#fff",
+                  padding: "0 13px",
+                  border: "1px solid #d8dde1",
+                  borderRadius: "6px",
+                  background: "#fff",
                   color: "#555",
-                  cursor:
-                    "pointer",
-                  fontFamily:
-                    "inherit",
-                  fontSize:
-                    "10px",
+                  cursor: savingUnit ? "default" : "pointer",
+                  fontFamily: "inherit",
+                  fontSize: "10px",
                   fontWeight: 600,
                 }}
               >
@@ -1089,26 +891,21 @@ export default function WindowCosting({ appointment }) {
 
               <button
                 type="submit"
+                disabled={savingUnit}
                 style={{
                   height: "34px",
-                  padding:
-                    "0 15px",
+                  padding: "0 15px",
                   border: 0,
-                  borderRadius:
-                    "6px",
-                  background:
-                    "#2499ed",
+                  borderRadius: "6px",
+                  background: savingUnit ? "#9acff5" : "#2499ed",
                   color: "#fff",
-                  cursor:
-                    "pointer",
-                  fontFamily:
-                    "inherit",
-                  fontSize:
-                    "10px",
+                  cursor: savingUnit ? "default" : "pointer",
+                  fontFamily: "inherit",
+                  fontSize: "10px",
                   fontWeight: 700,
                 }}
               >
-                Add Unit
+                {savingUnit ? "Saving..." : "Add Unit"}
               </button>
             </div>
           </form>
