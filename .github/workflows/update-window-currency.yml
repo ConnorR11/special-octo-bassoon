@@ -1,0 +1,48 @@
+name: Update Window Cost Currency
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  update-currency:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update currency formatting
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/WindowCosting.jsx")
+          text = path.read_text()
+
+          replacements = {
+              'unit.discountable.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })': '"£" + Math.round(Number(unit.discountable)).toLocaleString("en-GB")',
+              'unit.nonDiscountable.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })': '"£" + Math.round(Number(unit.nonDiscountable)).toLocaleString("en-GB")',
+              'units.reduce((total, unit) => total + (Number(unit.discountable) || 0), 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })': '"£" + Math.round(units.reduce((total, unit) => total + (Number(unit.discountable) || 0), 0)).toLocaleString("en-GB")',
+              'units.reduce((total, unit) => total + (Number(unit.nonDiscountable) || 0), 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })': '"£" + Math.round(units.reduce((total, unit) => total + (Number(unit.nonDiscountable) || 0), 0)).toLocaleString("en-GB")',
+          }
+
+          for old, new in replacements.items():
+              text = text.replace(old, new)
+
+          path.write_text(text)
+          PY
+
+      - name: Commit change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/WindowCosting.jsx
+          if git diff --cached --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git commit -m "fix: format window costs as rounded GBP"
+          git push
