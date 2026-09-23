@@ -587,7 +587,7 @@ async function drawItemisedBreakdown(
 
       const signatureAreaY =
         ctx.height -
-        27 -
+        20 -
         signatureBoxHeight
 
       /*
