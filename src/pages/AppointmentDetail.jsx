@@ -39,9 +39,8 @@ function AppointmentDetail({
   const canViewCPS = Number(permissionLevel) >= 4
 
   const [showResult, setShowResult] = useState(false)
-  const [result, setResult] = useState(
-    appointment?.result || appointment?.status || ""
-  )
+  const [result, setResult] = useState(appointment?.result || appointment?.status || "")
+  const [signature, setSignature] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
