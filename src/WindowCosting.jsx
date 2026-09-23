@@ -392,7 +392,39 @@ function getChoiceValue(rows, category, choice, unitType) {
   return Number.isFinite(value) ? value : 0
 }
 
-function calculateDiscountable({
+/*
+ * ============================================================
+ * CALCULATE ALL UNIT VALUES
+ * ============================================================
+ *
+ * These values are now individually saved to the units table:
+ *
+ * colour_value
+ * shape_value
+ * finish_value
+ * style_value
+ * glass_value
+ * fix_openers_value
+ *
+ * Discountable:
+ *
+ * ((Size + Finish + Style + Fix/Openers + Extras)
+ *    * Colour * Shape)
+ *    + Glass
+ *
+ * Fix/Openers:
+ *
+ * (Openers * 360)
+ * + ((Fixed - 1) * 110)
+ * - x
+ *
+ * x =
+ *   0 when style is "Fixed Unit"
+ *   0 when style is empty
+ *   250 otherwise
+ */
+
+function calculateUnitValues({
   choices,
   unitType,
   sizeValue,
@@ -406,45 +438,148 @@ function calculateDiscountable({
   fixed,
 }) {
   if (unitType !== "Window") {
-    return null
+    return {
+      colourValue: 0,
+      shapeValue: 0,
+      finishValue: 0,
+      styleValue: 0,
+      glassValue: 0,
+      extrasValue: 0,
+      fixOpenersValue: 0,
+      discountable: null,
+    }
   }
 
   const size = Number(sizeValue) || 0
-  const fin = getChoiceValue(choices, "finish", finish, unitType)
-  const sty = getChoiceValue(choices, "style", style, unitType)
-  const ext = getChoiceValue(choices, "extras", extras, unitType)
-  const col = getChoiceValue(choices, "colour", colour, unitType)
-  const sha = getChoiceValue(choices, "shape", shape, unitType)
-  const gls = getChoiceValue(choices, "glass", glass, unitType)
 
-  const openerValue = Number(openers) || 0
-  const fixedValue = Number(fixed) || 0
+  const colourValue = getChoiceValue(
+    choices,
+    "colour",
+    colour,
+    unitType
+  )
+
+  const shapeValue = getChoiceValue(
+    choices,
+    "shape",
+    shape,
+    unitType
+  )
+
+  const finishValue = getChoiceValue(
+    choices,
+    "finish",
+    finish,
+    unitType
+  )
+
+  const styleValue = getChoiceValue(
+    choices,
+    "style",
+    style,
+    unitType
+  )
+
+  const glassValue = getChoiceValue(
+    choices,
+    "glass",
+    glass,
+    unitType
+  )
+
+  const extrasValue = getChoiceValue(
+    choices,
+    "extras",
+    extras,
+    unitType
+  )
+
+  const openerValue =
+    Number(openers) || 0
+
+  const fixedValue =
+    Number(fixed) || 0
+
+  /*
+   * x = 0 when style is Fixed Unit
+   * x = 0 when style is empty
+   * x = 250 for every other style
+   */
 
   const x =
-    !style || normalise(style) === "fixed unit"
+    !style ||
+    normalise(style) === "fixed unit"
       ? 0
       : 250
 
-  const opn =
+  /*
+   * (Openers * 360)
+   * + ((Fixed - 1) * 110)
+   * - x
+   */
+
+  const fixOpenersValue =
     openerValue * 360 +
     (fixedValue - 1) * 110 -
     x
 
-  const discountable =
-    (size + fin + sty + opn + ext) * col * sha + gls
+  /*
+   * ((Size + Fin + Sty + Opn + Ext) * Col * Sha) + Gls
+   */
 
-  return Number.isFinite(discountable)
-    ? Math.round(discountable * 100) / 100
-    : 0
+  const discountable =
+    (size +
+      finishValue +
+      styleValue +
+      fixOpenersValue +
+      extrasValue) *
+      colourValue *
+      shapeValue +
+    glassValue
+
+  return {
+    colourValue: Number.isFinite(colourValue)
+      ? Math.round(colourValue * 100) / 100
+      : 0,
+
+    shapeValue: Number.isFinite(shapeValue)
+      ? Math.round(shapeValue * 100) / 100
+      : 0,
+
+    finishValue: Number.isFinite(finishValue)
+      ? Math.round(finishValue * 100) / 100
+      : 0,
+
+    styleValue: Number.isFinite(styleValue)
+      ? Math.round(styleValue * 100) / 100
+      : 0,
+
+    glassValue: Number.isFinite(glassValue)
+      ? Math.round(glassValue * 100) / 100
+      : 0,
+
+    extrasValue: Number.isFinite(extrasValue)
+      ? Math.round(extrasValue * 100) / 100
+      : 0,
+
+    fixOpenersValue: Number.isFinite(
+      fixOpenersValue
+    )
+      ? Math.round(fixOpenersValue * 100) / 100
+      : 0,
+
+    discountable: Number.isFinite(
+      discountable
+    )
+      ? Math.round(discountable * 100) / 100
+      : 0,
+  }
 }
 
 /*
  * ============================================================
  * DATABASE UNIT MAPPER
  * ============================================================
- *
- * Converts a Supabase `units` record into the format used
- * by the React table.
  */
 
 function mapDatabaseUnit(row, index) {
@@ -504,6 +639,42 @@ function mapDatabaseUnit(row, index) {
     createdBy:
       row.created_by ?? null,
 
+    colourValue:
+      row.colour_value !== null &&
+      row.colour_value !== undefined
+        ? Number(row.colour_value)
+        : null,
+
+    shapeValue:
+      row.shape_value !== null &&
+      row.shape_value !== undefined
+        ? Number(row.shape_value)
+        : null,
+
+    finishValue:
+      row.finish_value !== null &&
+      row.finish_value !== undefined
+        ? Number(row.finish_value)
+        : null,
+
+    styleValue:
+      row.style_value !== null &&
+      row.style_value !== undefined
+        ? Number(row.style_value)
+        : null,
+
+    glassValue:
+      row.glass_value !== null &&
+      row.glass_value !== undefined
+        ? Number(row.glass_value)
+        : null,
+
+    fixOpenersValue:
+      row.fix_openers_value !== null &&
+      row.fix_openers_value !== undefined
+        ? Number(row.fix_openers_value)
+        : null,
+
     discountable:
       row.discountable !== null &&
       row.discountable !== undefined
@@ -521,13 +692,15 @@ function mapDatabaseUnit(row, index) {
 export default function WindowCosting({ appointment }) {
   const [units, setUnits] = useState([])
 
-  const [showForm, setShowForm] = useState(false)
+  const [showForm, setShowForm] =
+    useState(false)
 
   const [form, setForm] = useState({
     ...EMPTY_FORM,
   })
 
-  const [choices, setChoices] = useState([])
+  const [choices, setChoices] =
+    useState([])
 
   const [loadingChoices, setLoadingChoices] =
     useState(false)
@@ -535,12 +708,15 @@ export default function WindowCosting({ appointment }) {
   const [loadingUnits, setLoadingUnits] =
     useState(false)
 
-  const [saving, setSaving] = useState(false)
+  const [saving, setSaving] =
+    useState(false)
 
-  const [error, setError] = useState("")
+  const [error, setError] =
+    useState("")
 
   const isWindows =
-    normalise(appointment?.job_type) === "windows"
+    normalise(appointment?.job_type) ===
+    "windows"
 
   /*
    * ==========================================================
@@ -571,18 +747,20 @@ export default function WindowCosting({ appointment }) {
       setLoadingChoices(true)
       setError("")
 
-      const { data, error: fetchError } =
-        await supabase
-          .from("unit_choices")
-          .select(
-            "unit_type, category, charge_type, choice, value_type, value"
-          )
-          .order("category", {
-            ascending: true,
-          })
-          .order("choice", {
-            ascending: true,
-          })
+      const {
+        data,
+        error: fetchError,
+      } = await supabase
+        .from("unit_choices")
+        .select(
+          "unit_type, category, charge_type, choice, value_type, value"
+        )
+        .order("category", {
+          ascending: true,
+        })
+        .order("choice", {
+          ascending: true,
+        })
 
       if (cancelled) return
 
@@ -616,9 +794,6 @@ export default function WindowCosting({ appointment }) {
    * ==========================================================
    * LOAD ALL EXISTING UNITS
    * ==========================================================
-   *
-   * Every unit whose appointment_id matches the current
-   * appointment row ID is loaded.
    */
 
   useEffect(() => {
@@ -672,15 +847,14 @@ export default function WindowCosting({ appointment }) {
           data
         )
 
-        const mappedUnits = (
-          data || []
-        ).map(
-          (row, index) =>
-            mapDatabaseUnit(
-              row,
-              index
-            )
-        )
+        const mappedUnits =
+          (data || []).map(
+            (row, index) =>
+              mapDatabaseUnit(
+                row,
+                index
+              )
+          )
 
         setUnits(mappedUnits)
       }
@@ -926,14 +1100,23 @@ export default function WindowCosting({ appointment }) {
       } = await supabase.auth.getUser()
 
       if (authError) {
-        console.error("Unable to get current user:", authError)
+        console.error(
+          "Unable to get current user:",
+          authError
+        )
       }
 
       const createdByEmail =
         user?.email || null
 
-      const calculatedDiscountable =
-        calculateDiscountable({
+      /*
+       * ========================================================
+       * CALCULATE ALL VALUES ONCE
+       * ========================================================
+       */
+
+      const calculatedValues =
+        calculateUnitValues({
           choices,
           unitType: form.unitType,
           sizeValue: calculatedSizeValue,
@@ -946,6 +1129,17 @@ export default function WindowCosting({ appointment }) {
           openers: form.openers,
           fixed: form.fixed,
         })
+
+      console.log(
+        "Calculated unit values:",
+        calculatedValues
+      )
+
+      /*
+       * ========================================================
+       * DATABASE INSERT
+       * ========================================================
+       */
 
       const insertData = {
         ...(unitId
@@ -965,9 +1159,6 @@ export default function WindowCosting({ appointment }) {
 
         created_by:
           createdByEmail,
-
-        discountable:
-          calculatedDiscountable,
 
         unit_type:
           form.unitType,
@@ -1026,6 +1217,37 @@ export default function WindowCosting({ appointment }) {
 
         extras_choice:
           form.extras || null,
+
+        /*
+         * ======================================================
+         * CALCULATED VALUE COLUMNS
+         * ======================================================
+         */
+
+        colour_value:
+          calculatedValues.colourValue,
+
+        shape_value:
+          calculatedValues.shapeValue,
+
+        finish_value:
+          calculatedValues.finishValue,
+
+        style_value:
+          calculatedValues.styleValue,
+
+        glass_value:
+          calculatedValues.glassValue,
+
+        fix_openers_value:
+          calculatedValues.fixOpenersValue,
+
+        /*
+         * Final discountable value
+         */
+
+        discountable:
+          calculatedValues.discountable,
       }
 
       console.log(
@@ -1054,10 +1276,14 @@ export default function WindowCosting({ appointment }) {
         )
       }
 
+      console.log(
+        "Unit saved successfully:",
+        savedUnit
+      )
+
       /*
-       * Use the actual database record returned by
-       * Supabase rather than constructing a separate
-       * local record.
+       * Use the actual database record returned
+       * by Supabase.
        */
 
       setUnits((current) => [
