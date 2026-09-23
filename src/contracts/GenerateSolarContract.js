@@ -558,119 +558,120 @@ async function drawItemisedBreakdown(
   )
 
   /*
- * CUSTOMER SIGNATURE
- *
- * The signature is stored in:
- *
- * appointments.signature_path
- *
- * and the image itself is stored in the
- * private Supabase "signatures" bucket.
- */
-const signatureUrl = await getSignatureImageUrl(appointment)
+   * CUSTOMER SIGNATURE
+   *
+   * The signature is stored in:
+   *
+   * appointments.signature_path
+   *
+   * and the image itself is stored in the
+   * private Supabase "signatures" bucket.
+   */
+  const signatureUrl = await getSignatureImageUrl(appointment)
 
-if (signatureUrl) {
-  try {
-    const signature = await imageData(signatureUrl)
+  if (signatureUrl) {
+    try {
+      const signature = await imageData(signatureUrl)
 
-    /*
-     * Signature positioned at the bottom-right
-     * of the page, above the normal footer.
-     */
-    const signatureBoxWidth = 75
-    const signatureBoxHeight = 32
+      /*
+       * Signature positioned at the bottom-right
+       * of the page, above the normal footer.
+       */
+      const signatureBoxWidth = 75
+      const signatureBoxHeight = 32
 
-    const signatureAreaX =
-      ctx.width -
-      ctx.padding -
-      signatureBoxWidth
+      const signatureAreaX =
+        ctx.width -
+        ctx.padding -
+        signatureBoxWidth
 
-    const signatureAreaY =
-      ctx.height -
-      27 -
-      signatureBoxHeight
+      const signatureAreaY =
+        ctx.height -
+        27 -
+        signatureBoxHeight
 
-    /*
-     * Customer signature heading
-     */
-    pdf.setTextColor(...ctx.text)
-    pdf.setFont("helvetica", "bold")
-    pdf.setFontSize(8)
+      /*
+       * Customer signature heading
+       */
+      pdf.setTextColor(...ctx.text)
+      pdf.setFont("helvetica", "bold")
+      pdf.setFontSize(8)
 
-    pdf.text(
-      "CUSTOMER SIGNATURE",
-      signatureAreaX,
-      signatureAreaY - 4
-    )
+      pdf.text(
+        "CUSTOMER SIGNATURE",
+        signatureAreaX,
+        signatureAreaY - 4
+      )
 
-    /*
-     * Signature area
-     */
-    pdf.setFillColor(252, 253, 254)
+      /*
+       * Signature area
+       */
+      pdf.setFillColor(252, 253, 254)
 
-    pdf.roundedRect(
-      signatureAreaX,
-      signatureAreaY,
-      signatureBoxWidth,
-      signatureBoxHeight,
-      2.5,
-      2.5,
-      "F"
-    )
+      pdf.roundedRect(
+        signatureAreaX,
+        signatureAreaY,
+        signatureBoxWidth,
+        signatureBoxHeight,
+        2.5,
+        2.5,
+        "F"
+      )
 
-    /*
-     * Keep the signature proportional.
-     */
-    const maxSignatureWidth =
-      signatureBoxWidth - 6
+      /*
+       * Keep the signature proportional.
+       */
+      const maxSignatureWidth =
+        signatureBoxWidth - 6
 
-    const maxSignatureHeight =
-      signatureBoxHeight - 6
+      const maxSignatureHeight =
+        signatureBoxHeight - 6
 
-    const signatureRatio =
-      signature.width / signature.height
+      const signatureRatio =
+        signature.width / signature.height
 
-    let signatureWidth =
-      maxSignatureWidth
+      let signatureWidth =
+        maxSignatureWidth
 
-    let signatureHeight =
-      signatureWidth / signatureRatio
+      let signatureHeight =
+        signatureWidth / signatureRatio
 
-    if (signatureHeight > maxSignatureHeight) {
-      signatureHeight =
-        maxSignatureHeight
+      if (signatureHeight > maxSignatureHeight) {
+        signatureHeight =
+          maxSignatureHeight
 
-      signatureWidth =
-        signatureHeight * signatureRatio
+        signatureWidth =
+          signatureHeight * signatureRatio
+      }
+
+      const signatureX =
+        signatureAreaX +
+        (signatureBoxWidth - signatureWidth) / 2
+
+      const signatureY =
+        signatureAreaY +
+        (signatureBoxHeight - signatureHeight) / 2
+
+      pdf.addImage(
+        signature.dataUrl,
+        "PNG",
+        signatureX,
+        signatureY,
+        signatureWidth,
+        signatureHeight,
+        undefined,
+        "FAST"
+      )
+
+    } catch (error) {
+      console.error(
+        "Unable to add customer signature to contract:",
+        error
+      )
     }
-
-    const signatureX =
-      signatureAreaX +
-      (signatureBoxWidth - signatureWidth) / 2
-
-    const signatureY =
-      signatureAreaY +
-      (signatureBoxHeight - signatureHeight) / 2
-
-    pdf.addImage(
-      signature.dataUrl,
-      "PNG",
-      signatureX,
-      signatureY,
-      signatureWidth,
-      signatureHeight,
-      undefined,
-      "FAST"
-    )
-
-  } catch (error) {
-    console.error(
-      "Unable to add customer signature to contract:",
-      error
-    )
   }
-}
-  
+} // FIX: missing closing brace for drawItemisedBreakdown()
+
 function parseTermsSections(raw) {
   const sections = []
   let current = []
@@ -1395,11 +1396,6 @@ async function renderPage(
 
   } else if (kind === "itemised_breakdown") {
 
-    /*
-     * CHANGED:
-     * drawItemisedBreakdown is now async because it
-     * retrieves the private signature from Supabase.
-     */
     await drawItemisedBreakdown(
       pdf,
       page,
