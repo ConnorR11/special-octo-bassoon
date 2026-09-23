@@ -1596,7 +1596,7 @@ export default function WindowCosting({ appointment }) {
             <span>F</span>
             <span>O</span>
             <span>Size Choice</span>
-            <span>Size Value</span>
+            <span>Discountable</span>
             <span />
           </div>
 
@@ -1655,8 +1655,13 @@ export default function WindowCosting({ appointment }) {
               </span>
 
               <strong>
-                {unit.sizeValue ??
-                  "—"}
+                {unit.discountable !== null &&
+                unit.discountable !== undefined
+                  ? unit.discountable.toLocaleString("en-GB", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })
+                  : "—"}
               </strong>
 
               <button
