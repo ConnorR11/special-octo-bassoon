@@ -23,7 +23,7 @@ function getCommissionDate(deal, source="commission") {
 const columns=".65fr .95fr 1.55fr 1.25fr 1fr .9fr 1fr 1.1fr .95fr 30px"
 function DealRow({deal,setSelected,type}) {
   const isAdmin=type==="ADMIN", customer=deal?.customer_name||deal?.name||"Unnamed customer", paymentDate=getCommissionDate(deal,isAdmin?"admin":"commission"), surveyCosting=getSurveyCosting(deal), commission=getCommission(deal), adminFee=getAdminFee(deal)
-  const paymentDateLabel=isAdmin&&!deal?.admin_fee_paid_date?"Not Paid in":paymentDate?formatDate(paymentDate):"Not Booked"
+  const paymentDateLabel=isAdmin&&!deal?.admin_fee_received_date?"Not Paid In":paymentDate?formatDate(paymentDate):"Not Booked"
   return <button type="button" onClick={()=>setSelected?.(deal)} style={{width:"100%",display:"grid",gridTemplateColumns:columns,gap:12,alignItems:"center",padding:"13px 14px",border:0,borderBottom:"1px solid #eef1f3",background:"#fff",textAlign:"left",cursor:"pointer",fontFamily:"inherit"}}>
     <div><span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",padding:"4px 7px",borderRadius:5,background:isAdmin?"#fff1e8":"#e8f4fd",color:isAdmin?"#c45b18":"#1676b8",fontSize:9,fontWeight:800}}>{type}</span></div>
     <div style={{fontSize:10,fontWeight:700,color:paymentDate?"#263645":"#a0a8ae",whiteSpace:"nowrap"}}>{paymentDateLabel}</div>
@@ -39,7 +39,7 @@ function DealRow({deal,setSelected,type}) {
 }
 export default function SalesCommission({deals=[],loading=false,setSelected,permissionLevel=0}) {
   const [adminDeals,setAdminDeals]=useState([]),[adminLoading,setAdminLoading]=useState(false),[query,setQuery]=useState(""),[rep,setRep]=useState("all"),[branch,setBranch]=useState("all"),[commissionDate,setCommissionDate]=useState("all")
-  useEffect(()=>{let cancelled=false;async function loadAdmin(){if(!supabase)return;setAdminLoading(true);const {data,error}=await supabase.from("deals").select("*").is("admin_fee_paid_out_date",null).not("pipedrive_stage","in","(Decline,Customer Cancelled)").gte("sale_date","2025-01-01").not("admin_fee_received_date","is",null).order("admin_fee_received_date",{ascending:true});if(cancelled)return;if(error){console.error("Error loading admin fee deals:",error);setAdminDeals([])}else setAdminDeals(data||[]);setAdminLoading(false)}loadAdmin();return()=>{cancelled=true}},[])
+  useEffect(()=>{let cancelled=false;async function loadAdmin(){if(!supabase)return;setAdminLoading(true);const {data,error}=await supabase.from("deals").select("*").is("admin_fee_paid_out_date",null).not("pipedrive_stage","in","(Decline,Customer Cancelled)").gte("sale_date","2025-01-01").order("admin_fee_received_date",{ascending:true});if(cancelled)return;if(error){console.error("Error loading admin fee deals:",error);setAdminDeals([])}else setAdminDeals(data||[]);setAdminLoading(false)}loadAdmin();return()=>{cancelled=true}},[])
   const reps=useMemo(()=>Array.from(new Set([...deals,...adminDeals].map(getRepName))).sort((a,b)=>a.localeCompare(b)),[deals,adminDeals])
   const branches=useMemo(()=>Array.from(new Set([...deals,...adminDeals].map(getBranchName))).sort((a,b)=>a.localeCompare(b)),[deals,adminDeals])
   const combined=useMemo(()=>[...deals.filter(deal=>getNetSalesValue(deal)!==0).map(deal=>({deal,type:"COMMS"})),...adminDeals.map(deal=>({deal,type:"ADMIN"}))],[deals,adminDeals])
@@ -48,7 +48,7 @@ export default function SalesCommission({deals=[],loading=false,setSelected,perm
   const totalCommission=filtered.reduce((total,{deal,type})=>total+(type==="COMMS"?(getCommission(deal)??0):0),0),totalAdmin=filtered.reduce((total,{deal,type})=>total+(type==="ADMIN"&&getAdminFee(deal)!=="query"?getAdminFee(deal):0),0),totalNetSalesValue=filtered.reduce((total,{deal,type})=>total+(type==="COMMS"?getNetSalesValue(deal):0),0)
   function handleExport() {
     const rows=filtered.map(({deal,type})=>({
-      "Commission Date":(() => { const date=getCommissionDate(deal,type==="ADMIN"?"admin":"commission"); return date?formatDate(date):"Not Booked" })(),
+      "Commission Date":(() => { const date=getCommissionDate(deal,type==="ADMIN"?"admin":"commission"); return date?formatDate(date):(type==="ADMIN"?"Not Paid In":"Not Booked") })(),
       Type:type,
       "Pipedrive Deal ID":deal?.pipedrive_deal_id||"",
       Customer:deal?.customer_name||deal?.name||"Unnamed customer",
