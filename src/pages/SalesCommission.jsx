@@ -39,7 +39,7 @@ function DealRow({deal,setSelected,type}) {
 }
 export default function SalesCommission({deals=[],loading=false,setSelected,permissionLevel=0}) {
   const [adminDeals,setAdminDeals]=useState([]),[adminLoading,setAdminLoading]=useState(false),[query,setQuery]=useState(""),[rep,setRep]=useState("all"),[branch,setBranch]=useState("all"),[commissionDate,setCommissionDate]=useState("all")
-  useEffect(()=>{let cancelled=false;async function loadAdmin(){if(!supabase)return;setAdminLoading(true);const {data,error}=await supabase.from("deals").select("*").is("admin_fee_paid_out_date",null).not("pipedrive_stage","in","(Decline,Customer Cancelled)").gte("sale_date","2025-01-01").order("admin_fee_received_date",{ascending:true});if(cancelled)return;if(error){console.error("Error loading admin fee deals:",error);setAdminDeals([])}else setAdminDeals(data||[]);setAdminLoading(false)}loadAdmin();return()=>{cancelled=true}},[])
+  useEffect(()=>{let cancelled=false;async function loadAdmin(){if(!supabase)return;setAdminLoading(true);const {data,error}=await supabase.from("deals").select("*").is("admin_fee_paid_out_date",null).not("pipedrive_stage","in","(Decline,Customer Cancelled)").gte("sale_date","2025-01-01").order("admin_fee_received_date",{ascending:true});if(cancelled)return;if(error){console.error("Error loading admin fee deals:",error);setAdminDeals([])}else setAdminDeals((data||[]).filter(deal=>{const raw=deal?.admin_fee_amount;if(raw===null||raw===undefined||String(raw).trim()==="")return false;const value=Number(String(raw).replace(/[^0-9.-]/g,""));return Number.isFinite(value)&&value!==0}));setAdminLoading(false)}loadAdmin();return()=>{cancelled=true}},[])
   const reps=useMemo(()=>Array.from(new Set([...deals,...adminDeals].map(getRepName))).sort((a,b)=>a.localeCompare(b)),[deals,adminDeals])
   const branches=useMemo(()=>Array.from(new Set([...deals,...adminDeals].map(getBranchName))).sort((a,b)=>a.localeCompare(b)),[deals,adminDeals])
   const combined=useMemo(()=>[...deals.filter(deal=>getNetSalesValue(deal)!==0).map(deal=>({deal,type:"COMMS"})),...adminDeals.map(deal=>({deal,type:"ADMIN"}))],[deals,adminDeals])
@@ -48,7 +48,7 @@ export default function SalesCommission({deals=[],loading=false,setSelected,perm
   const totalCommission=filtered.reduce((total,{deal,type})=>total+(type==="COMMS"?(getCommission(deal)??0):0),0),totalAdmin=filtered.reduce((total,{deal,type})=>total+(type==="ADMIN"&&getAdminFee(deal)!=="query"?getAdminFee(deal):0),0),totalNetSalesValue=filtered.reduce((total,{deal,type})=>total+(type==="COMMS"?getNetSalesValue(deal):0),0)
   function handleExport() {
     const rows=filtered.map(({deal,type})=>({
-      "Commission Date":(() => { const date=getCommissionDate(deal,type==="ADMIN"?"admin":"commission"); return date?formatDate(date):(type==="ADMIN"?"Not Paid In":"Not Booked") })(),
+      "Commission Date":(()=>{const date=getCommissionDate(deal,type==="ADMIN"?"admin":"commission");return date?formatDate(date):(type==="ADMIN"?"Not Paid In":"Not Booked")})(),
       Type:type,
       "Pipedrive Deal ID":deal?.pipedrive_deal_id||"",
       Customer:deal?.customer_name||deal?.name||"Unnamed customer",
