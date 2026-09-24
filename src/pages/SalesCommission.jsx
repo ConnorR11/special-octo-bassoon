@@ -2,11 +2,14 @@ import React, { useMemo, useState } from "react"
 import { ChevronRight, MapPin, PoundSterling, Search, UserRound, X } from "lucide-react"
 import { formatDate, getInitials, money } from "../utils/formatters"
 
-const COMMISSION_FIELDS = ["commission", "commission_value", "commission_amount", "sales_commission", "salesperson_commission"]
 function getRepName(deal) { return deal?.salesperson || deal?.sales_rep || deal?.rep_name || deal?.rep_allocated || "Unallocated" }
 function getBranchName(deal) { return deal?.branch || deal?.branch_name || "Unallocated" }
 function getNetSalesValue(deal) { const value = deal?.net_value; const parsed = Number(String(value ?? "").replace(/[^0-9.-]/g, "")); return Number.isFinite(parsed) ? parsed : 0 }
-function getCommission(deal) { for (const field of COMMISSION_FIELDS) { if (deal?.[field] !== null && deal?.[field] !== undefined && deal?.[field] !== "") { const parsed = Number(String(deal[field]).replace(/[^0-9.-]/g, "")); if (Number.isFinite(parsed)) return parsed } } return 0 }
+function getEstimatedCommission(deal) {
+  const value = deal?.estimated_commission_due
+  const parsed = Number(String(value ?? "").replace(/[^0-9.-]/g, ""))
+  return Number.isFinite(parsed) ? parsed : 0
+}
 function getCommissionDate(deal) {
   const installationStart = deal?.installation_start_date
   if (!installationStart) return null
@@ -35,22 +38,22 @@ function DealRow({ deal, setSelected }) {
     <div style={{display:"flex",alignItems:"center",gap:6,color:"#53616b",fontSize:10,minWidth:0}}><UserRound size={13}/><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{getRepName(deal)}</span></div>
     <div style={{fontSize:10,color:commissionDate ? "#53616b" : "#a0a8ae",fontStyle:commissionDate ? "normal" : "italic"}}>{commissionDate ? formatDate(commissionDate) : "Not Started"}</div>
     <div style={{display:"flex",alignItems:"center",gap:5,color:"#263645",fontSize:10}}><PoundSterling size={13}/><strong>{money(getNetSalesValue(deal))}</strong></div>
-    <div style={{fontSize:11,fontWeight:800,color:"#1676b8"}}>{money(getCommission(deal))}</div>
+    <div style={{fontSize:11,fontWeight:800,color:"#1676b8"}}>{money(getEstimatedCommission(deal))}</div>
     <div style={{display:"flex",alignItems:"center",gap:5,color:"#66737d",fontSize:10}}><MapPin size={13}/><span>{getBranchName(deal)}</span></div>
     <div style={{display:"flex",justifyContent:"flex-end",color:"#9aa5ad"}}><ChevronRight size={17}/></div>
   </button>
 }
 
 function CommissionDateSection({ commissionDate, deals, setSelected }) {
-  const commission = deals.reduce((total, deal) => total + getCommission(deal), 0)
+  const estimatedCommission = deals.reduce((total, deal) => total + getEstimatedCommission(deal), 0)
   const netSalesValue = deals.reduce((total, deal) => total + getNetSalesValue(deal), 0)
   const title = commissionDate ? formatDate(commissionDate) : "Not Started"
   return <div style={{border:"1px solid #e0e5e9",borderRadius:10,background:"#fff",overflow:"hidden",marginBottom:18}}>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 14px",background:"#f3f6f8",borderBottom:"1px solid #e0e5e9"}}>
       <div style={{display:"flex",alignItems:"center",gap:9}}><div style={{width:7,height:7,borderRadius:"50%",background:commissionDate ? "#2499ed" : "#a0a8ae"}}/><strong style={{fontSize:12,color:"#263645"}}>{title}</strong><span style={{fontSize:10,color:"#7b8790"}}>{deals.length} {deals.length===1?"deal":"deals"}</span></div>
-      <div style={{display:"flex",gap:18,alignItems:"center"}}><span style={{fontSize:10,color:"#7b8790"}}>Net Sales Value <strong style={{color:"#263645"}}>{money(netSalesValue)}</strong></span><span style={{fontSize:11,fontWeight:800,color:"#1676b8"}}>Commission {money(commission)}</span></div>
+      <div style={{display:"flex",gap:18,alignItems:"center"}}><span style={{fontSize:10,color:"#7b8790"}}>Net Sales Value <strong style={{color:"#263645"}}>{money(netSalesValue)}</strong></span><span style={{fontSize:11,fontWeight:800,color:"#1676b8"}}>Estimated Commission {money(estimatedCommission)}</span></div>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:columns,gap:12,alignItems:"center",padding:"9px 14px",background:"#fafbfc",borderBottom:"1px solid #e4e8eb",color:"#687782",fontSize:9,fontWeight:800,textTransform:"uppercase"}}><div>Customer</div><div>Sales Rep</div><div>Commission Date</div><div>Net Sales Value</div><div>Commission</div><div>Branch</div><div/></div>
+    <div style={{display:"grid",gridTemplateColumns:columns,gap:12,alignItems:"center",padding:"9px 14px",background:"#fafbfc",borderBottom:"1px solid #e4e8eb",color:"#687782",fontSize:9,fontWeight:800,textTransform:"uppercase"}}><div>Customer</div><div>Sales Rep</div><div>Commission Date</div><div>Net Sales Value</div><div>Estimated Commission</div><div>Branch</div><div/></div>
     {deals.map(deal=><DealRow key={deal?.id||deal?.deal_id} deal={deal} setSelected={setSelected}/>)}
   </div>
 }
@@ -75,7 +78,7 @@ export default function SalesCommission({ deals=[], loading=false, setSelected }
       return dateComparison || getBranchName(a).localeCompare(getBranchName(b))
     })
   },[deals,query,rep,branch])
-  const totalCommission=filtered.reduce((total,deal)=>total+getCommission(deal),0)
+  const totalEstimatedCommission=filtered.reduce((total,deal)=>total+getEstimatedCommission(deal),0)
   const groups=useMemo(()=>{
     const map=new Map()
     filtered.forEach(deal=>{
@@ -100,7 +103,7 @@ export default function SalesCommission({ deals=[], loading=false, setSelected }
       <div style={{position:"relative",flex:"1 1 360px",minWidth:180}}><Search size={17} style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"#94a3b8"}}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search customer, contract, rep or branch..." style={{width:"100%",height:46,boxSizing:"border-box",border:"1px solid #d7dee8",borderRadius:9,padding:"10px 38px",fontSize:12,outline:"none"}}/>{query&&<button type="button" onClick={()=>setQuery("")} style={{position:"absolute",right:9,top:"50%",transform:"translateY(-50%)",border:0,background:"transparent",cursor:"pointer",color:"#64748b"}}><X size={15}/></button>}</div>
       <select value={rep} onChange={e=>setRep(e.target.value)} style={{height:46,minWidth:160,border:"1px solid #d7dee8",borderRadius:9,background:"#fff",padding:"0 10px",fontSize:11}}><option value="all">All sales reps</option>{reps.map(item=><option key={item}>{item}</option>)}</select>
       <select value={branch} onChange={e=>setBranch(e.target.value)} style={{height:46,minWidth:145,border:"1px solid #d7dee8",borderRadius:9,background:"#fff",padding:"0 10px",fontSize:11}}><option value="all">All branches</option>{branches.map(item=><option key={item}>{item}</option>)}</select>
-      <div style={{display:"flex",gap:8,flex:"0 0 auto"}}><div style={{minWidth:95,padding:"6px 14px",border:"1px solid #d9e2e8",borderRadius:9,background:"#fff",display:"flex",flexDirection:"column",justifyContent:"center"}}><div style={{fontSize:9,fontWeight:700,color:"#7b8790",textTransform:"uppercase"}}>Deals</div><div style={{fontSize:20,fontWeight:800,color:"#263645"}}>{filtered.length}</div></div><div style={{minWidth:135,padding:"6px 14px",border:"1px solid #cfe2ef",borderRadius:9,background:"#f7fbff",display:"flex",flexDirection:"column",justifyContent:"center"}}><div style={{fontSize:9,fontWeight:700,color:"#6d8495",textTransform:"uppercase"}}>Commission</div><div style={{fontSize:20,fontWeight:800,color:"#1676b8"}}>{money(totalCommission)}</div></div></div>
+      <div style={{display:"flex",gap:8,flex:"0 0 auto"}}><div style={{minWidth:95,padding:"6px 14px",border:"1px solid #d9e2e8",borderRadius:9,background:"#fff",display:"flex",flexDirection:"column",justifyContent:"center"}}><div style={{fontSize:9,fontWeight:700,color:"#7b8790",textTransform:"uppercase"}}>Deals</div><div style={{fontSize:20,fontWeight:800,color:"#263645"}}>{filtered.length}</div></div><div style={{minWidth:135,padding:"6px 14px",border:"1px solid #cfe2ef",borderRadius:9,background:"#f7fbff",display:"flex",flexDirection:"column",justifyContent:"center"}}><div style={{fontSize:9,fontWeight:700,color:"#6d8495",textTransform:"uppercase"}}>Estimated Commission</div><div style={{fontSize:20,fontWeight:800,color:"#1676b8"}}>{money(totalEstimatedCommission)}</div></div></div>
     </div>
     {loading?<div style={{padding:35,textAlign:"center",color:"#89939c",fontSize:11,border:"1px solid #e0e5e9",borderRadius:10,background:"#fff"}}>Loading commission data...</div>:!filtered.length?<div style={{padding:40,textAlign:"center",border:"1px solid #e0e5e9",borderRadius:10,background:"#fff",color:"#89939c",fontSize:11}}>No commission records found.</div>:<div>{groups.map(([key,group])=><CommissionDateSection key={key} commissionDate={key==="not-started"?null:key} deals={group} setSelected={setSelected}/>)}</div>}
   </section>
