@@ -32,7 +32,7 @@ function formatCurrency(value) {
 }
 
 const GROUPS = [
-  { key: "rts", label: "Sales", stages: ["Awaiting Funds", "Returned To Sales", "Pending Cancellation", "Long Term"], background: "#e0f2fe", border: "#bae6fd", text: "#075985", badge: "#bae6fd" },
+  { key: "rts", label: "Sales", stages: ["Awaiting Funds", "Returned To Sales", "Pending Cancellation", "Long Term", "On Hold"], background: "#e0f2fe", border: "#bae6fd", text: "#075985", badge: "#bae6fd" },
   { key: "surveys", label: "Surveys", stages: ["Book for Survey", "Book for Survey (S)", "Survey Booked", "Survey Booked (S)"], background: "#dcfce7", border: "#bbf7d0", text: "#166534", badge: "#bbf7d0" },
   { key: "procurement", label: "Procurement", stages: ["Costing", "To Order", "To Be Ordered", "Awaiting Customer Confirmation", "Awaiting Manufacture Date"], background: "#ffedd5", border: "#fed7aa", text: "#9a3412", badge: "#fed7aa" },
   { key: "accounts", label: "Accounts", stages: ["Cancelled - Awaiting Refund", "Fit Complete - Accounts To Check", "Admin Fee Outstanding", "Accounts To Check (S)"], background: "#f3e8ff", border: "#e9d5ff", text: "#7e22ce", badge: "#e9d5ff" },
