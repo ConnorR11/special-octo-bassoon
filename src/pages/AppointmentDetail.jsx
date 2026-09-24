@@ -40,12 +40,12 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,permissi
  return <section style={{width:"100%",boxSizing:"border-box"}}>
   <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 290px",gap:12,alignItems:"start",width:"100%"}}>
    <div style={{minWidth:0,width:"100%"}}>
-    <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:20,marginBottom:18,width:"calc(100% + 42px)",marginLeft:"-42px"}}>
+    <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:20,marginBottom:18,width:"100%",marginLeft:0}}>
      <div><button type="button" onClick={onBack} style={{border:0,background:"transparent",color:"#66717b",cursor:"pointer",padding:0,display:"flex",alignItems:"center",gap:6,fontFamily:"inherit",fontSize:10,marginBottom:12}}><ArrowLeft size={14}/>Back to appointments</button><h1 style={{margin:0,fontSize:24,lineHeight:1.15,color:"#10233f",fontWeight:750}}>{appointment.name||"Unnamed customer"}</h1><div style={{display:"flex",alignItems:"center",flexWrap:"wrap",gap:8,marginTop:7,fontSize:12,color:"#66717b"}}><span>{date(appointment.appointment_date)}</span><span>•</span><span>{appointment.job_type||appointment.product||appointment.type||"Appointment"}</span>{result&&<Badge value={result}/>}</div></div>
      <AppointmentActions appointment={appointment} onUpdated={onUpdated} onConfirmLegacy={confirmAppointment} onResultLegacy={openResult} permissionLevel={permissionLevel} role={role}/>
     </div>
     {confirmError&&<div style={{marginBottom:14,padding:"9px 10px",background:"#fbeaea",color:"#8b3333",borderRadius:6,fontSize:10}}>{confirmError}</div>}
-    <main style={{minWidth:0,display:"flex",flexDirection:"column",minHeight:"calc(100vh - 170px)",width:"calc(100% + 42px)",marginLeft:"-42px"}}>
+    <main style={{minWidth:0,display:"flex",flexDirection:"column",minHeight:"calc(100vh - 170px)",width:"100%",marginLeft:0}}>
      {isWindows&&<WindowCosting appointment={appointment} onUpdated={onUpdated}/>} 
      {!isWindows&&isSolar&&<div style={{...card,padding:18}}><div style={{marginBottom:12}}><h2 style={{margin:0,fontSize:18,color:"#10233f"}}>EPVS Calculator</h2><p style={{margin:"5px 0 0",fontSize:11,color:"#888"}}>Complete the EPVS calculation for this solar appointment.</p></div><EPVSCalculator appointment={appointment} onCalculationChange={setEpvs}/></div>}
      <div style={{marginTop:18,...card,padding:20,flex:1,minHeight:250,width:"100%"}}><h2 style={{margin:0,fontSize:18,color:"#10233f"}}>Activity</h2><div style={{marginTop:14}}><ActionHistory entityType="appointment" entityId={appointment.appointment_row_id}/></div></div>
