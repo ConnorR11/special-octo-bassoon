@@ -126,8 +126,7 @@ function App() {
         const { data, error: supabaseError } = await supabase
           .from("deals")
           .select("*")
-          .not("pipedrive_stage", "is", null)
-          .neq("pipedrive_stage", "")
+          .not("pipedrive_stage", "in", "(Decline,Customer Cancelled)")
           .is("commission_paid_date", null)
           .order("installation_start_date", { ascending: true })
           .range(from, from + REPORTING_PAGE_SIZE - 1)
@@ -178,36 +177,3 @@ function App() {
     function handlePopState() {
       const path = window.location.pathname.replace(/\/+$/, "") || "/"
       const appointmentMatch = path.match(/^\/appointments\/([^/]+)$/)
-      if (appointmentMatch) { loadAppointmentFromUrl(decodeURIComponent(appointmentMatch[1])); return }
-      setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage(path === "/" || path === "/dashboard" ? "dashboard" : path.slice(1))
-    }
-    handlePopState(); window.addEventListener("popstate", handlePopState); return () => window.removeEventListener("popstate", handlePopState)
-  }, [session, previewUser?.id])
-
-  function handleOpenPickup() { if (selectedAppointment?.result) setPickupAppointment(selectedAppointment) }
-  function handleBackToAppointments() { setPickupAppointment(null); setSelectedAppointment(null); setPage("appointments"); window.history.pushState({}, "", "/appointments") }
-  function handleBackFromPickup() { setPickupAppointment(null) }
-  function handlePickupCreated(updatedOriginal) { setSelectedAppointment({ ...selectedAppointment, ...updatedOriginal, phone: updatedOriginal?.phone_number_1, email: updatedOriginal?.email_address }); setPickupAppointment(null) }
-  function handleSignOut() { if (supabase) supabase.auth.signOut().catch(err => console.error("Error signing out:", err)) }
-  function handleAppointmentUpdated(updatedAppointment) { const mapped = mapAppointment(updatedAppointment); setSelectedAppointment(current => current ? { ...current, ...mapped } : mapped) }
-  function clickLegacyButton(text) { const host = document.querySelector(".appointment-detail-host"); const button = host ? Array.from(host.querySelectorAll("button")).find(candidate => candidate.textContent.trim() === text) : null; if (button) { button.click(); return true } return false }
-  function handleLegacyConfirm() { clickLegacyButton("Confirm Appointment") }
-  function handleLegacyResult() { clickLegacyButton("Result") }
-
-  const headerPage = selected ? "customer" : selectedAppointment ? "appointment" : page
-  if (authLoading) return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f5f7fa",color:"#002d49",fontFamily:"Inter, Arial, sans-serif",fontSize:14}}>Loading CRM...</div>
-  if (!session) return <Login />
-
-  return <div className="app">
-    <Sidebar page={page} setPage={handlePageChange} mobile={mobile} setMobile={setMobile} onSignOut={handleSignOut} permissionLevel={effectivePermissionLevel}/>
-    <main>
-      <Header page={headerPage} setMobile={setMobile}/>
-      {error && page !== "epvs" && <div className="error"><b>Database error</b><span>{error}</span></div>}
-      {isAdministrator && page === "users" && <AdminUserPreview activeUser={previewUser} onStart={user => { setPreviewUser(user); setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("appointments"); window.history.pushState({}, "", "/appointments") }} onStop={async () => { setPreviewUser(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("users"); window.history.pushState({}, "", "/users") }}/>} 
-      {isAdministrator && previewUser && page !== "users" && <AdminUserPreview activeUser={previewUser} onStart={() => {}} onStop={async () => { setPreviewUser(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("users"); window.history.pushState({}, "", "/users") }}/>} 
-      {pickupAppointment ? <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated}/> : selectedAppointment ? <div style={{position:"relative"}}><style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}</style><div style={{display:"flex",justifyContent:"flex-end",padding:"10px 24px 0",background:"#fff"}}><AppointmentActions appointment={selectedAppointment} permissionLevel={effectivePermissionLevel} role={effectiveRole} userEmail={effectiveUserEmail} onUpdated={handleAppointmentUpdated} onConfirmLegacy={handleLegacyConfirm} onResultLegacy={handleLegacyResult} onOpenPickup={handleOpenPickup}/></div><div className="appointment-detail-host"><AppointmentDetail appointment={selectedAppointment} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated} permissionLevel={effectivePermissionLevel}/></div></div> : selected ? <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated}/> : page === "dashboard" ? <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setSelected={setSelected}/> : page === "marketing-tv" ? <MarketingTV onSelectAppointment={handleAppointmentSelect}/> : page === "marketing-dashboard" ? <MarketingDashboard contracts={contracts} loading={loading} onSelectAppointment={handleAppointmentSelect}/> : page === "sales-kpi" ? <SalesKPI/> : page === "commissions" ? <SalesCommission deals={commissionDeals} loading={commissionLoading} setSelected={setSelected}/> : page === "users" && isAdministrator ? <Users/> : page === "tasks" && isAdministrator ? <Tasks/> : page === "contracts" ? <Contracts filtered={filteredContracts} loading={loading} query={query} setQuery={handleSearchChange} status={status} setStatus={setStatus} setSelected={setSelected} page={contractsPage} pageSize={DEALS_PAGE_SIZE} hasMore={hasMoreContracts} onPreviousPage={() => loadContracts(Math.max(contractsPage-1,0),query,status)} onNextPage={() => loadContracts(contractsPage+1,query,status)}/> : page === "rts-list" ? <RTSList deals={allDeals} loading={reportingLoading} setSelected={setSelected}/> : <EPVSCalculator/>}
-    </main>
-  </div>
-}
-
-export default App
