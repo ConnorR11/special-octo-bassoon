@@ -22,24 +22,14 @@ jobs:
           path = Path("src/WindowCosting.jsx")
           text = path.read_text()
 
-          replacements = {
-              'unit.discountable.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })': '"£" + Math.round(Number(unit.discountable)).toLocaleString("en-GB")',
-              'unit.nonDiscountable.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })': '"£" + Math.round(Number(unit.nonDiscountable)).toLocaleString("en-GB")',
-              'units.reduce((total, unit) => total + (Number(unit.discountable) || 0), 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })': '"£" + Math.round(units.reduce((total, unit) => total + (Number(unit.discountable) || 0), 0)).toLocaleString("en-GB")',
-              'units.reduce((total, unit) => total + (Number(unit.nonDiscountable) || 0), 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })': '"£" + Math.round(units.reduce((total, unit) => total + (Number(unit.nonDiscountable) || 0), 0)).toLocaleString("en-GB")',
-          }
-
-          for old, new in replacements.items():
-              text = text.replace(old, new)
-
           old_state = '''  const [units,setUnits] = useState([]), [showForm,setShowForm] = useState(false), [editingUnit,setEditingUnit] = useState(null), [openMenu,setOpenMenu] = useState(null)\n  const [form,setForm] = useState({...EMPTY_FORM}), [choices,setChoices] = useState([]), [loadingChoices,setLoadingChoices] = useState(false), [loadingUnits,setLoadingUnits] = useState(false), [saving,setSaving] = useState(false), [error,setError] = useState(""), [expandedUnits,setExpandedUnits] = useState({})'''
           new_state = '''  const [units,setUnits] = useState([]), [showForm,setShowForm] = useState(false), [editingUnit,setEditingUnit] = useState(null), [openMenu,setOpenMenu] = useState(null)\n  const [duplicateSource,setDuplicateSource] = useState(null), [duplicateLocation,setDuplicateLocation] = useState("")\n  const [form,setForm] = useState({...EMPTY_FORM}), [choices,setChoices] = useState([]), [loadingChoices,setLoadingChoices] = useState(false), [loadingUnits,setLoadingUnits] = useState(false), [saving,setSaving] = useState(false), [error,setError] = useState(""), [expandedUnits,setExpandedUnits] = useState({})'''
-          if old_state in text and 'duplicateSource' not in text:
+          if old_state in text:
               text = text.replace(old_state, new_state, 1)
 
           old_close = '''  function closeForm() { if (saving) return; setShowForm(false); setEditingUnit(null); setForm({...EMPTY_FORM}); setError("") }\n  function toggleUnit(id) { setExpandedUnits(current => ({...current,[id]:!current[id]})) }'''
           new_close = '''  function closeForm() { if (saving) return; setShowForm(false); setEditingUnit(null); setForm({...EMPTY_FORM}); setError("") }\n  function startDuplicateUnit(unit) {\n    setOpenMenu(null)\n    setDuplicateSource(unit || null)\n    setDuplicateLocation("")\n    setError("")\n  }\n  function closeDuplicateForm() {\n    if (saving) return\n    setDuplicateSource(null)\n    setDuplicateLocation("")\n    setError("")\n  }\n  function toggleUnit(id) { setExpandedUnits(current => ({...current,[id]:!current[id]})) }'''
-          if old_close in text and 'function startDuplicateUnit' not in text:
+          if old_close in text:
               text = text.replace(old_close, new_close, 1)
 
           old_duplicate_start = '''  async function duplicateUnit(unit) {\n    setOpenMenu(null); if (!unit) return\n    try {'''
@@ -68,6 +58,7 @@ jobs:
               text = text.replace(marker, duplicate_modal + marker, 1)
 
           path.write_text(text)
+          print('duplicateSource present:', 'duplicateSource' in text)
           PY
 
       - name: Commit change
@@ -79,5 +70,5 @@ jobs:
             echo "No changes needed"
             exit 0
           fi
-          git commit -m "fix: format window costs as rounded GBP"
+          git commit -m "fix: add duplicate unit location prompt"
           git push
