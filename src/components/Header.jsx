@@ -5,12 +5,14 @@ function Header({ page, setMobile }) {
   const pageTitle = {
     dashboard: "Dashboard",
     contracts: "Deals",
+    "rts-list": "RTS List",
     epvs: "EPVS Calculator",
   }[page]
 
   const pageSubtitle = {
     dashboard: "Overview of your deals",
     contracts: "Search and manage deals",
+    "rts-list": "Deals currently in the RTS sales stages",
     epvs: "Build and review an EPVS calculation",
   }[page]
 
