@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard"
 import MarketingTV from "./pages/MarketingTV"
 import MarketingDashboard from "./pages/MarketingDashboard"
 import Contracts from "./pages/Contracts"
+import RTSList from "./pages/RTSList"
 import CustomerDetail from "./pages/CustomerDetail"
 import Appointments from "./pages/Appointments"
 import AppointmentDetail from "./pages/AppointmentDetail"
@@ -315,6 +316,8 @@ function App() {
           <Tasks />
         ) : page === "contracts" ? (
           <Contracts filtered={filteredContracts} loading={loading} query={query} setQuery={handleSearchChange} status={status} setStatus={setStatus} setSelected={setSelected} page={contractsPage} pageSize={DEALS_PAGE_SIZE} hasMore={hasMoreContracts} onPreviousPage={() => loadContracts(Math.max(contractsPage - 1, 0), query, status)} onNextPage={() => loadContracts(contractsPage + 1, query, status)} />
+        ) : page === "rts-list" ? (
+          <RTSList deals={allDeals} loading={reportingLoading} setSelected={setSelected} />
         ) : page === "appointments" ? (
           <Appointments onSelectAppointment={handleAppointmentSelect} previewUser={previewUser} permissionLevel={effectivePermissionLevel} role={effectiveRole} />
         ) : page === "fitsheet" ? (
