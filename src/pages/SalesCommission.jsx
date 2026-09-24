@@ -46,9 +46,22 @@ export default function SalesCommission({deals=[],loading=false,setSelected,perm
   const filtered=useMemo(()=>{const search=query.trim().toLowerCase();return combined.filter(({deal,type})=>{const date=getCommissionDate(deal,type==="ADMIN"?"admin":"commission");if(rep!=="all"&&getRepName(deal)!==rep)return false;if(branch!=="all"&&getBranchName(deal)!==branch)return false;if(commissionDate!=="all"&&date!==commissionDate)return false;if(!search)return true;return [deal?.customer_name,deal?.name,deal?.contract_number,deal?.postcode,getRepName(deal),getBranchName(deal),type].filter(Boolean).join(" ").toLowerCase().includes(search)}).sort((a,b)=>{const ad=getCommissionDate(a.deal,a.type==="ADMIN"?"admin":"commission"),bd=getCommissionDate(b.deal,b.type==="ADMIN"?"admin":"commission");if(!ad&&!bd){const branchCompare=getBranchName(a.deal).localeCompare(getBranchName(b.deal));if(branchCompare)return branchCompare;const repCompare=getRepName(a.deal).localeCompare(getRepName(b.deal));if(repCompare)return repCompare;return a.type.localeCompare(b.type)}if(!ad)return 1;if(!bd)return -1;const dateCompare=ad.localeCompare(bd);if(dateCompare)return dateCompare;const branchCompare=getBranchName(a.deal).localeCompare(getBranchName(b.deal));if(branchCompare)return branchCompare;const repCompare=getRepName(a.deal).localeCompare(getRepName(b.deal));if(repCompare)return repCompare;return a.type.localeCompare(b.type)})},[combined,query,rep,branch,commissionDate])
   const totalCommission=filtered.reduce((total,{deal,type})=>total+(type==="COMMS"?(getCommission(deal)??0):0),0),totalAdmin=filtered.reduce((total,{deal,type})=>total+(type==="ADMIN"&&getAdminFee(deal)!=="query"?getAdminFee(deal):0),0),totalNetSalesValue=filtered.reduce((total,{deal,type})=>total+(type==="COMMS"?getNetSalesValue(deal):0),0)
   function handleExport() {
-    const rows=filtered.map(({deal,type})=>({Type:type,"Commission Date":getCommissionDate(deal,type==="ADMIN"?"admin":"commission")?formatDate(getCommissionDate(deal,type==="ADMIN"?"admin":"commission")):"Not Booked",Customer:deal?.customer_name||deal?.name||"Unnamed customer","Contract Number":deal?.contract_number||"", "Net Sales Value":type==="COMMS"?getNetSalesValue(deal):null,"Survey Costing":type==="COMMS"?getSurveyCosting(deal):null,Branch:getBranchName(deal),Rep:getRepName(deal),"Amount Due":type==="ADMIN"?(getAdminFee(deal)==="query"?"query":getAdminFee(deal)):(getCommission(deal)??null)}))
+    const rows=filtered.map(({deal,type})=>({
+      Type:type,
+      "Pipedrive Deal ID":deal?.pipedrive_deal_id||"",
+      Customer:deal?.customer_name||deal?.name||"Unnamed customer",
+      "Contract Number":deal?.contract_number||"",
+      "Net value":type==="COMMS"?getNetSalesValue(deal):null,
+      "Admin fee taken":type==="ADMIN"?(deal?.admin_fee_amount??null):null,
+      "Survey costing":type==="COMMS"?getSurveyCosting(deal):null,
+      Branch:getBranchName(deal),
+      Rep:getRepName(deal),
+      "Sales Manager":deal?.sales_manager||deal?.primary_sales_manager||"",
+      "Branch Manager":deal?.branch_manager||"",
+      "Amount Due":type==="ADMIN"?(getAdminFee(deal)==="query"?"query":getAdminFee(deal)):(getCommission(deal)??null)
+    }))
     const worksheet=XLSX.utils.json_to_sheet(rows)
-    worksheet["!cols"]=[{wch:10},{wch:18},{wch:28},{wch:18},{wch:18},{wch:18},{wch:24},{wch:24},{wch:16}]
+    worksheet["!cols"]=[{wch:10},{wch:20},{wch:28},{wch:18},{wch:16},{wch:18},{wch:18},{wch:24},{wch:24},{wch:24},{wch:24},{wch:16}]
     const workbook=XLSX.utils.book_new();XLSX.utils.book_append_sheet(workbook,worksheet,"Commissions")
     const datePart=commissionDate!=="all"?commissionDate:new Date().toISOString().slice(0,10)
     XLSX.writeFile(workbook,`Commissions-${datePart}.xlsx`)
