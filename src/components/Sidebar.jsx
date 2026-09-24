@@ -1,6 +1,6 @@
 import React from "react"
 import { createPortal } from "react-dom"
-import { LayoutDashboard, FileText, ChevronDown, ChevronRight, BarChart3, CalendarDays, Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck, Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound, MessageCircle, Files, UserCog, LogOut, ClipboardList, Lock, KanbanSquare, Presentation } from "lucide-react"
+import { LayoutDashboard, FileText, ChevronDown, ChevronRight, BarChart3, CalendarDays, Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck, Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound, MessageCircle, Files, UserCog, FileCheck, LogOut, ClipboardList, Lock, KanbanSquare, Presentation } from "lucide-react"
 import SalesPresentations from "../pages/SalesPresentations"
 
 function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel = 1, department = "" }) {
