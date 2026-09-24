@@ -5,7 +5,7 @@ import { formatDate, getInitials, money } from "../utils/formatters"
 const COMMISSION_FIELDS = ["commission", "commission_value", "commission_amount", "sales_commission", "salesperson_commission"]
 function getRepName(deal) { return deal?.salesperson || deal?.sales_rep || deal?.rep_name || deal?.rep_allocated || "Unallocated" }
 function getBranchName(deal) { return deal?.branch || deal?.branch_name || "Unallocated" }
-function getSaleValue(deal) { const value = deal?.net_value ?? deal?.netValue ?? deal?.net_amount ?? deal?.deal_value; const parsed = Number(String(value ?? "").replace(/[^0-9.-]/g, "")); return Number.isFinite(parsed) ? parsed : 0 }
+function getNetSalesValue(deal) { const value = deal?.net_value; const parsed = Number(String(value ?? "").replace(/[^0-9.-]/g, "")); return Number.isFinite(parsed) ? parsed : 0 }
 function getCommission(deal) { for (const field of COMMISSION_FIELDS) { if (deal?.[field] !== null && deal?.[field] !== undefined && deal?.[field] !== "") { const parsed = Number(String(deal[field]).replace(/[^0-9.-]/g, "")); if (Number.isFinite(parsed)) return parsed } } return 0 }
 function getCommissionDate(deal) {
   const installationStart = deal?.installation_start_date
@@ -25,7 +25,7 @@ function DealRow({ deal, setSelected }) {
     <div style={{display:"flex",alignItems:"center",gap:9,minWidth:0}}><div style={{width:30,height:30,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:"#e8f4fd",color:"#1676b8",fontSize:9,fontWeight:800}}>{getInitials(customer)}</div><div style={{minWidth:0}}><div style={{fontSize:11,fontWeight:700,color:"#263645",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{customer}</div><div style={{marginTop:3,fontSize:9,color:"#8a959d",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{deal?.contract_number || deal?.product || "No contract number"}</div></div></div>
     <div style={{display:"flex",alignItems:"center",gap:6,color:"#53616b",fontSize:10,minWidth:0}}><UserRound size={13}/><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{getRepName(deal)}</span></div>
     <div style={{fontSize:10,color:commissionDate ? "#53616b" : "#a0a8ae",fontStyle:commissionDate ? "normal" : "italic"}}>{commissionDate ? formatDate(commissionDate) : "Not Started"}</div>
-    <div style={{display:"flex",alignItems:"center",gap:5,color:"#263645",fontSize:10}}><PoundSterling size={13}/><strong>{money(getSaleValue(deal))}</strong></div>
+    <div style={{display:"flex",alignItems:"center",gap:5,color:"#263645",fontSize:10}}><PoundSterling size={13}/><strong>{money(getNetSalesValue(deal))}</strong></div>
     <div style={{fontSize:11,fontWeight:800,color:"#1676b8"}}>{money(getCommission(deal))}</div>
     <div style={{display:"flex",alignItems:"center",gap:5,color:"#66737d",fontSize:10}}><MapPin size={13}/><span>{getBranchName(deal)}</span></div>
     <div style={{display:"flex",justifyContent:"flex-end",color:"#9aa5ad"}}><ChevronRight size={17}/></div>
@@ -34,14 +34,14 @@ function DealRow({ deal, setSelected }) {
 
 function CommissionDateSection({ commissionDate, deals, setSelected }) {
   const commission = deals.reduce((total, deal) => total + getCommission(deal), 0)
-  const value = deals.reduce((total, deal) => total + getSaleValue(deal), 0)
+  const netSalesValue = deals.reduce((total, deal) => total + getNetSalesValue(deal), 0)
   const title = commissionDate ? formatDate(commissionDate) : "Not Started"
   return <div style={{border:"1px solid #e0e5e9",borderRadius:10,background:"#fff",overflow:"hidden",marginBottom:18}}>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 14px",background:"#f3f6f8",borderBottom:"1px solid #e0e5e9"}}>
       <div style={{display:"flex",alignItems:"center",gap:9}}><div style={{width:7,height:7,borderRadius:"50%",background:commissionDate ? "#2499ed" : "#a0a8ae"}}/><strong style={{fontSize:12,color:"#263645"}}>{title}</strong><span style={{fontSize:10,color:"#7b8790"}}>{deals.length} {deals.length===1?"deal":"deals"}</span></div>
-      <div style={{display:"flex",gap:18,alignItems:"center"}}><span style={{fontSize:10,color:"#7b8790"}}>Sales <strong style={{color:"#263645"}}>{money(value)}</strong></span><span style={{fontSize:11,fontWeight:800,color:"#1676b8"}}>Commission {money(commission)}</span></div>
+      <div style={{display:"flex",gap:18,alignItems:"center"}}><span style={{fontSize:10,color:"#7b8790"}}>Net Sales Value <strong style={{color:"#263645"}}>{money(netSalesValue)}</strong></span><span style={{fontSize:11,fontWeight:800,color:"#1676b8"}}>Commission {money(commission)}</span></div>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:columns,gap:12,alignItems:"center",padding:"9px 14px",background:"#fafbfc",borderBottom:"1px solid #e4e8eb",color:"#687782",fontSize:9,fontWeight:800,textTransform:"uppercase"}}><div>Customer</div><div>Sales Rep</div><div>Commission Date</div><div>Sale Value</div><div>Commission</div><div>Branch</div><div/></div>
+    <div style={{display:"grid",gridTemplateColumns:columns,gap:12,alignItems:"center",padding:"9px 14px",background:"#fafbfc",borderBottom:"1px solid #e4e8eb",color:"#687782",fontSize:9,fontWeight:800,textTransform:"uppercase"}}><div>Customer</div><div>Sales Rep</div><div>Commission Date</div><div>Net Sales Value</div><div>Commission</div><div>Branch</div><div/></div>
     {deals.map(deal=><DealRow key={deal?.id||deal?.deal_id} deal={deal} setSelected={setSelected}/>)}
   </div>
 }
