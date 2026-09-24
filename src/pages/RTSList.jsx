@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import { CalendarDays, ChevronRight, FileCheck, MapPin, PoundSterling, Search, UserRound, X } from "lucide-react"
 import { formatDate, getInitials, money } from "../utils/formatters"
+import { supabase } from "../lib/supabase"
 
 const RTS_STAGES = ["Awaiting Funds", "Returned To Sales", "Pending Cancellation", "Long Term"]
 
@@ -72,18 +73,52 @@ function BranchSection({ branch, deals, setSelected }) {
   )
 }
 
-export default function RTSList({ deals = [], loading = false, setSelected }) {
+export default function RTSList({ setSelected }) {
+  const [deals, setDeals] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
   const [query, setQuery] = useState("")
   const [stage, setStage] = useState("all")
 
-  const rtsDeals = useMemo(() => {
-    const allowed = new Set(RTS_STAGES.map(normalise))
-    return (deals || []).filter((deal) => allowed.has(normalise(deal?.pipedrive_stage)))
-  }, [deals])
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadRTSDeals() {
+      if (!supabase) {
+        setError("Supabase is not configured.")
+        setLoading(false)
+        return
+      }
+
+      setLoading(true)
+      setError("")
+
+      const { data, error: supabaseError } = await supabase
+        .from("deals")
+        .select("*")
+        .in("pipedrive_stage", RTS_STAGES)
+        .order("sale_date", { ascending: false })
+
+      if (cancelled) return
+
+      if (supabaseError) {
+        console.error("Error loading RTS deals:", supabaseError)
+        setError(supabaseError.message || "Unable to load RTS deals.")
+        setDeals([])
+      } else {
+        setDeals(data || [])
+      }
+
+      setLoading(false)
+    }
+
+    loadRTSDeals()
+    return () => { cancelled = true }
+  }, [])
 
   const filteredDeals = useMemo(() => {
     const search = query.trim().toLowerCase()
-    return rtsDeals.filter((deal) => {
+    return deals.filter((deal) => {
       const matchesStage = stage === "all" || normalise(deal?.pipedrive_stage) === normalise(stage)
       if (!matchesStage) return false
       if (!search) return true
@@ -93,7 +128,7 @@ export default function RTSList({ deals = [], loading = false, setSelected }) {
         deal?.branch, deal?.branch_name, deal?.pipedrive_stage,
       ].filter(Boolean).join(" ").toLowerCase().includes(search)
     })
-  }, [rtsDeals, query, stage])
+  }, [deals, query, stage])
 
   const totalValue = filteredDeals.reduce((total, deal) => total + getNetValue(deal), 0)
 
@@ -139,7 +174,7 @@ export default function RTSList({ deals = [], loading = false, setSelected }) {
         </select>
       </div>
 
-      {loading ? <div style={{ padding: 35, textAlign: "center", color: "#89939c", fontSize: 11, border: "1px solid #e0e5e9", borderRadius: 10, background: "#fff" }}>Loading RTS deals...</div> : !filteredDeals.length ? <div style={{ padding: 40, textAlign: "center", border: "1px solid #e0e5e9", borderRadius: 10, background: "#fff" }}><FileCheck size={30} color="#b3bdc5" /><div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: "#56636d" }}>No RTS deals found</div><div style={{ marginTop: 4, fontSize: 10, color: "#9aa5ad" }}>{query || stage !== "all" ? "Try changing your search or stage filter." : "There are currently no deals in the RTS stages."}</div></div> : <div>{branchGroups.map(([branch, branchDeals]) => <BranchSection key={branch} branch={branch} deals={branchDeals} setSelected={setSelected} />)}</div>}
+      {error ? <div style={{ padding: 35, textAlign: "center", color: "#8b3333", fontSize: 11, border: "1px solid #f0caca", borderRadius: 10, background: "#fff5f5" }}>{error}</div> : loading ? <div style={{ padding: 35, textAlign: "center", color: "#89939c", fontSize: 11, border: "1px solid #e0e5e9", borderRadius: 10, background: "#fff" }}>Loading RTS deals...</div> : !filteredDeals.length ? <div style={{ padding: 40, textAlign: "center", border: "1px solid #e0e5e9", borderRadius: 10, background: "#fff" }}><FileCheck size={30} color="#b3bdc5" /><div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: "#56636d" }}>No RTS deals found</div><div style={{ marginTop: 4, fontSize: 10, color: "#9aa5ad" }}>{query || stage !== "all" ? "Try changing your search or stage filter." : "There are currently no deals in the RTS stages."}</div></div> : <div>{branchGroups.map(([branch, branchDeals]) => <BranchSection key={branch} branch={branch} deals={branchDeals} setSelected={setSelected} />)}</div>}
     </section>
   )
 }
