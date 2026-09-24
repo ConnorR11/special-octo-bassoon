@@ -1,0 +1,84 @@
+name: Apply duplicate unit location prompt
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply-change:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update WindowCosting
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/WindowCosting.jsx')
+          text = path.read_text()
+
+          old_state = '''  const [units,setUnits] = useState([]), [showForm,setShowForm] = useState(false), [editingUnit,setEditingUnit] = useState(null), [openMenu,setOpenMenu] = useState(null)\n  const [form,setForm] = useState({...EMPTY_FORM}), [choices,setChoices] = useState([]), [loadingChoices,setLoadingChoices] = useState(false), [loadingUnits,setLoadingUnits] = useState(false), [saving,setSaving] = useState(false), [error,setError] = useState(""), [expandedUnits,setExpandedUnits] = useState({})'''
+          new_state = '''  const [units,setUnits] = useState([]), [showForm,setShowForm] = useState(false), [editingUnit,setEditingUnit] = useState(null), [openMenu,setOpenMenu] = useState(null)\n  const [duplicateSource,setDuplicateSource] = useState(null), [duplicateLocation,setDuplicateLocation] = useState("")\n  const [form,setForm] = useState({...EMPTY_FORM}), [choices,setChoices] = useState([]), [loadingChoices,setLoadingChoices] = useState(false), [loadingUnits,setLoadingUnits] = useState(false), [saving,setSaving] = useState(false), [error,setError] = useState(""), [expandedUnits,setExpandedUnits] = useState({})'''
+          if old_state not in text:
+              raise SystemExit('State block not found')
+          text = text.replace(old_state, new_state, 1)
+
+          old_close = '''  function closeForm() { if (saving) return; setShowForm(false); setEditingUnit(null); setForm({...EMPTY_FORM}); setError("") }\n  function toggleUnit(id) { setExpandedUnits(current => ({...current,[id]:!current[id]})) }'''
+          new_close = '''  function closeForm() { if (saving) return; setShowForm(false); setEditingUnit(null); setForm({...EMPTY_FORM}); setError("") }\n  function startDuplicateUnit(unit) {\n    setOpenMenu(null)\n    setDuplicateSource(unit || null)\n    setDuplicateLocation("")\n    setError("")\n  }\n  function closeDuplicateForm() {\n    if (saving) return\n    setDuplicateSource(null)\n    setDuplicateLocation("")\n    setError("")\n  }\n  function toggleUnit(id) { setExpandedUnits(current => ({...current,[id]:!current[id]})) }'''
+          if old_close not in text:
+              raise SystemExit('Close block not found')
+          text = text.replace(old_close, new_close, 1)
+
+          old_duplicate_start = '''  async function duplicateUnit(unit) {\n    setOpenMenu(null); if (!unit) return\n    try {'''
+          new_duplicate_start = '''  async function duplicateUnit(unit, location) {\n    if (!unit || !location?.trim()) return\n    setSaving(true)\n    try {'''
+          if old_duplicate_start not in text:
+              raise SystemExit('Duplicate function start not found')
+          text = text.replace(old_duplicate_start, new_duplicate_start, 1)
+
+          old_location = '''        appointment_id:String(appointmentId), location:(unit.location||"") + " (Copy)", created_date:new Date().toISOString(), created_by:user?.email||null,'''
+          new_location = '''        appointment_id:String(appointmentId), location:location.trim(), created_date:new Date().toISOString(), created_by:user?.email||null,'''
+          if old_location not in text:
+              raise SystemExit('Duplicate location block not found')
+          text = text.replace(old_location, new_location, 1)
+
+          old_end = '''      setUnits(current => [...current,mapDatabaseUnit(data,current.length)])\n    } catch (err) { console.error(err); setError(err?.message || "Unable to duplicate unit.") }\n  }'''
+          new_end = '''      setUnits(current => [...current,mapDatabaseUnit(data,current.length)])\n      setDuplicateSource(null)\n      setDuplicateLocation("")\n    } catch (err) { console.error(err); setError(err?.message || "Unable to duplicate unit.") } finally { setSaving(false) }\n  }'''
+          if old_end not in text:
+              raise SystemExit('Duplicate function end not found')
+          text = text.replace(old_end, new_end, 1)
+
+          old_button = '''<button type="button" onClick={() => duplicateUnit(unit)} style={{display:"block",width:"100%",padding:"9px 11px",border:0,borderRadius:"5px",background:"transparent",textAlign:"left",fontSize:"10px",color:"#333",cursor:"pointer"}}>Duplicate Unit</button>'''
+          new_button = '''<button type="button" onClick={() => startDuplicateUnit(unit)} style={{display:"block",width:"100%",padding:"9px 11px",border:0,borderRadius:"5px",background:"transparent",textAlign:"left",fontSize:"10px",color:"#333",cursor:"pointer"}}>Duplicate Unit</button>'''
+          if old_button not in text:
+              raise SystemExit('Duplicate button not found')
+          text = text.replace(old_button, new_button, 1)
+
+          marker = '''    {showForm && <div style={{position:"fixed",inset:0,zIndex:1100,background:"rgba(0,0,0,.35)",display:"flex",alignItems:"center",justifyContent:"center",padding:"20px"}}>'''
+          duplicate_modal = '''    {duplicateSource && <div style={{position:"fixed",inset:0,zIndex:1150,background:"rgba(0,0,0,.35)",display:"flex",alignItems:"center",justifyContent:"center",padding:"20px"}}>\n      <form onSubmit={event => { event.preventDefault(); if (!duplicateLocation.trim()) { setError("Please enter a location."); return } duplicateUnit(duplicateSource,duplicateLocation) }} style={{width:"420px",maxWidth:"100%",background:"#fff",borderRadius:"10px",boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}>\n        <div style={{padding:"17px 20px",borderBottom:"1px solid #e6e8ea"}}><h3 style={{margin:0,fontSize:"15px",color:"#222"}}>Duplicate Unit</h3><p style={{margin:"5px 0 0",fontSize:"10px",color:"#888"}}>Enter the location for the new unit.</p></div>\n        <div style={{padding:"20px"}}>\n          <Field label="Location" required><input value={duplicateLocation} onChange={event => { setDuplicateLocation(event.target.value); setError("") }} placeholder="e.g. Kitchen" style={inputStyle} autoFocus /></Field>\n          {error && <div style={{marginTop:"14px",padding:"9px 10px",borderRadius:"6px",background:"#fbeaea",color:"#8b3333",fontSize:"10px"}}>{error}</div>}\n        </div>\n        <div style={{display:"flex",justifyContent:"flex-end",gap:"8px",padding:"13px 20px",borderTop:"1px solid #e6e8ea",background:"#fafbfc"}}>\n          <button type="button" onClick={closeDuplicateForm} disabled={saving} style={{height:"34px",padding:"0 13px",border:"1px solid #d8dde1",borderRadius:"6px",background:"#fff",color:"#555",cursor:saving?"default":"pointer",fontFamily:"inherit",fontSize:"10px",fontWeight:600}}>Cancel</button>\n          <button type="submit" disabled={saving} style={{height:"34px",padding:"0 15px",border:0,borderRadius:"6px",background:saving?"#9acff5":"#2499ed",color:"#fff",cursor:saving?"default":"pointer",fontFamily:"inherit",fontSize:"10px",fontWeight:700}}>{saving?"Duplicating...":"Duplicate Unit"}</button>\n        </div>\n      </form>\n    </div>}\n\n'''
+          if marker not in text:
+              raise SystemExit('Form marker not found')
+          text = text.replace(marker, duplicate_modal + marker, 1)
+
+          path.write_text(text)
+          print('WindowCosting.jsx updated')
+          PY
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/WindowCosting.jsx
+          git diff --cached --quiet && exit 0
+          git commit -m "Add location prompt when duplicating units"
+          git push
+
+      - name: Remove temporary workflow
+        if: success()
+        run: |
+          git rm .github/workflows/apply-duplicate-unit-ui.yml
+          git commit -m "Remove temporary duplicate unit workflow"
+          git push
