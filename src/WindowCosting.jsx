@@ -16,7 +16,7 @@ const SIZE_MATRIX = {
   600:["A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","B","B","B"],
   700:["A","A","A","A","A","A","A","A","A","A","A","A","A","B","B","B","B","B","B","B","B"],
   800:["A","A","A","A","A","A","A","A","A","A","A","A","A","B","B","B","B","B","B","B","C"],
-  900:["A","A","A","A","A","A","A","A","A","A","B","B","B","B","B","B","B","B","B","C","C"],
+  900:["A","A","A","A","A","A","A","A","A","B","B","B","B","B","B","B","B","B","C","C"],
   1000:["A","A","A","A","A","B","B","B","B","B","B","B","B","B","B","B","C","C","C"],
   1100:["A","A","A","A","A","B","B","B","B","B","B","B","B","B","B","B","B","C","C","C"],
   1200:["A","A","A","A","A","B","B","B","B","B","B","B","B","B","B","C","C","C","C","D"],
@@ -85,7 +85,8 @@ function mapDatabaseUnit(row, index) {
     colourValue:row.colour_value != null ? Number(row.colour_value) : null, shapeValue:row.shape_value != null ? Number(row.shape_value) : null,
     finishValue:row.finish_value != null ? Number(row.finish_value) : null, styleValue:row.style_value != null ? Number(row.style_value) : null,
     glassValue:row.glass_value != null ? Number(row.glass_value) : null, fixOpenersValue:row.fix_openers_value != null ? Number(row.fix_openers_value) : null,
-    discountable:row.discountable != null ? Number(row.discountable) : null, nonDiscountable:row.non_discountable != null ? Number(row.non_discountable) : null
+    discountable:row.discountable != null ? Number(row.discountable) : null, nonDiscountable:row.non_discountable != null ? Number(row.non_discountable) : null,
+    unitCounts:row.unit_counts === true
   }
 }
 function Field({ label, required, children }) {
@@ -143,6 +144,15 @@ export default function WindowCosting({ appointment }) {
   function closeForm() { if (saving) return; setShowForm(false); setEditingUnit(null); setForm({...EMPTY_FORM}); setError("") }
   function toggleUnit(id) { setExpandedUnits(current => ({...current,[id]:!current[id]})) }
 
+  async function toggleUnitCount(unit) {
+    setOpenMenu(null)
+    if (!unit?.id) return
+    const nextValue = !unit.unitCounts
+    const { data, error: updateError } = await supabase.from("units").update({unit_counts:nextValue}).eq("UUID",unit.id).select("*").single()
+    if (updateError) { setError(updateError.message || "Unable to toggle unit."); return }
+    setUnits(current => current.map(item => item.id === unit.id ? mapDatabaseUnit(data,item.unitNumber-1) : item))
+  }
+
   async function saveUnit(event) {
     event.preventDefault(); if (saving) return
     if (!form.location.trim()) return setError("Please enter a location.")
@@ -164,7 +174,8 @@ export default function WindowCosting({ appointment }) {
         colour_choice:form.colour||null, shape_choice:form.shape||null, finish_choice:form.finish||null, style_choice:form.style||null, glass_choice:form.glass||null,
         handle_choice:form.handle||null, fixed_choice:form.unitType === "Window" ? String(Number(form.fixed)||0) : null, openers_choice:form.unitType === "Window" ? String(Number(form.openers)||0) : null,
         extras_choice:form.extras||null, colour_value:values.colourValue, shape_value:values.shapeValue, finish_value:values.finishValue, style_value:values.styleValue,
-        glass_value:values.glassValue, fix_openers_value:values.fixOpenersValue, discountable:values.discountable
+        glass_value:values.glassValue, fix_openers_value:values.fixOpenersValue, discountable:values.discountable,
+        unit_counts:editingUnit ? editingUnit.unitCounts : true
       }
       let result
       if (editingUnit) result = await supabase.from("units").update(data).eq("UUID",editingUnit.id).select("*").single()
@@ -185,7 +196,7 @@ export default function WindowCosting({ appointment }) {
         colour_choice:unit.colour||null, shape_choice:unit.shape||null, finish_choice:unit.finish||null, style_choice:unit.style||null, glass_choice:unit.glass||null,
         handle_choice:unit.handle||null, fixed_choice:String(unit.fixed||0), openers_choice:String(unit.openers||0), extras_choice:unit.extras||null,
         colour_value:unit.colourValue, shape_value:unit.shapeValue, finish_value:unit.finishValue, style_value:unit.styleValue, glass_value:unit.glassValue,
-        fix_openers_value:unit.fixOpenersValue, discountable:unit.discountable, non_discountable:unit.nonDiscountable, UUID:crypto.randomUUID()
+        fix_openers_value:unit.fixOpenersValue, discountable:unit.discountable, non_discountable:unit.nonDiscountable, unit_counts:true, UUID:crypto.randomUUID()
       }
       const { data,error:insertError } = await supabase.from("units").insert(copy).select("*").single()
       if (insertError) throw insertError
@@ -205,7 +216,7 @@ export default function WindowCosting({ appointment }) {
 
   const gridColumns = "1.2fr .9fr 1fr 1fr .9fr .45fr .45fr .8fr .9fr .9fr 30px 32px"
   const money = value => value != null && Number.isFinite(Number(value)) ? "£" + Math.round(Number(value)).toLocaleString("en-GB") : "—"
-  const totalDiscountable = units.reduce((total,unit) => total + (Number(unit.discountable)||0),0)
+  const totalDiscountable = units.reduce((total,unit) => unit.unitCounts ? total + (Number(unit.discountable)||0) : total,0)
   const totalNonDiscountable = units.reduce((total,unit) => total + (Number(unit.nonDiscountable)||0),0)
 
   return <section style={{width:"100%",marginTop:"24px"}}>
@@ -215,20 +226,21 @@ export default function WindowCosting({ appointment }) {
       <div style={{border:"1px solid #e2e5e8",borderRadius:"8px",background:"#fff",overflow:"visible"}}>
         <div style={{display:"grid",gridTemplateColumns:gridColumns,gap:"10px",alignItems:"center",padding:"10px 12px",borderBottom:"1px solid #e5e7e9",background:"#fafbfc",fontSize:"8px",fontWeight:700,color:"#6d757c",textTransform:"uppercase"}}><span>Location</span><span>Type</span><span>Size</span><span>Style</span><span>Colour</span><span>F</span><span>O</span><span>Size Choice</span><span>Discountable</span><span>NonDiscountable</span><span></span><span></span></div>
         {units.map(unit => {
-          const expanded = !!expandedUnits[unit.id], menuOpen = openMenu === unit.id
-          return <div key={unit.id} style={{borderBottom:"1px solid #eef0f2",position:"relative",zIndex:menuOpen?30:1}}>
-            <div style={{display:"grid",gridTemplateColumns:gridColumns,gap:"10px",alignItems:"center",padding:"11px 12px",fontSize:"10px",color:"#333",minHeight:"44px"}}>
-              <strong>{unit.location}</strong><span>{unit.unitType||"—"}</span><span>{unit.width} × {unit.height}</span><span>{unit.style||"—"}</span><span>{unit.colour||"—"}</span><span>{unit.fixed??0}</span><span>{unit.openers??0}</span><span>{unit.sizeChoice||"—"}</span><strong>{money(unit.discountable)}</strong><strong>{money(unit.nonDiscountable)}</strong>
+          const expanded = !!expandedUnits[unit.id], menuOpen = openMenu === unit.id, active = unit.unitCounts
+          return <div key={unit.id} style={{borderBottom:"1px solid #eef0f2",position:"relative",zIndex:menuOpen?30:1,background:active?"#fff":"#f1f3f5"}}>
+            <div style={{display:"grid",gridTemplateColumns:gridColumns,gap:"10px",alignItems:"center",padding:"11px 12px",fontSize:"10px",color:active?"#333":"#777",minHeight:"44px"}}>
+              <div style={{display:"flex",alignItems:"center",gap:"7px",minWidth:0}}><strong style={{color:active?"#222":"#70777d",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{unit.location}</strong><span style={{flexShrink:0,padding:"3px 6px",borderRadius:"999px",fontSize:"7px",fontWeight:800,letterSpacing:".3px",background:active?"#e7f6ed":"#e1e4e7",color:active?"#267345":"#6f767c"}}>{active?"TRUE":"FALSE"}</span></div>
+              <span>{unit.unitType||"—"}</span><span>{unit.width} × {unit.height}</span><span>{unit.style||"—"}</span><span>{unit.colour||"—"}</span><span>{unit.fixed??0}</span><span>{unit.openers??0}</span><span>{unit.sizeChoice||"—"}</span><strong>{money(unit.discountable)}</strong><strong>{money(unit.nonDiscountable)}</strong>
               <button type="button" onClick={() => toggleUnit(unit.id)} title={expanded ? "Collapse unit" : "Expand unit"} aria-expanded={expanded} style={{border:0,background:"transparent",color:"#707980",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,width:30,height:26}}><ChevronDown size={15} style={{transform:expanded?"rotate(0deg)":"rotate(-90deg)",transition:"transform .15s ease"}} /></button>
               <button type="button" onClick={() => setOpenMenu(menuOpen ? null : unit.id)} title="Unit actions" aria-expanded={menuOpen} style={{border:0,background:"transparent",color:menuOpen?"#2499ed":"#888",cursor:"pointer",fontSize:"16px",padding:0,width:32,height:26,lineHeight:1}}>⋯</button>
               {menuOpen && <div style={{position:"absolute",right:"12px",top:"47px",zIndex:50,minWidth:"175px",padding:"6px",background:"#fff",border:"1px solid #e1e5e8",borderRadius:"8px",boxShadow:"0 8px 24px rgba(0,0,0,.12)"}}>
                 <button type="button" onClick={() => openForm(unit)} style={{display:"block",width:"100%",padding:"9px 11px",border:0,borderRadius:"5px",background:"transparent",textAlign:"left",fontSize:"10px",color:"#333",cursor:"pointer"}}>Edit Unit</button>
-                <button type="button" onClick={() => { setOpenMenu(null); toggleUnit(unit.id) }} style={{display:"block",width:"100%",padding:"9px 11px",border:0,borderRadius:"5px",background:"transparent",textAlign:"left",fontSize:"10px",color:"#333",cursor:"pointer"}}>Toggle Unit</button>
+                <button type="button" onClick={() => toggleUnitCount(unit)} style={{display:"block",width:"100%",padding:"9px 11px",border:0,borderRadius:"5px",background:"transparent",textAlign:"left",fontSize:"10px",color:"#333",cursor:"pointer"}}>Toggle Unit</button>
                 <button type="button" onClick={() => duplicateUnit(unit)} style={{display:"block",width:"100%",padding:"9px 11px",border:0,borderRadius:"5px",background:"transparent",textAlign:"left",fontSize:"10px",color:"#333",cursor:"pointer"}}>Duplicate Unit</button>
                 <button type="button" onClick={() => deleteUnit(unit)} style={{display:"block",width:"100%",padding:"9px 11px",border:0,borderRadius:"5px",background:"transparent",textAlign:"left",fontSize:"10px",color:"#c23b3b",cursor:"pointer"}}>Delete Unit</button>
               </div>}
             </div>
-            {expanded && <div style={{padding:"14px 12px 16px",background:"#f8fafc",borderTop:"1px solid #eef0f2"}}><div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:"10px 18px"}}>{[["Dimensions",unit.width+" × "+unit.height+" mm"],["Location",unit.location],["Type",unit.unitType],["Size Choice",unit.sizeChoice],["Size Value",unit.sizeValue],["Colour",unit.colour],["Colour Value",unit.colourValue],["Shape",unit.shape],["Shape Value",unit.shapeValue],["Finish",unit.finish],["Finish Value",unit.finishValue],["Style",unit.style],["Style Value",unit.styleValue],["Glass",unit.glass],["Glass Value",unit.glassValue],["Handle",unit.handle],["Openers",unit.openers],["Fixed",unit.fixed],["Fix/Openers Value",unit.fixOpenersValue],["Extras",unit.extras],["Discountable",money(unit.discountable)],["NonDiscountable",money(unit.nonDiscountable)]].map(([label,value]) => <div key={label}><div style={{fontSize:"8px",fontWeight:700,textTransform:"uppercase",color:"#8a949c",marginBottom:"3px"}}>{label}</div><div style={{fontSize:"10px",fontWeight:600,color:"#333",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{value != null && value !== "" ? String(value) : "—"}</div></div>)}</div></div>}
+            {expanded && <div style={{padding:"14px 12px 16px",background:active?"#f8fafc":"#eceff1",borderTop:"1px solid #eef0f2"}}><div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:"10px 18px"}}>{[["Unit Counts",active?"TRUE":"FALSE"],["Dimensions",unit.width+" × "+unit.height+" mm"],["Location",unit.location],["Type",unit.unitType],["Size Choice",unit.sizeChoice],["Size Value",unit.sizeValue],["Colour",unit.colour],["Colour Value",unit.colourValue],["Shape",unit.shape],["Shape Value",unit.shapeValue],["Finish",unit.finish],["Finish Value",unit.finishValue],["Style",unit.style],["Style Value",unit.styleValue],["Glass",unit.glass],["Glass Value",unit.glassValue],["Handle",unit.handle],["Openers",unit.openers],["Fixed",unit.fixed],["Fix/Openers Value",unit.fixOpenersValue],["Extras",unit.extras],["Discountable",money(unit.discountable)],["NonDiscountable",money(unit.nonDiscountable)]].map(([label,value]) => <div key={label}><div style={{fontSize:"8px",fontWeight:700,textTransform:"uppercase",color:"#8a949c",marginBottom:"3px"}}>{label}</div><div style={{fontSize:"10px",fontWeight:600,color:"#333",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{value != null && value !== "" ? String(value) : "—"}</div></div>)}</div></div>}
           </div>
         })}
         <div style={{display:"grid",gridTemplateColumns:gridColumns,gap:"10px",alignItems:"center",padding:"12px",background:"#f4f7f9",borderTop:"2px solid #e2e5e8",fontSize:"10px",fontWeight:700,color:"#222"}}><span style={{gridColumn:"1 / span 8"}}>Total</span><strong>{money(totalDiscountable)}</strong><strong>{money(totalNonDiscountable)}</strong><span></span><span></span></div>
