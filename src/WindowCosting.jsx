@@ -16,7 +16,7 @@ const SIZE_MATRIX = {
   600:["A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","A","B","B","B"],
   700:["A","A","A","A","A","A","A","A","A","A","A","A","A","B","B","B","B","B","B","B","B"],
   800:["A","A","A","A","A","A","A","A","A","A","A","A","A","B","B","B","B","B","B","B","C"],
-  900:["A","A","A","A","A","A","A","A","A","B","B","B","B","B","B","B","B","B","C","C"],
+  900:["A","A","A","A","A","A","A","A","B","B","B","B","B","B","B","B","B","B","C","C"],
   1000:["A","A","A","A","A","B","B","B","B","B","B","B","B","B","B","B","C","C","C"],
   1100:["A","A","A","A","A","B","B","B","B","B","B","B","B","B","B","B","B","C","C","C"],
   1200:["A","A","A","A","A","B","B","B","B","B","B","B","B","B","B","C","C","C","C","D"],
@@ -210,7 +210,7 @@ export default function WindowCosting({ appointment }) {
         colour_choice:unit.colour||null, shape_choice:unit.shape||null, finish_choice:unit.finish||null, style_choice:unit.style||null, glass_choice:unit.glass||null,
         handle_choice:unit.handle||null, fixed_choice:String(unit.fixed||0), openers_choice:String(unit.openers||0), extras_choice:unit.extras||null,
         colour_value:unit.colourValue, shape_value:unit.shapeValue, finish_value:unit.finishValue, style_value:unit.styleValue, glass_value:unit.glassValue,
-        fix_openers_value:unit.fixOpenersValue, discountable:unit.discountable, non_discountable:unit.nonDiscountable, unit_counts:true, UUID:crypto.randomUUID()
+        fix_openers_value:unit.fixOpenersValue, discountable:unit.discountable, unit_counts:true, UUID:crypto.randomUUID()
       }
       const { data,error:insertError } = await supabase.from("units").insert(copy).select("*").single()
       if (insertError) throw insertError
@@ -237,7 +237,7 @@ export default function WindowCosting({ appointment }) {
 
   return <section style={{width:"100%",marginTop:"24px"}}>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"12px"}}><div><h2 style={{margin:0,fontSize:"18px",fontWeight:700,color:"#222"}}>Windows</h2><p style={{margin:"5px 0 0",fontSize:"11px",color:"#888"}}>Add and configure individual window units.</p></div><button type="button" onClick={() => openForm()} style={{height:"34px",padding:"0 14px",border:0,borderRadius:"7px",background:"#2499ed",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:"10px",fontWeight:700}}>+ Add Unit</button></div>
-    {error && !showForm && <div style={{marginBottom:"10px",padding:"9px 10px",borderRadius:"6px",background:"#fbeaea",color:"#8b3333",fontSize:"10px"}}>{error}</div>}
+    {error && !showForm && !duplicateSource && <div style={{marginBottom:"10px",padding:"9px 10px",borderRadius:"6px",background:"#fbeaea",color:"#8b3333",fontSize:"10px"}}>{error}</div>}
     {loadingUnits ? <div style={{padding:"24px",border:"1px dashed #d8dde1",borderRadius:"8px",background:"#fafbfc",textAlign:"center",fontSize:"10px",color:"#888"}}>Loading window units...</div> : units.length === 0 ? <div style={{padding:"24px",border:"1px dashed #d8dde1",borderRadius:"8px",background:"#fafbfc",textAlign:"center"}}><div style={{fontSize:"11px",fontWeight:700,color:"#555"}}>No window units added</div><div style={{marginTop:"4px",fontSize:"10px",color:"#999"}}>Click “Add Unit” to add the first window.</div></div> :
       <div style={{border:"1px solid #e2e5e8",borderRadius:"8px",background:"#fff",overflow:"visible"}}>
         <div style={{display:"grid",gridTemplateColumns:gridColumns,gap:"10px",alignItems:"center",padding:"10px 12px",borderBottom:"1px solid #e5e7e9",background:"#fafbfc",fontSize:"8px",fontWeight:700,color:"#6d757c",textTransform:"uppercase"}}><span>Location</span><span>Type</span><span>Size</span><span>Style</span><span>Colour</span><span>F</span><span>O</span><span>Size Choice</span><span>Discountable</span><span>NonDiscountable</span><span></span><span></span></div>
