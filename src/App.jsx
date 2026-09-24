@@ -128,6 +128,7 @@ function App() {
           .select("*")
           .not("pipedrive_stage", "in", "(Decline,Customer Cancelled)")
           .is("commission_paid_date", null)
+          .gte("sale_date", "2025-01-01")
           .order("installation_start_date", { ascending: true })
           .range(from, from + REPORTING_PAGE_SIZE - 1)
         if (supabaseError) throw supabaseError
