@@ -47,6 +47,7 @@ export default function SalesCommission({deals=[],loading=false,setSelected,perm
   const totalCommission=filtered.reduce((total,{deal,type})=>total+(type==="COMMS"?(getCommission(deal)??0):0),0),totalAdmin=filtered.reduce((total,{deal,type})=>total+(type==="ADMIN"&&getAdminFee(deal)!=="query"?getAdminFee(deal):0),0),totalNetSalesValue=filtered.reduce((total,{deal,type})=>total+(type==="COMMS"?getNetSalesValue(deal):0),0)
   function handleExport() {
     const rows=filtered.map(({deal,type})=>({
+      "Commission Date":(() => { const date=getCommissionDate(deal,type==="ADMIN"?"admin":"commission"); return date?formatDate(date):"Not Booked" })(),
       Type:type,
       "Pipedrive Deal ID":deal?.pipedrive_deal_id||"",
       Customer:deal?.customer_name||deal?.name||"Unnamed customer",
@@ -61,7 +62,7 @@ export default function SalesCommission({deals=[],loading=false,setSelected,perm
       "Amount Due":type==="ADMIN"?(getAdminFee(deal)==="query"?"query":getAdminFee(deal)):(getCommission(deal)??null)
     }))
     const worksheet=XLSX.utils.json_to_sheet(rows)
-    worksheet["!cols"]=[{wch:10},{wch:20},{wch:28},{wch:18},{wch:16},{wch:18},{wch:18},{wch:24},{wch:24},{wch:24},{wch:24},{wch:16}]
+    worksheet["!cols"]=[{wch:18},{wch:10},{wch:20},{wch:28},{wch:18},{wch:16},{wch:18},{wch:18},{wch:24},{wch:24},{wch:24},{wch:24},{wch:16}]
     const workbook=XLSX.utils.book_new();XLSX.utils.book_append_sheet(workbook,worksheet,"Commissions")
     const datePart=commissionDate!=="all"?commissionDate:new Date().toISOString().slice(0,10)
     XLSX.writeFile(workbook,`Commissions-${datePart}.xlsx`)
