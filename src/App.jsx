@@ -31,8 +31,10 @@ function App() {
   const [previewUser, setPreviewUser] = useState(null)
   const [contracts, setContracts] = useState([])
   const [allDeals, setAllDeals] = useState([])
+  const [commissionDeals, setCommissionDeals] = useState([])
   const [loading, setLoading] = useState(true)
   const [reportingLoading, setReportingLoading] = useState(true)
+  const [commissionLoading, setCommissionLoading] = useState(true)
   const [error, setError] = useState("")
   const [page, setPage] = useState("dashboard")
   const [mobile, setMobile] = useState(false)
@@ -115,7 +117,29 @@ function App() {
     } catch (err) { console.error("Error loading all deals for reporting:", err); setError(err?.message || "Unable to load deals for reporting."); setAllDeals([]) } finally { setReportingLoading(false) }
   }
 
-  useEffect(() => { if (!session) return; loadContracts(0, query, status); loadAllDealsForReporting() }, [session, previewUser?.id])
+  async function loadCommissionDeals() {
+    if (!supabase) return
+    setCommissionLoading(true)
+    try {
+      const results = []; let from = 0
+      while (true) {
+        const { data, error: supabaseError } = await supabase
+          .from("deals")
+          .select("*")
+          .not("pipedrive_stage", "is", null)
+          .neq("pipedrive_stage", "")
+          .order("installation_start_date", { ascending: true })
+          .range(from, from + REPORTING_PAGE_SIZE - 1)
+        if (supabaseError) throw supabaseError
+        const batch = data || []; results.push(...batch)
+        if (batch.length < REPORTING_PAGE_SIZE) break
+        from += REPORTING_PAGE_SIZE
+      }
+      setCommissionDeals(results)
+    } catch (err) { console.error("Error loading commission deals:", err); setError(err?.message || "Unable to load commission data."); setCommissionDeals([]) } finally { setCommissionLoading(false) }
+  }
+
+  useEffect(() => { if (!session) return; loadContracts(0, query, status); loadAllDealsForReporting(); loadCommissionDeals() }, [session, previewUser?.id])
 
   const filteredContracts = contracts
   const totalValue = allDeals.reduce((total, contract) => total + Number(contract.net_value || 0), 0)
@@ -124,7 +148,12 @@ function App() {
   const upcomingInstallations = allDeals.filter((contract) => contract.installation_date && contract.installation_date >= today).length
 
   function handleBackToDeals() { setSelected(null); setPage("contracts"); window.history.pushState({}, "", "/contracts") }
-  function handleDealUpdated(updatedDeal) { setContracts(current => current.map(contract => contract.id === updatedDeal.id ? updatedDeal : contract)); setAllDeals(current => current.map(contract => contract.id === updatedDeal.id ? updatedDeal : contract)); setSelected(updatedDeal) }
+  function handleDealUpdated(updatedDeal) {
+    setContracts(current => current.map(contract => contract.id === updatedDeal.id ? updatedDeal : contract))
+    setAllDeals(current => current.map(contract => contract.id === updatedDeal.id ? updatedDeal : contract))
+    setCommissionDeals(current => current.map(contract => contract.id === updatedDeal.id ? updatedDeal : contract))
+    setSelected(updatedDeal)
+  }
   function handlePageChange(newPage) {
     if ((newPage === "users" || newPage === "tasks") && !isAdministrator) return
     setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage(newPage)
@@ -175,7 +204,7 @@ function App() {
       {error && page !== "epvs" && <div className="error"><b>Database error</b><span>{error}</span></div>}
       {isAdministrator && page === "users" && <AdminUserPreview activeUser={previewUser} onStart={user => { setPreviewUser(user); setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("appointments"); window.history.pushState({}, "", "/appointments") }} onStop={async () => { setPreviewUser(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("users"); window.history.pushState({}, "", "/users") }}/>} 
       {isAdministrator && previewUser && page !== "users" && <AdminUserPreview activeUser={previewUser} onStart={() => {}} onStop={async () => { setPreviewUser(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("users"); window.history.pushState({}, "", "/users") }}/>} 
-      {pickupAppointment ? <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated}/> : selectedAppointment ? <div style={{position:"relative"}}><style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}</style><div style={{display:"flex",justifyContent:"flex-end",padding:"10px 24px 0",background:"#fff"}}><AppointmentActions appointment={selectedAppointment} permissionLevel={effectivePermissionLevel} role={effectiveRole} userEmail={effectiveUserEmail} onUpdated={handleAppointmentUpdated} onConfirmLegacy={handleLegacyConfirm} onResultLegacy={handleLegacyResult} onOpenPickup={handleOpenPickup}/></div><div className="appointment-detail-host"><AppointmentDetail appointment={selectedAppointment} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated} permissionLevel={effectivePermissionLevel}/></div></div> : selected ? <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated}/> : page === "dashboard" ? <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setSelected={setSelected}/> : page === "marketing-tv" ? <MarketingTV onSelectAppointment={handleAppointmentSelect}/> : page === "marketing-dashboard" ? <MarketingDashboard contracts={contracts} loading={loading} onSelectAppointment={handleAppointmentSelect}/> : page === "sales-kpi" ? <SalesKPI/> : page === "commissions" ? <SalesCommission deals={allDeals} loading={reportingLoading} setSelected={setSelected}/> : page === "users" && isAdministrator ? <Users/> : page === "tasks" && isAdministrator ? <Tasks/> : page === "contracts" ? <Contracts filtered={filteredContracts} loading={loading} query={query} setQuery={handleSearchChange} status={status} setStatus={setStatus} setSelected={setSelected} page={contractsPage} pageSize={DEALS_PAGE_SIZE} hasMore={hasMoreContracts} onPreviousPage={() => loadContracts(Math.max(contractsPage-1,0),query,status)} onNextPage={() => loadContracts(contractsPage+1,query,status)}/> : page === "rts-list" ? <RTSList deals={allDeals} loading={reportingLoading} setSelected={setSelected}/> : page === "appointments" ? <Appointments onSelectAppointment={handleAppointmentSelect} previewUser={previewUser} permissionLevel={effectivePermissionLevel} role={effectiveRole}/> : page === "fitsheet" ? <FitSheet contracts={allDeals} loading={reportingLoading} setSelected={setSelected} onSelectDeal={setSelected}/> : page === "epvs" ? <EPVSCalculator/> : <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setSelected={setSelected}/>} 
+      {pickupAppointment ? <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated}/> : selectedAppointment ? <div style={{position:"relative"}}><style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}</style><div style={{display:"flex",justifyContent:"flex-end",padding:"10px 24px 0",background:"#fff"}}><AppointmentActions appointment={selectedAppointment} permissionLevel={effectivePermissionLevel} role={effectiveRole} userEmail={effectiveUserEmail} onUpdated={handleAppointmentUpdated} onConfirmLegacy={handleLegacyConfirm} onResultLegacy={handleLegacyResult} onOpenPickup={handleOpenPickup}/></div><div className="appointment-detail-host"><AppointmentDetail appointment={selectedAppointment} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated} permissionLevel={effectivePermissionLevel}/></div></div> : selected ? <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated}/> : page === "dashboard" ? <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setSelected={setSelected}/> : page === "marketing-tv" ? <MarketingTV onSelectAppointment={handleAppointmentSelect}/> : page === "marketing-dashboard" ? <MarketingDashboard contracts={contracts} loading={loading} onSelectAppointment={handleAppointmentSelect}/> : page === "sales-kpi" ? <SalesKPI/> : page === "commissions" ? <SalesCommission deals={commissionDeals} loading={commissionLoading} setSelected={setSelected}/> : page === "users" && isAdministrator ? <Users/> : page === "tasks" && isAdministrator ? <Tasks/> : page === "contracts" ? <Contracts filtered={filteredContracts} loading={loading} query={query} setQuery={handleSearchChange} status={status} setStatus={setStatus} setSelected={setSelected} page={contractsPage} pageSize={DEALS_PAGE_SIZE} hasMore={hasMoreContracts} onPreviousPage={() => loadContracts(Math.max(contractsPage-1,0),query,status)} onNextPage={() => loadContracts(contractsPage+1,query,status)}/> : page === "rts-list" ? <RTSList deals={allDeals} loading={reportingLoading} setSelected={setSelected}/> : page === "appointments" ? <Appointments onSelectAppointment={handleAppointmentSelect} previewUser={previewUser} permissionLevel={effectivePermissionLevel} role={effectiveRole}/> : page === "fitsheet" ? <FitSheet contracts={allDeals} loading={reportingLoading} setSelected={setSelected} onSelectDeal={setSelected}/> : page === "epvs" ? <EPVSCalculator/> : <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setSelected={setSelected}/>} 
     </main>
   </div>
 }
