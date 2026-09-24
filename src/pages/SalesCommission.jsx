@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
-import { ChevronRight, MapPin, PoundSterling, Search, UserRound, X } from "lucide-react"
+import { ChevronRight, Download, MapPin, PoundSterling, Search, UserRound, X } from "lucide-react"
+import * as XLSX from "xlsx"
 import { supabase } from "../lib/supabase"
 import { formatDate, getInitials, money } from "../utils/formatters"
 
@@ -35,7 +36,7 @@ function DealRow({deal,setSelected,type}) {
     <div style={{display:"flex",justifyContent:"flex-end",color:"#9aa5ad"}}><ChevronRight size={17}/></div>
   </button>
 }
-export default function SalesCommission({deals=[],loading=false,setSelected}) {
+export default function SalesCommission({deals=[],loading=false,setSelected,permissionLevel=0}) {
   const [adminDeals,setAdminDeals]=useState([]),[adminLoading,setAdminLoading]=useState(false),[query,setQuery]=useState(""),[rep,setRep]=useState("all"),[branch,setBranch]=useState("all"),[commissionDate,setCommissionDate]=useState("all")
   useEffect(()=>{let cancelled=false;async function loadAdmin(){if(!supabase)return;setAdminLoading(true);const {data,error}=await supabase.from("deals").select("*").is("admin_fee_paid_out_date",null).not("pipedrive_stage","in","(Decline,Customer Cancelled)").gte("sale_date","2025-01-01").not("admin_fee_received_date","is",null).order("admin_fee_received_date",{ascending:true});if(cancelled)return;if(error){console.error("Error loading admin fee deals:",error);setAdminDeals([])}else setAdminDeals(data||[]);setAdminLoading(false)}loadAdmin();return()=>{cancelled=true}},[])
   const reps=useMemo(()=>Array.from(new Set([...deals,...adminDeals].map(getRepName))).sort((a,b)=>a.localeCompare(b)),[deals,adminDeals])
@@ -44,8 +45,16 @@ export default function SalesCommission({deals=[],loading=false,setSelected}) {
   const commissionDates=useMemo(()=>Array.from(new Set(combined.map(({deal,type})=>getCommissionDate(deal,type==="ADMIN"?"admin":"commission")).filter(Boolean))).sort((a,b)=>new Date(a)-new Date(b)),[combined])
   const filtered=useMemo(()=>{const search=query.trim().toLowerCase();return combined.filter(({deal,type})=>{const date=getCommissionDate(deal,type==="ADMIN"?"admin":"commission");if(rep!=="all"&&getRepName(deal)!==rep)return false;if(branch!=="all"&&getBranchName(deal)!==branch)return false;if(commissionDate!=="all"&&date!==commissionDate)return false;if(!search)return true;return [deal?.customer_name,deal?.name,deal?.contract_number,deal?.postcode,getRepName(deal),getBranchName(deal),type].filter(Boolean).join(" ").toLowerCase().includes(search)}).sort((a,b)=>{const ad=getCommissionDate(a.deal,a.type==="ADMIN"?"admin":"commission"),bd=getCommissionDate(b.deal,b.type==="ADMIN"?"admin":"commission");if(!ad&&!bd){const branchCompare=getBranchName(a.deal).localeCompare(getBranchName(b.deal));if(branchCompare)return branchCompare;const repCompare=getRepName(a.deal).localeCompare(getRepName(b.deal));if(repCompare)return repCompare;return a.type.localeCompare(b.type)}if(!ad)return 1;if(!bd)return -1;const dateCompare=ad.localeCompare(bd);if(dateCompare)return dateCompare;const branchCompare=getBranchName(a.deal).localeCompare(getBranchName(b.deal));if(branchCompare)return branchCompare;const repCompare=getRepName(a.deal).localeCompare(getRepName(b.deal));if(repCompare)return repCompare;return a.type.localeCompare(b.type)})},[combined,query,rep,branch,commissionDate])
   const totalCommission=filtered.reduce((total,{deal,type})=>total+(type==="COMMS"?(getCommission(deal)??0):0),0),totalAdmin=filtered.reduce((total,{deal,type})=>total+(type==="ADMIN"&&getAdminFee(deal)!=="query"?getAdminFee(deal):0),0),totalNetSalesValue=filtered.reduce((total,{deal,type})=>total+(type==="COMMS"?getNetSalesValue(deal):0),0)
+  function handleExport() {
+    const rows=filtered.map(({deal,type})=>({Type:type,"Commission Date":getCommissionDate(deal,type==="ADMIN"?"admin":"commission")?formatDate(getCommissionDate(deal,type==="ADMIN"?"admin":"commission")):"Not Booked",Customer:deal?.customer_name||deal?.name||"Unnamed customer","Contract Number":deal?.contract_number||"", "Net Sales Value":type==="COMMS"?getNetSalesValue(deal):null,"Survey Costing":type==="COMMS"?getSurveyCosting(deal):null,Branch:getBranchName(deal),Rep:getRepName(deal),"Amount Due":type==="ADMIN"?(getAdminFee(deal)==="query"?"query":getAdminFee(deal)):(getCommission(deal)??null)}))
+    const worksheet=XLSX.utils.json_to_sheet(rows)
+    worksheet["!cols"]=[{wch:10},{wch:18},{wch:28},{wch:18},{wch:18},{wch:18},{wch:24},{wch:24},{wch:16}]
+    const workbook=XLSX.utils.book_new();XLSX.utils.book_append_sheet(workbook,worksheet,"Commissions")
+    const datePart=commissionDate!=="all"?commissionDate:new Date().toISOString().slice(0,10)
+    XLSX.writeFile(workbook,`Commissions-${datePart}.xlsx`)
+  }
   return <section>
-    <h1 style={{margin:"0 0 18px",fontSize:24,fontWeight:800,color:"#263645"}}>Commissions</h1>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",margin:"0 0 18px"}}><h1 style={{margin:0,fontSize:24,fontWeight:800,color:"#263645"}}>Commissions</h1>{Number(permissionLevel)>=4&&<button type="button" onClick={handleExport} style={{display:"inline-flex",alignItems:"center",gap:8,height:40,padding:"0 14px",border:0,borderRadius:8,background:"#1676b8",color:"#fff",fontSize:11,fontWeight:800,cursor:"pointer"}}><Download size={15}/>Export Excel</button>}</div>
     <div style={{display:"flex",alignItems:"stretch",gap:10,marginBottom:16}}>
       <div style={{position:"relative",flex:"1 1 300px",minWidth:160}}><Search size={17} style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"#94a3b8"}}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search customer, contract, rep or branch..." style={{width:"100%",height:46,boxSizing:"border-box",border:"1px solid #d7dee8",borderRadius:9,padding:"10px 38px",fontSize:12,outline:"none"}}/>{query&&<button type="button" onClick={()=>setQuery("")} style={{position:"absolute",right:9,top:"50%",transform:"translateY(-50%)",border:0,background:"transparent",cursor:"pointer",color:"#64748b"}}><X size={15}/></button>}</div>
       <select value={commissionDate} onChange={e=>setCommissionDate(e.target.value)} style={{height:46,minWidth:165,border:"1px solid #d7dee8",borderRadius:9,background:"#fff",padding:"0 10px",fontSize:11}}><option value="all">All payment dates</option>{commissionDates.map(date=><option key={date} value={date}>{formatDate(date)}</option>)}</select>
