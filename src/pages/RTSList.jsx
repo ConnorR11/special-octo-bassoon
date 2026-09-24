@@ -148,18 +148,9 @@ export default function RTSList({ setSelected }) {
 
   return (
     <section>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <FileCheck size={24} color="#2499ed" />
-          <div>
-            <h1 style={{ margin: 0, fontSize: 22, color: "#222" }}>RTS List</h1>
-            <p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>Deals currently sitting in the RTS stages of the installation Kanban.</p>
-          </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ padding: "8px 11px", border: "1px solid #dfe5e9", borderRadius: 8, background: "#fff", fontSize: 11, color: "#66737d" }}><strong style={{ color: "#263645" }}>{filteredDeals.length}</strong> deals</div>
-          <div style={{ padding: "8px 11px", border: "1px solid #dfe5e9", borderRadius: 8, background: "#fff", fontSize: 11, color: "#66737d" }}><strong style={{ color: "#263645" }}>{money(totalValue)}</strong></div>
-        </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginBottom: 20 }}>
+        <div style={{ padding: "8px 11px", border: "1px solid #dfe5e9", borderRadius: 8, background: "#fff", fontSize: 11, color: "#66737d" }}><strong style={{ color: "#263645" }}>{filteredDeals.length}</strong> deals</div>
+        <div style={{ padding: "8px 11px", border: "1px solid #dfe5e9", borderRadius: 8, background: "#fff", fontSize: 11, color: "#66737d" }}><strong style={{ color: "#263645" }}>{money(totalValue)}</strong></div>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
