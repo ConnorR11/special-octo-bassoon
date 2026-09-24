@@ -10,10 +10,19 @@ function getCommission(deal) { for (const field of COMMISSION_FIELDS) { if (deal
 function getCommissionDate(deal) {
   const installationStart = deal?.installation_start_date
   if (!installationStart) return null
-  const date = new Date(`${String(installationStart).slice(0, 10)}T00:00:00`)
+
+  // Commission is paid on the Monday two weeks after the installation week.
+  // Start with the installation date, add 14 days, then move forward to the
+  // next Monday so the resulting date is always a Monday.
+  const parts = String(installationStart).slice(0, 10).split("-").map(Number)
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return null
+  const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + 14))
   if (Number.isNaN(date.getTime())) return null
-  const daysFromMonday = (date.getDay() + 6) % 7
-  date.setDate(date.getDate() - daysFromMonday + 21)
+
+  const day = date.getUTCDay()
+  const daysUntilNextMonday = day === 1 ? 7 : (8 - day) % 7 || 7
+  date.setUTCDate(date.getUTCDate() + daysUntilNextMonday)
+
   return date.toISOString().slice(0, 10)
 }
 const columns = "1.65fr 1.2fr 1.05fr 1fr 1fr 1fr 30px"
