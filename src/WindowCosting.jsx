@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
-import { ChevronDown, supabase } from "./lib/supabase"
+import { ChevronDown } from "lucide-react"
+import { supabase } from "./lib/supabase"
 
 const EMPTY_FORM = {
   location: "",
