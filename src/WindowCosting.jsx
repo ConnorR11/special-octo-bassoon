@@ -95,6 +95,7 @@ function Field({ label, required, children }) {
 
 export default function WindowCosting({ appointment }) {
   const [units,setUnits] = useState([]), [showForm,setShowForm] = useState(false), [editingUnit,setEditingUnit] = useState(null), [openMenu,setOpenMenu] = useState(null)
+  const [duplicateSource,setDuplicateSource] = useState(null), [duplicateLocation,setDuplicateLocation] = useState("")
   const [form,setForm] = useState({...EMPTY_FORM}), [choices,setChoices] = useState([]), [loadingChoices,setLoadingChoices] = useState(false), [loadingUnits,setLoadingUnits] = useState(false), [saving,setSaving] = useState(false), [error,setError] = useState(""), [expandedUnits,setExpandedUnits] = useState({})
   const isWindows = normalise(appointment?.job_type) === "windows"
   const appointmentId = appointment?.appointment_row_id ?? appointment?.appointment_id ?? appointment?.id
@@ -142,6 +143,18 @@ export default function WindowCosting({ appointment }) {
     setError(""); setShowForm(true)
   }
   function closeForm() { if (saving) return; setShowForm(false); setEditingUnit(null); setForm({...EMPTY_FORM}); setError("") }
+  function startDuplicateUnit(unit) {
+    setOpenMenu(null)
+    setDuplicateSource(unit || null)
+    setDuplicateLocation("")
+    setError("")
+  }
+  function closeDuplicateForm() {
+    if (saving) return
+    setDuplicateSource(null)
+    setDuplicateLocation("")
+    setError("")
+  }
   function toggleUnit(id) { setExpandedUnits(current => ({...current,[id]:!current[id]})) }
 
   async function toggleUnitCount(unit) {
@@ -186,12 +199,13 @@ export default function WindowCosting({ appointment }) {
     } catch (err) { console.error(err); setError(err?.message || "Unable to save unit.") } finally { setSaving(false) }
   }
 
-  async function duplicateUnit(unit) {
-    setOpenMenu(null); if (!unit) return
+  async function duplicateUnit(unit, location) {
+    if (!unit || !location?.trim()) return
+    setSaving(true)
     try {
       const { data:{user} } = await supabase.auth.getUser()
       const copy = {
-        appointment_id:String(appointmentId), location:(unit.location||"") + " (Copy)", created_date:new Date().toISOString(), created_by:user?.email||null,
+        appointment_id:String(appointmentId), location:location.trim(), created_date:new Date().toISOString(), created_by:user?.email||null,
         unit_type:unit.unitType, size_choice:unit.sizeChoice, height:unit.height, width:unit.width, size_value:unit.sizeValue,
         colour_choice:unit.colour||null, shape_choice:unit.shape||null, finish_choice:unit.finish||null, style_choice:unit.style||null, glass_choice:unit.glass||null,
         handle_choice:unit.handle||null, fixed_choice:String(unit.fixed||0), openers_choice:String(unit.openers||0), extras_choice:unit.extras||null,
@@ -201,7 +215,9 @@ export default function WindowCosting({ appointment }) {
       const { data,error:insertError } = await supabase.from("units").insert(copy).select("*").single()
       if (insertError) throw insertError
       setUnits(current => [...current,mapDatabaseUnit(data,current.length)])
-    } catch (err) { console.error(err); setError(err?.message || "Unable to duplicate unit.") }
+      setDuplicateSource(null)
+      setDuplicateLocation("")
+    } catch (err) { console.error(err); setError(err?.message || "Unable to duplicate unit.") } finally { setSaving(false) }
   }
 
   async function deleteUnit(unit) {
@@ -236,7 +252,7 @@ export default function WindowCosting({ appointment }) {
               {menuOpen && <div style={{position:"absolute",right:"12px",top:"47px",zIndex:50,minWidth:"175px",padding:"6px",background:"#fff",border:"1px solid #e1e5e8",borderRadius:"8px",boxShadow:"0 8px 24px rgba(0,0,0,.12)"}}>
                 <button type="button" onClick={() => openForm(unit)} style={{display:"block",width:"100%",padding:"9px 11px",border:0,borderRadius:"5px",background:"transparent",textAlign:"left",fontSize:"10px",color:"#333",cursor:"pointer"}}>Edit Unit</button>
                 <button type="button" onClick={() => toggleUnitCount(unit)} style={{display:"block",width:"100%",padding:"9px 11px",border:0,borderRadius:"5px",background:"transparent",textAlign:"left",fontSize:"10px",color:"#333",cursor:"pointer"}}>Toggle Unit</button>
-                <button type="button" onClick={() => duplicateUnit(unit)} style={{display:"block",width:"100%",padding:"9px 11px",border:0,borderRadius:"5px",background:"transparent",textAlign:"left",fontSize:"10px",color:"#333",cursor:"pointer"}}>Duplicate Unit</button>
+                <button type="button" onClick={() => startDuplicateUnit(unit)} style={{display:"block",width:"100%",padding:"9px 11px",border:0,borderRadius:"5px",background:"transparent",textAlign:"left",fontSize:"10px",color:"#333",cursor:"pointer"}}>Duplicate Unit</button>
                 <button type="button" onClick={() => deleteUnit(unit)} style={{display:"block",width:"100%",padding:"9px 11px",border:0,borderRadius:"5px",background:"transparent",textAlign:"left",fontSize:"10px",color:"#c23b3b",cursor:"pointer"}}>Delete Unit</button>
               </div>}
             </div>
@@ -246,6 +262,20 @@ export default function WindowCosting({ appointment }) {
         <div style={{display:"grid",gridTemplateColumns:gridColumns,gap:"10px",alignItems:"center",padding:"12px",background:"#f4f7f9",borderTop:"2px solid #e2e5e8",fontSize:"10px",fontWeight:700,color:"#222"}}><span style={{gridColumn:"1 / span 8"}}>Total</span><strong>{money(totalDiscountable)}</strong><strong>{money(totalNonDiscountable)}</strong><span></span><span></span></div>
       </div>
     }
+
+    {duplicateSource && <div style={{position:"fixed",inset:0,zIndex:1150,background:"rgba(0,0,0,.35)",display:"flex",alignItems:"center",justifyContent:"center",padding:"20px"}}>
+      <form onSubmit={event => { event.preventDefault(); if (!duplicateLocation.trim()) { setError("Please enter a location."); return } duplicateUnit(duplicateSource,duplicateLocation) }} style={{width:"420px",maxWidth:"100%",background:"#fff",borderRadius:"10px",boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}>
+        <div style={{padding:"17px 20px",borderBottom:"1px solid #e6e8ea"}}><h3 style={{margin:0,fontSize:"15px",color:"#222"}}>Duplicate Unit</h3><p style={{margin:"5px 0 0",fontSize:"10px",color:"#888"}}>Enter the location for the new unit.</p></div>
+        <div style={{padding:"20px"}}>
+          <Field label="Location" required><input value={duplicateLocation} onChange={event => { setDuplicateLocation(event.target.value); setError("") }} placeholder="e.g. Kitchen" style={inputStyle} autoFocus /></Field>
+          {error && <div style={{marginTop:"14px",padding:"9px 10px",borderRadius:"6px",background:"#fbeaea",color:"#8b3333",fontSize:"10px"}}>{error}</div>}
+        </div>
+        <div style={{display:"flex",justifyContent:"flex-end",gap:"8px",padding:"13px 20px",borderTop:"1px solid #e6e8ea",background:"#fafbfc"}}>
+          <button type="button" onClick={closeDuplicateForm} disabled={saving} style={{height:"34px",padding:"0 13px",border:"1px solid #d8dde1",borderRadius:"6px",background:"#fff",color:"#555",cursor:saving?"default":"pointer",fontFamily:"inherit",fontSize:"10px",fontWeight:600}}>Cancel</button>
+          <button type="submit" disabled={saving} style={{height:"34px",padding:"0 15px",border:0,borderRadius:"6px",background:saving?"#9acff5":"#2499ed",color:"#fff",cursor:saving?"default":"pointer",fontFamily:"inherit",fontSize:"10px",fontWeight:700}}>{saving?"Duplicating...":"Duplicate Unit"}</button>
+        </div>
+      </form>
+    </div>}
 
     {showForm && <div style={{position:"fixed",inset:0,zIndex:1100,background:"rgba(0,0,0,.35)",display:"flex",alignItems:"center",justifyContent:"center",padding:"20px"}}><form onSubmit={saveUnit} style={{width:"680px",maxWidth:"100%",maxHeight:"90vh",overflowY:"auto",background:"#fff",borderRadius:"10px",boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"17px 20px",borderBottom:"1px solid #e6e8ea"}}><div><h3 style={{margin:0,fontSize:"15px",color:"#222"}}>{editingUnit?"Edit Window Unit":"Add Window Unit"}</h3><p style={{margin:"4px 0 0",fontSize:"10px",color:"#888"}}>{editingUnit?"Update the details for this unit.":"Enter the details for this individual unit."}</p></div><button type="button" onClick={closeForm} disabled={saving} style={{border:0,background:"transparent",color:"#777",cursor:saving?"default":"pointer",fontSize:"20px",lineHeight:1}}>×</button></div>
