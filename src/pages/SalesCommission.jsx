@@ -68,10 +68,11 @@ export default function SalesCommission({ deals=[], loading=false, setSelected }
       return [deal?.customer_name,deal?.name,deal?.contract_number,deal?.postcode,getRepName(deal),getBranchName(deal)].filter(Boolean).join(" ").toLowerCase().includes(search)
     }).sort((a,b)=>{
       const ad=getCommissionDate(a), bd=getCommissionDate(b)
-      if(!ad&&!bd)return 0
+      if(!ad&&!bd)return getBranchName(a).localeCompare(getBranchName(b))
       if(!ad)return 1
       if(!bd)return -1
-      return new Date(ad)-new Date(bd)
+      const dateComparison = new Date(ad)-new Date(bd)
+      return dateComparison || getBranchName(a).localeCompare(getBranchName(b))
     })
   },[deals,query,rep,branch])
   const totalCommission=filtered.reduce((total,deal)=>total+getCommission(deal),0)
@@ -82,7 +83,13 @@ export default function SalesCommission({ deals=[], loading=false, setSelected }
       if(!map.has(key))map.set(key,[])
       map.get(key).push(deal)
     })
-    return Array.from(map.entries()).sort(([a],[b])=>{
+    return Array.from(map.entries()).map(([key, group]) => [key, [...group].sort((a,b) => {
+      const branchComparison = getBranchName(a).localeCompare(getBranchName(b))
+      if (branchComparison) return branchComparison
+      const customerA = a?.customer_name || a?.name || "Unnamed customer"
+      const customerB = b?.customer_name || b?.name || "Unnamed customer"
+      return customerA.localeCompare(customerB)
+    })]).sort(([a],[b])=>{
       if(a==="not-started")return 1
       if(b==="not-started")return -1
       return new Date(a)-new Date(b)
