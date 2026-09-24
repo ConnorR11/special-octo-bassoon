@@ -5,43 +5,24 @@ import { supabase } from "../lib/supabase"
 
 const RTS_STAGES = ["Awaiting Funds", "Returned To Sales", "Pending Cancellation", "Long Term", "On Hold"]
 
-function normalise(value) {
-  return String(value || "").trim().toLowerCase()
-}
-
-function getRepName(deal) {
-  return deal?.salesperson || deal?.sales_rep || deal?.rep_name || deal?.rep_allocated || "Unallocated"
-}
-
-function getBranchName(deal) {
-  return deal?.branch || deal?.branch_name || "Unallocated"
-}
-
+function normalise(value) { return String(value || "").trim().toLowerCase() }
+function getRepName(deal) { return deal?.salesperson || deal?.sales_rep || deal?.rep_name || deal?.rep_allocated || "Unallocated" }
+function getBranchName(deal) { return deal?.branch || deal?.branch_name || "Unallocated" }
 function getNetValue(deal) {
   const value = deal?.net_value ?? deal?.netValue ?? deal?.net_amount ?? deal?.deal_value
   const parsed = Number(String(value ?? "").replace(/[^0-9.-]/g, ""))
   return Number.isFinite(parsed) ? parsed : 0
 }
-
-function getDealDate(deal) {
-  return deal?.sale_date || deal?.appointment_date || deal?.created_at
-}
+function getDealDate(deal) { return deal?.sale_date || deal?.appointment_date || deal?.created_at }
 
 const columns = "1.7fr 1.25fr 1.1fr 1fr .9fr .95fr 30px"
 
 function DealRow({ deal, setSelected }) {
   const customer = deal?.customer_name || deal?.name || "Unnamed customer"
   const currentStage = RTS_STAGES.find((item) => normalise(item) === normalise(deal?.pipedrive_stage)) || deal?.pipedrive_stage || "—"
-
   return (
     <button key={deal?.id || deal?.deal_id} type="button" onClick={() => setSelected?.(deal)} style={{ width: "100%", display: "grid", gridTemplateColumns: columns, gap: 12, alignItems: "center", padding: "13px 14px", border: 0, borderBottom: "1px solid #eef1f3", background: "#fff", textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
-        <div style={{ width: 30, height: 30, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto", background: "#e8f4fd", color: "#1676b8", fontSize: 9, fontWeight: 800 }}>{getInitials(customer)}</div>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#263645", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{customer}</div>
-          <div style={{ marginTop: 3, fontSize: 9, color: "#8a959d", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{deal?.contract_number || deal?.product || "No contract number"}</div>
-        </div>
-      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}><div style={{ width: 30, height: 30, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto", background: "#e8f4fd", color: "#1676b8", fontSize: 9, fontWeight: 800 }}>{getInitials(customer)}</div><div style={{ minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 700, color: "#263645", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{customer}</div><div style={{ marginTop: 3, fontSize: 9, color: "#8a959d", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{deal?.contract_number || deal?.product || "No contract number"}</div></div></div>
       <div><span style={{ display: "inline-flex", alignItems: "center", maxWidth: "100%", padding: "5px 8px", borderRadius: 12, background: currentStage === "On Hold" ? "#f1f5f9" : "#e0f2fe", color: currentStage === "On Hold" ? "#475569" : "#075985", fontSize: 9, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{currentStage}</span></div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#53616b", fontSize: 10, minWidth: 0 }}><UserRound size={13} /><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getRepName(deal)}</span></div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#53616b", fontSize: 10 }}><CalendarDays size={13} /><span>{getDealDate(deal) ? formatDate(getDealDate(deal)) : "—"}</span></div>
@@ -54,13 +35,9 @@ function DealRow({ deal, setSelected }) {
 
 function BranchSection({ branch, deals, setSelected }) {
   const branchValue = deals.reduce((total, deal) => total + getNetValue(deal), 0)
-
   return (
     <div style={{ border: "1px solid #e0e5e9", borderRadius: 10, background: "#fff", overflow: "hidden", marginBottom: 18 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 14px", background: "#f3f6f8", borderBottom: "1px solid #e0e5e9" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 9 }}><div style={{ width: 7, height: 7, borderRadius: "50%", background: "#2499ed" }} /><strong style={{ fontSize: 12, color: "#263645" }}>{branch}</strong><span style={{ fontSize: 10, color: "#7b8790" }}>{deals.length} {deals.length === 1 ? "deal" : "deals"}</span></div>
-        <strong style={{ fontSize: 11, color: "#263645" }}>{money(branchValue)}</strong>
-      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 14px", background: "#f3f6f8", borderBottom: "1px solid #e0e5e9" }}><div style={{ display: "flex", alignItems: "center", gap: 9 }}><div style={{ width: 7, height: 7, borderRadius: "50%", background: "#2499ed" }} /><strong style={{ fontSize: 12, color: "#263645" }}>{branch}</strong><span style={{ fontSize: 10, color: "#7b8790" }}>{deals.length} {deals.length === 1 ? "deal" : "deals"}</span></div><strong style={{ fontSize: 11, color: "#263645" }}>{money(branchValue)}</strong></div>
       <div style={{ display: "grid", gridTemplateColumns: columns, gap: 12, alignItems: "center", padding: "9px 14px", background: "#fafbfc", borderBottom: "1px solid #e4e8eb", color: "#687782", fontSize: 9, fontWeight: 800, textTransform: "uppercase" }}><div>Customer</div><div>RTS Stage</div><div>Sales Rep</div><div>Sale Date</div><div>Value</div><div>Postcode</div><div /></div>
       {deals.map((deal) => <DealRow key={deal?.id || deal?.deal_id} deal={deal} setSelected={setSelected} />)}
     </div>
@@ -79,7 +56,7 @@ export default function RTSList({ setSelected }) {
     async function loadRTSDeals() {
       if (!supabase) { setError("Supabase is not configured."); setLoading(false); return }
       setLoading(true); setError("")
-      const { data, error: supabaseError } = await supabase.from("deals").select("*").in("pipedrive_stage", RTS_STAGES).order("sale_date", { ascending: false })
+      const { data, error: supabaseError } = await supabase.from("deals").select("*").in("pipedrive_stage", RTS_STAGES).order("sale_date", { ascending: true, nullsFirst: false })
       if (cancelled) return
       if (supabaseError) { console.error("Error loading RTS deals:", supabaseError); setError(supabaseError.message || "Unable to load RTS deals."); setDeals([]) } else setDeals(data || [])
       setLoading(false)
