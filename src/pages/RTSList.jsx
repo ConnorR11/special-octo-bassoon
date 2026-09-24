@@ -4,6 +4,13 @@ import { formatDate, getInitials, money } from "../utils/formatters"
 import { supabase } from "../lib/supabase"
 
 const RTS_STAGES = ["Awaiting Funds", "Returned To Sales", "Pending Cancellation", "Long Term", "On Hold"]
+const STAGE_TAGS = {
+  "Awaiting Funds": { background: "#fef3c7", color: "#92400e" },
+  "Returned To Sales": { background: "#dbeafe", color: "#1d4ed8" },
+  "Pending Cancellation": { background: "#fee2e2", color: "#b91c1c" },
+  "Long Term": { background: "#ede9fe", color: "#6d28d9" },
+  "On Hold": { background: "#e2e8f0", color: "#475569" },
+}
 
 function normalise(value) { return String(value || "").trim().toLowerCase() }
 function getRepName(deal) { return deal?.salesperson || deal?.sales_rep || deal?.rep_name || deal?.rep_allocated || "Unallocated" }
@@ -20,10 +27,11 @@ const columns = "1.7fr 1.25fr 1.1fr 1fr .9fr .95fr 30px"
 function DealRow({ deal, setSelected }) {
   const customer = deal?.customer_name || deal?.name || "Unnamed customer"
   const currentStage = RTS_STAGES.find((item) => normalise(item) === normalise(deal?.pipedrive_stage)) || deal?.pipedrive_stage || "—"
+  const stageTag = STAGE_TAGS[currentStage] || { background: "#e0f2fe", color: "#075985" }
   return (
     <button key={deal?.id || deal?.deal_id} type="button" onClick={() => setSelected?.(deal)} style={{ width: "100%", display: "grid", gridTemplateColumns: columns, gap: 12, alignItems: "center", padding: "13px 14px", border: 0, borderBottom: "1px solid #eef1f3", background: "#fff", textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}><div style={{ width: 30, height: 30, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto", background: "#e8f4fd", color: "#1676b8", fontSize: 9, fontWeight: 800 }}>{getInitials(customer)}</div><div style={{ minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 700, color: "#263645", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{customer}</div><div style={{ marginTop: 3, fontSize: 9, color: "#8a959d", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{deal?.contract_number || deal?.product || "No contract number"}</div></div></div>
-      <div><span style={{ display: "inline-flex", alignItems: "center", maxWidth: "100%", padding: "5px 8px", borderRadius: 12, background: currentStage === "On Hold" ? "#f1f5f9" : "#e0f2fe", color: currentStage === "On Hold" ? "#475569" : "#075985", fontSize: 9, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{currentStage}</span></div>
+      <div><span style={{ display: "inline-flex", alignItems: "center", maxWidth: "100%", padding: "5px 8px", borderRadius: 12, background: stageTag.background, color: stageTag.color, fontSize: 9, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{currentStage}</span></div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#53616b", fontSize: 10, minWidth: 0 }}><UserRound size={13} /><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getRepName(deal)}</span></div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#53616b", fontSize: 10 }}><CalendarDays size={13} /><span>{getDealDate(deal) ? formatDate(getDealDate(deal)) : "—"}</span></div>
       <div style={{ display: "flex", alignItems: "center", gap: 5, color: "#263645", fontSize: 10 }}><PoundSterling size={13} /><strong>{money(getNetValue(deal))}</strong></div>
