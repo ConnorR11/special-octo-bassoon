@@ -17,12 +17,12 @@ const SIZE_MATRIX = {
   700:["A","A","A","A","A","A","A","A","A","A","A","A","A","B","B","B","B","B","B","B","B"],
   800:["A","A","A","A","A","A","A","A","A","A","A","A","A","B","B","B","B","B","B","B","C"],
   900:["A","A","A","A","A","A","A","A","A","A","B","B","B","B","B","B","B","B","B","C","C"],
-  1000:["A","A","A","A","A","B","B","B","B","B","B","B","B","B","B","B","B","C","C","C"],
+  1000:["A","A","A","A","A","B","B","B","B","B","B","B","B","B","B","B","C","C","C"],
   1100:["A","A","A","A","A","B","B","B","B","B","B","B","B","B","B","B","B","C","C","C"],
   1200:["A","A","A","A","A","B","B","B","B","B","B","B","B","B","B","C","C","C","C","D"],
   1300:["A","A","A","A","A","B","B","B","B","B","B","B","B","C","C","C","C","C","C","C","D"],
   1400:["A","A","A","A","A","B","B","B","B","B","C","C","C","C","C","C","C","C","C","C","D"],
-  1500:["A","A","A","A","B","B","B","B","B","C","C","C","C","C","C","D","D","D","D"],
+  1500:["A","A","A","A","B","B","B","B","B","C","C","C","C","C","D","D","D","D"],
   1600:["A","A","A","A","B","B","B","B","B","C","C","C","C","C","D","D","D","D","D","E"],
   1700:["A","A","A","B","B","B","B","B","B","C","C","C","C","C","D","D","D","D","D","E"],
   1800:["A","A","A","B","B","B","B","B","C","C","C","C","C","C","D","D","D","D","D","E","E"],
@@ -207,33 +207,31 @@ export default function WindowCosting({ appointment }) {
   const money = value => value != null && Number.isFinite(Number(value)) ? "£" + Math.round(Number(value)).toLocaleString("en-GB") : "—"
   const totalDiscountable = units.reduce((total,unit) => total + (Number(unit.discountable)||0),0)
   const totalNonDiscountable = units.reduce((total,unit) => total + (Number(unit.nonDiscountable)||0),0)
-  const grandTotal = totalDiscountable + totalNonDiscountable
 
   return <section style={{width:"100%",marginTop:"24px"}}>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"12px"}}><div><h2 style={{margin:0,fontSize:"18px",fontWeight:700,color:"#222"}}>Windows</h2><p style={{margin:"5px 0 0",fontSize:"11px",color:"#888"}}>Add and configure individual window units.</p></div><button type="button" onClick={() => openForm()} style={{height:"34px",padding:"0 14px",border:0,borderRadius:"7px",background:"#2499ed",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:"10px",fontWeight:700}}>+ Add Unit</button></div>
     {error && !showForm && <div style={{marginBottom:"10px",padding:"9px 10px",borderRadius:"6px",background:"#fbeaea",color:"#8b3333",fontSize:"10px"}}>{error}</div>}
     {loadingUnits ? <div style={{padding:"24px",border:"1px dashed #d8dde1",borderRadius:"8px",background:"#fafbfc",textAlign:"center",fontSize:"10px",color:"#888"}}>Loading window units...</div> : units.length === 0 ? <div style={{padding:"24px",border:"1px dashed #d8dde1",borderRadius:"8px",background:"#fafbfc",textAlign:"center"}}><div style={{fontSize:"11px",fontWeight:700,color:"#555"}}>No window units added</div><div style={{marginTop:"4px",fontSize:"10px",color:"#999"}}>Click “Add Unit” to add the first window.</div></div> :
-      <div style={{border:"1px solid #e2e5e8",borderRadius:"8px",background:"#fff",overflow:"hidden"}}>
+      <div style={{border:"1px solid #e2e5e8",borderRadius:"8px",background:"#fff",overflow:"visible"}}>
         <div style={{display:"grid",gridTemplateColumns:gridColumns,gap:"10px",alignItems:"center",padding:"10px 12px",borderBottom:"1px solid #e5e7e9",background:"#fafbfc",fontSize:"8px",fontWeight:700,color:"#6d757c",textTransform:"uppercase"}}><span>Location</span><span>Type</span><span>Size</span><span>Style</span><span>Colour</span><span>F</span><span>O</span><span>Size Choice</span><span>Discountable</span><span>NonDiscountable</span><span></span><span></span></div>
         {units.map(unit => {
           const expanded = !!expandedUnits[unit.id], menuOpen = openMenu === unit.id
-          return <div key={unit.id} style={{borderBottom:"1px solid #eef0f2",position:"relative"}}>
-            <div style={{display:"grid",gridTemplateColumns:gridColumns,gap:"10px",alignItems:"center",padding:"11px 12px",fontSize:"10px",color:"#333"}}>
+          return <div key={unit.id} style={{borderBottom:"1px solid #eef0f2",position:"relative",zIndex:menuOpen?30:1}}>
+            <div style={{display:"grid",gridTemplateColumns:gridColumns,gap:"10px",alignItems:"center",padding:"11px 12px",fontSize:"10px",color:"#333",minHeight:"44px"}}>
               <strong>{unit.location}</strong><span>{unit.unitType||"—"}</span><span>{unit.width} × {unit.height}</span><span>{unit.style||"—"}</span><span>{unit.colour||"—"}</span><span>{unit.fixed??0}</span><span>{unit.openers??0}</span><span>{unit.sizeChoice||"—"}</span><strong>{money(unit.discountable)}</strong><strong>{money(unit.nonDiscountable)}</strong>
               <button type="button" onClick={() => toggleUnit(unit.id)} title={expanded ? "Collapse unit" : "Expand unit"} aria-expanded={expanded} style={{border:0,background:"transparent",color:"#707980",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,width:30,height:26}}><ChevronDown size={15} style={{transform:expanded?"rotate(0deg)":"rotate(-90deg)",transition:"transform .15s ease"}} /></button>
               <button type="button" onClick={() => setOpenMenu(menuOpen ? null : unit.id)} title="Unit actions" aria-expanded={menuOpen} style={{border:0,background:"transparent",color:menuOpen?"#2499ed":"#888",cursor:"pointer",fontSize:"16px",padding:0,width:32,height:26,lineHeight:1}}>⋯</button>
-              {menuOpen && <div style={{position:"absolute",right:"12px",top:"43px",zIndex:20,minWidth:"155px",padding:"5px",background:"#fff",border:"1px solid #e1e5e8",borderRadius:"8px",boxShadow:"0 8px 24px rgba(0,0,0,.12)"}}>
-                <button type="button" onClick={() => openForm(unit)} style={{display:"block",width:"100%",padding:"8px 10px",border:0,borderRadius:"5px",background:"transparent",textAlign:"left",fontSize:"10px",color:"#333",cursor:"pointer"}}>Edit Unit</button>
-                <button type="button" onClick={() => { setOpenMenu(null); toggleUnit(unit.id) }} style={{display:"block",width:"100%",padding:"8px 10px",border:0,borderRadius:"5px",background:"transparent",textAlign:"left",fontSize:"10px",color:"#333",cursor:"pointer"}}>Toggle Unit</button>
-                <button type="button" onClick={() => duplicateUnit(unit)} style={{display:"block",width:"100%",padding:"8px 10px",border:0,borderRadius:"5px",background:"transparent",textAlign:"left",fontSize:"10px",color:"#333",cursor:"pointer"}}>Duplicate Unit</button>
-                <button type="button" onClick={() => deleteUnit(unit)} style={{display:"block",width:"100%",padding:"8px 10px",border:0,borderRadius:"5px",background:"transparent",textAlign:"left",fontSize:"10px",color:"#c23b3b",cursor:"pointer"}}>Delete Unit</button>
+              {menuOpen && <div style={{position:"absolute",right:"12px",top:"47px",zIndex:50,minWidth:"175px",padding:"6px",background:"#fff",border:"1px solid #e1e5e8",borderRadius:"8px",boxShadow:"0 8px 24px rgba(0,0,0,.12)"}}>
+                <button type="button" onClick={() => openForm(unit)} style={{display:"block",width:"100%",padding:"9px 11px",border:0,borderRadius:"5px",background:"transparent",textAlign:"left",fontSize:"10px",color:"#333",cursor:"pointer"}}>Edit Unit</button>
+                <button type="button" onClick={() => { setOpenMenu(null); toggleUnit(unit.id) }} style={{display:"block",width:"100%",padding:"9px 11px",border:0,borderRadius:"5px",background:"transparent",textAlign:"left",fontSize:"10px",color:"#333",cursor:"pointer"}}>Toggle Unit</button>
+                <button type="button" onClick={() => duplicateUnit(unit)} style={{display:"block",width:"100%",padding:"9px 11px",border:0,borderRadius:"5px",background:"transparent",textAlign:"left",fontSize:"10px",color:"#333",cursor:"pointer"}}>Duplicate Unit</button>
+                <button type="button" onClick={() => deleteUnit(unit)} style={{display:"block",width:"100%",padding:"9px 11px",border:0,borderRadius:"5px",background:"transparent",textAlign:"left",fontSize:"10px",color:"#c23b3b",cursor:"pointer"}}>Delete Unit</button>
               </div>}
             </div>
             {expanded && <div style={{padding:"14px 12px 16px",background:"#f8fafc",borderTop:"1px solid #eef0f2"}}><div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:"10px 18px"}}>{[["Dimensions",unit.width+" × "+unit.height+" mm"],["Location",unit.location],["Type",unit.unitType],["Size Choice",unit.sizeChoice],["Size Value",unit.sizeValue],["Colour",unit.colour],["Colour Value",unit.colourValue],["Shape",unit.shape],["Shape Value",unit.shapeValue],["Finish",unit.finish],["Finish Value",unit.finishValue],["Style",unit.style],["Style Value",unit.styleValue],["Glass",unit.glass],["Glass Value",unit.glassValue],["Handle",unit.handle],["Openers",unit.openers],["Fixed",unit.fixed],["Fix/Openers Value",unit.fixOpenersValue],["Extras",unit.extras],["Discountable",money(unit.discountable)],["NonDiscountable",money(unit.nonDiscountable)]].map(([label,value]) => <div key={label}><div style={{fontSize:"8px",fontWeight:700,textTransform:"uppercase",color:"#8a949c",marginBottom:"3px"}}>{label}</div><div style={{fontSize:"10px",fontWeight:600,color:"#333",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{value != null && value !== "" ? String(value) : "—"}</div></div>)}</div></div>}
           </div>
         })}
         <div style={{display:"grid",gridTemplateColumns:gridColumns,gap:"10px",alignItems:"center",padding:"12px",background:"#f4f7f9",borderTop:"2px solid #e2e5e8",fontSize:"10px",fontWeight:700,color:"#222"}}><span style={{gridColumn:"1 / span 8"}}>Total</span><strong>{money(totalDiscountable)}</strong><strong>{money(totalNonDiscountable)}</strong><span></span><span></span></div>
-        <div style={{display:"flex",justifyContent:"flex-end",gap:"18px",padding:"9px 12px",background:"#eef3f6",fontSize:"11px",fontWeight:800,color:"#222"}}>Total: {money(grandTotal)}</div>
       </div>
     }
 
