@@ -23,7 +23,7 @@ function getCommissionDate(deal, source="commission") {
 const columns=".65fr .95fr 1.55fr 1.25fr 1fr .9fr 1fr 1.1fr .95fr 30px"
 function DealRow({deal,setSelected,type}) {
   const isAdmin=type==="ADMIN", customer=deal?.customer_name||deal?.name||"Unnamed customer", paymentDate=getCommissionDate(deal,isAdmin?"admin":"commission"), surveyCosting=getSurveyCosting(deal), commission=getCommission(deal), adminFee=getAdminFee(deal)
-  const paymentDateLabel=isAdmin&&!deal?.admin_fee_received_date?"Not Paid In":paymentDate?formatDate(paymentDate):"Not Booked"
+  const paymentDateLabel=isAdmin&&!deal?.admin_fee_received_date?"Outstanding":paymentDate?formatDate(paymentDate):"Not Booked"
   return <button type="button" onClick={()=>setSelected?.(deal)} style={{width:"100%",display:"grid",gridTemplateColumns:columns,gap:12,alignItems:"center",padding:"13px 14px",border:0,borderBottom:"1px solid #eef1f3",background:"#fff",textAlign:"left",cursor:"pointer",fontFamily:"inherit"}}>
     <div><span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",padding:"4px 7px",borderRadius:5,background:isAdmin?"#fff1e8":"#e8f4fd",color:isAdmin?"#c45b18":"#1676b8",fontSize:9,fontWeight:800}}>{type}</span></div>
     <div style={{fontSize:10,fontWeight:700,color:paymentDate?"#263645":"#a0a8ae",whiteSpace:"nowrap"}}>{paymentDateLabel}</div>
@@ -52,7 +52,7 @@ export default function SalesCommission({deals=[],loading=false,setSelected,perm
   const adminPaidIn=adminRows.filter(({deal})=>!!deal?.admin_fee_received_date).length
   const adminOutstanding=adminRows.length-adminPaidIn
   const totalCommission=filtered.reduce((total,{deal,type})=>total+(type==="COMMS"?(getCommission(deal)??0):0),0)
-  const totalAdmin=filtered.reduce((total,{deal,type})=>total+(type==="ADMIN"&&getAdminFee(deal)!=="query"?getAdminFee(deal):0),0)
+  const totalAdmin=filtered.reduce((total,{deal,type})=>total+(type==="ADMIN"&&!!deal?.admin_fee_received_date&&getAdminFee(deal)!=="query"?getAdminFee(deal):0),0)
   const totalNetSalesValue=filtered.reduce((total,{deal,type})=>total+(type==="COMMS"?getNetSalesValue(deal):0),0)
   const activeFilterCount=(commissionDate!=="all"?1:0)+(rep!=="all"?1:0)+(branch!=="all"?1:0)
   function clearFilters(){setCommissionDate("all");setRep("all");setBranch("all")}
