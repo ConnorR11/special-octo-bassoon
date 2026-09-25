@@ -83,27 +83,24 @@ async function appendProductDatasheets(pdf, pages, appointment, epvs) {
       .createSignedUrl(path, 60 * 10)
 
     if (error) {
-      console.error("Unable to create datasheet signed URL:", path, error)
-      continue
+      throw new Error(`Unable to create datasheet URL for ${path}: ${error.message || error}`)
     }
 
     const signedUrl = data?.signedUrl
-    if (!signedUrl) continue
-
-    try {
-      const response = await fetch(signedUrl)
-      if (!response.ok) {
-        throw new Error("Datasheet request returned HTTP " + response.status)
-      }
-
-      const sourceBytes = await response.arrayBuffer()
-      const source = await PDFDocument.load(sourceBytes)
-      const copiedPages = await merged.copyPages(source, source.getPageIndices())
-
-      copiedPages.forEach(page => merged.addPage(page))
-    } catch (error) {
-      console.error("Unable to append product datasheet:", path, error)
+    if (!signedUrl) {
+      throw new Error(`No signed URL was returned for datasheet ${path}.`)
     }
+
+    const response = await fetch(signedUrl)
+    if (!response.ok) {
+      throw new Error(`Datasheet request returned HTTP ${response.status} for ${path}.`)
+    }
+
+    const sourceBytes = await response.arrayBuffer()
+    const source = await PDFDocument.load(sourceBytes)
+    const copiedPages = await merged.copyPages(source, source.getPageIndices())
+
+    copiedPages.forEach(page => merged.addPage(page))
   }
 
   return merged.save()
