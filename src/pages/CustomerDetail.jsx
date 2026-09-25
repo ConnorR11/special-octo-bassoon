@@ -28,11 +28,6 @@ function CustomerDetail({
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
 
-  /*
-   * Keep fields in sync when a different
-   * deal is selected.
-   */
-
   useEffect(() => {
     if (!deal) return
 
@@ -46,10 +41,6 @@ function CustomerDetail({
     return null
   }
 
-  /*
-   * FULL ADDRESS
-   */
-
   const fullAddress = [
     address.trim(),
     postcode.trim(),
@@ -57,19 +48,11 @@ function CustomerDetail({
     .filter(Boolean)
     .join(", ")
 
-  /*
-   * GOOGLE MAPS SEARCH URL
-   */
-
   const mapsUrl = fullAddress
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
         fullAddress
       )}`
     : null
-
-  /*
-   * SAVE CHANGES
-   */
 
   async function handleSave() {
     setSaving(true)
@@ -82,16 +65,6 @@ function CustomerDetail({
         postcode: postcode.trim(),
       }
 
-      /*
-       * Update Supabase.
-       *
-       * IMPORTANT:
-       * We deliberately do NOT use .select().single()
-       * here. The update itself is enough, and this avoids
-       * the "Cannot coerce the result to a single JSON object"
-       * error caused by RLS / returned rows.
-       */
-
       const { error } = await supabase
         .from("deals")
         .update(updatedValues)
@@ -101,18 +74,10 @@ function CustomerDetail({
         throw error
       }
 
-      /*
-       * Build the updated deal locally.
-       */
-
       const updatedDeal = {
         ...deal,
         ...updatedValues,
       }
-
-      /*
-       * Tell App.jsx about the change.
-       */
 
       if (onUpdated) {
         onUpdated(updatedDeal)
@@ -136,13 +101,10 @@ function CustomerDetail({
     }
   }
 
+  const pipedriveStage = String(deal?.pipedrive_stage || "").trim() || "—"
+
   return (
     <section>
-
-      {/* =====================================================
-          PAGE HEADER
-          ===================================================== */}
-
       <div
         style={{
           display: "flex",
@@ -151,7 +113,6 @@ function CustomerDetail({
           marginBottom: "20px",
         }}
       >
-
         <button
           type="button"
           onClick={onBack}
@@ -168,10 +129,8 @@ function CustomerDetail({
           }}
         >
           <ArrowLeft size={16} />
-
           Back to Deals
         </button>
-
 
         <button
           type="button"
@@ -188,27 +147,14 @@ function CustomerDetail({
             color: "#fff",
             fontSize: "11px",
             fontWeight: 600,
-            cursor: saving
-              ? "default"
-              : "pointer",
+            cursor: saving ? "default" : "pointer",
             opacity: saving ? 0.6 : 1,
           }}
         >
-
           <Save size={15} />
-
-          {saving
-            ? "Saving..."
-            : "Save changes"}
-
+          {saving ? "Saving..." : "Save changes"}
         </button>
-
       </div>
-
-
-      {/* =====================================================
-          CUSTOMER + MAP
-          ===================================================== */}
 
       <div
         className="card"
@@ -217,7 +163,6 @@ function CustomerDetail({
           overflow: "hidden",
         }}
       >
-
         <div
           style={{
             display: "grid",
@@ -226,9 +171,6 @@ function CustomerDetail({
             minHeight: "360px",
           }}
         >
-
-          {/* CUSTOMER INFORMATION */}
-
           <div
             style={{
               padding: "30px",
@@ -237,7 +179,6 @@ function CustomerDetail({
               justifyContent: "center",
             }}
           >
-
             <span
               style={{
                 display: "block",
@@ -251,7 +192,6 @@ function CustomerDetail({
               Customer
             </span>
 
-
             <h1
               style={{
                 margin: 0,
@@ -260,12 +200,8 @@ function CustomerDetail({
                 color: "#222",
               }}
             >
-              {deal.customer_name ||
-                "Unnamed customer"}
+              {deal.customer_name || "Unnamed customer"}
             </h1>
-
-
-            {/* CONTRACT */}
 
             <div
               style={{
@@ -275,29 +211,40 @@ function CustomerDetail({
                 gap: "7px",
               }}
             >
-
-              <span
-                style={{
-                  fontSize: "11px",
-                  color: "#888",
-                }}
-              >
+              <span style={{ fontSize: "11px", color: "#888" }}>
                 Contract
               </span>
-
-              <strong
-                style={{
-                  fontSize: "12px",
-                  color: "#444",
-                }}
-              >
+              <strong style={{ fontSize: "12px", color: "#444" }}>
                 {deal.contract_number || "—"}
               </strong>
-
             </div>
 
-
-            {/* ADDRESS */}
+            <div
+              style={{
+                marginTop: "12px",
+                display: "flex",
+                alignItems: "center",
+                gap: "7px",
+              }}
+            >
+              <span style={{ fontSize: "11px", color: "#888" }}>
+                Pipedrive stage
+              </span>
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "5px 9px",
+                  borderRadius: "6px",
+                  background: "#eef6fb",
+                  color: "#1676b8",
+                  fontSize: "10px",
+                  fontWeight: 700,
+                }}
+              >
+                {pipedriveStage}
+              </span>
+            </div>
 
             {fullAddress && (
               <div
@@ -308,7 +255,6 @@ function CustomerDetail({
                   alignItems: "flex-start",
                 }}
               >
-
                 <MapPin
                   size={17}
                   style={{
@@ -317,9 +263,7 @@ function CustomerDetail({
                     color: "#172554",
                   }}
                 />
-
                 <div>
-
                   <span
                     style={{
                       display: "block",
@@ -332,7 +276,6 @@ function CustomerDetail({
                   >
                     Address
                   </span>
-
                   <span
                     style={{
                       display: "block",
@@ -343,14 +286,9 @@ function CustomerDetail({
                   >
                     {fullAddress}
                   </span>
-
                 </div>
-
               </div>
             )}
-
-
-            {/* GOOGLE MAPS BUTTON */}
 
             {mapsUrl && (
               <a
@@ -373,20 +311,12 @@ function CustomerDetail({
                   fontWeight: 600,
                 }}
               >
-
                 <MapPin size={13} />
-
                 Open in Google Maps
-
                 <ExternalLink size={12} />
-
               </a>
             )}
-
           </div>
-
-
-          {/* MAP */}
 
           <div
             style={{
@@ -394,9 +324,7 @@ function CustomerDetail({
               background: "#eef0f2",
             }}
           >
-
             {fullAddress ? (
-
               <iframe
                 title="Customer location"
                 src={`https://www.google.com/maps?q=${encodeURIComponent(
@@ -412,9 +340,7 @@ function CustomerDetail({
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
               />
-
             ) : (
-
               <div
                 style={{
                   height: "100%",
@@ -426,74 +352,26 @@ function CustomerDetail({
                   fontSize: "12px",
                 }}
               >
-
-                <div
-                  style={{
-                    textAlign: "center",
-                  }}
-                >
-
-                  <MapPin
-                    size={28}
-                    style={{
-                      marginBottom: "8px",
-                    }}
-                  />
-
-                  <div>
-                    No address available
-                  </div>
-
+                <div style={{ textAlign: "center" }}>
+                  <MapPin size={28} style={{ marginBottom: "8px" }} />
+                  <div>No address available</div>
                 </div>
-
               </div>
-
             )}
-
           </div>
-
         </div>
-
       </div>
 
-
-      {/* =====================================================
-          DEAL INFORMATION
-          ===================================================== */}
-
       <div className="card">
-
         <div className="card-head">
-
           <div>
-
-            <h2>
-              Deal information
-            </h2>
-
-            <p>
-              Customer and deal information
-            </p>
-
+            <h2>Deal information</h2>
+            <p>Customer and deal information</p>
           </div>
-
         </div>
 
-
-        <div
-          style={{
-            padding: "0 20px 20px",
-          }}
-        >
-
-          {/* CUSTOMER */}
-
-          <div
-            style={{
-              marginBottom: "18px",
-            }}
-          >
-
+        <div style={{ padding: "0 20px 20px" }}>
+          <div style={{ marginBottom: "18px" }}>
             <label
               style={{
                 display: "block",
@@ -505,7 +383,6 @@ function CustomerDetail({
             >
               Customer
             </label>
-
             <div
               style={{
                 padding: "10px 12px",
@@ -517,18 +394,9 @@ function CustomerDetail({
             >
               {deal.customer_name || "—"}
             </div>
-
           </div>
 
-
-          {/* CONTRACT NUMBER */}
-
-          <div
-            style={{
-              marginBottom: "18px",
-            }}
-          >
-
+          <div style={{ marginBottom: "18px" }}>
             <label
               style={{
                 display: "block",
@@ -540,7 +408,6 @@ function CustomerDetail({
             >
               Contract number
             </label>
-
             <div
               style={{
                 padding: "10px 12px",
@@ -552,18 +419,38 @@ function CustomerDetail({
             >
               {deal.contract_number || "—"}
             </div>
-
           </div>
 
+          <div style={{ marginBottom: "18px" }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: "10px",
+                fontWeight: 600,
+                color: "#777",
+                marginBottom: "6px",
+              }}
+            >
+              Pipedrive stage
+            </label>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "8px 11px",
+                background: "#eef6fb",
+                border: "1px solid #cfe2ef",
+                borderRadius: "7px",
+                fontSize: "12px",
+                fontWeight: 700,
+                color: "#1676b8",
+              }}
+            >
+              {pipedriveStage}
+            </div>
+          </div>
 
-          {/* ADDRESS */}
-
-          <div
-            style={{
-              marginBottom: "18px",
-            }}
-          >
-
+          <div style={{ marginBottom: "18px" }}>
             <label
               htmlFor="address"
               style={{
@@ -576,14 +463,11 @@ function CustomerDetail({
             >
               Address
             </label>
-
             <input
               id="address"
               type="text"
               value={address}
-              onChange={(e) =>
-                setAddress(e.target.value)
-              }
+              onChange={(e) => setAddress(e.target.value)}
               placeholder="Enter address"
               style={{
                 width: "100%",
@@ -597,18 +481,9 @@ function CustomerDetail({
                 fontSize: "12px",
               }}
             />
-
           </div>
 
-
-          {/* POSTCODE */}
-
-          <div
-            style={{
-              marginBottom: "18px",
-            }}
-          >
-
+          <div style={{ marginBottom: "18px" }}>
             <label
               htmlFor="postcode"
               style={{
@@ -621,14 +496,11 @@ function CustomerDetail({
             >
               Postcode
             </label>
-
             <input
               id="postcode"
               type="text"
               value={postcode}
-              onChange={(e) =>
-                setPostcode(e.target.value)
-              }
+              onChange={(e) => setPostcode(e.target.value)}
               placeholder="Enter postcode"
               style={{
                 width: "100%",
@@ -642,14 +514,9 @@ function CustomerDetail({
                 fontSize: "12px",
               }}
             />
-
           </div>
 
-
-          {/* SALESPERSON */}
-
           <div>
-
             <label
               htmlFor="salesperson"
               style={{
@@ -662,14 +529,11 @@ function CustomerDetail({
             >
               Salesperson
             </label>
-
             <input
               id="salesperson"
               type="text"
               value={salesperson}
-              onChange={(e) =>
-                setSalesperson(e.target.value)
-              }
+              onChange={(e) => setSalesperson(e.target.value)}
               placeholder="Enter salesperson"
               style={{
                 width: "100%",
@@ -683,11 +547,7 @@ function CustomerDetail({
                 fontSize: "12px",
               }}
             />
-
           </div>
-
-
-          {/* SAVE MESSAGE */}
 
           {message && (
             <div
@@ -695,14 +555,10 @@ function CustomerDetail({
                 marginTop: "14px",
                 padding: "10px 12px",
                 borderRadius: "7px",
-                background: message.includes(
-                  "successfully"
-                )
+                background: message.includes("successfully")
                   ? "#e8f4ed"
                   : "#fff0f0",
-                color: message.includes(
-                  "successfully"
-                )
+                color: message.includes("successfully")
                   ? "#28734c"
                   : "#a33b3b",
                 fontSize: "11px",
@@ -711,11 +567,8 @@ function CustomerDetail({
               {message}
             </div>
           )}
-
         </div>
-
       </div>
-
     </section>
   )
 }
