@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/update-opensolar-design.mjs && node scripts/patch-hardware-display.mjs && node scripts/patch-save-button.mjs && node scripts/patch-solar-datasheet-model-match.mjs && vite build",
+    "build": "node scripts/update-opensolar-design.mjs && node scripts/patch-hardware-display.mjs && node scripts/patch-save-button.mjs && node scripts/patch-solar-product-matching.mjs && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
