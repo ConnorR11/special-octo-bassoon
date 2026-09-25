@@ -22,46 +22,75 @@ function normaliseDatasheetName(value) {
     .replace(/\s+/g, " ")
 }
 
-async function getProductDatasheetPaths(pages, appointment, epvs) {
-  const itemisedPage = pages.find(
-    page => page?.settings?.page_kind === "itemised_breakdown"
+function getConfiguredContractProductNames(pages, appointment, epvs) {
+  const names = []
+
+  ;(Array.isArray(pages) ? pages : []).forEach(page => {
+    const configured = Array.isArray(page?.settings?.included_items)
+      ? page.settings.included_items
+      : []
+
+    configured.forEach(item => {
+      const rawName = typeof item === "string" ? item : item?.name
+      const renderedName = interpolate(
+        String(rawName || ""),
+        appointment,
+        epvs
+      ).trim()
+
+      if (renderedName) names.push(renderedName)
+    })
+  })
+
+  return [...new Set(names.map(normaliseDatasheetName).filter(Boolean))]
+}
+
+function productMatchesContractItem(product, itemName) {
+  const candidates = [
+    product?.name,
+    product?.model,
+    [product?.manufacturer, product?.model].filter(Boolean).join(" ")
+  ]
+    .map(normaliseDatasheetName)
+    .filter(Boolean)
+
+  return candidates.some(candidate =>
+    candidate === itemName ||
+    candidate.includes(itemName) ||
+    itemName.includes(candidate)
   )
+}
 
-  const configured = Array.isArray(itemisedPage?.settings?.included_items)
-    ? itemisedPage.settings.included_items
-    : []
-
-  const itemNames = [...new Set(
-    configured
-      .map(item => typeof item === "string" ? item : item?.name)
-      .map(name => interpolate(String(name || ""), appointment, epvs).trim())
-      .filter(Boolean)
-      .map(normaliseDatasheetName)
-  )]
+async function getProductDatasheetPaths(pages, appointment, epvs) {
+  const itemNames = getConfiguredContractProductNames(
+    pages,
+    appointment,
+    epvs
+  )
 
   if (!itemNames.length) return []
 
   const { data: products, error } = await supabase
     .from("products")
-    .select("name,datasheet_path,active")
+    .select("name,model,manufacturer,datasheet_path,active")
     .eq("active", true)
     .not("datasheet_path", "is", null)
 
   if (error) throw error
 
-  const productMap = new Map(
-    (products || []).map(product => [
-      normaliseDatasheetName(product?.name),
-      String(product?.datasheet_path || "").trim()
-    ])
-  )
-
   const paths = []
   const seen = new Set()
 
-  itemNames.forEach(name => {
-    const path = productMap.get(name)
+  ;(products || []).forEach(product => {
+    const path = String(product?.datasheet_path || "").trim()
     if (!path || seen.has(path)) return
+
+    const matched = itemNames.some(itemName =>
+      productMatchesContractItem(product, itemName)
+    )
+
+    if (!matched) return
+
     seen.add(path)
     paths.push(path)
   })
@@ -70,7 +99,12 @@ async function getProductDatasheetPaths(pages, appointment, epvs) {
 }
 
 async function appendProductDatasheets(pdf, pages, appointment, epvs) {
-  const paths = await getProductDatasheetPaths(pages, appointment, epvs)
+  const paths = await getProductDatasheetPaths(
+    pages,
+    appointment,
+    epvs
+  )
+
   const baseBytes = pdf.output("arraybuffer")
 
   if (!paths.length) return new Uint8Array(baseBytes)
@@ -83,22 +117,41 @@ async function appendProductDatasheets(pdf, pages, appointment, epvs) {
       .createSignedUrl(path, 60 * 10)
 
     if (error) {
-      throw new Error("Unable to create datasheet URL for " + path + ": " + (error.message || error))
+      throw new Error(
+        "Unable to create datasheet URL for " +
+        path +
+        ": " +
+        (error.message || error)
+      )
     }
 
     const signedUrl = data?.signedUrl
     if (!signedUrl) {
-      throw new Error("No signed URL was returned for datasheet " + path + ".")
+      throw new Error(
+        "No signed URL was returned for datasheet " +
+        path +
+        "."
+      )
     }
 
     const response = await fetch(signedUrl)
+
     if (!response.ok) {
-      throw new Error("Datasheet request returned HTTP " + response.status + " for " + path + ".")
+      throw new Error(
+        "Datasheet request returned HTTP " +
+        response.status +
+        " for " +
+        path +
+        "."
+      )
     }
 
     const sourceBytes = await response.arrayBuffer()
     const source = await PDFDocument.load(sourceBytes)
-    const copiedPages = await merged.copyPages(source, source.getPageIndices())
+    const copiedPages = await merged.copyPages(
+      source,
+      source.getPageIndices()
+    )
 
     copiedPages.forEach(page => merged.addPage(page))
   }
