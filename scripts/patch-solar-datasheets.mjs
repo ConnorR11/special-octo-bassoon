@@ -83,17 +83,17 @@ async function appendProductDatasheets(pdf, pages, appointment, epvs) {
       .createSignedUrl(path, 60 * 10)
 
     if (error) {
-      throw new Error(`Unable to create datasheet URL for ${path}: ${error.message || error}`)
+      throw new Error("Unable to create datasheet URL for " + path + ": " + (error.message || error))
     }
 
     const signedUrl = data?.signedUrl
     if (!signedUrl) {
-      throw new Error(`No signed URL was returned for datasheet ${path}.`)
+      throw new Error("No signed URL was returned for datasheet " + path + ".")
     }
 
     const response = await fetch(signedUrl)
     if (!response.ok) {
-      throw new Error(`Datasheet request returned HTTP ${response.status} for ${path}.`)
+      throw new Error("Datasheet request returned HTTP " + response.status + " for " + path + ".")
     }
 
     const sourceBytes = await response.arrayBuffer()
