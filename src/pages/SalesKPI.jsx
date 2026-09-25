@@ -65,18 +65,20 @@ export default function SalesKPI() {
       if (profilesResult.error) throw profilesResult.error
       const loaded = appointmentsResult.data || []
       const dealByAppointmentId = {}
+      const solidByAppointmentId = {}
       const appointmentIds = loaded.map(a => a.appointment_row_id).filter(Boolean)
       for (let i = 0; i < appointmentIds.length; i += DEAL_BATCH_SIZE) {
         const batch = appointmentIds.slice(i, i + DEAL_BATCH_SIZE)
-        const { data, error: dealsError } = await supabase.from("deals").select("appointment_row_id, net_value").in("appointment_row_id", batch)
+        const { data, error: dealsError } = await supabase.from("deals").select("appointment_row_id, net_value, pipedrive_stage").in("appointment_row_id", batch)
         if (dealsError) throw dealsError
         ;(data || []).forEach(deal => {
           if (!deal.appointment_row_id) return
           const value = Number(deal.net_value || 0)
           dealByAppointmentId[String(deal.appointment_row_id)] = Number.isFinite(value) ? value : 0
+          solidByAppointmentId[String(deal.appointment_row_id)] = !["Deal Lost", "Sales"].includes(String(deal.pipedrive_stage || "").trim()) && Number.isFinite(value) ? value : 0
         })
       }
-      setAppointments(loaded.map(a => ({ ...a, net_value: dealByAppointmentId[String(a.appointment_row_id)] || 0 })))
+      setAppointments(loaded.map(a => ({ ...a, net_value: dealByAppointmentId[String(a.appointment_row_id)] || 0, solid_value: solidByAppointmentId[String(a.appointment_row_id)] || 0 })))
       setProfiles(profilesResult.data || [])
       setJobTypeFilter("all"); setBranchFilter("all")
     } catch (err) {
@@ -105,13 +107,14 @@ export default function SalesKPI() {
     const grouped = new Map()
     filteredAppointments.forEach(a => {
       const key = a.rep_allocated || "__unallocated__"
-      if (!grouped.has(key)) grouped.set(key, { key, rep_name: repNameByEmail[normaliseEmail(a.rep_allocated)] || a.rep_allocated || "Unallocated", h: 0, c: 0, p: 0, s: 0, net_value: 0 })
+      if (!grouped.has(key)) grouped.set(key, { key, rep_name: repNameByEmail[normaliseEmail(a.rep_allocated)] || a.rep_allocated || "Unallocated", h: 0, c: 0, p: 0, s: 0, net_value: 0, solid_value: 0 })
       const row = grouped.get(key)
       if (isTrue(a.cps_h)) row.h++
       if (isTrue(a.cps_c)) row.c++
       if (isTrue(a.cps_p)) row.p++
       if (isTrue(a.cps_s)) row.s++
       row.net_value += Number(a.net_value || 0)
+      row.solid_value += Number(a.solid_value || 0)
     })
     return Array.from(grouped.values())
   }, [filteredAppointments, repNameByEmail])
@@ -131,7 +134,7 @@ export default function SalesKPI() {
     return sortDirection === "asc" ? difference : -difference
   }), [rows, sortField, sortDirection])
 
-  const totals = useMemo(() => rows.reduce((t, r) => ({ h: t.h + r.h, c: t.c + r.c, p: t.p + r.p, s: t.s + r.s, net_value: t.net_value + r.net_value }), { h: 0, c: 0, p: 0, s: 0, net_value: 0 }), [rows])
+  const totals = useMemo(() => rows.reduce((t, r) => ({ h: t.h + r.h, c: t.c + r.c, p: t.p + r.p, s: t.s + r.s, net_value: t.net_value + r.net_value, solid_value: t.solid_value + r.solid_value }), { h: 0, c: 0, p: 0, s: 0, net_value: 0, solid_value: 0 }), [rows])
   const totalConversion = totals.s > 0 ? totals.p / totals.s : 0
   const totalBoPercent = totals.c > 0 ? ((totals.c - totals.p) / totals.c) * 100 : 0
   const totalAvgOrderValue = totals.s > 0 ? totals.net_value / totals.s : 0
@@ -167,9 +170,9 @@ export default function SalesKPI() {
       <section className="sales-kpi-panel">
         <div className="sales-kpi-panel-header"><div className="sales-kpi-panel-title"><div className="sales-kpi-panel-icon"><Users size={17}/></div><div><h2>Sales Rep Performance</h2><p>Appointments grouped by allocated sales rep.</p></div></div><div className="sales-kpi-date-range">{formatDate(startDate)} – {formatDate(endDate)}</div></div>
         <div className="sales-kpi-filter-bar"><span className="sales-kpi-filter-label">Filter</span><select className="sales-kpi-filter-select" value={jobTypeFilter} onChange={e => setJobTypeFilter(e.target.value)}><option value="all">All job types</option>{jobTypes.map(jobType => <option key={jobType} value={jobType}>{jobType}</option>)}</select><select className="sales-kpi-filter-select" value={branchFilter} onChange={e => setBranchFilter(e.target.value)}><option value="all">All branches</option>{branches.map(branch => <option key={branch} value={branch}>{branch}</option>)}</select>{(jobTypeFilter !== "all" || branchFilter !== "all") && <button className="sales-kpi-filter-clear" onClick={() => { setJobTypeFilter("all"); setBranchFilter("all") }}>Clear filters</button>}</div>
-        <div className="sales-kpi-table-wrap"><table className="sales-kpi-table"><thead><tr><th className="sortable" onClick={() => changeSort("rep_allocated")}><span className="sales-kpi-sort">REP <SortIcon field="rep_allocated"/></span></th><th className="sortable" onClick={() => changeSort("h")}><span className="sales-kpi-sort">H <SortIcon field="h"/></span></th><th className="sortable" onClick={() => changeSort("c")}><span className="sales-kpi-sort">C <SortIcon field="c"/></span></th><th className="sortable" onClick={() => changeSort("p")}><span className="sales-kpi-sort">P <SortIcon field="p"/></span></th><th className="sortable" onClick={() => changeSort("s")}><span className="sales-kpi-sort">S <SortIcon field="s"/></span></th><th className="sortable" onClick={() => changeSort("net_value")}><span className="sales-kpi-sort">NET VALUE <SortIcon field="net_value"/></span></th><th className="sortable" onClick={() => changeSort("conversion")}><span className="sales-kpi-sort">CONVERSION <SortIcon field="conversion"/></span></th><th className="sortable" onClick={() => changeSort("bo_percent")}><span className="sales-kpi-sort">BO% <SortIcon field="bo_percent"/></span></th><th className="sortable" onClick={() => changeSort("avg_order_value")}><span className="sales-kpi-sort">AVG <SortIcon field="avg_order_value"/></span></th></tr></thead><tbody>
-          <tr className="sales-kpi-total"><td><div className="sales-kpi-rep"><span className="sales-kpi-rep-dot"/>Total</div></td><td>{formatNumber(totals.h)}</td><td>{formatNumber(totals.c)}</td><td>{formatNumber(totals.p)}</td><td>{formatNumber(totals.s)}</td><td>{formatCurrency(totals.net_value)}</td><td>{formatConversion(totalConversion)}</td><td>{formatPercent(totalBoPercent)}</td><td>{formatCurrency(totalAvgOrderValue)}</td></tr>
-          {loading ? <tr><td colSpan="9" className="sales-kpi-empty">Loading sales KPI...</td></tr> : sortedRows.length === 0 ? <tr><td colSpan="9" className="sales-kpi-empty">No appointments found for the selected filters.</td></tr> : sortedRows.map(row => { const conversion = row.s > 0 ? row.p / row.s : 0; const boPercent = row.c > 0 ? ((row.c - row.p) / row.c) * 100 : 0; const avgOrderValue = row.s > 0 ? row.net_value / row.s : 0; return <tr key={row.key} className={row.key === "__unallocated__" ? "unallocated" : ""}><td><div className="sales-kpi-rep"><span className="sales-kpi-rep-dot"/>{row.rep_name}</div></td><td>{formatNumber(row.h)}</td><td>{formatNumber(row.c)}</td><td>{formatNumber(row.p)}</td><td>{formatNumber(row.s)}</td><td>{formatCurrency(row.net_value)}</td><td>{formatConversion(conversion)}</td><td>{formatPercent(boPercent)}</td><td>{formatCurrency(avgOrderValue)}</td></tr> })}
+        <div className="sales-kpi-table-wrap"><table className="sales-kpi-table"><thead><tr><th className="sortable" onClick={() => changeSort("rep_allocated")}><span className="sales-kpi-sort">REP <SortIcon field="rep_allocated"/></span></th><th className="sortable" onClick={() => changeSort("h")}><span className="sales-kpi-sort">H <SortIcon field="h"/></span></th><th className="sortable" onClick={() => changeSort("c")}><span className="sales-kpi-sort">C <SortIcon field="c"/></span></th><th className="sortable" onClick={() => changeSort("p")}><span className="sales-kpi-sort">P <SortIcon field="p"/></span></th><th className="sortable" onClick={() => changeSort("s")}><span className="sales-kpi-sort">S <SortIcon field="s"/></span></th><th className="sortable" onClick={() => changeSort("net_value")}><span className="sales-kpi-sort">NET VALUE <SortIcon field="net_value"/></span></th><th className="sortable" onClick={() => changeSort("conversion")}><span className="sales-kpi-sort">CONVERSION <SortIcon field="conversion"/></span></th><th className="sortable" onClick={() => changeSort("bo_percent")}><span className="sales-kpi-sort">BO% <SortIcon field="bo_percent"/></span></th><th className="sortable" onClick={() => changeSort("avg_order_value")}><span className="sales-kpi-sort">AVG <SortIcon field="avg_order_value"/></span></th><th className="sortable" onClick={() => changeSort("solid_value")}><span className="sales-kpi-sort">SOLID <SortIcon field="solid_value"/></span></th></tr></thead><tbody>
+          <tr className="sales-kpi-total"><td><div className="sales-kpi-rep"><span className="sales-kpi-rep-dot"/>Total</div></td><td>{formatNumber(totals.h)}</td><td>{formatNumber(totals.c)}</td><td>{formatNumber(totals.p)}</td><td>{formatNumber(totals.s)}</td><td>{formatCurrency(totals.net_value)}</td><td>{formatConversion(totalConversion)}</td><td>{formatPercent(totalBoPercent)}</td><td>{formatCurrency(totalAvgOrderValue)}</td><td>{formatCurrency(totals.solid_value)}</td></tr>
+          {loading ? <tr><td colSpan="10" className="sales-kpi-empty">Loading sales KPI...</td></tr> : sortedRows.length === 0 ? <tr><td colSpan="10" className="sales-kpi-empty">No appointments found for the selected filters.</td></tr> : sortedRows.map(row => { const conversion = row.s > 0 ? row.p / row.s : 0; const boPercent = row.c > 0 ? ((row.c - row.p) / row.c) * 100 : 0; const avgOrderValue = row.s > 0 ? row.net_value / row.s : 0; return <tr key={row.key} className={row.key === "__unallocated__" ? "unallocated" : ""}><td><div className="sales-kpi-rep"><span className="sales-kpi-rep-dot"/>{row.rep_name}</div></td><td>{formatNumber(row.h)}</td><td>{formatNumber(row.c)}</td><td>{formatNumber(row.p)}</td><td>{formatNumber(row.s)}</td><td>{formatCurrency(row.net_value)}</td><td>{formatConversion(conversion)}</td><td>{formatPercent(boPercent)}</td><td>{formatCurrency(avgOrderValue)}</td><td>{formatCurrency(row.solid_value)}</td></tr> })}
         </tbody></table></div>
       </section>
     </div></div>
