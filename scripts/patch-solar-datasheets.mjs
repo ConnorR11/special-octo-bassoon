@@ -49,15 +49,19 @@ async function getProductDatasheetPaths(pages, appointment, epvs) {
 
   if (error) throw error
 
+  const productMap = new Map(
+    (products || []).map(product => [
+      normaliseDatasheetName(product?.name),
+      String(product?.datasheet_path || "").trim()
+    ])
+  )
+
   const paths = []
   const seen = new Set()
 
-  ;(products || []).forEach(product => {
-    const name = normaliseDatasheetName(product?.name)
-    const path = String(product?.datasheet_path || "").trim()
-
-    if (!name || !path || !itemNames.includes(name) || seen.has(path)) return
-
+  itemNames.forEach(name => {
+    const path = productMap.get(name)
+    if (!path || seen.has(path)) return
     seen.add(path)
     paths.push(path)
   })
