@@ -1,4 +1,5 @@
 import jsPDF from "jspdf"
+import { PDFDocument } from "pdf-lib"
 import { supabase } from "../lib/supabase"
 
 const CONTRACT_NAME = "Digital Solar Contract"
@@ -48,7 +49,7 @@ function interpolate(body, appointment, epvs) {
     annual_saving: money(results.annualSaving),
   }
 
-  return String(body || "").replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, key) => textValue(values[key]))
+  return String(body || "").replace(/{{\\s*([a-zA-Z0-9_]+)\\s*}}/g, (_, key) => textValue(values[key]))
 }
 
 async function imageData(url) {
@@ -110,24 +111,10 @@ async function imageData(url) {
   }
 }
 
-/*
- * Gets the signature from the private Supabase storage bucket.
- *
- * appointments.signature_path contains the storage object path,
- * for example:
- *
- * appointments/123/signature.png
- *
- * or:
- *
- * 123.png
- */
 async function getSignatureImageUrl(appointment) {
   const signaturePath = String(appointment?.signature_path || "").trim()
 
-  if (!signaturePath) {
-    return null
-  }
+  if (!signaturePath) return null
 
   try {
     const { data, error } = await supabase.storage
@@ -144,6 +131,157 @@ async function getSignatureImageUrl(appointment) {
     console.error("Unable to retrieve signature:", error)
     return null
   }
+}
+
+function normaliseDatasheetName(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+}
+
+function getContractProductNames(appointment, epvs, pages) {
+  const data = epvs?.data || {}
+  const names = []
+
+  const add = value => {
+    const rendered = interpolate(String(value || ""), appointment, epvs).trim()
+    if (rendered && rendered !== "—") names.push(rendered)
+  }
+
+  ;(Array.isArray(pages) ? pages : []).forEach(page => {
+    const configured = Array.isArray(page?.settings?.included_items)
+      ? page.settings.included_items
+      : []
+
+    configured.forEach(item => {
+      add(typeof item === "string" ? item : item?.name)
+    })
+  })
+
+  add(data.inverterModel || data.inverter_model || data.inverterName || data.inverter_name)
+  add(data.batteryModel || data.battery_model || data.batteryName || data.battery_name)
+  add(data.panelModel || data.panel_model || data.panelName || data.panel_name)
+
+  ;(Array.isArray(data.arrays) ? data.arrays : []).forEach(array => {
+    add(array?.panelModel || array?.panel_model || array?.panelName || array?.panel_name)
+  })
+
+  return [...new Set(names.map(normaliseDatasheetName).filter(Boolean))]
+}
+
+function productMatchesContractItem(product, itemName) {
+  const candidateValues = [
+    product?.name,
+    product?.model,
+    [product?.manufacturer, product?.model].filter(Boolean).join(" ")
+  ]
+    .map(normaliseDatasheetName)
+    .filter(value => value.length >= 3)
+
+  return candidateValues.some(candidate =>
+    candidate === itemName ||
+    candidate.includes(itemName) ||
+    itemName.includes(candidate)
+  )
+}
+
+async function getProductDatasheetPaths(appointment, epvs, pages) {
+  const itemNames = getContractProductNames(appointment, epvs, pages)
+
+  if (!itemNames.length) return []
+
+  const { data: products, error } = await supabase
+    .from("products")
+    .select("name,model,manufacturer,datasheet_path,active")
+    .eq("active", true)
+    .not("datasheet_path", "is", null)
+
+  if (error) throw error
+
+  const paths = []
+  const seen = new Set()
+
+  ;(products || []).forEach(product => {
+    const path = String(product?.datasheet_path || "").trim()
+    if (!path || seen.has(path)) return
+
+    const matched = itemNames.some(itemName =>
+      productMatchesContractItem(product, itemName)
+    )
+
+    if (!matched) return
+
+    seen.add(path)
+    paths.push(path)
+  })
+
+  return paths
+}
+
+async function appendProductDatasheets(pdf, appointment, epvs, pages) {
+  const paths = await getProductDatasheetPaths(
+    appointment,
+    epvs,
+    pages
+  )
+
+  const baseBytes = pdf.output("arraybuffer")
+
+  if (!paths.length) {
+    return new Uint8Array(baseBytes)
+  }
+
+  const merged = await PDFDocument.load(baseBytes)
+
+  for (const path of paths) {
+    const { data, error } = await supabase.storage
+      .from("product-datasheets")
+      .createSignedUrl(path, 60 * 10)
+
+    if (error) {
+      throw new Error(
+        "Unable to create datasheet URL for " +
+        path +
+        ": " +
+        (error.message || error)
+      )
+    }
+
+    const signedUrl = data?.signedUrl
+
+    if (!signedUrl) {
+      throw new Error(
+        "No signed URL was returned for datasheet " +
+        path +
+        "."
+      )
+    }
+
+    const response = await fetch(signedUrl)
+
+    if (!response.ok) {
+      throw new Error(
+        "Datasheet request returned HTTP " +
+        response.status +
+        " for " +
+        path +
+        "."
+      )
+    }
+
+    const sourceBytes = await response.arrayBuffer()
+    const sourcePdf = await PDFDocument.load(sourceBytes)
+
+    const copiedPages = await merged.copyPages(
+      sourcePdf,
+      sourcePdf.getPageIndices()
+    )
+
+    copiedPages.forEach(page => merged.addPage(page))
+  }
+
+  return merged.save()
 }
 
 async function drawImage(pdf, url, x, y, width, maxHeight = 110) {
@@ -557,26 +695,12 @@ async function drawItemisedBreakdown(
     {align:"right"}
   )
 
-  /*
-   * CUSTOMER SIGNATURE
-   *
-   * The signature is stored in:
-   *
-   * appointments.signature_path
-   *
-   * and the image itself is stored in the
-   * private Supabase "signatures" bucket.
-   */
   const signatureUrl = await getSignatureImageUrl(appointment)
 
   if (signatureUrl) {
     try {
       const signature = await imageData(signatureUrl)
 
-      /*
-       * Signature positioned at the bottom-right
-       * of the page, above the normal footer.
-       */
       const signatureBoxWidth = 75
       const signatureBoxHeight = 32
 
@@ -590,9 +714,6 @@ async function drawItemisedBreakdown(
         10 -
         signatureBoxHeight
 
-      /*
-       * Customer signature heading
-       */
       pdf.setTextColor(...ctx.text)
       pdf.setFont("helvetica", "bold")
       pdf.setFontSize(8)
@@ -603,9 +724,6 @@ async function drawItemisedBreakdown(
         signatureAreaY - 4
       )
 
-      /*
-       * Signature area
-       */
       pdf.setFillColor(252, 253, 254)
 
       pdf.roundedRect(
@@ -618,9 +736,6 @@ async function drawItemisedBreakdown(
         "F"
       )
 
-      /*
-       * Keep the signature proportional.
-       */
       const maxSignatureWidth =
         signatureBoxWidth - 6
 
@@ -670,7 +785,7 @@ async function drawItemisedBreakdown(
       )
     }
   }
-} // FIX: missing closing brace for drawItemisedBreakdown()
+}
 
 function parseTermsSections(raw) {
   const sections = []
@@ -887,29 +1002,28 @@ function drawTermsConditions(
   let column = 0
   let x = ctx.padding
   let y = top
+  const lineHeightFinal = lineHeight
 
-  for (const line of lines) {
-    if (column > 1) break
-
+  lines.forEach(line => {
     if (line.spacing) {
-      if (y+line.spacing > bottom) {
-        column += 1
+      y += line.spacing
+
+      if (y+lineHeightFinal > bottom && column === 0) {
+        column = 1
         x = ctx.padding+columnWidth+gap
         y = top
-      } else {
-        y += line.spacing
       }
 
-      continue
+      return
     }
 
-    if (y+lineHeight > bottom) {
+    if (y+lineHeightFinal > bottom) {
       column += 1
       x = ctx.padding+columnWidth+gap
       y = top
     }
 
-    if (column > 1) break
+    if (column > 1) return
 
     pdf.setTextColor(...ctx.text)
 
@@ -945,8 +1059,8 @@ function drawTermsConditions(
       )
     }
 
-    y += lineHeight
-  }
+    y += lineHeightFinal
+  })
 }
 
 async function renderPage(
@@ -1961,7 +2075,28 @@ export async function GenerateSolarContract({
       .replace(/^-+|-+$/g,"") ||
     "Customer"
 
-  pdf.save(
-    `${safeName}-Digital-Solar-Contract.pdf`
+  const finalPdfBytes = await appendProductDatasheets(
+    pdf,
+    appointment,
+    epvs,
+    pages
   )
+
+  const blob = new Blob(
+    [finalPdfBytes],
+    {type:"application/pdf"}
+  )
+
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+
+  link.href = url
+  link.download =
+    safeName +
+    "-Digital-Solar-Contract.pdf"
+
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
 }
