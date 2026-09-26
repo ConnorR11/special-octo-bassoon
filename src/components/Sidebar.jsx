@@ -2,6 +2,7 @@ import React from "react"
 import { createPortal } from "react-dom"
 import { LayoutDashboard, FileText, ChevronDown, ChevronRight, BarChart3, CalendarDays, Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck, Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound, MessageCircle, Files, UserCog, FileCheck, LogOut, ClipboardList, Lock, KanbanSquare, Presentation } from "lucide-react"
 import SalesPresentations from "../pages/SalesPresentations"
+import MI from "../pages/MI"
 
 function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel = 1, department = "" }) {
   const numericPermissionLevel = Number(permissionLevel) || 0
@@ -12,6 +13,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
   const navigate = (pageName) => { setPage(pageName); setMobile(false) }
   const isActive = (pageName) => page === pageName
   const presentationOverlay = isAdministrator && page === "sales-presentations" && typeof document !== "undefined" ? createPortal(<div style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: 250, zIndex: 10000, background: "#f5f7fa", overflow: "auto" }}><div style={{ maxWidth: 1500, margin: "0 auto", padding: "28px 28px 50px" }}><SalesPresentations /></div></div>, document.body) : null
+  const miOverlay = isAdministrator && page === "mi" && typeof document !== "undefined" ? createPortal(<div style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: 250, zIndex: 10000, background: "#f5f7fa", overflow: "auto" }}><div style={{ maxWidth: 1500, margin: "0 auto", padding: "28px 28px 50px" }}><MI /></div></div>, document.body) : null
   return <>
     {mobile && <div className="sidebar-overlay" onClick={() => setMobile(false)} />}
     <aside className={`sidebar ${mobile ? "sidebar-open" : ""}`}>
@@ -29,7 +31,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
         {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}><NavItem icon={BarChart3} label="MI" active={isActive("mi")} onClick={() => navigate("mi")} /><NavItem icon={UserCog} label="Users" active={isActive("users")} onClick={() => navigate("users")} /><NavItem icon={ClipboardList} label="Tasks" active={isActive("tasks")} onClick={() => navigate("tasks")} /><NavItem icon={Presentation} label="Templates" active={isActive("sales-presentations")} onClick={() => navigate("sales-presentations")} /><NavItem icon={Settings} label="Settings" disabled /></Folder>}
       </nav>
       <div className="sidebar-footer" style={{ marginTop: "auto", flexDirection: "column", alignItems: "stretch", gap: 10 }}><button type="button" onClick={onSignOut} style={{ width: "100%", border: 0, background: "transparent", color: "inherit", display: "flex", alignItems: "center", gap: 10, padding: "8px 0", cursor: "pointer", font: "inherit", textAlign: "left" }}><LogOut size={16} /><span style={{ fontWeight: 600 }}>Sign out</span></button><div style={{ display: "flex", alignItems: "center", gap: 10 }}><div className="sidebar-footer-icon"><Settings size={16} /></div><div><strong>CRM System</strong><span>v1.0</span></div></div></div>
-    </aside>{presentationOverlay}
+    </aside>{presentationOverlay}{miOverlay}
   </>
 }
 function Folder({ title, icon: Icon, open, onClick, children }) { return <div className="sidebar-folder"><button type="button" className="sidebar-folder-header" onClick={onClick}><span className="sidebar-folder-left"><Icon size={17} /><span>{title}</span></span>{open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</button>{open && <div className="sidebar-folder-items">{children}</div>}</div> }
