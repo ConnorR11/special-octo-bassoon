@@ -2,8 +2,11 @@ import React from "react"
 import { Menu } from "lucide-react"
 
 function Header({ page, setMobile }) {
+  if (page === "dashboard") {
+    return null
+  }
+
   const pageTitle = {
-    dashboard: "Home",
     "sales-performance": "Sales Performance",
     contracts: "Deals",
     "rts-list": "RTS List",
@@ -11,7 +14,6 @@ function Header({ page, setMobile }) {
   }[page]
 
   const pageSubtitle = {
-    dashboard: "Welcome to the Homeshield Scotland CRM",
     "sales-performance": "Overview of your sales performance and activity",
     contracts: "Search and manage deals",
     "rts-list": "Deals currently in the RTS sales stages",
