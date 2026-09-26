@@ -20,7 +20,7 @@ function Dashboard({ contracts, total, avg, upcoming, setSelected }) {
     <section>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 18 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 22, color: "#222" }}>Dashboard</h1>
+          <h1 style={{ margin: 0, fontSize: 22, color: "#222" }}>Sales Performance</h1>
           <p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>Overview of sales performance and activity</p>
         </div>
       </div>
