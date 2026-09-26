@@ -1,6 +1,6 @@
 import React from "react"
 import { createPortal } from "react-dom"
-import { LayoutDashboard, FileText, ChevronDown, ChevronRight, BarChart3, CalendarDays, Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck, Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound, MessageCircle, Files, UserCog, FileCheck, LogOut, ClipboardList, Lock, KanbanSquare, Presentation, Clipboard } from "lucide-react"
+import { LayoutDashboard, FileText, ChevronDown, ChevronRight, BarChart3, CalendarDays, Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck, Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound, MessageCircle, Files, UserCog, FileCheck, LogOut, ClipboardList, Lock, KanbanSquare, Presentation, Clipboard, Calculator, ShoppingCart } from "lucide-react"
 import SalesPresentations from "../pages/SalesPresentations"
 import MI from "../pages/MI"
 
@@ -48,29 +48,11 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
   return <>
     <style>{`
       @media (max-width: 900px) {
-        .sidebar {
-          transform: translateX(-100%);
-          transition: transform 0.2s ease;
-          z-index: 1000;
-        }
-        .sidebar.sidebar-open {
-          transform: translateX(0);
-        }
-        .sidebar-overlay {
-          display: block;
-          position: fixed;
-          inset: 0;
-          background: rgba(0,0,0,0.35);
-          z-index: 999;
-        }
-        main {
-          margin-left: 0;
-          width: 100%;
-          padding: 22px 18px;
-        }
-        .mobile-menu {
-          display: inline-flex;
-        }
+        .sidebar { transform: translateX(-100%); transition: transform 0.2s ease; z-index: 1000; }
+        .sidebar.sidebar-open { transform: translateX(0); }
+        .sidebar-overlay { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 999; }
+        main { margin-left: 0; width: 100%; padding: 22px 18px; }
+        .mobile-menu { display: inline-flex; }
       }
     `}</style>
     {mobile && <div className="sidebar-overlay" onClick={() => setMobile(false)} />}
@@ -81,7 +63,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
         <div className="sidebar-divider" />
         <Folder title="Marketing" icon={Megaphone} open={openFolders.marketing} onClick={() => toggleFolder("marketing")}><NavItem icon={BarChart3} label="Marketing Dashboard" active={isActive("marketing-dashboard")} onClick={() => navigate("marketing-dashboard")} disabled={!canAccessMarketingDashboard} locked={!canAccessMarketingDashboard} /><NavItem icon={Target} label="Leads" disabled /><NavItem icon={Phone} label="Call Log" disabled /><NavItem icon={CalendarDays} label="Booked Leads" disabled /><NavItem icon={Handshake} label="Commissions" disabled /><NavItem icon={Trophy} label="Canvasser KPI" disabled /></Folder>
         <Folder title="Sales" icon={Target} open={openFolders.sales} onClick={() => toggleFolder("sales")}><NavItem icon={LayoutDashboard} label="Mastersheet" active={isActive("marketing-tv")} onClick={() => navigate("marketing-tv")} /><NavItem icon={CalendarDays} label="Appointments" active={isActive("appointments")} onClick={() => navigate("appointments")} /><NavItem icon={FileText} label="Deals" active={isActive("contracts")} onClick={() => navigate("contracts")} /><NavItem icon={FileCheck} label="RTS List" active={isActive("rts-list")} onClick={() => navigate("rts-list")} /><NavItem icon={PoundSterling} label="Commissions" active={isActive("commissions")} onClick={() => navigate("commissions")} /><NavItem icon={Trophy} label="Sales KPI" active={isActive("sales-kpi")} onClick={() => navigate("sales-kpi")} /><NavItem icon={BarChart3} label="Sales Performance" active={isActive("sales-performance")} onClick={() => navigate("sales-performance")} disabled={!canAccessSalesPerformance} locked={!canAccessSalesPerformance} /></Folder>
-        <Folder title="Procurement" icon={Clipboard} open={openFolders.procurement} onClick={() => toggleFolder("procurement")}><NavItem icon={ClipboardCheck} label="Surveys" disabled /><NavItem icon={CalendarDays} label="Cover Calls" disabled /><NavItem icon={AlertTriangle} label="Costing" disabled /><NavItem icon={AlertTriangle} label="Ordering" disabled /></Folder>
+        <Folder title="Procurement" icon={Clipboard} open={openFolders.procurement} onClick={() => toggleFolder("procurement")}><NavItem icon={ClipboardCheck} label="Surveys" disabled /><NavItem icon={CalendarDays} label="Cover Calls" disabled /><NavItem icon={Calculator} label="Costing" disabled /><NavItem icon={ShoppingCart} label="Ordering" disabled /></Folder>
         <Folder title="Installations" icon={Wrench} open={openFolders.installation} onClick={() => toggleFolder("installation")}><NavItem icon={ClipboardCheck} label="Fit Sheet" active={isActive("fitsheet")} onClick={() => navigate("fitsheet")} /><NavItem icon={KanbanSquare} label="Kanban" active={isActive("installations")} onClick={() => navigate("installations")} /><NavItem icon={AlertTriangle} label="Installation Issues" disabled /></Folder>
         <Folder title="Remedials" icon={Headphones} open={openFolders.customerService} onClick={() => toggleFolder("customerService")}><NavItem icon={UserRound} label="Customers" disabled /><NavItem icon={MessageCircle} label="Follow-ups" disabled /><NavItem icon={AlertTriangle} label="Complaints" disabled /></Folder>
         <Folder title="Accounts" icon={PoundSterling} open={openFolders.finance} onClick={() => toggleFolder("finance")}><NavItem icon={PoundSterling} label="Revenue" disabled /><NavItem icon={CreditCard} label="Payments" disabled /><NavItem icon={Receipt} label="Invoices" disabled /></Folder>
