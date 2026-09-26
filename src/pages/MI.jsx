@@ -119,26 +119,30 @@ export default function MI() {
     return { rows, weekCount }
   }, [appointments, periods])
 
-  return <section style={{ maxWidth: 1200, margin: "0 auto", padding: "8px 4px 40px" }}>
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
-      <div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 5 }}><BarChart3 size={22} color="#1676b8" /><h1 style={{ margin: 0, fontSize: 26, color: "#263645" }}>Management Information</h1></div>
-        <p style={{ margin: 0, color: "#74808a", fontSize: 12 }}>Weekly senior management report — company-wide H C P S activity.</p>
+  return <section className="mi-page" style={{ maxWidth: 1200, width: "100%", margin: "0 auto", padding: "8px 4px 40px" }}>
+    <style>{`\n      .mi-page * { max-width: 100%; }\n      .mi-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:22px; gap:18px; }\n      .mi-title-wrap { min-width:0; }\n      .mi-title { margin:0; font-size:26px; line-height:1.15; color:#263645; }\n      .mi-subtitle { margin:0; color:#74808a; font-size:12px; line-height:1.45; }\n      .mi-periods { display:flex; gap:10px; margin-bottom:18px; }\n      .mi-period { flex:1; min-width:0; border:1px solid #dce4ea; border-radius:10px; background:#fff; padding:13px 16px; }\n      .mi-period-label { font-size:9px; font-weight:800; color:#788690; text-transform:uppercase; margin-bottom:6px; }\n      .mi-period-value { color:#263645; font-size:12px; font-weight:700; line-height:1.35; }\n      .mi-table { border:1px solid #dce4ea; border-radius:11px; overflow:hidden; background:#fff; }\n      .mi-table-inner { width:100%; }\n      .mi-table-header, .mi-table-row { display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr 1fr; gap:10px; align-items:center; }\n      .mi-table-header { padding:12px 16px; background:#f3f6f8; border-bottom:1px solid #dce4ea; font-size:9px; font-weight:800; color:#687782; text-transform:uppercase; }\n      .mi-table-row { padding:16px; border-bottom:1px solid #eef1f3; }\n      .mi-table-row:last-child { border-bottom:0; }\n      .mi-note { margin-top:12px; color:#8a959d; font-size:10px; }\n      @media (max-width:900px) {\n        .mi-page { padding:4px 0 28px !important; }\n        .mi-header { display:block; margin-bottom:18px; }\n        .mi-title { font-size:24px; }\n        .mi-subtitle { font-size:11px; margin-top:7px; max-width:100%; }\n        .mi-refresh { margin-top:12px; }\n        .mi-periods { display:grid; grid-template-columns:1fr; gap:8px; }\n        .mi-period { padding:12px 14px; }\n        .mi-table { overflow-x:auto; -webkit-overflow-scrolling:touch; }\n        .mi-table-inner { min-width:620px; }\n        .mi-note { line-height:1.4; }\n      }\n    `}</style>
+
+    <div className="mi-header">
+      <div className="mi-title-wrap">
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 5 }}><BarChart3 size={22} color="#1676b8" /><h1 className="mi-title">Management Information</h1></div>
+        <p className="mi-subtitle">Weekly senior management report — company-wide H C P S activity.</p>
       </div>
-      <button type="button" onClick={loadReport} disabled={loading} style={{ height: 38, padding: "0 12px", border: "1px solid #d7dee8", borderRadius: 8, background: "#fff", color: "#53616b", display: "inline-flex", alignItems: "center", gap: 7, fontSize: 11, fontWeight: 700, cursor: loading ? "default" : "pointer" }}><RefreshCw size={14} />Refresh</button>
+      <button className="mi-refresh" type="button" onClick={loadReport} disabled={loading} style={{ height: 38, padding: "0 12px", border: "1px solid #d7dee8", borderRadius: 8, background: "#fff", color: "#53616b", display: "inline-flex", alignItems: "center", gap: 7, fontSize: 11, fontWeight: 700, cursor: loading ? "default" : "pointer" }}><RefreshCw size={14} />Refresh</button>
     </div>
 
-    <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
-      <div style={{ flex: 1, border: "1px solid #dce4ea", borderRadius: 10, background: "#fff", padding: "13px 16px" }}><div style={{ fontSize: 9, fontWeight: 800, color: "#788690", textTransform: "uppercase", marginBottom: 6 }}>Last Week</div><div style={{ display: "flex", alignItems: "center", gap: 7, color: "#263645", fontSize: 12, fontWeight: 700 }}><CalendarDays size={15} />{formatDate(periods.lastWeekStart)} — {formatDate(periods.lastWeekEnd)}</div></div>
-      <div style={{ flex: 1, border: "1px solid #dce4ea", borderRadius: 10, background: "#fff", padding: "13px 16px" }}><div style={{ fontSize: 9, fontWeight: 800, color: "#788690", textTransform: "uppercase", marginBottom: 6 }}>Average Week</div><div style={{ fontSize: 12, fontWeight: 700, color: "#263645" }}>{periods.year} · {report.weekCount} completed weeks</div></div>
+    <div className="mi-periods">
+      <div className="mi-period"><div className="mi-period-label">Last Week</div><div className="mi-period-value"><span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}><CalendarDays size={15} />{formatDate(periods.lastWeekStart)} — {formatDate(periods.lastWeekEnd)}</span></div></div>
+      <div className="mi-period"><div className="mi-period-label">Average Week</div><div className="mi-period-value">{periods.year} · {report.weekCount} completed weeks</div></div>
     </div>
 
     {error && <div style={{ marginBottom: 16, padding: 13, border: "1px solid #f0c8c8", borderRadius: 9, background: "#fff7f7", color: "#a33b3b", fontSize: 11 }}>{error}</div>}
 
-    <div style={{ border: "1px solid #dce4ea", borderRadius: 11, overflow: "hidden", background: "#fff" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr 1fr", gap: 10, padding: "12px 16px", background: "#f3f6f8", borderBottom: "1px solid #dce4ea", fontSize: 9, fontWeight: 800, color: "#687782", textTransform: "uppercase" }}><div>Metric</div><div>Last Week</div><div>Avg Week</div><div>Variance</div><div>Vs Average</div></div>
-      {loading ? <div style={{ padding: 35, textAlign: "center", color: "#89939c", fontSize: 11 }}>Loading management information...</div> : report.rows.map(row => <div key={row.field} style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr 1fr", gap: 10, padding: "16px", borderBottom: "1px solid #eef1f3", alignItems: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: "#263645" }}>{row.label}</div><div style={{ fontSize: 15, fontWeight: 800, color: "#263645" }}>{formatNumber(row.last)}</div><div style={{ fontSize: 13, color: "#53616b" }}>{formatNumber(row.average)}</div><div style={{ fontSize: 13, fontWeight: 700, color: row.variance >= 0 ? "#21824a" : "#b64b4b" }}>{row.variance >= 0 ? "+" : ""}{formatNumber(row.variance)}</div><div style={{ fontSize: 13, fontWeight: 800, color: row.percentage === null ? "#89939c" : row.percentage >= 0 ? "#21824a" : "#b64b4b" }}>{row.percentage === null ? "—" : `${row.percentage >= 0 ? "+" : ""}${row.percentage.toFixed(1)}%`}</div></div>)}
+    <div className="mi-table">
+      <div className="mi-table-inner">
+        <div className="mi-table-header"><div>Metric</div><div>Last Week</div><div>Avg Week</div><div>Variance</div><div>Vs Average</div></div>
+        {loading ? <div style={{ padding: 35, textAlign: "center", color: "#89939c", fontSize: 11 }}>Loading management information...</div> : report.rows.map(row => <div className="mi-table-row" key={row.field}><div style={{ fontSize: 14, fontWeight: 800, color: "#263645" }}>{row.label}</div><div style={{ fontSize: 15, fontWeight: 800, color: "#263645" }}>{formatNumber(row.last)}</div><div style={{ fontSize: 13, color: "#53616b" }}>{formatNumber(row.average)}</div><div style={{ fontSize: 13, fontWeight: 700, color: row.variance >= 0 ? "#21824a" : "#b64b4b" }}>{row.variance >= 0 ? "+" : ""}{formatNumber(row.variance)}</div><div style={{ fontSize: 13, fontWeight: 800, color: row.percentage === null ? "#89939c" : row.percentage >= 0 ? "#21824a" : "#b64b4b" }}>{row.percentage === null ? "—" : `${row.percentage >= 0 ? "+" : ""}${row.percentage.toFixed(1)}%`}</div></div>)}
+      </div>
     </div>
-    <div style={{ marginTop: 12, color: "#8a959d", fontSize: 10 }}>H C P S are counted independently from appointment records. A single appointment can contribute to more than one metric.</div>
+    <div className="mi-note">H C P S are counted independently from appointment records. A single appointment can contribute to more than one metric.</div>
   </section>
 }
