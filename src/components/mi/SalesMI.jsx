@@ -1,8 +1,7 @@
+```jsx
 import React, { useEffect, useMemo, useState } from "react"
 import { RefreshCw } from "lucide-react"
 import { supabase } from "../../lib/supabase"
-
-const BATCH_SIZE = 100
 
 function londonDate(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -76,7 +75,9 @@ function isSolar(appointment) {
 }
 
 function toNumber(value) {
-  if (value === null || value === undefined || value === "") return 0
+  if (value === null || value === undefined || value === "") {
+    return 0
+  }
 
   if (typeof value === "number") {
     return Number.isFinite(value) ? value : 0
@@ -92,10 +93,12 @@ function toNumber(value) {
     if (!cleaned) return 0
 
     const number = Number(cleaned)
+
     return Number.isFinite(number) ? number : 0
   }
 
   const number = Number(value)
+
   return Number.isFinite(number) ? number : 0
 }
 
@@ -118,7 +121,9 @@ function formatRatio(p, s) {
 function financeAmount(appointment) {
   const calculation = appointment?.epvs_calculation
 
-  if (!calculation || typeof calculation !== "object") return 0
+  if (!calculation || typeof calculation !== "object") {
+    return 0
+  }
 
   const value = toNumber(
     calculation.financeAmount ??
@@ -139,10 +144,13 @@ function decorateAppointment(appointment, deal) {
       0
   )
 
-  const stage = String(deal?.pipedrive_stage || "").trim()
+  const stage = String(
+    deal?.pipedrive_stage || ""
+  ).trim()
 
   const solidValue =
-    !["Deal Lost", "Sales"].includes(stage) && Number.isFinite(netValue)
+    !["Deal Lost", "Sales"].includes(stage) &&
+    Number.isFinite(netValue)
       ? netValue
       : 0
 
@@ -201,9 +209,20 @@ function metrics(stats) {
   }
 }
 
-function Table({ rows, showRep = false, title }) {
+function Table({
+  rows,
+  showRep = false,
+  title,
+}) {
   const total = useMemo(
-    () => metrics(makeStats(rows.flatMap((row) => row.rows || []))),
+    () =>
+      metrics(
+        makeStats(
+          rows.flatMap(
+            (row) => row.rows || []
+          )
+        )
+      ),
     [rows]
   )
 
@@ -227,12 +246,29 @@ function Table({ rows, showRep = false, title }) {
 
       <div className="sales-mi-scroll">
         <table className="sales-mi-table">
+          <colgroup>
+            <col className="sales-mi-name-column" />
+
+            {columns.map((column) => (
+              <col
+                key={column}
+                className="sales-mi-value-column"
+              />
+            ))}
+          </colgroup>
+
           <thead>
             <tr>
-              <th>{showRep ? "Sales Rep" : "Windows"}</th>
+              <th>
+                {showRep
+                  ? "Sales Rep"
+                  : "Windows"}
+              </th>
 
               {columns.map((column) => (
-                <th key={column}>{column}</th>
+                <th key={column}>
+                  {column}
+                </th>
               ))}
             </tr>
           </thead>
@@ -240,50 +276,118 @@ function Table({ rows, showRep = false, title }) {
           <tbody>
             {rows.map((row) => {
               const stats = metrics(
-                makeStats(row.rows || [])
+                makeStats(
+                  row.rows || []
+                )
               )
 
               return (
                 <tr key={row.name}>
                   <td>{row.name}</td>
 
-                  <td>{formatNumber(stats.c)}</td>
-                  <td>{formatNumber(stats.p)}</td>
-                  <td>{formatNumber(stats.s)}</td>
+                  <td>
+                    {formatNumber(stats.c)}
+                  </td>
 
-                  <td>{formatCurrency(stats.net)}</td>
-                  <td>{formatCurrency(stats.finance)}</td>
+                  <td>
+                    {formatNumber(stats.p)}
+                  </td>
 
-                  <td>{formatRatio(stats.p, stats.s)}</td>
+                  <td>
+                    {formatNumber(stats.s)}
+                  </td>
 
-                  <td>{formatCurrency(stats.aov)}</td>
+                  <td>
+                    {formatCurrency(stats.net)}
+                  </td>
 
-                  <td>{formatCurrency(stats.solid)}</td>
+                  <td>
+                    {formatCurrency(
+                      stats.finance
+                    )}
+                  </td>
 
-                  <td>{formatCurrency(stats.rpp)}</td>
+                  <td>
+                    {formatRatio(
+                      stats.p,
+                      stats.s
+                    )}
+                  </td>
+
+                  <td>
+                    {formatCurrency(
+                      stats.aov
+                    )}
+                  </td>
+
+                  <td>
+                    {formatCurrency(
+                      stats.solid
+                    )}
+                  </td>
+
+                  <td>
+                    {formatCurrency(
+                      stats.rpp
+                    )}
+                  </td>
                 </tr>
               )
             })}
 
             <tr className="sales-mi-total">
               <td>
-                {showRep ? "Company Total" : "Total"}
+                {showRep
+                  ? "Company Total"
+                  : "Total"}
               </td>
 
-              <td>{formatNumber(total.c)}</td>
-              <td>{formatNumber(total.p)}</td>
-              <td>{formatNumber(total.s)}</td>
+              <td>
+                {formatNumber(total.c)}
+              </td>
 
-              <td>{formatCurrency(total.net)}</td>
-              <td>{formatCurrency(total.finance)}</td>
+              <td>
+                {formatNumber(total.p)}
+              </td>
 
-              <td>{formatRatio(total.p, total.s)}</td>
+              <td>
+                {formatNumber(total.s)}
+              </td>
 
-              <td>{formatCurrency(total.aov)}</td>
+              <td>
+                {formatCurrency(total.net)}
+              </td>
 
-              <td>{formatCurrency(total.solid)}</td>
+              <td>
+                {formatCurrency(
+                  total.finance
+                )}
+              </td>
 
-              <td>{formatCurrency(total.rpp)}</td>
+              <td>
+                {formatRatio(
+                  total.p,
+                  total.s
+                )}
+              </td>
+
+              <td>
+                {formatCurrency(
+                  total.aov
+                )}
+              </td>
+
+              <td>
+                {formatCurrency(
+                  total.solid
+                )}
+              </td>
+
+              <td>
+                {formatCurrency(
+                  total.rpp
+                )}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -293,10 +397,17 @@ function Table({ rows, showRep = false, title }) {
 }
 
 export default function SalesMI() {
-  const [appointments, setAppointments] = useState([])
-  const [profiles, setProfiles] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
+  const [appointments, setAppointments] =
+    useState([])
+
+  const [profiles, setProfiles] =
+    useState([])
+
+  const [loading, setLoading] =
+    useState(true)
+
+  const [error, setError] =
+    useState("")
 
   const dates = useMemo(
     () => lastWeekDates(),
@@ -305,8 +416,12 @@ export default function SalesMI() {
 
   async function loadReport() {
     if (!supabase) {
-      setError("Supabase is not configured.")
+      setError(
+        "Supabase is not configured."
+      )
+
       setLoading(false)
+
       return
     }
 
@@ -314,15 +429,17 @@ export default function SalesMI() {
     setError("")
 
     try {
-      const endExclusive = new Date(
-        `${dates.end}T12:00:00`
-      )
+      const endExclusive =
+        new Date(
+          `${dates.end}T12:00:00`
+        )
 
       endExclusive.setDate(
         endExclusive.getDate() + 1
       )
 
-      const end = londonDate(endExclusive)
+      const end =
+        londonDate(endExclusive)
 
       const [
         appointmentsResult,
@@ -341,16 +458,24 @@ export default function SalesMI() {
             "appointment_date",
             `${end}T00:00:00`
           )
-          .order("appointment_date", {
-            ascending: true,
-          }),
+          .order(
+            "appointment_date",
+            {
+              ascending: true,
+            }
+          ),
 
         supabase
           .from("profiles")
-          .select("email, full_name")
-          .order("full_name", {
-            ascending: true,
-          }),
+          .select(
+            "email, full_name"
+          )
+          .order(
+            "full_name",
+            {
+              ascending: true,
+            }
+          ),
       ])
 
       if (appointmentsResult.error) {
@@ -362,20 +487,21 @@ export default function SalesMI() {
       }
 
       const decoratedAppointments =
-        (appointmentsResult.data || []).map(
-          (appointment) => {
-            const deal = Array.isArray(
-              appointment.deals
-            )
-              ? appointment.deals[0]
-              : appointment.deals
+        (
+          appointmentsResult.data ||
+          []
+        ).map((appointment) => {
+          const deal = Array.isArray(
+            appointment.deals
+          )
+            ? appointment.deals[0]
+            : appointment.deals
 
-            return decorateAppointment(
-              appointment,
-              deal
-            )
-          }
-        )
+          return decorateAppointment(
+            appointment,
+            deal
+          )
+        })
 
       setAppointments(
         decoratedAppointments
@@ -408,47 +534,57 @@ export default function SalesMI() {
 
   const repNameByEmail = useMemo(
     () =>
-      profiles.reduce((map, profile) => {
-        const email = normalise(
-          profile.email
-        )
+      profiles.reduce(
+        (map, profile) => {
+          const email =
+            normalise(
+              profile.email
+            )
 
-        const name = String(
-          profile.full_name || ""
-        ).trim()
+          const name =
+            String(
+              profile.full_name ||
+                ""
+            ).trim()
 
-        if (email && name) {
-          map[email] = name
-        }
+          if (email && name) {
+            map[email] = name
+          }
 
-        return map
-      }, {}),
+          return map
+        },
+        {}
+      ),
     [profiles]
   )
 
   const branchRows = useMemo(() => {
     const branchNames = [
       ...new Set(
-        appointments.map((appointment) =>
-          display(
-            appointment.branch
-          )
+        appointments.map(
+          (appointment) =>
+            display(
+              appointment.branch
+            )
         )
       ),
     ].sort((a, b) =>
       a.localeCompare(b)
     )
 
-    return branchNames.map((branch) => ({
-      name: branch,
+    return branchNames.map(
+      (branch) => ({
+        name: branch,
 
-      rows: appointments.filter(
-        (appointment) =>
-          display(
-            appointment.branch
-          ) === branch
-      ),
-    }))
+        rows:
+          appointments.filter(
+            (appointment) =>
+              display(
+                appointment.branch
+              ) === branch
+          ),
+      })
+    )
   }, [appointments])
 
   const windowRows = useMemo(
@@ -457,10 +593,13 @@ export default function SalesMI() {
         .map((branch) => ({
           ...branch,
 
-          rows: branch.rows.filter(
-            (appointment) =>
-              !isSolar(appointment)
-          ),
+          rows:
+            branch.rows.filter(
+              (appointment) =>
+                !isSolar(
+                  appointment
+                )
+            ),
         }))
         .filter(
           (branch) =>
@@ -475,9 +614,10 @@ export default function SalesMI() {
         .map((branch) => ({
           ...branch,
 
-          rows: branch.rows.filter(
-            isSolar
-          ),
+          rows:
+            branch.rows.filter(
+              isSolar
+            ),
         }))
         .filter(
           (branch) =>
@@ -488,10 +628,12 @@ export default function SalesMI() {
 
   const totalBranchRows = useMemo(
     () =>
-      branchRows.map((branch) => ({
-        name: branch.name,
-        rows: branch.rows,
-      })),
+      branchRows.map(
+        (branch) => ({
+          name: branch.name,
+          rows: branch.rows,
+        })
+      ),
     [branchRows]
   )
 
@@ -500,9 +642,10 @@ export default function SalesMI() {
 
     appointments.forEach(
       (appointment) => {
-        const email = normalise(
-          appointment.rep_allocated
-        )
+        const email =
+          normalise(
+            appointment.rep_allocated
+          )
 
         const name =
           repNameByEmail[email] ||
@@ -524,13 +667,18 @@ export default function SalesMI() {
 
         reps
           .get(key)
-          .rows.push(appointment)
+          .rows.push(
+            appointment
+          )
       }
     )
 
-    return [...reps.values()].sort(
-      (a, b) =>
-        a.name.localeCompare(b.name)
+    return [
+      ...reps.values(),
+    ].sort((a, b) =>
+      a.name.localeCompare(
+        b.name
+      )
     )
   }, [
     appointments,
@@ -600,28 +748,47 @@ export default function SalesMI() {
 
         .sales-mi-table{
           width:100%;
-          min-width:850px;
+          min-width:1000px;
           border-collapse:collapse;
+          table-layout:fixed;
           font-size:13px;
           background:#fff
+        }
+
+        .sales-mi-table col.sales-mi-name-column{
+          width:22%
+        }
+
+        .sales-mi-table col.sales-mi-value-column{
+          width:8.666%
         }
 
         .sales-mi-table th,
         .sales-mi-table td{
           border:1px solid #202020;
-          padding:3px 8px;
-          white-space:nowrap
+          padding:4px 8px;
+          white-space:nowrap;
+          vertical-align:middle;
+          overflow:hidden;
+          text-overflow:ellipsis
         }
 
         .sales-mi-table th{
           background:#777;
           color:#fff;
-          text-align:left;
-          font-weight:800
+          font-weight:800;
+          text-align:center
         }
 
-        .sales-mi-table td:not(:first-child),
-        .sales-mi-table th:not(:first-child){
+        .sales-mi-table th:first-child{
+          text-align:left
+        }
+
+        .sales-mi-table td{
+          text-align:center
+        }
+
+        .sales-mi-table td:first-child{
           text-align:left
         }
 
@@ -632,7 +799,12 @@ export default function SalesMI() {
         .sales-mi-total td{
           background:#777;
           color:#fff;
-          font-weight:800
+          font-weight:800;
+          text-align:center
+        }
+
+        .sales-mi-total td:first-child{
+          text-align:left
         }
 
         .sales-mi-error{
@@ -665,6 +837,7 @@ export default function SalesMI() {
           }
 
           .sales-mi-table{
+            min-width:1000px;
             font-size:12px
           }
 
@@ -737,3 +910,4 @@ export default function SalesMI() {
     </div>
   )
 }
+```
