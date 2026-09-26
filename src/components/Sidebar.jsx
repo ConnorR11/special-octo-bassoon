@@ -46,6 +46,33 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
   const presentationOverlay = isAdministrator && page === "sales-presentations" && typeof document !== "undefined" ? createPortal(<div style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: desktopOverlayLeft, zIndex: 10000, background: "#f5f7fa", overflow: "auto" }}><div style={{ maxWidth: 1500, margin: "0 auto", padding: "28px 28px 50px" }}><SalesPresentations /></div></div>, document.body) : null
   const miOverlay = isAdministrator && page === "mi" && typeof document !== "undefined" ? createPortal(<div style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: desktopOverlayLeft, zIndex: 10000, background: "#f5f7fa", overflow: "auto" }}><div style={{ maxWidth: 1500, margin: "0 auto", padding: "28px 28px 50px" }}><MI /></div></div>, document.body) : null
   return <>
+    <style>{`
+      @media (max-width: 900px) {
+        .sidebar {
+          transform: translateX(-100%);
+          transition: transform 0.2s ease;
+          z-index: 1000;
+        }
+        .sidebar.sidebar-open {
+          transform: translateX(0);
+        }
+        .sidebar-overlay {
+          display: block;
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.35);
+          z-index: 999;
+        }
+        main {
+          margin-left: 0;
+          width: 100%;
+          padding: 22px 18px;
+        }
+        .mobile-menu {
+          display: inline-flex;
+        }
+      }
+    `}</style>
     {mobile && <div className="sidebar-overlay" onClick={() => setMobile(false)} />}
     <aside className={`sidebar ${mobile ? "sidebar-open" : ""}`}>
       <div className="sidebar-brand"><div className="brand-mark">C</div><div><strong>Homeshield Scotland</strong><span>CRM</span></div></div>
