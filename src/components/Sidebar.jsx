@@ -14,6 +14,35 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
   const navigate = (pageName) => { setPage(pageName); setMobile(false) }
   const isActive = (pageName) => page === pageName
   const desktopOverlayLeft = typeof window !== "undefined" && window.innerWidth <= 800 ? 0 : 250
+
+  const canAccessRoute = (route) => {
+    const requiredPermission = {
+      "sales-performance": 2,
+      "marketing-dashboard": 3,
+      "mi": 4,
+      "users": 4,
+      "tasks": 4,
+      "sales-presentations": 4,
+    }[route]
+
+    return !requiredPermission || numericPermissionLevel >= requiredPermission
+  }
+
+  React.useEffect(() => {
+    if (!numericPermissionLevel) return
+
+    const path = window.location.pathname.replace(/^\/+|\/+$/g, "")
+    const route = path === "" ? "dashboard" : path.split("/")[0]
+
+    if (!canAccessRoute(route)) {
+      setPage("dashboard")
+      if (window.location.pathname !== "/") {
+        window.history.replaceState({}, "", "/")
+      }
+      window.dispatchEvent(new PopStateEvent("popstate"))
+    }
+  }, [numericPermissionLevel])
+
   const presentationOverlay = isAdministrator && page === "sales-presentations" && typeof document !== "undefined" ? createPortal(<div style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: desktopOverlayLeft, zIndex: 10000, background: "#f5f7fa", overflow: "auto" }}><div style={{ maxWidth: 1500, margin: "0 auto", padding: "28px 28px 50px" }}><SalesPresentations /></div></div>, document.body) : null
   const miOverlay = isAdministrator && page === "mi" && typeof document !== "undefined" ? createPortal(<div style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: desktopOverlayLeft, zIndex: 10000, background: "#f5f7fa", overflow: "auto" }}><div style={{ maxWidth: 1500, margin: "0 auto", padding: "28px 28px 50px" }}><MI /></div></div>, document.body) : null
   return <>
