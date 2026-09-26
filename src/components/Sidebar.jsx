@@ -12,8 +12,9 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
   const toggleFolder = (folder) => setOpenFolders((current) => ({ ...current, [folder]: !current[folder] }))
   const navigate = (pageName) => { setPage(pageName); setMobile(false) }
   const isActive = (pageName) => page === pageName
-  const presentationOverlay = isAdministrator && page === "sales-presentations" && typeof document !== "undefined" ? createPortal(<div style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: 250, zIndex: 10000, background: "#f5f7fa", overflow: "auto" }}><div style={{ maxWidth: 1500, margin: "0 auto", padding: "28px 28px 50px" }}><SalesPresentations /></div></div>, document.body) : null
-  const miOverlay = isAdministrator && page === "mi" && typeof document !== "undefined" ? createPortal(<div style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: 250, zIndex: 10000, background: "#f5f7fa", overflow: "auto" }}><div style={{ maxWidth: 1500, margin: "0 auto", padding: "28px 28px 50px" }}><MI /></div></div>, document.body) : null
+  const desktopOverlayLeft = typeof window !== "undefined" && window.innerWidth <= 800 ? 0 : 250
+  const presentationOverlay = isAdministrator && page === "sales-presentations" && typeof document !== "undefined" ? createPortal(<div style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: desktopOverlayLeft, zIndex: 10000, background: "#f5f7fa", overflow: "auto" }}><div style={{ maxWidth: 1500, margin: "0 auto", padding: "28px 28px 50px" }}><SalesPresentations /></div></div>, document.body) : null
+  const miOverlay = isAdministrator && page === "mi" && typeof document !== "undefined" ? createPortal(<div style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: desktopOverlayLeft, zIndex: 10000, background: "#f5f7fa", overflow: "auto" }}><div style={{ maxWidth: 1500, margin: "0 auto", padding: "28px 28px 50px" }}><MI /></div></div>, document.body) : null
   return <>
     {mobile && <div className="sidebar-overlay" onClick={() => setMobile(false)} />}
     <aside className={`sidebar ${mobile ? "sidebar-open" : ""}`}>
