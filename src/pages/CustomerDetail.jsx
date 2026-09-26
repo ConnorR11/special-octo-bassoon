@@ -8,6 +8,18 @@ import {
 
 import { supabase } from "../lib/supabase"
 
+function formatDate(value) {
+  if (!value) return "—"
+
+  const text = String(value).slice(0, 10)
+  const parts = text.split("-")
+
+  if (parts.length !== 3) return value
+
+  const [year, month, day] = parts
+  return `${day}/${month}/${year}`
+}
+
 function CustomerDetail({
   deal,
   onBack,
@@ -371,6 +383,65 @@ function CustomerDetail({
         </div>
 
         <div style={{ padding: "0 20px 20px" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gap: "14px",
+              marginBottom: "18px",
+            }}
+          >
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: "10px",
+                  fontWeight: 600,
+                  color: "#777",
+                  marginBottom: "6px",
+                }}
+              >
+                Installation start date
+              </label>
+              <div
+                style={{
+                  padding: "10px 12px",
+                  background: "#f7f7f8",
+                  border: "1px solid #e5e5e7",
+                  borderRadius: "7px",
+                  fontSize: "12px",
+                }}
+              >
+                {formatDate(deal.installation_start_date)}
+              </div>
+            </div>
+
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: "10px",
+                  fontWeight: 600,
+                  color: "#777",
+                  marginBottom: "6px",
+                }}
+              >
+                Admin fee received date
+              </label>
+              <div
+                style={{
+                  padding: "10px 12px",
+                  background: "#f7f7f8",
+                  border: "1px solid #e5e5e7",
+                  borderRadius: "7px",
+                  fontSize: "12px",
+                }}
+              >
+                {formatDate(deal.admin_fee_received_date)}
+              </div>
+            </div>
+          </div>
+
           <div style={{ marginBottom: "18px" }}>
             <label
               style={{
