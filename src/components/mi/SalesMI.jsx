@@ -87,7 +87,6 @@ function display(
   fallback = "Unassigned"
 ) {
   const text = String(value ?? "").trim()
-
   return text || fallback
 }
 
@@ -290,6 +289,163 @@ function metrics(stats) {
   }
 }
 
+const TABLE_STYLES = `
+.sales-mi {
+  width: 100%;
+  color: #172033;
+  font-family: Inter, Arial, sans-serif;
+}
+
+.sales-mi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.sales-mi-period {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.sales-mi-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #d8e0e7;
+  background: #fff;
+  border-radius: 7px;
+  padding: 7px 10px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sales-mi-refresh:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.sales-mi-report {
+  margin-top: 12px;
+}
+
+.sales-mi-report-title {
+  background: #0877bd;
+  color: #fff;
+  font-style: italic;
+  font-weight: 800;
+  font-size: 18px;
+  line-height: 1;
+  padding: 6px 10px;
+}
+
+.sales-mi-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.sales-mi-table {
+  width: 100%;
+  min-width: 1000px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
+  background: #fff;
+}
+
+.sales-mi-table th,
+.sales-mi-table td {
+  border: 1px solid #202020;
+  padding: 4px 8px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.sales-mi-table th:first-child,
+.sales-mi-table td:first-child {
+  width: 22%;
+  text-align: left;
+}
+
+.sales-mi-table th:not(:first-child),
+.sales-mi-table td:not(:first-child) {
+  width: 8.666%;
+  text-align: center;
+}
+
+.sales-mi-table th {
+  background: #777;
+  color: #fff;
+  font-weight: 800;
+}
+
+.sales-mi-table tbody tr:nth-child(even) {
+  background: #f8f8f8;
+}
+
+.sales-mi-total td {
+  background: #777;
+  color: #fff;
+  font-weight: 800;
+}
+
+.sales-mi-total td:first-child {
+  text-align: left;
+}
+
+.sales-mi-total td:not(:first-child) {
+  text-align: center;
+}
+
+.sales-mi-error {
+  padding: 12px;
+  background: #fff5f5;
+  border: 1px solid #efcaca;
+  border-radius: 8px;
+  color: #a33b3b;
+  font-size: 11px;
+}
+
+.sales-mi-loading {
+  padding: 25px;
+  text-align: center;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.sales-mi-spacer {
+  height: 14px;
+}
+
+@media (max-width: 900px) {
+  .sales-mi-top {
+    align-items: flex-start;
+  }
+
+  .sales-mi-period {
+    font-size: 10px;
+  }
+
+  .sales-mi-table {
+    min-width: 1000px;
+    font-size: 12px;
+  }
+
+  .sales-mi-report-title {
+    font-size: 16px;
+  }
+
+  .sales-mi-table th,
+  .sales-mi-table td {
+    padding: 4px 7px;
+  }
+}
+`
+
 function Table({
   rows,
   showRep = false,
@@ -320,26 +476,13 @@ function Table({
   ]
 
   return (
-    <div className="sales-mi-report-table-wrap">
+    <div className="sales-mi-report">
       <div className="sales-mi-report-title">
         {title}
       </div>
 
       <div className="sales-mi-scroll">
         <table className="sales-mi-table">
-          <colgroup>
-            <col className="sales-mi-name-column" />
-
-            {columns.map(
-              (column) => (
-                <col
-                  key={column}
-                  className="sales-mi-value-column"
-                />
-              )
-            )}
-          </colgroup>
-
           <thead>
             <tr>
               <th>
@@ -832,170 +975,9 @@ export default function SalesMI() {
 
   return (
     <div className="sales-mi">
-      <style>{`
-        .sales-mi{
-          width:100%;
-          color:#172033;
-          font-family:Inter,Arial,sans-serif
-        }
-
-        .sales-mi-top{
-          display:flex;
-          align-items:center;
-          justify-content:space-between;
-          gap:12px;
-          margin-bottom:14px
-        }
-
-        .sales-mi-period{
-          font-size:11px;
-          font-weight:700;
-          color:#64748b
-        }
-
-        .sales-mi-refresh{
-          display:inline-flex;
-          align-items:center;
-          gap:6px;
-          border:1px solid #d8e0e7;
-          background:#fff;
-          border-radius:7px;
-          padding:7px 10px;
-          color:#64748b;
-          font-size:10px;
-          font-weight:700;
-          cursor:pointer
-        }
-
-        .sales-mi-refresh:disabled{
-          opacity:.55;
-          cursor:default
-        }
-
-        .sales-mi-report{
-          margin-top:12px
-        }
-
-        .sales-mi-report-title{
-          background:#0877bd;
-          color:#fff;
-          font-style:italic;
-          font-weight:800;
-          font-size:18px;
-          line-height:1;
-          padding:6px 10px
-        }
-
-        .sales-mi-scroll{
-          width:100%;
-          overflow-x:auto
-        }
-
-        .sales-mi-table{
-          width:100%;
-          min-width:1000px;
-          border-collapse:collapse;
-          table-layout:fixed;
-          font-size:13px;
-          background:#fff
-        }
-
-        .sales-mi-table col.sales-mi-name-column{
-          width:22%
-        }
-
-        .sales-mi-table col.sales-mi-value-column{
-          width:8.666%
-        }
-
-        .sales-mi-table th,
-        .sales-mi-table td{
-          border:1px solid #202020;
-          padding:4px 8px;
-          white-space:nowrap;
-          vertical-align:middle;
-          overflow:hidden;
-          text-overflow:ellipsis
-        }
-
-        .sales-mi-table th{
-          background:#777;
-          color:#fff;
-          font-weight:800;
-          text-align:center
-        }
-
-        .sales-mi-table th:first-child{
-          text-align:left
-        }
-
-        .sales-mi-table td{
-          text-align:center
-        }
-
-        .sales-mi-table td:first-child{
-          text-align:left
-        }
-
-        .sales-mi-table tbody tr:nth-child(even){
-          background:#f8f8f8
-        }
-
-        .sales-mi-total td{
-          background:#777;
-          color:#fff;
-          font-weight:800;
-          text-align:center
-        }
-
-        .sales-mi-total td:first-child{
-          text-align:left
-        }
-
-        .sales-mi-error{
-          padding:12px;
-          background:#fff5f5;
-          border:1px solid #efcaca;
-          border-radius:8px;
-          color:#a33b3b;
-          font-size:11px
-        }
-
-        .sales-mi-loading{
-          padding:25px;
-          text-align:center;
-          color:#64748b;
-          font-size:11px
-        }
-
-        .sales-mi-spacer{
-          height:14px
-        }
-
-        @media(max-width:900px){
-          .sales-mi-top{
-            align-items:flex-start
-          }
-
-          .sales-mi-period{
-            font-size:10px
-          }
-
-          .sales-mi-table{
-            min-width:1000px;
-            font-size:12px
-          }
-
-          .sales-mi-report-title{
-            font-size:16px
-          }
-
-          .sales-mi-table th,
-          .sales-mi-table td{
-            padding:4px 7px
-          }
-        }
-      `}</style>
+      <style>
+        {TABLE_STYLES}
+      </style>
 
       <div className="sales-mi-top">
         <div className="sales-mi-period">
