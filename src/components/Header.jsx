@@ -3,7 +3,18 @@ import { Menu } from "lucide-react"
 
 function Header({ page, setMobile }) {
   if (page === "dashboard") {
-    return null
+    return (
+      <div className="home-mobile-menu">
+        <button
+          className="mobile-menu"
+          onClick={() => setMobile((current) => !current)}
+          aria-label="Open menu"
+          type="button"
+        >
+          <Menu size={20} />
+        </button>
+      </div>
+    )
   }
 
   const pageTitle = {
@@ -26,6 +37,8 @@ function Header({ page, setMobile }) {
         <button
           className="mobile-menu"
           onClick={() => setMobile((current) => !current)}
+          aria-label="Open menu"
+          type="button"
         >
           <Menu size={20} />
         </button>
