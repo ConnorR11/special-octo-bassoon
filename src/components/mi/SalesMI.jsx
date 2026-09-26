@@ -17,21 +17,40 @@ function londonDate(date = new Date()) {
       .map((part) => [part.type, part.value])
   )
 
-  return `${values.year}-${values.month}-${values.day}`
+  return (
+    values.year +
+    "-" +
+    values.month +
+    "-" +
+    values.day
+  )
 }
 
 function lastWeekDates() {
-  const today = new Date(`${londonDate()}T12:00:00`)
+  const today = new Date(
+    londonDate() + "T12:00:00"
+  )
+
   const day = today.getDay()
 
   const monday = new Date(today)
-  monday.setDate(monday.getDate() - (day === 0 ? 6 : day - 1))
+
+  monday.setDate(
+    monday.getDate() -
+      (day === 0 ? 6 : day - 1)
+  )
 
   const start = new Date(monday)
-  start.setDate(start.getDate() - 7)
+
+  start.setDate(
+    start.getDate() - 7
+  )
 
   const end = new Date(monday)
-  end.setDate(end.getDate() - 1)
+
+  end.setDate(
+    end.getDate() - 1
+  )
 
   return {
     start: londonDate(start),
@@ -43,7 +62,13 @@ function isTrue(value) {
   if (value === true) return true
 
   if (typeof value === "string") {
-    return ["true", "t", "1", "yes", "y"].includes(
+    return [
+      "true",
+      "t",
+      "1",
+      "yes",
+      "y",
+    ].includes(
       value.trim().toLowerCase()
     )
   }
@@ -52,11 +77,17 @@ function isTrue(value) {
 }
 
 function normalise(value) {
-  return String(value ?? "").trim().toLowerCase()
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
 }
 
-function display(value, fallback = "Unassigned") {
+function display(
+  value,
+  fallback = "Unassigned"
+) {
   const text = String(value ?? "").trim()
+
   return text || fallback
 }
 
@@ -70,17 +101,27 @@ function isSolar(appointment) {
     appointment.job_type,
     appointment.product_type,
     appointment.service,
-  ].some((value) => normalise(value).includes("solar")) ||
-    Boolean(appointment.epvs_calculation)
+  ].some((value) =>
+    normalise(value).includes("solar")
+  ) ||
+    Boolean(
+      appointment.epvs_calculation
+    )
 }
 
 function toNumber(value) {
-  if (value === null || value === undefined || value === "") {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
     return 0
   }
 
   if (typeof value === "number") {
-    return Number.isFinite(value) ? value : 0
+    return Number.isFinite(value)
+      ? value
+      : 0
   }
 
   if (typeof value === "string") {
@@ -94,34 +135,49 @@ function toNumber(value) {
 
     const number = Number(cleaned)
 
-    return Number.isFinite(number) ? number : 0
+    return Number.isFinite(number)
+      ? number
+      : 0
   }
 
   const number = Number(value)
 
-  return Number.isFinite(number) ? number : 0
+  return Number.isFinite(number)
+    ? number
+    : 0
 }
 
 function formatCurrency(value) {
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-    maximumFractionDigits: 0,
-  }).format(toNumber(value))
+  return new Intl.NumberFormat(
+    "en-GB",
+    {
+      style: "currency",
+      currency: "GBP",
+      maximumFractionDigits: 0,
+    }
+  ).format(toNumber(value))
 }
 
 function formatNumber(value) {
-  return new Intl.NumberFormat("en-GB").format(toNumber(value))
+  return new Intl.NumberFormat(
+    "en-GB"
+  ).format(toNumber(value))
 }
 
 function formatRatio(p, s) {
-  return s > 0 ? (p / s).toFixed(1) : "—"
+  return s > 0
+    ? (p / s).toFixed(1)
+    : "—"
 }
 
 function financeAmount(appointment) {
-  const calculation = appointment?.epvs_calculation
+  const calculation =
+    appointment?.epvs_calculation
 
-  if (!calculation || typeof calculation !== "object") {
+  if (
+    !calculation ||
+    typeof calculation !== "object"
+  ) {
     return 0
   }
 
@@ -135,7 +191,10 @@ function financeAmount(appointment) {
   return Math.max(0, value)
 }
 
-function decorateAppointment(appointment, deal) {
+function decorateAppointment(
+  appointment,
+  deal
+) {
   const netValue = toNumber(
     deal?.net_value ??
       appointment?.net_value ??
@@ -149,8 +208,10 @@ function decorateAppointment(appointment, deal) {
   ).trim()
 
   const solidValue =
-    !["Deal Lost", "Sales"].includes(stage) &&
-    Number.isFinite(netValue)
+    ![
+      "Deal Lost",
+      "Sales",
+    ].includes(stage)
       ? netValue
       : 0
 
@@ -158,21 +219,41 @@ function decorateAppointment(appointment, deal) {
     ...appointment,
     net_value: netValue,
     solid_value: solidValue,
-    finance_value: financeAmount(appointment),
+    finance_value:
+      financeAmount(appointment),
   }
 }
 
 function makeStats(rows) {
   return rows.reduce(
     (total, row) => {
-      if (isTrue(row.cps_h)) total.h += 1
-      if (isTrue(row.cps_c)) total.c += 1
-      if (isTrue(row.cps_p)) total.p += 1
-      if (isTrue(row.cps_s)) total.s += 1
+      if (isTrue(row.cps_h)) {
+        total.h += 1
+      }
 
-      total.net += toNumber(row.net_value)
-      total.finance += toNumber(row.finance_value)
-      total.solid += toNumber(row.solid_value)
+      if (isTrue(row.cps_c)) {
+        total.c += 1
+      }
+
+      if (isTrue(row.cps_p)) {
+        total.p += 1
+      }
+
+      if (isTrue(row.cps_s)) {
+        total.s += 1
+      }
+
+      total.net += toNumber(
+        row.net_value
+      )
+
+      total.finance += toNumber(
+        row.finance_value
+      )
+
+      total.solid += toNumber(
+        row.solid_value
+      )
 
       return total
     },
@@ -249,12 +330,14 @@ function Table({
           <colgroup>
             <col className="sales-mi-name-column" />
 
-            {columns.map((column) => (
-              <col
-                key={column}
-                className="sales-mi-value-column"
-              />
-            ))}
+            {columns.map(
+              (column) => (
+                <col
+                  key={column}
+                  className="sales-mi-value-column"
+                />
+              )
+            )}
           </colgroup>
 
           <thead>
@@ -265,40 +348,51 @@ function Table({
                   : "Windows"}
               </th>
 
-              {columns.map((column) => (
-                <th key={column}>
-                  {column}
-                </th>
-              ))}
+              {columns.map(
+                (column) => (
+                  <th key={column}>
+                    {column}
+                  </th>
+                )
+              )}
             </tr>
           </thead>
 
           <tbody>
             {rows.map((row) => {
-              const stats = metrics(
-                makeStats(
-                  row.rows || []
+              const stats =
+                metrics(
+                  makeStats(
+                    row.rows || []
+                  )
                 )
-              )
 
               return (
                 <tr key={row.name}>
                   <td>{row.name}</td>
 
                   <td>
-                    {formatNumber(stats.c)}
+                    {formatNumber(
+                      stats.c
+                    )}
                   </td>
 
                   <td>
-                    {formatNumber(stats.p)}
+                    {formatNumber(
+                      stats.p
+                    )}
                   </td>
 
                   <td>
-                    {formatNumber(stats.s)}
+                    {formatNumber(
+                      stats.s
+                    )}
                   </td>
 
                   <td>
-                    {formatCurrency(stats.net)}
+                    {formatCurrency(
+                      stats.net
+                    )}
                   </td>
 
                   <td>
@@ -343,19 +437,27 @@ function Table({
               </td>
 
               <td>
-                {formatNumber(total.c)}
+                {formatNumber(
+                  total.c
+                )}
               </td>
 
               <td>
-                {formatNumber(total.p)}
+                {formatNumber(
+                  total.p
+                )}
               </td>
 
               <td>
-                {formatNumber(total.s)}
+                {formatNumber(
+                  total.s
+                )}
               </td>
 
               <td>
-                {formatCurrency(total.net)}
+                {formatCurrency(
+                  total.net
+                )}
               </td>
 
               <td>
@@ -397,17 +499,25 @@ function Table({
 }
 
 export default function SalesMI() {
-  const [appointments, setAppointments] =
-    useState([])
+  const [
+    appointments,
+    setAppointments,
+  ] = useState([])
 
-  const [profiles, setProfiles] =
-    useState([])
+  const [
+    profiles,
+    setProfiles,
+  ] = useState([])
 
-  const [loading, setLoading] =
-    useState(true)
+  const [
+    loading,
+    setLoading,
+  ] = useState(true)
 
-  const [error, setError] =
-    useState("")
+  const [
+    error,
+    setError,
+  ] = useState("")
 
   const dates = useMemo(
     () => lastWeekDates(),
@@ -431,7 +541,8 @@ export default function SalesMI() {
     try {
       const endExclusive =
         new Date(
-          `${dates.end}T12:00:00`
+          dates.end +
+            "T12:00:00"
         )
 
       endExclusive.setDate(
@@ -439,50 +550,59 @@ export default function SalesMI() {
       )
 
       const end =
-        londonDate(endExclusive)
+        londonDate(
+          endExclusive
+        )
 
       const [
         appointmentsResult,
         profilesResult,
-      ] = await Promise.all([
-        supabase
-          .from("appointments")
-          .select(
-            "*, deals(net_value, pipedrive_stage)"
-          )
-          .gte(
-            "appointment_date",
-            `${dates.start}T00:00:00`
-          )
-          .lt(
-            "appointment_date",
-            `${end}T00:00:00`
-          )
-          .order(
-            "appointment_date",
-            {
-              ascending: true,
-            }
-          ),
+      ] =
+        await Promise.all([
+          supabase
+            .from("appointments")
+            .select(
+              "*, deals(net_value, pipedrive_stage)"
+            )
+            .gte(
+              "appointment_date",
+              dates.start +
+                "T00:00:00"
+            )
+            .lt(
+              "appointment_date",
+              end +
+                "T00:00:00"
+            )
+            .order(
+              "appointment_date",
+              {
+                ascending: true,
+              }
+            ),
 
-        supabase
-          .from("profiles")
-          .select(
-            "email, full_name"
-          )
-          .order(
-            "full_name",
-            {
-              ascending: true,
-            }
-          ),
-      ])
+          supabase
+            .from("profiles")
+            .select(
+              "email, full_name"
+            )
+            .order(
+              "full_name",
+              {
+                ascending: true,
+              }
+            ),
+        ])
 
-      if (appointmentsResult.error) {
+      if (
+        appointmentsResult.error
+      ) {
         throw appointmentsResult.error
       }
 
-      if (profilesResult.error) {
+      if (
+        profilesResult.error
+      ) {
         throw profilesResult.error
       }
 
@@ -490,18 +610,21 @@ export default function SalesMI() {
         (
           appointmentsResult.data ||
           []
-        ).map((appointment) => {
-          const deal = Array.isArray(
-            appointment.deals
-          )
-            ? appointment.deals[0]
-            : appointment.deals
+        ).map(
+          (appointment) => {
+            const deal =
+              Array.isArray(
+                appointment.deals
+              )
+                ? appointment.deals[0]
+                : appointment.deals
 
-          return decorateAppointment(
-            appointment,
-            deal
-          )
-        })
+            return decorateAppointment(
+              appointment,
+              deal
+            )
+          }
+        )
 
       setAppointments(
         decoratedAppointments
@@ -532,158 +655,180 @@ export default function SalesMI() {
     loadReport()
   }, [])
 
-  const repNameByEmail = useMemo(
-    () =>
-      profiles.reduce(
-        (map, profile) => {
-          const email =
-            normalise(
-              profile.email
-            )
+  const repNameByEmail =
+    useMemo(
+      () =>
+        profiles.reduce(
+          (map, profile) => {
+            const email =
+              normalise(
+                profile.email
+              )
 
-          const name =
-            String(
-              profile.full_name ||
-                ""
-            ).trim()
+            const name =
+              String(
+                profile.full_name ||
+                  ""
+              ).trim()
 
-          if (email && name) {
-            map[email] = name
-          }
+            if (
+              email &&
+              name
+            ) {
+              map[email] =
+                name
+            }
 
-          return map
-        },
-        {}
-      ),
-    [profiles]
-  )
-
-  const branchRows = useMemo(() => {
-    const branchNames = [
-      ...new Set(
-        appointments.map(
-          (appointment) =>
-            display(
-              appointment.branch
-            )
-        )
-      ),
-    ].sort((a, b) =>
-      a.localeCompare(b)
+            return map
+          },
+          {}
+        ),
+      [profiles]
     )
 
-    return branchNames.map(
-      (branch) => ({
-        name: branch,
-
-        rows:
-          appointments.filter(
+  const branchRows =
+    useMemo(() => {
+      const branchNames = [
+        ...new Set(
+          appointments.map(
             (appointment) =>
               display(
                 appointment.branch
-              ) === branch
-          ),
-      })
-    )
-  }, [appointments])
-
-  const windowRows = useMemo(
-    () =>
-      branchRows
-        .map((branch) => ({
-          ...branch,
-
-          rows:
-            branch.rows.filter(
-              (appointment) =>
-                !isSolar(
-                  appointment
-                )
-            ),
-        }))
-        .filter(
-          (branch) =>
-            branch.rows.length > 0
+              )
+          )
         ),
-    [branchRows]
-  )
-
-  const renewableRows = useMemo(
-    () =>
-      branchRows
-        .map((branch) => ({
-          ...branch,
-
-          rows:
-            branch.rows.filter(
-              isSolar
-            ),
-        }))
-        .filter(
-          (branch) =>
-            branch.rows.length > 0
-        ),
-    [branchRows]
-  )
-
-  const totalBranchRows = useMemo(
-    () =>
-      branchRows.map(
-        (branch) => ({
-          name: branch.name,
-          rows: branch.rows,
-        })
-      ),
-    [branchRows]
-  )
-
-  const repRows = useMemo(() => {
-    const reps = new Map()
-
-    appointments.forEach(
-      (appointment) => {
-        const email =
-          normalise(
-            appointment.rep_allocated
-          )
-
-        const name =
-          repNameByEmail[email] ||
-          display(
-            appointment.rep_allocated,
-            "Unallocated"
-          )
-
-        const key =
-          email ||
-          "__unallocated__"
-
-        if (!reps.has(key)) {
-          reps.set(key, {
-            name,
-            rows: [],
-          })
-        }
-
-        reps
-          .get(key)
-          .rows.push(
-            appointment
-          )
-      }
-    )
-
-    return [
-      ...reps.values(),
-    ].sort((a, b) =>
-      a.name.localeCompare(
-        b.name
+      ].sort((a, b) =>
+        a.localeCompare(b)
       )
+
+      return branchNames.map(
+        (branch) => ({
+          name: branch,
+
+          rows:
+            appointments.filter(
+              (appointment) =>
+                display(
+                  appointment.branch
+                ) === branch
+            ),
+        })
+      )
+    }, [appointments])
+
+  const windowRows =
+    useMemo(
+      () =>
+        branchRows
+          .map(
+            (branch) => ({
+              ...branch,
+
+              rows:
+                branch.rows.filter(
+                  (appointment) =>
+                    !isSolar(
+                      appointment
+                    )
+                ),
+            })
+          )
+          .filter(
+            (branch) =>
+              branch.rows
+                .length > 0
+          ),
+      [branchRows]
     )
-  }, [
-    appointments,
-    repNameByEmail,
-  ])
+
+  const renewableRows =
+    useMemo(
+      () =>
+        branchRows
+          .map(
+            (branch) => ({
+              ...branch,
+
+              rows:
+                branch.rows.filter(
+                  isSolar
+                ),
+            })
+          )
+          .filter(
+            (branch) =>
+              branch.rows
+                .length > 0
+          ),
+      [branchRows]
+    )
+
+  const totalBranchRows =
+    useMemo(
+      () =>
+        branchRows.map(
+          (branch) => ({
+            name:
+              branch.name,
+            rows:
+              branch.rows,
+          })
+        ),
+      [branchRows]
+    )
+
+  const repRows =
+    useMemo(() => {
+      const reps = new Map()
+
+      appointments.forEach(
+        (appointment) => {
+          const email =
+            normalise(
+              appointment.rep_allocated
+            )
+
+          const name =
+            repNameByEmail[
+              email
+            ] ||
+            display(
+              appointment.rep_allocated,
+              "Unallocated"
+            )
+
+          const key =
+            email ||
+            "__unallocated__"
+
+          if (
+            !reps.has(key)
+          ) {
+            reps.set(key, {
+              name,
+              rows: [],
+            })
+          }
+
+          reps
+            .get(key)
+            .rows.push(
+              appointment
+            )
+        }
+      )
+
+      return [
+        ...reps.values(),
+      ].sort((a, b) =>
+        a.name.localeCompare(
+          b.name
+        )
+      )
+    }, [
+      appointments,
+      repNameByEmail,
+    ])
 
   return (
     <div className="sales-mi">
@@ -854,8 +999,10 @@ export default function SalesMI() {
 
       <div className="sales-mi-top">
         <div className="sales-mi-period">
-          Last week: {dates.start} to{" "}
-          {dates.end} (Monday–Sunday)
+          Last week:{" "}
+          {dates.start} to{" "}
+          {dates.end}{" "}
+          (Monday–Sunday)
         </div>
 
         <button
