@@ -5,6 +5,7 @@ import Sidebar from "./components/Sidebar"
 import Header from "./components/Header"
 import FitSheet from "./FitSheet"
 import Dashboard from "./pages/Dashboard"
+import Installations from "./pages/Installations"
 import MarketingTV from "./pages/MarketingTV"
 import MarketingDashboard from "./pages/MarketingDashboard"
 import Contracts from "./pages/Contracts"
@@ -123,14 +124,7 @@ function App() {
     try {
       const results = []; let from = 0
       while (true) {
-        const { data, error: supabaseError } = await supabase
-          .from("deals")
-          .select("*")
-          .not("pipedrive_stage", "in", "(Decline,Customer Cancelled)")
-          .is("commission_paid_date", null)
-          .gte("sale_date", "2025-01-01")
-          .order("installation_start_date", { ascending: true })
-          .range(from, from + REPORTING_PAGE_SIZE - 1)
+        const { data, error: supabaseError } = await supabase.from("deals").select("*").not("pipedrive_stage", "in", "(Decline,Customer Cancelled)").is("commission_paid_date", null).gte("sale_date", "2025-01-01").order("installation_start_date", { ascending: true }).range(from, from + REPORTING_PAGE_SIZE - 1)
         if (supabaseError) throw supabaseError
         const batch = data || []; results.push(...batch)
         if (batch.length < REPORTING_PAGE_SIZE) break
@@ -149,12 +143,7 @@ function App() {
   const upcomingInstallations = allDeals.filter((contract) => contract.installation_date && contract.installation_date >= today).length
 
   function handleBackToDeals() { setSelected(null); setPage("contracts"); window.history.pushState({}, "", "/contracts") }
-  function handleDealUpdated(updatedDeal) {
-    setContracts(current => current.map(contract => contract.id === updatedDeal.id ? updatedDeal : contract))
-    setAllDeals(current => current.map(contract => contract.id === updatedDeal.id ? updatedDeal : contract))
-    setCommissionDeals(current => current.map(contract => contract.id === updatedDeal.id ? updatedDeal : contract))
-    setSelected(updatedDeal)
-  }
+  function handleDealUpdated(updatedDeal) { setContracts(current => current.map(contract => contract.id === updatedDeal.id ? updatedDeal : contract)); setAllDeals(current => current.map(contract => contract.id === updatedDeal.id ? updatedDeal : contract)); setCommissionDeals(current => current.map(contract => contract.id === updatedDeal.id ? updatedDeal : contract)); setSelected(updatedDeal) }
   function handlePageChange(newPage) {
     if ((newPage === "users" || newPage === "tasks") && !isAdministrator) return
     setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage(newPage)
@@ -201,15 +190,7 @@ function App() {
   const displayName = previewUser?.display_name || previewUser?.full_name || profile?.display_name || profile?.full_name || session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || "there"
   const currentHour = new Date().getHours()
   const greeting = currentHour < 12 ? "Good Morning" : currentHour < 18 ? "Good Afternoon" : "Good Evening"
-
-  const homeContent = (
-    <section>
-      <div style={{ marginBottom: 18 }}>
-        <h1 style={{ margin: 0, fontSize: 22, color: "#222" }}>{greeting}, {displayName}</h1>
-        <p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>Welcome to the Homeshield Scotland CRM</p>
-      </div>
-    </section>
-  )
+  const homeContent = <section><div style={{ marginBottom: 18 }}><h1 style={{ margin: 0, fontSize: 22, color: "#222" }}>{greeting}, {displayName}</h1><p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>Welcome to the Homeshield Scotland CRM</p></div></section>
 
   return <div className="app">
     <Sidebar page={page} setPage={handlePageChange} mobile={mobile} setMobile={setMobile} onSignOut={handleSignOut} permissionLevel={effectivePermissionLevel}/>
@@ -218,7 +199,7 @@ function App() {
       {error && page !== "epvs" && <div className="error"><b>Database error</b><span>{error}</span></div>}
       {isAdministrator && page === "users" && <AdminUserPreview activeUser={previewUser} onStart={user => { setPreviewUser(user); setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("appointments"); window.history.pushState({}, "", "/appointments") }} onStop={async () => { setPreviewUser(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("users"); window.history.pushState({}, "", "/users") }}/>} 
       {isAdministrator && previewUser && page !== "users" && <AdminUserPreview activeUser={previewUser} onStart={() => {}} onStop={async () => { setPreviewUser(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("users"); window.history.pushState({}, "", "/users") }}/>} 
-      {pickupAppointment ? <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated}/> : selectedAppointment ? <div style={{position:"relative"}}><style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}</style><div style={{display:"flex",justifyContent:"flex-end",padding:"10px 24px 0",background:"#fff"}}><AppointmentActions appointment={selectedAppointment} permissionLevel={effectivePermissionLevel} role={effectiveRole} userEmail={effectiveUserEmail} onUpdated={handleAppointmentUpdated} onConfirmLegacy={handleLegacyConfirm} onResultLegacy={handleLegacyResult} onOpenPickup={handleOpenPickup}/></div><div className="appointment-detail-host"><AppointmentDetail appointment={selectedAppointment} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated} permissionLevel={effectivePermissionLevel}/></div></div> : selected ? <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated}/> : page === "dashboard" ? homeContent : page === "sales-performance" ? <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setSelected={setSelected}/> : page === "marketing-tv" ? <MarketingTV onSelectAppointment={handleAppointmentSelect}/> : page === "marketing-dashboard" ? <MarketingDashboard contracts={contracts} loading={loading} onSelectAppointment={handleAppointmentSelect}/> : page === "sales-kpi" ? <SalesKPI/> : page === "commissions" ? <SalesCommission deals={commissionDeals} loading={commissionLoading} setSelected={setSelected} permissionLevel={effectivePermissionLevel}/> : page === "users" && isAdministrator ? <Users/> : page === "tasks" && isAdministrator ? <Tasks/> : page === "contracts" ? <Contracts filtered={filteredContracts} loading={loading} query={query} setQuery={handleSearchChange} status={status} setStatus={status} setSelected={setSelected} page={contractsPage} pageSize={DEALS_PAGE_SIZE} hasMore={hasMoreContracts} onPreviousPage={() => loadContracts(Math.max(contractsPage-1,0),query,status)} onNextPage={() => loadContracts(contractsPage+1,query,status)}/> : page === "rts-list" ? <RTSList deals={allDeals} loading={reportingLoading} setSelected={setSelected}/> : page === "appointments" ? <Appointments onSelectAppointment={handleAppointmentSelect} previewUser={previewUser} permissionLevel={effectivePermissionLevel} role={effectiveRole}/> : page === "fitsheet" ? <FitSheet contracts={allDeals} loading={reportingLoading} setSelected={setSelected} onSelectDeal={setSelected}/> : page === "epvs" ? <EPVSCalculator/> : homeContent}
+      {pickupAppointment ? <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated}/> : selectedAppointment ? <div style={{position:"relative"}}><style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}</style><div style={{display:"flex",justifyContent:"flex-end",padding:"10px 24px 0",background:"#fff"}}><AppointmentActions appointment={selectedAppointment} permissionLevel={effectivePermissionLevel} role={effectiveRole} userEmail={effectiveUserEmail} onUpdated={handleAppointmentUpdated} onConfirmLegacy={handleLegacyConfirm} onResultLegacy={handleLegacyResult} onOpenPickup={handleOpenPickup}/></div><div className="appointment-detail-host"><AppointmentDetail appointment={selectedAppointment} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated} permissionLevel={effectivePermissionLevel}/></div></div> : selected ? <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated}/> : page === "dashboard" ? homeContent : page === "sales-performance" ? <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setSelected={setSelected}/> : page === "marketing-tv" ? <MarketingTV onSelectAppointment={handleAppointmentSelect}/> : page === "marketing-dashboard" ? <MarketingDashboard contracts={contracts} loading={loading} onSelectAppointment={handleAppointmentSelect}/> : page === "sales-kpi" ? <SalesKPI/> : page === "commissions" ? <SalesCommission deals={commissionDeals} loading={commissionLoading} setSelected={setSelected} permissionLevel={effectivePermissionLevel}/> : page === "users" && isAdministrator ? <Users/> : page === "tasks" && isAdministrator ? <Tasks/> : page === "contracts" ? <Contracts filtered={filteredContracts} loading={loading} query={query} setQuery={handleSearchChange} status={status} setStatus={setStatus} setSelected={setSelected} page={contractsPage} pageSize={DEALS_PAGE_SIZE} hasMore={hasMoreContracts} onPreviousPage={() => loadContracts(Math.max(contractsPage-1,0),query,status)} onNextPage={() => loadContracts(contractsPage+1,query,status)}/> : page === "rts-list" ? <RTSList deals={allDeals} loading={reportingLoading} setSelected={setSelected}/> : page === "appointments" ? <Appointments onSelectAppointment={handleAppointmentSelect} previewUser={previewUser} permissionLevel={effectivePermissionLevel} role={effectiveRole}/> : page === "fitsheet" ? <FitSheet contracts={allDeals} loading={reportingLoading} setSelected={setSelected} onSelectDeal={setSelected}/> : page === "installations" ? <Installations setSelected={setSelected}/> : page === "epvs" ? <EPVSCalculator/> : homeContent}
     </main>
   </div>
 }
