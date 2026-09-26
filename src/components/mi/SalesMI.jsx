@@ -1,4 +1,3 @@
-```jsx
 import React, { useEffect, useMemo, useState } from "react"
 import { RefreshCw } from "lucide-react"
 import { supabase } from "../../lib/supabase"
@@ -483,6 +482,16 @@ function Table({
 
       <div className="sales-mi-scroll">
         <table className="sales-mi-table">
+          <colgroup>
+            <col style={{ width: "22%" }} />
+            {columns.map((column) => (
+              <col
+                key={column}
+                style={{ width: "8.666%" }}
+              />
+            ))}
+          </colgroup>
+
           <thead>
             <tr>
               <th>
@@ -642,25 +651,10 @@ function Table({
 }
 
 export default function SalesMI() {
-  const [
-    appointments,
-    setAppointments,
-  ] = useState([])
-
-  const [
-    profiles,
-    setProfiles,
-  ] = useState([])
-
-  const [
-    loading,
-    setLoading,
-  ] = useState(true)
-
-  const [
-    error,
-    setError,
-  ] = useState("")
+  const [appointments, setAppointments] = useState([])
+  const [profiles, setProfiles] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
 
   const dates = useMemo(
     () => lastWeekDates(),
@@ -669,12 +663,8 @@ export default function SalesMI() {
 
   async function loadReport() {
     if (!supabase) {
-      setError(
-        "Supabase is not configured."
-      )
-
+      setError("Supabase is not configured.")
       setLoading(false)
-
       return
     }
 
@@ -682,25 +672,17 @@ export default function SalesMI() {
     setError("")
 
     try {
-      const endExclusive =
-        new Date(
-          dates.end +
-            "T12:00:00"
-        )
+      const endExclusive = new Date(
+        dates.end + "T12:00:00"
+      )
 
       endExclusive.setDate(
         endExclusive.getDate() + 1
       )
 
-      const end =
-        londonDate(
-          endExclusive
-        )
+      const end = londonDate(endExclusive)
 
-      const [
-        appointmentsResult,
-        profilesResult,
-      ] =
+      const [appointmentsResult, profilesResult] =
         await Promise.all([
           supabase
             .from("appointments")
@@ -709,65 +691,46 @@ export default function SalesMI() {
             )
             .gte(
               "appointment_date",
-              dates.start +
-                "T00:00:00"
+              dates.start + "T00:00:00"
             )
             .lt(
               "appointment_date",
-              end +
-                "T00:00:00"
+              end + "T00:00:00"
             )
-            .order(
-              "appointment_date",
-              {
-                ascending: true,
-              }
-            ),
+            .order("appointment_date", {
+              ascending: true,
+            }),
 
           supabase
             .from("profiles")
-            .select(
-              "email, full_name"
-            )
-            .order(
-              "full_name",
-              {
-                ascending: true,
-              }
-            ),
+            .select("email, full_name")
+            .order("full_name", {
+              ascending: true,
+            }),
         ])
 
-      if (
-        appointmentsResult.error
-      ) {
+      if (appointmentsResult.error) {
         throw appointmentsResult.error
       }
 
-      if (
-        profilesResult.error
-      ) {
+      if (profilesResult.error) {
         throw profilesResult.error
       }
 
-      const decoratedAppointments =
-        (
-          appointmentsResult.data ||
-          []
-        ).map(
-          (appointment) => {
-            const deal =
-              Array.isArray(
-                appointment.deals
-              )
-                ? appointment.deals[0]
-                : appointment.deals
-
-            return decorateAppointment(
-              appointment,
-              deal
-            )
-          }
+      const decoratedAppointments = (
+        appointmentsResult.data || []
+      ).map((appointment) => {
+        const deal = Array.isArray(
+          appointment.deals
         )
+          ? appointment.deals[0]
+          : appointment.deals
+
+        return decorateAppointment(
+          appointment,
+          deal
+        )
+      })
 
       setAppointments(
         decoratedAppointments
@@ -798,193 +761,138 @@ export default function SalesMI() {
     loadReport()
   }, [])
 
-  const repNameByEmail =
-    useMemo(
-      () =>
-        profiles.reduce(
-          (map, profile) => {
-            const email =
-              normalise(
-                profile.email
-              )
-
-            const name =
-              String(
-                profile.full_name ||
-                  ""
-              ).trim()
-
-            if (
-              email &&
-              name
-            ) {
-              map[email] =
-                name
-            }
-
-            return map
-          },
-          {}
-        ),
-      [profiles]
-    )
-
-  const branchRows =
-    useMemo(() => {
-      const branchNames = [
-        ...new Set(
-          appointments.map(
-            (appointment) =>
-              display(
-                appointment.branch
-              )
+  const repNameByEmail = useMemo(
+    () =>
+      profiles.reduce(
+        (map, profile) => {
+          const email = normalise(
+            profile.email
           )
-        ),
-      ].sort((a, b) =>
-        a.localeCompare(b)
-      )
 
-      return branchNames.map(
-        (branch) => ({
-          name: branch,
+          const name = String(
+            profile.full_name || ""
+          ).trim()
 
-          rows:
-            appointments.filter(
-              (appointment) =>
-                display(
-                  appointment.branch
-                ) === branch
-            ),
-        })
-      )
-    }, [appointments])
-
-  const windowRows =
-    useMemo(
-      () =>
-        branchRows
-          .map(
-            (branch) => ({
-              ...branch,
-
-              rows:
-                branch.rows.filter(
-                  (appointment) =>
-                    !isSolar(
-                      appointment
-                    )
-                ),
-            })
-          )
-          .filter(
-            (branch) =>
-              branch.rows
-                .length > 0
-          ),
-      [branchRows]
-    )
-
-  const renewableRows =
-    useMemo(
-      () =>
-        branchRows
-          .map(
-            (branch) => ({
-              ...branch,
-
-              rows:
-                branch.rows.filter(
-                  isSolar
-                ),
-            })
-          )
-          .filter(
-            (branch) =>
-              branch.rows
-                .length > 0
-          ),
-      [branchRows]
-    )
-
-  const totalBranchRows =
-    useMemo(
-      () =>
-        branchRows.map(
-          (branch) => ({
-            name:
-              branch.name,
-            rows:
-              branch.rows,
-          })
-        ),
-      [branchRows]
-    )
-
-  const repRows =
-    useMemo(() => {
-      const reps = new Map()
-
-      appointments.forEach(
-        (appointment) => {
-          const email =
-            normalise(
-              appointment.rep_allocated
-            )
-
-          const name =
-            repNameByEmail[
-              email
-            ] ||
-            display(
-              appointment.rep_allocated,
-              "Unallocated"
-            )
-
-          const key =
-            email ||
-            "__unallocated__"
-
-          if (
-            !reps.has(key)
-          ) {
-            reps.set(key, {
-              name,
-              rows: [],
-            })
+          if (email && name) {
+            map[email] = name
           }
 
-          reps
-            .get(key)
-            .rows.push(
-              appointment
-            )
-        }
+          return map
+        },
+        {}
+      ),
+    [profiles]
+  )
+
+  const branchRows = useMemo(() => {
+    const branchNames = [
+      ...new Set(
+        appointments.map((appointment) =>
+          display(appointment.branch)
+        )
+      ),
+    ].sort((a, b) =>
+      a.localeCompare(b)
+    )
+
+    return branchNames.map((branch) => ({
+      name: branch,
+      rows: appointments.filter(
+        (appointment) =>
+          display(appointment.branch) ===
+          branch
+      ),
+    }))
+  }, [appointments])
+
+  const windowRows = useMemo(
+    () =>
+      branchRows
+        .map((branch) => ({
+          ...branch,
+          rows: branch.rows.filter(
+            (appointment) =>
+              !isSolar(appointment)
+          ),
+        }))
+        .filter(
+          (branch) =>
+            branch.rows.length > 0
+        ),
+    [branchRows]
+  )
+
+  const renewableRows = useMemo(
+    () =>
+      branchRows
+        .map((branch) => ({
+          ...branch,
+          rows: branch.rows.filter(
+            isSolar
+          ),
+        }))
+        .filter(
+          (branch) =>
+            branch.rows.length > 0
+        ),
+    [branchRows]
+  )
+
+  const totalBranchRows = useMemo(
+    () =>
+      branchRows.map((branch) => ({
+        name: branch.name,
+        rows: branch.rows,
+      })),
+    [branchRows]
+  )
+
+  const repRows = useMemo(() => {
+    const reps = new Map()
+
+    appointments.forEach((appointment) => {
+      const email = normalise(
+        appointment.rep_allocated
       )
 
-      return [
-        ...reps.values(),
-      ].sort((a, b) =>
-        a.name.localeCompare(
-          b.name
+      const name =
+        repNameByEmail[email] ||
+        display(
+          appointment.rep_allocated,
+          "Unallocated"
         )
+
+      const key =
+        email || "__unallocated__"
+
+      if (!reps.has(key)) {
+        reps.set(key, {
+          name,
+          rows: [],
+        })
+      }
+
+      reps.get(key).rows.push(
+        appointment
       )
-    }, [
-      appointments,
-      repNameByEmail,
-    ])
+    })
+
+    return [...reps.values()].sort(
+      (a, b) =>
+        a.name.localeCompare(b.name)
+    )
+  }, [
+    appointments,
+    repNameByEmail,
+  ])
 
   return (
     <div className="sales-mi">
-      <style>
-        {TABLE_STYLES}
-      </style>
+      <style>{TABLE_STYLES}</style>
 
       <div className="sales-mi-top">
         <div className="sales-mi-period">
-          Last week:{" "}
-          {dates.start} to{" "}
-          {dates.end}{" "}
-          (Monday–Sunday)
+          Last week: {dates.start} to {dates.end} (Monday–Sunday)
         </div>
 
         <button
@@ -1039,4 +947,3 @@ export default function SalesMI() {
     </div>
   )
 }
-```
