@@ -198,10 +198,14 @@ function App() {
   if (authLoading) return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f5f7fa",color:"#002d49",fontFamily:"Inter, Arial, sans-serif",fontSize:14}}>Loading CRM...</div>
   if (!session) return <Login />
 
+  const displayName = previewUser?.display_name || previewUser?.full_name || profile?.display_name || profile?.full_name || session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || "there"
+  const currentHour = new Date().getHours()
+  const greeting = currentHour < 12 ? "Good Morning" : currentHour < 18 ? "Good Afternoon" : "Good Evening"
+
   const homeContent = (
     <section>
       <div style={{ marginBottom: 18 }}>
-        <h1 style={{ margin: 0, fontSize: 22, color: "#222" }}>Home</h1>
+        <h1 style={{ margin: 0, fontSize: 22, color: "#222" }}>{greeting}, {displayName}</h1>
         <p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>Welcome to the Homeshield Scotland CRM</p>
       </div>
     </section>
