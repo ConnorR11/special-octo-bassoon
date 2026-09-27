@@ -55,6 +55,7 @@ export async function getAccessToken(refreshToken) {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
+    signal: AbortSignal.timeout(15000),
   })
   const data = await response.json()
 
@@ -73,14 +74,27 @@ const GOOGLE_API_HOSTS = {
 
 export async function googleBusinessRequest(accessToken, path, options = {}, service = "reviews") {
   const host = GOOGLE_API_HOSTS[service] || GOOGLE_API_HOSTS.reviews
-  const response = await fetch(`${host}${path}`, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-  })
+
+  let response
+  try {
+    response = await fetch(`${host}${path}`, {
+      ...options,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+      },
+      signal: options.signal || AbortSignal.timeout(20000),
+    })
+  } catch (error) {
+    if (error?.name === "TimeoutError" || error?.name === "AbortError") {
+      const timeoutError = new Error(`Google Business Profile request timed out after 20 seconds: ${service} ${path}`)
+      timeoutError.status = 504
+      timeoutError.code = "GOOGLE_REQUEST_TIMEOUT"
+      throw timeoutError
+    }
+    throw error
+  }
 
   const text = await response.text()
   let data = null
