@@ -37,12 +37,43 @@ function isoDate(date) {
   return date.toISOString().slice(0, 10)
 }
 
-function dateRange(days = 28) {
-  const end = new Date()
-  end.setDate(end.getDate() - 3)
-  const start = new Date(end)
-  start.setDate(start.getDate() - days + 1)
-  return { startDate: isoDate(start), endDate: isoDate(end) }
+function parseDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return null
+  const date = new Date(`${value}T00:00:00Z`)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function getDateRange(req) {
+  const availableEnd = new Date()
+  availableEnd.setUTCHours(0, 0, 0, 0)
+  availableEnd.setUTCDate(availableEnd.getUTCDate() - 3)
+
+  const requestedStart = req.query?.startDate
+  const requestedEnd = req.query?.endDate
+
+  if (requestedStart || requestedEnd) {
+    const start = parseDate(requestedStart)
+    const requestedEndDate = parseDate(requestedEnd)
+    if (!start || !requestedEndDate) throw new Error("Invalid date range. Please choose valid start and end dates.")
+
+    const end = requestedEndDate > availableEnd ? availableEnd : requestedEndDate
+    if (start > end) throw new Error("The start date must be before the end date.")
+
+    return { startDate: isoDate(start), endDate: isoDate(end), rangeKey: "custom" }
+  }
+
+  const rangeKey = String(req.query?.range || "28")
+  const start = new Date(availableEnd)
+
+  if (rangeKey === "3m") start.setUTCMonth(start.getUTCMonth() - 3)
+  else if (rangeKey === "6m") start.setUTCMonth(start.getUTCMonth() - 6)
+  else if (rangeKey === "12m") start.setUTCFullYear(start.getUTCFullYear() - 1)
+  else {
+    const days = ["7", "28"].includes(rangeKey) ? Number(rangeKey) : 28
+    start.setUTCDate(start.getUTCDate() - days + 1)
+  }
+
+  return { startDate: isoDate(start), endDate: isoDate(availableEnd), rangeKey: ["7", "28", "3m", "6m", "12m"].includes(rangeKey) ? rangeKey : "28" }
 }
 
 export default async function handler(req, res) {
@@ -57,7 +88,7 @@ export default async function handler(req, res) {
 
     if (!site) return res.status(404).json({ connected: true, sites: [] })
 
-    const { startDate, endDate } = dateRange(28)
+    const { startDate, endDate, rangeKey } = getDateRange(req)
     const query = async (dimensions, rowLimit = 10) => gsc(accessToken, `/webmasters/v3/sites/${encodeURIComponent(site.siteUrl)}/searchAnalytics/query`, {
       method: "POST",
       body: JSON.stringify({ startDate, endDate, dimensions, rowLimit, dataState: "final" }),
@@ -75,6 +106,7 @@ export default async function handler(req, res) {
       siteUrl: site.siteUrl,
       startDate,
       endDate,
+      rangeKey,
       totals: {
         clicks: totals.clicks || 0,
         impressions: totals.impressions || 0,
