@@ -1,3 +1,5 @@
+import { createIntegrationLog, updateIntegrationLog } from "./_integration-log.js"
+
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ success: false, error: "Method not allowed" })
@@ -19,6 +21,21 @@ export default async function handler(req, res) {
     return res.status(400).json({ success: false, error: "Only OpenSolar image URLs are supported." })
   }
 
+  let log = null
+  try {
+    log = await createIntegrationLog({
+      provider: "opensolar",
+      integrationName: "OpenSolar Image",
+      direction: "outbound",
+      eventName: "system-image",
+      eventType: "api-request",
+      externalId: imageUrl.pathname,
+      payload: { host: imageUrl.hostname, path: imageUrl.pathname },
+    })
+  } catch (error) {
+    console.error("Unable to create OpenSolar image integration log", error)
+  }
+
   try {
     // The URL comes directly from appointments.open_solar_image and is
     // already signed by OpenSolar. Do not use the OpenSolar API token.
@@ -33,23 +50,37 @@ export default async function handler(req, res) {
     })
 
     if (!response.ok) {
-      return res.status(response.status).json({
-        success: false,
-        error: `OpenSolar image request returned HTTP ${response.status}.`,
+      const errorMessage = `OpenSolar image request returned HTTP ${response.status}.`
+      await updateIntegrationLog(log?.id, {
+        status: "failed",
+        http_status: response.status,
+        error_message: errorMessage,
+        result: { success: false },
       })
+      return res.status(response.status).json({ success: false, error: errorMessage })
     }
 
     const contentType = response.headers.get("content-type") || "image/png"
     const buffer = Buffer.from(await response.arrayBuffer())
 
+    await updateIntegrationLog(log?.id, {
+      status: "success",
+      http_status: 200,
+      result: { success: true, contentType, bytes: buffer.length },
+    })
+
     res.setHeader("Content-Type", contentType)
     res.setHeader("Cache-Control", "public, max-age=3600, s-maxage=3600")
     return res.status(200).send(buffer)
   } catch (error) {
-    console.error("OpenSolar image proxy failed", error)
-    return res.status(500).json({
-      success: false,
-      error: error?.message || "Unable to retrieve the OpenSolar image.",
+    const errorMessage = error?.message || "Unable to retrieve the OpenSolar image."
+    await updateIntegrationLog(log?.id, {
+      status: "failed",
+      http_status: 500,
+      error_message: errorMessage,
+      result: { success: false },
     })
+    console.error("OpenSolar image proxy failed", error)
+    return res.status(500).json({ success: false, error: errorMessage })
   }
 }
