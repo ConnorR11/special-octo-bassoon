@@ -3,7 +3,6 @@ import { createPortal } from "react-dom"
 import { LayoutDashboard, FileText, ChevronDown, ChevronRight, BarChart3, CalendarDays, Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck, Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound, MessageCircle, Files, UserCog, FileCheck, LogOut, ClipboardList, Lock, KanbanSquare, Presentation, Clipboard, Calculator, ShoppingCart, Building2, Search } from "lucide-react"
 import SalesPresentations from "../pages/SalesPresentations"
 import MI from "../pages/MI"
-import SEO from "../pages/SEO"
 
 function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel = 1, department = "" }) {
   const numericPermissionLevel = Number(permissionLevel) || 0
@@ -23,7 +22,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
 
   React.useEffect(() => {
     if (!numericPermissionLevel) return
-    const path = window.location.pathname.replace(/^\/+|\/+$/g, "")
+    const path = window.location.pathname.replace(/^\\/+|\\/+$/g, "")
     const route = path === "" ? "dashboard" : path.split("/")[0]
     if (!canAccessRoute(route)) {
       setPage("dashboard")
@@ -34,7 +33,6 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
 
   const presentationOverlay = isAdministrator && page === "sales-presentations" && typeof document !== "undefined" ? createPortal(<div style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: desktopOverlayLeft, zIndex: 10000, background: "#f5f7fa", overflow: "auto" }}><div style={{ maxWidth: 1500, margin: "0 auto", padding: "28px 28px 50px" }}><SalesPresentations /></div></div>, document.body) : null
   const miOverlay = isAdministrator && page === "mi" && typeof document !== "undefined" ? createPortal(<div style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: desktopOverlayLeft, zIndex: 10000, background: "#f5f7fa", overflow: "auto" }}><div style={{ maxWidth: 1500, margin: "0 auto", padding: "28px 28px 50px" }}><MI /></div></div>, document.body) : null
-  const seoOverlay = isAdministrator && page === "seo" && typeof document !== "undefined" ? createPortal(<div style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: desktopOverlayLeft, zIndex: 10000, background: "#f5f7fa", overflow: "auto" }}><div style={{ maxWidth: 1500, margin: "0 auto" }}><SEO /></div></div>, document.body) : null
 
   return <>
     <style>{`@media (max-width: 900px) { .sidebar { transform: translateX(-100%); transition: transform 0.2s ease; z-index: 1000; } .sidebar.sidebar-open { transform: translateX(0); } .sidebar-overlay { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 999; } main { margin-left: 0; width: 100%; padding: 22px 18px; } .mobile-menu { display: inline-flex; } }`}</style>
@@ -55,7 +53,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
         {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}><NavItem icon={UserCog} label="Users" active={isActive("users")} onClick={() => navigate("users")} /><NavItem icon={ClipboardList} label="Tasks" active={isActive("tasks")} onClick={() => navigate("tasks")} /><NavItem icon={Presentation} label="Templates" active={isActive("sales-presentations")} onClick={() => navigate("sales-presentations")} /><NavItem icon={Settings} label="Settings" disabled /></Folder>}
       </nav>
       <div className="sidebar-footer" style={{ marginTop: "auto", flexDirection: "column", alignItems: "stretch", gap: 10 }}><button type="button" onClick={onSignOut} style={{ width: "100%", border: 0, background: "transparent", color: "inherit", display: "flex", alignItems: "center", gap: 10, padding: "8px 0", cursor: "pointer", font: "inherit", textAlign: "left" }}><LogOut size={16} /><span style={{ fontWeight: 600 }}>Sign out</span></button><div style={{ display: "flex", alignItems: "center", gap: 10 }}><div className="sidebar-footer-icon"><Settings size={16} /></div><div><strong>CRM System</strong><span>v1.0</span></div></div></div>
-    </aside>{presentationOverlay}{miOverlay}{seoOverlay}
+    </aside>{presentationOverlay}{miOverlay}
   </>
 }
 function Folder({ title, icon: Icon, open, onClick, children }) { return <div className="sidebar-folder"><button type="button" className="sidebar-folder-header" onClick={onClick}><span className="sidebar-folder-left"><Icon size={17} /><span>{title}</span></span>{open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</button>{open && <div className="sidebar-folder-items">{children}</div>}</div> }
