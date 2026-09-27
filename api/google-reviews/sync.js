@@ -156,19 +156,28 @@ async function upsertReview(review) {
     throw new Error("Supabase server credentials are not configured.")
   }
 
-  const response = await fetch(
-    `${supabaseUrl.replace(/\/$/, "")}/rest/v1/reviews?on_conflict=source%2Cexternal_review_id`,
-    {
-      method: "POST",
-      headers: {
-        apikey: serviceRoleKey,
-        Authorization: `Bearer ${serviceRoleKey}`,
-        "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates,return=representation",
+  let response
+  try {
+    response = await fetch(
+      `${supabaseUrl.replace(/\/$/, "")}/rest/v1/reviews?on_conflict=source%2Cexternal_review_id`,
+      {
+        method: "POST",
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: `Bearer ${serviceRoleKey}`,
+          "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates,return=representation",
+        },
+        body: JSON.stringify(row),
+        signal: AbortSignal.timeout(20000),
       },
-      body: JSON.stringify(row),
-    },
-  )
+    )
+  } catch (error) {
+    if (error?.name === "TimeoutError" || error?.name === "AbortError") {
+      throw new Error(`Supabase review upsert timed out after 20 seconds for ${row.external_review_id}`)
+    }
+    throw error
+  }
 
   const text = await response.text()
   let data = null
@@ -193,21 +202,11 @@ export default async function handler(req, res) {
 
   res.setHeader("Cache-Control", "private, no-store, max-age=0, must-revalidate")
 
-  const refreshToken = parseCookies(req.headers.cookie).google_reviews_refresh_token
-  if (!refreshToken) {
-    return res.status(401).json({
-      connected: false,
-      error: "Google Reviews is not connected. Open /api/google-reviews/auth first.",
-    })
-  }
-
   let log = null
   let location = null
 
   try {
-    const accessToken = await getAccessToken(refreshToken)
-    location = await findLocation(accessToken)
-
+    // Create the event log before any Google calls so every sync attempt is traceable.
     try {
       log = await createIntegrationLog({
         provider: "google",
@@ -215,16 +214,33 @@ export default async function handler(req, res) {
         direction: "outbound",
         eventName: "google-reviews-sync",
         eventType: "api",
-        externalId: location.locationName,
+        payload: { action: "sync", status: "started" },
+      })
+    } catch (error) {
+      console.error("Unable to create Google Reviews integration event log:", error)
+    }
+
+    const refreshToken = parseCookies(req.headers.cookie).google_reviews_refresh_token
+    if (!refreshToken) {
+      const error = new Error("Google Reviews is not connected. Open /api/google-reviews/auth first.")
+      error.status = 401
+      throw error
+    }
+
+    const accessToken = await getAccessToken(refreshToken)
+    location = await findLocation(accessToken)
+
+    if (log?.id) {
+      await updateIntegrationLog(log.id, {
+        external_id: location.locationName,
         payload: {
           action: "sync",
           accountName: location.accountName,
           locationName: location.locationName,
           discovered: location.discovered,
+          status: "processing",
         },
       })
-    } catch (error) {
-      console.error("Unable to create Google Reviews integration event log:", error)
     }
 
     const reviewData = await listAllReviews(accessToken, location.locationName)
@@ -280,6 +296,7 @@ export default async function handler(req, res) {
         await updateIntegrationLog(log.id, {
           status: "failed",
           http_status: error?.status || 500,
+          external_id: location?.locationName || null,
           error_message: result.error,
           result,
         })
