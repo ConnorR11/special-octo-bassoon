@@ -7,17 +7,8 @@ function parseCookies(header = "") {
 }
 
 async function getAccessToken(refreshToken) {
-  const body = new URLSearchParams({
-    client_id: process.env.GOOGLE_CLIENT_ID || "",
-    client_secret: process.env.GOOGLE_CLIENT_SECRET || "",
-    refresh_token: refreshToken,
-    grant_type: "refresh_token",
-  })
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  })
+  const body = new URLSearchParams({ client_id: process.env.GOOGLE_CLIENT_ID || "", client_secret: process.env.GOOGLE_CLIENT_SECRET || "", refresh_token: refreshToken, grant_type: "refresh_token" })
+  const response = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body })
   const data = await response.json()
   if (!response.ok || !data.access_token) throw new Error(data.error_description || data.error || "Unable to refresh Google access token")
   return data.access_token
@@ -33,10 +24,7 @@ async function gsc(accessToken, path, options = {}) {
   return data
 }
 
-function isoDate(date) {
-  return date.toISOString().slice(0, 10)
-}
-
+function isoDate(date) { return date.toISOString().slice(0, 10) }
 function parseDate(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return null
   const date = new Date(`${value}T00:00:00Z`)
@@ -47,7 +35,6 @@ function getDateRange(req) {
   const availableEnd = new Date()
   availableEnd.setUTCHours(0, 0, 0, 0)
   availableEnd.setUTCDate(availableEnd.getUTCDate() - 3)
-
   const requestedStart = req.query?.startDate
   const requestedEnd = req.query?.endDate
 
@@ -55,24 +42,17 @@ function getDateRange(req) {
     const start = parseDate(requestedStart)
     const requestedEndDate = parseDate(requestedEnd)
     if (!start || !requestedEndDate) throw new Error("Invalid date range. Please choose valid start and end dates.")
-
     const end = requestedEndDate > availableEnd ? availableEnd : requestedEndDate
     if (start > end) throw new Error("The start date must be before the end date.")
-
     return { startDate: isoDate(start), endDate: isoDate(end), rangeKey: "custom" }
   }
 
   const rangeKey = String(req.query?.range || "28")
   const start = new Date(availableEnd)
-
   if (rangeKey === "3m") start.setUTCMonth(start.getUTCMonth() - 3)
   else if (rangeKey === "6m") start.setUTCMonth(start.getUTCMonth() - 6)
   else if (rangeKey === "12m") start.setUTCFullYear(start.getUTCFullYear() - 1)
-  else {
-    const days = ["7", "28"].includes(rangeKey) ? Number(rangeKey) : 28
-    start.setUTCDate(start.getUTCDate() - days + 1)
-  }
-
+  else start.setUTCDate(start.getUTCDate() - (["7", "28"].includes(rangeKey) ? Number(rangeKey) : 28) + 1)
   return { startDate: isoDate(start), endDate: isoDate(availableEnd), rangeKey: ["7", "28", "3m", "6m", "12m"].includes(rangeKey) ? rangeKey : "28" }
 }
 
@@ -90,12 +70,7 @@ function getPreviousRange(startDate, endDate) {
 function totalsFromRows(rows) {
   const row = rows?.[0]
   if (!row) return null
-  return {
-    clicks: row.clicks || 0,
-    impressions: row.impressions || 0,
-    ctr: row.ctr || 0,
-    position: row.position || 0,
-  }
+  return { clicks: row.clicks || 0, impressions: row.impressions || 0, ctr: row.ctr || 0, position: row.position || 0 }
 }
 
 export default async function handler(req, res) {
@@ -107,28 +82,21 @@ export default async function handler(req, res) {
     const sites = await gsc(accessToken, "/webmasters/v3/sites")
     const requestedSite = process.env.GSC_SITE_URL
     const site = (sites.siteEntry || []).find((item) => requestedSite ? item.siteUrl === requestedSite : /homeshield/i.test(item.siteUrl)) || sites.siteEntry?.[0]
-
     if (!site) return res.status(404).json({ connected: true, sites: [] })
 
     const { startDate, endDate, rangeKey } = getDateRange(req)
     const previous = getPreviousRange(startDate, endDate)
-
     const query = async (range, dimensions, rowLimit = 10) => gsc(accessToken, `/webmasters/v3/sites/${encodeURIComponent(site.siteUrl)}/searchAnalytics/query`, {
       method: "POST",
-      body: JSON.stringify({
-        startDate: range.startDate,
-        endDate: range.endDate,
-        dimensions,
-        rowLimit,
-        dataState: "final",
-      }),
+      body: JSON.stringify({ startDate: range.startDate, endDate: range.endDate, dimensions, rowLimit, dataState: "final" }),
     })
 
-    const [summary, queries, pages, previousSummary] = await Promise.all([
+    const [summary, queries, pages, previousSummary, daily] = await Promise.all([
       query({ startDate, endDate }, [], 1),
       query({ startDate, endDate }, ["query"], 10),
       query({ startDate, endDate }, ["page"], 10),
       query(previous, [], 1),
+      query({ startDate, endDate }, ["date"], 500),
     ])
 
     const totals = totalsFromRows(summary.rows) || { clicks: 0, impressions: 0, ctr: 0, position: 0 }
@@ -141,12 +109,8 @@ export default async function handler(req, res) {
       endDate,
       rangeKey,
       totals,
-      comparison: {
-        startDate: previous.startDate,
-        endDate: previous.endDate,
-        totals: previousTotals,
-        available: Boolean(previousTotals),
-      },
+      comparison: { startDate: previous.startDate, endDate: previous.endDate, totals: previousTotals, available: Boolean(previousTotals) },
+      daily: (daily.rows || []).map((row) => ({ date: row.keys?.[0] || "", clicks: row.clicks || 0, impressions: row.impressions || 0, ctr: row.ctr || 0, position: row.position || 0 })).sort((a, b) => a.date.localeCompare(b.date)),
       queries: (queries.rows || []).map((row) => ({ query: row.keys?.[0] || "", clicks: row.clicks || 0, impressions: row.impressions || 0, ctr: row.ctr || 0, position: row.position || 0 })),
       pages: (pages.rows || []).map((row) => ({ page: row.keys?.[0] || "", clicks: row.clicks || 0, impressions: row.impressions || 0, ctr: row.ctr || 0, position: row.position || 0 })),
     })
