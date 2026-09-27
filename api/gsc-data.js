@@ -81,6 +81,10 @@ function normalisePageRows(rows) {
   return (rows || []).map((row) => ({ page: row.keys?.[0] || "", clicks: row.clicks || 0, impressions: row.impressions || 0, ctr: row.ctr || 0, position: row.position || 0 }))
 }
 
+function normaliseDailyRows(rows) {
+  return (rows || []).map((row) => ({ date: row.keys?.[0] || "", clicks: row.clicks || 0, impressions: row.impressions || 0, ctr: row.ctr || 0, position: row.position || 0 })).sort((a, b) => a.date.localeCompare(b.date))
+}
+
 function buildMovement(currentRows, previousRows, key) {
   const previousMap = new Map(previousRows.map((row) => [row[key], row]))
   const currentMap = new Map(currentRows.map((row) => [row[key], row]))
@@ -139,12 +143,13 @@ export default async function handler(req, res) {
       body: JSON.stringify({ startDate: range.startDate, endDate: range.endDate, dimensions, rowLimit, dataState: "final" }),
     })
 
-    const [summary, queries, pages, previousSummary, daily, previousQueries, previousPages] = await Promise.all([
+    const [summary, queries, pages, previousSummary, daily, previousDaily, previousQueries, previousPages] = await Promise.all([
       query({ startDate, endDate }, [], 1),
       query({ startDate, endDate }, ["query"], 50),
       query({ startDate, endDate }, ["page"], 50),
       query(previous, [], 1),
       query({ startDate, endDate }, ["date"], 500),
+      query(previous, ["date"], 500),
       query(previous, ["query"], 50),
       query(previous, ["page"], 50),
     ])
@@ -164,7 +169,8 @@ export default async function handler(req, res) {
       rangeKey,
       totals,
       comparison: { startDate: previous.startDate, endDate: previous.endDate, totals: previousTotals, available: Boolean(previousTotals) },
-      daily: (daily.rows || []).map((row) => ({ date: row.keys?.[0] || "", clicks: row.clicks || 0, impressions: row.impressions || 0, ctr: row.ctr || 0, position: row.position || 0 })).sort((a, b) => a.date.localeCompare(b.date)),
+      daily: normaliseDailyRows(daily.rows),
+      previousDaily: normaliseDailyRows(previousDaily.rows),
       queries: currentQueryRows.slice(0, 10),
       pages: currentPageRows,
       keywordMovement: buildMovement(currentQueryRows, previousQueryRows, "query"),
