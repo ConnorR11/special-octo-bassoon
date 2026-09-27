@@ -1,24 +1,24 @@
 import crypto from "node:crypto"
 
+function createState(secret) {
+  const timestamp = String(Date.now())
+  const nonce = crypto.randomBytes(24).toString("hex")
+  const payload = `${timestamp}.${nonce}`
+  const signature = crypto.createHmac("sha256", secret).update(payload).digest("base64url")
+  return `${payload}.${signature}`
+}
+
 export default function handler(req, res) {
   const clientId = process.env.GOOGLE_CLIENT_ID
-  if (!clientId) return res.status(500).json({ error: "GOOGLE_CLIENT_ID is not configured in Vercel." })
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET
+
+  if (!clientId || !clientSecret) {
+    return res.status(500).json({ error: "Google OAuth credentials are not configured in Vercel." })
+  }
 
   const baseUrl = process.env.APP_URL || `https://${req.headers.host}`
   const redirectUri = `${baseUrl.replace(/\/$/, "")}/api/gsc-callback`
-  const state = crypto.randomUUID()
-  const isSecure = String(req.headers["x-forwarded-proto"] || "https") === "https"
-
-  const cookieParts = [
-    `gsc_oauth_state=${encodeURIComponent(state)}`,
-    "Path=/",
-    "HttpOnly",
-    "SameSite=None",
-    "Max-Age=600",
-  ]
-  if (isSecure) cookieParts.push("Secure")
-
-  res.setHeader("Set-Cookie", cookieParts.join("; "))
+  const state = createState(clientSecret)
 
   const params = new URLSearchParams({
     client_id: clientId,
