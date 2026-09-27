@@ -1,8 +1,3 @@
-function getHeader(req, name) {
-  const value = req.headers?.[name] ?? req.headers?.[name.toLowerCase()]
-  return Array.isArray(value) ? value[0] : value
-}
-
 function normaliseEventBody(body) {
   if (!body || typeof body !== "object") return []
   if (Array.isArray(body.events)) return body.events
@@ -43,6 +38,35 @@ async function supabaseRequest(path, options = {}) {
   return data
 }
 
+async function createLog(event, payload) {
+  const eventData = event?.eventData || {}
+  const rows = await supabaseRequest("trustpilot_webhook_logs", {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({
+      event_name: event?.eventName || "unknown",
+      review_id: eventData?.id ? String(eventData.id) : null,
+      status: "received",
+      payload: eventData,
+    }),
+  })
+
+  return Array.isArray(rows) ? rows[0] : null
+}
+
+async function updateLog(logId, values) {
+  if (!logId) return
+
+  await supabaseRequest(`trustpilot_webhook_logs?id=eq.${encodeURIComponent(logId)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({
+      ...values,
+      processed_at: new Date().toISOString(),
+    }),
+  })
+}
+
 function mapReview(eventData) {
   return {
     source: "trustpilot",
@@ -66,26 +90,52 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" })
   }
 
-  try {
-    const events = normaliseEventBody(req.body)
-    const newReviewEvents = events.filter((event) => event?.eventName === "service-review-created")
+  let events
 
-    if (!newReviewEvents.length) {
-      return res.status(200).json({ received: true, processed: 0 })
+  try {
+    events = normaliseEventBody(req.body)
+  } catch (error) {
+    console.error("Trustpilot webhook body error:", error)
+    return res.status(400).json({ error: "Invalid webhook body" })
+  }
+
+  const results = []
+  let hadFailure = false
+
+  for (const event of events) {
+    let log = null
+
+    try {
+      log = await createLog(event, event?.eventData || {})
+    } catch (error) {
+      console.error("Unable to create Trustpilot webhook log:", error)
     }
 
-    const results = []
+    if (event?.eventName !== "service-review-created") {
+      const result = { status: "ignored", reason: "Event is not a new review" }
+      results.push(result)
+      try {
+        await updateLog(log?.id, { status: "ignored", http_status: 200, result })
+      } catch (error) {
+        console.error("Unable to update Trustpilot webhook log:", error)
+      }
+      continue
+    }
 
-    for (const event of newReviewEvents) {
+    try {
       const review = mapReview(event.eventData || {})
 
       if (!review.external_review_id) {
-        results.push({ status: "ignored", reason: "Missing Trustpilot review id" })
+        const result = { status: "ignored", reason: "Missing Trustpilot review id" }
+        results.push(result)
+        await updateLog(log?.id, { status: "ignored", http_status: 200, result })
         continue
       }
 
       if (!Number.isInteger(review.rating) || review.rating < 1 || review.rating > 5) {
-        results.push({ status: "ignored", reviewId: review.external_review_id, reason: "Invalid rating" })
+        const result = { status: "ignored", reviewId: review.external_review_id, reason: "Invalid rating" }
+        results.push(result)
+        await updateLog(log?.id, { status: "ignored", http_status: 200, result })
         continue
       }
 
@@ -94,6 +144,8 @@ export default async function handler(req, res) {
         { method: "GET" },
       )
 
+      let result
+
       if (Array.isArray(existing) && existing.length > 0) {
         await supabaseRequest(`reviews?id=eq.${encodeURIComponent(existing[0].id)}`, {
           method: "PATCH",
@@ -101,7 +153,7 @@ export default async function handler(req, res) {
           body: JSON.stringify(review),
         })
 
-        results.push({ status: "updated", reviewId: review.external_review_id })
+        result = { status: "updated", reviewId: review.external_review_id }
       } else {
         await supabaseRequest("reviews", {
           method: "POST",
@@ -109,13 +161,51 @@ export default async function handler(req, res) {
           body: JSON.stringify(review),
         })
 
-        results.push({ status: "created", reviewId: review.external_review_id })
+        result = { status: "created", reviewId: review.external_review_id }
       }
-    }
 
-    return res.status(200).json({ received: true, processed: results.length, results })
-  } catch (error) {
-    console.error("Trustpilot new review webhook error:", error)
-    return res.status(500).json({ error: "Webhook processing failed" })
+      results.push(result)
+      await updateLog(log?.id, { status: "success", http_status: 200, result })
+    } catch (error) {
+      hadFailure = true
+      const result = {
+        status: "failed",
+        reviewId: event?.eventData?.id ? String(event.eventData.id) : null,
+        error: error instanceof Error ? error.message : String(error),
+      }
+
+      results.push(result)
+
+      try {
+        await updateLog(log?.id, {
+          status: "failed",
+          http_status: 500,
+          error_message: result.error,
+          result,
+        })
+      } catch (logError) {
+        console.error("Unable to record Trustpilot webhook failure:", logError)
+      }
+
+      console.error("Trustpilot new review webhook error:", error)
+    }
   }
+
+  if (!events.length) {
+    return res.status(200).json({ received: true, processed: 0 })
+  }
+
+  if (hadFailure) {
+    return res.status(500).json({
+      received: true,
+      processed: results.length,
+      results,
+    })
+  }
+
+  return res.status(200).json({
+    received: true,
+    processed: results.length,
+    results,
+  })
 }
