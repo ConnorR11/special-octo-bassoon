@@ -25,6 +25,7 @@ export default function Reviews() {
   const average = filteredReviews.length
     ? (filteredReviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / filteredReviews.length).toFixed(1)
     : "—"
+  const matchedCount = filteredReviews.filter((review) => review.customer_id !== null && review.customer_id !== undefined && review.customer_id !== "").length
 
   return (
     <div style={{ padding: 28, background: "#f5f7fa", minHeight: "100vh" }}>
@@ -37,7 +38,7 @@ export default function Reviews() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 22 }}>
           <Stat title="Total Reviews" value={filteredReviews.length} />
           <Stat title="Average Rating" value={average === "—" ? average : `${average} / 5`} />
-          <Stat title="Matched to Customers" value={filteredReviews.filter((review) => review.customer_id).length} />
+          <Stat title="Matched to Customers" value={matchedCount} />
         </div>
 
         <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 20 }}>
@@ -65,7 +66,7 @@ export default function Reviews() {
                   <td style={{ padding: "13px 10px", borderBottom: "1px solid #f2f4f7" }}>{"★".repeat(Number(review.rating || 0))}</td>
                   <td style={{ padding: "13px 10px", borderBottom: "1px solid #f2f4f7", maxWidth: 500 }}>{review.review_text || "—"}</td>
                   <td style={{ padding: "13px 10px", borderBottom: "1px solid #f2f4f7", whiteSpace: "nowrap" }}>{review.review_date ? new Date(review.review_date).toLocaleDateString("en-GB") : "—"}</td>
-                  <td style={{ padding: "13px 10px", borderBottom: "1px solid #f2f4f7" }}>{review.customer_id ? "Matched" : "Unmatched"}</td>
+                  <td style={{ padding: "13px 10px", borderBottom: "1px solid #f2f4f7" }}>{review.customer_id !== null && review.customer_id !== undefined && review.customer_id !== "" ? "Matched" : "Unmatched"}</td>
                 </tr>)}</tbody>
               </table>
             </div>
