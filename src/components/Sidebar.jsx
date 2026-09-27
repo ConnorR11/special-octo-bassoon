@@ -16,14 +16,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
   const desktopOverlayLeft = typeof window !== "undefined" && window.innerWidth <= 800 ? 0 : 250
 
   const canAccessRoute = (route) => {
-    const requiredPermission = {
-      "sales-performance": 2,
-      "marketing-dashboard": 3,
-      "mi": 4,
-      "users": 4,
-      "tasks": 4,
-      "sales-presentations": 4,
-    }[route]
+    const requiredPermission = { "sales-performance": 2, "marketing-dashboard": 3, "mi": 4, "users": 4, "tasks": 4, "sales-presentations": 4 }[route]
     return !requiredPermission || numericPermissionLevel >= requiredPermission
   }
 
@@ -56,7 +49,8 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
         <Folder title="Remedials" icon={Headphones} open={openFolders.customerService} onClick={() => toggleFolder("customerService")}><NavItem icon={UserRound} label="Customers" disabled /><NavItem icon={MessageCircle} label="Follow-ups" disabled /><NavItem icon={AlertTriangle} label="Complaints" disabled /></Folder>
         <Folder title="Accounts" icon={PoundSterling} open={openFolders.finance} onClick={() => toggleFolder("finance")}><NavItem icon={PoundSterling} label="Revenue" disabled /><NavItem icon={CreditCard} label="Payments" disabled /><NavItem icon={Receipt} label="Invoices" disabled /></Folder>
         <Folder title="Documents" icon={Files} open={openFolders.documents} onClick={() => toggleFolder("documents")}><NavItem icon={FileText} label="Company Brochures" disabled /><NavItem icon={Files} label="Customer Documents" disabled /></Folder>
-        <Folder title="Head Office" icon={Building2} open={openFolders.headOffice} onClick={() => toggleFolder("headOffice")}><NavItem icon={BarChart3} label="MI" active={isActive("mi")} onClick={() => navigate("mi")} /><NavItem icon={UserCog} label="Users" active={isActive("users")} onClick={() => navigate("users")} /><NavItem icon={ClipboardList} label="Tasks" active={isActive("tasks")} onClick={() => navigate("tasks")} /><NavItem icon={Presentation} label="Templates" active={isActive("sales-presentations")} onClick={() => navigate("sales-presentations")} /><NavItem icon={Settings} label="Settings" disabled /></Folder>
+        <Folder title="Head Office" icon={Building2} open={openFolders.headOffice} onClick={() => toggleFolder("headOffice")}><NavItem icon={BarChart3} label="MI" active={isActive("mi")} onClick={() => navigate("mi")} /></Folder>
+        {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}><NavItem icon={UserCog} label="Users" active={isActive("users")} onClick={() => navigate("users")} /><NavItem icon={ClipboardList} label="Tasks" active={isActive("tasks")} onClick={() => navigate("tasks")} /><NavItem icon={Presentation} label="Templates" active={isActive("sales-presentations")} onClick={() => navigate("sales-presentations")} /><NavItem icon={Settings} label="Settings" disabled /></Folder>}
       </nav>
       <div className="sidebar-footer" style={{ marginTop: "auto", flexDirection: "column", alignItems: "stretch", gap: 10 }}><button type="button" onClick={onSignOut} style={{ width: "100%", border: 0, background: "transparent", color: "inherit", display: "flex", alignItems: "center", gap: 10, padding: "8px 0", cursor: "pointer", font: "inherit", textAlign: "left" }}><LogOut size={16} /><span style={{ fontWeight: 600 }}>Sign out</span></button><div style={{ display: "flex", alignItems: "center", gap: 10 }}><div className="sidebar-footer-icon"><Settings size={16} /></div><div><strong>CRM System</strong><span>v1.0</span></div></div></div>
     </aside>{presentationOverlay}{miOverlay}
