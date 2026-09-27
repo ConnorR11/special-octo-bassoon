@@ -20,6 +20,7 @@ import Login from "./pages/Login"
 import SalesKPI from "./pages/SalesKPI"
 import Users from "./pages/Users"
 import Tasks from "./pages/Tasks"
+import SEO from "./pages/SEO"
 import AdminUserPreview from "./components/AdminUserPreview"
 
 const DEALS_PAGE_SIZE = 50
@@ -87,8 +88,21 @@ function App() {
   const effectiveUserEmail = previewUser?.email ?? session?.user?.email ?? ""
 
   useEffect(() => {
-    if ((page === "users" || page === "tasks") && !isAdministrator) { setPage("dashboard"); window.history.replaceState({}, "", "/") }
-  }, [page, isAdministrator])
+    const restrictedPages = {
+      "sales-performance": 2,
+      "marketing-dashboard": 3,
+      "mi": 4,
+      "seo": 4,
+      "users": 4,
+      "tasks": 4,
+      "sales-presentations": 4,
+    }
+    const requiredPermission = restrictedPages[page]
+    if (requiredPermission && effectivePermissionLevel < requiredPermission) {
+      setPage("dashboard")
+      if (window.location.pathname !== "/") window.history.replaceState({}, "", "/")
+    }
+  }, [page, effectivePermissionLevel])
 
   async function loadContracts(pageNumber = 0, searchValue = query, statusValue = status) {
     setLoading(true); setError("")
@@ -145,7 +159,8 @@ function App() {
   function handleBackToDeals() { setSelected(null); setPage("contracts"); window.history.pushState({}, "", "/contracts") }
   function handleDealUpdated(updatedDeal) { setContracts(current => current.map(contract => contract.id === updatedDeal.id ? updatedDeal : contract)); setAllDeals(current => current.map(contract => contract.id === updatedDeal.id ? updatedDeal : contract)); setCommissionDeals(current => current.map(contract => contract.id === updatedDeal.id ? updatedDeal : contract)); setSelected(updatedDeal) }
   function handlePageChange(newPage) {
-    if ((newPage === "users" || newPage === "tasks") && !isAdministrator) return
+    const requiredPermission = { "sales-performance": 2, "marketing-dashboard": 3, "mi": 4, "seo": 4, "users": 4, "tasks": 4, "sales-presentations": 4 }[newPage]
+    if (requiredPermission && effectivePermissionLevel < requiredPermission) return
     setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage(newPage)
     if (newPage === "contracts") { setQuery(""); setStatus("all"); loadContracts(0, "", "all") }
     window.history.pushState({}, "", newPage === "dashboard" ? "/" : `/${newPage}`)
@@ -199,7 +214,7 @@ function App() {
       {error && page !== "epvs" && <div className="error"><b>Database error</b><span>{error}</span></div>}
       {isAdministrator && page === "users" && <AdminUserPreview activeUser={previewUser} onStart={user => { setPreviewUser(user); setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("appointments"); window.history.pushState({}, "", "/appointments") }} onStop={async () => { setPreviewUser(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("users"); window.history.pushState({}, "", "/users") }}/>} 
       {isAdministrator && previewUser && page !== "users" && <AdminUserPreview activeUser={previewUser} onStart={() => {}} onStop={async () => { setPreviewUser(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("users"); window.history.pushState({}, "", "/users") }}/>} 
-      {pickupAppointment ? <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated}/> : selectedAppointment ? <div style={{position:"relative"}}><style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}</style><div style={{display:"flex",justifyContent:"flex-end",padding:"10px 24px 0",background:"#fff"}}><AppointmentActions appointment={selectedAppointment} permissionLevel={effectivePermissionLevel} role={effectiveRole} userEmail={effectiveUserEmail} onUpdated={handleAppointmentUpdated} onConfirmLegacy={handleLegacyConfirm} onResultLegacy={handleLegacyResult} onOpenPickup={handleOpenPickup}/></div><div className="appointment-detail-host"><AppointmentDetail appointment={selectedAppointment} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated} permissionLevel={effectivePermissionLevel}/></div></div> : selected ? <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated}/> : page === "dashboard" ? homeContent : page === "sales-performance" ? <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setSelected={setSelected}/> : page === "marketing-tv" ? <MarketingTV onSelectAppointment={handleAppointmentSelect}/> : page === "marketing-dashboard" ? <MarketingDashboard contracts={contracts} loading={loading} onSelectAppointment={handleAppointmentSelect}/> : page === "sales-kpi" ? <SalesKPI/> : page === "commissions" ? <SalesCommission deals={commissionDeals} loading={commissionLoading} setSelected={setSelected} permissionLevel={effectivePermissionLevel}/> : page === "users" && isAdministrator ? <Users/> : page === "tasks" && isAdministrator ? <Tasks/> : page === "contracts" ? <Contracts filtered={filteredContracts} loading={loading} query={query} setQuery={handleSearchChange} status={status} setStatus={setStatus} setSelected={setSelected} page={contractsPage} pageSize={DEALS_PAGE_SIZE} hasMore={hasMoreContracts} onPreviousPage={() => loadContracts(Math.max(contractsPage-1,0),query,status)} onNextPage={() => loadContracts(contractsPage+1,query,status)}/> : page === "rts-list" ? <RTSList deals={allDeals} loading={reportingLoading} setSelected={setSelected}/> : page === "appointments" ? <Appointments onSelectAppointment={handleAppointmentSelect} previewUser={previewUser} permissionLevel={effectivePermissionLevel} role={effectiveRole}/> : page === "fitsheet" ? <FitSheet contracts={allDeals} loading={reportingLoading} setSelected={setSelected} onSelectDeal={setSelected}/> : page === "installations" ? <Installations setSelected={setSelected}/> : page === "epvs" ? <EPVSCalculator/> : homeContent}
+      {pickupAppointment ? <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated}/> : selectedAppointment ? <div style={{position:"relative"}}><style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}</style><div style={{display:"flex",justifyContent:"flex-end",padding:"10px 24px 0",background:"#fff"}}><AppointmentActions appointment={selectedAppointment} permissionLevel={effectivePermissionLevel} role={effectiveRole} userEmail={effectiveUserEmail} onUpdated={handleAppointmentUpdated} onConfirmLegacy={handleLegacyConfirm} onResultLegacy={handleLegacyResult} onOpenPickup={handleOpenPickup}/></div><div className="appointment-detail-host"><AppointmentDetail appointment={selectedAppointment} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated} permissionLevel={effectivePermissionLevel}/></div></div> : selected ? <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated}/> : page === "dashboard" ? homeContent : page === "sales-performance" ? <Dashboard contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setSelected={setSelected}/> : page === "marketing-tv" ? <MarketingTV onSelectAppointment={handleAppointmentSelect}/> : page === "marketing-dashboard" ? <MarketingDashboard contracts={contracts} loading={loading} onSelectAppointment={handleAppointmentSelect}/> : page === "sales-kpi" ? <SalesKPI/> : page === "commissions" ? <SalesCommission deals={commissionDeals} loading={commissionLoading} setSelected={setSelected} permissionLevel={effectivePermissionLevel}/> : page === "users" && isAdministrator ? <Users/> : page === "tasks" && isAdministrator ? <Tasks/> : page === "contracts" ? <Contracts filtered={filteredContracts} loading={loading} query={query} setQuery={handleSearchChange} status={status} setStatus={setStatus} setSelected={setSelected} page={contractsPage} pageSize={DEALS_PAGE_SIZE} hasMore={hasMoreContracts} onPreviousPage={() => loadContracts(Math.max(contractsPage-1,0),query,status)} onNextPage={() => loadContracts(contractsPage+1,query,status)}/> : page === "rts-list" ? <RTSList deals={allDeals} loading={reportingLoading} setSelected={setSelected}/> : page === "appointments" ? <Appointments onSelectAppointment={handleAppointmentSelect} previewUser={previewUser} permissionLevel={effectivePermissionLevel} role={effectiveRole}/> : page === "fitsheet" ? <FitSheet contracts={allDeals} loading={reportingLoading} setSelected={setSelected} onSelectDeal={setSelected}/> : page === "installations" ? <Installations setSelected={setSelected}/> : page === "epvs" ? <EPVSCalculator/> : page === "seo" && effectivePermissionLevel >= 4 ? <SEO/> : homeContent}
     </main>
   </div>
 }
