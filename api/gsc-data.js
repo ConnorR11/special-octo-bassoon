@@ -24,6 +24,38 @@ async function gsc(accessToken, path, options = {}) {
   return data
 }
 
+async function fetchText(url) {
+  const response = await fetch(url, { headers: { "User-Agent": "Homeshield-CRM-SEO/1.0" } })
+  if (!response.ok) throw new Error(`Unable to fetch ${url}: ${response.status}`)
+  return response.text()
+}
+
+async function getSitemapPages(siteUrl) {
+  try {
+    const origin = new URL(siteUrl).origin
+    const sitemapUrl = `${origin}/sitemap.xml`
+    const xml = await fetchText(sitemapUrl)
+    const locs = [...xml.matchAll(/<loc>\\s*([^<]+?)\\s*<\\/loc>/gi)].map((match) => match[1].trim())
+
+    if (/sitemapindex/i.test(xml)) {
+      const nested = await Promise.all(locs.slice(0, 10).map(async (url) => {
+        try {
+          const childXml = await fetchText(url)
+          return [...childXml.matchAll(/<loc>\\s*([^<]+?)\\s*<\\/loc>/gi)].map((match) => match[1].trim())
+        } catch {
+          return []
+        }
+      }))
+      return [...new Set(nested.flat())]
+    }
+
+    return [...new Set(locs)]
+  } catch (error) {
+    console.warn("Sitemap unavailable:", error?.message || error)
+    return []
+  }
+}
+
 function isoDate(date) { return date.toISOString().slice(0, 10) }
 function parseDate(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return null
@@ -143,7 +175,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({ startDate: range.startDate, endDate: range.endDate, dimensions, rowLimit, dataState: "final" }),
     })
 
-    const [summary, queries, pages, previousSummary, daily, previousDaily, previousQueries, previousPages] = await Promise.all([
+    const [summary, queries, pages, previousSummary, daily, previousDaily, previousQueries, previousPages, sitemapPages] = await Promise.all([
       query({ startDate, endDate }, [], 1),
       query({ startDate, endDate }, ["query"], 50),
       query({ startDate, endDate }, ["page"], 50),
@@ -152,6 +184,7 @@ export default async function handler(req, res) {
       query(previous, ["date"], 500),
       query(previous, ["query"], 50),
       query(previous, ["page"], 50),
+      getSitemapPages(site.siteUrl),
     ])
 
     const totals = totalsFromRows(summary.rows) || { clicks: 0, impressions: 0, ctr: 0, position: 0 }
@@ -160,6 +193,16 @@ export default async function handler(req, res) {
     const previousQueryRows = normaliseQueryRows(previousQueries.rows)
     const currentPageRows = normalisePageRows(pages.rows)
     const previousPageRows = normalisePageRows(previousPages.rows)
+
+    const currentPageMap = new Map(currentPageRows.map((row) => [row.page, row]))
+    const previousPageMap = new Map(previousPageRows.map((row) => [row.page, row]))
+    for (const url of sitemapPages) {
+      if (!currentPageMap.has(url)) currentPageMap.set(url, { page: url, clicks: 0, impressions: 0, ctr: 0, position: null })
+      if (!previousPageMap.has(url)) previousPageMap.set(url, { page: url, clicks: 0, impressions: 0, ctr: 0, position: null })
+    }
+
+    const sitemapAwareCurrentPages = [...currentPageMap.values()]
+    const sitemapAwarePreviousPages = [...previousPageMap.values()]
 
     return res.status(200).json({
       connected: true,
@@ -172,9 +215,10 @@ export default async function handler(req, res) {
       daily: normaliseDailyRows(daily.rows),
       previousDaily: normaliseDailyRows(previousDaily.rows),
       queries: currentQueryRows.slice(0, 10),
-      pages: currentPageRows,
+      pages: sitemapAwareCurrentPages,
+      sitemapPages,
       keywordMovement: buildMovement(currentQueryRows, previousQueryRows, "query"),
-      pageMovement: buildMovement(currentPageRows, previousPageRows, "page"),
+      pageMovement: buildMovement(sitemapAwareCurrentPages, sitemapAwarePreviousPages, "page"),
     })
   } catch (err) {
     console.error("GSC data error:", err)
