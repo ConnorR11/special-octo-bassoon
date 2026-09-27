@@ -76,6 +76,28 @@ function getDateRange(req) {
   return { startDate: isoDate(start), endDate: isoDate(availableEnd), rangeKey: ["7", "28", "3m", "6m", "12m"].includes(rangeKey) ? rangeKey : "28" }
 }
 
+function getPreviousRange(startDate, endDate) {
+  const start = parseDate(startDate)
+  const end = parseDate(endDate)
+  const durationDays = Math.round((end - start) / 86400000) + 1
+  const previousEnd = new Date(start)
+  previousEnd.setUTCDate(previousEnd.getUTCDate() - 1)
+  const previousStart = new Date(previousEnd)
+  previousStart.setUTCDate(previousStart.getUTCDate() - durationDays + 1)
+  return { startDate: isoDate(previousStart), endDate: isoDate(previousEnd) }
+}
+
+function totalsFromRows(rows) {
+  const row = rows?.[0]
+  if (!row) return null
+  return {
+    clicks: row.clicks || 0,
+    impressions: row.impressions || 0,
+    ctr: row.ctr || 0,
+    position: row.position || 0,
+  }
+}
+
 export default async function handler(req, res) {
   const refreshToken = parseCookies(req.headers.cookie).gsc_refresh_token
   if (!refreshToken) return res.status(401).json({ connected: false, error: "Google Search Console is not connected." })
@@ -89,29 +111,41 @@ export default async function handler(req, res) {
     if (!site) return res.status(404).json({ connected: true, sites: [] })
 
     const { startDate, endDate, rangeKey } = getDateRange(req)
-    const query = async (dimensions, rowLimit = 10) => gsc(accessToken, `/webmasters/v3/sites/${encodeURIComponent(site.siteUrl)}/searchAnalytics/query`, {
+    const previous = getPreviousRange(startDate, endDate)
+
+    const query = async (range, dimensions, rowLimit = 10) => gsc(accessToken, `/webmasters/v3/sites/${encodeURIComponent(site.siteUrl)}/searchAnalytics/query`, {
       method: "POST",
-      body: JSON.stringify({ startDate, endDate, dimensions, rowLimit, dataState: "final" }),
+      body: JSON.stringify({
+        startDate: range.startDate,
+        endDate: range.endDate,
+        dimensions,
+        rowLimit,
+        dataState: "final",
+      }),
     })
 
-    const [summary, queries, pages] = await Promise.all([
-      query([], 1),
-      query(["query"], 10),
-      query(["page"], 10),
+    const [summary, queries, pages, previousSummary] = await Promise.all([
+      query({ startDate, endDate }, [], 1),
+      query({ startDate, endDate }, ["query"], 10),
+      query({ startDate, endDate }, ["page"], 10),
+      query(previous, [], 1),
     ])
 
-    const totals = summary.rows?.[0] || { clicks: 0, impressions: 0, ctr: 0, position: 0 }
+    const totals = totalsFromRows(summary.rows) || { clicks: 0, impressions: 0, ctr: 0, position: 0 }
+    const previousTotals = totalsFromRows(previousSummary.rows)
+
     return res.status(200).json({
       connected: true,
       siteUrl: site.siteUrl,
       startDate,
       endDate,
       rangeKey,
-      totals: {
-        clicks: totals.clicks || 0,
-        impressions: totals.impressions || 0,
-        ctr: totals.ctr || 0,
-        position: totals.position || 0,
+      totals,
+      comparison: {
+        startDate: previous.startDate,
+        endDate: previous.endDate,
+        totals: previousTotals,
+        available: Boolean(previousTotals),
       },
       queries: (queries.rows || []).map((row) => ({ query: row.keys?.[0] || "", clicks: row.clicks || 0, impressions: row.impressions || 0, ctr: row.ctr || 0, position: row.position || 0 })),
       pages: (pages.rows || []).map((row) => ({ page: row.keys?.[0] || "", clicks: row.clicks || 0, impressions: row.impressions || 0, ctr: row.ctr || 0, position: row.position || 0 })),
