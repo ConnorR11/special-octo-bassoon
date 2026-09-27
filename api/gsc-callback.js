@@ -61,17 +61,23 @@ export default async function handler(req, res) {
       return res.status(502).send("Google authorisation could not be completed. Check the OAuth client and redirect URI.")
     }
 
-    // Keep the long-lived refresh token in a first-party, HttpOnly cookie.
-    // SameSite=None + Secure also survives the Google -> CRM OAuth navigation
-    // consistently across browsers, while the token remains inaccessible to JS.
+    // Keep the long-lived refresh token on the Homeshield CRM domain rather
+    // than tying it to a temporary Vercel deployment hostname. This means the
+    // connection survives navigation between CRM routes and deployments.
+    const requestHost = String(req.headers.host || "").split(":")[0].toLowerCase()
+    const domainAttribute = requestHost === "crm.homeshield.ltd" || requestHost.endsWith(".homeshield.ltd")
+      ? "; Domain=.homeshield.ltd"
+      : ""
+
     const cookie = [
       `gsc_refresh_token=${encodeURIComponent(tokens.refresh_token)}`,
       "Path=/",
       "HttpOnly",
       "Secure",
-      "SameSite=None",
+      "SameSite=Lax",
       "Max-Age=31536000",
-    ].join("; ")
+      domainAttribute.replace(/^; /, ""),
+    ].filter(Boolean).join("; ")
 
     res.setHeader("Set-Cookie", cookie)
     res.setHeader("Cache-Control", "no-store")
