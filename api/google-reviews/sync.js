@@ -6,6 +6,70 @@ import {
   parseCookies,
 } from "./_google-reviews.js"
 
+const CONFIG_EVENT_NAME = "google-reviews-location-config"
+const REVIEW_BATCH_SIZE = 10
+
+function supabaseConfig() {
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error("Supabase server credentials are not configured.")
+  }
+  return { supabaseUrl: supabaseUrl.replace(/\/$/, ""), serviceRoleKey }
+}
+
+async function getStoredLocationConfig() {
+  const { supabaseUrl, serviceRoleKey } = supabaseConfig()
+  const url = new URL(`${supabaseUrl}/rest/v1/integration_event_logs`)
+  url.searchParams.set("event_name", `eq.${CONFIG_EVENT_NAME}`)
+  url.searchParams.set("status", "eq.success")
+  url.searchParams.set("order", "created_at.desc")
+  url.searchParams.set("limit", "1")
+  url.searchParams.set("select", "id,payload,created_at")
+
+  const response = await fetch(url, {
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+    },
+    signal: AbortSignal.timeout(10000),
+  })
+
+  if (!response.ok) {
+    throw new Error(`Unable to read Google Reviews configuration from Supabase (${response.status})`)
+  }
+
+  const rows = await response.json()
+  const payload = rows?.[0]?.payload
+  if (!payload?.accountName || !payload?.locationName) return null
+
+  return {
+    accountName: payload.accountName,
+    locationName: payload.locationName,
+  }
+}
+
+async function saveLocationConfig(location) {
+  try {
+    await createIntegrationLog({
+      provider: "google",
+      integrationName: "Google Reviews",
+      direction: "outbound",
+      eventName: CONFIG_EVENT_NAME,
+      eventType: "configuration",
+      externalId: location.locationName,
+      payload: {
+        accountName: location.accountName,
+        locationName: location.locationName,
+        status: "configured",
+      },
+    })
+  } catch (error) {
+    // A failure to cache the IDs should not prevent the current sync from completing.
+    console.error("Unable to cache Google Business Profile location:", error)
+  }
+}
+
 async function listAllAccounts(accessToken) {
   const accounts = []
   let pageToken = null
@@ -53,7 +117,7 @@ async function listAllLocations(accessToken, accountName) {
   return locations
 }
 
-async function findLocation(accessToken) {
+async function discoverLocation(accessToken) {
   const configuredAccountId = String(process.env.GOOGLE_REVIEW_ACCOUNT_ID || "").trim()
   const configuredLocationId = String(process.env.GOOGLE_REVIEW_LOCATION_ID || "").trim()
   const configuredLocationName = String(process.env.GOOGLE_REVIEW_LOCATION_NAME || "").trim().toLowerCase()
@@ -62,7 +126,6 @@ async function findLocation(accessToken) {
     return {
       accountName: `accounts/${configuredAccountId}`,
       locationName: `accounts/${configuredAccountId}/locations/${configuredLocationId}`,
-      location: null,
       discovered: false,
     }
   }
@@ -110,20 +173,30 @@ async function findLocation(accessToken) {
   return {
     accountName: selected.accountName,
     locationName: selected.name,
-    location: selected,
     discovered: true,
   }
 }
 
-// Each manual sync is deliberately limited to ONE Google reviews request and
-// at most 10 reviews. If Google returns a nextPageToken, the next sync run
-// can use that token to continue from where this run stopped.
-async function listReviewBatch(accessToken, locationName, pageToken = null) {
+async function getLocation(accessToken) {
+  const stored = await getStoredLocationConfig()
+  if (stored) {
+    return { ...stored, discovered: false, source: "cached" }
+  }
+
+  const discovered = await discoverLocation(accessToken)
+  await saveLocationConfig(discovered)
+  return { ...discovered, source: "discovered" }
+}
+
+// Each manual sync makes exactly one reviews API request and requests at most
+// 10 reviews. The current batch is the newest batch, so regular syncs always
+// check for newly-created or recently-updated reviews without needing account
+// discovery first.
+async function listReviewBatch(accessToken, locationName) {
   const query = new URLSearchParams({
-    pageSize: "10",
+    pageSize: String(REVIEW_BATCH_SIZE),
     orderBy: "updateTime desc",
   })
-  if (pageToken) query.set("pageToken", pageToken)
 
   const data = await googleBusinessRequest(
     accessToken,
@@ -142,17 +215,12 @@ async function listReviewBatch(accessToken, locationName, pageToken = null) {
 
 async function upsertReview(review) {
   const row = normaliseGoogleReview(review)
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error("Supabase server credentials are not configured.")
-  }
+  const { supabaseUrl, serviceRoleKey } = supabaseConfig()
 
   let response
   try {
     response = await fetch(
-      `${supabaseUrl.replace(/\/$/, "")}/rest/v1/reviews?on_conflict=source%2Cexternal_review_id`,
+      `${supabaseUrl}/rest/v1/reviews?on_conflict=source%2Cexternal_review_id`,
       {
         method: "POST",
         headers: {
@@ -206,7 +274,12 @@ export default async function handler(req, res) {
         direction: "outbound",
         eventName: "google-reviews-sync",
         eventType: "api",
-        payload: { action: "sync", status: "started", requestedReviewCount: 10 },
+        payload: {
+          action: "sync",
+          status: "started",
+          requestedReviewCount: REVIEW_BATCH_SIZE,
+          expectedGoogleRequests: 1,
+        },
       })
     } catch (error) {
       console.error("Unable to create Google Reviews integration event log:", error)
@@ -220,7 +293,7 @@ export default async function handler(req, res) {
     }
 
     const accessToken = await getAccessToken(refreshToken)
-    location = await findLocation(accessToken)
+    location = await getLocation(accessToken)
 
     if (log?.id) {
       await updateIntegrationLog(log.id, {
@@ -229,18 +302,15 @@ export default async function handler(req, res) {
           action: "sync",
           accountName: location.accountName,
           locationName: location.locationName,
-          discovered: location.discovered,
-          requestedReviewCount: 10,
+          locationSource: location.source,
+          requestedReviewCount: REVIEW_BATCH_SIZE,
+          expectedGoogleRequests: location.source === "cached" ? 1 : 3,
           status: "processing",
         },
       })
     }
 
-    // A run is intentionally capped at 10 reviews. The page token can be
-    // supplied on a later run to continue historical import without making
-    // multiple review API calls in a single run.
-    const pageToken = String(req.query?.pageToken || req.body?.pageToken || "").trim() || null
-    const reviewData = await listReviewBatch(accessToken, location.locationName, pageToken)
+    const reviewData = await listReviewBatch(accessToken, location.locationName)
 
     let imported = 0
     let failed = 0
@@ -263,7 +333,9 @@ export default async function handler(req, res) {
       status: failed > 0 ? "partial" : "success",
       accountName: location.accountName,
       locationName: location.locationName,
-      requestedReviewCount: 10,
+      locationSource: location.source,
+      googleApiRequests: location.source === "cached" ? 1 : 3,
+      requestedReviewCount: REVIEW_BATCH_SIZE,
       imported,
       failed,
       returnedByGoogle: reviewData.reviews.length,
