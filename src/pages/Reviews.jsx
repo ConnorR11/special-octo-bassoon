@@ -5,9 +5,23 @@ export default function Reviews() {
   const [reviews, setReviews] = React.useState([])
   const [loading, setLoading] = React.useState(true)
   const [source, setSource] = React.useState("all")
+  const [syncingGoogle, setSyncingGoogle] = React.useState(false)
+  const [googleSyncMessage, setGoogleSyncMessage] = React.useState("")
 
   React.useEffect(() => {
     loadReviews()
+
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("google_reviews_connected") === "1") {
+      setGoogleSyncMessage("Google Reviews connected. You can now import the reviews.")
+      window.history.replaceState({}, "", window.location.pathname)
+    }
+
+    const googleError = params.get("google_reviews_error")
+    if (googleError) {
+      setGoogleSyncMessage(`Google Reviews connection failed: ${googleError}`)
+      window.history.replaceState({}, "", window.location.pathname)
+    }
   }, [])
 
   async function loadReviews() {
@@ -21,6 +35,35 @@ export default function Reviews() {
     setLoading(false)
   }
 
+  function connectGoogleReviews() {
+    window.location.href = "/api/google-reviews/auth"
+  }
+
+  async function syncGoogleReviews() {
+    setSyncingGoogle(true)
+    setGoogleSyncMessage("")
+
+    try {
+      const response = await fetch("/api/google-reviews/sync", { method: "POST" })
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok && response.status !== 207) {
+        throw new Error(data.error || "Google Reviews sync failed")
+      }
+
+      const message = data.status === "partial"
+        ? `Google Reviews partially imported: ${data.imported || 0} imported, ${data.failed || 0} failed.`
+        : `Google Reviews imported successfully: ${data.imported || 0} review(s).`
+
+      setGoogleSyncMessage(message)
+      await loadReviews()
+    } catch (error) {
+      setGoogleSyncMessage(error instanceof Error ? error.message : String(error))
+    } finally {
+      setSyncingGoogle(false)
+    }
+  }
+
   const filteredReviews = source === "all" ? reviews : reviews.filter((review) => review.source === source)
   const average = filteredReviews.length
     ? (filteredReviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / filteredReviews.length).toFixed(1)
@@ -31,8 +74,35 @@ export default function Reviews() {
     <div style={{ padding: 28, background: "#f5f7fa", minHeight: "100vh" }}>
       <div style={{ maxWidth: 1500, margin: "0 auto" }}>
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ margin: 0, fontSize: 28 }}>Reviews</h1>
-          <p style={{ margin: "6px 0 0", color: "#667085" }}>Google and Trustpilot reviews linked to CRM customers.</p>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 20 }}>
+            <div>
+              <h1 style={{ margin: 0, fontSize: 28 }}>Reviews</h1>
+              <p style={{ margin: "6px 0 0", color: "#667085" }}>Google and Trustpilot reviews linked to CRM customers.</p>
+            </div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                onClick={connectGoogleReviews}
+                style={{ padding: "10px 15px", borderRadius: 8, border: "1px solid #d0d5dd", background: "white", cursor: "pointer", fontWeight: 600 }}
+              >
+                Connect Google Reviews
+              </button>
+              <button
+                type="button"
+                onClick={syncGoogleReviews}
+                disabled={syncingGoogle}
+                style={{ padding: "10px 15px", borderRadius: 8, border: "1px solid #111827", background: syncingGoogle ? "#d1d5db" : "#111827", color: "white", cursor: syncingGoogle ? "default" : "pointer", fontWeight: 600 }}
+              >
+                {syncingGoogle ? "Importing…" : "Import Google Reviews"}
+              </button>
+            </div>
+          </div>
+
+          {googleSyncMessage && (
+            <div style={{ marginTop: 14, padding: "11px 14px", borderRadius: 8, background: "#eef2ff", border: "1px solid #c7d2fe", color: "#3730a3", fontSize: 14 }}>
+              {googleSyncMessage}
+            </div>
+          )}
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 22 }}>
