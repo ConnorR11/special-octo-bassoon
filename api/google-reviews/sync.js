@@ -115,36 +115,29 @@ async function findLocation(accessToken) {
   }
 }
 
-async function listAllReviews(accessToken, locationName) {
-  const reviews = []
-  let pageToken = null
+// Each manual sync is deliberately limited to ONE Google reviews request and
+// at most 10 reviews. If Google returns a nextPageToken, the next sync run
+// can use that token to continue from where this run stopped.
+async function listReviewBatch(accessToken, locationName, pageToken = null) {
+  const query = new URLSearchParams({
+    pageSize: "10",
+    orderBy: "updateTime desc",
+  })
+  if (pageToken) query.set("pageToken", pageToken)
 
-  for (let page = 0; page < 100; page += 1) {
-    const query = new URLSearchParams({
-      pageSize: "50",
-      orderBy: "updateTime desc",
-    })
-    if (pageToken) query.set("pageToken", pageToken)
+  const data = await googleBusinessRequest(
+    accessToken,
+    `/v4/${locationName}/reviews?${query.toString()}`,
+    {},
+    "reviews",
+  )
 
-    const data = await googleBusinessRequest(
-      accessToken,
-      `/v4/${locationName}/reviews?${query.toString()}`,
-      {},
-      "reviews",
-    )
-
-    reviews.push(...(data.reviews || []))
-    pageToken = data.nextPageToken || null
-    if (!pageToken) {
-      return {
-        reviews,
-        averageRating: data.averageRating ?? null,
-        totalReviewCount: data.totalReviewCount ?? reviews.length,
-      }
-    }
+  return {
+    reviews: data.reviews || [],
+    nextPageToken: data.nextPageToken || null,
+    averageRating: data.averageRating ?? null,
+    totalReviewCount: data.totalReviewCount ?? null,
   }
-
-  throw new Error("Google returned more review pages than the CRM sync limit allows.")
 }
 
 async function upsertReview(review) {
@@ -206,7 +199,6 @@ export default async function handler(req, res) {
   let location = null
 
   try {
-    // Create the event log before any Google calls so every sync attempt is traceable.
     try {
       log = await createIntegrationLog({
         provider: "google",
@@ -214,7 +206,7 @@ export default async function handler(req, res) {
         direction: "outbound",
         eventName: "google-reviews-sync",
         eventType: "api",
-        payload: { action: "sync", status: "started" },
+        payload: { action: "sync", status: "started", requestedReviewCount: 10 },
       })
     } catch (error) {
       console.error("Unable to create Google Reviews integration event log:", error)
@@ -238,12 +230,18 @@ export default async function handler(req, res) {
           accountName: location.accountName,
           locationName: location.locationName,
           discovered: location.discovered,
+          requestedReviewCount: 10,
           status: "processing",
         },
       })
     }
 
-    const reviewData = await listAllReviews(accessToken, location.locationName)
+    // A run is intentionally capped at 10 reviews. The page token can be
+    // supplied on a later run to continue historical import without making
+    // multiple review API calls in a single run.
+    const pageToken = String(req.query?.pageToken || req.body?.pageToken || "").trim() || null
+    const reviewData = await listReviewBatch(accessToken, location.locationName, pageToken)
+
     let imported = 0
     let failed = 0
     const errors = []
@@ -265,10 +263,14 @@ export default async function handler(req, res) {
       status: failed > 0 ? "partial" : "success",
       accountName: location.accountName,
       locationName: location.locationName,
+      requestedReviewCount: 10,
       imported,
       failed,
+      returnedByGoogle: reviewData.reviews.length,
       totalFromGoogle: reviewData.totalReviewCount,
       averageRating: reviewData.averageRating,
+      nextPageToken: reviewData.nextPageToken,
+      hasMore: Boolean(reviewData.nextPageToken),
       errors,
     }
 
