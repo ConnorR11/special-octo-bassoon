@@ -55,17 +55,9 @@ function KeywordTracking({ rows, loading }) {
     return (rows || []).filter(row => row.status === filter)
   }, [rows, filter])
 
-  const statusLabel = {
-    improved: "Improved",
-    declined: "Declined",
-    new: "New",
-    lost: "Lost",
-    unchanged: "Unchanged",
-  }
-
   const changeDisplay = (row) => {
     if (row.status === "new") return <span className="keyword-new">New</span>
-    if (row.status === "lost") return <span className="keyword-lost">Lost</span>
+    if (row.status === "lost") return <span className="keyword-lost">Dropped</span>
     if (row.positionChange === null || Math.abs(Number(row.positionChange || 0)) < 0.2) return <span className="keyword-flat">—</span>
     const value = Number(row.positionChange)
     return <span className={`keyword-movement ${value > 0 ? "positive" : "negative"}`}>{value > 0 ? "↑" : "↓"} {Math.abs(value).toFixed(1)}</span>
@@ -74,10 +66,10 @@ function KeywordTracking({ rows, loading }) {
   return <div className="panel">
     <div className="panel-head">
       <div><div className="panel-title">Keyword tracking</div><div className="panel-sub">Position movement compared with the previous period</div></div>
-      <div className="keyword-filters">{[["all","All"],["improved","Improved"],["declined","Declined"],["new","New"],["lost","Lost"]].map(([key,label]) => <button key={key} className={`keyword-filter ${filter === key ? "active" : ""}`} onClick={() => setFilter(key)}>{label}</button>)}</div>
+      <div className="keyword-filters">{[["all","All"],["improved","Improved"],["declined","Declined"],["new","New"],["lost","Dropped"]].map(([key,label]) => <button key={key} className={`keyword-filter ${filter === key ? "active" : ""}`} onClick={() => setFilter(key)}>{label}</button>)}</div>
     </div>
     <table className="table keyword-table"><thead><tr><th>Keyword</th><th className="num">Current</th><th className="num">Change</th><th className="num">Clicks</th><th className="num">Impressions</th></tr></thead><tbody>{filtered.length ? filtered.map(row => <tr key={row.query}><td title={row.query}>{row.query}</td><td className="num">{row.position === null ? "—" : pos(row.position)}</td><td className="num">{changeDisplay(row)}</td><td className="num">{fmt(row.clicks)}</td><td className="num">{fmt(row.impressions)}</td></tr>) : <tr><td colSpan="5" style={{textAlign:"center",color:"#94a3b8",padding:"28px 8px"}}>{loading ? "Loading..." : "No keywords match this filter"}</td></tr>}</tbody></table>
-    {rows?.length > 0 && <div className="keyword-footnote">Movement is measured in ranking positions. ↑ means the keyword moved closer to position 1.</div>}
+    {rows?.length > 0 && <div className="keyword-footnote">↑ means the keyword moved closer to position 1. New/Dropped indicate entry to or exit from the top 50 tracked queries.</div>}
   </div>
 }
 
