@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { Search, MousePointerClick, Eye, TrendingUp, Globe2, BarChart3, ExternalLink, RefreshCw } from "lucide-react"
 
-const MetricCard = ({ icon: Icon, label, value, note }) => (
+const MetricCard = ({ icon: Icon, label, value, note, comparison }) => (
   <div className="seo-metric-card">
     <div className="seo-metric-icon"><Icon size={18} /></div>
     <div className="seo-metric-label">{label}</div>
     <div className="seo-metric-value">{value}</div>
     <div className="seo-metric-note">{note}</div>
+    {comparison && <div className="seo-metric-comparison">{comparison}</div>}
   </div>
 )
 
@@ -14,6 +15,18 @@ const number = (value) => new Intl.NumberFormat("en-GB", { maximumFractionDigits
 const percent = (value) => `${(Number(value || 0) * 100).toFixed(2)}%`
 const position = (value) => Number(value || 0).toFixed(1)
 const toInputDate = (date) => date.toISOString().slice(0, 10)
+
+const changePercent = (current, previous) => {
+  const currentValue = Number(current || 0)
+  const previousValue = Number(previous || 0)
+  if (!previousValue) return null
+  return ((currentValue - previousValue) / previousValue) * 100
+}
+
+const signedNumber = (value, decimals = 1) => {
+  const numeric = Number(value || 0)
+  return `${numeric > 0 ? "+" : numeric < 0 ? "−" : ""}${Math.abs(numeric).toFixed(decimals)}`
+}
 
 function SEO() {
   const [data, setData] = useState(null)
@@ -77,12 +90,28 @@ function SEO() {
     if (value !== "custom") loadData(value, customStart, customEnd)
   }
   const applyCustomRange = () => loadData("custom", customStart, customEnd)
+
   const totals = data?.totals || {}
+  const previousTotals = data?.comparison?.totals || null
   const connected = Boolean(data?.connected)
 
   const rangeLabel = data?.startDate && data?.endDate
     ? `${data.startDate} to ${data.endDate}`
     : "Last 28 available days"
+
+  const comparisonLabel = data?.comparison?.startDate && data?.comparison?.endDate
+    ? `${data.comparison.startDate} to ${data.comparison.endDate}`
+    : "previous period"
+
+  const clicksChange = connected && previousTotals ? changePercent(totals.clicks, previousTotals.clicks) : null
+  const impressionsChange = connected && previousTotals ? changePercent(totals.impressions, previousTotals.impressions) : null
+  const ctrChange = connected && previousTotals ? changePercent(totals.ctr, previousTotals.ctr) : null
+  const positionChange = connected && previousTotals ? Number(totals.position || 0) - Number(previousTotals.position || 0) : null
+
+  const comparisonText = (change) => {
+    if (!data?.comparison?.available || change === null || change === undefined) return "Comparison unavailable"
+    return `${signedNumber(change, 1)}% vs previous period`
+  }
 
   return (
     <section className="seo-page">
@@ -106,12 +135,16 @@ function SEO() {
         .seo-apply{height:34px;padding:0 12px;border:1px solid #00304b;border-radius:7px;background:#00304b;color:#fff;font:600 12px Inter,Arial,sans-serif;cursor:pointer}
         .seo-range-note{font-size:10px;color:#94a3b8;white-space:nowrap}
         .seo-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
-        .seo-metric-card,.seo-panel{background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 1px 2px rgba(15,23,42,.03)}
+        .seo-metric-card,.seo-panel,.seo-comparison-panel{background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 1px 2px rgba(15,23,42,.03)}
         .seo-metric-card{padding:16px}
         .seo-metric-icon{width:32px;height:32px;border-radius:8px;background:#eef5f8;color:#00304b;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
         .seo-metric-label{font-size:11px;color:#64748b;font-weight:700}
         .seo-metric-value{font-size:24px;font-weight:800;color:#0f172a;margin-top:4px}
         .seo-metric-note{font-size:10px;color:#94a3b8;margin-top:4px}
+        .seo-metric-comparison{font-size:10px;color:#475569;font-weight:700;margin-top:7px}
+        .seo-comparison-panel{padding:12px 14px;margin-bottom:16px}
+        .seo-comparison-title{font-size:11px;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.04em}
+        .seo-comparison-dates{font-size:10px;color:#94a3b8;margin-top:3px}
         .seo-columns{display:grid;grid-template-columns:1.35fr .65fr;gap:16px}
         .seo-panel{padding:18px}
         .seo-panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
@@ -173,11 +206,18 @@ function SEO() {
       {error && <div className="seo-error">{error}</div>}
 
       <div className="seo-grid">
-        <MetricCard icon={MousePointerClick} label="Organic clicks" value={connected ? number(totals.clicks) : "—"} note={connected ? rangeLabel : "Connect Search Console"} />
-        <MetricCard icon={Eye} label="Impressions" value={connected ? number(totals.impressions) : "—"} note={connected ? rangeLabel : "Connect Search Console"} />
-        <MetricCard icon={TrendingUp} label="Average position" value={connected ? position(totals.position) : "—"} note={connected ? rangeLabel : "Connect Search Console"} />
-        <MetricCard icon={BarChart3} label="Organic CTR" value={connected ? percent(totals.ctr) : "—"} note={connected ? rangeLabel : "Connect Search Console"} />
+        <MetricCard icon={MousePointerClick} label="Organic clicks" value={connected ? number(totals.clicks) : "—"} note={connected ? rangeLabel : "Connect Search Console"} comparison={connected ? comparisonText(clicksChange) : null} />
+        <MetricCard icon={Eye} label="Impressions" value={connected ? number(totals.impressions) : "—"} note={connected ? rangeLabel : "Connect Search Console"} comparison={connected ? comparisonText(impressionsChange) : null} />
+        <MetricCard icon={TrendingUp} label="Average position" value={connected ? position(totals.position) : "—"} note={connected ? rangeLabel : "Connect Search Console"} comparison={connected && positionChange !== null ? `${signedNumber(positionChange, 1)} positions vs previous period` : connected ? "Comparison unavailable" : null} />
+        <MetricCard icon={BarChart3} label="Organic CTR" value={connected ? percent(totals.ctr) : "—"} note={connected ? rangeLabel : "Connect Search Console"} comparison={connected ? comparisonText(ctrChange) : null} />
       </div>
+
+      {connected && data?.comparison && (
+        <div className="seo-comparison-panel">
+          <div className="seo-comparison-title">Period comparison</div>
+          <div className="seo-comparison-dates">Current: {rangeLabel} · Previous: {comparisonLabel}</div>
+        </div>
+      )}
 
       <div className="seo-columns">
         <div className="seo-panel">
