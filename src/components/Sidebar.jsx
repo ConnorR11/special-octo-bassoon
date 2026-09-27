@@ -1,6 +1,6 @@
 import React from "react"
 import { createPortal } from "react-dom"
-import { LayoutDashboard, FileText, ChevronDown, ChevronRight, BarChart3, CalendarDays, Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck, Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound, MessageCircle, Files, UserCog, FileCheck, LogOut, ClipboardList, Lock, KanbanSquare, Presentation, Clipboard, Calculator, ShoppingCart } from "lucide-react"
+import { LayoutDashboard, FileText, ChevronDown, ChevronRight, BarChart3, CalendarDays, Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck, Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound, MessageCircle, Files, UserCog, FileCheck, LogOut, ClipboardList, Lock, KanbanSquare, Presentation, Clipboard, Calculator, ShoppingCart, Building2 } from "lucide-react"
 import SalesPresentations from "../pages/SalesPresentations"
 import MI from "../pages/MI"
 
@@ -9,7 +9,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
   const isAdministrator = numericPermissionLevel >= 4
   const canAccessMarketingDashboard = numericPermissionLevel >= 3
   const canAccessSalesPerformance = numericPermissionLevel >= 2
-  const [openFolders, setOpenFolders] = React.useState({ sales: false, marketing: false, installation: false, finance: false, solar: false, customerService: false, documents: false, admin: false, procurement: false })
+  const [openFolders, setOpenFolders] = React.useState({ sales: false, marketing: false, installation: false, finance: false, solar: false, customerService: false, documents: false, admin: false, procurement: false, headOffice: false })
   const toggleFolder = (folder) => setOpenFolders((current) => ({ ...current, [folder]: !current[folder] }))
   const navigate = (pageName) => { setPage(pageName); setMobile(false) }
   const isActive = (pageName) => page === pageName
@@ -24,37 +24,25 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
       "tasks": 4,
       "sales-presentations": 4,
     }[route]
-
     return !requiredPermission || numericPermissionLevel >= requiredPermission
   }
 
   React.useEffect(() => {
     if (!numericPermissionLevel) return
-
     const path = window.location.pathname.replace(/^\/+|\/+$/g, "")
     const route = path === "" ? "dashboard" : path.split("/")[0]
-
     if (!canAccessRoute(route)) {
       setPage("dashboard")
-      if (window.location.pathname !== "/") {
-        window.history.replaceState({}, "", "/")
-      }
+      if (window.location.pathname !== "/") window.history.replaceState({}, "", "/")
       window.dispatchEvent(new PopStateEvent("popstate"))
     }
   }, [numericPermissionLevel])
 
   const presentationOverlay = isAdministrator && page === "sales-presentations" && typeof document !== "undefined" ? createPortal(<div style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: desktopOverlayLeft, zIndex: 10000, background: "#f5f7fa", overflow: "auto" }}><div style={{ maxWidth: 1500, margin: "0 auto", padding: "28px 28px 50px" }}><SalesPresentations /></div></div>, document.body) : null
   const miOverlay = isAdministrator && page === "mi" && typeof document !== "undefined" ? createPortal(<div style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: desktopOverlayLeft, zIndex: 10000, background: "#f5f7fa", overflow: "auto" }}><div style={{ maxWidth: 1500, margin: "0 auto", padding: "28px 28px 50px" }}><MI /></div></div>, document.body) : null
+
   return <>
-    <style>{`
-      @media (max-width: 900px) {
-        .sidebar { transform: translateX(-100%); transition: transform 0.2s ease; z-index: 1000; }
-        .sidebar.sidebar-open { transform: translateX(0); }
-        .sidebar-overlay { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 999; }
-        main { margin-left: 0; width: 100%; padding: 22px 18px; }
-        .mobile-menu { display: inline-flex; }
-      }
-    `}</style>
+    <style>{`@media (max-width: 900px) { .sidebar { transform: translateX(-100%); transition: transform 0.2s ease; z-index: 1000; } .sidebar.sidebar-open { transform: translateX(0); } .sidebar-overlay { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 999; } main { margin-left: 0; width: 100%; padding: 22px 18px; } .mobile-menu { display: inline-flex; } }`}</style>
     {mobile && <div className="sidebar-overlay" onClick={() => setMobile(false)} />}
     <aside className={`sidebar ${mobile ? "sidebar-open" : ""}`}>
       <div className="sidebar-brand"><div className="brand-mark">C</div><div><strong>Homeshield Scotland</strong><span>CRM</span></div></div>
@@ -68,7 +56,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
         <Folder title="Remedials" icon={Headphones} open={openFolders.customerService} onClick={() => toggleFolder("customerService")}><NavItem icon={UserRound} label="Customers" disabled /><NavItem icon={MessageCircle} label="Follow-ups" disabled /><NavItem icon={AlertTriangle} label="Complaints" disabled /></Folder>
         <Folder title="Accounts" icon={PoundSterling} open={openFolders.finance} onClick={() => toggleFolder("finance")}><NavItem icon={PoundSterling} label="Revenue" disabled /><NavItem icon={CreditCard} label="Payments" disabled /><NavItem icon={Receipt} label="Invoices" disabled /></Folder>
         <Folder title="Documents" icon={Files} open={openFolders.documents} onClick={() => toggleFolder("documents")}><NavItem icon={FileText} label="Company Brochures" disabled /><NavItem icon={Files} label="Customer Documents" disabled /></Folder>
-        {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}><NavItem icon={BarChart3} label="MI" active={isActive("mi")} onClick={() => navigate("mi")} /><NavItem icon={UserCog} label="Users" active={isActive("users")} onClick={() => navigate("users")} /><NavItem icon={ClipboardList} label="Tasks" active={isActive("tasks")} onClick={() => navigate("tasks")} /><NavItem icon={Presentation} label="Templates" active={isActive("sales-presentations")} onClick={() => navigate("sales-presentations")} /><NavItem icon={Settings} label="Settings" disabled /></Folder>}
+        <Folder title="Head Office" icon={Building2} open={openFolders.headOffice} onClick={() => toggleFolder("headOffice")}><NavItem icon={BarChart3} label="MI" active={isActive("mi")} onClick={() => navigate("mi")} /><NavItem icon={UserCog} label="Users" active={isActive("users")} onClick={() => navigate("users")} /><NavItem icon={ClipboardList} label="Tasks" active={isActive("tasks")} onClick={() => navigate("tasks")} /><NavItem icon={Presentation} label="Templates" active={isActive("sales-presentations")} onClick={() => navigate("sales-presentations")} /><NavItem icon={Settings} label="Settings" disabled /></Folder>
       </nav>
       <div className="sidebar-footer" style={{ marginTop: "auto", flexDirection: "column", alignItems: "stretch", gap: 10 }}><button type="button" onClick={onSignOut} style={{ width: "100%", border: 0, background: "transparent", color: "inherit", display: "flex", alignItems: "center", gap: 10, padding: "8px 0", cursor: "pointer", font: "inherit", textAlign: "left" }}><LogOut size={16} /><span style={{ fontWeight: 600 }}>Sign out</span></button><div style={{ display: "flex", alignItems: "center", gap: 10 }}><div className="sidebar-footer-icon"><Settings size={16} /></div><div><strong>CRM System</strong><span>v1.0</span></div></div></div>
     </aside>{presentationOverlay}{miOverlay}
