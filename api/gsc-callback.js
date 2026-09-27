@@ -61,9 +61,20 @@ export default async function handler(req, res) {
       return res.status(502).send("Google authorisation could not be completed. Check the OAuth client and redirect URI.")
     }
 
-    const isSecure = String(req.headers["x-forwarded-proto"] || "https") === "https"
-    const cookie = `gsc_refresh_token=${encodeURIComponent(tokens.refresh_token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000${isSecure ? "; Secure" : ""}`
+    // Keep the long-lived refresh token in a first-party, HttpOnly cookie.
+    // SameSite=None + Secure also survives the Google -> CRM OAuth navigation
+    // consistently across browsers, while the token remains inaccessible to JS.
+    const cookie = [
+      `gsc_refresh_token=${encodeURIComponent(tokens.refresh_token)}`,
+      "Path=/",
+      "HttpOnly",
+      "Secure",
+      "SameSite=None",
+      "Max-Age=31536000",
+    ].join("; ")
+
     res.setHeader("Set-Cookie", cookie)
+    res.setHeader("Cache-Control", "no-store")
     return res.redirect("/seo?gsc_connected=1")
   } catch (err) {
     console.error("Google OAuth callback error:", err)
