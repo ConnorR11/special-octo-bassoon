@@ -22,7 +22,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
 
   React.useEffect(() => {
     if (!numericPermissionLevel) return
-    const path = window.location.pathname.replace(/^\\/+|\\/+$/g, "")
+    const path = window.location.pathname.replace(/^\/+|\/+$/g, "")
     const route = path === "" ? "dashboard" : path.split("/")[0]
     if (!canAccessRoute(route)) {
       setPage("dashboard")
