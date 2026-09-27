@@ -73,6 +73,45 @@ function totalsFromRows(rows) {
   return { clicks: row.clicks || 0, impressions: row.impressions || 0, ctr: row.ctr || 0, position: row.position || 0 }
 }
 
+function normaliseQueryRows(rows) {
+  return (rows || []).map((row) => ({ query: row.keys?.[0] || "", clicks: row.clicks || 0, impressions: row.impressions || 0, ctr: row.ctr || 0, position: row.position || 0 }))
+}
+
+function buildKeywordMovement(currentRows, previousRows) {
+  const previousMap = new Map(previousRows.map((row) => [row.query, row]))
+  const currentMap = new Map(currentRows.map((row) => [row.query, row]))
+  const keywords = new Set([...currentMap.keys(), ...previousMap.keys()])
+
+  return [...keywords]
+    .map((keyword) => {
+      const current = currentMap.get(keyword)
+      const previous = previousMap.get(keyword)
+      const positionChange = current && previous ? Number(previous.position || 0) - Number(current.position || 0) : null
+      let status = "unchanged"
+      if (!previous && current) status = "new"
+      else if (previous && !current) status = "lost"
+      else if (positionChange > 0.2) status = "improved"
+      else if (positionChange < -0.2) status = "declined"
+
+      return {
+        query: keyword,
+        position: current?.position ?? null,
+        previousPosition: previous?.position ?? null,
+        positionChange,
+        clicks: current?.clicks || 0,
+        impressions: current?.impressions || 0,
+        status,
+      }
+    })
+    .sort((a, b) => {
+      const movementA = a.positionChange === null ? -Infinity : Math.abs(a.positionChange)
+      const movementB = b.positionChange === null ? -Infinity : Math.abs(b.positionChange)
+      if (movementA !== movementB) return movementB - movementA
+      return Number(b.clicks || 0) - Number(a.clicks || 0)
+    })
+    .slice(0, 25)
+}
+
 export default async function handler(req, res) {
   const refreshToken = parseCookies(req.headers.cookie).gsc_refresh_token
   if (!refreshToken) return res.status(401).json({ connected: false, error: "Google Search Console is not connected." })
@@ -91,16 +130,19 @@ export default async function handler(req, res) {
       body: JSON.stringify({ startDate: range.startDate, endDate: range.endDate, dimensions, rowLimit, dataState: "final" }),
     })
 
-    const [summary, queries, pages, previousSummary, daily] = await Promise.all([
+    const [summary, queries, pages, previousSummary, daily, previousQueries] = await Promise.all([
       query({ startDate, endDate }, [], 1),
-      query({ startDate, endDate }, ["query"], 10),
+      query({ startDate, endDate }, ["query"], 50),
       query({ startDate, endDate }, ["page"], 10),
       query(previous, [], 1),
       query({ startDate, endDate }, ["date"], 500),
+      query(previous, ["query"], 50),
     ])
 
     const totals = totalsFromRows(summary.rows) || { clicks: 0, impressions: 0, ctr: 0, position: 0 }
     const previousTotals = totalsFromRows(previousSummary.rows)
+    const currentQueryRows = normaliseQueryRows(queries.rows)
+    const previousQueryRows = normaliseQueryRows(previousQueries.rows)
 
     return res.status(200).json({
       connected: true,
@@ -111,8 +153,9 @@ export default async function handler(req, res) {
       totals,
       comparison: { startDate: previous.startDate, endDate: previous.endDate, totals: previousTotals, available: Boolean(previousTotals) },
       daily: (daily.rows || []).map((row) => ({ date: row.keys?.[0] || "", clicks: row.clicks || 0, impressions: row.impressions || 0, ctr: row.ctr || 0, position: row.position || 0 })).sort((a, b) => a.date.localeCompare(b.date)),
-      queries: (queries.rows || []).map((row) => ({ query: row.keys?.[0] || "", clicks: row.clicks || 0, impressions: row.impressions || 0, ctr: row.ctr || 0, position: row.position || 0 })),
+      queries: currentQueryRows.slice(0, 10),
       pages: (pages.rows || []).map((row) => ({ page: row.keys?.[0] || "", clicks: row.clicks || 0, impressions: row.impressions || 0, ctr: row.ctr || 0, position: row.position || 0 })),
+      keywordMovement: buildKeywordMovement(currentQueryRows, previousQueryRows),
     })
   } catch (err) {
     console.error("GSC data error:", err)
