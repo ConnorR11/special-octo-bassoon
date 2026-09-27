@@ -105,6 +105,16 @@ function getPreviousRange(startDate, endDate) {
   return { startDate: isoDate(previousStart), endDate: isoDate(previousEnd) }
 }
 
+function getYearOnYearRange(startDate, endDate) {
+  const start = parseDate(startDate)
+  const end = parseDate(endDate)
+  const yearAgoStart = new Date(start)
+  const yearAgoEnd = new Date(end)
+  yearAgoStart.setUTCFullYear(yearAgoStart.getUTCFullYear() - 1)
+  yearAgoEnd.setUTCFullYear(yearAgoEnd.getUTCFullYear() - 1)
+  return { startDate: isoDate(yearAgoStart), endDate: isoDate(yearAgoEnd) }
+}
+
 function totalsFromRows(rows) {
   const row = rows?.[0]
   if (!row) return null
@@ -176,18 +186,19 @@ export default async function handler(req, res) {
 
     const { startDate, endDate, rangeKey } = getDateRange(req)
     const previous = getPreviousRange(startDate, endDate)
+    const yearOnYear = getYearOnYearRange(startDate, endDate)
     const query = async (range, dimensions, rowLimit = 10) => gsc(accessToken, `/webmasters/v3/sites/${encodeURIComponent(site.siteUrl)}/searchAnalytics/query`, {
       method: "POST",
       body: JSON.stringify({ startDate: range.startDate, endDate: range.endDate, dimensions, rowLimit, dataState: "final" }),
     })
 
-    const [summary, queries, pages, previousSummary, daily, previousDaily, previousQueries, previousPages, sitemapPages] = await Promise.all([
+    const [summary, queries, pages, previousSummary, daily, yearOnYearDaily, previousQueries, previousPages, sitemapPages] = await Promise.all([
       query({ startDate, endDate }, [], 1),
       query({ startDate, endDate }, ["query"], 50),
       query({ startDate, endDate }, ["page"], 50),
       query(previous, [], 1),
       query({ startDate, endDate }, ["date"], 500),
-      query(previous, ["date"], 500),
+      query(yearOnYear, ["date"], 500),
       query(previous, ["query"], 50),
       query(previous, ["page"], 50),
       getSitemapPages(site.siteUrl),
@@ -219,7 +230,8 @@ export default async function handler(req, res) {
       totals,
       comparison: { startDate: previous.startDate, endDate: previous.endDate, totals: previousTotals, available: Boolean(previousTotals) },
       daily: normaliseDailyRows(daily.rows),
-      previousDaily: normaliseDailyRows(previousDaily.rows),
+      previousDaily: normaliseDailyRows(yearOnYearDaily.rows),
+      yearOnYear: { startDate: yearOnYear.startDate, endDate: yearOnYear.endDate },
       queries: currentQueryRows.slice(0, 10),
       pages: sitemapAwareCurrentPages,
       sitemapPages,
