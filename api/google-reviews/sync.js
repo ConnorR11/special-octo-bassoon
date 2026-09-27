@@ -14,7 +14,12 @@ async function listAllAccounts(accessToken) {
     const query = new URLSearchParams({ pageSize: "20" })
     if (pageToken) query.set("pageToken", pageToken)
 
-    const data = await googleBusinessRequest(accessToken, `/v4/accounts?${query.toString()}`)
+    const data = await googleBusinessRequest(
+      accessToken,
+      `/v1/accounts?${query.toString()}`,
+      {},
+      "accountManagement",
+    )
     accounts.push(...(data.accounts || []))
     pageToken = data.nextPageToken || null
     if (!pageToken) break
@@ -28,12 +33,17 @@ async function listAllLocations(accessToken, accountName) {
   let pageToken = null
 
   for (let page = 0; page < 20; page += 1) {
-    const query = new URLSearchParams({ pageSize: "100" })
+    const query = new URLSearchParams({
+      pageSize: "100",
+      readMask: "name,title,storefrontAddress,websiteUri",
+    })
     if (pageToken) query.set("pageToken", pageToken)
 
     const data = await googleBusinessRequest(
       accessToken,
-      `/v4/${accountName}/locations?${query.toString()}`,
+      `/v1/${accountName}/locations?${query.toString()}`,
+      {},
+      "businessInformation",
     )
     locations.push(...(data.locations || []))
     pageToken = data.nextPageToken || null
@@ -78,19 +88,18 @@ async function findLocation(accessToken) {
   }
 
   const byConfiguredName = configuredLocationName
-    ? allLocations.find((location) => String(location.locationName || "").toLowerCase() === configuredLocationName)
+    ? allLocations.find((location) => String(location.title || "").toLowerCase() === configuredLocationName)
     : null
-
-  const byWebsite = allLocations.find((location) => /homeshield\.ltd/i.test(String(location.websiteUrl || "")))
-  const byName = allLocations.find((location) => /homeshield/i.test(String(location.locationName || "")))
+  const byWebsite = allLocations.find((location) => /homeshield\.ltd/i.test(String(location.websiteUri || "")))
+  const byName = allLocations.find((location) => /homeshield/i.test(String(location.title || "")))
   const selected = byConfiguredName || byWebsite || byName
 
   if (!selected) {
     const available = allLocations.map((location) => ({
       accountName: location.accountName,
       locationName: location.name,
-      businessName: location.locationName || null,
-      websiteUrl: location.websiteUrl || null,
+      businessName: location.title || null,
+      websiteUrl: location.websiteUri || null,
     }))
     const error = new Error("Unable to identify the Homeshield Google Business Profile location automatically.")
     error.code = "GOOGLE_REVIEW_LOCATION_SELECTION_REQUIRED"
@@ -120,6 +129,8 @@ async function listAllReviews(accessToken, locationName) {
     const data = await googleBusinessRequest(
       accessToken,
       `/v4/${locationName}/reviews?${query.toString()}`,
+      {},
+      "reviews",
     )
 
     reviews.push(...(data.reviews || []))
