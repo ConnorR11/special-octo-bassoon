@@ -38,26 +38,30 @@ async function supabaseRequest(path, options = {}) {
   return data
 }
 
-async function createLog(event, payload) {
+async function createIntegrationLog(event, payload) {
   const eventData = event?.eventData || {}
-  const rows = await supabaseRequest("trustpilot_webhook_logs", {
+  const rows = await supabaseRequest("integration_event_logs", {
     method: "POST",
     headers: { Prefer: "return=representation" },
     body: JSON.stringify({
+      provider: "trustpilot",
+      integration_name: "trustpilot",
+      direction: "inbound",
       event_name: event?.eventName || "unknown",
-      review_id: eventData?.id ? String(eventData.id) : null,
+      event_type: event?.eventName || "unknown",
+      external_id: eventData?.id ? String(eventData.id) : null,
       status: "received",
-      payload: eventData,
+      payload,
     }),
   })
 
   return Array.isArray(rows) ? rows[0] : null
 }
 
-async function updateLog(logId, values) {
+async function updateIntegrationLog(logId, values) {
   if (!logId) return
 
-  await supabaseRequest(`trustpilot_webhook_logs?id=eq.${encodeURIComponent(logId)}`, {
+  await supabaseRequest(`integration_event_logs?id=eq.${encodeURIComponent(logId)}`, {
     method: "PATCH",
     headers: { Prefer: "return=minimal" },
     body: JSON.stringify({
@@ -95,7 +99,7 @@ export default async function handler(req, res) {
   try {
     events = normaliseEventBody(req.body)
   } catch (error) {
-    console.error("Trustpilot webhook body error:", error)
+    console.error("Integration webhook body error:", error)
     return res.status(400).json({ error: "Invalid webhook body" })
   }
 
@@ -106,18 +110,18 @@ export default async function handler(req, res) {
     let log = null
 
     try {
-      log = await createLog(event, event?.eventData || {})
+      log = await createIntegrationLog(event, event?.eventData || {})
     } catch (error) {
-      console.error("Unable to create Trustpilot webhook log:", error)
+      console.error("Unable to create integration event log:", error)
     }
 
     if (event?.eventName !== "service-review-created") {
       const result = { status: "ignored", reason: "Event is not a new review" }
       results.push(result)
       try {
-        await updateLog(log?.id, { status: "ignored", http_status: 200, result })
+        await updateIntegrationLog(log?.id, { status: "ignored", http_status: 200, result })
       } catch (error) {
-        console.error("Unable to update Trustpilot webhook log:", error)
+        console.error("Unable to update integration event log:", error)
       }
       continue
     }
@@ -128,14 +132,14 @@ export default async function handler(req, res) {
       if (!review.external_review_id) {
         const result = { status: "ignored", reason: "Missing Trustpilot review id" }
         results.push(result)
-        await updateLog(log?.id, { status: "ignored", http_status: 200, result })
+        await updateIntegrationLog(log?.id, { status: "ignored", http_status: 200, result })
         continue
       }
 
       if (!Number.isInteger(review.rating) || review.rating < 1 || review.rating > 5) {
         const result = { status: "ignored", reviewId: review.external_review_id, reason: "Invalid rating" }
         results.push(result)
-        await updateLog(log?.id, { status: "ignored", http_status: 200, result })
+        await updateIntegrationLog(log?.id, { status: "ignored", http_status: 200, result })
         continue
       }
 
@@ -165,7 +169,7 @@ export default async function handler(req, res) {
       }
 
       results.push(result)
-      await updateLog(log?.id, { status: "success", http_status: 200, result })
+      await updateIntegrationLog(log?.id, { status: "success", http_status: 200, result })
     } catch (error) {
       hadFailure = true
       const result = {
@@ -177,14 +181,14 @@ export default async function handler(req, res) {
       results.push(result)
 
       try {
-        await updateLog(log?.id, {
+        await updateIntegrationLog(log?.id, {
           status: "failed",
           http_status: 500,
           error_message: result.error,
           result,
         })
       } catch (logError) {
-        console.error("Unable to record Trustpilot webhook failure:", logError)
+        console.error("Unable to record integration webhook failure:", logError)
       }
 
       console.error("Trustpilot new review webhook error:", error)
