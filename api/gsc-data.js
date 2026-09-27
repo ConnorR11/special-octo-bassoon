@@ -25,26 +25,32 @@ async function gsc(accessToken, path, options = {}) {
 }
 
 async function fetchText(url) {
-  const response = await fetch(url, { headers: { "User-Agent": "Homeshield-CRM-SEO/1.0" } })
-  if (!response.ok) throw new Error(`Unable to fetch ${url}: ${response.status}`)
-  return response.text()
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 8000)
+  try {
+    const response = await fetch(url, { headers: { "User-Agent": "Homeshield-CRM-SEO/1.0" }, signal: controller.signal })
+    if (!response.ok) return ""
+    return await response.text()
+  } catch {
+    return ""
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 async function getSitemapPages(siteUrl) {
   try {
-    const origin = new URL(siteUrl).origin
-    const sitemapUrl = `${origin}/sitemap.xml`
-    const xml = await fetchText(sitemapUrl)
-    const locs = [...xml.matchAll(/<loc>\\s*([^<]+?)\\s*<\\/loc>/gi)].map((match) => match[1].trim())
+    const base = /^https?:\/\//i.test(siteUrl || "") ? new URL(siteUrl).origin : "https://homeshield.ltd"
+    const xml = await fetchText(`${base}/sitemap.xml`)
+    if (!xml) return []
+
+    const locs = [...xml.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/gi)].map((match) => match[1].trim())
+    if (!locs.length) return []
 
     if (/sitemapindex/i.test(xml)) {
       const nested = await Promise.all(locs.slice(0, 10).map(async (url) => {
-        try {
-          const childXml = await fetchText(url)
-          return [...childXml.matchAll(/<loc>\\s*([^<]+?)\\s*<\\/loc>/gi)].map((match) => match[1].trim())
-        } catch {
-          return []
-        }
+        const childXml = await fetchText(url)
+        return childXml ? [...childXml.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/gi)].map((match) => match[1].trim()) : []
       }))
       return [...new Set(nested.flat())]
     }
