@@ -65,8 +65,15 @@ export async function getAccessToken(refreshToken) {
   return data.access_token
 }
 
-export async function googleBusinessRequest(accessToken, path, options = {}) {
-  const response = await fetch(`https://mybusiness.googleapis.com${path}`, {
+const GOOGLE_API_HOSTS = {
+  accountManagement: "https://mybusinessaccountmanagement.googleapis.com",
+  businessInformation: "https://mybusinessbusinessinformation.googleapis.com",
+  reviews: "https://mybusiness.googleapis.com",
+}
+
+export async function googleBusinessRequest(accessToken, path, options = {}, service = "reviews") {
+  const host = GOOGLE_API_HOSTS[service] || GOOGLE_API_HOSTS.reviews
+  const response = await fetch(`${host}${path}`, {
     ...options,
     headers: {
       Authorization: `Bearer ${accessToken}`,
