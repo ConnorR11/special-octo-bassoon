@@ -19,6 +19,10 @@ const replacement = `                  <Card\n            title={\n             
 
 let next = text.slice(0, start) + replacement + text.slice(end)
 
+// Route the frontend request through the logging wrapper without changing
+// the underlying Octopus API endpoint.
+next = next.replace('fetch("/api/octopus-flux"', 'fetch("/api/octopus-flux-logged"')
+
 // Remove any previous standalone retrieved-date block left by an older build.
 next = next.replace(
   /\n\s*\{data\.fluxRatesRetrievedAt && \(\s*<div[\s\S]*?Retrieved \{new Date\(data\.fluxRatesRetrievedAt\)\.toLocaleString\("en-GB"\)\}[\s\S]*?<\/div>\s*\)\}\s*/,
