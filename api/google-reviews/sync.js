@@ -51,7 +51,9 @@ async function getStoredLocationConfig() {
 
 async function saveLocationConfig(location) {
   try {
-    await createIntegrationLog({
+    // createIntegrationLog initially writes status=received. Explicitly mark
+    // the configuration event as successful so future syncs can retrieve it.
+    const log = await createIntegrationLog({
       provider: "google",
       integrationName: "Google Reviews",
       direction: "outbound",
@@ -64,6 +66,18 @@ async function saveLocationConfig(location) {
         status: "configured",
       },
     })
+
+    if (log?.id) {
+      await updateIntegrationLog(log.id, {
+        status: "success",
+        http_status: 200,
+        result: {
+          accountName: location.accountName,
+          locationName: location.locationName,
+          status: "configured",
+        },
+      })
+    }
   } catch (error) {
     // A failure to cache the IDs should not prevent the current sync from completing.
     console.error("Unable to cache Google Business Profile location:", error)
@@ -188,10 +202,9 @@ async function getLocation(accessToken) {
   return { ...discovered, source: "discovered" }
 }
 
-// Each manual sync makes exactly one reviews API request and requests at most
-// 10 reviews. The current batch is the newest batch, so regular syncs always
-// check for newly-created or recently-updated reviews without needing account
-// discovery first.
+// Each manual sync makes exactly one reviews API request once the location has
+// been cached. It requests at most 10 reviews and does not automatically walk
+// every page.
 async function listReviewBatch(accessToken, locationName) {
   const query = new URLSearchParams({
     pageSize: String(REVIEW_BATCH_SIZE),
@@ -278,7 +291,6 @@ export default async function handler(req, res) {
           action: "sync",
           status: "started",
           requestedReviewCount: REVIEW_BATCH_SIZE,
-          expectedGoogleRequests: 1,
         },
       })
     } catch (error) {
