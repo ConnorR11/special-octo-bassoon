@@ -77,29 +77,36 @@ function normaliseQueryRows(rows) {
   return (rows || []).map((row) => ({ query: row.keys?.[0] || "", clicks: row.clicks || 0, impressions: row.impressions || 0, ctr: row.ctr || 0, position: row.position || 0 }))
 }
 
-function buildKeywordMovement(currentRows, previousRows) {
-  const previousMap = new Map(previousRows.map((row) => [row.query, row]))
-  const currentMap = new Map(currentRows.map((row) => [row.query, row]))
-  const keywords = new Set([...currentMap.keys(), ...previousMap.keys()])
+function normalisePageRows(rows) {
+  return (rows || []).map((row) => ({ page: row.keys?.[0] || "", clicks: row.clicks || 0, impressions: row.impressions || 0, ctr: row.ctr || 0, position: row.position || 0 }))
+}
 
-  return [...keywords]
-    .map((keyword) => {
-      const current = currentMap.get(keyword)
-      const previous = previousMap.get(keyword)
+function buildMovement(currentRows, previousRows, key) {
+  const previousMap = new Map(previousRows.map((row) => [row[key], row]))
+  const currentMap = new Map(currentRows.map((row) => [row[key], row]))
+  const items = new Set([...currentMap.keys(), ...previousMap.keys()])
+
+  return [...items]
+    .map((name) => {
+      const current = currentMap.get(name)
+      const previous = previousMap.get(name)
       const positionChange = current && previous ? Number(previous.position || 0) - Number(current.position || 0) : null
       let status = "unchanged"
       if (!previous && current) status = "new"
       else if (previous && !current) status = "lost"
       else if (positionChange > 0.2) status = "improved"
       else if (positionChange < -0.2) status = "declined"
-
       return {
-        query: keyword,
+        [key]: name,
         position: current?.position ?? null,
         previousPosition: previous?.position ?? null,
         positionChange,
         clicks: current?.clicks || 0,
+        previousClicks: previous?.clicks || 0,
         impressions: current?.impressions || 0,
+        previousImpressions: previous?.impressions || 0,
+        ctr: current?.ctr || 0,
+        previousCtr: previous?.ctr || 0,
         status,
       }
     })
@@ -109,7 +116,7 @@ function buildKeywordMovement(currentRows, previousRows) {
       if (movementA !== movementB) return movementB - movementA
       return Number(b.clicks || 0) - Number(a.clicks || 0)
     })
-    .slice(0, 25)
+    .slice(0, 50)
 }
 
 export default async function handler(req, res) {
@@ -130,19 +137,22 @@ export default async function handler(req, res) {
       body: JSON.stringify({ startDate: range.startDate, endDate: range.endDate, dimensions, rowLimit, dataState: "final" }),
     })
 
-    const [summary, queries, pages, previousSummary, daily, previousQueries] = await Promise.all([
+    const [summary, queries, pages, previousSummary, daily, previousQueries, previousPages] = await Promise.all([
       query({ startDate, endDate }, [], 1),
       query({ startDate, endDate }, ["query"], 50),
-      query({ startDate, endDate }, ["page"], 10),
+      query({ startDate, endDate }, ["page"], 50),
       query(previous, [], 1),
       query({ startDate, endDate }, ["date"], 500),
       query(previous, ["query"], 50),
+      query(previous, ["page"], 50),
     ])
 
     const totals = totalsFromRows(summary.rows) || { clicks: 0, impressions: 0, ctr: 0, position: 0 }
     const previousTotals = totalsFromRows(previousSummary.rows)
     const currentQueryRows = normaliseQueryRows(queries.rows)
     const previousQueryRows = normaliseQueryRows(previousQueries.rows)
+    const currentPageRows = normalisePageRows(pages.rows)
+    const previousPageRows = normalisePageRows(previousPages.rows)
 
     return res.status(200).json({
       connected: true,
@@ -154,8 +164,9 @@ export default async function handler(req, res) {
       comparison: { startDate: previous.startDate, endDate: previous.endDate, totals: previousTotals, available: Boolean(previousTotals) },
       daily: (daily.rows || []).map((row) => ({ date: row.keys?.[0] || "", clicks: row.clicks || 0, impressions: row.impressions || 0, ctr: row.ctr || 0, position: row.position || 0 })).sort((a, b) => a.date.localeCompare(b.date)),
       queries: currentQueryRows.slice(0, 10),
-      pages: (pages.rows || []).map((row) => ({ page: row.keys?.[0] || "", clicks: row.clicks || 0, impressions: row.impressions || 0, ctr: row.ctr || 0, position: row.position || 0 })),
-      keywordMovement: buildKeywordMovement(currentQueryRows, previousQueryRows),
+      pages: currentPageRows,
+      keywordMovement: buildMovement(currentQueryRows, previousQueryRows, "query"),
+      pageMovement: buildMovement(currentPageRows, previousPageRows, "page"),
     })
   } catch (err) {
     console.error("GSC data error:", err)
