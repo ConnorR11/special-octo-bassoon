@@ -70,6 +70,7 @@ const PIPEDRIVE_FIELDS = {
 }
 
 let fieldResolutionPromise = null
+let usersResolutionPromise = null
 const userNameCache = new Map()
 
 async function resolveMissingFieldCodes(pipedriveToken) {
@@ -180,13 +181,28 @@ async function getUserName(pipedriveToken, userId) {
   if (!id) return null
   if (userNameCache.has(id)) return userNameCache.get(id)
 
-  const response = await fetch(`https://api.pipedrive.com/api/v1/users/${encodeURIComponent(id)}?api_token=${encodeURIComponent(pipedriveToken)}`, { headers: { Accept: "application/json" } })
-  const json = await response.json().catch(() => ({}))
-  if (!response.ok || !json?.success) return null
+  if (!usersResolutionPromise) {
+    usersResolutionPromise = (async () => {
+      const response = await fetch(`https://api.pipedrive.com/api/v1/users?limit=500&api_token=${encodeURIComponent(pipedriveToken)}`, { headers: { Accept: "application/json" } })
+      const json = await response.json().catch(() => ({}))
+      if (!response.ok || !json?.success) {
+        throw new Error(json?.error || `Pipedrive users lookup failed with HTTP ${response.status}.`)
+      }
+      const users = Array.isArray(json.data) ? json.data : []
+      for (const user of users) {
+        const userId = String(user?.id ?? "").trim()
+        const name = String(user?.name || "").trim()
+        if (userId && name) userNameCache.set(userId, name)
+      }
+      return users
+    })().catch((error) => {
+      usersResolutionPromise = null
+      throw error
+    })
+  }
 
-  const name = String(json?.data?.name || "").trim() || null
-  if (name) userNameCache.set(id, name)
-  return name
+  await usersResolutionPromise
+  return userNameCache.get(id) || null
 }
 
 async function getSalespersonName(pipedriveToken, value) {
@@ -206,7 +222,10 @@ async function getSalespersonName(pipedriveToken, value) {
   if (!text) return null
 
   if (/^\d+$/.test(text)) {
-    return await getUserName(pipedriveToken, text) || text
+    // Sales Rep is a Pipedrive user field. Resolve the numeric user ID to
+    // the user's actual name before anything is written to Supabase.
+    // Never fall back to saving the numeric ID as salesperson.
+    return await getUserName(pipedriveToken, text)
   }
 
   return text
@@ -292,9 +311,6 @@ export default async function handler(req, res) {
     }
     const fieldCodes = Object.fromEntries(Object.entries(fields).map(([key, field]) => [field.name, field.key]))
 
-    // Keep the webhook log human-readable: remove the raw Sales Rep ID from
-    // the original Pipedrive custom_fields payload. The resolved salesperson
-    // name remains available in pipedrive_fields and the CRM update.
     const sanitizedBody = JSON.parse(JSON.stringify(body || {}))
     if (sanitizedBody?.data?.item?.custom_fields && fields.salesperson.key) {
       delete sanitizedBody.data.item.custom_fields[fields.salesperson.key]
@@ -306,8 +322,6 @@ export default async function handler(req, res) {
     const payloadForLog = { ...sanitizedBody, pipedrive_fields: friendlyFields, pipedrive_field_codes: fieldCodes }
     const logBase = { ...baseLog, payload: payloadForLog }
 
-    // IMPORTANT: CRM records are matched ONLY by the Pipedrive deal ID.
-    // Customer name is never used as a fallback or matching key.
     const select = "id,pipedrive_deal_id,customer_name,installation_start_date,fit_team_1,installation_issues_fit_team,installations_issues_start_date,survey_costing,commission_paid_date,estimated_commission_due,admin_fee_amount,admin_fee_expected_date,admin_fee_method,admin_fee_paid_out_date,admin_fee_received_date,pipedrive_stage,salesperson"
     const lookup = await fetch(`${supabaseUrl}/rest/v1/deals?pipedrive_deal_id=eq.${encodeURIComponent(dealId)}&select=${select}`, {
       headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, Accept: "application/json" },
