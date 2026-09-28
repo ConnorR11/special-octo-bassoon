@@ -1,1 +1,1 @@
-export { default } from "./components/FitSheet"
+export { default } from "./components/FitSheetWithIssues"
