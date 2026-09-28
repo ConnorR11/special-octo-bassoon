@@ -42,13 +42,18 @@ export default function handler(req, res) {
     grants: {
       identity,
       voice: {
-        incoming: { allow: false },
         outgoing: { application_sid: twimlAppSid }
       }
     }
   }
 
-  const token = signToken({ typ: "JWT", alg: "HS256" }, payload, apiKeySecret)
+  // Twilio's AccessToken format requires the Twilio FPA content type in the JWT header.
+  const token = signToken({
+    typ: "JWT",
+    alg: "HS256",
+    cty: "twilio-fpa;v=1",
+  }, payload, apiKeySecret)
+
   res.setHeader("Cache-Control", "no-store")
   return res.status(200).json({ token, identity })
 }
