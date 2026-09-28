@@ -79,10 +79,21 @@ function getCustomFieldValue(deal, key) {
 
 function normaliseDate(value) {
   if (value === null || value === undefined || value === "") return null
+
+  // Pipedrive can return some custom-field values as an object. Prefer the
+  // underlying value before converting it to a date.
+  if (typeof value === "object") {
+    if (Array.isArray(value)) return normaliseDate(value[0])
+    value = value.value ?? value.date ?? value.label ?? value.name ?? null
+  }
+
+  if (value === null || value === undefined || value === "") return null
   const text = String(value).trim()
   if (!text) return null
+
   const isoMatch = text.match(/^(\d{4}-\d{2}-\d{2})/)
   if (isoMatch) return isoMatch[1]
+
   const parsed = new Date(text)
   if (Number.isNaN(parsed.getTime())) return null
   return parsed.toISOString().slice(0, 10)
@@ -95,7 +106,6 @@ function normaliseFitTeam(value, field) {
     return String(value.label ?? value.name ?? value.value ?? "").trim() || null
   }
 
-  // Enum/set fields can return an option ID when option labels are not included.
   const optionId = Number(value)
   if (Number.isFinite(optionId) && Array.isArray(field?.options)) {
     const option = field.options.find((item) => Number(item?.id) === optionId)
@@ -152,9 +162,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Pipedrive v2 returns custom fields inside `custom_fields` only when the
-    // requested field keys are included in the deal request. Resolve those
-    // keys from the human-readable field names first.
     const fields = await getDealFields(pipedriveToken)
     const customFieldKeys = [fields.installationStartDate?.key, fields.fitTeam?.key].filter(Boolean)
     const customFieldsParam = customFieldKeys.join(",")
