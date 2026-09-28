@@ -9,14 +9,12 @@ import {
 import { supabase } from "../lib/supabase"
 import { money } from "../utils/formatters"
 
-function FitSheetWithIssues({
-  contracts = [],
-  setSelected,
-}) {
+function FitSheetWithIssues({ setSelected }) {
   const [weekOffset, setWeekOffset] = useState(0)
-  const [issueDeals, setIssueDeals] = useState([])
-  const [issueLoading, setIssueLoading] = useState(true)
-  const [issueError, setIssueError] = useState("")
+  const [weekDeals, setWeekDeals] = useState([])
+  const [weekIssues, setWeekIssues] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState("")
 
   function getMonday(date) {
     const d = new Date(date)
@@ -48,6 +46,9 @@ function FitSheetWithIssues({
     return `${year}-${month}-${day}`
   }
 
+  const weekStart = formatDate(weekDays[0])
+  const weekEnd = formatDate(weekDays[6])
+
   const weekTitle = useMemo(() => {
     const start = weekDays[0]
     const end = weekDays[6]
@@ -56,88 +57,80 @@ function FitSheetWithIssues({
     return `${startText} – ${endText}`
   }, [weekDays])
 
+  /*
+   * Only query deals that can actually appear in the visible week.
+   * Normal fits and installation issues are deliberately separate queries.
+   * This avoids loading the entire deals table just to build the calendar.
+   */
   useEffect(() => {
     let mounted = true
 
-    async function loadIssueDeals() {
+    async function loadWeek() {
       if (!supabase) {
-        setIssueDeals([])
-        setIssueLoading(false)
+        setWeekDeals([])
+        setWeekIssues([])
+        setLoading(false)
         return
       }
 
-      setIssueLoading(true)
-      setIssueError("")
+      setLoading(true)
+      setLoadError("")
 
-      const { data, error } = await supabase
-        .from("deals")
-        .select("id,customer_name,postcode,contract_number,deal_value,installations_issues_start_date,installation_issues_fit_team")
-        .not("installations_issues_start_date", "is", null)
-        .order("installations_issues_start_date", { ascending: true })
+      const [normalResult, issueResult] = await Promise.all([
+        supabase
+          .from("deals")
+          .select("*")
+          .gte("installation_start_date", weekStart)
+          .lte("installation_start_date", weekEnd)
+          .order("installation_start_date", { ascending: true }),
+        supabase
+          .from("deals")
+          .select("*")
+          .gte("installations_issues_start_date", weekStart)
+          .lte("installations_issues_start_date", weekEnd)
+          .order("installations_issues_start_date", { ascending: true }),
+      ])
 
       if (!mounted) return
 
-      if (error) {
-        console.error("Error loading installation issue fits:", error)
-        setIssueError(error.message || "Unable to load installation issues.")
-        setIssueDeals([])
-      } else {
-        setIssueDeals(data || [])
+      if (normalResult.error || issueResult.error) {
+        const message = normalResult.error?.message || issueResult.error?.message || "Unable to load Fit Sheet data."
+        console.error("Error loading Fit Sheet week:", normalResult.error || issueResult.error)
+        setLoadError(message)
       }
 
-      setIssueLoading(false)
+      setWeekDeals(normalResult.data || [])
+      setWeekIssues(issueResult.data || [])
+      setLoading(false)
     }
 
-    loadIssueDeals()
+    loadWeek()
 
     return () => {
       mounted = false
     }
-  }, [])
+  }, [weekStart, weekEnd])
 
   const fitTeams = useMemo(() => {
-    const normalTeams = contracts
-      .map((contract) => contract.fit_team_1)
+    const normalTeams = weekDeals
+      .map((deal) => deal.fit_team_1)
       .filter(Boolean)
       .map((team) => String(team).trim())
       .filter(Boolean)
 
-    const issueTeams = issueDeals
+    const issueTeams = weekIssues
       .map((deal) => deal.installation_issues_fit_team)
       .filter(Boolean)
       .map((team) => String(team).trim())
       .filter(Boolean)
 
     return [...new Set([...normalTeams, ...issueTeams])].sort((a, b) => a.localeCompare(b))
-  }, [contracts, issueDeals])
-
-  const weekDeals = useMemo(() => {
-    const start = formatDate(weekDays[0])
-    const end = formatDate(weekDays[6])
-
-    return contracts.filter((contract) => {
-      if (!contract.installation_start_date) return false
-      const installationDate = String(contract.installation_start_date).slice(0, 10)
-      return installationDate >= start && installationDate <= end
-    })
-  }, [contracts, weekDays])
-
-  const weekIssues = useMemo(() => {
-    const start = formatDate(weekDays[0])
-    const end = formatDate(weekDays[6])
-
-    return issueDeals.filter((deal) => {
-      if (!deal.installations_issues_start_date) return false
-      const issueDate = String(deal.installations_issues_start_date).slice(0, 10)
-      return issueDate >= start && issueDate <= end
-    })
-  }, [issueDeals, weekDays])
+  }, [weekDeals, weekIssues])
 
   function getDeals(team, date) {
     const dateString = formatDate(date)
-
     return weekDeals.filter((deal) => {
-      const dealDate = String(deal.installation_start_date).slice(0, 10)
+      const dealDate = String(deal.installation_start_date || "").slice(0, 10)
       const dealTeam = String(deal.fit_team_1 || "").trim()
       return dealDate === dateString && dealTeam === team
     })
@@ -145,9 +138,8 @@ function FitSheetWithIssues({
 
   function getIssues(team, date) {
     const dateString = formatDate(date)
-
     return weekIssues.filter((deal) => {
-      const issueDate = String(deal.installations_issues_start_date).slice(0, 10)
+      const issueDate = String(deal.installations_issues_start_date || "").slice(0, 10)
       const issueTeam = String(deal.installation_issues_fit_team || "").trim()
       return issueDate === dateString && issueTeam === team
     })
@@ -159,12 +151,24 @@ function FitSheetWithIssues({
     if (setSelected) setSelected(deal)
   }
 
+  function cardHoverIn(event) {
+    event.currentTarget.style.boxShadow = "0 2px 7px rgba(0,0,0,0.10)"
+    event.currentTarget.style.transform = "translateY(-1px)"
+  }
+
+  function cardHoverOut(event) {
+    event.currentTarget.style.boxShadow = "none"
+    event.currentTarget.style.transform = "translateY(0)"
+  }
+
   function renderDealCard(deal) {
     return (
       <button
         key={`fit-${deal.id}`}
         type="button"
         onClick={() => openDeal(deal)}
+        onMouseEnter={cardHoverIn}
+        onMouseLeave={cardHoverOut}
         style={{
           width: "100%",
           textAlign: "left",
@@ -177,33 +181,13 @@ function FitSheetWithIssues({
           fontFamily: "inherit",
           transition: "box-shadow 0.15s ease, transform 0.15s ease",
         }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.boxShadow = "0 2px 7px rgba(0,0,0,0.10)"
-          e.currentTarget.style.transform = "translateY(-1px)"
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.boxShadow = "none"
-          e.currentTarget.style.transform = "translateY(0)"
-        }}
       >
         <div style={{ fontSize: "10px", fontWeight: 700, color: "#263522", lineHeight: "1.3" }}>
           {deal.customer_name || "Unnamed customer"}
         </div>
-        {deal.postcode && (
-          <div style={{ marginTop: "3px", fontSize: "9px", color: "#596455" }}>
-            {deal.postcode}
-          </div>
-        )}
-        {deal.contract_number && (
-          <div style={{ marginTop: "3px", fontSize: "9px", color: "#596455" }}>
-            {deal.contract_number}
-          </div>
-        )}
-        {deal.deal_value != null && (
-          <div style={{ marginTop: "5px", fontSize: "9px", fontWeight: 700, color: "#263522" }}>
-            {money(deal.deal_value)}
-          </div>
-        )}
+        {deal.postcode && <div style={{ marginTop: "3px", fontSize: "9px", color: "#596455" }}>{deal.postcode}</div>}
+        {deal.contract_number && <div style={{ marginTop: "3px", fontSize: "9px", color: "#596455" }}>{deal.contract_number}</div>}
+        {deal.deal_value != null && <div style={{ marginTop: "5px", fontSize: "9px", fontWeight: 700, color: "#263522" }}>{money(deal.deal_value)}</div>}
       </button>
     )
   }
@@ -214,6 +198,8 @@ function FitSheetWithIssues({
         key={`issue-${deal.id}`}
         type="button"
         onClick={() => openDeal(deal)}
+        onMouseEnter={cardHoverIn}
+        onMouseLeave={cardHoverOut}
         style={{
           width: "100%",
           textAlign: "left",
@@ -226,14 +212,6 @@ function FitSheetWithIssues({
           fontFamily: "inherit",
           transition: "box-shadow 0.15s ease, transform 0.15s ease",
         }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.boxShadow = "0 2px 7px rgba(0,0,0,0.10)"
-          e.currentTarget.style.transform = "translateY(-1px)"
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.boxShadow = "none"
-          e.currentTarget.style.transform = "translateY(0)"
-        }}
       >
         <div style={{ fontSize: "8px", fontWeight: 800, color: "#b42318", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "3px" }}>
           Issue
@@ -241,16 +219,8 @@ function FitSheetWithIssues({
         <div style={{ fontSize: "10px", fontWeight: 700, color: "#5f2020", lineHeight: "1.3" }}>
           {deal.customer_name || "Unnamed customer"}
         </div>
-        {deal.postcode && (
-          <div style={{ marginTop: "3px", fontSize: "9px", color: "#7f4a4a" }}>
-            {deal.postcode}
-          </div>
-        )}
-        {deal.contract_number && (
-          <div style={{ marginTop: "3px", fontSize: "9px", color: "#7f4a4a" }}>
-            {deal.contract_number}
-          </div>
-        )}
+        {deal.postcode && <div style={{ marginTop: "3px", fontSize: "9px", color: "#7f4a4a" }}>{deal.postcode}</div>}
+        {deal.contract_number && <div style={{ marginTop: "3px", fontSize: "9px", color: "#7f4a4a" }}>{deal.contract_number}</div>}
       </button>
     )
   }
@@ -303,15 +273,19 @@ function FitSheetWithIssues({
             })}
           </div>
 
-          {issueError && (
+          {loadError && (
             <div style={{ padding: "8px 12px", background: "#fff4f4", color: "#b42318", fontSize: "10px", borderBottom: "1px solid #f0b8b8" }}>
-              Unable to load installation issues: {issueError}
+              Unable to load Fit Sheet data: {loadError}
             </div>
           )}
 
-          {fitTeams.length === 0 ? (
+          {loading ? (
             <div style={{ padding: "60px 20px", textAlign: "center", color: "#999", fontSize: "12px" }}>
-              {issueLoading ? "Loading fit teams..." : "No fit teams found in the database."}
+              Loading this week's fits...
+            </div>
+          ) : fitTeams.length === 0 ? (
+            <div style={{ padding: "60px 20px", textAlign: "center", color: "#999", fontSize: "12px" }}>
+              No fits or issues found for this week.
             </div>
           ) : (
             fitTeams.map((team) => (
