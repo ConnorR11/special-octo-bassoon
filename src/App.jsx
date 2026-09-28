@@ -122,7 +122,7 @@ function App() {
         const { data: visibleProfiles, error: visibleProfilesError } = await supabase
           .from("profiles")
           .select("pipedrive_person_id")
-          .or(`id.eq.${viewerId},sales_manager.eq.${viewerId},manager_id.eq.${viewerId},branch_manager.eq.${viewerId}`)
+          .or(`id.eq.${viewerId},sales_manager.eq.${viewerId},branch_manager.eq.${viewerId}`)
 
         if (visibleProfilesError) throw visibleProfilesError
         visibleSalespersonIds = (visibleProfiles || [])
