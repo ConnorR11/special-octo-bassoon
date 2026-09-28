@@ -32,12 +32,7 @@ async function logEvent(supabaseUrl, serviceRoleKey, values) {
   try {
     await fetch(`${supabaseUrl}/rest/v1/integration_event_logs`, {
       method: "POST",
-      headers: {
-        apikey: serviceRoleKey,
-        Authorization: `Bearer ${serviceRoleKey}`,
-        "Content-Type": "application/json",
-        Prefer: "return=minimal",
-      },
+      headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, "Content-Type": "application/json", Prefer: "return=minimal" },
       body: JSON.stringify({
         provider: "pipedrive",
         integration_name: "Pipedrive Webhooks",
@@ -67,10 +62,7 @@ export default async function handler(req, res) {
   const webhookUsername = String(process.env.PIPEDRIVE_WEBHOOK_USERNAME || "").trim()
   const webhookPassword = String(process.env.PIPEDRIVE_WEBHOOK_PASSWORD || "").trim()
 
-  if (!supabaseUrl || !serviceRoleKey || !pipedriveToken) {
-    return send(res, 500, { success: false, error: "Pipedrive integration environment variables are not configured." })
-  }
-
+  if (!supabaseUrl || !serviceRoleKey || !pipedriveToken) return send(res, 500, { success: false, error: "Pipedrive integration environment variables are not configured." })
   if (!validBasicAuth(req, webhookUsername, webhookPassword)) {
     res.setHeader("WWW-Authenticate", 'Basic realm="Pipedrive Webhook"')
     return send(res, 401, { success: false, error: "Invalid webhook credentials." })
@@ -78,21 +70,9 @@ export default async function handler(req, res) {
 
   const body = await readBody(req)
   const event = body?.event || body?.meta?.event || "deal.updated"
-  const dealId = String(
-    body?.data?.item?.id ??
-    body?.data?.item?.deal_id ??
-    body?.data?.id ??
-    body?.item?.id ??
-    ""
-  ).trim()
-
+  const dealId = String(body?.data?.item?.id ?? body?.data?.item?.deal_id ?? body?.data?.id ?? body?.item?.id ?? "").trim()
   const receivedAt = new Date().toISOString()
-  const baseLog = {
-    eventName: event,
-    eventType: "deal",
-    externalId: dealId,
-    payload: body,
-  }
+  const baseLog = { eventName: event, eventType: "deal", externalId: dealId, payload: body }
 
   if (!dealId) {
     await logEvent(supabaseUrl, serviceRoleKey, { ...baseLog, status: "ignored", httpStatus: 200, result: { reason: "No deal ID in webhook payload" }, processedAt: new Date().toISOString() })
@@ -111,29 +91,20 @@ export default async function handler(req, res) {
     const deal = dealJson.data || {}
     const personId = deal?.person_id?.value ?? deal?.person_id ?? null
     let customerName = ""
-
     if (personId) {
       const personResponse = await fetch(`https://api.pipedrive.com/api/v2/persons/${encodeURIComponent(personId)}?api_token=${encodeURIComponent(pipedriveToken)}`, { headers: { Accept: "application/json" } })
       const personJson = await personResponse.json().catch(() => ({}))
-      if (personResponse.ok && personJson?.success) {
-        customerName = String(personJson?.data?.name || "").trim()
-      }
+      if (personResponse.ok && personJson?.success) customerName = String(personJson?.data?.name || "").trim()
     }
-
-    if (!customerName) {
-      customerName = String(deal?.person_name || deal?.person?.name || "").trim()
-    }
+    if (!customerName) customerName = String(deal?.person_name || deal?.person?.name || "").trim()
 
     if (!customerName) {
       await logEvent(supabaseUrl, serviceRoleKey, { ...baseLog, status: "ignored", httpStatus: 200, result: { reason: "Deal has no customer/person name", dealId }, processedAt: new Date().toISOString() })
       return send(res, 200, { success: true, updated: false, reason: "Deal has no customer/person name" })
     }
 
-    const lookup = await fetch(`${supabaseUrl}/rest/v1/deals?pipedrive_deal_id=eq.${encodeURIComponent(dealId)}&select=id,pipedrive_deal_id,customer_name`, {
-      headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, Accept: "application/json" },
-    })
+    const lookup = await fetch(`${supabaseUrl}/rest/v1/deals?pipedrive_deal_id=eq.${encodeURIComponent(dealId)}&select=id,pipedrive_deal_id,customer_name`, { headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, Accept: "application/json" } })
     const existingDeals = await lookup.json().catch(() => [])
-
     if (!lookup.ok || !Array.isArray(existingDeals) || !existingDeals.length) {
       await logEvent(supabaseUrl, serviceRoleKey, { ...baseLog, status: "ignored", httpStatus: 200, result: { reason: "No matching CRM deal", dealId, customerName }, processedAt: new Date().toISOString() })
       return send(res, 200, { success: true, updated: false, reason: "No matching CRM deal", dealId, customerName })
@@ -141,16 +112,10 @@ export default async function handler(req, res) {
 
     const updateResponse = await fetch(`${supabaseUrl}/rest/v1/deals?pipedrive_deal_id=eq.${encodeURIComponent(dealId)}`, {
       method: "PATCH",
-      headers: {
-        apikey: serviceRoleKey,
-        Authorization: `Bearer ${serviceRoleKey}`,
-        "Content-Type": "application/json",
-        Prefer: "return=representation",
-      },
+      headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, "Content-Type": "application/json", Prefer: "return=representation" },
       body: JSON.stringify({ customer_name: customerName }),
     })
     const updated = await updateResponse.json().catch(() => [])
-
     if (!updateResponse.ok) {
       const message = Array.isArray(updated) ? "CRM deal update failed." : String(updated?.message || updated?.error || "CRM deal update failed.")
       await logEvent(supabaseUrl, serviceRoleKey, { ...baseLog, status: "failed", httpStatus: updateResponse.status, errorMessage: message, result: { dealId, customerName }, processedAt: new Date().toISOString() })
