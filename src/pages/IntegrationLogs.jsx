@@ -7,10 +7,15 @@ export default function IntegrationLogs({ setMobile }) {
   const [loading, setLoading] = React.useState(true)
   const [status, setStatus] = React.useState("all")
   const [provider, setProvider] = React.useState("all")
+  const [runStats, setRunStats] = React.useState({ total: 0, success: 0, failed: 0, received: 0, ignored: 0, unknown: 0 })
 
   React.useEffect(() => {
     loadLogs()
   }, [status, provider])
+
+  React.useEffect(() => {
+    loadRunStats()
+  }, [provider])
 
   async function loadLogs() {
     setLoading(true)
@@ -33,17 +38,49 @@ export default function IntegrationLogs({ setMobile }) {
     setLoading(false)
   }
 
-  const successful = logs.filter((log) => log.status === "success").length
-  const failed = logs.filter((log) => log.status === "failed").length
-  const received = logs.filter((log) => log.status === "received").length
-  const ignored = logs.filter((log) => log.status === "ignored").length
-  const totalRuns = logs.length
+  async function loadRunStats() {
+    const statuses = ["success", "failed", "received", "ignored"]
+    const baseQuery = () => {
+      let query = supabase.from("integration_event_logs").select("id", { count: "exact", head: true })
+      if (provider !== "all") query = query.eq("provider", provider)
+      return query
+    }
+
+    try {
+      const [totalResult, ...statusResults] = await Promise.all([
+        baseQuery(),
+        ...statuses.map((item) => {
+          let query = supabase.from("integration_event_logs").select("id", { count: "exact", head: true }).eq("status", item)
+          if (provider !== "all") query = query.eq("provider", provider)
+          return query
+        }),
+      ])
+
+      const total = totalResult.count || 0
+      const success = statusResults[0].count || 0
+      const failed = statusResults[1].count || 0
+      const received = statusResults[2].count || 0
+      const ignored = statusResults[3].count || 0
+      const unknown = Math.max(0, total - success - failed - received - ignored)
+      setRunStats({ total, success, failed, received, ignored, unknown })
+    } catch (error) {
+      console.error("Error loading integration run statistics:", error)
+      setRunStats({ total: 0, success: 0, failed: 0, received: 0, ignored: 0, unknown: 0 })
+    }
+  }
+
+  const successful = runStats.success
+  const failed = runStats.failed
+  const received = runStats.received
+  const ignored = runStats.ignored
+  const totalRuns = runStats.total
   const successRate = totalRuns ? (successful / totalRuns) * 100 : 0
   const chartRows = [
     { label: "Success", count: successful, className: "run-bar-success" },
     { label: "Failed", count: failed, className: "run-bar-failed" },
     { label: "Processing", count: received, className: "run-bar-processing" },
     { label: "Ignored", count: ignored, className: "run-bar-ignored" },
+    ...(runStats.unknown > 0 ? [{ label: "Other", count: runStats.unknown, className: "run-bar-other" }] : []),
   ]
   const chartMax = Math.max(1, ...chartRows.map((row) => row.count))
 
@@ -76,7 +113,7 @@ export default function IntegrationLogs({ setMobile }) {
         .run-chart-label{font-size:13px;font-weight:600}
         .run-chart-track{height:18px;background:#f2f4f7;border-radius:999px;overflow:hidden}
         .run-chart-bar{height:100%;min-width:0;border-radius:999px;transition:width .25s ease}
-        .run-bar-success{background:#12b76a}.run-bar-failed{background:#f04438}.run-bar-processing{background:#f79009}.run-bar-ignored{background:#98a2b3}
+        .run-bar-success{background:#12b76a}.run-bar-failed{background:#f04438}.run-bar-processing{background:#f79009}.run-bar-ignored{background:#98a2b3}.run-bar-other{background:#667085}
         .run-chart-count{text-align:right;font-size:13px;font-weight:700}
         .integration-logs-table-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
         .integration-logs-filters{display:flex;gap:8px;flex-wrap:wrap}
@@ -121,17 +158,17 @@ export default function IntegrationLogs({ setMobile }) {
         </div>
 
         <div className="integration-logs-stats">
-          <Stat title="Total Runs" value={totalRuns} />
-          <Stat title="Successful" value={successful} className="integration-logs-stat-success" />
-          <Stat title="Failed" value={failed} className="integration-logs-stat-failed" />
-          <Stat title="Success Rate" value={`${successRate.toFixed(1)}%`} className="integration-logs-stat-rate" subtitle={`${received} processing · ${ignored} ignored`} />
+          <Stat title="Total Runs" value={totalRuns.toLocaleString("en-GB")} />
+          <Stat title="Successful" value={successful.toLocaleString("en-GB")} className="integration-logs-stat-success" />
+          <Stat title="Failed" value={failed.toLocaleString("en-GB")} className="integration-logs-stat-failed" />
+          <Stat title="Success Rate" value={`${successRate.toFixed(1)}%`} className="integration-logs-stat-rate" subtitle={`${received.toLocaleString("en-GB")} processing · ${ignored.toLocaleString("en-GB")} ignored`} />
         </div>
 
         <div className="integration-logs-chart-card">
           <div className="integration-logs-chart-header">
             <div>
               <h2 className="integration-logs-chart-title">API Run Status</h2>
-              <p className="integration-logs-chart-description">Total runs broken down by the status recorded in the integration event log.</p>
+              <p className="integration-logs-chart-description">All logged runs, broken down by their recorded status.</p>
             </div>
             <div className="integration-logs-chart-total">{totalRuns.toLocaleString("en-GB")} total runs</div>
           </div>
