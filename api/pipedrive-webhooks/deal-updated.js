@@ -63,9 +63,11 @@ async function getDealFields(pipedriveToken) {
   const fields = Array.isArray(json.data) ? json.data : []
   const result = {}
   for (const field of fields) {
-    const name = String(field?.name || "").trim().toLowerCase()
-    if (name === "installation: start date") result.installationStartDate = field
-    if (name === "installation: fit team") result.fitTeam = field
+    // Pipedrive API v2 uses field_name and field_code.
+    const fieldName = String(field?.field_name || field?.name || "").trim().toLowerCase()
+    const fieldKey = String(field?.field_code || field?.key || "").trim()
+    if (fieldName === "installation: start date") result.installationStartDate = { ...field, key: fieldKey }
+    if (fieldName === "installation: fit team") result.fitTeam = { ...field, key: fieldKey }
   }
   return result
 }
@@ -121,8 +123,9 @@ function normaliseFitTeam(value, field) {
   }
 
   const optionId = Number(value)
-  if (Number.isFinite(optionId) && Array.isArray(field?.options)) {
-    const option = field.options.find((item) => Number(item?.id) === optionId)
+  const options = field?.options || field?.settings?.options || []
+  if (Number.isFinite(optionId) && Array.isArray(options)) {
+    const option = options.find((item) => Number(item?.id) === optionId)
     if (option?.label) return String(option.label).trim()
   }
 
@@ -178,11 +181,12 @@ export default async function handler(req, res) {
   try {
     const fields = await getDealFields(pipedriveToken)
     const customFieldKeys = [fields.installationStartDate?.key, fields.fitTeam?.key].filter(Boolean)
-    const customFieldsParam = customFieldKeys.join(",")
 
     const dealUrl = new URL(`https://api.pipedrive.com/api/v2/deals/${encodeURIComponent(dealId)}`)
     dealUrl.searchParams.set("api_token", pipedriveToken)
-    if (customFieldsParam) dealUrl.searchParams.set("custom_fields", customFieldsParam)
+    // v2 requires custom_fields as an optional response field and can then be limited to specific field codes.
+    dealUrl.searchParams.set("include_fields", "custom_fields")
+    if (customFieldKeys.length) dealUrl.searchParams.set("custom_fields", customFieldKeys.join(","))
     dealUrl.searchParams.set("include_option_labels", "true")
 
     const dealResponse = await fetch(dealUrl.toString(), { headers: { Accept: "application/json" } })
@@ -230,15 +234,7 @@ export default async function handler(req, res) {
       return send(res, 500, { success: false, error: message })
     }
 
-    const result = {
-      dealId,
-      customerName,
-      installationStartDate,
-      fitTeam1,
-      pipedriveStage,
-      updatedRows: Array.isArray(updated) ? updated.length : 0,
-      receivedAt,
-    }
+    const result = { dealId, customerName, installationStartDate, fitTeam1, pipedriveStage, updatedRows: Array.isArray(updated) ? updated.length : 0, receivedAt }
     await logEvent(supabaseUrl, serviceRoleKey, { ...baseLog, status: "success", httpStatus: 200, result, processedAt: new Date().toISOString() })
     return send(res, 200, { success: true, ...result })
   } catch (error) {
