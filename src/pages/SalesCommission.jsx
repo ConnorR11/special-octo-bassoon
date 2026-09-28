@@ -11,6 +11,22 @@ function getSurveyCosting(deal) { const value = deal?.survey_costing; if (value 
 function getCommission(deal) { const value = deal?.estimated_commission_due; if (value === null || value === undefined || value === "") return null; const parsed = Number(String(value).replace(/[^0-9.-]/g, "")); return Number.isFinite(parsed) ? parsed : null }
 function getAdminFee(deal) { const value = Number(deal?.admin_fee_amount); if (value === 299 || value === 399) return 199; return "query" }
 
+const EXCLUDED_COMMISSION_STAGES = new Set([
+  "decline",
+  "customer cancelled",
+  "returned to sales",
+  "awaiting funds",
+  "on hold"
+])
+
+function isExcludedCommissionStage(deal) {
+  const stage = String(deal?.pipedrive_stage ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+  return EXCLUDED_COMMISSION_STAGES.has(stage)
+}
+
 // Payment rule:
 // 1. Use installation_start_date for COMMS, or admin_fee_received_date for ADMIN.
 // 2. Find the Monday of the week containing that date.
@@ -85,6 +101,7 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
         setAdminDeals([])
       } else {
         setAdminDeals((data || []).filter(deal => {
+          if (isExcludedCommissionStage(deal)) return false
           const raw = deal?.admin_fee_amount
           if (raw === null || raw === undefined || String(raw).trim() === "") return false
           const value = Number(String(raw).replace(/[^0-9.-]/g, ""))
@@ -100,8 +117,7 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
 
   const reps = useMemo(() => Array.from(new Set([...deals, ...adminDeals].map(getRepName))).sort((a, b) => a.localeCompare(b)), [deals, adminDeals])
   const branches = useMemo(() => Array.from(new Set([...deals, ...adminDeals].map(getBranchName))).sort((a, b) => a.localeCompare(b)), [deals, adminDeals])
-  const excludedCommissionStages = ["Decline", "Customer Cancelled", "Returned To Sales", "Awaiting Funds"]
-  const combined = useMemo(() => [...deals.filter(deal => getNetSalesValue(deal) !== 0 && !excludedCommissionStages.includes(String(deal?.pipedrive_stage || "").trim())).map(deal => ({ deal, type: "COMMS" })), ...adminDeals.map(deal => ({ deal, type: "ADMIN" }))], [deals, adminDeals])
+  const combined = useMemo(() => [...deals.filter(deal => getNetSalesValue(deal) !== 0 && !isExcludedCommissionStage(deal)).map(deal => ({ deal, type: "COMMS" })), ...adminDeals.filter(deal => !isExcludedCommissionStage(deal)).map(deal => ({ deal, type: "ADMIN" }))], [deals, adminDeals])
   const commissionDates = useMemo(() => Array.from(new Set(combined.map(({ deal, type }) => getCommissionDate(deal, type === "ADMIN" ? "admin" : "commission")).filter(Boolean))).sort((a, b) => new Date(a) - new Date(b)), [combined])
   const filtered = useMemo(() => {
     const search = query.trim().toLowerCase()
@@ -172,7 +188,39 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
   }
 
   return <section>
-    <style>{`\n      .commission-toolbar { display:flex; align-items:stretch; gap:10px; margin-bottom:16px; flex-wrap:wrap; }\n      .commission-search { position:relative; flex:1 1 280px; min-width:180px; }\n      .commission-summary { display:flex; gap:8px; flex:0 1 auto; flex-wrap:wrap; }\n      .commission-filters { position:relative; flex:0 0 auto; margin-left:auto; }\n      .commission-table-scroll { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; border:1px solid #e0e5e9; border-radius:10px; background:#fff; }\n      .commission-table { min-width:1050px; overflow:hidden; border-radius:10px; }\n      @media (max-width: 1250px) {\n        .commission-search { flex-basis:100%; order:1; }\n        .commission-summary { order:2; flex:1 1 auto; }\n        .commission-filters { order:2; margin-left:auto; }\n      }\n      @media (max-width: 800px) {\n        .commission-page-header { align-items:flex-start !important; gap:12px; flex-wrap:wrap; }\n        .commission-page-header h1 { font-size:22px !important; }\n        .commission-toolbar { gap:8px; }\n        .commission-summary { width:100%; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }\n        .commission-summary-card { min-width:0 !important; width:auto; }\n        .commission-summary-divider { display:none !important; }\n        .commission-filters { margin-left:auto; }\n      }\n      @media (max-width: 520px) {\n        .commission-page-header { margin-bottom:14px !important; }\n        .commission-page-header button { width:100%; justify-content:center; }\n        .commission-summary { grid-template-columns:1fr 1fr; }\n        .commission-summary-card { padding:7px 10px !important; }\n        .commission-summary-card > div:first-child { font-size:8px !important; }\n        .commission-summary-card .commission-stat-value { font-size:18px !important; }\n        .commission-search input { font-size:11px !important; }\n        .commission-filters { width:auto; margin-left:0; }\n        .commission-filters > button { min-width:110px !important; }\n      }\n    `}</style>
+    <style>{`\
+      .commission-toolbar { display:flex; align-items:stretch; gap:10px; margin-bottom:16px; flex-wrap:wrap; }\
+      .commission-search { position:relative; flex:1 1 280px; min-width:180px; }\
+      .commission-summary { display:flex; gap:8px; flex:0 1 auto; flex-wrap:wrap; }\
+      .commission-filters { position:relative; flex:0 0 auto; margin-left:auto; }\
+      .commission-table-scroll { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; border:1px solid #e0e5e9; border-radius:10px; background:#fff; }\
+      .commission-table { min-width:1050px; overflow:hidden; border-radius:10px; }\
+      @media (max-width: 1250px) {\
+        .commission-search { flex-basis:100%; order:1; }\
+        .commission-summary { order:2; flex:1 1 auto; }\
+        .commission-filters { order:2; margin-left:auto; }\
+      }\
+      @media (max-width: 800px) {\
+        .commission-page-header { align-items:flex-start !important; gap:12px; flex-wrap:wrap; }\
+        .commission-page-header h1 { font-size:22px !important; }\
+        .commission-toolbar { gap:8px; }\
+        .commission-summary { width:100%; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }\
+        .commission-summary-card { min-width:0 !important; width:auto; }\
+        .commission-summary-divider { display:none !important; }\
+        .commission-filters { margin-left:auto; }\
+      }\
+      @media (max-width: 520px) {\
+        .commission-page-header { margin-bottom:14px !important; }\
+        .commission-page-header button { width:100%; justify-content:center; }\
+        .commission-summary { grid-template-columns:1fr 1fr; }\
+        .commission-summary-card { padding:7px 10px !important; }\
+        .commission-summary-card > div:first-child { font-size:8px !important; }\
+        .commission-summary-card .commission-stat-value { font-size:18px !important; }\
+        .commission-search input { font-size:11px !important; }\
+        .commission-filters { width:auto; margin-left:0; }\
+        .commission-filters > button { min-width:110px !important; }\
+      }\
+    `}</style>
     <div className="commission-page-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0 0 18px" }}><h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#263645" }}>Commissions</h1>{Number(permissionLevel) >= 4 && <button type="button" onClick={handleExport} style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 40, padding: "0 14px", border: 0, borderRadius: 8, background: "#1676b8", color: "#fff", fontSize: 11, fontWeight: 800, cursor: "pointer" }}><Download size={15} />Export Excel</button>}</div>
     <div className="commission-toolbar">
       <div className="commission-search"><Search size={17} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search customer, contract, rep or branch..." style={{ width: "100%", height: 46, boxSizing: "border-box", border: "1px solid #d7dee8", borderRadius: 9, padding: "10px 38px", fontSize: 12, outline: "none" }} />{query && <button type="button" onClick={() => setQuery("")} style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", border: 0, background: "transparent", cursor: "pointer", color: "#64748b" }}><X size={15} /></button>}</div>
