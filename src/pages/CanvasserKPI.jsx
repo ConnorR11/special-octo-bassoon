@@ -145,7 +145,16 @@ export default function CanvasserKPI() {
   }, [appointments, nameByEmail])
 
   const rows = useMemo(() => canvasserFilter === "all" ? allRows : allRows.filter((row) => row.name === canvasserFilter), [allRows, canvasserFilter])
-  const totals = useMemo(() => makeStats(appointments), [appointments])
+  const totals = useMemo(() => {
+    const stats = rows.reduce((total, row) => ({
+      h: total.h + row.h,
+      c: total.c + row.c,
+      p: total.p + row.p,
+      s: total.s + row.s,
+      net: total.net + row.net,
+    }), { h: 0, c: 0, p: 0, s: 0, net: 0 })
+    return { ...stats, hToP: stats.h > 0 ? (stats.p / stats.h) * 100 : 0 }
+  }, [rows])
 
   function downloadCsv() {
     const header = ["Name", "H", "C", "P", "S", "NET", "H TO P"]
@@ -175,21 +184,19 @@ export default function CanvasserKPI() {
       .ckpi-date-input{height:34px;width:100%;box-sizing:border-box;border:0;border-radius:7px;background:#eee;color:#333;padding:0 11px 0 34px;font:12px Inter,Arial,sans-serif;outline:none}
       .ckpi-date-input:focus{box-shadow:0 0 0 2px rgba(45,155,240,.18)}
       .ckpi-results{margin-top:20px;padding:13px 27px 19px;overflow:visible}
-      .ckpi-toolbar{height:42px;display:flex;justify-content:flex-end;align-items:center}
-      .ckpi-download{display:inline-flex;align-items:center;gap:7px;border:0;border-radius:7px;background:#0789e8;color:#fff;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
-      .ckpi-download:hover{background:#087ed3}.ckpi-download:disabled{opacity:.55;cursor:default}
-      .ckpi-summary-head,.ckpi-summary-row,.ckpi-table-head,.ckpi-table-row{display:grid;grid-template-columns:minmax(300px,1fr) 65px 65px 65px 65px 120px 100px;align-items:center}
-      .ckpi-summary-head{height:25px;font-size:8px;color:#222;text-align:center}.ckpi-summary-head>div:first-child{text-align:left}
-      .ckpi-summary-row{min-height:36px;background:#f7f7f7;font-size:12px}.ckpi-summary-row>div{padding:0 7px;text-align:center}.ckpi-summary-row>div:first-child{text-align:left}
-      .ckpi-filter-bar{height:62px;display:flex;justify-content:flex-end;align-items:center}.ckpi-filter-wrap{position:relative}
-      .ckpi-filter-button{display:inline-flex;align-items:center;gap:10px;border:0;border-radius:7px;background:#f0f0f0;color:#9b9b9b;padding:9px 11px;font-size:12px;font-weight:600;cursor:pointer;min-width:114px;justify-content:center}.ckpi-filter-button.active{color:#555}
+      .ckpi-toolbar{height:42px;display:flex;justify-content:flex-end;align-items:center;gap:8px}
+      .ckpi-download,.ckpi-filter-button{display:inline-flex;align-items:center;gap:7px;border:0;border-radius:7px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
+      .ckpi-download{background:#0789e8;color:#fff}.ckpi-download:hover{background:#087ed3}.ckpi-download:disabled{opacity:.55;cursor:default}
+      .ckpi-filter-wrap{position:relative}.ckpi-filter-button{background:#f0f0f0;color:#777;min-width:114px;justify-content:center}.ckpi-filter-button.active{color:#555}.ckpi-filter-button:hover{background:#e8e8e8}
       .ckpi-filter-menu{position:absolute;right:0;top:42px;z-index:20;width:230px;padding:12px;background:#fff;border:1px solid #e0e4e8;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
       .ckpi-filter-menu label{display:block;font-size:10px;font-weight:700;color:#667085;margin-bottom:6px}.ckpi-filter-menu select{width:100%;height:34px;border:1px solid #dfe3e8;border-radius:6px;background:#fff;padding:0 8px;font-size:12px;outline:none}
-      .ckpi-table{overflow:hidden;border-radius:2px}.ckpi-table-head{min-height:31px;font-size:8px;color:#555;font-weight:700}.ckpi-table-head>div:not(:first-child){text-align:center}
-      .ckpi-table-row{min-height:38px;font-size:12px}.ckpi-table-row:nth-child(even){background:#f7f7f7}.ckpi-table-row:nth-child(odd){background:#fff}.ckpi-table-row>div{padding:0 7px;min-width:0}.ckpi-table-row>div:not(:first-child){text-align:center}
+      .ckpi-table{overflow:hidden;border-radius:2px}.ckpi-table-head,.ckpi-table-total,.ckpi-table-row{display:grid;grid-template-columns:minmax(300px,1fr) 65px 65px 65px 65px 120px 100px;align-items:center}
+      .ckpi-table-head{min-height:31px;font-size:8px;color:#555;font-weight:700}.ckpi-table-head>div:not(:first-child){text-align:center}
+      .ckpi-table-total{min-height:38px;background:#002d49;color:#fff;font-size:12px;font-weight:700}.ckpi-table-total>div{padding:0 7px}.ckpi-table-total>div:not(:first-child){text-align:center}
+      .ckpi-table-row{min-height:38px;font-size:12px}.ckpi-table-row:nth-child(odd){background:#f7f7f7}.ckpi-table-row:nth-child(even){background:#fff}.ckpi-table-row>div{padding:0 7px;min-width:0}.ckpi-table-row>div:not(:first-child){text-align:center}
       .ckpi-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ckpi-empty,.ckpi-loading{text-align:center;color:#8a8f98;font-size:12px;background:#fafafa;padding:34px 10px}.ckpi-error{margin:8px 0;padding:9px 12px;border-radius:6px;background:#fff2f2;color:#b42318;font-size:11px}
-      @media(max-width:850px){.ckpi-hero{grid-template-columns:1fr;padding:20px 24px}.ckpi-title{font-size:36px}.ckpi-summary-head,.ckpi-summary-row,.ckpi-table-head,.ckpi-table-row{grid-template-columns:minmax(180px,1fr) 48px 48px 48px 48px 90px 75px}.ckpi-results{padding:10px 12px 16px}}
-      @media(max-width:600px){.ckpi-title{font-size:31px}.ckpi-results{overflow-x:auto}.ckpi-summary-head,.ckpi-summary-row,.ckpi-table-head,.ckpi-table-row{min-width:650px}.ckpi-hero{padding:18px}.ckpi-results{padding:10px}}
+      @media(max-width:850px){.ckpi-hero{grid-template-columns:1fr;padding:20px 24px}.ckpi-title{font-size:36px}.ckpi-table-head,.ckpi-table-total,.ckpi-table-row{grid-template-columns:minmax(180px,1fr) 48px 48px 48px 48px 90px 75px}.ckpi-results{padding:10px 12px 16px}}
+      @media(max-width:600px){.ckpi-title{font-size:31px}.ckpi-results{overflow-x:auto}.ckpi-table-head,.ckpi-table-total,.ckpi-table-row{min-width:650px}.ckpi-hero{padding:18px}.ckpi-results{padding:10px}.ckpi-toolbar{justify-content:flex-end}}
     `}</style>
 
     <div className="ckpi-card">
@@ -203,13 +210,17 @@ export default function CanvasserKPI() {
     </div>
 
     <div className="ckpi-card ckpi-results">
-      <div className="ckpi-toolbar"><button type="button" className="ckpi-download" onClick={downloadCsv} disabled={loading || !rows.length}><Download size={15} /> Download</button></div>
+      <div className="ckpi-toolbar">
+        <div className="ckpi-filter-wrap">
+          <button type="button" className={`ckpi-filter-button ${canvasserFilter !== "all" ? "active" : ""}`} onClick={() => setFilterOpen((value) => !value)}><Filter size={13} /> Filter <ChevronDown size={13} /></button>
+          {filterOpen && <div className="ckpi-filter-menu"><label htmlFor="canvasser-filter">Canvasser</label><select id="canvasser-filter" value={canvasserFilter} onChange={(event) => { setCanvasserFilter(event.target.value); setFilterOpen(false) }}><option value="all">All Canvassers</option>{allRows.map((row) => <option key={row.name} value={row.name}>{row.name}</option>)}</select></div>}
+        </div>
+        <button type="button" className="ckpi-download" onClick={downloadCsv} disabled={loading || !rows.length}><Download size={15} /> Download</button>
+      </div>
       {error && <div className="ckpi-error">{error}</div>}
-      <div className="ckpi-summary-head"><div /><div>H</div><div>C</div><div>P</div><div>S</div><div>NET</div><div>H TO P</div></div>
-      <div className="ckpi-summary-row"><div>Total</div><div>N/A</div><div>N/A</div><div>N/A</div><div>{totals.s}</div><div>{formatCurrency(totals.net)}</div><div>N/A</div></div>
-      <div className="ckpi-filter-bar"><div className="ckpi-filter-wrap"><button type="button" className={`ckpi-filter-button ${canvasserFilter !== "all" ? "active" : ""}`} onClick={() => setFilterOpen((value) => !value)}><Filter size={13} /> Filter <ChevronDown size={13} /></button>{filterOpen && <div className="ckpi-filter-menu"><label htmlFor="canvasser-filter">Canvasser</label><select id="canvasser-filter" value={canvasserFilter} onChange={(event) => { setCanvasserFilter(event.target.value); setFilterOpen(false) }}><option value="all">All Canvassers</option>{allRows.map((row) => <option key={row.name} value={row.name}>{row.name}</option>)}</select></div>}</div></div>
       <div className="ckpi-table">
         <div className="ckpi-table-head"><div>NAME</div><div>H</div><div>C</div><div>P</div><div>S</div><div>NET</div><div>H TO P</div></div>
+        <div className="ckpi-table-total"><div>Total</div><div>{totals.h}</div><div>{totals.c}</div><div>{totals.p}</div><div>{totals.s}</div><div>{formatCurrency(totals.net)}</div><div>{formatPercent(totals.hToP)}</div></div>
         {loading ? <div className="ckpi-loading">Loading canvasser results…</div> : rows.length ? rows.map((row) => <div className="ckpi-table-row" key={row.name}><div className="ckpi-name">{row.name}</div><div>{row.h}</div><div>{row.c}</div><div>{row.p}</div><div>{row.s}</div><div>{formatCurrency(row.net)}</div><div>{formatPercent(row.hToP)}</div></div>) : <div className="ckpi-empty">No canvasser results found for the selected dates.</div>}
       </div>
     </div>
