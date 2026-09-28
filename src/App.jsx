@@ -159,7 +159,15 @@ function App() {
   const upcomingInstallations = allDeals.filter((contract) => contract.installation_date && contract.installation_date >= today).length
 
   function handleBackToDeals() { setSelected(null); setPage("contracts"); window.history.pushState({}, "", "/contracts") }
-  function handleDealUpdated(updatedDeal) { setContracts(current => current.map(contract => contract.id === updatedDeal.id ? updatedDeal : contract)); setAllDeals(current => current.map(contract => contract.id === updatedDeal.id ? updatedDeal : contract)); setCommissionDeals(current => current.map(contract => contract.id === updatedDeal.id ? updatedDeal : contract)); setSelected(updatedDeal) }
+  function handleDealUpdated(updatedDeal) {
+    const excludedCommissionStages = new Set(["decline", "customer cancelled", "returned to sales", "awaiting funds", "on hold", "pending cancellation"])
+    const stage = String(updatedDeal?.pipedrive_stage ?? "").trim().replace(/\s+/g, " ").toLowerCase()
+    const shouldRemoveFromCommissions = excludedCommissionStages.has(stage)
+    setContracts(current => current.map(contract => contract.id === updatedDeal.id ? updatedDeal : contract))
+    setAllDeals(current => current.map(contract => contract.id === updatedDeal.id ? updatedDeal : contract))
+    setCommissionDeals(current => shouldRemoveFromCommissions ? current.filter(contract => contract.id !== updatedDeal.id) : current.map(contract => contract.id === updatedDeal.id ? updatedDeal : contract))
+    setSelected(updatedDeal)
+  }
   function handlePageChange(newPage) {
     const requiredPermission = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, "mi": 4, "seo": 4, "users": 4, "tasks": 4, "sales-presentations": 4 }[newPage]
     if (requiredPermission && effectivePermissionLevel < requiredPermission) return
