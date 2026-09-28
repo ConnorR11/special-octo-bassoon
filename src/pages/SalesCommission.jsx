@@ -158,7 +158,7 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
   const adminOutstanding = adminRows.length - adminPaidIn
   const totalCommission = filtered.reduce((total, { deal, type }) => total + (type === "COMMS" ? (getCommission(deal) ?? 0) : 0), 0)
   const totalAdmin = filtered.reduce((total, { deal, type }) => total + (type === "ADMIN" && !!deal?.admin_fee_received_date && getAdminFee(deal) !== "query" ? getAdminFee(deal) : 0), 0)
-  const totalNetSalesValue = filtered.reduce((total, { deal, type }) => total + (type === "COMMS" ? getNetSalesValue(deal) : 0), 0)
+  const totalNetSalesValue = filtered.reduce((total, { deal, type }) => total + (type === "COMMS" && getCommission(deal) !== null ? getNetSalesValue(deal) : 0), 0)
   const activeFilterCount = (commissionDate !== "all" ? 1 : 0) + (rep !== "all" ? 1 : 0) + (branch !== "all" ? 1 : 0)
 
   function clearFilters() { setCommissionDate("all"); setRep("all"); setBranch("all") }
