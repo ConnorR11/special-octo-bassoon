@@ -1,0 +1,343 @@
+import React, { useEffect, useMemo, useState } from "react"
+
+import {
+  ChevronLeft,
+  ChevronRight,
+  CalendarDays,
+} from "lucide-react"
+
+import { supabase } from "../lib/supabase"
+import { money } from "../utils/formatters"
+
+function FitSheetWithIssues({
+  contracts = [],
+  setSelected,
+}) {
+  const [weekOffset, setWeekOffset] = useState(0)
+  const [issueDeals, setIssueDeals] = useState([])
+  const [issueLoading, setIssueLoading] = useState(true)
+  const [issueError, setIssueError] = useState("")
+
+  function getMonday(date) {
+    const d = new Date(date)
+    const day = d.getDay()
+    const difference = day === 0 ? -6 : 1 - day
+    d.setDate(d.getDate() + difference)
+    d.setHours(0, 0, 0, 0)
+    return d
+  }
+
+  const currentWeek = useMemo(() => {
+    const monday = getMonday(new Date())
+    monday.setDate(monday.getDate() + weekOffset * 7)
+    return monday
+  }, [weekOffset])
+
+  const weekDays = useMemo(() => {
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(currentWeek)
+      date.setDate(currentWeek.getDate() + index)
+      return date
+    })
+  }, [currentWeek])
+
+  function formatDate(date) {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const day = String(date.getDate()).padStart(2, "0")
+    return `${year}-${month}-${day}`
+  }
+
+  const weekTitle = useMemo(() => {
+    const start = weekDays[0]
+    const end = weekDays[6]
+    const startText = start.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+    const endText = end.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+    return `${startText} – ${endText}`
+  }, [weekDays])
+
+  useEffect(() => {
+    let mounted = true
+
+    async function loadIssueDeals() {
+      if (!supabase) {
+        setIssueDeals([])
+        setIssueLoading(false)
+        return
+      }
+
+      setIssueLoading(true)
+      setIssueError("")
+
+      const { data, error } = await supabase
+        .from("deals")
+        .select("id,customer_name,postcode,contract_number,deal_value,installations_issues_start_date,installation_issues_fit_team")
+        .not("installations_issues_start_date", "is", null)
+        .order("installations_issues_start_date", { ascending: true })
+
+      if (!mounted) return
+
+      if (error) {
+        console.error("Error loading installation issue fits:", error)
+        setIssueError(error.message || "Unable to load installation issues.")
+        setIssueDeals([])
+      } else {
+        setIssueDeals(data || [])
+      }
+
+      setIssueLoading(false)
+    }
+
+    loadIssueDeals()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const fitTeams = useMemo(() => {
+    const normalTeams = contracts
+      .map((contract) => contract.fit_team_1)
+      .filter(Boolean)
+      .map((team) => String(team).trim())
+      .filter(Boolean)
+
+    const issueTeams = issueDeals
+      .map((deal) => deal.installation_issues_fit_team)
+      .filter(Boolean)
+      .map((team) => String(team).trim())
+      .filter(Boolean)
+
+    return [...new Set([...normalTeams, ...issueTeams])].sort((a, b) => a.localeCompare(b))
+  }, [contracts, issueDeals])
+
+  const weekDeals = useMemo(() => {
+    const start = formatDate(weekDays[0])
+    const end = formatDate(weekDays[6])
+
+    return contracts.filter((contract) => {
+      if (!contract.installation_start_date) return false
+      const installationDate = String(contract.installation_start_date).slice(0, 10)
+      return installationDate >= start && installationDate <= end
+    })
+  }, [contracts, weekDays])
+
+  const weekIssues = useMemo(() => {
+    const start = formatDate(weekDays[0])
+    const end = formatDate(weekDays[6])
+
+    return issueDeals.filter((deal) => {
+      if (!deal.installations_issues_start_date) return false
+      const issueDate = String(deal.installations_issues_start_date).slice(0, 10)
+      return issueDate >= start && issueDate <= end
+    })
+  }, [issueDeals, weekDays])
+
+  function getDeals(team, date) {
+    const dateString = formatDate(date)
+
+    return weekDeals.filter((deal) => {
+      const dealDate = String(deal.installation_start_date).slice(0, 10)
+      const dealTeam = String(deal.fit_team_1 || "").trim()
+      return dealDate === dateString && dealTeam === team
+    })
+  }
+
+  function getIssues(team, date) {
+    const dateString = formatDate(date)
+
+    return weekIssues.filter((deal) => {
+      const issueDate = String(deal.installations_issues_start_date).slice(0, 10)
+      const issueTeam = String(deal.installation_issues_fit_team || "").trim()
+      return issueDate === dateString && issueTeam === team
+    })
+  }
+
+  const todayString = formatDate(new Date())
+
+  function openDeal(deal) {
+    if (setSelected) setSelected(deal)
+  }
+
+  function renderDealCard(deal) {
+    return (
+      <button
+        key={`fit-${deal.id}`}
+        type="button"
+        onClick={() => openDeal(deal)}
+        style={{
+          width: "100%",
+          textAlign: "left",
+          border: "1px solid #cbd8c5",
+          borderRadius: "5px",
+          background: "#e8f4e2",
+          padding: "8px",
+          marginBottom: "5px",
+          cursor: "pointer",
+          fontFamily: "inherit",
+          transition: "box-shadow 0.15s ease, transform 0.15s ease",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.boxShadow = "0 2px 7px rgba(0,0,0,0.10)"
+          e.currentTarget.style.transform = "translateY(-1px)"
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.boxShadow = "none"
+          e.currentTarget.style.transform = "translateY(0)"
+        }}
+      >
+        <div style={{ fontSize: "10px", fontWeight: 700, color: "#263522", lineHeight: "1.3" }}>
+          {deal.customer_name || "Unnamed customer"}
+        </div>
+        {deal.postcode && (
+          <div style={{ marginTop: "3px", fontSize: "9px", color: "#596455" }}>
+            {deal.postcode}
+          </div>
+        )}
+        {deal.contract_number && (
+          <div style={{ marginTop: "3px", fontSize: "9px", color: "#596455" }}>
+            {deal.contract_number}
+          </div>
+        )}
+        {deal.deal_value != null && (
+          <div style={{ marginTop: "5px", fontSize: "9px", fontWeight: 700, color: "#263522" }}>
+            {money(deal.deal_value)}
+          </div>
+        )}
+      </button>
+    )
+  }
+
+  function renderIssueCard(deal) {
+    return (
+      <button
+        key={`issue-${deal.id}`}
+        type="button"
+        onClick={() => openDeal(deal)}
+        style={{
+          width: "100%",
+          textAlign: "left",
+          border: "1px solid #f0b8b8",
+          borderRadius: "5px",
+          background: "#fde8e8",
+          padding: "8px",
+          marginBottom: "5px",
+          cursor: "pointer",
+          fontFamily: "inherit",
+          transition: "box-shadow 0.15s ease, transform 0.15s ease",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.boxShadow = "0 2px 7px rgba(0,0,0,0.10)"
+          e.currentTarget.style.transform = "translateY(-1px)"
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.boxShadow = "none"
+          e.currentTarget.style.transform = "translateY(0)"
+        }}
+      >
+        <div style={{ fontSize: "8px", fontWeight: 800, color: "#b42318", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "3px" }}>
+          Issue
+        </div>
+        <div style={{ fontSize: "10px", fontWeight: 700, color: "#5f2020", lineHeight: "1.3" }}>
+          {deal.customer_name || "Unnamed customer"}
+        </div>
+        {deal.postcode && (
+          <div style={{ marginTop: "3px", fontSize: "9px", color: "#7f4a4a" }}>
+            {deal.postcode}
+          </div>
+        )}
+        {deal.contract_number && (
+          <div style={{ marginTop: "3px", fontSize: "9px", color: "#7f4a4a" }}>
+            {deal.contract_number}
+          </div>
+        )}
+      </button>
+    )
+  }
+
+  return (
+    <section>
+      <div className="card" style={{ marginBottom: "18px", overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 20px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <CalendarDays size={20} color="#172554" />
+            <div>
+              <h1 style={{ margin: 0, fontSize: "20px", lineHeight: 1.2 }}>FitSheet</h1>
+              <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#888" }}>{weekTitle}</p>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <button type="button" onClick={() => setWeekOffset((value) => value - 1)} style={{ width: "34px", height: "34px", border: "1px solid #dddfe3", borderRadius: "7px", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <ChevronLeft size={16} />
+            </button>
+            <button type="button" onClick={() => setWeekOffset(0)} style={{ height: "34px", padding: "0 12px", border: "1px solid #dddfe3", borderRadius: "7px", background: "#fff", cursor: "pointer", fontSize: "11px", fontWeight: 600 }}>
+              This week
+            </button>
+            <button type="button" onClick={() => setWeekOffset((value) => value + 1)} style={{ width: "34px", height: "34px", border: "1px solid #dddfe3", borderRadius: "7px", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: 0, overflow: "auto" }}>
+        <div style={{ minWidth: "1250px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))", borderBottom: "2px solid #172554", position: "sticky", top: 0, zIndex: 10, background: "#fff" }}>
+            <div style={{ padding: "10px 12px", background: "#f2f3f5", borderRight: "1px solid #d9dadd", fontSize: "10px", fontWeight: 700, color: "#555", textTransform: "uppercase" }}>
+              Fit Team
+            </div>
+            {weekDays.map((date) => {
+              const dateString = formatDate(date)
+              const isToday = dateString === todayString
+              return (
+                <div key={dateString} style={{ padding: "8px 10px", textAlign: "center", background: isToday ? "#eef2ff" : "#f2f3f5", borderRight: "1px solid #d9dadd" }}>
+                  <div style={{ fontSize: "10px", fontWeight: 700, color: isToday ? "#172554" : "#555", textTransform: "uppercase" }}>
+                    {date.toLocaleDateString("en-GB", { weekday: "short" })}
+                  </div>
+                  <div style={{ marginTop: "3px", fontSize: "12px", fontWeight: 600, color: isToday ? "#172554" : "#333" }}>
+                    {date.getDate()} {date.toLocaleDateString("en-GB", { month: "short" })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {issueError && (
+            <div style={{ padding: "8px 12px", background: "#fff4f4", color: "#b42318", fontSize: "10px", borderBottom: "1px solid #f0b8b8" }}>
+              Unable to load installation issues: {issueError}
+            </div>
+          )}
+
+          {fitTeams.length === 0 ? (
+            <div style={{ padding: "60px 20px", textAlign: "center", color: "#999", fontSize: "12px" }}>
+              {issueLoading ? "Loading fit teams..." : "No fit teams found in the database."}
+            </div>
+          ) : (
+            fitTeams.map((team) => (
+              <div key={team} style={{ display: "grid", gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))", minHeight: "160px", borderBottom: "1px solid #d9dadd" }}>
+                <div style={{ padding: "14px 12px", background: "#f7f7f8", borderRight: "1px solid #d9dadd", fontSize: "11px", fontWeight: 600, color: "#333", display: "flex", alignItems: "center" }}>
+                  {team}
+                </div>
+
+                {weekDays.map((date) => {
+                  const deals = getDeals(team, date)
+                  const issues = getIssues(team, date)
+
+                  return (
+                    <div key={`${team}-${formatDate(date)}`} style={{ padding: "6px", borderRight: "1px solid #d9dadd", background: "#fff", minHeight: "160px" }}>
+                      {deals.map(renderDealCard)}
+                      {issues.map(renderIssueCard)}
+                    </div>
+                  )
+                })}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+export default FitSheetWithIssues
