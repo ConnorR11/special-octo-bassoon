@@ -94,7 +94,7 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
     async function loadAdmin() {
       if (!supabase) return
       setAdminLoading(true)
-      const { data, error } = await supabase.from("deals").select("*").is("admin_fee_paid_out_date", null).not("pipedrive_stage", "in", "(Decline,Customer Cancelled,Returned To Sales,Awaiting Funds,On Hold)").gte("sale_date", "2025-01-01").order("admin_fee_received_date", { ascending: true })
+      const { data, error } = await supabase.from("deals").select("*").is("admin_fee_paid_out_date", null).not("pipedrive_stage", "in", "(Decline,Customer Cancelled,Returned To Sales,Awaiting Funds,On Hold)").gte("sale_date", "2026-01-01").order("admin_fee_received_date", { ascending: true })
       if (cancelled) return
       if (error) {
         console.error("Error loading admin fee deals:", error)
@@ -117,7 +117,7 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
 
   const reps = useMemo(() => Array.from(new Set([...deals, ...adminDeals].map(getRepName))).sort((a, b) => a.localeCompare(b)), [deals, adminDeals])
   const branches = useMemo(() => Array.from(new Set([...deals, ...adminDeals].map(getBranchName))).sort((a, b) => a.localeCompare(b)), [deals, adminDeals])
-  const combined = useMemo(() => [...deals.filter(deal => getNetSalesValue(deal) !== 0 && !isExcludedCommissionStage(deal)).map(deal => ({ deal, type: "COMMS" })), ...adminDeals.filter(deal => !isExcludedCommissionStage(deal)).map(deal => ({ deal, type: "ADMIN" }))], [deals, adminDeals])
+  const combined = useMemo(() => [...deals.filter(deal => getNetSalesValue(deal) !== 0 && !isExcludedCommissionStage(deal) && String(deal?.sale_date || "").slice(0, 10) >= "2026-01-01").map(deal => ({ deal, type: "COMMS" })), ...adminDeals.filter(deal => !isExcludedCommissionStage(deal)).map(deal => ({ deal, type: "ADMIN" }))], [deals, adminDeals])
   const commissionDates = useMemo(() => Array.from(new Set(combined.map(({ deal, type }) => getCommissionDate(deal, type === "ADMIN" ? "admin" : "commission")).filter(Boolean))).sort((a, b) => new Date(a) - new Date(b)), [combined])
   const filtered = useMemo(() => {
     const search = query.trim().toLowerCase()
