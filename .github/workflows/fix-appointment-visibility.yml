@@ -1,0 +1,36 @@
+name: Fix appointment visibility
+on:
+  push:
+    branches: [main]
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+      - name: Patch Appointments.jsx
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('src/pages/Appointments.jsx')
+          s=p.read_text()
+          old='''      // Level 2 managers see every appointment belonging to their branch.\n  // This deliberately does NOT check manager_id, sales_manager, or the\n  // individual reps managed by the user. Branch is the only manager filter.\n  const canViewBranchAppointments = numericPermissionLevel >= 2\n'''
+          new='''      // Level 2 managers see appointments assigned to reps they manage,\n  // and reps see their own assigned appointments. Permission 3+ retains full visibility.\n  const canViewBranchAppointments = false\n'''
+          if old not in s: raise SystemExit('target constants not found')
+          s=s.replace(old,new)
+          old2='''        if (canViewBranchAppointments && viewerBranch) {\n          // Managers see the entire branch. There is intentionally no\n          // manager_id or sales_manager filtering here.\n          request = request.eq("branch", viewerBranch)\n        } else {\n          // Non-managers continue to see only appointments allocated to them.\n          const ownEmail = String(\n            viewerProfile?.email || previewUser?.email || ""\n          )\n            .trim()\n            .toLowerCase()\n\n          if (ownEmail) {\n            request = request.eq("rep_allocated", ownEmail)\n          }\n        }\n'''
+          new2='''        // Reps see their own appointments. Sales managers and branch managers\n        // see appointments assigned to reps whose profile lists them as manager.\n        const viewerId = viewerProfile?.id\n        let visibleRepEmails = []\n\n        if (viewerId) {\n          const { data: visibleProfiles, error: visibleProfilesError } = await supabase\n            .from("profiles")\n            .select("email")\n            .or(`id.eq.${viewerId},sales_manager.eq.${viewerId},branch_manager.eq.${viewerId}`)\n\n          if (visibleProfilesError) throw visibleProfilesError\n          visibleRepEmails = (visibleProfiles || [])\n            .map(row => String(row?.email || "").trim().toLowerCase())\n            .filter(Boolean)\n        }\n\n        if (visibleRepEmails.length) {\n          request = request.in("rep_allocated", visibleRepEmails)\n        } else {\n          request = request.eq("rep_allocated", "__NO_VISIBLE_REP__")\n        }\n'''
+          if old2 not in s: raise SystemExit('target filtering block not found')
+          s=s.replace(old2,new2)
+          p.write_text(s)
+          PY
+      - name: Commit patch and remove workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/pages/Appointments.jsx
+          git diff --cached --quiet || git commit -m "Fix appointment visibility for reps and managers"
+          git push
+          git rm .github/workflows/fix-appointment-visibility.yml || true
+          git commit -m "Remove temporary appointment visibility workflow" || true
+          git push || true
