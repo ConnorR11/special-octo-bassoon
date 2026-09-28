@@ -181,9 +181,27 @@ async function getUserName(pipedriveToken, userId) {
   if (!id) return null
   if (userNameCache.has(id)) return userNameCache.get(id)
 
+  // Prefer the direct user endpoint. A Sales Rep custom field stores a
+  // Pipedrive user ID, and this endpoint resolves that ID to the user's name.
+  try {
+    const directResponse = await fetch(`https://api.pipedrive.com/api/v1/users/${encodeURIComponent(id)}?api_token=${encodeURIComponent(pipedriveToken)}`, {
+      headers: { Accept: "application/json" },
+    })
+    const directJson = await directResponse.json().catch(() => ({}))
+    const directName = String(directJson?.data?.name || "").trim()
+    if (directResponse.ok && directJson?.success && directName) {
+      userNameCache.set(id, directName)
+      return directName
+    }
+  } catch {
+    // Fall through to the cached full-user-list lookup.
+  }
+
   if (!usersResolutionPromise) {
     usersResolutionPromise = (async () => {
-      const response = await fetch(`https://api.pipedrive.com/api/v1/users?limit=500&api_token=${encodeURIComponent(pipedriveToken)}`, { headers: { Accept: "application/json" } })
+      const response = await fetch(`https://api.pipedrive.com/api/v1/users?limit=500&api_token=${encodeURIComponent(pipedriveToken)}`, {
+        headers: { Accept: "application/json" },
+      })
       const json = await response.json().catch(() => ({}))
       if (!response.ok || !json?.success) {
         throw new Error(json?.error || `Pipedrive users lookup failed with HTTP ${response.status}.`)
@@ -206,13 +224,16 @@ async function getUserName(pipedriveToken, userId) {
 }
 
 async function getSalespersonName(pipedriveToken, value) {
-  const unwrapped = unwrapValue(value)
-  if (unwrapped === null || unwrapped === undefined || unwrapped === "") return null
-
-  if (typeof unwrapped === "object") {
-    const directName = String(unwrapped.name || unwrapped.label || "").trim()
+  // Pipedrive can return a user custom field as an object such as
+  // { value: 123, label: "John Smith" }. Check the raw value first so
+  // we don't unwrap away the friendly label before resolving the user.
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const directName = String(value.name || value.label || "").trim()
     if (directName) return directName
   }
+
+  const unwrapped = unwrapValue(value)
+  if (unwrapped === null || unwrapped === undefined || unwrapped === "") return null
 
   const userId = typeof unwrapped === "object"
     ? (unwrapped.id ?? unwrapped.user_id ?? unwrapped.value)
