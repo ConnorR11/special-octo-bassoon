@@ -51,8 +51,6 @@ async function getStoredLocationConfig() {
 
 async function saveLocationConfig(location) {
   try {
-    // createIntegrationLog initially writes status=received. Explicitly mark
-    // the configuration event as successful so future syncs can retrieve it.
     const log = await createIntegrationLog({
       provider: "google",
       integrationName: "Google Reviews",
@@ -79,37 +77,16 @@ async function saveLocationConfig(location) {
       })
     }
   } catch (error) {
-    // A failure to cache the IDs should not prevent the current sync from completing.
     console.error("Unable to cache Google Business Profile location:", error)
   }
 }
 
-async function listAllAccounts(accessToken) {
-  const accounts = []
-  let pageToken = null
-
-  for (let page = 0; page < 20; page += 1) {
-    const query = new URLSearchParams({ pageSize: "20" })
-    if (pageToken) query.set("pageToken", pageToken)
-
-    const data = await googleBusinessRequest(
-      accessToken,
-      `/v1/accounts?${query.toString()}`,
-      {},
-      "accountManagement",
-    )
-    accounts.push(...(data.accounts || []))
-    pageToken = data.nextPageToken || null
-    if (!pageToken) break
-  }
-
-  return accounts
-}
-
-async function listAllLocations(accessToken, accountName) {
+async function listAllLocations(accessToken) {
   const locations = []
   let pageToken = null
 
+  // This is the one-time discovery call. It deliberately uses the Business
+  // Information API directly and does NOT call the Account Management API.
   for (let page = 0; page < 20; page += 1) {
     const query = new URLSearchParams({
       pageSize: "100",
@@ -119,10 +96,11 @@ async function listAllLocations(accessToken, accountName) {
 
     const data = await googleBusinessRequest(
       accessToken,
-      `/v1/${accountName}/locations?${query.toString()}`,
+      `/v1/accounts/-/locations?${query.toString()}`,
       {},
       "businessInformation",
     )
+
     locations.push(...(data.locations || []))
     pageToken = data.nextPageToken || null
     if (!pageToken) break
@@ -144,24 +122,9 @@ async function discoverLocation(accessToken) {
     }
   }
 
-  const accounts = await listAllAccounts(accessToken)
-  if (!accounts.length) {
-    throw new Error("Google returned no Business Profile accounts for this user.")
-  }
-
-  const allLocations = []
-  for (const account of accounts) {
-    if (!account?.name) continue
-    try {
-      const locations = await listAllLocations(accessToken, account.name)
-      allLocations.push(...locations.map((location) => ({ ...location, accountName: account.name })))
-    } catch (error) {
-      console.warn(`Unable to list locations for ${account.name}:`, error?.message || error)
-    }
-  }
-
+  const allLocations = await listAllLocations(accessToken)
   if (!allLocations.length) {
-    throw new Error("Google returned no accessible Business Profile locations.")
+    throw new Error("Google returned no accessible Business Profile locations for this account.")
   }
 
   const byConfiguredName = configuredLocationName
@@ -171,9 +134,8 @@ async function discoverLocation(accessToken) {
   const byName = allLocations.find((location) => /homeshield/i.test(String(location.title || "")))
   const selected = byConfiguredName || byWebsite || byName
 
-  if (!selected) {
+  if (!selected?.name) {
     const available = allLocations.map((location) => ({
-      accountName: location.accountName,
       locationName: location.name,
       businessName: location.title || null,
       websiteUrl: location.websiteUri || null,
@@ -184,8 +146,15 @@ async function discoverLocation(accessToken) {
     throw error
   }
 
+  // Google returns the complete resource name here:
+  // accounts/{accountId}/locations/{locationId}
+  const match = String(selected.name).match(/^accounts\/([^/]+)\/locations\/([^/]+)$/)
+  if (!match) {
+    throw new Error(`Google returned an unexpected Business Profile location name: ${selected.name}`)
+  }
+
   return {
-    accountName: selected.accountName,
+    accountName: `accounts/${match[1]}`,
     locationName: selected.name,
     discovered: true,
   }
@@ -202,9 +171,6 @@ async function getLocation(accessToken) {
   return { ...discovered, source: "discovered" }
 }
 
-// Each manual sync makes exactly one reviews API request once the location has
-// been cached. It requests at most 10 reviews and does not automatically walk
-// every page.
 async function listReviewBatch(accessToken, locationName) {
   const query = new URLSearchParams({
     pageSize: String(REVIEW_BATCH_SIZE),
@@ -316,7 +282,7 @@ export default async function handler(req, res) {
           locationName: location.locationName,
           locationSource: location.source,
           requestedReviewCount: REVIEW_BATCH_SIZE,
-          expectedGoogleRequests: location.source === "cached" ? 1 : 3,
+          expectedGoogleRequests: location.source === "cached" ? 1 : 2,
           status: "processing",
         },
       })
@@ -346,7 +312,7 @@ export default async function handler(req, res) {
       accountName: location.accountName,
       locationName: location.locationName,
       locationSource: location.source,
-      googleApiRequests: location.source === "cached" ? 1 : 3,
+      googleApiRequests: location.source === "cached" ? 1 : 2,
       requestedReviewCount: REVIEW_BATCH_SIZE,
       imported,
       failed,
