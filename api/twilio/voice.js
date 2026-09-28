@@ -7,16 +7,21 @@ function escapeXml(value) {
     .replace(/'/g, "&apos;")
 }
 
-function getParam(req, name) {
+function getParam(req, ...names) {
   const body = req.body || {}
   const query = req.query || {}
+  let parsedBody = body
+
   if (typeof body === "string") {
-    try {
-      const params = new URLSearchParams(body)
-      return params.get(name) || params.get(name.toLowerCase()) || null
-    } catch {}
+    try { parsedBody = Object.fromEntries(new URLSearchParams(body)) } catch { parsedBody = {} }
   }
-  return body?.[name] ?? body?.[name.toLowerCase()] ?? query?.[name] ?? query?.[name.toLowerCase()] ?? null
+
+  for (const name of names) {
+    const lower = name.toLowerCase()
+    const value = parsedBody?.[name] ?? parsedBody?.[lower] ?? query?.[name] ?? query?.[lower]
+    if (value !== undefined && value !== null && value !== "") return value
+  }
+  return null
 }
 
 async function getProfilePhone(identity) {
@@ -29,13 +34,8 @@ async function getProfilePhone(identity) {
     return null
   }
 
-  // The CRM profiles table links the authenticated Supabase user through
-  // auth_user_id, not the profile's own id.
   const response = await fetch(`${url}/rest/v1/profiles?select=twilio_phone_number&auth_user_id=eq.${encodeURIComponent(identity)}&limit=1`, {
-    headers: {
-      apikey: serviceKey,
-      Authorization: `Bearer ${serviceKey}`,
-    },
+    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
   })
 
   if (!response.ok) {
@@ -48,10 +48,12 @@ async function getProfilePhone(identity) {
 }
 
 function xmlResponse(res, status, xml) {
-  res.status(status)
+  // Use the native Node/Vercel response API here. This avoids Express-only
+  // helpers such as res.type(), which caused the Twilio webhook to return 500.
+  res.statusCode = status
   res.setHeader("Content-Type", "text/xml; charset=utf-8")
   res.setHeader("Cache-Control", "no-store")
-  return res.send(xml)
+  res.end(xml)
 }
 
 export default async function handler(req, res) {
@@ -64,14 +66,23 @@ export default async function handler(req, res) {
       return xmlResponse(res, 405, "<Response><Say>Method not allowed.</Say></Response>")
     }
 
-    const to = getParam(req, "To")
-    const identity = getParam(req, "Identity")
+    // Use custom parameter names for our CRM values so we do not depend on
+    // Twilio's own To/From/Identity request fields being populated.
+    const to = getParam(req, "CrmTo", "ToNumber", "To")
+    const identity = getParam(req, "CrmIdentity", "Identity")
     const from = await getProfilePhone(identity)
 
-    console.log("Twilio voice request", { to, identity, from })
+    console.log("Twilio voice request", {
+      to,
+      identity,
+      from,
+      caller: getParam(req, "From"),
+      twilioTo: getParam(req, "To"),
+      callSid: getParam(req, "CallSid"),
+    })
 
     if (!from) {
-      console.error("Twilio voice: no twilio_phone_number for auth user", identity || "(missing)")
+      console.error("Twilio voice: no twilio_phone_number for CRM identity", identity || "(missing)")
       return xmlResponse(res, 200, "<Response><Say>No Twilio phone number is configured for this user.</Say></Response>")
     }
 
@@ -82,6 +93,7 @@ export default async function handler(req, res) {
     }
 
     const xml = `<Response><Dial callerId="${escapeXml(from)}"><Number>${escapeXml(destination)}</Number></Dial></Response>`
+    console.log("Twilio voice response", { from, destination, xml })
     return xmlResponse(res, 200, xml)
   } catch (error) {
     console.error("Twilio voice endpoint error", error)
