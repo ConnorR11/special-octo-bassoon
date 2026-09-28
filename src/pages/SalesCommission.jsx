@@ -100,7 +100,8 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
 
   const reps = useMemo(() => Array.from(new Set([...deals, ...adminDeals].map(getRepName))).sort((a, b) => a.localeCompare(b)), [deals, adminDeals])
   const branches = useMemo(() => Array.from(new Set([...deals, ...adminDeals].map(getBranchName))).sort((a, b) => a.localeCompare(b)), [deals, adminDeals])
-  const combined = useMemo(() => [...deals.filter(deal => getNetSalesValue(deal) !== 0).map(deal => ({ deal, type: "COMMS" })), ...adminDeals.map(deal => ({ deal, type: "ADMIN" }))], [deals, adminDeals])
+  const excludedCommissionStages = ["Decline", "Customer Cancelled", "Returned To Sales", "Awaiting Funds"]
+  const combined = useMemo(() => [...deals.filter(deal => getNetSalesValue(deal) !== 0 && !excludedCommissionStages.includes(String(deal?.pipedrive_stage || "").trim())).map(deal => ({ deal, type: "COMMS" })), ...adminDeals.map(deal => ({ deal, type: "ADMIN" }))], [deals, adminDeals])
   const commissionDates = useMemo(() => Array.from(new Set(combined.map(({ deal, type }) => getCommissionDate(deal, type === "ADMIN" ? "admin" : "commission")).filter(Boolean))).sort((a, b) => new Date(a) - new Date(b)), [combined])
   const filtered = useMemo(() => {
     const search = query.trim().toLowerCase()
