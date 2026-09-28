@@ -57,11 +57,6 @@ function FitSheetWithIssues({ setSelected }) {
     return `${startText} – ${endText}`
   }, [weekDays])
 
-  /*
-   * Only query deals that can actually appear in the visible week.
-   * Normal fits and installation issues are deliberately separate queries.
-   * This avoids loading the entire deals table just to build the calendar.
-   */
   useEffect(() => {
     let mounted = true
 
@@ -76,16 +71,19 @@ function FitSheetWithIssues({ setSelected }) {
       setLoading(true)
       setLoadError("")
 
+      const dealSelect = "id,customer_name,postcode,contract_number,deal_value,installation_start_date,fit_team_1,pipedrive_stage"
+      const issueSelect = "id,customer_name,postcode,contract_number,deal_value,installations_issues_start_date,installation_issues_fit_team,pipedrive_stage"
+
       const [normalResult, issueResult] = await Promise.all([
         supabase
           .from("deals")
-          .select("*")
+          .select(dealSelect)
           .gte("installation_start_date", weekStart)
           .lte("installation_start_date", weekEnd)
           .order("installation_start_date", { ascending: true }),
         supabase
           .from("deals")
-          .select("*")
+          .select(issueSelect)
           .gte("installations_issues_start_date", weekStart)
           .lte("installations_issues_start_date", weekEnd)
           .order("installations_issues_start_date", { ascending: true }),
@@ -185,6 +183,11 @@ function FitSheetWithIssues({ setSelected }) {
         <div style={{ fontSize: "10px", fontWeight: 700, color: "#263522", lineHeight: "1.3" }}>
           {deal.customer_name || "Unnamed customer"}
         </div>
+        {deal.pipedrive_stage && (
+          <div style={{ marginTop: "3px", fontSize: "8px", fontWeight: 700, color: "#40523a" }}>
+            {deal.pipedrive_stage}
+          </div>
+        )}
         {deal.postcode && <div style={{ marginTop: "3px", fontSize: "9px", color: "#596455" }}>{deal.postcode}</div>}
         {deal.contract_number && <div style={{ marginTop: "3px", fontSize: "9px", color: "#596455" }}>{deal.contract_number}</div>}
         {deal.deal_value != null && <div style={{ marginTop: "5px", fontSize: "9px", fontWeight: 700, color: "#263522" }}>{money(deal.deal_value)}</div>}
@@ -219,6 +222,11 @@ function FitSheetWithIssues({ setSelected }) {
         <div style={{ fontSize: "10px", fontWeight: 700, color: "#5f2020", lineHeight: "1.3" }}>
           {deal.customer_name || "Unnamed customer"}
         </div>
+        {deal.pipedrive_stage && (
+          <div style={{ marginTop: "3px", fontSize: "8px", fontWeight: 700, color: "#8a4a4a" }}>
+            {deal.pipedrive_stage}
+          </div>
+        )}
         {deal.postcode && <div style={{ marginTop: "3px", fontSize: "9px", color: "#7f4a4a" }}>{deal.postcode}</div>}
         {deal.contract_number && <div style={{ marginTop: "3px", fontSize: "9px", color: "#7f4a4a" }}>{deal.contract_number}</div>}
       </button>
