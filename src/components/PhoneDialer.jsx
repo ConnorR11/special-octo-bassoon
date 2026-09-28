@@ -19,8 +19,8 @@ function describeTwilioError(err) {
   return `${[...new Set(summary)].join(" — ") || "Unknown Twilio error"}${serialized ? ` | Details: ${serialized}` : ""}`
 }
 
-function PhoneDialer({ onClose }) {
-  const [number, setNumber] = React.useState("")
+function PhoneDialer({ onClose, initialNumber = "", customerName = "", callContext = null }) {
+  const [number, setNumber] = React.useState(initialNumber || "")
   const [status, setStatus] = React.useState("Ready")
   const [error, setError] = React.useState("")
   const [muted, setMuted] = React.useState(false)
@@ -28,6 +28,10 @@ function PhoneDialer({ onClose }) {
   const [diagnostic, setDiagnostic] = React.useState("")
   const deviceRef = React.useRef(null)
   const callRef = React.useRef(null)
+
+  React.useEffect(() => {
+    setNumber(initialNumber || "")
+  }, [initialNumber])
 
   React.useEffect(() => {
     let mounted = true
@@ -73,20 +77,25 @@ function PhoneDialer({ onClose }) {
       setStatus("Connecting...")
       const device = await initialiseDevice()
       const destination = number.trim()
-      console.info("Twilio call starting", { destination, identity, deviceState: device.state })
-      setDiagnostic(`Starting call → ${destination} | Identity: ${identity} | Device: ${device.state}`)
-      // Use CRM-prefixed names so our values cannot be confused with Twilio's
-      // own From/To/Identity fields in the webhook request.
-      const connection = await device.connect({ params: { CrmTo: destination, CrmIdentity: identity } })
+      const params = {
+        CrmTo: destination,
+        CrmIdentity: identity,
+        CrmAppointmentId: callContext?.appointmentId || "",
+        CrmEntityId: callContext?.entityId || "",
+        CrmContextType: callContext?.type || "",
+      }
+      console.info("Twilio call starting", { destination, identity, deviceState: device.state, callContext })
+      setDiagnostic(`Starting call → ${destination}${customerName ? ` | ${customerName}` : ""}`)
+      const connection = await device.connect({ params })
       callRef.current = connection
       setStatus("Calling")
       connection.on("ringing", () => { console.info("Twilio call ringing", connection); setStatus("Ringing"); setDiagnostic(`Twilio reports ringing → ${destination}`) })
       connection.on("accept", () => { console.info("Twilio call accepted", connection); setStatus("Connected"); setDiagnostic(`Call connected → ${destination}`) })
       connection.on("disconnect", () => {
         console.warn("Twilio call disconnected", connection)
-        const details = { state: connection?.status?.(), direction: connection?.direction, parameters: connection?.parameters, to: destination, identity }
+        const details = { state: connection?.status?.(), direction: connection?.direction, parameters: connection?.parameters, to: destination, identity, callContext }
         console.warn("TWILIO DISCONNECT DIAGNOSTIC", details)
-        setDiagnostic(`Call disconnected. State: ${details.state || "unknown"} | To: ${destination} | Identity: ${identity}`)
+        setDiagnostic(`Call disconnected. State: ${details.state || "unknown"} | To: ${destination}`)
         callRef.current = null
         setStatus("Ready")
         setMuted(false)
@@ -109,7 +118,7 @@ function PhoneDialer({ onClose }) {
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 20000, background: "rgba(0,0,0,0.38)", display: "flex", alignItems: "flex-end", justifyContent: "flex-end", padding: 24 }} onMouseDown={onClose}>
       <div onMouseDown={event => event.stopPropagation()} style={{ width: 340, maxWidth: "calc(100vw - 32px)", background: "#fff", borderRadius: 18, boxShadow: "0 20px 60px rgba(0,0,0,.25)", overflow: "hidden" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", background: "#002d49", color: "#fff" }}><div><div style={{ fontSize: 16, fontWeight: 700 }}>Softphone</div><div style={{ fontSize: 11, opacity: .75 }}>Twilio</div></div><button type="button" onClick={onClose} aria-label="Close" style={{ border: 0, background: "transparent", color: "#fff", cursor: "pointer" }}><X size={19} /></button></div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", background: "#002d49", color: "#fff" }}><div><div style={{ fontSize: 16, fontWeight: 700 }}>Softphone</div><div style={{ fontSize: 11, opacity: .75 }}>{customerName || "Twilio"}</div></div><button type="button" onClick={onClose} aria-label="Close" style={{ border: 0, background: "transparent", color: "#fff", cursor: "pointer" }}><X size={19} /></button></div>
         <div style={{ padding: 18 }}>
           <div style={{ border: "1px solid #e4e9ee", borderRadius: 12, padding: "12px 14px", marginBottom: 14, background: "#f8fafc" }}><div style={{ fontSize: 11, color: "#7a8792", marginBottom: 5 }}>Number</div><div style={{ minHeight: 30, fontSize: 25, fontWeight: 600, letterSpacing: 1, color: "#17324d", textAlign: "center" }}>{number || "Enter number"}</div><div style={{ textAlign: "center", fontSize: 11, color: status === "Error" ? "#c0392b" : "#7a8792", marginTop: 5 }}>{status}</div></div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 9 }}>{keys.map(key => <button key={key} type="button" onClick={() => appendDigit(key)} style={{ height: 50, borderRadius: 10, border: "1px solid #e1e7ec", background: "#fff", fontSize: 19, color: "#17324d", cursor: "pointer" }}>{key}</button>)}<button type="button" onClick={appendPlus} aria-label="Plus" style={{ height: 50, borderRadius: 10, border: "1px solid #e1e7ec", background: "#fff", fontSize: 19, color: "#17324d", cursor: "pointer" }}>+</button></div>
