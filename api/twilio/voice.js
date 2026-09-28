@@ -11,11 +11,9 @@ function getParam(req, ...names) {
   const body = req.body || {}
   const query = req.query || {}
   let parsedBody = body
-
   if (typeof body === "string") {
     try { parsedBody = Object.fromEntries(new URLSearchParams(body)) } catch { parsedBody = {} }
   }
-
   for (const name of names) {
     const lower = name.toLowerCase()
     const value = parsedBody?.[name] ?? parsedBody?.[lower] ?? query?.[name] ?? query?.[lower]
@@ -24,8 +22,21 @@ function getParam(req, ...names) {
   return null
 }
 
+function normaliseIdentity(value) {
+  const raw = String(value || "").trim()
+  if (!raw) return null
+  // The Access Token prefixes the CRM identity with crm_ and replaces UUID
+  // hyphens with underscores because Twilio identities cannot contain '-'.
+  const withoutPrefix = raw.startsWith("crm_") ? raw.slice(4) : raw
+  if (/^[0-9a-fA-F]{8}_[0-9a-fA-F]{4}_[0-9a-fA-F]{4}_[0-9a-fA-F]{4}_[0-9a-fA-F]{12}$/.test(withoutPrefix)) {
+    return withoutPrefix.replace(/_/g, "-").toLowerCase()
+  }
+  return raw
+}
+
 async function getProfilePhone(identity) {
-  if (!identity) return null
+  const authUserId = normaliseIdentity(identity)
+  if (!authUserId) return null
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -34,22 +45,29 @@ async function getProfilePhone(identity) {
     return null
   }
 
-  const response = await fetch(`${url}/rest/v1/profiles?select=twilio_phone_number&auth_user_id=eq.${encodeURIComponent(identity)}&limit=1`, {
-    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
-  })
+  const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
 
-  if (!response.ok) {
-    console.error("Twilio voice: failed to load profile", response.status)
-    return null
+  // profiles.auth_user_id is the primary link to the Supabase Auth user.
+  const authResponse = await fetch(`${url}/rest/v1/profiles?select=twilio_phone_number&auth_user_id=eq.${encodeURIComponent(authUserId)}&limit=1`, { headers })
+  if (authResponse.ok) {
+    const rows = await authResponse.json()
+    const phone = rows?.[0]?.twilio_phone_number
+    if (phone) return phone
+  } else {
+    console.error("Twilio voice: auth_user_id lookup failed", authResponse.status)
   }
 
-  const rows = await response.json()
+  // Backwards-compatible fallback if an older profile uses id for the auth UUID.
+  const idResponse = await fetch(`${url}/rest/v1/profiles?select=twilio_phone_number&id=eq.${encodeURIComponent(authUserId)}&limit=1`, { headers })
+  if (!idResponse.ok) {
+    console.error("Twilio voice: id lookup failed", idResponse.status)
+    return null
+  }
+  const rows = await idResponse.json()
   return rows?.[0]?.twilio_phone_number || null
 }
 
 function xmlResponse(res, status, xml) {
-  // Use the native Node/Vercel response API here. This avoids Express-only
-  // helpers such as res.type(), which caused the Twilio webhook to return 500.
   res.statusCode = status
   res.setHeader("Content-Type", "text/xml; charset=utf-8")
   res.setHeader("Cache-Control", "no-store")
@@ -58,23 +76,18 @@ function xmlResponse(res, status, xml) {
 
 export default async function handler(req, res) {
   try {
-    if (req.method === "GET") {
-      return xmlResponse(res, 200, "<Response><Say>Twilio voice endpoint is reachable.</Say></Response>")
-    }
+    if (req.method === "GET") return xmlResponse(res, 200, "<Response><Say>Twilio voice endpoint is reachable.</Say></Response>")
+    if (req.method !== "POST") return xmlResponse(res, 405, "<Response><Say>Method not allowed.</Say></Response>")
 
-    if (req.method !== "POST") {
-      return xmlResponse(res, 405, "<Response><Say>Method not allowed.</Say></Response>")
-    }
-
-    // Use custom parameter names for our CRM values so we do not depend on
-    // Twilio's own To/From/Identity request fields being populated.
     const to = getParam(req, "CrmTo", "ToNumber", "To")
     const identity = getParam(req, "CrmIdentity", "Identity")
+    const normalisedIdentity = normaliseIdentity(identity)
     const from = await getProfilePhone(identity)
 
     console.log("Twilio voice request", {
       to,
       identity,
+      normalisedIdentity,
       from,
       caller: getParam(req, "From"),
       twilioTo: getParam(req, "To"),
