@@ -53,6 +53,52 @@ async function logEvent(supabaseUrl, serviceRoleKey, values) {
   }
 }
 
+async function getDealFields(pipedriveToken) {
+  const response = await fetch(`https://api.pipedrive.com/api/v2/dealFields?limit=500&api_token=${encodeURIComponent(pipedriveToken)}`, {
+    headers: { Accept: "application/json" },
+  })
+  const json = await response.json().catch(() => ({}))
+  if (!response.ok || !json?.success) return {}
+
+  const fields = Array.isArray(json.data) ? json.data : []
+  const result = {}
+  for (const field of fields) {
+    const name = String(field?.name || "").trim().toLowerCase()
+    if (name === "installation: start date") result.installationStartDateKey = field.key
+    if (name === "installation: fit team") result.fitTeamKey = field.key
+  }
+  return result
+}
+
+function getCustomFieldValue(deal, key) {
+  if (!key) return null
+  const customFields = deal?.custom_fields || {}
+  return customFields[key] ?? deal?.[key] ?? null
+}
+
+function normaliseDate(value) {
+  if (value === null || value === undefined || value === "") return null
+  const text = String(value).trim()
+  if (!text) return null
+
+  // Keep a date-only value as YYYY-MM-DD. For an ISO timestamp, use its date portion.
+  const isoMatch = text.match(/^(\d{4}-\d{2}-\d{2})/)
+  if (isoMatch) return isoMatch[1]
+
+  const parsed = new Date(text)
+  if (Number.isNaN(parsed.getTime())) return null
+  return parsed.toISOString().slice(0, 10)
+}
+
+function normaliseFitTeam(value) {
+  if (value === null || value === undefined) return null
+  if (typeof value === "object") {
+    if (Array.isArray(value)) return value.map((item) => String(item?.label ?? item?.name ?? item?.value ?? item)).filter(Boolean).join(", ") || null
+    return String(value.label ?? value.name ?? value.value ?? "").trim() || null
+  }
+  return String(value).trim() || null
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return send(res, 405, { success: false, error: "Method not allowed" })
 
@@ -89,6 +135,13 @@ export default async function handler(req, res) {
     }
 
     const deal = dealJson.data || {}
+
+    // Resolve the two Pipedrive custom fields by their human-readable field names.
+    const fieldKeys = await getDealFields(pipedriveToken)
+    const installationStartDate = normaliseDate(getCustomFieldValue(deal, fieldKeys.installationStartDateKey))
+    const fitTeam1 = normaliseFitTeam(getCustomFieldValue(deal, fieldKeys.fitTeamKey))
+    const pipedriveStage = String(deal?.stage_name || deal?.stage?.name || "").trim() || null
+
     const personId = deal?.person_id?.value ?? deal?.person_id ?? null
     let customerName = ""
     if (personId) {
@@ -98,31 +151,43 @@ export default async function handler(req, res) {
     }
     if (!customerName) customerName = String(deal?.person_name || deal?.person?.name || "").trim()
 
-    if (!customerName) {
-      await logEvent(supabaseUrl, serviceRoleKey, { ...baseLog, status: "ignored", httpStatus: 200, result: { reason: "Deal has no customer/person name", dealId }, processedAt: new Date().toISOString() })
-      return send(res, 200, { success: true, updated: false, reason: "Deal has no customer/person name" })
-    }
-
-    const lookup = await fetch(`${supabaseUrl}/rest/v1/deals?pipedrive_deal_id=eq.${encodeURIComponent(dealId)}&select=id,pipedrive_deal_id,customer_name`, { headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, Accept: "application/json" } })
+    const lookup = await fetch(`${supabaseUrl}/rest/v1/deals?pipedrive_deal_id=eq.${encodeURIComponent(dealId)}&select=id,pipedrive_deal_id,customer_name,installation_start_date,fit_team_1,pipedrive_stage`, {
+      headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, Accept: "application/json" },
+    })
     const existingDeals = await lookup.json().catch(() => [])
     if (!lookup.ok || !Array.isArray(existingDeals) || !existingDeals.length) {
-      await logEvent(supabaseUrl, serviceRoleKey, { ...baseLog, status: "ignored", httpStatus: 200, result: { reason: "No matching CRM deal", dealId, customerName }, processedAt: new Date().toISOString() })
-      return send(res, 200, { success: true, updated: false, reason: "No matching CRM deal", dealId, customerName })
+      await logEvent(supabaseUrl, serviceRoleKey, { ...baseLog, status: "ignored", httpStatus: 200, result: { reason: "No matching CRM deal", dealId, customerName, installationStartDate, fitTeam1, pipedriveStage }, processedAt: new Date().toISOString() })
+      return send(res, 200, { success: true, updated: false, reason: "No matching CRM deal", dealId })
+    }
+
+    const updatePayload = {
+      ...(customerName ? { customer_name: customerName } : {}),
+      installation_start_date: installationStartDate,
+      fit_team_1: fitTeam1,
+      pipedrive_stage: pipedriveStage,
     }
 
     const updateResponse = await fetch(`${supabaseUrl}/rest/v1/deals?pipedrive_deal_id=eq.${encodeURIComponent(dealId)}`, {
       method: "PATCH",
       headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, "Content-Type": "application/json", Prefer: "return=representation" },
-      body: JSON.stringify({ customer_name: customerName }),
+      body: JSON.stringify(updatePayload),
     })
     const updated = await updateResponse.json().catch(() => [])
     if (!updateResponse.ok) {
       const message = Array.isArray(updated) ? "CRM deal update failed." : String(updated?.message || updated?.error || "CRM deal update failed.")
-      await logEvent(supabaseUrl, serviceRoleKey, { ...baseLog, status: "failed", httpStatus: updateResponse.status, errorMessage: message, result: { dealId, customerName }, processedAt: new Date().toISOString() })
+      await logEvent(supabaseUrl, serviceRoleKey, { ...baseLog, status: "failed", httpStatus: updateResponse.status, errorMessage: message, result: { dealId, updatePayload }, processedAt: new Date().toISOString() })
       return send(res, 500, { success: false, error: message })
     }
 
-    const result = { dealId, customerName, updatedRows: Array.isArray(updated) ? updated.length : 0, receivedAt }
+    const result = {
+      dealId,
+      customerName: customerName || null,
+      installationStartDate,
+      fitTeam1,
+      pipedriveStage,
+      updatedRows: Array.isArray(updated) ? updated.length : 0,
+      receivedAt,
+    }
     await logEvent(supabaseUrl, serviceRoleKey, { ...baseLog, status: "success", httpStatus: 200, result, processedAt: new Date().toISOString() })
     return send(res, 200, { success: true, ...result })
   } catch (error) {
