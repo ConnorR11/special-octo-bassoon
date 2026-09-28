@@ -77,23 +77,37 @@ function getCustomFieldValue(deal, key) {
   return deal?.[key] ?? null
 }
 
-function normaliseDate(value) {
-  if (value === null || value === undefined || value === "") return null
-
-  // Pipedrive can return some custom-field values as an object. Prefer the
-  // underlying value before converting it to a date.
-  if (typeof value === "object") {
-    if (Array.isArray(value)) return normaliseDate(value[0])
-    value = value.value ?? value.date ?? value.label ?? value.name ?? null
+function unwrapValue(value) {
+  let current = value
+  for (let i = 0; i < 5; i += 1) {
+    if (current === null || current === undefined) return null
+    if (typeof current !== "object" || Array.isArray(current)) return current
+    if (Object.prototype.hasOwnProperty.call(current, "value")) {
+      current = current.value
+      continue
+    }
+    if (Object.prototype.hasOwnProperty.call(current, "date")) {
+      current = current.date
+      continue
+    }
+    if (Object.prototype.hasOwnProperty.call(current, "start_date")) {
+      current = current.start_date
+      continue
+    }
+    return current
   }
+  return current
+}
 
-  if (value === null || value === undefined || value === "") return null
-  const text = String(value).trim()
+function normaliseDate(value) {
+  const unwrapped = unwrapValue(value)
+  if (unwrapped === null || unwrapped === undefined || unwrapped === "") return null
+  const text = String(unwrapped).trim()
   if (!text) return null
-
   const isoMatch = text.match(/^(\d{4}-\d{2}-\d{2})/)
   if (isoMatch) return isoMatch[1]
-
+  const ukMatch = text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+  if (ukMatch) return `${ukMatch[3]}-${ukMatch[2].padStart(2, "0")}-${ukMatch[1].padStart(2, "0")}`
   const parsed = new Date(text)
   if (Number.isNaN(parsed.getTime())) return null
   return parsed.toISOString().slice(0, 10)
@@ -180,7 +194,8 @@ export default async function handler(req, res) {
     }
 
     const deal = dealJson.data || {}
-    const installationStartDate = normaliseDate(getCustomFieldValue(deal, fields.installationStartDate?.key))
+    const rawInstallationStartDate = getCustomFieldValue(deal, fields.installationStartDate?.key)
+    const installationStartDate = normaliseDate(rawInstallationStartDate)
     const fitTeam1 = normaliseFitTeam(getCustomFieldValue(deal, fields.fitTeam?.key), fields.fitTeam)
     const pipedriveStage = await getStageName(pipedriveToken, deal?.stage_id) || String(deal?.stage_name || deal?.stage?.name || "").trim() || null
 
