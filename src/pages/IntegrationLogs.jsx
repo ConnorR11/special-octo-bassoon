@@ -1,5 +1,5 @@
 import React from "react"
-import { Menu, ChevronDown, ChevronRight } from "lucide-react"
+import { Menu, ChevronDown, ChevronRight, Search, X } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
 export default function IntegrationLogs({ setMobile }) {
@@ -7,20 +7,73 @@ export default function IntegrationLogs({ setMobile }) {
   const [loading, setLoading] = React.useState(true)
   const [status, setStatus] = React.useState("all")
   const [provider, setProvider] = React.useState("all")
+  const [searchInput, setSearchInput] = React.useState("")
+  const [search, setSearch] = React.useState("")
+  const [dateFrom, setDateFrom] = React.useState("")
+  const [dateTo, setDateTo] = React.useState("")
+  const [page, setPage] = React.useState(1)
+  const [totalRows, setTotalRows] = React.useState(0)
+  const [providerOptions, setProviderOptions] = React.useState([])
   const [expandedId, setExpandedId] = React.useState(null)
   const [runStats, setRunStats] = React.useState({ total: 0, success: 0, failed: 0, received: 0, ignored: 0 })
   const [chartLogs, setChartLogs] = React.useState([])
+  const pageSize = 50
 
-  React.useEffect(() => { loadLogs() }, [status, provider])
-  React.useEffect(() => { loadStats(); loadChartLogs() }, [provider])
+  React.useEffect(() => { loadProviders() }, [])
+  React.useEffect(() => { setPage(1) }, [status, provider, search, dateFrom, dateTo])
+  React.useEffect(() => { loadLogs(); loadStats(); loadChartLogs() }, [status, provider, search, dateFrom, dateTo, page])
+
+  function escapeSearch(value) {
+    return value.replace(/[(),]/g, " ").trim()
+  }
+
+  function applyCommonFilters(q, includeStatus = false) {
+    if (includeStatus && status !== "all") q = q.eq("status", status)
+    if (provider !== "all") q = q.eq("provider", provider)
+    if (dateFrom) q = q.gte("received_at", new Date(`${dateFrom}T00:00:00`).toISOString())
+    if (dateTo) {
+      const end = new Date(`${dateTo}T00:00:00`)
+      end.setDate(end.getDate() + 1)
+      q = q.lt("received_at", end.toISOString())
+    }
+    if (search.trim()) {
+      const term = escapeSearch(search.trim())
+      if (term) q = q.or([
+        `provider.ilike.%${term}%`,
+        `integration_name.ilike.%${term}%`,
+        `direction.ilike.%${term}%`,
+        `event_name.ilike.%${term}%`,
+        `event_type.ilike.%${term}%`,
+        `external_id.ilike.%${term}%`,
+        `error_message.ilike.%${term}%`
+      ].join(","))
+    }
+    return q
+  }
+
+  async function loadProviders() {
+    const { data, error } = await supabase
+      .from("integration_event_logs")
+      .select("provider")
+      .not("provider", "is", null)
+      .limit(1000)
+    if (!error) setProviderOptions([...new Set((data || []).map((row) => row.provider).filter(Boolean))].sort())
+  }
 
   async function loadLogs() {
     setLoading(true)
-    let q = supabase.from("integration_event_logs").select("*").order("received_at", { ascending: false }).limit(200)
-    if (status !== "all") q = q.eq("status", status)
-    if (provider !== "all") q = q.eq("provider", provider)
-    const { data, error } = await q
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+    let q = supabase
+      .from("integration_event_logs")
+      .select("*", { count: "exact" })
+      .order("received_at", { ascending: false })
+      .range(from, to)
+    q = applyCommonFilters(q, true)
+    const { data, error, count } = await q
     setLogs(error ? [] : (data || []))
+    setTotalRows(error ? 0 : (count || 0))
+    setExpandedId(null)
     setLoading(false)
   }
 
@@ -29,6 +82,24 @@ export default function IntegrationLogs({ setMobile }) {
       let q = supabase.from("integration_event_logs").select("id", { count: "exact", head: true })
       if (s) q = q.eq("status", s)
       if (provider !== "all") q = q.eq("provider", provider)
+      if (dateFrom) q = q.gte("received_at", new Date(`${dateFrom}T00:00:00`).toISOString())
+      if (dateTo) {
+        const end = new Date(`${dateTo}T00:00:00`)
+        end.setDate(end.getDate() + 1)
+        q = q.lt("received_at", end.toISOString())
+      }
+      if (search.trim()) {
+        const term = escapeSearch(search.trim())
+        if (term) q = q.or([
+          `provider.ilike.%${term}%`,
+          `integration_name.ilike.%${term}%`,
+          `direction.ilike.%${term}%`,
+          `event_name.ilike.%${term}%`,
+          `event_type.ilike.%${term}%`,
+          `external_id.ilike.%${term}%`,
+          `error_message.ilike.%${term}%`
+        ].join(","))
+      }
       return q
     }
     const [total, success, failed, received, ignored] = await Promise.all([
@@ -46,11 +117,18 @@ export default function IntegrationLogs({ setMobile }) {
   async function loadChartLogs() {
     let q = supabase.from("integration_event_logs").select("received_at,status,provider").order("received_at", { ascending: true })
     if (provider !== "all") q = q.eq("provider", provider)
+    if (dateFrom) q = q.gte("received_at", new Date(`${dateFrom}T00:00:00`).toISOString())
+    if (dateTo) {
+      const end = new Date(`${dateTo}T00:00:00`)
+      end.setDate(end.getDate() + 1)
+      q = q.lt("received_at", end.toISOString())
+    }
     const { data, error } = await q
     setChartLogs(error ? [] : (data || []))
   }
 
-  const providers = [...new Set(logs.map((l) => l.provider).filter(Boolean))]
+  const providers = providerOptions
+  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize))
   const successRate = runStats.total ? (runStats.success / runStats.total) * 100 : 0
 
   const dailyData = React.useMemo(() => {
@@ -96,16 +174,17 @@ export default function IntegrationLogs({ setMobile }) {
       .integration-logs-container{max-width:1500px;margin:auto}
       .integration-logs-mobile-menu{display:none;position:fixed;top:12px;left:12px;z-index:1100;width:44px;height:44px;border:1px solid #d0d5dd;border-radius:9px;background:#fff;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.12)}
       .integration-logs-header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:24px}
-      .integration-logs-refresh,.integration-logs-select{padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;background:#fff}
+      .integration-logs-refresh,.integration-logs-select,.integration-logs-date,.integration-logs-search-input{padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;background:#fff}
+      .integration-logs-search{display:flex;gap:8px;align-items:center}.integration-logs-search-input{min-width:250px}.integration-logs-search-button{display:inline-flex;align-items:center;gap:6px;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;background:#fff;cursor:pointer}.integration-logs-clear{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid #d0d5dd;border-radius:8px;background:#fff;cursor:pointer}
       .integration-logs-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
       .integration-logs-stat,.integration-logs-chart-card,.integration-logs-table-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px}
       .integration-logs-stat-value{margin-top:6px;font-size:26px;font-weight:700}.integration-logs-stat-label{font-size:13px;color:#667085}.integration-logs-stat-sub{font-size:12px;color:#667085;margin-top:4px}.integration-logs-chart-card{margin-bottom:20px}
       .run-chart-wrap{width:100%;overflow-x:auto}.run-chart-svg{display:block;width:100%;min-width:680px}.run-chart-grid{stroke:#eaecf0;stroke-width:1}.run-chart-axis{fill:#667085;font-size:12px}.run-volume-fill{fill:#175cd3;fill-opacity:.13}.run-volume-line{fill:none;stroke:#175cd3;stroke-width:2.5}.run-rate-line{fill:none;stroke:#12b76a;stroke-width:3}.run-chart-dot{stroke:#fff;stroke-width:1.5}.run-chart-legend{display:flex;gap:20px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:#475467}.legend-item{display:flex;align-items:center;gap:7px}.legend-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
-      .integration-logs-table-header{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}.integration-logs-filters{display:flex;gap:8px}.integration-logs-table-wrap{overflow-x:auto}.integration-logs-table{width:100%;min-width:950px;border-collapse:collapse}.integration-logs-table th,.integration-logs-table td{text-align:left;padding:10px;border-bottom:1px solid #eee;font-size:13px;white-space:nowrap}.integration-logs-table th{font-size:12px;color:#667085}
+      .integration-logs-table-header{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}.integration-logs-filters{display:flex;gap:8px;flex-wrap:wrap}.integration-logs-table-wrap{overflow-x:auto}.integration-logs-table{width:100%;min-width:950px;border-collapse:collapse}.integration-logs-table th,.integration-logs-table td{text-align:left;padding:10px;border-bottom:1px solid #eee;font-size:13px;white-space:nowrap}.integration-logs-table th{font-size:12px;color:#667085}
       .integration-logs-row{cursor:pointer;transition:background .15s}.integration-logs-row:hover{background:#f8fafc}.integration-logs-row.expanded{background:#f8fafc}.integration-logs-chevron{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;margin-right:4px;color:#667085;vertical-align:middle}
-      .integration-logs-detail-row td{padding:0 12px 16px 42px;background:#f8fafc;border-bottom:1px solid #e5e7eb;white-space:normal}.integration-logs-detail{display:grid;grid-template-columns:minmax(180px,1fr) minmax(180px,1fr);gap:14px;padding-top:4px}.integration-logs-detail-card{background:#fff;border:1px solid #e4e7ec;border-radius:9px;padding:12px}.integration-logs-detail-card.full{grid-column:1/-1}.integration-logs-detail-label{font-size:11px;font-weight:700;color:#667085;text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px}.integration-logs-detail-value{font-size:12px;color:#344054}.integration-logs-json{margin:0;padding:12px;background:#101828;color:#d0d5dd;border-radius:7px;font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;white-space:pre-wrap;word-break:break-word;max-height:360px;overflow:auto}.integration-logs-error{color:#b42318}.integration-logs-empty{padding:50px;text-align:center;color:#667085}
+      .integration-logs-detail-row td{padding:0 12px 16px 42px;background:#f8fafc;border-bottom:1px solid #e5e7eb;white-space:normal}.integration-logs-detail{display:grid;grid-template-columns:minmax(180px,1fr) minmax(180px,1fr);gap:14px;padding-top:4px}.integration-logs-detail-card{background:#fff;border:1px solid #e4e7ec;border-radius:9px;padding:12px}.integration-logs-detail-card.full{grid-column:1/-1}.integration-logs-detail-label{font-size:11px;font-weight:700;color:#667085;text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px}.integration-logs-detail-value{font-size:12px;color:#344054}.integration-logs-json{margin:0;padding:12px;background:#101828;color:#d0d5dd;border-radius:7px;font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;white-space:pre-wrap;word-break:break-word;max-height:360px;overflow:auto}.integration-logs-error{color:#b42318}.integration-logs-empty{padding:50px;text-align:center;color:#667085}.integration-logs-pagination{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid #eee;color:#667085;font-size:12px}.integration-logs-pagination-actions{display:flex;align-items:center;gap:10px}.integration-logs-page-button{padding:8px 12px;border:1px solid #d0d5dd;border-radius:8px;background:#fff;color:#344054;cursor:pointer}.integration-logs-page-button:disabled{opacity:.45;cursor:not-allowed}
       @media(max-width:900px){.integration-logs-page{padding:20px}.integration-logs-mobile-menu{display:flex}.integration-logs-header{padding-left:58px;flex-direction:column}.integration-logs-stats{grid-template-columns:repeat(2,1fr)}.integration-logs-detail{grid-template-columns:1fr}}
-      @media(max-width:600px){.integration-logs-page{padding:14px}.integration-logs-header{padding-left:56px}.integration-logs-stats{gap:10px}.integration-logs-stat{padding:14px}.integration-logs-chart-card,.integration-logs-table-card{padding:14px}.integration-logs-filters{display:grid;grid-template-columns:1fr 1fr;width:100%}.integration-logs-select{width:100%}.integration-logs-detail-row td{padding-left:16px}}
+      @media(max-width:600px){.integration-logs-page{padding:14px}.integration-logs-header{padding-left:56px}.integration-logs-stats{gap:10px}.integration-logs-stat{padding:14px}.integration-logs-chart-card,.integration-logs-table-card{padding:14px}.integration-logs-filters{display:grid;grid-template-columns:1fr 1fr;width:100%}.integration-logs-search{grid-column:1/-1}.integration-logs-search-input{min-width:0;flex:1}.integration-logs-select,.integration-logs-date{width:100%}.integration-logs-detail-row td{padding-left:16px}.integration-logs-pagination{align-items:flex-start;flex-direction:column}}
     `}</style>
 
     {setMobile && <button className="integration-logs-mobile-menu" onClick={() => setMobile((v) => !v)} aria-label="Open menu"><Menu size={22}/></button>}
@@ -113,7 +192,7 @@ export default function IntegrationLogs({ setMobile }) {
     <div className="integration-logs-container">
       <div className="integration-logs-header">
         <div><div style={{fontSize:12,fontWeight:700,color:"#667085",letterSpacing:1}}>ADMINISTRATION</div><h1 style={{margin:"5px 0 0",fontSize:28}}>API & Webhooks</h1><p style={{margin:"6px 0 0",color:"#667085"}}>Monitor API calls and webhook events across CRM integrations.</p></div>
-        <button className="integration-logs-refresh" onClick={() => { loadLogs(); loadStats(); loadChartLogs() }}>Refresh</button>
+        <button className="integration-logs-refresh" onClick={() => { loadProviders(); loadLogs(); loadStats(); loadChartLogs() }}>Refresh</button>
       </div>
 
       <div className="integration-logs-stats"><Stat title="Total Runs" value={runStats.total.toLocaleString("en-GB")}/><Stat title="Successful" value={runStats.success.toLocaleString("en-GB")}/><Stat title="Failed" value={runStats.failed.toLocaleString("en-GB")}/><Stat title="Success Rate" value={`${successRate.toFixed(1)}%`} subtitle={`${runStats.received.toLocaleString("en-GB")} processing · ${runStats.ignored.toLocaleString("en-GB")} ignored`}/></div>
@@ -124,7 +203,20 @@ export default function IntegrationLogs({ setMobile }) {
       </div>
 
       <div className="integration-logs-table-card">
-        <div className="integration-logs-table-header"><div><h2 style={{margin:0,fontSize:18}}>Integration Activity</h2><p style={{margin:"4px 0 0",color:"#667085",fontSize:13}}>Latest inbound and outbound integration events. Click a run to inspect its details.</p></div><div className="integration-logs-filters"><select value={provider} onChange={e=>setProvider(e.target.value)} className="integration-logs-select"><option value="all">All Providers</option>{providers.map(p=><option key={p} value={p}>{p}</option>)}</select><select value={status} onChange={e=>setStatus(e.target.value)} className="integration-logs-select"><option value="all">All Statuses</option><option value="success">Success</option><option value="failed">Failed</option><option value="received">Processing</option><option value="ignored">Ignored</option></select></div></div>
+        <div className="integration-logs-table-header">
+          <div><h2 style={{margin:0,fontSize:18}}>Integration Activity</h2><p style={{margin:"4px 0 0",color:"#667085",fontSize:13}}>Latest inbound and outbound integration events. Click a run to inspect its details.</p></div>
+          <div className="integration-logs-filters">
+            <div className="integration-logs-search">
+              <input value={searchInput} onChange={e=>setSearchInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){setSearch(searchInput);setPage(1)}}} className="integration-logs-search-input" placeholder="Search integration activity…" aria-label="Search integration activity"/>
+              <button type="button" className="integration-logs-search-button" onClick={()=>{setSearch(searchInput);setPage(1)}}><Search size={15}/>Search</button>
+              {searchInput && <button type="button" className="integration-logs-clear" onClick={()=>{setSearchInput("");setSearch("");setPage(1)}} aria-label="Clear search"><X size={15}/></button>}
+            </div>
+            <input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} className="integration-logs-date" aria-label="From date" title="From date"/>
+            <input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} className="integration-logs-date" aria-label="To date" title="To date"/>
+            <select value={provider} onChange={e=>setProvider(e.target.value)} className="integration-logs-select"><option value="all">All Providers</option>{providers.map(p=><option key={p} value={p}>{p}</option>)}</select>
+            <select value={status} onChange={e=>setStatus(e.target.value)} className="integration-logs-select"><option value="all">All Statuses</option><option value="success">Success</option><option value="failed">Failed</option><option value="received">Processing</option><option value="ignored">Ignored</option></select>
+          </div>
+        </div>
 
         {loading ? <div className="integration-logs-empty">Loading integration activity…</div> : !logs.length ? <div className="integration-logs-empty">No integration events found.</div> : <div className="integration-logs-table-wrap"><table className="integration-logs-table"><thead><tr><th></th>{["Time","Provider","Integration","Direction","Event","External ID","Status","HTTP"].map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{logs.map(log => {
           const expanded = expandedId === log.id
@@ -136,6 +228,14 @@ export default function IntegrationLogs({ setMobile }) {
             {expanded && <tr className="integration-logs-detail-row"><td colSpan={9}><RunDetails log={log}/></td></tr>}
           </React.Fragment>
         })}</tbody></table></div>}
+        <div className="integration-logs-pagination">
+          <div>{totalRows ? `Showing ${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, totalRows)} of ${totalRows.toLocaleString("en-GB")}` : "0 results"}</div>
+          <div className="integration-logs-pagination-actions">
+            <button type="button" className="integration-logs-page-button" disabled={page <= 1 || loading} onClick={()=>setPage(p=>Math.max(1,p-1))}>Previous</button>
+            <span>Page {page} of {totalPages}</span>
+            <button type="button" className="integration-logs-page-button" disabled={page >= totalPages || loading} onClick={()=>setPage(p=>Math.min(totalPages,p+1))}>Next</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
