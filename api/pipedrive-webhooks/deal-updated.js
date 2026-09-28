@@ -14,6 +14,20 @@ async function readBody(req) {
   try { return JSON.parse(raw || "{}") } catch { return {} }
 }
 
+function validBasicAuth(req, username, password) {
+  if (!username || !password) return true
+  const header = String(getHeader(req, "authorization") || "")
+  if (!header.toLowerCase().startsWith("basic ")) return false
+  try {
+    const decoded = Buffer.from(header.slice(6), "base64").toString("utf8")
+    const separator = decoded.indexOf(":")
+    if (separator < 0) return false
+    return decoded.slice(0, separator) === username && decoded.slice(separator + 1) === password
+  } catch {
+    return false
+  }
+}
+
 async function logEvent(supabaseUrl, serviceRoleKey, values) {
   try {
     await fetch(`${supabaseUrl}/rest/v1/integration_event_logs`, {
@@ -50,15 +64,16 @@ export default async function handler(req, res) {
   const supabaseUrl = String(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "").trim()
   const serviceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim()
   const pipedriveToken = String(process.env.PIPEDRIVE_API_TOKEN || "").trim()
-  const webhookSecret = String(process.env.PIPEDRIVE_WEBHOOK_SECRET || "").trim()
+  const webhookUsername = String(process.env.PIPEDRIVE_WEBHOOK_USERNAME || "").trim()
+  const webhookPassword = String(process.env.PIPEDRIVE_WEBHOOK_PASSWORD || "").trim()
 
   if (!supabaseUrl || !serviceRoleKey || !pipedriveToken) {
     return send(res, 500, { success: false, error: "Pipedrive integration environment variables are not configured." })
   }
 
-  if (webhookSecret) {
-    const suppliedSecret = String(req.query?.secret || getHeader(req, "x-pipedrive-webhook-secret") || "").trim()
-    if (!suppliedSecret || suppliedSecret !== webhookSecret) return send(res, 401, { success: false, error: "Invalid webhook secret." })
+  if (!validBasicAuth(req, webhookUsername, webhookPassword)) {
+    res.setHeader("WWW-Authenticate", 'Basic realm="Pipedrive Webhook"')
+    return send(res, 401, { success: false, error: "Invalid webhook credentials." })
   }
 
   const body = await readBody(req)
