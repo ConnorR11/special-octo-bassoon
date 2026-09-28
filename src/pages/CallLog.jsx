@@ -56,7 +56,7 @@ function CallLog({ onClose }) {
     try {
       const { data, error: queryError } = await supabase
         .from("call_logs")
-        .select("*, deals:deal_id(customer_name, contract_number, pipedrive_deal_id)")
+        .select("*, deals:entity_id(customer_name, contract_number, pipedrive_deal_id)")
         .order("started_at", { ascending: false })
         .limit(250)
       if (queryError) throw queryError
