@@ -127,7 +127,7 @@ export default function IntegrationLogs({ setMobile }) {
     setChartLogs(error ? [] : (data || []))
   }
 
-  const providers = providerOptions
+  const providers = Array.isArray(providerOptions) ? providerOptions : []
   const totalPages = Math.max(1, Math.ceil(totalRows / pageSize))
   const successRate = runStats.total ? (runStats.success / runStats.total) * 100 : 0
 
@@ -150,7 +150,7 @@ export default function IntegrationLogs({ setMobile }) {
   }, [chartLogs])
 
   const chart = React.useMemo(() => {
-    if (!dailyData.length) return null
+    if (!Array.isArray(dailyData) || !dailyData.length) return null
     const width = 1000, height = 360, left = 62, right = 62, top = 28, bottom = 52
     const plotW = width - left - right, plotH = height - top - bottom
     const maxRuns = Math.max(1, ...dailyData.map((d) => d.total))
@@ -218,7 +218,7 @@ export default function IntegrationLogs({ setMobile }) {
           </div>
         </div>
 
-        {loading ? <div className="integration-logs-empty">Loading integration activity…</div> : !logs.length ? <div className="integration-logs-empty">No integration events found.</div> : <div className="integration-logs-table-wrap"><table className="integration-logs-table"><thead><tr><th></th>{["Time","Provider","Integration","Direction","Event","External ID","Status","HTTP"].map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{logs.map(log => {
+        {loading ? <div className="integration-logs-empty">Loading integration activity…</div> : !(Array.isArray(logs) && logs.length) ? <div className="integration-logs-empty">No integration events found.</div> : <div className="integration-logs-table-wrap"><table className="integration-logs-table"><thead><tr><th></th>{["Time","Provider","Integration","Direction","Event","External ID","Status","HTTP"].map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{(Array.isArray(logs) ? logs : []).map(log => {
           const expanded = expandedId === log.id
           return <React.Fragment key={log.id}>
             <tr className={`integration-logs-row ${expanded ? "expanded" : ""}`} onClick={() => toggleRow(log.id)} aria-expanded={expanded}>
