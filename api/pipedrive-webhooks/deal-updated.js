@@ -66,6 +66,7 @@ const PIPEDRIVE_FIELDS = {
   adminFeeMethod: { name: "AF: Payment Method", key: null },
   adminFeePaidOutDate: { name: "Comms | Admin Paid Out Date", key: null },
   adminFeeReceivedDate: { name: "AF: Date Received", key: null },
+  salesperson: { name: "Sales Rep", key: null },
 }
 
 let fieldResolutionPromise = null
@@ -229,6 +230,7 @@ export default async function handler(req, res) {
     const adminFeeMethod = normaliseText(getCustomFieldValue(deal, fields.adminFeeMethod.key))
     const adminFeePaidOutDate = normaliseDate(getCustomFieldValue(deal, fields.adminFeePaidOutDate.key))
     const adminFeeReceivedDate = normaliseDate(getCustomFieldValue(deal, fields.adminFeeReceivedDate.key))
+    const salesperson = normaliseText(getCustomFieldValue(deal, fields.salesperson.key))
     const pipedriveStage = await getStageName(pipedriveToken, deal?.stage_id) || String(deal?.stage_name || deal?.stage?.name || "").trim() || null
     const personId = deal?.person_id?.value ?? deal?.person_id ?? null
     const customerName = await getPersonName(pipedriveToken, personId) || String(deal?.person_name || deal?.person?.name || "").trim() || null
@@ -247,6 +249,7 @@ export default async function handler(req, res) {
       "AF: Payment Method": adminFeeMethod,
       "Comms | Admin Paid Out Date": adminFeePaidOutDate,
       "AF: Date Received": adminFeeReceivedDate,
+      "Sales Rep": salesperson,
       "Stage": pipedriveStage,
     }
     const fieldCodes = Object.fromEntries(Object.entries(fields).map(([key, field]) => [field.name, field.key]))
@@ -255,7 +258,7 @@ export default async function handler(req, res) {
 
     // IMPORTANT: CRM records are matched ONLY by the Pipedrive deal ID.
     // Customer name is never used as a fallback or matching key.
-    const select = "id,pipedrive_deal_id,customer_name,installation_start_date,fit_team_1,installation_issues_fit_team,installations_issues_start_date,survey_costing,commission_paid_date,estimated_commission_due,admin_fee_amount,admin_fee_expected_date,admin_fee_method,admin_fee_paid_out_date,admin_fee_received_date,pipedrive_stage"
+    const select = "id,pipedrive_deal_id,customer_name,installation_start_date,fit_team_1,installation_issues_fit_team,installations_issues_start_date,survey_costing,commission_paid_date,estimated_commission_due,admin_fee_amount,admin_fee_expected_date,admin_fee_method,admin_fee_paid_out_date,admin_fee_received_date,pipedrive_stage,salesperson"
     const lookup = await fetch(`${supabaseUrl}/rest/v1/deals?pipedrive_deal_id=eq.${encodeURIComponent(dealId)}&select=${select}`, {
       headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, Accept: "application/json" },
     })
@@ -288,6 +291,7 @@ export default async function handler(req, res) {
           adminFeeMethod,
           adminFeePaidOutDate,
           adminFeeReceivedDate,
+          salesperson,
           pipedriveStage,
         },
         processedAt: new Date().toISOString(),
@@ -311,6 +315,7 @@ export default async function handler(req, res) {
       admin_fee_method: adminFeeMethod,
       admin_fee_paid_out_date: adminFeePaidOutDate,
       admin_fee_received_date: adminFeeReceivedDate,
+      salesperson,
       pipedrive_stage: pipedriveStage,
     }
 
@@ -343,6 +348,7 @@ export default async function handler(req, res) {
       adminFeeMethod,
       adminFeePaidOutDate,
       adminFeeReceivedDate,
+      salesperson,
       pipedriveStage,
       updatedRows: Array.isArray(updated) ? updated.length : 0,
       receivedAt,
