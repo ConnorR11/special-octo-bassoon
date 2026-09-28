@@ -29,7 +29,9 @@ async function getProfilePhone(identity) {
     return null
   }
 
-  const response = await fetch(`${url}/rest/v1/profiles?select=twilio_phone_number&id=eq.${encodeURIComponent(identity)}&limit=1`, {
+  // The CRM profiles table links the authenticated Supabase user through
+  // auth_user_id, not the profile's own id.
+  const response = await fetch(`${url}/rest/v1/profiles?select=twilio_phone_number&auth_user_id=eq.${encodeURIComponent(identity)}&limit=1`, {
     headers: {
       apikey: serviceKey,
       Authorization: `Bearer ${serviceKey}`,
@@ -54,8 +56,6 @@ function xmlResponse(res, status, xml) {
 
 export default async function handler(req, res) {
   try {
-    // Twilio may use POST for calls, while simple endpoint checks may use GET.
-    // Returning valid TwiML here confirms that the URL itself is reachable.
     if (req.method === "GET") {
       return xmlResponse(res, 200, "<Response><Say>Twilio voice endpoint is reachable.</Say></Response>")
     }
@@ -68,8 +68,10 @@ export default async function handler(req, res) {
     const identity = getParam(req, "Identity")
     const from = await getProfilePhone(identity)
 
+    console.log("Twilio voice request", { to, identity, from })
+
     if (!from) {
-      console.error("Twilio voice: no twilio_phone_number for identity", identity || "(missing)")
+      console.error("Twilio voice: no twilio_phone_number for auth user", identity || "(missing)")
       return xmlResponse(res, 200, "<Response><Say>No Twilio phone number is configured for this user.</Say></Response>")
     }
 
