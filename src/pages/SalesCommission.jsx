@@ -78,7 +78,7 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
     async function loadAdmin() {
       if (!supabase) return
       setAdminLoading(true)
-      const { data, error } = await supabase.from("deals").select("*").is("admin_fee_paid_out_date", null).not("pipedrive_stage", "in", "(Decline,Customer Cancelled)").gte("sale_date", "2025-01-01").order("admin_fee_received_date", { ascending: true })
+      const { data, error } = await supabase.from("deals").select("*").is("admin_fee_paid_out_date", null).not("pipedrive_stage", "in", "(Decline,Customer Cancelled,Returned To Sales,Awaiting Funds,On Hold)").gte("sale_date", "2025-01-01").order("admin_fee_received_date", { ascending: true })
       if (cancelled) return
       if (error) {
         console.error("Error loading admin fee deals:", error)
