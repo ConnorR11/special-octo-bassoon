@@ -35,15 +35,34 @@ async function getProfilePhone(identity) {
   if (idResponse.ok) { const rows = await idResponse.json(); const phone = normalisePhone(rows?.[0]?.twilio_phone_number); if (phone) return { phone, authUserId, profileFound: true, matchedBy: "id" } } else console.error("Twilio voice: id lookup failed", idResponse.status, await idResponse.text().catch(() => ""))
   return { phone: null, authUserId, profileFound: false, matchedBy: null, reason: "Profile not found or twilio_phone_number is empty" }
 }
-async function createCallLog({ userId, callSid, from, to }) {
+async function createCallLog({ userId, callSid, from, to, appointmentId, entityId, customerName, contextType }) {
   const { url, serviceKey } = getSupabaseConfig()
-  const row = { user_id: userId, customer_phone: to, direction: "outbound", status: "initiated", twilio_call_sid: callSid, from_number: from || null, to_number: to, started_at: new Date().toISOString() }
+  const metadata = {
+    source: "crm_softphone",
+    context_type: contextType || null,
+    appointment_id: appointmentId || null,
+  }
+  const row = {
+    user_id: userId,
+    customer_phone: to,
+    customer_name: customerName || null,
+    direction: "outbound",
+    status: "initiated",
+    twilio_call_sid: callSid,
+    from_number: from || null,
+    to_number: to,
+    entity_id: entityId || null,
+    started_at: new Date().toISOString(),
+    metadata,
+  }
   if (!url || !serviceKey || !userId || !callSid || !to) { const reason = `Missing call log input: url=${Boolean(url)} serviceKey=${Boolean(serviceKey)} userId=${Boolean(userId)} callSid=${Boolean(callSid)} to=${Boolean(to)}`; await logIntegration({ eventName: "call_log.create_failed", externalId: callSid, status: "failed", errorMessage: reason, payload: row }); return { ok: false, reason } }
   try {
     const response = await fetch(`${url}/rest/v1/call_logs`, { method: "POST", headers: { ...supabaseHeaders(serviceKey), Prefer: "return=representation" }, body: JSON.stringify(row) })
     const text = await response.text().catch(() => "")
     if (!response.ok) { const reason = `HTTP ${response.status}: ${text}`; console.error("Twilio voice: unable to create call log", reason); await logIntegration({ eventName: "call_log.create_failed", externalId: callSid, status: "failed", errorMessage: reason, payload: row }); return { ok: false, reason } }
-    await logIntegration({ eventName: "call_log.created", externalId: callSid, status: "success", httpStatus: response.status, payload: row, result: text ? JSON.parse(text) : null })
+    let result = null
+    try { result = text ? JSON.parse(text) : null } catch { result = text || null }
+    await logIntegration({ eventName: "call_log.created", externalId: callSid, status: "success", httpStatus: response.status, payload: row, result })
     return { ok: true }
   } catch (error) { const reason = error?.message || String(error); console.error("Twilio voice: call log insert failed", error); await logIntegration({ eventName: "call_log.create_failed", externalId: callSid, status: "failed", errorMessage: reason, payload: row }); return { ok: false, reason } }
 }
@@ -54,13 +73,22 @@ export default async function handler(req, res) {
   try {
     if (req.method === "GET") return xmlResponse(res, 200, "<Response><Say>Twilio voice endpoint is reachable.</Say></Response>")
     if (req.method !== "POST") return xmlResponse(res, 405, "<Response><Say>Method not allowed.</Say></Response>")
-    const to = getParam(req, "CrmTo", "ToNumber", "To"); const identityParam = getParam(req, "CrmIdentity", "Identity"); const twilioFrom = getParam(req, "From"); const identity = identityParam || twilioFrom; const lookup = await getProfilePhone(identity); const from = lookup.phone
-    const payload = { ...basePayload, CrmTo: to, CrmIdentity: identity, resolvedFrom: from, lookup: { authUserId: lookup.authUserId, profileFound: lookup.profileFound, matchedBy: lookup.matchedBy, reason: lookup.reason } }
+    const to = getParam(req, "CrmTo", "ToNumber", "To")
+    const identityParam = getParam(req, "CrmIdentity", "Identity")
+    const appointmentId = getParam(req, "CrmAppointmentId", "AppointmentId")
+    const entityId = getParam(req, "CrmEntityId", "EntityId")
+    const contextType = getParam(req, "CrmContextType", "ContextType")
+    const customerName = getParam(req, "CrmCustomerName", "CustomerName")
+    const twilioFrom = getParam(req, "From")
+    const identity = identityParam || twilioFrom
+    const lookup = await getProfilePhone(identity)
+    const from = lookup.phone
+    const payload = { ...basePayload, CrmTo: to, CrmIdentity: identity, CrmAppointmentId: appointmentId, CrmEntityId: entityId, CrmContextType: contextType, CrmCustomerName: customerName, resolvedFrom: from, lookup: { authUserId: lookup.authUserId, profileFound: lookup.profileFound, matchedBy: lookup.matchedBy, reason: lookup.reason } }
     if (!from) { const message = `Phone lookup failed. Identity received: ${identity || "NULL"}. Lookup UUID: ${lookup.authUserId || "NULL"}. Profile found: ${lookup.profileFound ? "YES" : "NO"}. twilio_phone_number: ${lookup.phone || "NULL"}. ${lookup.reason || "Unknown lookup error"}`; await logIntegration({ eventName: "twilio.voice.webhook", externalId: callSid, status: "failed", httpStatus: 200, payload, errorMessage: message }); return xmlResponse(res, 200, `<Response><Say>${escapeXml(message)}</Say></Response>`) }
     const destination = normalisePhone(to); if (!destination || !/^\+?[1-9]\d{7,14}$/.test(destination)) return xmlResponse(res, 200, "<Response><Say>Invalid destination number.</Say></Response>")
-    const callLog = await createCallLog({ userId: lookup.authUserId, callSid, from, to: destination })
+    const callLog = await createCallLog({ userId: lookup.authUserId, callSid, from, to: destination, appointmentId, entityId, customerName, contextType })
     const callbackUrl = `${getBaseUrl(req)}/api/twilio/call-status`; const xml = `<Response><Dial callerId="${escapeXml(from)}" statusCallback="${escapeXml(callbackUrl)}" statusCallbackMethod="POST" statusCallbackEvent="initiated ringing answered completed"><Number>${escapeXml(destination)}</Number></Dial></Response>`
-    await logIntegration({ eventName: "twilio.voice.webhook", externalId: callSid, status: "success", httpStatus: 200, payload, result: { from, destination, callbackUrl, callLogCreated: callLog.ok, callLogError: callLog.ok ? null : callLog.reason } })
+    await logIntegration({ eventName: "twilio.voice.webhook", externalId: callSid, status: "success", httpStatus: 200, payload, result: { from, destination, callbackUrl, callLogCreated: callLog.ok, callLogError: callLog.ok ? null : callLog.reason, context: { appointmentId, entityId, contextType } } })
     return xmlResponse(res, 200, xml)
   } catch (error) { console.error("Twilio voice endpoint error", error); await logIntegration({ eventName: "twilio.voice.webhook", externalId: callSid, status: "failed", httpStatus: 500, payload: basePayload, errorMessage: error?.message || String(error) }); return xmlResponse(res, 200, "<Response><Say>Unable to start the call.</Say></Response>") }
 }
