@@ -70,6 +70,7 @@ const PIPEDRIVE_FIELDS = {
 }
 
 let fieldResolutionPromise = null
+const userNameCache = new Map()
 
 async function resolveMissingFieldCodes(pipedriveToken) {
   const missing = Object.values(PIPEDRIVE_FIELDS).filter((field) => !field.key)
@@ -174,6 +175,43 @@ async function getPersonName(pipedriveToken, personId) {
   return String(json?.data?.name || "").trim() || null
 }
 
+async function getUserName(pipedriveToken, userId) {
+  const id = String(userId ?? "").trim()
+  if (!id) return null
+  if (userNameCache.has(id)) return userNameCache.get(id)
+
+  const response = await fetch(`https://api.pipedrive.com/api/v1/users/${encodeURIComponent(id)}?api_token=${encodeURIComponent(pipedriveToken)}`, { headers: { Accept: "application/json" } })
+  const json = await response.json().catch(() => ({}))
+  if (!response.ok || !json?.success) return null
+
+  const name = String(json?.data?.name || "").trim() || null
+  if (name) userNameCache.set(id, name)
+  return name
+}
+
+async function getSalespersonName(pipedriveToken, value) {
+  const unwrapped = unwrapValue(value)
+  if (unwrapped === null || unwrapped === undefined || unwrapped === "") return null
+
+  if (typeof unwrapped === "object") {
+    const directName = String(unwrapped.name || unwrapped.label || "").trim()
+    if (directName) return directName
+  }
+
+  const userId = typeof unwrapped === "object"
+    ? (unwrapped.id ?? unwrapped.user_id ?? unwrapped.value)
+    : unwrapped
+
+  const text = String(userId ?? "").trim()
+  if (!text) return null
+
+  if (/^\d+$/.test(text)) {
+    return await getUserName(pipedriveToken, text) || text
+  }
+
+  return text
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return send(res, 405, { success: false, error: "Method not allowed" })
 
@@ -230,7 +268,7 @@ export default async function handler(req, res) {
     const adminFeeMethod = normaliseText(getCustomFieldValue(deal, fields.adminFeeMethod.key))
     const adminFeePaidOutDate = normaliseDate(getCustomFieldValue(deal, fields.adminFeePaidOutDate.key))
     const adminFeeReceivedDate = normaliseDate(getCustomFieldValue(deal, fields.adminFeeReceivedDate.key))
-    const salesperson = normaliseText(getCustomFieldValue(deal, fields.salesperson.key))
+    const salesperson = await getSalespersonName(pipedriveToken, getCustomFieldValue(deal, fields.salesperson.key))
     const pipedriveStage = await getStageName(pipedriveToken, deal?.stage_id) || String(deal?.stage_name || deal?.stage?.name || "").trim() || null
     const personId = deal?.person_id?.value ?? deal?.person_id ?? null
     const customerName = await getPersonName(pipedriveToken, personId) || String(deal?.person_name || deal?.person?.name || "").trim() || null
@@ -279,6 +317,7 @@ export default async function handler(req, res) {
           reason: "No matching CRM deal by Pipedrive deal ID",
           dealId,
           customerName,
+          salesperson,
           installationStartDate,
           fitTeam1,
           installationIssuesFitTeam,
@@ -291,7 +330,6 @@ export default async function handler(req, res) {
           adminFeeMethod,
           adminFeePaidOutDate,
           adminFeeReceivedDate,
-          salesperson,
           pipedriveStage,
         },
         processedAt: new Date().toISOString(),
@@ -303,6 +341,7 @@ export default async function handler(req, res) {
     const updatePayload = {
       pipedrive_deal_id: Number(dealId),
       customer_name: customerName,
+      salesperson,
       installation_start_date: installationStartDate,
       fit_team_1: fitTeam1,
       installation_issues_fit_team: installationIssuesFitTeam,
@@ -315,7 +354,6 @@ export default async function handler(req, res) {
       admin_fee_method: adminFeeMethod,
       admin_fee_paid_out_date: adminFeePaidOutDate,
       admin_fee_received_date: adminFeeReceivedDate,
-      salesperson,
       pipedrive_stage: pipedriveStage,
     }
 
@@ -336,6 +374,7 @@ export default async function handler(req, res) {
       crmDealId: matchedDeal.id,
       matchedBy: "pipedrive_deal_id",
       customerName,
+      salesperson,
       installationStartDate,
       fitTeam1,
       installationIssuesFitTeam,
@@ -348,7 +387,6 @@ export default async function handler(req, res) {
       adminFeeMethod,
       adminFeePaidOutDate,
       adminFeeReceivedDate,
-      salesperson,
       pipedriveStage,
       updatedRows: Array.isArray(updated) ? updated.length : 0,
       receivedAt,
