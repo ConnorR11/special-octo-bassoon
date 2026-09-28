@@ -255,14 +255,31 @@ export default async function handler(req, res) {
     const payloadForLog = { ...body, pipedrive_fields: friendlyFields, pipedrive_field_codes: fieldCodes }
     const logBase = { ...baseLog, payload: payloadForLog }
 
-    const lookup = await fetch(`${supabaseUrl}/rest/v1/deals?pipedrive_deal_id=eq.${encodeURIComponent(dealId)}&select=id,pipedrive_deal_id,customer_name,installation_start_date,fit_team_1,installation_issues_fit_team,installations_issues_start_date,survey_costing,commission_paid_date,estimated_commission_due,admin_fee_amount,admin_fee_expected_date,admin_fee_method,admin_fee_paid_out_date,admin_fee_recieved_date,pipedrive_stage`, { headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, Accept: "application/json" } })
-    const existingDeals = await lookup.json().catch(() => [])
-    if (!lookup.ok || !Array.isArray(existingDeals) || !existingDeals.length) {
-      await logEvent(supabaseUrl, serviceRoleKey, { ...logBase, status: "ignored", httpStatus: 200, result: { reason: "No matching CRM deal", dealId, customerName, installationStartDate, fitTeam1, installationIssuesFitTeam, installationsIssuesStartDate, surveyCosting, commissionPaidDate, estimatedCommissionDue, adminFeeAmount, adminFeeExpectedDate, adminFeeMethod, adminFeePaidOutDate, adminFeeReceivedDate, pipedriveStage }, processedAt: new Date().toISOString() })
-      return send(res, 200, { success: true, updated: false, reason: "No matching CRM deal", dealId })
+    const dealSelect = "id,pipedrive_deal_id,customer_name,installation_start_date,fit_team_1,installation_issues_fit_team,installations_issues_start_date,survey_costing,commission_paid_date,estimated_commission_due,admin_fee_amount,admin_fee_expected_date,admin_fee_method,admin_fee_paid_out_date,admin_fee_received_date,pipedrive_stage"
+    const idLookup = await fetch(`${supabaseUrl}/rest/v1/deals?pipedrive_deal_id=eq.${encodeURIComponent(dealId)}&select=${dealSelect}`, { headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, Accept: "application/json" } })
+    let existingDeals = await idLookup.json().catch(() => [])
+    let matchedDeal = Array.isArray(existingDeals) && existingDeals.length === 1 ? existingDeals[0] : null
+    let matchedBy = matchedDeal ? "pipedrive_deal_id" : null
+
+    // Older CRM records may not have been stamped with their Pipedrive deal ID.
+    // If there is exactly one CRM deal with the same customer name, use it and
+    // permanently backfill its Pipedrive ID so future webhooks match directly.
+    if (!matchedDeal && customerName) {
+      const customerLookup = await fetch(`${supabaseUrl}/rest/v1/deals?customer_name=eq.${encodeURIComponent(customerName)}&select=${dealSelect}`, { headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, Accept: "application/json" } })
+      const customerDeals = await customerLookup.json().catch(() => [])
+      if (customerLookup.ok && Array.isArray(customerDeals) && customerDeals.length === 1) {
+        matchedDeal = customerDeals[0]
+        matchedBy = "customer_name"
+      }
+    }
+
+    if (!matchedDeal) {
+      await logEvent(supabaseUrl, serviceRoleKey, { ...logBase, status: "ignored", httpStatus: 200, result: { reason: "No unique matching CRM deal", dealId, customerName, installationStartDate, fitTeam1, installationIssuesFitTeam, installationsIssuesStartDate, surveyCosting, commissionPaidDate, estimatedCommissionDue, adminFeeAmount, adminFeeExpectedDate, adminFeeMethod, adminFeePaidOutDate, adminFeeReceivedDate, pipedriveStage }, processedAt: new Date().toISOString() })
+      return send(res, 200, { success: true, updated: false, reason: "No unique matching CRM deal", dealId })
     }
 
     const updatePayload = {
+      pipedrive_deal_id: Number(dealId),
       customer_name: customerName,
       installation_start_date: installationStartDate,
       fit_team_1: fitTeam1,
@@ -275,11 +292,11 @@ export default async function handler(req, res) {
       admin_fee_expected_date: adminFeeExpectedDate,
       admin_fee_method: adminFeeMethod,
       admin_fee_paid_out_date: adminFeePaidOutDate,
-      admin_fee_recieved_date: adminFeeReceivedDate,
+      admin_fee_received_date: adminFeeReceivedDate,
       pipedrive_stage: pipedriveStage,
     }
 
-    const updateResponse = await fetch(`${supabaseUrl}/rest/v1/deals?pipedrive_deal_id=eq.${encodeURIComponent(dealId)}`, {
+    const updateResponse = await fetch(`${supabaseUrl}/rest/v1/deals?id=eq.${encodeURIComponent(matchedDeal.id)}`, {
       method: "PATCH",
       headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, "Content-Type": "application/json", Prefer: "return=representation" },
       body: JSON.stringify(updatePayload),
@@ -287,12 +304,14 @@ export default async function handler(req, res) {
     const updated = await updateResponse.json().catch(() => [])
     if (!updateResponse.ok) {
       const message = Array.isArray(updated) ? "CRM deal update failed." : String(updated?.message || updated?.error || "CRM deal update failed.")
-      await logEvent(supabaseUrl, serviceRoleKey, { ...logBase, status: "failed", httpStatus: updateResponse.status, errorMessage: message, result: { dealId, updatePayload }, processedAt: new Date().toISOString() })
+      await logEvent(supabaseUrl, serviceRoleKey, { ...logBase, status: "failed", httpStatus: updateResponse.status, errorMessage: message, result: { dealId, matchedBy, crmDealId: matchedDeal.id, updatePayload }, processedAt: new Date().toISOString() })
       return send(res, 500, { success: false, error: message })
     }
 
     const result = {
       dealId,
+      crmDealId: matchedDeal.id,
+      matchedBy,
       customerName,
       installationStartDate,
       fitTeam1,
