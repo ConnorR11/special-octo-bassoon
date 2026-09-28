@@ -25,16 +25,11 @@ function getParam(req, ...names) {
 function normaliseIdentity(value) {
   const raw = String(value || "").trim()
   if (!raw) return null
-
-  // Twilio sends the browser identity as client:crm_<uuid-with-underscores>.
   let withoutClient = raw.startsWith("client:") ? raw.slice(7) : raw
   const withoutPrefix = withoutClient.startsWith("crm_") ? withoutClient.slice(4) : withoutClient
-
-  // Convert the Twilio-safe UUID back to the Supabase UUID.
   if (/^[0-9a-fA-F]{8}[_-][0-9a-fA-F]{4}[_-][0-9a-fA-F]{4}[_-][0-9a-fA-F]{4}[_-][0-9a-fA-F]{12}$/.test(withoutPrefix)) {
     return withoutPrefix.replace(/_/g, "-").toLowerCase()
   }
-
   return withoutPrefix
 }
 
@@ -49,44 +44,20 @@ function normalisePhone(value) {
 
 async function getProfilePhone(identity) {
   const authUserId = normaliseIdentity(identity)
-  if (!authUserId) return null
+  if (!authUserId) return { phone: null, lookupIdentity: null, profileFound: false, error: "No identity supplied" }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !serviceKey) {
-    console.error("Twilio voice: Supabase server credentials are missing")
-    return null
-  }
+  if (!url || !serviceKey) return { phone: null, lookupIdentity: authUserId, profileFound: false, error: "Supabase server credentials are missing" }
 
   const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
+  const response = await fetch(`${url}/rest/v1/profiles?select=twilio_phone_number&auth_user_id=eq.${encodeURIComponent(authUserId)}&limit=1`, { headers })
+  if (!response.ok) return { phone: null, lookupIdentity: authUserId, profileFound: false, error: `Supabase HTTP ${response.status}` }
 
-  // profiles.auth_user_id is the normal link to the Supabase Auth user.
-  const authResponse = await fetch(
-    `${url}/rest/v1/profiles?select=twilio_phone_number&auth_user_id=eq.${encodeURIComponent(authUserId)}&limit=1`,
-    { headers }
-  )
-  if (authResponse.ok) {
-    const rows = await authResponse.json()
-    const phone = normalisePhone(rows?.[0]?.twilio_phone_number)
-    if (phone) return phone
-  } else {
-    console.error("Twilio voice: auth_user_id lookup failed", authResponse.status)
-  }
-
-  // Backwards-compatible fallback if an older profile stores the Auth UUID in id.
-  const idResponse = await fetch(
-    `${url}/rest/v1/profiles?select=twilio_phone_number&id=eq.${encodeURIComponent(authUserId)}&limit=1`,
-    { headers }
-  )
-  if (idResponse.ok) {
-    const rows = await idResponse.json()
-    const phone = normalisePhone(rows?.[0]?.twilio_phone_number)
-    if (phone) return phone
-  } else {
-    console.error("Twilio voice: id lookup failed", idResponse.status)
-  }
-
-  return null
+  const rows = await response.json()
+  const profileFound = rows.length > 0
+  const phone = normalisePhone(rows?.[0]?.twilio_phone_number)
+  return { phone, lookupIdentity: authUserId, profileFound, error: null }
 }
 
 function xmlResponse(res, status, xml) {
@@ -98,51 +69,35 @@ function xmlResponse(res, status, xml) {
 
 export default async function handler(req, res) {
   try {
-    if (req.method === "GET") {
-      return xmlResponse(res, 200, "<Response><Say>Twilio voice endpoint is reachable.</Say></Response>")
-    }
-
-    if (req.method !== "POST") {
-      return xmlResponse(res, 405, "<Response><Say>Method not allowed.</Say></Response>")
-    }
+    if (req.method === "GET") return xmlResponse(res, 200, "<Response><Say>Twilio voice endpoint is reachable.</Say></Response>")
+    if (req.method !== "POST") return xmlResponse(res, 405, "<Response><Say>Method not allowed.</Say></Response>")
 
     const to = getParam(req, "CrmTo", "ToNumber", "To")
-
-    // Prefer the CRM identity we explicitly send. If Twilio does not include the
-    // custom parameter, fall back to its browser-client From value, e.g.
-    // client:crm_1692b54c_0dcc_4da5_b389_e100f6311865.
     const identityParam = getParam(req, "CrmIdentity", "Identity")
     const twilioFrom = getParam(req, "From")
     const identity = identityParam || twilioFrom
-    const normalisedIdentity = normaliseIdentity(identity)
-    const from = await getProfilePhone(identity)
+    const profile = await getProfilePhone(identity)
+    const from = profile.phone
 
-    console.log("Twilio voice request", {
+    console.log("Twilio voice lookup diagnostic", {
       to,
-      identity,
-      normalisedIdentity,
-      from,
-      caller: twilioFrom,
-      twilioTo: getParam(req, "To"),
-      callSid: getParam(req, "CallSid"),
+      identityParam,
+      twilioFrom,
+      lookupIdentity: profile.lookupIdentity,
+      profileFound: profile.profileFound,
+      twilioPhoneNumber: from,
+      error: profile.error,
     })
 
     if (!from) {
-      console.error("Twilio voice: no twilio_phone_number for CRM identity", {
-        identity,
-        normalisedIdentity,
-      })
-      return xmlResponse(res, 200, "<Response><Say>No Twilio phone number is configured for this user.</Say></Response>")
+      const diagnostic = `Phone lookup failed. Identity received: ${identity || "NONE"}. Lookup UUID: ${profile.lookupIdentity || "NONE"}. Profile found: ${profile.profileFound ? "YES" : "NO"}. twilio_phone_number: ${from || "NULL"}. ${profile.error || "No phone number returned from profile."}`
+      return xmlResponse(res, 200, `<Response><Say>${escapeXml(diagnostic)}</Say></Response>`)
     }
 
     const destination = String(to || "").replace(/[\s()-]/g, "")
-    if (!/^\+?[1-9]\d{7,14}$/.test(destination)) {
-      console.error("Twilio voice: invalid destination", to)
-      return xmlResponse(res, 200, "<Response><Say>Invalid destination number.</Say></Response>")
-    }
+    if (!/^\+?[1-9]\d{7,14}$/.test(destination)) return xmlResponse(res, 200, "<Response><Say>Invalid destination number.</Say></Response>")
 
     const xml = `<Response><Dial callerId="${escapeXml(from)}"><Number>${escapeXml(destination)}</Number></Dial></Response>`
-    console.log("Twilio voice response", { from, destination, xml })
     return xmlResponse(res, 200, xml)
   } catch (error) {
     console.error("Twilio voice endpoint error", error)
