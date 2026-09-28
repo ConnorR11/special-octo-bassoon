@@ -1,5 +1,22 @@
 function escapeXml(value) {
-  return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&apos;")
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&apos;")
+}
+
+function getParam(req, name) {
+  const body = req.body || {}
+  const query = req.query || {}
+  if (typeof body === "string") {
+    try {
+      const params = new URLSearchParams(body)
+      return params.get(name) || params.get(name.toLowerCase()) || null
+    } catch {}
+  }
+  return body?.[name] ?? body?.[name.toLowerCase()] ?? query?.[name] ?? query?.[name.toLowerCase()] ?? null
 }
 
 async function getProfilePhone(identity) {
@@ -7,7 +24,10 @@ async function getProfilePhone(identity) {
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !serviceKey) return null
+  if (!url || !serviceKey) {
+    console.error("Twilio voice: Supabase server credentials are missing")
+    return null
+  }
 
   const response = await fetch(`${url}/rest/v1/profiles?select=twilio_phone_number&id=eq.${encodeURIComponent(identity)}&limit=1`, {
     headers: {
@@ -17,7 +37,7 @@ async function getProfilePhone(identity) {
   })
 
   if (!response.ok) {
-    console.error("Failed to load Twilio phone number from profile", response.status)
+    console.error("Twilio voice: failed to load profile", response.status)
     return null
   }
 
@@ -25,25 +45,44 @@ async function getProfilePhone(identity) {
   return rows?.[0]?.twilio_phone_number || null
 }
 
+function xmlResponse(res, status, xml) {
+  res.status(status)
+  res.setHeader("Content-Type", "text/xml; charset=utf-8")
+  res.setHeader("Cache-Control", "no-store")
+  return res.send(xml)
+}
+
 export default async function handler(req, res) {
   try {
-    const to = req.body?.To || req.query?.To || req.body?.to || req.query?.to
-    const identity = req.body?.Identity || req.query?.Identity || req.body?.identity || req.query?.identity
+    // Twilio may use POST for calls, while simple endpoint checks may use GET.
+    // Returning valid TwiML here confirms that the URL itself is reachable.
+    if (req.method === "GET") {
+      return xmlResponse(res, 200, "<Response><Say>Twilio voice endpoint is reachable.</Say></Response>")
+    }
+
+    if (req.method !== "POST") {
+      return xmlResponse(res, 405, "<Response><Say>Method not allowed.</Say></Response>")
+    }
+
+    const to = getParam(req, "To")
+    const identity = getParam(req, "Identity")
     const from = await getProfilePhone(identity)
 
     if (!from) {
-      return res.status(503).type("text/xml").send("<Response><Say>No Twilio phone number is configured for this user.</Say></Response>")
+      console.error("Twilio voice: no twilio_phone_number for identity", identity || "(missing)")
+      return xmlResponse(res, 200, "<Response><Say>No Twilio phone number is configured for this user.</Say></Response>")
     }
 
-    if (!to || !/^\+?[1-9]\d{7,14}$/.test(String(to).replace(/[\s()-]/g, ""))) {
-      return res.status(400).type("text/xml").send("<Response><Say>Invalid destination number.</Say></Response>")
+    const destination = String(to || "").replace(/[\s()-]/g, "")
+    if (!/^\+?[1-9]\d{7,14}$/.test(destination)) {
+      console.error("Twilio voice: invalid destination", to)
+      return xmlResponse(res, 200, "<Response><Say>Invalid destination number.</Say></Response>")
     }
 
-    const destination = String(to).replace(/[\s()-]/g, "")
     const xml = `<Response><Dial callerId="${escapeXml(from)}"><Number>${escapeXml(destination)}</Number></Dial></Response>`
-    res.status(200).type("text/xml").send(xml)
+    return xmlResponse(res, 200, xml)
   } catch (error) {
     console.error("Twilio voice endpoint error", error)
-    res.status(500).type("text/xml").send("<Response><Say>Unable to start the call.</Say></Response>")
+    return xmlResponse(res, 200, "<Response><Say>Unable to start the call.</Say></Response>")
   }
 }
