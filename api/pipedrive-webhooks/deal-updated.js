@@ -53,22 +53,55 @@ async function logEvent(supabaseUrl, serviceRoleKey, values) {
   }
 }
 
-// These field codes were resolved from the Pipedrive fields API and are now
-// kept here so every webhook does not make an expensive dealFields request.
-// This avoids Pipedrive token/rate-limit exhaustion during bulk webhook bursts.
+// Stable field codes already resolved from Pipedrive.
 const PIPEDRIVE_FIELDS = {
-  installationStartDate: {
-    key: "55177af32aecef5d2f250bd701c2bbee064136fc",
-  },
-  fitTeam: {
-    key: "9dea8a18f5fe439880a93a49c0be9072f7d38107",
-  },
-  installationIssuesFitTeam: {
-    key: "5de8dad128c17a2be90d25241b9cf758cf5000b9",
-  },
-  installationIssuesStartDate: {
-    key: "ca19ff895b86a67552d6b600ed15ad6ffcd771ea",
-  },
+  installationStartDate: { name: "Installation: Start Date", key: "55177af32aecef5d2f250bd701c2bbee064136fc" },
+  fitTeam: { name: "Installation: Fit Team", key: "9dea8a18f5fe439880a93a49c0be9072f7d38107" },
+  installationIssuesFitTeam: { name: "Installation Issues: Fit Team", key: "5de8dad128c17a2be90d25241b9cf758cf5000b9" },
+  installationIssuesStartDate: { name: "Installation: Installation Issue Booked", key: "ca19ff895b86a67552d6b600ed15ad6ffcd771ea" },
+  surveyCosting: { name: "Survey: Costing", key: null },
+  commissionPaidDate: { name: "Comms | Rep Comms Paid Date", key: null },
+  estimatedCommissionDue: { name: "Comms | Est Rep Comms", key: null },
+  adminFeeAmount: { name: "AF: Price", key: null },
+  adminFeeExpectedDate: { name: "AF: Expected Payment Date", key: null },
+  adminFeeMethod: { name: "AF: Payment Method", key: null },
+  adminFeePaidOutDate: { name: "Comms | Admin Paid Out Date", key: null },
+  adminFeeReceivedDate: { name: "AF: Date Received", key: null },
+}
+
+let fieldResolutionPromise = null
+
+async function resolveMissingFieldCodes(pipedriveToken) {
+  const missing = Object.values(PIPEDRIVE_FIELDS).filter((field) => !field.key)
+  if (!missing.length) return PIPEDRIVE_FIELDS
+
+  if (!fieldResolutionPromise) {
+    fieldResolutionPromise = (async () => {
+      const response = await fetch(`https://api.pipedrive.com/api/v2/dealFields?limit=500&api_token=${encodeURIComponent(pipedriveToken)}`, {
+        headers: { Accept: "application/json" },
+      })
+      const json = await response.json().catch(() => ({}))
+      if (!response.ok || !json?.success) {
+        throw new Error(json?.error || `Pipedrive deal fields lookup failed with HTTP ${response.status}.`)
+      }
+
+      const fields = Array.isArray(json.data) ? json.data : []
+      for (const target of missing) {
+        const match = fields.find((field) => {
+          const name = String(field?.field_name || field?.name || "").trim().toLowerCase()
+          return name === target.name.toLowerCase()
+        })
+        const key = String(match?.field_code || match?.key || "").trim()
+        if (key) target.key = key
+      }
+      return PIPEDRIVE_FIELDS
+    })().catch((error) => {
+      fieldResolutionPromise = null
+      throw error
+    })
+  }
+
+  return fieldResolutionPromise
 }
 
 function getCustomFieldValue(deal, key) {
@@ -105,13 +138,24 @@ function normaliseDate(value) {
   return parsed.toISOString().slice(0, 10)
 }
 
-function normaliseFitTeam(value) {
-  if (value === null || value === undefined || value === "") return null
-  if (typeof value === "object") {
-    if (Array.isArray(value)) return value.map((item) => String(item?.label ?? item?.name ?? item?.value ?? item)).filter(Boolean).join(", ") || null
-    return String(value.label ?? value.name ?? value.value ?? "").trim() || null
+function normaliseNumber(value) {
+  const unwrapped = unwrapValue(value)
+  if (unwrapped === null || unwrapped === undefined || unwrapped === "") return null
+  const number = Number(String(unwrapped).replace(/[^0-9.-]/g, ""))
+  return Number.isFinite(number) ? number : null
+}
+
+function normaliseText(value) {
+  const unwrapped = unwrapValue(value)
+  if (unwrapped === null || unwrapped === undefined || unwrapped === "") return null
+  if (typeof unwrapped === "object") {
+    return String(unwrapped.label ?? unwrapped.name ?? unwrapped.value ?? "").trim() || null
   }
-  return String(value).trim() || null
+  return String(unwrapped).trim() || null
+}
+
+function normaliseFitTeam(value) {
+  return normaliseText(value)
 }
 
 async function getStageName(pipedriveToken, stageId) {
@@ -157,13 +201,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const fields = PIPEDRIVE_FIELDS
-    const customFieldKeys = [
-      fields.installationStartDate.key,
-      fields.fitTeam.key,
-      fields.installationIssuesFitTeam.key,
-      fields.installationIssuesStartDate.key,
-    ]
+    const fields = await resolveMissingFieldCodes(pipedriveToken)
+    const customFieldKeys = Object.values(fields).map((field) => field.key).filter(Boolean)
 
     const dealUrl = new URL(`https://api.pipedrive.com/api/v2/deals/${encodeURIComponent(dealId)}`)
     dealUrl.searchParams.set("api_token", pipedriveToken)
@@ -183,6 +222,14 @@ export default async function handler(req, res) {
     const fitTeam1 = normaliseFitTeam(getCustomFieldValue(deal, fields.fitTeam.key))
     const installationIssuesFitTeam = normaliseFitTeam(getCustomFieldValue(deal, fields.installationIssuesFitTeam.key))
     const installationsIssuesStartDate = normaliseDate(getCustomFieldValue(deal, fields.installationIssuesStartDate.key))
+    const surveyCosting = normaliseNumber(getCustomFieldValue(deal, fields.surveyCosting.key))
+    const commissionPaidDate = normaliseDate(getCustomFieldValue(deal, fields.commissionPaidDate.key))
+    const estimatedCommissionDue = normaliseNumber(getCustomFieldValue(deal, fields.estimatedCommissionDue.key))
+    const adminFeeAmount = normaliseNumber(getCustomFieldValue(deal, fields.adminFeeAmount.key))
+    const adminFeeExpectedDate = normaliseDate(getCustomFieldValue(deal, fields.adminFeeExpectedDate.key))
+    const adminFeeMethod = normaliseText(getCustomFieldValue(deal, fields.adminFeeMethod.key))
+    const adminFeePaidOutDate = normaliseDate(getCustomFieldValue(deal, fields.adminFeePaidOutDate.key))
+    const adminFeeReceivedDate = normaliseDate(getCustomFieldValue(deal, fields.adminFeeReceivedDate.key))
     const pipedriveStage = await getStageName(pipedriveToken, deal?.stage_id) || String(deal?.stage_name || deal?.stage?.name || "").trim() || null
     const personId = deal?.person_id?.value ?? deal?.person_id ?? null
     const customerName = await getPersonName(pipedriveToken, personId) || String(deal?.person_name || deal?.person?.name || "").trim() || null
@@ -193,26 +240,25 @@ export default async function handler(req, res) {
       "Installation: Fit Team": fitTeam1,
       "Installation Issues: Fit Team": installationIssuesFitTeam,
       "Installation: Installation Issue Booked": installationsIssuesStartDate,
+      "Survey: Costing": surveyCosting,
+      "Comms | Rep Comms Paid Date": commissionPaidDate,
+      "Comms | Est Rep Comms": estimatedCommissionDue,
+      "AF: Price": adminFeeAmount,
+      "AF: Expected Payment Date": adminFeeExpectedDate,
+      "AF: Payment Method": adminFeeMethod,
+      "Comms | Admin Paid Out Date": adminFeePaidOutDate,
+      "AF: Date Received": adminFeeReceivedDate,
       "Stage": pipedriveStage,
     }
-    const fieldCodes = {
-      "Installation: Start Date": fields.installationStartDate.key,
-      "Installation: Fit Team": fields.fitTeam.key,
-      "Installation Issues: Fit Team": fields.installationIssuesFitTeam.key,
-      "Installation: Installation Issue Booked": fields.installationIssuesStartDate.key,
-    }
+    const fieldCodes = Object.fromEntries(Object.entries(fields).map(([key, field]) => [field.name, field.key]))
 
-    const payloadForLog = {
-      ...body,
-      pipedrive_fields: friendlyFields,
-      pipedrive_field_codes: fieldCodes,
-    }
+    const payloadForLog = { ...body, pipedrive_fields: friendlyFields, pipedrive_field_codes: fieldCodes }
     const logBase = { ...baseLog, payload: payloadForLog }
 
-    const lookup = await fetch(`${supabaseUrl}/rest/v1/deals?pipedrive_deal_id=eq.${encodeURIComponent(dealId)}&select=id,pipedrive_deal_id,customer_name,installation_start_date,fit_team_1,installation_issues_fit_team,installations_issues_start_date,pipedrive_stage`, { headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, Accept: "application/json" } })
+    const lookup = await fetch(`${supabaseUrl}/rest/v1/deals?pipedrive_deal_id=eq.${encodeURIComponent(dealId)}&select=id,pipedrive_deal_id,customer_name,installation_start_date,fit_team_1,installation_issues_fit_team,installations_issues_start_date,survey_costing,commission_paid_date,estimated_commission_due,admin_fee_amount,admin_fee_expected_date,admin_fee_method,admin_fee_paid_out_date,admin_fee_recieved_date,pipedrive_stage`, { headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, Accept: "application/json" } })
     const existingDeals = await lookup.json().catch(() => [])
     if (!lookup.ok || !Array.isArray(existingDeals) || !existingDeals.length) {
-      await logEvent(supabaseUrl, serviceRoleKey, { ...logBase, status: "ignored", httpStatus: 200, result: { reason: "No matching CRM deal", dealId, customerName, installationStartDate, fitTeam1, installationIssuesFitTeam, installationsIssuesStartDate, pipedriveStage }, processedAt: new Date().toISOString() })
+      await logEvent(supabaseUrl, serviceRoleKey, { ...logBase, status: "ignored", httpStatus: 200, result: { reason: "No matching CRM deal", dealId, customerName, installationStartDate, fitTeam1, installationIssuesFitTeam, installationsIssuesStartDate, surveyCosting, commissionPaidDate, estimatedCommissionDue, adminFeeAmount, adminFeeExpectedDate, adminFeeMethod, adminFeePaidOutDate, adminFeeReceivedDate, pipedriveStage }, processedAt: new Date().toISOString() })
       return send(res, 200, { success: true, updated: false, reason: "No matching CRM deal", dealId })
     }
 
@@ -222,6 +268,14 @@ export default async function handler(req, res) {
       fit_team_1: fitTeam1,
       installation_issues_fit_team: installationIssuesFitTeam,
       installations_issues_start_date: installationsIssuesStartDate,
+      survey_costing: surveyCosting,
+      commission_paid_date: commissionPaidDate,
+      estimated_commission_due: estimatedCommissionDue,
+      admin_fee_amount: adminFeeAmount,
+      admin_fee_expected_date: adminFeeExpectedDate,
+      admin_fee_method: adminFeeMethod,
+      admin_fee_paid_out_date: adminFeePaidOutDate,
+      admin_fee_recieved_date: adminFeeReceivedDate,
       pipedrive_stage: pipedriveStage,
     }
 
@@ -244,6 +298,14 @@ export default async function handler(req, res) {
       fitTeam1,
       installationIssuesFitTeam,
       installationsIssuesStartDate,
+      surveyCosting,
+      commissionPaidDate,
+      estimatedCommissionDue,
+      adminFeeAmount,
+      adminFeeExpectedDate,
+      adminFeeMethod,
+      adminFeePaidOutDate,
+      adminFeeReceivedDate,
       pipedriveStage,
       updatedRows: Array.isArray(updated) ? updated.length : 0,
       receivedAt,
