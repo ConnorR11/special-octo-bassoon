@@ -1,26 +1,7 @@
 import React from "react"
+import { Device } from "@twilio/voice-sdk"
 import { Phone, PhoneOff, Delete, Mic, MicOff, X } from "lucide-react"
 import { supabase } from "../lib/supabase"
-
-const SDK_URL = "https://sdk.twilio.com/js/voice/releases/2.18.5/twilio.min.js"
-
-function loadTwilioSdk() {
-  if (window.Twilio?.Device) return Promise.resolve(window.Twilio)
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${SDK_URL}"]`)
-    if (existing) {
-      existing.addEventListener("load", () => resolve(window.Twilio))
-      existing.addEventListener("error", reject)
-      return
-    }
-    const script = document.createElement("script")
-    script.src = SDK_URL
-    script.async = true
-    script.onload = () => window.Twilio ? resolve(window.Twilio) : reject(new Error("Twilio Voice SDK did not load."))
-    script.onerror = () => reject(new Error("Unable to load the Twilio Voice SDK."))
-    document.head.appendChild(script)
-  })
-}
 
 function PhoneDialer({ onClose }) {
   const [number, setNumber] = React.useState("")
@@ -62,8 +43,9 @@ function PhoneDialer({ onClose }) {
     const response = await fetch(`/api/twilio/token?identity=${encodeURIComponent(identity)}`)
     const payload = await response.json().catch(() => ({}))
     if (!response.ok || !payload.token) throw new Error(payload.error || "Twilio is not configured yet.")
-    const Twilio = await loadTwilioSdk()
-    const device = new Twilio.Device(payload.token, { logLevel: 1 })
+    if (!Device.isSupported) throw new Error("This browser does not support Twilio Voice calling.")
+
+    const device = new Device(payload.token, { logLevel: 1 })
     device.on("registered", () => setStatus("Ready"))
     device.on("error", (twilioError) => {
       console.error("Twilio device error:", twilioError)
