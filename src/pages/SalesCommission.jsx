@@ -4,7 +4,7 @@ import * as XLSX from "xlsx"
 import { supabase } from "../lib/supabase"
 import { formatDate, getInitials, money } from "../utils/formatters"
 
-function getRepName(deal) { return deal?.salesperson || deal?.sales_rep || deal?.rep_name || deal?.rep_allocated || "Unallocated" }
+function getDisplayRepName(deal) { return deal?.salesperson_profile?.full_name?.trim() || deal?.salesperson || deal?.sales_rep || deal?.rep_name || deal?.rep_allocated || "Unallocated" }
 function getBranchName(deal) { return deal?.branch || deal?.branch_name || "Unallocated" }
 function getNetSalesValue(deal) { const value = deal?.net_value; const parsed = Number(String(value ?? "").replace(/[^0-9.-]/g, "")); return Number.isFinite(parsed) ? parsed : 0 }
 function getSurveyCosting(deal) { const value = deal?.survey_costing; if (value === null || value === undefined || value === "") return null; const parsed = Number(String(value).replace(/[^0-9.-]/g, "")); return Number.isFinite(parsed) ? parsed : null }
@@ -73,7 +73,7 @@ function DealRow({ deal, setSelected, type }) {
     <div style={{ display: "flex", alignItems: "center", gap: 5, color: isAdmin ? "#a0a8ae" : "#263645", fontSize: 10 }}>{!isAdmin && <PoundSterling size={13} />}<strong>{isAdmin ? "—" : money(getNetSalesValue(deal))}</strong></div>
     <div style={{ fontSize: 10, color: isAdmin ? "#a0a8ae" : surveyCosting === null ? "#a0a8ae" : "#263645", fontWeight: !isAdmin && surveyCosting !== null ? 700 : 400 }}>{isAdmin ? "—" : surveyCosting === null ? "—" : surveyCosting.toLocaleString("en-GB")}</div>
     <div style={{ display: "flex", alignItems: "center", gap: 5, color: "#66737d", fontSize: 10 }}><MapPin size={13} /><span>{getBranchName(deal)}</span></div>
-    <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#53616b", fontSize: 10, minWidth: 0 }}><UserRound size={13} /><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getRepName(deal)}</span></div>
+    <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#53616b", fontSize: 10, minWidth: 0 }}><UserRound size={13} /><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getDisplayRepName(deal)}</span></div>
     <div style={{ fontSize: 11, fontWeight: 800, color: isAdmin ? (adminFee === "query" ? "#c45b18" : "#1676b8") : commission === null ? "#a0a8ae" : "#1676b8" }}>{isAdmin ? (adminFee === "query" ? "query" : money(adminFee)) : commission === null ? "—" : money(commission)}</div>
     <div style={{ display: "flex", justifyContent: "flex-end", color: "#9aa5ad" }}><ChevronRight size={17} /></div>
   </button>
@@ -87,7 +87,7 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
   const [branch, setBranch] = useState("all")
   const [commissionDate, setCommissionDate] = useState("all")
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const [visibleSalespersonIds, setVisibleSalespersonIds] = useState(null)
+  const [visibleSalespersonIds, setVisibleSalespersonIds] = useState(null)\n  const [salespersonProfiles, setSalespersonProfiles] = useState({})
 
   useEffect(() => {
     let cancelled = false
@@ -155,7 +155,7 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
     return () => { cancelled = true }
   }, [permissionLevel, visibleSalespersonIds])
 
-  const reps = useMemo(() => Array.from(new Set([...deals, ...adminDeals].map(getRepName))).sort((a, b) => a.localeCompare(b)), [deals, adminDeals])
+  useEffect(() => {\n    let cancelled = false\n\n    async function loadSalespersonProfiles() {\n      if (!supabase) return\n      const ids = Array.from(new Set([...deals, ...adminDeals].map(deal => String(deal?.salesperson || "").trim()).filter(Boolean)))\n      if (!ids.length) { setSalespersonProfiles({}); return }\n\n      const { data, error } = await supabase.from("profiles").select("pipedrive_person_id, full_name").in("pipedrive_person_id", ids)\n      if (cancelled) return\n      if (error) {\n        console.error("Error loading salesperson profiles:", error)\n        setSalespersonProfiles({})\n        return\n      }\n\n      const map = (data || []).reduce((acc, row) => {\n        acc[String(row.pipedrive_person_id)] = row\n        return acc\n      }, {})\n      setSalespersonProfiles(map)\n    }\n\n    loadSalespersonProfiles()\n    return () => { cancelled = true }\n  }, [deals, adminDeals])\n\n  function getDisplayRepName(deal) {\n    const id = String(deal?.salesperson || "").trim()\n    const fullName = salespersonProfiles[id]?.full_name?.trim()\n    return fullName || id || deal?.sales_rep || deal?.rep_name || deal?.rep_allocated || "Unallocated"\n  }\n\n  const reps = useMemo(() => Array.from(new Set([...deals, ...adminDeals].map(getDisplayRepName))).sort((a, b) => a.localeCompare(b)), [deals, adminDeals, salespersonProfiles])
   const branches = useMemo(() => Array.from(new Set([...deals, ...adminDeals].map(getBranchName))).sort((a, b) => a.localeCompare(b)), [deals, adminDeals])
   const combined = useMemo(() => [...deals.filter(deal => getNetSalesValue(deal) !== 0 && !isExcludedCommissionStage(deal) && String(deal?.sale_date || "").slice(0, 10) >= "2026-01-01").map(deal => ({ deal, type: "COMMS" })), ...adminDeals.filter(deal => !isExcludedCommissionStage(deal)).map(deal => ({ deal, type: "ADMIN" }))], [deals, adminDeals])
   const commissionDates = useMemo(() => Array.from(new Set(combined.map(({ deal, type }) => getCommissionDate(deal, type === "ADMIN" ? "admin" : "commission")).filter(Boolean))).sort((a, b) => new Date(a) - new Date(b)), [combined])
@@ -163,18 +163,18 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
     const search = query.trim().toLowerCase()
     return combined.filter(({ deal, type }) => {
       const date = getCommissionDate(deal, type === "ADMIN" ? "admin" : "commission")
-      if (rep !== "all" && getRepName(deal) !== rep) return false
+      if (rep !== "all" && getDisplayRepName(deal) !== rep) return false
       if (branch !== "all" && getBranchName(deal) !== branch) return false
       if (commissionDate !== "all" && date !== commissionDate) return false
       if (!search) return true
-      return [deal?.customer_name, deal?.name, deal?.contract_number, deal?.postcode, getRepName(deal), getBranchName(deal), type].filter(Boolean).join(" ").toLowerCase().includes(search)
+      return [deal?.customer_name, deal?.name, deal?.contract_number, deal?.postcode, getDisplayRepName(deal), getBranchName(deal), type].filter(Boolean).join(" ").toLowerCase().includes(search)
     }).sort((a, b) => {
       const ad = getCommissionDate(a.deal, a.type === "ADMIN" ? "admin" : "commission")
       const bd = getCommissionDate(b.deal, b.type === "ADMIN" ? "admin" : "commission")
       if (!ad && !bd) {
         const branchCompare = getBranchName(a.deal).localeCompare(getBranchName(b.deal))
         if (branchCompare) return branchCompare
-        const repCompare = getRepName(a.deal).localeCompare(getRepName(b.deal))
+        const repCompare = getDisplayRepName(a.deal).localeCompare(getDisplayRepName(b.deal))
         if (repCompare) return repCompare
         return a.type.localeCompare(b.type)
       }
@@ -184,7 +184,7 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
       if (dateCompare) return dateCompare
       const branchCompare = getBranchName(a.deal).localeCompare(getBranchName(b.deal))
       if (branchCompare) return branchCompare
-      const repCompare = getRepName(a.deal).localeCompare(getRepName(b.deal))
+      const repCompare = getDisplayRepName(a.deal).localeCompare(getDisplayRepName(b.deal))
       if (repCompare) return repCompare
       return a.type.localeCompare(b.type)
     })
@@ -214,7 +214,7 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
       "Admin fee taken": type === "ADMIN" ? (deal?.admin_fee_amount ?? null) : null,
       "Survey costing": type === "COMMS" ? getSurveyCosting(deal) : null,
       Branch: getBranchName(deal),
-      Rep: getRepName(deal),
+      Rep: getDisplayRepName(deal),
       "Sales Manager": deal?.sales_manager || deal?.primary_sales_manager || "",
       "Branch Manager": deal?.branch_manager || "",
       "Amount Due": type === "ADMIN" ? (getAdminFee(deal) === "query" ? "query" : getAdminFee(deal)) : (getCommission(deal) ?? null)
