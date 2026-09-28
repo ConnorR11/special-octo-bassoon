@@ -308,7 +308,11 @@ export default async function handler(req, res) {
     const adminFeeMethod = normaliseText(getCustomFieldValue(deal, fields.adminFeeMethod.key))
     const adminFeePaidOutDate = normaliseDate(getCustomFieldValue(deal, fields.adminFeePaidOutDate.key))
     const adminFeeReceivedDate = normaliseDate(getCustomFieldValue(deal, fields.adminFeeReceivedDate.key))
-    const salesperson = await getSalespersonName(pipedriveToken, getCustomFieldValue(deal, fields.salesperson.key))
+    const salespersonRaw = getCustomFieldValue(deal, fields.salesperson.key)
+    const salespersonValue = unwrapValue(salespersonRaw)
+    const salesperson = salespersonValue && typeof salespersonValue === "object"
+      ? String(salespersonValue.id ?? salespersonValue.user_id ?? salespersonValue.value ?? "").trim() || null
+      : (salespersonValue === null || salespersonValue === undefined || salespersonValue === "" ? null : String(salespersonValue).trim())
     const pipedriveStage = await getStageName(pipedriveToken, deal?.stage_id) || String(deal?.stage_name || deal?.stage?.name || "").trim() || null
     const personId = deal?.person_id?.value ?? deal?.person_id ?? null
     const customerName = await getPersonName(pipedriveToken, personId) || String(deal?.person_name || deal?.person?.name || "").trim() || null
