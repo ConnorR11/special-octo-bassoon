@@ -61,41 +61,14 @@ jobs:
           print('duplicateSource present:', 'duplicateSource' in text)
           PY
 
-      - name: Patch commission source loading
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path("src/App.jsx")
-          text = path.read_text()
-
-          old = '      setCommissionDeals(results)'
-          new = '''      const excludedCommissionStages = new Set(["decline", "customer cancelled", "returned to sales", "awaiting funds", "on hold", "pending cancellation"])
-          const commissionEligible = results.filter(deal => {
-            const stage = String(deal?.pipedrive_stage ?? "").trim().replace(/\\s+/g, " ").toLowerCase()
-            return !excludedCommissionStages.has(stage)
-          })
-          setCommissionDeals(commissionEligible)'''
-          if old in text:
-              text = text.replace(old, new, 1)
-
-          old = '    if (newPage === "contracts") { setQuery(""); setStatus("all"); loadContracts(0, "", "all") }'
-          new = '''    if (newPage === "contracts") { setQuery(""); setStatus("all"); loadContracts(0, "", "all") }
-    if (newPage === "commissions") loadCommissionDeals()'''
-          if old in text and 'if (newPage === "commissions") loadCommissionDeals()' not in text:
-              text = text.replace(old, new, 1)
-
-          path.write_text(text)
-          print('commission source patch present:', 'setCommissionDeals(commissionEligible)' in text)
-          PY
-
       - name: Commit change
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/WindowCosting.jsx src/App.jsx
+          git add src/WindowCosting.jsx
           if git diff --cached --quiet; then
             echo "No changes needed"
             exit 0
           fi
-          git commit -m "fix: filter excluded stages from commissions"
+          git commit -m "fix: add duplicate unit location prompt"
           git push
