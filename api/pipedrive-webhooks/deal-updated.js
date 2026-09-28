@@ -53,7 +53,6 @@ async function logEvent(supabaseUrl, serviceRoleKey, values) {
   }
 }
 
-// Stable field codes already resolved from Pipedrive.
 const PIPEDRIVE_FIELDS = {
   installationStartDate: { name: "Installation: Start Date", key: "55177af32aecef5d2f250bd701c2bbee064136fc" },
   fitTeam: { name: "Installation: Fit Team", key: "9dea8a18f5fe439880a93a49c0be9072f7d38107" },
@@ -251,33 +250,52 @@ export default async function handler(req, res) {
       "Stage": pipedriveStage,
     }
     const fieldCodes = Object.fromEntries(Object.entries(fields).map(([key, field]) => [field.name, field.key]))
-
     const payloadForLog = { ...body, pipedrive_fields: friendlyFields, pipedrive_field_codes: fieldCodes }
     const logBase = { ...baseLog, payload: payloadForLog }
 
-    const dealSelect = "id,pipedrive_deal_id,customer_name,installation_start_date,fit_team_1,installation_issues_fit_team,installations_issues_start_date,survey_costing,commission_paid_date,estimated_commission_due,admin_fee_amount,admin_fee_expected_date,admin_fee_method,admin_fee_paid_out_date,admin_fee_received_date,pipedrive_stage"
-    const idLookup = await fetch(`${supabaseUrl}/rest/v1/deals?pipedrive_deal_id=eq.${encodeURIComponent(dealId)}&select=${dealSelect}`, { headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, Accept: "application/json" } })
-    let existingDeals = await idLookup.json().catch(() => [])
-    let matchedDeal = Array.isArray(existingDeals) && existingDeals.length === 1 ? existingDeals[0] : null
-    let matchedBy = matchedDeal ? "pipedrive_deal_id" : null
+    // IMPORTANT: CRM records are matched ONLY by the Pipedrive deal ID.
+    // Customer name is never used as a fallback or matching key.
+    const select = "id,pipedrive_deal_id,customer_name,installation_start_date,fit_team_1,installation_issues_fit_team,installations_issues_start_date,survey_costing,commission_paid_date,estimated_commission_due,admin_fee_amount,admin_fee_expected_date,admin_fee_method,admin_fee_paid_out_date,admin_fee_received_date,pipedrive_stage"
+    const lookup = await fetch(`${supabaseUrl}/rest/v1/deals?pipedrive_deal_id=eq.${encodeURIComponent(dealId)}&select=${select}`, {
+      headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, Accept: "application/json" },
+    })
+    const existingDeals = await lookup.json().catch(() => [])
 
-    // Older CRM records may not have been stamped with their Pipedrive deal ID.
-    // If there is exactly one CRM deal with the same customer name, use it and
-    // permanently backfill its Pipedrive ID so future webhooks match directly.
-    if (!matchedDeal && customerName) {
-      const customerLookup = await fetch(`${supabaseUrl}/rest/v1/deals?customer_name=eq.${encodeURIComponent(customerName)}&select=${dealSelect}`, { headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, Accept: "application/json" } })
-      const customerDeals = await customerLookup.json().catch(() => [])
-      if (customerLookup.ok && Array.isArray(customerDeals) && customerDeals.length === 1) {
-        matchedDeal = customerDeals[0]
-        matchedBy = "customer_name"
-      }
+    if (!lookup.ok) {
+      const message = Array.isArray(existingDeals) ? "CRM deal lookup failed." : String(existingDeals?.message || existingDeals?.error || "CRM deal lookup failed.")
+      await logEvent(supabaseUrl, serviceRoleKey, { ...logBase, status: "failed", httpStatus: lookup.status, errorMessage: message, result: { dealId }, processedAt: new Date().toISOString() })
+      return send(res, 500, { success: false, error: message })
     }
 
-    if (!matchedDeal) {
-      await logEvent(supabaseUrl, serviceRoleKey, { ...logBase, status: "ignored", httpStatus: 200, result: { reason: "No unique matching CRM deal", dealId, customerName, installationStartDate, fitTeam1, installationIssuesFitTeam, installationsIssuesStartDate, surveyCosting, commissionPaidDate, estimatedCommissionDue, adminFeeAmount, adminFeeExpectedDate, adminFeeMethod, adminFeePaidOutDate, adminFeeReceivedDate, pipedriveStage }, processedAt: new Date().toISOString() })
-      return send(res, 200, { success: true, updated: false, reason: "No unique matching CRM deal", dealId })
+    if (!Array.isArray(existingDeals) || existingDeals.length !== 1) {
+      await logEvent(supabaseUrl, serviceRoleKey, {
+        ...logBase,
+        status: "ignored",
+        httpStatus: 200,
+        result: {
+          reason: "No matching CRM deal by Pipedrive deal ID",
+          dealId,
+          customerName,
+          installationStartDate,
+          fitTeam1,
+          installationIssuesFitTeam,
+          installationsIssuesStartDate,
+          surveyCosting,
+          commissionPaidDate,
+          estimatedCommissionDue,
+          adminFeeAmount,
+          adminFeeExpectedDate,
+          adminFeeMethod,
+          adminFeePaidOutDate,
+          adminFeeReceivedDate,
+          pipedriveStage,
+        },
+        processedAt: new Date().toISOString(),
+      })
+      return send(res, 200, { success: true, updated: false, reason: "No matching CRM deal by Pipedrive deal ID", dealId })
     }
 
+    const matchedDeal = existingDeals[0]
     const updatePayload = {
       pipedrive_deal_id: Number(dealId),
       customer_name: customerName,
@@ -304,14 +322,14 @@ export default async function handler(req, res) {
     const updated = await updateResponse.json().catch(() => [])
     if (!updateResponse.ok) {
       const message = Array.isArray(updated) ? "CRM deal update failed." : String(updated?.message || updated?.error || "CRM deal update failed.")
-      await logEvent(supabaseUrl, serviceRoleKey, { ...logBase, status: "failed", httpStatus: updateResponse.status, errorMessage: message, result: { dealId, matchedBy, crmDealId: matchedDeal.id, updatePayload }, processedAt: new Date().toISOString() })
+      await logEvent(supabaseUrl, serviceRoleKey, { ...logBase, status: "failed", httpStatus: updateResponse.status, errorMessage: message, result: { dealId, matchedBy: "pipedrive_deal_id", crmDealId: matchedDeal.id, updatePayload }, processedAt: new Date().toISOString() })
       return send(res, 500, { success: false, error: message })
     }
 
     const result = {
       dealId,
       crmDealId: matchedDeal.id,
-      matchedBy,
+      matchedBy: "pipedrive_deal_id",
       customerName,
       installationStartDate,
       fitTeam1,
