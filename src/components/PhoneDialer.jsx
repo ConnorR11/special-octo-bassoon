@@ -75,7 +75,9 @@ function PhoneDialer({ onClose }) {
       const destination = number.trim()
       console.info("Twilio call starting", { destination, identity, deviceState: device.state })
       setDiagnostic(`Starting call → ${destination} | Identity: ${identity} | Device: ${device.state}`)
-      const connection = await device.connect({ params: { To: destination, Identity: identity } })
+      // Use CRM-prefixed names so our values cannot be confused with Twilio's
+      // own From/To/Identity fields in the webhook request.
+      const connection = await device.connect({ params: { CrmTo: destination, CrmIdentity: identity } })
       callRef.current = connection
       setStatus("Calling")
       connection.on("ringing", () => { console.info("Twilio call ringing", connection); setStatus("Ringing"); setDiagnostic(`Twilio reports ringing → ${destination}`) })
