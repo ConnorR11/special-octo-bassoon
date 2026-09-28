@@ -111,6 +111,29 @@ function App() {
     if (!supabase) { setError("Supabase is not configured. Check your environment variables."); setLoading(false); return }
     const from = pageNumber * DEALS_PAGE_SIZE, to = from + DEALS_PAGE_SIZE - 1, search = String(searchValue || "").trim()
     let request = supabase.from("deals").select("*").order("sale_date", { ascending: false }).range(from, to)
+
+    // Sales reps can see their own deals plus deals belonging to reps they manage
+    // (sales manager, manager, or branch manager). Permission 3+ retains full visibility.
+    if (effectivePermissionLevel < 3) {
+      const viewerId = previewUser?.id || profile?.id
+      let visibleSalespersonIds = []
+
+      if (viewerId) {
+        const { data: visibleProfiles, error: visibleProfilesError } = await supabase
+          .from("profiles")
+          .select("pipedrive_person_id")
+          .or(`id.eq.${viewerId},sales_manager.eq.${viewerId},manager_id.eq.${viewerId},branch_manager.eq.${viewerId}`)
+
+        if (visibleProfilesError) throw visibleProfilesError
+        visibleSalespersonIds = (visibleProfiles || [])
+          .map(row => String(row?.pipedrive_person_id || "").trim())
+          .filter(Boolean)
+      }
+
+      if (visibleSalespersonIds.length) request = request.in("salesperson", visibleSalespersonIds)
+      else request = request.eq("salesperson", "__NO_VISIBLE_SALESPERSON__")
+    }
+
     if (search) { const escaped = search.replace(/[%_]/g, "\\$&").replace(/,/g, "\\,"); request = request.or(`customer_name.ilike.%${escaped}%,postcode.ilike.%${escaped}%,phone.ilike.%${escaped}%,contract_number.ilike.%${escaped}%`) }
     if (statusValue && statusValue !== "all") request = request.eq("status", statusValue)
     const { data, error: supabaseError } = await request
