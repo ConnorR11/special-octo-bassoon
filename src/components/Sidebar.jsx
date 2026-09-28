@@ -5,6 +5,7 @@ import SalesPresentations from "../pages/SalesPresentations"
 import MI from "../pages/MI"
 import Reviews from "../pages/Reviews"
 import IntegrationLogs from "../pages/IntegrationLogs"
+import PhoneDialer from "./PhoneDialer"
 
 function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel = 1, department = "" }) {
   const numericPermissionLevel = Number(permissionLevel) || 0
@@ -13,6 +14,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
   const canAccessCanvasserKPI = numericPermissionLevel >= 3
   const canAccessSalesPerformance = numericPermissionLevel >= 2
   const [openFolders, setOpenFolders] = React.useState({ sales: false, marketing: false, installation: false, finance: false, customerService: false, admin: false, procurement: false, headOffice: false, digitalTeam: false })
+  const [showPhoneDialer, setShowPhoneDialer] = React.useState(false)
   const toggleFolder = (folder) => setOpenFolders((current) => ({ ...current, [folder]: !current[folder] }))
   const navigate = (pageName) => { setPage(pageName); setMobile(false) }
   const isActive = (pageName) => page === pageName
@@ -35,6 +37,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
       <div className="sidebar-brand"><div className="brand-mark">C</div><div><strong>Homeshield Scotland</strong><span>CRM</span></div></div>
       <nav className="sidebar-nav">
         <button type="button" className={`sidebar-item ${isActive("dashboard") ? "active" : ""}`} onClick={() => navigate("dashboard")}><LayoutDashboard size={18} /><span>Home</span></button>
+        <button type="button" className="sidebar-item" onClick={() => setShowPhoneDialer(true)}><Phone size={18} /><span>Softphone</span></button>
         <div className="sidebar-divider" />
         <Folder title="Marketing" icon={Megaphone} open={openFolders.marketing} onClick={() => toggleFolder("marketing")}><NavItem icon={BarChart3} label="Marketing Dashboard" active={isActive("marketing-dashboard")} onClick={() => navigate("marketing-dashboard")} disabled={!canAccessMarketingDashboard} locked={!canAccessMarketingDashboard} /><NavItem icon={Target} label="Leads" disabled /><NavItem icon={Phone} label="Call Log" disabled /><NavItem icon={CalendarDays} label="Booked Leads" disabled /><NavItem icon={Handshake} label="Commissions" disabled /><NavItem icon={Trophy} label="Canvasser KPI" active={isActive("canvasser-kpi")} onClick={() => navigate("canvasser-kpi")} disabled={!canAccessCanvasserKPI} locked={!canAccessCanvasserKPI} /></Folder>
         <Folder title="Sales" icon={Target} open={openFolders.sales} onClick={() => toggleFolder("sales")}><NavItem icon={LayoutDashboard} label="Mastersheet" active={isActive("marketing-tv")} onClick={() => navigate("marketing-tv")} /><NavItem icon={CalendarDays} label="Appointments" active={isActive("appointments")} onClick={() => navigate("appointments")} /><NavItem icon={FileText} label="Deals" active={isActive("contracts")} onClick={() => navigate("contracts")} /><NavItem icon={FileCheck} label="RTS List" active={isActive("rts-list")} onClick={() => navigate("rts-list")} /><NavItem icon={PoundSterling} label="Commissions" active={isActive("commissions")} onClick={() => navigate("commissions")} /><NavItem icon={Trophy} label="Sales KPI" active={isActive("sales-kpi")} onClick={() => navigate("sales-kpi")} /><NavItem icon={BarChart3} label="Sales Performance" active={isActive("sales-performance")} onClick={() => navigate("sales-performance")} disabled={!canAccessSalesPerformance} locked={!canAccessSalesPerformance} /></Folder>
@@ -47,7 +50,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
         {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}><NavItem icon={UserCog} label="Users" active={isActive("users")} onClick={() => navigate("users")} /><NavItem icon={ClipboardList} label="Tasks" active={isActive("tasks")} onClick={() => navigate("tasks")} /><NavItem icon={Presentation} label="Templates" active={isActive("sales-presentations")} onClick={() => navigate("sales-presentations")} /><NavItem icon={Database} label="API & Webhooks" active={isActive("integration-logs")} onClick={() => navigate("integration-logs")} /><NavItem icon={Settings} label="Settings" disabled /></Folder>}
       </nav>
       <div className="sidebar-footer" style={{ marginTop: "auto", flexDirection: "column", alignItems: "stretch", gap: 10 }}><button type="button" onClick={onSignOut} style={{ width: "100%", border: 0, background: "transparent", color: "inherit", display: "flex", alignItems: "center", gap: 10, padding: "8px 0", cursor: "pointer", font: "inherit", textAlign: "left" }}><LogOut size={16} /><span style={{ fontWeight: 600 }}>Sign out</span></button><div style={{ display: "flex", alignItems: "center", gap: 10 }}><div className="sidebar-footer-icon"><Settings size={16} /></div><div><strong>CRM System</strong><span>v1.0</span></div></div></div>
-    </aside>{presentationOverlay}{miOverlay}{reviewsOverlay}{integrationLogsOverlay}
+    </aside>{presentationOverlay}{miOverlay}{reviewsOverlay}{integrationLogsOverlay}{showPhoneDialer && <PhoneDialer onClose={() => setShowPhoneDialer(false)} />}
   </>
 }
 function Folder({ title, icon: Icon, open, onClick, children }) { return <div className="sidebar-folder"><button type="button" className="sidebar-folder-header" onClick={onClick}><span className="sidebar-folder-left"><Icon size={17} /><span>{title}</span></span>{open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</button>{open && <div className="sidebar-folder-items">{children}</div>}</div> }
