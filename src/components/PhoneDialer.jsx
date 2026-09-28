@@ -5,49 +5,17 @@ import { supabase } from "../lib/supabase"
 
 function describeTwilioError(err) {
   if (!err) return "Unknown Twilio error."
-
   const twilioError = err?.twilioError || err?.originalError || err
-  const fields = [
-    "name",
-    "message",
-    "code",
-    "description",
-    "explanation",
-    "causes",
-    "solutions",
-    "originalError",
-  ]
-
+  const fields = ["name", "message", "code", "description", "explanation", "causes", "solutions", "originalError"]
   const details = {}
   for (const source of [err, twilioError]) {
     if (!source || typeof source !== "object") continue
-    for (const key of fields) {
-      if (source[key] !== undefined && source[key] !== null && details[key] === undefined) {
-        details[key] = source[key]
-      }
-    }
+    for (const key of fields) if (source[key] !== undefined && source[key] !== null && details[key] === undefined) details[key] = source[key]
   }
-
-  try {
-    console.error("FULL TWILIO ERROR", { err, twilioError, details })
-  } catch (logError) {
-    console.error("FULL TWILIO ERROR", err)
-  }
-
-  const summary = [
-    details.message,
-    details.code ? `Code ${details.code}` : "",
-    details.name,
-    details.description,
-  ].filter(Boolean)
-
+  console.error("FULL TWILIO ERROR", { err, twilioError, details })
+  const summary = [details.message, details.code ? `Code ${details.code}` : "", details.name, details.description].filter(Boolean)
   let serialized = ""
-  try {
-    serialized = JSON.stringify(details)
-  } catch {
-    serialized = ""
-  }
-
+  try { serialized = JSON.stringify(details) } catch {}
   return `${[...new Set(summary)].join(" — ") || "Unknown Twilio error"}${serialized ? ` | Details: ${serialized}` : ""}`
 }
 
@@ -57,6 +25,7 @@ function PhoneDialer({ onClose }) {
   const [error, setError] = React.useState("")
   const [muted, setMuted] = React.useState(false)
   const [identity, setIdentity] = React.useState("")
+  const [diagnostic, setDiagnostic] = React.useState("")
   const deviceRef = React.useRef(null)
   const callRef = React.useRef(null)
 
@@ -66,9 +35,7 @@ function PhoneDialer({ onClose }) {
       try {
         const { data, error: authError } = await supabase.auth.getUser()
         if (!authError && mounted) setIdentity(data?.user?.id || "")
-      } catch (err) {
-        console.error("Unable to load current CRM user", err)
-      }
+      } catch (err) { console.error("Unable to load current CRM user", err) }
     })()
     return () => {
       mounted = false
@@ -77,38 +44,21 @@ function PhoneDialer({ onClose }) {
     }
   }, [])
 
-  const appendDigit = (digit) => {
-    setError("")
-    setNumber(current => `${current}${digit}`.slice(0, 20))
-  }
-
-  const appendPlus = () => {
-    setError("")
-    setNumber(current => current ? current : "+")
-  }
-
+  const appendDigit = digit => { setError(""); setNumber(current => `${current}${digit}`.slice(0, 20)) }
+  const appendPlus = () => { setError(""); setNumber(current => current ? current : "+") }
   const backspace = () => setNumber(current => current.slice(0, -1))
 
   const initialiseDevice = async () => {
     if (deviceRef.current) return deviceRef.current
     if (!identity) throw new Error("Unable to identify the logged-in CRM user.")
-
     const response = await fetch(`/api/twilio/token?identity=${encodeURIComponent(identity)}`)
     const payload = await response.json().catch(() => ({}))
     if (!response.ok || !payload.token) throw new Error(payload.error || "Twilio is not configured yet.")
     if (!Device.isSupported) throw new Error("This browser does not support Twilio Voice calling.")
-
-    const device = new Device(payload.token, {
-      logLevel: 1,
-      enableImprovedSignalingErrorPrecision: true,
-    })
+    const device = new Device(payload.token, { logLevel: 1, enableImprovedSignalingErrorPrecision: true })
     device.on("registering", () => setStatus("Connecting to Twilio..."))
     device.on("registered", () => setStatus("Ready"))
-    device.on("error", (twilioError) => {
-      console.error("Twilio device error:", twilioError)
-      setStatus("Error")
-      setError(describeTwilioError(twilioError))
-    })
+    device.on("error", twilioError => { console.error("Twilio device error:", twilioError); setStatus("Error"); setError(describeTwilioError(twilioError)) })
     device.on("unregistered", () => setStatus("Offline"))
     await device.register()
     deviceRef.current = device
@@ -118,69 +68,53 @@ function PhoneDialer({ onClose }) {
   const call = async () => {
     if (!number.trim()) return
     setError("")
+    setDiagnostic("")
     try {
       setStatus("Connecting...")
       const device = await initialiseDevice()
-      const connection = await device.connect({ params: { To: number.trim(), Identity: identity } })
+      const destination = number.trim()
+      console.info("Twilio call starting", { destination, identity, deviceState: device.state })
+      setDiagnostic(`Starting call → ${destination} | Identity: ${identity} | Device: ${device.state}`)
+      const connection = await device.connect({ params: { To: destination, Identity: identity } })
       callRef.current = connection
       setStatus("Calling")
-      connection.on("accept", () => setStatus("Connected"))
-      connection.on("disconnect", () => { callRef.current = null; setStatus("Ready"); setMuted(false) })
-      connection.on("cancel", () => { callRef.current = null; setStatus("Ready") })
-      connection.on("reject", () => { callRef.current = null; setStatus("Rejected") })
-      connection.on("error", (callError) => {
-        setStatus("Error")
-        setError(describeTwilioError(callError))
+      connection.on("ringing", () => { console.info("Twilio call ringing", connection); setStatus("Ringing"); setDiagnostic(`Twilio reports ringing → ${destination}`) })
+      connection.on("accept", () => { console.info("Twilio call accepted", connection); setStatus("Connected"); setDiagnostic(`Call connected → ${destination}`) })
+      connection.on("disconnect", () => {
+        console.warn("Twilio call disconnected", connection)
+        const details = { state: connection?.status?.(), direction: connection?.direction, parameters: connection?.parameters, to: destination, identity }
+        console.warn("TWILIO DISCONNECT DIAGNOSTIC", details)
+        setDiagnostic(`Call disconnected. State: ${details.state || "unknown"} | To: ${destination} | Identity: ${identity}`)
+        callRef.current = null
+        setStatus("Ready")
+        setMuted(false)
       })
+      connection.on("cancel", () => { console.warn("Twilio call cancelled", connection); setDiagnostic(`Call cancelled → ${destination}`); callRef.current = null; setStatus("Ready") })
+      connection.on("reject", () => { console.warn("Twilio call rejected", connection); setDiagnostic(`Call rejected by Twilio → ${destination}`); callRef.current = null; setStatus("Ready") })
+      connection.on("error", callError => { console.error("Twilio call error", callError); setStatus("Error"); setError(describeTwilioError(callError)); setDiagnostic(`Call error → ${destination}`) })
     } catch (err) {
       console.error("Twilio call error:", err)
       setStatus("Not connected")
       setError(describeTwilioError(err))
+      setDiagnostic(`Call failed before connection → ${number.trim()}`)
     }
   }
 
-  const hangUp = () => {
-    try { callRef.current?.disconnect() } catch {}
-    try { deviceRef.current?.disconnectAll() } catch {}
-    callRef.current = null
-    setStatus("Ready")
-    setMuted(false)
-  }
-
-  const toggleMute = () => {
-    const next = !muted
-    try { callRef.current?.mute(next) } catch {}
-    setMuted(next)
-  }
-
+  const hangUp = () => { try { callRef.current?.disconnect() } catch {}; try { deviceRef.current?.disconnectAll() } catch {}; callRef.current = null; setStatus("Ready"); setMuted(false) }
+  const toggleMute = () => { const next = !muted; try { callRef.current?.mute(next) } catch {}; setMuted(next) }
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"]
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 20000, background: "rgba(0,0,0,0.38)", display: "flex", alignItems: "flex-end", justifyContent: "flex-end", padding: 24 }} onMouseDown={onClose}>
       <div onMouseDown={event => event.stopPropagation()} style={{ width: 340, maxWidth: "calc(100vw - 32px)", background: "#fff", borderRadius: 18, boxShadow: "0 20px 60px rgba(0,0,0,.25)", overflow: "hidden" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", background: "#002d49", color: "#fff" }}>
-          <div><div style={{ fontSize: 16, fontWeight: 700 }}>Softphone</div><div style={{ fontSize: 11, opacity: .75 }}>Twilio</div></div>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ border: 0, background: "transparent", color: "#fff", cursor: "pointer" }}><X size={19} /></button>
-        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", background: "#002d49", color: "#fff" }}><div><div style={{ fontSize: 16, fontWeight: 700 }}>Softphone</div><div style={{ fontSize: 11, opacity: .75 }}>Twilio</div></div><button type="button" onClick={onClose} aria-label="Close" style={{ border: 0, background: "transparent", color: "#fff", cursor: "pointer" }}><X size={19} /></button></div>
         <div style={{ padding: 18 }}>
-          <div style={{ border: "1px solid #e4e9ee", borderRadius: 12, padding: "12px 14px", marginBottom: 14, background: "#f8fafc" }}>
-            <div style={{ fontSize: 11, color: "#7a8792", marginBottom: 5 }}>Number</div>
-            <div style={{ minHeight: 30, fontSize: 25, fontWeight: 600, letterSpacing: 1, color: "#17324d", textAlign: "center" }}>{number || "Enter number"}</div>
-            <div style={{ textAlign: "center", fontSize: 11, color: status === "Error" ? "#c0392b" : "#7a8792", marginTop: 5 }}>{status}</div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 9 }}>
-            {keys.map(key => <button key={key} type="button" onClick={() => appendDigit(key)} style={{ height: 50, borderRadius: 10, border: "1px solid #e1e7ec", background: "#fff", fontSize: 19, color: "#17324d", cursor: "pointer" }}>{key}</button>)}
-            <button type="button" onClick={appendPlus} aria-label="Plus" style={{ height: 50, borderRadius: 10, border: "1px solid #e1e7ec", background: "#fff", fontSize: 19, color: "#17324d", cursor: "pointer" }}>+</button>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
-            <button type="button" onClick={() => setNumber("")} style={{ border: 0, background: "transparent", color: "#6d7882", cursor: "pointer", padding: 8 }}>Clear</button>
-            <button type="button" onClick={backspace} aria-label="Backspace" style={{ border: 0, background: "transparent", color: "#6d7882", cursor: "pointer", padding: 8 }}><Delete size={19} /></button>
-          </div>
+          <div style={{ border: "1px solid #e4e9ee", borderRadius: 12, padding: "12px 14px", marginBottom: 14, background: "#f8fafc" }}><div style={{ fontSize: 11, color: "#7a8792", marginBottom: 5 }}>Number</div><div style={{ minHeight: 30, fontSize: 25, fontWeight: 600, letterSpacing: 1, color: "#17324d", textAlign: "center" }}>{number || "Enter number"}</div><div style={{ textAlign: "center", fontSize: 11, color: status === "Error" ? "#c0392b" : "#7a8792", marginTop: 5 }}>{status}</div></div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 9 }}>{keys.map(key => <button key={key} type="button" onClick={() => appendDigit(key)} style={{ height: 50, borderRadius: 10, border: "1px solid #e1e7ec", background: "#fff", fontSize: 19, color: "#17324d", cursor: "pointer" }}>{key}</button>)}<button type="button" onClick={appendPlus} aria-label="Plus" style={{ height: 50, borderRadius: 10, border: "1px solid #e1e7ec", background: "#fff", fontSize: 19, color: "#17324d", cursor: "pointer" }}>+</button></div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}><button type="button" onClick={() => setNumber("")} style={{ border: 0, background: "transparent", color: "#6d7882", cursor: "pointer", padding: 8 }}>Clear</button><button type="button" onClick={backspace} aria-label="Backspace" style={{ border: 0, background: "transparent", color: "#6d7882", cursor: "pointer", padding: 8 }}><Delete size={19} /></button></div>
           {error && <div style={{ marginTop: 8, padding: 10, borderRadius: 9, background: "#fff2f2", color: "#a93226", fontSize: 12, wordBreak: "break-word", maxHeight: 180, overflow: "auto" }}>{error}</div>}
-          <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 14 }}>
-            <button type="button" onClick={toggleMute} disabled={!callRef.current} aria-label={muted ? "Unmute" : "Mute"} style={{ width: 48, height: 48, borderRadius: "50%", border: "1px solid #dfe5ea", background: muted ? "#fff0f0" : "#fff", color: muted ? "#c0392b" : "#53616d", cursor: callRef.current ? "pointer" : "not-allowed" }}>{muted ? <MicOff size={19} /> : <Mic size={19} />}</button>
-            {callRef.current ? <button type="button" onClick={hangUp} aria-label="Hang up" style={{ width: 58, height: 58, borderRadius: "50%", border: 0, background: "#c0392b", color: "#fff", cursor: "pointer" }}><PhoneOff size={22} /></button> : <button type="button" onClick={call} aria-label="Call" style={{ width: 58, height: 58, borderRadius: "50%", border: 0, background: "#17804b", color: "#fff", cursor: "pointer" }}><Phone size={22} /></button>}
-          </div>
+          {diagnostic && <div style={{ marginTop: 8, padding: 10, borderRadius: 9, background: "#f2f6fa", color: "#53616d", fontSize: 11, wordBreak: "break-word" }}>{diagnostic}</div>}
+          <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 14 }}><button type="button" onClick={toggleMute} disabled={!callRef.current} aria-label={muted ? "Unmute" : "Mute"} style={{ width: 48, height: 48, borderRadius: "50%", border: "1px solid #dfe5ea", background: muted ? "#fff0f0" : "#fff", color: muted ? "#c0392b" : "#53616d", cursor: callRef.current ? "pointer" : "not-allowed" }}>{muted ? <MicOff size={19} /> : <Mic size={19} />}</button>{callRef.current ? <button type="button" onClick={hangUp} aria-label="Hang up" style={{ width: 58, height: 58, borderRadius: "50%", border: 0, background: "#c0392b", color: "#fff", cursor: "pointer" }}><PhoneOff size={22} /></button> : <button type="button" onClick={call} aria-label="Call" style={{ width: 58, height: 58, borderRadius: "50%", border: 0, background: "#17804b", color: "#fff", cursor: "pointer" }}><Phone size={22} /></button>}</div>
         </div>
       </div>
     </div>
