@@ -26,7 +26,12 @@ export default function handler(req, res) {
     })
   }
 
-  const identity = String(req.query?.identity || "crm-user").replace(/[^a-zA-Z0-9_.-]/g, "_").slice(0, 100)
+  // Twilio Voice identities may only contain alphanumeric characters and underscores.
+  // Supabase user IDs are UUIDs containing hyphens, so normalise them before putting
+  // the value into the Access Token.
+  const rawIdentity = String(req.query?.identity || "crm-user")
+  const identity = `crm_${rawIdentity}`.replace(/[^a-zA-Z0-9_]/g, "_").slice(0, 100)
+
   const now = Math.floor(Date.now() / 1000)
   const payload = {
     jti: `${apiKeySid}-${now}`,
