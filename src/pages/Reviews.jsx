@@ -2,11 +2,6 @@ import React from "react"
 import { Menu } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
-const TRUSTPILOT_RATING = "4.8 / 5"
-const TRUSTPILOT_COUNT = 2302
-const GOOGLE_RATING = "4.9 / 5"
-const GOOGLE_COUNT = 1358
-
 export default function Reviews({ setMobile }) {
   const [reviews, setReviews] = React.useState([])
   const [loading, setLoading] = React.useState(true)
@@ -78,6 +73,17 @@ export default function Reviews({ setMobile }) {
   const filteredReviews = source === "all" ? reviews : reviews.filter((review) => review.source === source)
   const matchedCount = filteredReviews.filter((review) => review.customer_id !== null && review.customer_id !== undefined && review.customer_id !== "").length
 
+  const trustpilotReviews = reviews.filter((review) => String(review.source || "").toLowerCase() === "trustpilot")
+  const googleReviews = reviews.filter((review) => String(review.source || "").toLowerCase() === "google")
+  const trustpilotCount = trustpilotReviews.length
+  const googleCount = googleReviews.length
+  const trustpilotRating = trustpilotCount
+    ? (trustpilotReviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / trustpilotCount).toFixed(1)
+    : "—"
+  const googleRating = googleCount
+    ? (googleReviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / googleCount).toFixed(1)
+    : "—"
+
   return (
     <div className="reviews-page">
       <style>{`
@@ -90,8 +96,8 @@ export default function Reviews({ setMobile }) {
           <div className="reviews-actions"><button type="button" onClick={connectGoogleReviews} className="reviews-button reviews-button-secondary">Connect Google Reviews</button><button type="button" onClick={findGoogleLocation} disabled={findingGoogleLocation} className="reviews-button reviews-button-secondary">{findingGoogleLocation ? "Finding Profile…" : "Find Google Business Profile ID"}</button><button type="button" onClick={syncGoogleReviews} disabled={syncingGoogle} className="reviews-button reviews-button-primary">{syncingGoogle ? "Importing…" : "Import Google Reviews"}</button></div>
         </div>
         <div className="reviews-stats">
-          <div className="reviews-stat reviews-stat-trustpilot"><div className="reviews-stat-title">Trustpilot Rating</div><div className="reviews-stat-value">{TRUSTPILOT_RATING}</div><div className="reviews-stat-subtitle">{TRUSTPILOT_COUNT.toLocaleString("en-GB")} reviews</div></div>
-          <div className="reviews-stat reviews-stat-google"><div className="reviews-stat-title">Google Reviews</div><div className="reviews-stat-value">{GOOGLE_COUNT.toLocaleString("en-GB")}</div><div className="reviews-stat-subtitle">{GOOGLE_RATING}</div></div>
+          <div className="reviews-stat reviews-stat-trustpilot"><div className="reviews-stat-title">Trustpilot Rating</div><div className="reviews-stat-value">{trustpilotRating === "—" ? "—" : `${trustpilotRating} / 5`}</div><div className="reviews-stat-subtitle">{trustpilotCount.toLocaleString("en-GB")} reviews</div></div>
+          <div className="reviews-stat reviews-stat-google"><div className="reviews-stat-title">Google Reviews</div><div className="reviews-stat-value">{googleCount.toLocaleString("en-GB")}</div><div className="reviews-stat-subtitle">{googleRating === "—" ? "No Google reviews imported" : `${googleRating} / 5 average`}</div></div>
           <Stat title="CRM Reviews" value={reviews.length} />
           <Stat title="Matched to Customers" value={matchedCount} />
         </div>
