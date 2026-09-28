@@ -2,6 +2,7 @@ import React from "react"
 import { X, ExternalLink } from "lucide-react"
 
 import { formatDate, money, statusLabel } from "../utils/formatters"
+import CallButton from "./CallButton"
 
 function ContractDrawer({ contract, close }) {
   const pipedriveDealId = contract?.pipedrive_deal_id
@@ -22,6 +23,7 @@ function ContractDrawer({ contract, close }) {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <CallButton deal={contract} label="Call" />
             {pipedriveUrl && (
               <a
                 href={pipedriveUrl}
