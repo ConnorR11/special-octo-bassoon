@@ -128,12 +128,14 @@ export default function IntegrationLogs({ setMobile }) {
   }
 
   const providers = Array.isArray(providerOptions) ? providerOptions : []
+  const safeLogs = Array.isArray(logs) ? logs : []
+  const safeChartLogs = Array.isArray(chartLogs) ? chartLogs : []
   const totalPages = Math.max(1, Math.ceil(totalRows / pageSize))
   const successRate = runStats.total ? (runStats.success / runStats.total) * 100 : 0
 
   const dailyData = React.useMemo(() => {
     const map = new Map()
-    chartLogs.forEach((log) => {
+    safeChartLogs.forEach((log) => {
       if (!log.received_at) return
       const d = new Date(log.received_at)
       if (Number.isNaN(d.getTime())) return
@@ -147,7 +149,7 @@ export default function IntegrationLogs({ setMobile }) {
       ...row,
       rate: row.total ? (row.success / row.total) * 100 : 0,
     }))
-  }, [chartLogs])
+  }, [safeChartLogs])
 
   const chart = React.useMemo(() => {
     if (!Array.isArray(dailyData) || !dailyData.length) return null
