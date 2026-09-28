@@ -1,5 +1,6 @@
 import React from "react"
 import { Phone, PhoneOff, Delete, Mic, MicOff, X } from "lucide-react"
+import { supabase } from "../lib/supabase"
 
 const SDK_URL = "https://sdk.twilio.com/js/voice/releases/2.18.5/twilio.min.js"
 
@@ -26,12 +27,25 @@ function PhoneDialer({ onClose }) {
   const [status, setStatus] = React.useState("Ready")
   const [error, setError] = React.useState("")
   const [muted, setMuted] = React.useState(false)
+  const [identity, setIdentity] = React.useState("")
   const deviceRef = React.useRef(null)
   const callRef = React.useRef(null)
 
-  React.useEffect(() => () => {
-    try { callRef.current?.disconnect() } catch {}
-    try { deviceRef.current?.destroy() } catch {}
+  React.useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const { data, error: authError } = await supabase.auth.getUser()
+        if (!authError && mounted) setIdentity(data?.user?.id || "")
+      } catch (err) {
+        console.error("Unable to load current CRM user", err)
+      }
+    })()
+    return () => {
+      mounted = false
+      try { callRef.current?.disconnect() } catch {}
+      try { deviceRef.current?.destroy() } catch {}
+    }
   }, [])
 
   const appendDigit = (digit) => {
@@ -43,7 +57,9 @@ function PhoneDialer({ onClose }) {
 
   const initialiseDevice = async () => {
     if (deviceRef.current) return deviceRef.current
-    const response = await fetch("/api/twilio/token")
+    if (!identity) throw new Error("Unable to identify the logged-in CRM user.")
+
+    const response = await fetch(`/api/twilio/token?identity=${encodeURIComponent(identity)}`)
     const payload = await response.json().catch(() => ({}))
     if (!response.ok || !payload.token) throw new Error(payload.error || "Twilio is not configured yet.")
     const Twilio = await loadTwilioSdk()
@@ -66,7 +82,7 @@ function PhoneDialer({ onClose }) {
     try {
       setStatus("Connecting...")
       const device = await initialiseDevice()
-      const connection = await device.connect({ params: { To: number.trim() } })
+      const connection = await device.connect({ params: { To: number.trim(), Identity: identity } })
       callRef.current = connection
       setStatus("Calling")
       connection.on("accept", () => setStatus("Connected"))
