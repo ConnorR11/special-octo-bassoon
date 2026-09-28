@@ -125,7 +125,7 @@ export default function CanvasserKPI() {
 
   const nameByEmail = useMemo(() => profiles.reduce((map, profile) => {
     const email = normaliseEmail(profile.email)
-    const name = String(profile.display_name || profile.full_name || "").trim()
+    const name = String(profile.full_name || "").trim()
     if (email && name) map[email] = name
     return map
   }, {}), [profiles])
