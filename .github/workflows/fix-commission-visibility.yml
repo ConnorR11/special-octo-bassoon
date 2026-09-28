@@ -1,0 +1,72 @@
+name: Fix Commission Visibility
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch commission visibility
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          # App.jsx: restrict commission deals using the same salesperson -> manager hierarchy as Contracts.
+          path = Path('src/App.jsx')
+          text = path.read_text()
+          old = '''  async function loadCommissionDeals() {\n    if (!supabase) return\n    setCommissionLoading(true)\n    try {\n      const results = []; let from = 0\n      while (true) {\n        const { data, error: supabaseError } = await supabase.from("deals").select("*").not("pipedrive_stage", "in", "(Decline,Customer Cancelled,Returned To Sales,Awaiting Funds,On Hold,Pending Cancellation)").is("commission_paid_date", null).gte("sale_date", "2025-01-01").order("installation_start_date", { ascending: true }).range(from, from + REPORTING_PAGE_SIZE - 1)\n        if (supabaseError) throw supabaseError\n        const batch = data || []; results.push(...batch)\n        if (batch.length < REPORTING_PAGE_SIZE) break\n        from += REPORTING_PAGE_SIZE\n      }\n      setCommissionDeals(results)\n    } catch (err) { console.error("Error loading commission deals:", err); setError(err?.message || "Unable to load commission data."); setCommissionDeals([]) } finally { setCommissionLoading(false) }\n  }'''
+          new = '''  async function loadCommissionDeals() {\n    if (!supabase) return\n    setCommissionLoading(true)\n    try {\n      const results = []; let from = 0\n      const viewerId = previewUser?.id || profile?.id\n      let visibleSalespersonIds = []\n\n      if (effectivePermissionLevel < 3 && viewerId) {\n        const { data: visibleProfiles, error: visibleProfilesError } = await supabase\n          .from("profiles")\n          .select("pipedrive_person_id")\n          .or(`id.eq.${viewerId},sales_manager.eq.${viewerId},branch_manager.eq.${viewerId}`)\n\n        if (visibleProfilesError) throw visibleProfilesError\n        visibleSalespersonIds = (visibleProfiles || [])\n          .map(row => String(row?.pipedrive_person_id || "").trim())\n          .filter(Boolean)\n      }\n\n      while (true) {\n        let request = supabase\n          .from("deals")\n          .select("*")\n          .not("pipedrive_stage", "in", "(Decline,Customer Cancelled,Returned To Sales,Awaiting Funds,On Hold,Pending Cancellation)")\n          .is("commission_paid_date", null)\n          .gte("sale_date", "2026-01-01")\n          .order("installation_start_date", { ascending: true })\n          .range(from, from + REPORTING_PAGE_SIZE - 1)\n\n        if (effectivePermissionLevel < 3) {\n          request = visibleSalespersonIds.length\n            ? request.in("salesperson", visibleSalespersonIds)\n            : request.eq("salesperson", "__NO_VISIBLE_SALESPERSON__")\n        }\n\n        const { data, error: supabaseError } = await request\n        if (supabaseError) throw supabaseError\n        const batch = data || []; results.push(...batch)\n        if (batch.length < REPORTING_PAGE_SIZE) break\n        from += REPORTING_PAGE_SIZE\n      }\n      setCommissionDeals(results)\n    } catch (err) { console.error("Error loading commission deals:", err); setError(err?.message || "Unable to load commission data."); setCommissionDeals([]) } finally { setCommissionLoading(false) }\n  }'''
+          if old not in text:
+              raise SystemExit('Expected loadCommissionDeals block not found')
+          path.write_text(text.replace(old, new, 1))
+
+          # SalesCommission.jsx: apply the same visibility to ADMIN rows, which are queried separately in this component.
+          path = Path('src/pages/SalesCommission.jsx')
+          text = path.read_text()
+          old_sig = 'export default function SalesCommission({ deals = [], loading = false, setSelected, permissionLevel = 0 }) {'
+          new_sig = 'export default function SalesCommission({ deals = [], loading = false, setSelected, permissionLevel = 0, viewerProfileId = null }) {'
+          if old_sig not in text:
+              raise SystemExit('Expected SalesCommission signature not found')
+          text = text.replace(old_sig, new_sig, 1)
+
+          old_state = '  const [filtersOpen, setFiltersOpen] = useState(false)\n\n  useEffect(() => {'
+          new_state = '  const [filtersOpen, setFiltersOpen] = useState(false)\n  const [visibleSalespersonIds, setVisibleSalespersonIds] = useState(null)\n\n  useEffect(() => {\n    let cancelled = false\n\n    async function loadVisibility() {\n      if (Number(permissionLevel) >= 3) {\n        setVisibleSalespersonIds(null)\n        return\n      }\n\n      if (!viewerProfileId || !supabase) {\n        setVisibleSalespersonIds([])\n        return\n      }\n\n      const { data, error } = await supabase\n        .from("profiles")\n        .select("pipedrive_person_id")\n        .or(`id.eq.${viewerProfileId},sales_manager.eq.${viewerProfileId},branch_manager.eq.${viewerProfileId}`)\n\n      if (cancelled) return\n      if (error) {\n        console.error("Error loading commission visibility:", error)\n        setVisibleSalespersonIds([])\n        return\n      }\n\n      setVisibleSalespersonIds((data || [])\n        .map(row => String(row?.pipedrive_person_id || "").trim())\n        .filter(Boolean))\n    }\n\n    loadVisibility()\n    return () => { cancelled = true }\n  }, [permissionLevel, viewerProfileId])\n\n  useEffect(() => {'
+          if old_state not in text:
+              raise SystemExit('Expected SalesCommission state marker not found')
+          text = text.replace(old_state, new_state, 1)
+
+          old_query = '      const { data, error } = await supabase.from("deals").select("*").is("admin_fee_paid_out_date", null).not("pipedrive_stage", "in", "(Decline,Customer Cancelled,Returned To Sales,Awaiting Funds,On Hold)").gte("sale_date", "2026-01-01").order("admin_fee_received_date", { ascending: true })'
+          new_query = '      let request = supabase.from("deals").select("*").is("admin_fee_paid_out_date", null).not("pipedrive_stage", "in", "(Decline,Customer Cancelled,Returned To Sales,Awaiting Funds,On Hold)").gte("sale_date", "2026-01-01").order("admin_fee_received_date", { ascending: true })\n      if (Number(permissionLevel) < 3) {\n        request = visibleSalespersonIds?.length ? request.in("salesperson", visibleSalespersonIds) : request.eq("salesperson", "__NO_VISIBLE_SALESPERSON__")\n      }\n      const { data, error } = await request'
+          if old_query not in text:
+              raise SystemExit('Expected admin query not found')
+          text = text.replace(old_query, new_query, 1)
+
+          old_deps = '  }, [])\n\n  const reps = useMemo(() =>'
+          new_deps = '  }, [permissionLevel, visibleSalespersonIds])\n\n  const reps = useMemo(() =>'
+          if old_deps not in text:
+              raise SystemExit('Expected admin effect dependency marker not found')
+          text = text.replace(old_deps, new_deps, 1)
+
+          path.write_text(text)
+          PY
+
+      - name: Remove one-off workflow and commit
+        run: |
+          rm -f .github/workflows/fix-commission-visibility.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.jsx src/pages/SalesCommission.jsx .github/workflows/fix-commission-visibility.yml
+          if git diff --cached --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git commit -m "fix: apply rep manager visibility to commissions"
+          git push
