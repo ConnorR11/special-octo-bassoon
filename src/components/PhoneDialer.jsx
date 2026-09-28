@@ -3,6 +3,12 @@ import { Device } from "@twilio/voice-sdk"
 import { Phone, PhoneOff, Delete, Mic, MicOff, X } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
+function describeTwilioError(err) {
+  if (!err) return "Unknown Twilio error."
+  const parts = [err.message, err.code ? `Code ${err.code}` : "", err.name || "", err.cause?.message || ""].filter(Boolean)
+  return [...new Set(parts)].join(" — ") || String(err)
+}
+
 function PhoneDialer({ onClose }) {
   const [number, setNumber] = React.useState("")
   const [status, setStatus] = React.useState("Ready")
@@ -50,7 +56,7 @@ function PhoneDialer({ onClose }) {
     device.on("error", (twilioError) => {
       console.error("Twilio device error:", twilioError)
       setStatus("Error")
-      setError(twilioError?.message || "Twilio connection error.")
+      setError(describeTwilioError(twilioError))
     })
     device.on("unregistered", () => setStatus("Offline"))
     await device.register()
@@ -71,11 +77,11 @@ function PhoneDialer({ onClose }) {
       connection.on("disconnect", () => { callRef.current = null; setStatus("Ready"); setMuted(false) })
       connection.on("cancel", () => { callRef.current = null; setStatus("Ready") })
       connection.on("reject", () => { callRef.current = null; setStatus("Rejected") })
-      connection.on("error", (callError) => { setStatus("Error"); setError(callError?.message || "Call error.") })
+      connection.on("error", (callError) => { setStatus("Error"); setError(describeTwilioError(callError)) })
     } catch (err) {
       console.error("Twilio call error:", err)
       setStatus("Not connected")
-      setError(err?.message || "Unable to start the call.")
+      setError(describeTwilioError(err))
     }
   }
 
@@ -119,7 +125,7 @@ function PhoneDialer({ onClose }) {
             <button type="button" onClick={backspace} aria-label="Backspace" style={{ border: 0, background: "transparent", color: "#6d7882", cursor: "pointer", padding: 8 }}><Delete size={19} /></button>
           </div>
 
-          {error && <div style={{ marginTop: 8, padding: 10, borderRadius: 9, background: "#fff2f2", color: "#a93226", fontSize: 12 }}>{error}</div>}
+          {error && <div style={{ marginTop: 8, padding: 10, borderRadius: 9, background: "#fff2f2", color: "#a93226", fontSize: 12, wordBreak: "break-word" }}>{error}</div>}
 
           <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 14 }}>
             <button type="button" onClick={toggleMute} disabled={!callRef.current} aria-label={muted ? "Unmute" : "Mute"} style={{ width: 48, height: 48, borderRadius: "50%", border: "1px solid #dfe5ea", background: muted ? "#fff0f0" : "#fff", color: muted ? "#c0392b" : "#53616d", cursor: callRef.current ? "pointer" : "not-allowed" }}>{muted ? <MicOff size={19} /> : <Mic size={19} />}</button>
