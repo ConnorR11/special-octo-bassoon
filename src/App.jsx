@@ -140,7 +140,7 @@ function App() {
     try {
       const results = []; let from = 0
       while (true) {
-        const { data, error: supabaseError } = await supabase.from("deals").select("*").not("pipedrive_stage", "in", "(Decline,Customer Cancelled,RTS)").is("commission_paid_date", null).gte("sale_date", "2025-01-01").order("installation_start_date", { ascending: true }).range(from, from + REPORTING_PAGE_SIZE - 1)
+        const { data, error: supabaseError } = await supabase.from("deals").select("*").not("pipedrive_stage", "in", "(Decline,Customer Cancelled,Returned To Sales,Awaiting Funds,On Hold,Pending Cancellation)").is("commission_paid_date", null).gte("sale_date", "2025-01-01").order("installation_start_date", { ascending: true }).range(from, from + REPORTING_PAGE_SIZE - 1)
         if (supabaseError) throw supabaseError
         const batch = data || []; results.push(...batch)
         if (batch.length < REPORTING_PAGE_SIZE) break
