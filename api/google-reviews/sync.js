@@ -8,6 +8,7 @@ import {
 
 const CONFIG_EVENT_NAME = "google-reviews-location-config"
 const REVIEW_BATCH_SIZE = 10
+const KNOWN_LOCATION_ID = "9930514822053454607"
 
 function supabaseConfig() {
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
@@ -62,6 +63,7 @@ async function saveLocationConfig(location) {
         accountName: location.accountName,
         locationName: location.locationName,
         status: "configured",
+        source: location.source || "api",
       },
     })
 
@@ -73,6 +75,7 @@ async function saveLocationConfig(location) {
           accountName: location.accountName,
           locationName: location.locationName,
           status: "configured",
+          source: location.source || "api",
         },
       })
     }
@@ -81,12 +84,65 @@ async function saveLocationConfig(location) {
   }
 }
 
-async function listAllLocations(accessToken) {
+async function getLocationDirectly(accessToken, locationId) {
+  // Google documents locations.get as a direct lookup by location ID. Unlike
+  // accounts.locations.list, this does not require the account ID in the path.
+  // The returned resource name contains both the account and location IDs.
+  const query = new URLSearchParams({
+    readMask: "name,title,storefrontAddress,websiteUri",
+  })
+
+  const data = await googleBusinessRequest(
+    accessToken,
+    `/v1/locations/${encodeURIComponent(locationId)}?${query.toString()}`,
+    {},
+    "businessInformation",
+  )
+
+  if (!data?.name) {
+    throw new Error("Google did not return a resource name for the supplied Business Profile location ID.")
+  }
+
+  const match = String(data.name).match(/^accounts\/([^/]+)\/locations\/([^/]+)$/)
+  if (!match) {
+    throw new Error(`Google returned an unexpected Business Profile location name: ${data.name}`)
+  }
+
+  return {
+    accountName: `accounts/${match[1]}`,
+    locationName: data.name,
+    businessName: data.title || null,
+    discovered: true,
+    source: "location-id",
+  }
+}
+
+async function discoverLocation(accessToken) {
+  const configuredAccountId = String(process.env.GOOGLE_REVIEW_ACCOUNT_ID || "").trim()
+  const configuredLocationId = String(process.env.GOOGLE_REVIEW_LOCATION_ID || KNOWN_LOCATION_ID).trim()
+  const configuredLocationName = String(process.env.GOOGLE_REVIEW_LOCATION_NAME || "").trim().toLowerCase()
+
+  if (configuredAccountId && configuredLocationId) {
+    return {
+      accountName: `accounts/${configuredAccountId}`,
+      locationName: `accounts/${configuredAccountId}/locations/${configuredLocationId}`,
+      discovered: false,
+      source: "environment",
+    }
+  }
+
+  // We already know the exact Google Business Profile location ID supplied
+  // by the user. Resolve it directly to obtain the account ID. This avoids
+  // the rate-limited accounts.list and accounts/-/locations discovery calls.
+  if (configuredLocationId) {
+    return getLocationDirectly(accessToken, configuredLocationId)
+  }
+
+  // Fallback for installations where no location ID has been configured.
+  // This path is deliberately not used for Homeshield because the location ID
+  // above is known.
   const locations = []
   let pageToken = null
-
-  // This is the one-time discovery call. It deliberately uses the Business
-  // Information API directly and does NOT call the Account Management API.
   for (let page = 0; page < 20; page += 1) {
     const query = new URLSearchParams({
       pageSize: "100",
@@ -100,75 +156,45 @@ async function listAllLocations(accessToken) {
       {},
       "businessInformation",
     )
-
     locations.push(...(data.locations || []))
     pageToken = data.nextPageToken || null
     if (!pageToken) break
   }
 
-  return locations
-}
-
-async function discoverLocation(accessToken) {
-  const configuredAccountId = String(process.env.GOOGLE_REVIEW_ACCOUNT_ID || "").trim()
-  const configuredLocationId = String(process.env.GOOGLE_REVIEW_LOCATION_ID || "").trim()
-  const configuredLocationName = String(process.env.GOOGLE_REVIEW_LOCATION_NAME || "").trim().toLowerCase()
-
-  if (configuredAccountId && configuredLocationId) {
-    return {
-      accountName: `accounts/${configuredAccountId}`,
-      locationName: `accounts/${configuredAccountId}/locations/${configuredLocationId}`,
-      discovered: false,
-    }
-  }
-
-  const allLocations = await listAllLocations(accessToken)
-  if (!allLocations.length) {
-    throw new Error("Google returned no accessible Business Profile locations for this account.")
-  }
-
-  const byConfiguredName = configuredLocationName
-    ? allLocations.find((location) => String(location.title || "").toLowerCase() === configuredLocationName)
-    : null
-  const byWebsite = allLocations.find((location) => /homeshield\.ltd/i.test(String(location.websiteUri || "")))
-  const byName = allLocations.find((location) => /homeshield/i.test(String(location.title || "")))
-  const selected = byConfiguredName || byWebsite || byName
+  const selected = configuredLocationName
+    ? locations.find((location) => String(location.title || "").toLowerCase() === configuredLocationName)
+    : locations.find((location) => /homeshield\.ltd/i.test(String(location.websiteUri || "")))
+      || locations.find((location) => /homeshield/i.test(String(location.title || "")))
 
   if (!selected?.name) {
-    const available = allLocations.map((location) => ({
+    const error = new Error("Unable to identify the Homeshield Google Business Profile location automatically.")
+    error.code = "GOOGLE_REVIEW_LOCATION_SELECTION_REQUIRED"
+    error.locations = locations.map((location) => ({
       locationName: location.name,
       businessName: location.title || null,
       websiteUrl: location.websiteUri || null,
     }))
-    const error = new Error("Unable to identify the Homeshield Google Business Profile location automatically.")
-    error.code = "GOOGLE_REVIEW_LOCATION_SELECTION_REQUIRED"
-    error.locations = available
     throw error
   }
 
-  // Google returns the complete resource name here:
-  // accounts/{accountId}/locations/{locationId}
   const match = String(selected.name).match(/^accounts\/([^/]+)\/locations\/([^/]+)$/)
-  if (!match) {
-    throw new Error(`Google returned an unexpected Business Profile location name: ${selected.name}`)
-  }
+  if (!match) throw new Error(`Google returned an unexpected Business Profile location name: ${selected.name}`)
 
   return {
     accountName: `accounts/${match[1]}`,
     locationName: selected.name,
     discovered: true,
+    source: "discovery",
   }
 }
 
 async function getLocation(accessToken) {
   const stored = await getStoredLocationConfig()
-  if (stored) {
-    return { ...stored, discovered: false, source: "cached" }
-  }
+  if (stored) return { ...stored, discovered: false, source: "cached" }
 
   const discovered = await discoverLocation(accessToken)
   await saveLocationConfig(discovered)
-  return { ...discovered, source: "discovered" }
+  return discovered
 }
 
 async function listReviewBatch(accessToken, locationName) {
@@ -221,16 +247,10 @@ async function upsertReview(review) {
 
   const text = await response.text()
   let data = null
-  try {
-    data = text ? JSON.parse(text) : null
-  } catch {
-    data = text
-  }
-
+  try { data = text ? JSON.parse(text) : null } catch { data = text }
   if (!response.ok) {
     throw new Error(`Supabase ${response.status}: ${typeof data === "string" ? data : JSON.stringify(data)}`)
   }
-
   return Array.isArray(data) ? data[0] : data
 }
 
@@ -282,14 +302,13 @@ export default async function handler(req, res) {
           locationName: location.locationName,
           locationSource: location.source,
           requestedReviewCount: REVIEW_BATCH_SIZE,
-          expectedGoogleRequests: location.source === "cached" ? 1 : 2,
+          expectedGoogleRequests: location.source === "cached" || location.source === "environment" ? 1 : 2,
           status: "processing",
         },
       })
     }
 
     const reviewData = await listReviewBatch(accessToken, location.locationName)
-
     let imported = 0
     let failed = 0
     const errors = []
@@ -300,10 +319,7 @@ export default async function handler(req, res) {
         imported += 1
       } catch (error) {
         failed += 1
-        errors.push({
-          reviewId: review?.reviewId || null,
-          error: error instanceof Error ? error.message : String(error),
-        })
+        errors.push({ reviewId: review?.reviewId || null, error: error instanceof Error ? error.message : String(error) })
       }
     }
 
@@ -312,7 +328,7 @@ export default async function handler(req, res) {
       accountName: location.accountName,
       locationName: location.locationName,
       locationSource: location.source,
-      googleApiRequests: location.source === "cached" ? 1 : 2,
+      googleApiRequests: location.source === "cached" || location.source === "environment" ? 1 : 2,
       requestedReviewCount: REVIEW_BATCH_SIZE,
       imported,
       failed,
