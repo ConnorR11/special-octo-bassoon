@@ -60,6 +60,11 @@ function PhoneDialer({ onClose }) {
     setNumber(current => `${current}${digit}`.slice(0, 20))
   }
 
+  const appendPlus = () => {
+    setError("")
+    setNumber(current => current ? current : "+")
+  }
+
   const backspace = () => setNumber(current => current.slice(0, -1))
 
   const initialiseDevice = async () => {
@@ -136,6 +141,7 @@ function PhoneDialer({ onClose }) {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 9 }}>
             {keys.map(key => <button key={key} type="button" onClick={() => appendDigit(key)} style={{ height: 50, borderRadius: 10, border: "1px solid #e1e7ec", background: "#fff", fontSize: 19, color: "#17324d", cursor: "pointer" }}>{key}</button>)}
+            <button type="button" onClick={appendPlus} aria-label="Plus" style={{ height: 50, borderRadius: 10, border: "1px solid #e1e7ec", background: "#fff", fontSize: 19, color: "#17324d", cursor: "pointer" }}>+</button>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
             <button type="button" onClick={() => setNumber("")} style={{ border: 0, background: "transparent", color: "#6d7882", cursor: "pointer", padding: 8 }}>Clear</button>
