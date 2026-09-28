@@ -162,8 +162,38 @@ function App() {
     setCommissionLoading(true)
     try {
       const results = []; let from = 0
+      const viewerId = previewUser?.id || profile?.id
+      let visibleSalespersonIds = []
+
+      if (effectivePermissionLevel < 3 && viewerId) {
+        const { data: visibleProfiles, error: visibleProfilesError } = await supabase
+          .from("profiles")
+          .select("pipedrive_person_id")
+          .or(`id.eq.${viewerId},sales_manager.eq.${viewerId},branch_manager.eq.${viewerId}`)
+
+        if (visibleProfilesError) throw visibleProfilesError
+        visibleSalespersonIds = (visibleProfiles || [])
+          .map(row => String(row?.pipedrive_person_id || "").trim())
+          .filter(Boolean)
+      }
+
       while (true) {
-        const { data, error: supabaseError } = await supabase.from("deals").select("*").not("pipedrive_stage", "in", "(Decline,Customer Cancelled,Returned To Sales,Awaiting Funds,On Hold,Pending Cancellation)").is("commission_paid_date", null).gte("sale_date", "2025-01-01").order("installation_start_date", { ascending: true }).range(from, from + REPORTING_PAGE_SIZE - 1)
+        let request = supabase
+          .from("deals")
+          .select("*")
+          .not("pipedrive_stage", "in", "(Decline,Customer Cancelled,Returned To Sales,Awaiting Funds,On Hold,Pending Cancellation)")
+          .is("commission_paid_date", null)
+          .gte("sale_date", "2026-01-01")
+          .order("installation_start_date", { ascending: true })
+          .range(from, from + REPORTING_PAGE_SIZE - 1)
+
+        if (effectivePermissionLevel < 3) {
+          request = visibleSalespersonIds.length
+            ? request.in("salesperson", visibleSalespersonIds)
+            : request.eq("salesperson", "__NO_VISIBLE_SALESPERSON__")
+        }
+
+        const { data, error: supabaseError } = await request
         if (supabaseError) throw supabaseError
         const batch = data || []; results.push(...batch)
         if (batch.length < REPORTING_PAGE_SIZE) break

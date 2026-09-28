@@ -79,7 +79,7 @@ function DealRow({ deal, setSelected, type }) {
   </button>
 }
 
-export default function SalesCommission({ deals = [], loading = false, setSelected, permissionLevel = 0 }) {
+export default function SalesCommission({ deals = [], loading = false, setSelected, permissionLevel = 0, viewerProfileId = null }) {
   const [adminDeals, setAdminDeals] = useState([])
   const [adminLoading, setAdminLoading] = useState(false)
   const [query, setQuery] = useState("")
@@ -87,6 +87,42 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
   const [branch, setBranch] = useState("all")
   const [commissionDate, setCommissionDate] = useState("all")
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [visibleSalespersonIds, setVisibleSalespersonIds] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadVisibility() {
+      if (Number(permissionLevel) >= 3) {
+        setVisibleSalespersonIds(null)
+        return
+      }
+
+      if (!viewerProfileId || !supabase) {
+        setVisibleSalespersonIds([])
+        return
+      }
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("pipedrive_person_id")
+        .or(`id.eq.${viewerProfileId},sales_manager.eq.${viewerProfileId},branch_manager.eq.${viewerProfileId}`)
+
+      if (cancelled) return
+      if (error) {
+        console.error("Error loading commission visibility:", error)
+        setVisibleSalespersonIds([])
+        return
+      }
+
+      setVisibleSalespersonIds((data || [])
+        .map(row => String(row?.pipedrive_person_id || "").trim())
+        .filter(Boolean))
+    }
+
+    loadVisibility()
+    return () => { cancelled = true }
+  }, [permissionLevel, viewerProfileId])
 
   useEffect(() => {
     let cancelled = false
@@ -94,7 +130,11 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
     async function loadAdmin() {
       if (!supabase) return
       setAdminLoading(true)
-      const { data, error } = await supabase.from("deals").select("*").is("admin_fee_paid_out_date", null).not("pipedrive_stage", "in", "(Decline,Customer Cancelled,Returned To Sales,Awaiting Funds,On Hold)").gte("sale_date", "2026-01-01").order("admin_fee_received_date", { ascending: true })
+      let request = supabase.from("deals").select("*").is("admin_fee_paid_out_date", null).not("pipedrive_stage", "in", "(Decline,Customer Cancelled,Returned To Sales,Awaiting Funds,On Hold)").gte("sale_date", "2026-01-01").order("admin_fee_received_date", { ascending: true })
+      if (Number(permissionLevel) < 3) {
+        request = visibleSalespersonIds?.length ? request.in("salesperson", visibleSalespersonIds) : request.eq("salesperson", "__NO_VISIBLE_SALESPERSON__")
+      }
+      const { data, error } = await request
       if (cancelled) return
       if (error) {
         console.error("Error loading admin fee deals:", error)
@@ -113,7 +153,7 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
 
     loadAdmin()
     return () => { cancelled = true }
-  }, [])
+  }, [permissionLevel, visibleSalespersonIds])
 
   const reps = useMemo(() => Array.from(new Set([...deals, ...adminDeals].map(getRepName))).sort((a, b) => a.localeCompare(b)), [deals, adminDeals])
   const branches = useMemo(() => Array.from(new Set([...deals, ...adminDeals].map(getBranchName))).sort((a, b) => a.localeCompare(b)), [deals, adminDeals])
