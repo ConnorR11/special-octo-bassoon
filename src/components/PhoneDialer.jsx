@@ -5,28 +5,50 @@ import { supabase } from "../lib/supabase"
 
 function describeTwilioError(err) {
   if (!err) return "Unknown Twilio error."
+
+  const twilioError = err?.twilioError || err?.originalError || err
+  const fields = [
+    "name",
+    "message",
+    "code",
+    "description",
+    "explanation",
+    "causes",
+    "solutions",
+    "originalError",
+  ]
+
   const details = {}
-  try {
-    for (const key of Object.getOwnPropertyNames(err)) {
-      const value = err[key]
-      if (typeof value !== "function" && value !== undefined) details[key] = value
+  for (const source of [err, twilioError]) {
+    if (!source || typeof source !== "object") continue
+    for (const key of fields) {
+      if (source[key] !== undefined && source[key] !== null && details[key] === undefined) {
+        details[key] = source[key]
+      }
     }
-  } catch {}
-  const cause = err?.cause
-  const causeDetails = cause ? {
-    message: cause.message,
-    name: cause.name,
-    code: cause.code,
-    description: cause.description,
-    stack: cause.stack,
-  } : null
-  console.error("FULL TWILIO ERROR", { err, details, cause: causeDetails })
-  const summary = [err.message, err.code ? `Code ${err.code}` : "", err.name || "", err.description || ""].filter(Boolean)
-  const serialized = JSON.stringify({ ...details, cause: causeDetails }, (key, value) => {
-    if (key === "stack" && typeof value === "string") return value.split("\n").slice(0, 3).join("\n")
-    return value
-  })
-  return `${[...new Set(summary)].join(" — ") || "Unknown Twilio error"}${serialized && serialized !== "{}" ? ` | Details: ${serialized}` : ""}`
+  }
+
+  try {
+    console.error("FULL TWILIO ERROR", { err, twilioError, details })
+  } catch (logError) {
+    console.error("FULL TWILIO ERROR", err)
+  }
+
+  const summary = [
+    details.message,
+    details.code ? `Code ${details.code}` : "",
+    details.name,
+    details.description,
+  ].filter(Boolean)
+
+  let serialized = ""
+  try {
+    serialized = JSON.stringify(details)
+  } catch {
+    serialized = ""
+  }
+
+  return `${[...new Set(summary)].join(" — ") || "Unknown Twilio error"}${serialized ? ` | Details: ${serialized}` : ""}`
 }
 
 function PhoneDialer({ onClose }) {
@@ -76,7 +98,11 @@ function PhoneDialer({ onClose }) {
     if (!response.ok || !payload.token) throw new Error(payload.error || "Twilio is not configured yet.")
     if (!Device.isSupported) throw new Error("This browser does not support Twilio Voice calling.")
 
-    const device = new Device(payload.token, { logLevel: 1 })
+    const device = new Device(payload.token, {
+      logLevel: 1,
+      enableImprovedSignalingErrorPrecision: true,
+    })
+    device.on("registering", () => setStatus("Connecting to Twilio..."))
     device.on("registered", () => setStatus("Ready"))
     device.on("error", (twilioError) => {
       console.error("Twilio device error:", twilioError)
@@ -102,7 +128,10 @@ function PhoneDialer({ onClose }) {
       connection.on("disconnect", () => { callRef.current = null; setStatus("Ready"); setMuted(false) })
       connection.on("cancel", () => { callRef.current = null; setStatus("Ready") })
       connection.on("reject", () => { callRef.current = null; setStatus("Rejected") })
-      connection.on("error", (callError) => { setStatus("Error"); setError(describeTwilioError(callError)) })
+      connection.on("error", (callError) => {
+        setStatus("Error")
+        setError(describeTwilioError(callError))
+      })
     } catch (err) {
       console.error("Twilio call error:", err)
       setStatus("Not connected")
