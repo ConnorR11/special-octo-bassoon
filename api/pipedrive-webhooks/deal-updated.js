@@ -167,7 +167,6 @@ export default async function handler(req, res) {
     const customFieldKeys = [fields.installationStartDate?.key, fields.fitTeam?.key].filter(Boolean)
     const dealUrl = new URL(`https://api.pipedrive.com/api/v2/deals/${encodeURIComponent(dealId)}`)
     dealUrl.searchParams.set("api_token", pipedriveToken)
-    dealUrl.searchParams.set("include_fields", "custom_fields")
     if (customFieldKeys.length) dealUrl.searchParams.set("custom_fields", customFieldKeys.join(","))
     dealUrl.searchParams.set("include_option_labels", "true")
 
