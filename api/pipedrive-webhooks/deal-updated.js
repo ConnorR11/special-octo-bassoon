@@ -58,45 +58,71 @@ async function getDealFields(pipedriveToken) {
     headers: { Accept: "application/json" },
   })
   const json = await response.json().catch(() => ({}))
-  if (!response.ok || !json?.success) return {}
+  if (!response.ok || !json?.success) throw new Error(`Pipedrive deal fields lookup failed with HTTP ${response.status}.`)
 
   const fields = Array.isArray(json.data) ? json.data : []
   const result = {}
   for (const field of fields) {
     const name = String(field?.name || "").trim().toLowerCase()
-    if (name === "installation: start date") result.installationStartDateKey = field.key
-    if (name === "installation: fit team") result.fitTeamKey = field.key
+    if (name === "installation: start date") result.installationStartDate = field
+    if (name === "installation: fit team") result.fitTeam = field
   }
   return result
 }
 
 function getCustomFieldValue(deal, key) {
   if (!key) return null
-  const customFields = deal?.custom_fields || {}
-  return customFields[key] ?? deal?.[key] ?? null
+  const customFields = deal?.custom_fields
+  if (customFields && typeof customFields === "object") return customFields[key] ?? null
+  return deal?.[key] ?? null
 }
 
 function normaliseDate(value) {
   if (value === null || value === undefined || value === "") return null
   const text = String(value).trim()
   if (!text) return null
-
-  // Keep a date-only value as YYYY-MM-DD. For an ISO timestamp, use its date portion.
   const isoMatch = text.match(/^(\d{4}-\d{2}-\d{2})/)
   if (isoMatch) return isoMatch[1]
-
   const parsed = new Date(text)
   if (Number.isNaN(parsed.getTime())) return null
   return parsed.toISOString().slice(0, 10)
 }
 
-function normaliseFitTeam(value) {
-  if (value === null || value === undefined) return null
+function normaliseFitTeam(value, field) {
+  if (value === null || value === undefined || value === "") return null
   if (typeof value === "object") {
     if (Array.isArray(value)) return value.map((item) => String(item?.label ?? item?.name ?? item?.value ?? item)).filter(Boolean).join(", ") || null
     return String(value.label ?? value.name ?? value.value ?? "").trim() || null
   }
+
+  // Enum/set fields can return an option ID when option labels are not included.
+  const optionId = Number(value)
+  if (Number.isFinite(optionId) && Array.isArray(field?.options)) {
+    const option = field.options.find((item) => Number(item?.id) === optionId)
+    if (option?.label) return String(option.label).trim()
+  }
+
   return String(value).trim() || null
+}
+
+async function getStageName(pipedriveToken, stageId) {
+  if (!stageId) return null
+  const response = await fetch(`https://api.pipedrive.com/api/v2/stages/${encodeURIComponent(stageId)}?api_token=${encodeURIComponent(pipedriveToken)}`, {
+    headers: { Accept: "application/json" },
+  })
+  const json = await response.json().catch(() => ({}))
+  if (!response.ok || !json?.success) return null
+  return String(json?.data?.name || "").trim() || null
+}
+
+async function getPersonName(pipedriveToken, personId) {
+  if (!personId) return null
+  const response = await fetch(`https://api.pipedrive.com/api/v2/persons/${encodeURIComponent(personId)}?api_token=${encodeURIComponent(pipedriveToken)}`, {
+    headers: { Accept: "application/json" },
+  })
+  const json = await response.json().catch(() => ({}))
+  if (!response.ok || !json?.success) return null
+  return String(json?.data?.name || "").trim() || null
 }
 
 export default async function handler(req, res) {
@@ -126,7 +152,19 @@ export default async function handler(req, res) {
   }
 
   try {
-    const dealResponse = await fetch(`https://api.pipedrive.com/api/v2/deals/${encodeURIComponent(dealId)}?api_token=${encodeURIComponent(pipedriveToken)}`, { headers: { Accept: "application/json" } })
+    // Pipedrive v2 returns custom fields inside `custom_fields` only when the
+    // requested field keys are included in the deal request. Resolve those
+    // keys from the human-readable field names first.
+    const fields = await getDealFields(pipedriveToken)
+    const customFieldKeys = [fields.installationStartDate?.key, fields.fitTeam?.key].filter(Boolean)
+    const customFieldsParam = customFieldKeys.join(",")
+
+    const dealUrl = new URL(`https://api.pipedrive.com/api/v2/deals/${encodeURIComponent(dealId)}`)
+    dealUrl.searchParams.set("api_token", pipedriveToken)
+    if (customFieldsParam) dealUrl.searchParams.set("custom_fields", customFieldsParam)
+    dealUrl.searchParams.set("include_option_labels", "true")
+
+    const dealResponse = await fetch(dealUrl.toString(), { headers: { Accept: "application/json" } })
     const dealJson = await dealResponse.json().catch(() => ({}))
     if (!dealResponse.ok || !dealJson?.success) {
       const message = dealJson?.error || `Pipedrive deal lookup failed with HTTP ${dealResponse.status}.`
@@ -135,21 +173,12 @@ export default async function handler(req, res) {
     }
 
     const deal = dealJson.data || {}
-
-    // Resolve the two Pipedrive custom fields by their human-readable field names.
-    const fieldKeys = await getDealFields(pipedriveToken)
-    const installationStartDate = normaliseDate(getCustomFieldValue(deal, fieldKeys.installationStartDateKey))
-    const fitTeam1 = normaliseFitTeam(getCustomFieldValue(deal, fieldKeys.fitTeamKey))
-    const pipedriveStage = String(deal?.stage_name || deal?.stage?.name || "").trim() || null
+    const installationStartDate = normaliseDate(getCustomFieldValue(deal, fields.installationStartDate?.key))
+    const fitTeam1 = normaliseFitTeam(getCustomFieldValue(deal, fields.fitTeam?.key), fields.fitTeam)
+    const pipedriveStage = await getStageName(pipedriveToken, deal?.stage_id) || String(deal?.stage_name || deal?.stage?.name || "").trim() || null
 
     const personId = deal?.person_id?.value ?? deal?.person_id ?? null
-    let customerName = ""
-    if (personId) {
-      const personResponse = await fetch(`https://api.pipedrive.com/api/v2/persons/${encodeURIComponent(personId)}?api_token=${encodeURIComponent(pipedriveToken)}`, { headers: { Accept: "application/json" } })
-      const personJson = await personResponse.json().catch(() => ({}))
-      if (personResponse.ok && personJson?.success) customerName = String(personJson?.data?.name || "").trim()
-    }
-    if (!customerName) customerName = String(deal?.person_name || deal?.person?.name || "").trim()
+    const customerName = await getPersonName(pipedriveToken, personId) || String(deal?.person_name || deal?.person?.name || "").trim() || null
 
     const lookup = await fetch(`${supabaseUrl}/rest/v1/deals?pipedrive_deal_id=eq.${encodeURIComponent(dealId)}&select=id,pipedrive_deal_id,customer_name,installation_start_date,fit_team_1,pipedrive_stage`, {
       headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, Accept: "application/json" },
@@ -161,7 +190,7 @@ export default async function handler(req, res) {
     }
 
     const updatePayload = {
-      ...(customerName ? { customer_name: customerName } : {}),
+      customer_name: customerName,
       installation_start_date: installationStartDate,
       fit_team_1: fitTeam1,
       pipedrive_stage: pipedriveStage,
@@ -181,7 +210,7 @@ export default async function handler(req, res) {
 
     const result = {
       dealId,
-      customerName: customerName || null,
+      customerName,
       installationStartDate,
       fitTeam1,
       pipedriveStage,
