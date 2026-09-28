@@ -42,14 +42,21 @@ function normalisePhone(value) {
   return phone
 }
 
+function getSupabaseConfig() {
+  const url = String(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "").trim().replace(/\/$/, "")
+  const serviceKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim()
+  return { url, serviceKey }
+}
+
+function supabaseHeaders(serviceKey) {
+  return { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" }
+}
+
 async function getProfilePhone(identity) {
   const authUserId = normaliseIdentity(identity)
   if (!authUserId) return { phone: null, authUserId: null, reason: "No CRM identity supplied" }
 
-  // The browser uses VITE_SUPABASE_URL, while server-side functions may use
-  // SUPABASE_URL. Support both so this endpoint matches the rest of the CRM.
-  const url = String(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "").trim().replace(/\/$/, "")
-  const serviceKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim()
+  const { url, serviceKey } = getSupabaseConfig()
   if (!url || !serviceKey) {
     console.error("Twilio voice: Supabase server credentials are missing", {
       hasUrl: Boolean(url),
@@ -62,7 +69,7 @@ async function getProfilePhone(identity) {
     }
   }
 
-  const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
+  const headers = supabaseHeaders(serviceKey)
 
   const authResponse = await fetch(
     `${url}/rest/v1/profiles?select=twilio_phone_number&auth_user_id=eq.${encodeURIComponent(authUserId)}&limit=1`,
@@ -93,6 +100,40 @@ async function getProfilePhone(identity) {
   return { phone: null, authUserId, profileFound: false, matchedBy: null, reason: "Profile not found or twilio_phone_number is empty" }
 }
 
+async function createCallLog({ userId, callSid, from, to }) {
+  const { url, serviceKey } = getSupabaseConfig()
+  if (!url || !serviceKey || !userId || !callSid || !to) return
+
+  try {
+    const response = await fetch(`${url}/rest/v1/call_logs`, {
+      method: "POST",
+      headers: { ...supabaseHeaders(serviceKey), Prefer: "return=minimal" },
+      body: JSON.stringify({
+        user_id: userId,
+        customer_phone: to,
+        direction: "outbound",
+        status: "initiated",
+        twilio_call_sid: callSid,
+        from_number: from || null,
+        to_number: to,
+        started_at: new Date().toISOString(),
+      }),
+    })
+    if (!response.ok) {
+      console.error("Twilio voice: unable to create call log", response.status, await response.text().catch(() => ""))
+    }
+  } catch (error) {
+    console.error("Twilio voice: call log insert failed", error)
+  }
+}
+
+function getBaseUrl(req) {
+  const configured = String(process.env.APP_URL || "").trim().replace(/\/$/, "")
+  if (configured) return configured
+  const host = req.headers?.host
+  return host ? `https://${host}` : "https://special-octo-bassoon-iota.vercel.app"
+}
+
 function xmlResponse(res, status, xml) {
   res.statusCode = status
   res.setHeader("Content-Type", "text/xml; charset=utf-8")
@@ -113,6 +154,7 @@ export default async function handler(req, res) {
     const to = getParam(req, "CrmTo", "ToNumber", "To")
     const identityParam = getParam(req, "CrmIdentity", "Identity")
     const twilioFrom = getParam(req, "From")
+    const callSid = getParam(req, "CallSid")
     const identity = identityParam || twilioFrom
     const lookup = await getProfilePhone(identity)
     const from = lookup.phone
@@ -124,7 +166,7 @@ export default async function handler(req, res) {
       from,
       caller: twilioFrom,
       twilioTo: getParam(req, "To"),
-      callSid: getParam(req, "CallSid"),
+      callSid,
       profileFound: lookup.profileFound,
       matchedBy: lookup.matchedBy,
       reason: lookup.reason,
@@ -136,14 +178,17 @@ export default async function handler(req, res) {
       return xmlResponse(res, 200, `<Response><Say>${escapeXml(message)}</Say></Response>`)
     }
 
-    const destination = String(to || "").replace(/[\s()-]/g, "")
-    if (!/^\+?[1-9]\d{7,14}$/.test(destination)) {
+    const destination = normalisePhone(to)
+    if (!destination || !/^\+?[1-9]\d{7,14}$/.test(destination)) {
       console.error("Twilio voice: invalid destination", to)
       return xmlResponse(res, 200, "<Response><Say>Invalid destination number.</Say></Response>")
     }
 
-    const xml = `<Response><Dial callerId="${escapeXml(from)}"><Number>${escapeXml(destination)}</Number></Dial></Response>`
-    console.log("Twilio voice response", { from, destination, xml })
+    await createCallLog({ userId: lookup.authUserId, callSid, from, to: destination })
+
+    const callbackUrl = `${getBaseUrl(req)}/api/twilio/call-status`
+    const xml = `<Response><Dial callerId="${escapeXml(from)}" statusCallback="${escapeXml(callbackUrl)}" statusCallbackMethod="POST" statusCallbackEvent="initiated ringing answered completed"><Number>${escapeXml(destination)}</Number></Dial></Response>`
+    console.log("Twilio voice response", { from, destination, callSid, callbackUrl, xml })
     return xmlResponse(res, 200, xml)
   } catch (error) {
     console.error("Twilio voice endpoint error", error)
