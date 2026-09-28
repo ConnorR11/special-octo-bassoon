@@ -53,24 +53,22 @@ async function logEvent(supabaseUrl, serviceRoleKey, values) {
   }
 }
 
-async function getDealFields(pipedriveToken) {
-  const response = await fetch(`https://api.pipedrive.com/api/v2/dealFields?limit=500&api_token=${encodeURIComponent(pipedriveToken)}`, {
-    headers: { Accept: "application/json" },
-  })
-  const json = await response.json().catch(() => ({}))
-  if (!response.ok || !json?.success) throw new Error(`Pipedrive deal fields lookup failed with HTTP ${response.status}.`)
-
-  const fields = Array.isArray(json.data) ? json.data : []
-  const result = {}
-  for (const field of fields) {
-    const fieldName = String(field?.field_name || field?.name || "").trim().toLowerCase()
-    const fieldKey = String(field?.field_code || field?.key || "").trim()
-    if (fieldName === "installation: start date") result.installationStartDate = { ...field, key: fieldKey }
-    if (fieldName === "installation: fit team") result.fitTeam = { ...field, key: fieldKey }
-    if (fieldName === "installation issues: fit team") result.installationIssuesFitTeam = { ...field, key: fieldKey }
-    if (fieldName === "installation: installation issue booked") result.installationIssuesStartDate = { ...field, key: fieldKey }
-  }
-  return result
+// These field codes were resolved from the Pipedrive fields API and are now
+// kept here so every webhook does not make an expensive dealFields request.
+// This avoids Pipedrive token/rate-limit exhaustion during bulk webhook bursts.
+const PIPEDRIVE_FIELDS = {
+  installationStartDate: {
+    key: "55177af32aecef5d2f250bd701c2bbee064136fc",
+  },
+  fitTeam: {
+    key: "9dea8a18f5fe439880a93a49c0be9072f7d38107",
+  },
+  installationIssuesFitTeam: {
+    key: "5de8dad128c17a2be90d25241b9cf758cf5000b9",
+  },
+  installationIssuesStartDate: {
+    key: "ca19ff895b86a67552d6b600ed15ad6ffcd771ea",
+  },
 }
 
 function getCustomFieldValue(deal, key) {
@@ -107,17 +105,11 @@ function normaliseDate(value) {
   return parsed.toISOString().slice(0, 10)
 }
 
-function normaliseFitTeam(value, field) {
+function normaliseFitTeam(value) {
   if (value === null || value === undefined || value === "") return null
   if (typeof value === "object") {
     if (Array.isArray(value)) return value.map((item) => String(item?.label ?? item?.name ?? item?.value ?? item)).filter(Boolean).join(", ") || null
     return String(value.label ?? value.name ?? value.value ?? "").trim() || null
-  }
-  const optionId = Number(value)
-  const options = field?.options || field?.settings?.options || []
-  if (Number.isFinite(optionId) && Array.isArray(options)) {
-    const option = options.find((item) => Number(item?.id) === optionId)
-    if (option?.label) return String(option.label).trim()
   }
   return String(value).trim() || null
 }
@@ -165,17 +157,17 @@ export default async function handler(req, res) {
   }
 
   try {
-    const fields = await getDealFields(pipedriveToken)
+    const fields = PIPEDRIVE_FIELDS
     const customFieldKeys = [
-      fields.installationStartDate?.key,
-      fields.fitTeam?.key,
-      fields.installationIssuesFitTeam?.key,
-      fields.installationIssuesStartDate?.key,
-    ].filter(Boolean)
+      fields.installationStartDate.key,
+      fields.fitTeam.key,
+      fields.installationIssuesFitTeam.key,
+      fields.installationIssuesStartDate.key,
+    ]
 
     const dealUrl = new URL(`https://api.pipedrive.com/api/v2/deals/${encodeURIComponent(dealId)}`)
     dealUrl.searchParams.set("api_token", pipedriveToken)
-    if (customFieldKeys.length) dealUrl.searchParams.set("custom_fields", customFieldKeys.join(","))
+    dealUrl.searchParams.set("custom_fields", customFieldKeys.join(","))
     dealUrl.searchParams.set("include_option_labels", "true")
 
     const dealResponse = await fetch(dealUrl.toString(), { headers: { Accept: "application/json" } })
@@ -187,10 +179,10 @@ export default async function handler(req, res) {
     }
 
     const deal = dealJson.data || {}
-    const installationStartDate = normaliseDate(getCustomFieldValue(deal, fields.installationStartDate?.key))
-    const fitTeam1 = normaliseFitTeam(getCustomFieldValue(deal, fields.fitTeam?.key), fields.fitTeam)
-    const installationIssuesFitTeam = normaliseFitTeam(getCustomFieldValue(deal, fields.installationIssuesFitTeam?.key), fields.installationIssuesFitTeam)
-    const installationsIssuesStartDate = normaliseDate(getCustomFieldValue(deal, fields.installationIssuesStartDate?.key))
+    const installationStartDate = normaliseDate(getCustomFieldValue(deal, fields.installationStartDate.key))
+    const fitTeam1 = normaliseFitTeam(getCustomFieldValue(deal, fields.fitTeam.key))
+    const installationIssuesFitTeam = normaliseFitTeam(getCustomFieldValue(deal, fields.installationIssuesFitTeam.key))
+    const installationsIssuesStartDate = normaliseDate(getCustomFieldValue(deal, fields.installationIssuesStartDate.key))
     const pipedriveStage = await getStageName(pipedriveToken, deal?.stage_id) || String(deal?.stage_name || deal?.stage?.name || "").trim() || null
     const personId = deal?.person_id?.value ?? deal?.person_id ?? null
     const customerName = await getPersonName(pipedriveToken, personId) || String(deal?.person_name || deal?.person?.name || "").trim() || null
@@ -204,10 +196,10 @@ export default async function handler(req, res) {
       "Stage": pipedriveStage,
     }
     const fieldCodes = {
-      "Installation: Start Date": fields.installationStartDate?.key || null,
-      "Installation: Fit Team": fields.fitTeam?.key || null,
-      "Installation Issues: Fit Team": fields.installationIssuesFitTeam?.key || null,
-      "Installation: Installation Issue Booked": fields.installationIssuesStartDate?.key || null,
+      "Installation: Start Date": fields.installationStartDate.key,
+      "Installation: Fit Team": fields.fitTeam.key,
+      "Installation Issues: Fit Team": fields.installationIssuesFitTeam.key,
+      "Installation: Installation Issue Booked": fields.installationIssuesStartDate.key,
     }
 
     const payloadForLog = {
