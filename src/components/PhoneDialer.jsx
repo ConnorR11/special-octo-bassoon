@@ -5,8 +5,28 @@ import { supabase } from "../lib/supabase"
 
 function describeTwilioError(err) {
   if (!err) return "Unknown Twilio error."
-  const parts = [err.message, err.code ? `Code ${err.code}` : "", err.name || "", err.cause?.message || ""].filter(Boolean)
-  return [...new Set(parts)].join(" — ") || String(err)
+  const details = {}
+  try {
+    for (const key of Object.getOwnPropertyNames(err)) {
+      const value = err[key]
+      if (typeof value !== "function" && value !== undefined) details[key] = value
+    }
+  } catch {}
+  const cause = err?.cause
+  const causeDetails = cause ? {
+    message: cause.message,
+    name: cause.name,
+    code: cause.code,
+    description: cause.description,
+    stack: cause.stack,
+  } : null
+  console.error("FULL TWILIO ERROR", { err, details, cause: causeDetails })
+  const summary = [err.message, err.code ? `Code ${err.code}` : "", err.name || "", err.description || ""].filter(Boolean)
+  const serialized = JSON.stringify({ ...details, cause: causeDetails }, (key, value) => {
+    if (key === "stack" && typeof value === "string") return value.split("\n").slice(0, 3).join("\n")
+    return value
+  })
+  return `${[...new Set(summary)].join(" — ") || "Unknown Twilio error"}${serialized && serialized !== "{}" ? ` | Details: ${serialized}` : ""}`
 }
 
 function PhoneDialer({ onClose }) {
@@ -108,25 +128,20 @@ function PhoneDialer({ onClose }) {
           <div><div style={{ fontSize: 16, fontWeight: 700 }}>Softphone</div><div style={{ fontSize: 11, opacity: .75 }}>Twilio</div></div>
           <button type="button" onClick={onClose} aria-label="Close" style={{ border: 0, background: "transparent", color: "#fff", cursor: "pointer" }}><X size={19} /></button>
         </div>
-
         <div style={{ padding: 18 }}>
           <div style={{ border: "1px solid #e4e9ee", borderRadius: 12, padding: "12px 14px", marginBottom: 14, background: "#f8fafc" }}>
             <div style={{ fontSize: 11, color: "#7a8792", marginBottom: 5 }}>Number</div>
             <div style={{ minHeight: 30, fontSize: 25, fontWeight: 600, letterSpacing: 1, color: "#17324d", textAlign: "center" }}>{number || "Enter number"}</div>
             <div style={{ textAlign: "center", fontSize: 11, color: status === "Error" ? "#c0392b" : "#7a8792", marginTop: 5 }}>{status}</div>
           </div>
-
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 9 }}>
             {keys.map(key => <button key={key} type="button" onClick={() => appendDigit(key)} style={{ height: 50, borderRadius: 10, border: "1px solid #e1e7ec", background: "#fff", fontSize: 19, color: "#17324d", cursor: "pointer" }}>{key}</button>)}
           </div>
-
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
             <button type="button" onClick={() => setNumber("")} style={{ border: 0, background: "transparent", color: "#6d7882", cursor: "pointer", padding: 8 }}>Clear</button>
             <button type="button" onClick={backspace} aria-label="Backspace" style={{ border: 0, background: "transparent", color: "#6d7882", cursor: "pointer", padding: 8 }}><Delete size={19} /></button>
           </div>
-
-          {error && <div style={{ marginTop: 8, padding: 10, borderRadius: 9, background: "#fff2f2", color: "#a93226", fontSize: 12, wordBreak: "break-word" }}>{error}</div>}
-
+          {error && <div style={{ marginTop: 8, padding: 10, borderRadius: 9, background: "#fff2f2", color: "#a93226", fontSize: 12, wordBreak: "break-word", maxHeight: 180, overflow: "auto" }}>{error}</div>}
           <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 14 }}>
             <button type="button" onClick={toggleMute} disabled={!callRef.current} aria-label={muted ? "Unmute" : "Mute"} style={{ width: 48, height: 48, borderRadius: "50%", border: "1px solid #dfe5ea", background: muted ? "#fff0f0" : "#fff", color: muted ? "#c0392b" : "#53616d", cursor: callRef.current ? "pointer" : "not-allowed" }}>{muted ? <MicOff size={19} /> : <Mic size={19} />}</button>
             {callRef.current ? <button type="button" onClick={hangUp} aria-label="Hang up" style={{ width: 58, height: 58, borderRadius: "50%", border: 0, background: "#c0392b", color: "#fff", cursor: "pointer" }}><PhoneOff size={22} /></button> : <button type="button" onClick={call} aria-label="Call" style={{ width: 58, height: 58, borderRadius: "50%", border: 0, background: "#17804b", color: "#fff", cursor: "pointer" }}><Phone size={22} /></button>}
