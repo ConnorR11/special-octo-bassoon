@@ -291,7 +291,19 @@ export default async function handler(req, res) {
       "Stage": pipedriveStage,
     }
     const fieldCodes = Object.fromEntries(Object.entries(fields).map(([key, field]) => [field.name, field.key]))
-    const payloadForLog = { ...body, pipedrive_fields: friendlyFields, pipedrive_field_codes: fieldCodes }
+
+    // Keep the webhook log human-readable: remove the raw Sales Rep ID from
+    // the original Pipedrive custom_fields payload. The resolved salesperson
+    // name remains available in pipedrive_fields and the CRM update.
+    const sanitizedBody = JSON.parse(JSON.stringify(body || {}))
+    if (sanitizedBody?.data?.item?.custom_fields && fields.salesperson.key) {
+      delete sanitizedBody.data.item.custom_fields[fields.salesperson.key]
+    }
+    if (fields.salesperson.key && Object.prototype.hasOwnProperty.call(sanitizedBody?.data?.item || {}, fields.salesperson.key)) {
+      delete sanitizedBody.data.item[fields.salesperson.key]
+    }
+
+    const payloadForLog = { ...sanitizedBody, pipedrive_fields: friendlyFields, pipedrive_field_codes: fieldCodes }
     const logBase = { ...baseLog, payload: payloadForLog }
 
     // IMPORTANT: CRM records are matched ONLY by the Pipedrive deal ID.
