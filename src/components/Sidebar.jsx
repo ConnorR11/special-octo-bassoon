@@ -1,4 +1,5 @@
 import React from "react"
+import { createPortal } from "react-dom"
 import {
   LayoutDashboard,
   FileText,
@@ -21,6 +22,7 @@ import {
   Receipt,
   UserRound,
   MessageCircle,
+  Files,
   UserCog,
   FileCheck,
   LogOut,
@@ -34,10 +36,14 @@ import {
   Building2,
   Search,
   Database,
-  Star
+  Star,
 } from "lucide-react"
 
-import CallLog from "./CallLog"
+import SalesPresentations from "../pages/SalesPresentations"
+import MI from "../pages/MI"
+import Reviews from "../pages/Reviews"
+import IntegrationLogs from "../pages/IntegrationLogs"
+import CallLog from "../pages/CallLog"
 import PhoneDialer from "./PhoneDialer"
 
 function Sidebar({
@@ -47,27 +53,16 @@ function Sidebar({
   setMobile,
   onSignOut,
   permissionLevel = 1,
-  department = ""
+  department = "",
 }) {
-  const numericPermissionLevel =
-    Number(permissionLevel) || 0
+  const numericPermissionLevel = Number(permissionLevel) || 0
 
-  const isAdministrator =
-    numericPermissionLevel >= 4
+  const isAdministrator = numericPermissionLevel >= 4
+  const canAccessMarketingDashboard = numericPermissionLevel >= 3
+  const canAccessCanvasserKPI = numericPermissionLevel >= 3
+  const canAccessSalesPerformance = numericPermissionLevel >= 2
 
-  const canAccessMarketingDashboard =
-    numericPermissionLevel >= 3
-
-  const canAccessCanvasserKPI =
-    numericPermissionLevel >= 3
-
-  const canAccessSalesPerformance =
-    numericPermissionLevel >= 2
-
-  const [
-    openFolders,
-    setOpenFolders
-  ] = React.useState({
+  const [openFolders, setOpenFolders] = React.useState({
     sales: false,
     marketing: false,
     installation: false,
@@ -76,34 +71,38 @@ function Sidebar({
     admin: false,
     procurement: false,
     headOffice: false,
-    digitalTeam: false
+    digitalTeam: false,
   })
 
-  const [
-    showPhoneDialer,
-    setShowPhoneDialer
-  ] = React.useState(false)
+  const [showPhoneDialer, setShowPhoneDialer] = React.useState(false)
+  const [showCallLog, setShowCallLog] = React.useState(false)
 
-  const [
-    showCallLog,
-    setShowCallLog
-  ] = React.useState(false)
-
-  const toggleFolder = folder =>
-    setOpenFolders(current => ({
+  const toggleFolder = (folder) => {
+    setOpenFolders((current) => ({
       ...current,
-      [folder]: !current[folder]
+      [folder]: !current[folder],
     }))
+  }
 
-  const navigate = pageName => {
+  const navigate = (pageName) => {
     setPage(pageName)
     setMobile(false)
   }
 
-  const isActive = pageName =>
-    page === pageName
+  const isActive = (pageName) => page === pageName
 
-  const canAccessRoute = route => {
+  const isMobileViewport =
+    typeof window !== "undefined" && window.innerWidth <= 800
+
+  const desktopOverlayLeft = isMobileViewport ? 0 : 250
+
+  const reviewsOverlayZIndex = isMobileViewport ? 998 : 10000
+  const reviewsOverlayTop = isMobileViewport ? 72 : 0
+
+  const integrationLogsOverlayZIndex = isMobileViewport ? 998 : 10000
+  const integrationLogsOverlayTop = isMobileViewport ? 72 : 0
+
+  const canAccessRoute = (route) => {
     const requiredPermission = {
       "sales-performance": 2,
       "marketing-dashboard": 3,
@@ -114,24 +113,19 @@ function Sidebar({
       users: 4,
       tasks: 4,
       "sales-presentations": 4,
-      "integration-logs": 4
+      "integration-logs": 4,
     }[route]
 
     return (
       !requiredPermission ||
-      numericPermissionLevel >=
-        requiredPermission
+      numericPermissionLevel >= requiredPermission
     )
   }
 
   React.useEffect(() => {
     if (!numericPermissionLevel) return
 
-    const path =
-      window.location.pathname.replace(
-        /^\/+|\/+$/g,
-        ""
-      )
+    const path = window.location.pathname.replace(/^\/+|\/+$/g, "")
 
     const route =
       path === ""
@@ -141,30 +135,142 @@ function Sidebar({
     if (!canAccessRoute(route)) {
       setPage("dashboard")
 
-      if (
-        window.location.pathname !== "/"
-      ) {
-        window.history.replaceState(
-          {},
-          "",
-          "/"
-        )
+      if (window.location.pathname !== "/") {
+        window.history.replaceState({}, "", "/")
       }
 
-      window.dispatchEvent(
-        new PopStateEvent("popstate")
-      )
+      window.dispatchEvent(new PopStateEvent("popstate"))
     }
   }, [numericPermissionLevel])
 
-  const callLogOverlay =
-    showCallLog &&
+  /*
+   * Sales Presentations
+   */
+  const presentationOverlay =
+    isAdministrator &&
+    page === "sales-presentations" &&
     typeof document !== "undefined"
-      ? ReactDOM.createPortal(
+      ? createPortal(
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: desktopOverlayLeft,
+              zIndex: 10000,
+              background: "#f5f7fa",
+              overflow: "auto",
+            }}
+          >
+            <div
+              style={{
+                maxWidth: 1500,
+                margin: "0 auto",
+                padding: "28px 28px 50px",
+              }}
+            >
+              <SalesPresentations />
+            </div>
+          </div>,
+          document.body
+        )
+      : null
+
+  /*
+   * MI
+   */
+  const miOverlay =
+    isAdministrator &&
+    page === "mi" &&
+    typeof document !== "undefined"
+      ? createPortal(
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: desktopOverlayLeft,
+              zIndex: 10000,
+              background: "#f5f7fa",
+              overflow: "auto",
+            }}
+          >
+            <div
+              style={{
+                maxWidth: 1500,
+                margin: "0 auto",
+                padding: "28px 28px 50px",
+              }}
+            >
+              <MI />
+            </div>
+          </div>,
+          document.body
+        )
+      : null
+
+  /*
+   * Reviews
+   */
+  const reviewsOverlay =
+    isAdministrator &&
+    page === "reviews" &&
+    typeof document !== "undefined"
+      ? createPortal(
+          <div
+            style={{
+              position: "fixed",
+              top: reviewsOverlayTop,
+              right: 0,
+              bottom: 0,
+              left: desktopOverlayLeft,
+              zIndex: reviewsOverlayZIndex,
+              background: "#f5f7fa",
+              overflow: "auto",
+            }}
+          >
+            <Reviews setMobile={setMobile} />
+          </div>,
+          document.body
+        )
+      : null
+
+  /*
+   * API & Webhooks
+   */
+  const integrationLogsOverlay =
+    isAdministrator &&
+    page === "integration-logs" &&
+    typeof document !== "undefined"
+      ? createPortal(
+          <div
+            style={{
+              position: "fixed",
+              top: integrationLogsOverlayTop,
+              right: 0,
+              bottom: 0,
+              left: desktopOverlayLeft,
+              zIndex: integrationLogsOverlayZIndex,
+              background: "#f5f7fa",
+              overflow: "auto",
+            }}
+          >
+            <IntegrationLogs setMobile={setMobile} />
+          </div>,
+          document.body
+        )
+      : null
+
+  /*
+   * Call Log
+   */
+  const callLogOverlay =
+    showCallLog && typeof document !== "undefined"
+      ? createPortal(
           <CallLog
-            onClose={() =>
-              setShowCallLog(false)
-            }
+            onClose={() => setShowCallLog(false)}
           />,
           document.body
         )
@@ -172,158 +278,101 @@ function Sidebar({
 
   return (
     <>
-      <style>{`
-        @media (max-width: 900px) {
-          .sidebar {
-            transform: translateX(-100%);
-            transition: transform 0.2s ease;
-            z-index: 1000;
-          }
+      <style>
+        {`
+          @media (max-width: 900px) {
+            .sidebar {
+              transform: translateX(-100%);
+              transition: transform 0.2s ease;
+              z-index: 1000;
+            }
 
-          .sidebar.sidebar-open {
-            transform: translateX(0);
-          }
+            .sidebar.sidebar-open {
+              transform: translateX(0);
+            }
 
-          .sidebar-overlay {
-            display: block;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.35);
-            z-index: 999;
-          }
+            .sidebar-overlay {
+              display: block;
+              position: fixed;
+              inset: 0;
+              background: rgba(0,0,0,0.35);
+              z-index: 999;
+            }
 
-          main {
-            margin-left: 0;
-            width: 100%;
-            padding: 22px 18px;
-          }
+            main {
+              margin-left: 0;
+              width: 100%;
+              padding: 22px 18px;
+            }
 
-          .mobile-menu {
-            display: inline-flex;
+            .mobile-menu {
+              display: inline-flex;
+            }
           }
-        }
-      `}</style>
+        `}
+      </style>
 
       {mobile && (
         <div
           className="sidebar-overlay"
-          onClick={() =>
-            setMobile(false)
-          }
+          onClick={() => setMobile(false)}
         />
       )}
 
       <aside
         className={`sidebar ${
-          mobile
-            ? "sidebar-open"
-            : ""
+          mobile ? "sidebar-open" : ""
         }`}
       >
         <div className="sidebar-brand">
-          <div className="brand-mark">
-            C
-          </div>
+          <div className="brand-mark">C</div>
 
           <div>
-            <strong>
-              Homeshield Scotland
-            </strong>
-
+            <strong>Homeshield Scotland</strong>
             <span>CRM</span>
           </div>
         </div>
 
         <nav className="sidebar-nav">
+
+          {/* HOME */}
           <button
             type="button"
             className={`sidebar-item ${
-              isActive("dashboard")
-                ? "active"
-                : ""
+              isActive("dashboard") ? "active" : ""
             }`}
-            onClick={() =>
-              navigate("dashboard")
-            }
+            onClick={() => navigate("dashboard")}
           >
             <LayoutDashboard size={18} />
             <span>Home</span>
           </button>
 
+          {/* SOFTPHONE */}
           <button
             type="button"
             className="sidebar-item"
-            onClick={() => {
-              if (
-                numericPermissionLevel >=
-                4
-              ) {
-                setShowPhoneDialer(true)
-              }
-            }}
-            disabled={
-              numericPermissionLevel <
-              4
-            }
-            style={{
-              opacity:
-                numericPermissionLevel <
-                4
-                  ? 0.55
-                  : 1,
-              cursor:
-                numericPermissionLevel <
-                4
-                  ? "not-allowed"
-                  : "pointer"
-            }}
+            onClick={() => setShowPhoneDialer(true)}
           >
             <Phone size={18} />
             <span>Softphone</span>
-
-            {numericPermissionLevel <
-              4 && (
-              <Lock
-                size={13}
-                color="#b8c0c8"
-                style={{
-                  marginLeft: "auto"
-                }}
-              />
-            )}
           </button>
 
           <div className="sidebar-divider" />
 
+          {/* MARKETING */}
           <Folder
             title="Marketing"
             icon={Megaphone}
-            open={
-              openFolders.marketing
-            }
-            onClick={() =>
-              toggleFolder(
-                "marketing"
-              )
-            }
+            open={openFolders.marketing}
+            onClick={() => toggleFolder("marketing")}
           >
             <NavItem
               icon={BarChart3}
               label="Marketing Dashboard"
-              active={isActive(
-                "marketing-dashboard"
-              )}
-              onClick={() =>
-                navigate(
-                  "marketing-dashboard"
-                )
-              }
-              disabled={
-                !canAccessMarketingDashboard
-              }
-              locked={
-                !canAccessMarketingDashboard
-              }
+              active={isActive("marketing-dashboard")}
+              onClick={() => navigate("marketing-dashboard")}
+              disabled={!canAccessMarketingDashboard}
+              locked={!canAccessMarketingDashboard}
             />
 
             <NavItem
@@ -335,9 +384,7 @@ function Sidebar({
             <NavItem
               icon={Phone}
               label="Call Log"
-              onClick={() =>
-                setShowCallLog(true)
-              }
+              onClick={() => setShowCallLog(true)}
             />
 
             <NavItem
@@ -355,136 +402,78 @@ function Sidebar({
             <NavItem
               icon={Trophy}
               label="Canvasser KPI"
-              active={isActive(
-                "canvasser-kpi"
-              )}
-              onClick={() =>
-                navigate(
-                  "canvasser-kpi"
-                )
-              }
-              disabled={
-                !canAccessCanvasserKPI
-              }
-              locked={
-                !canAccessCanvasserKPI
-              }
+              active={isActive("canvasser-kpi")}
+              onClick={() => navigate("canvasser-kpi")}
+              disabled={!canAccessCanvasserKPI}
+              locked={!canAccessCanvasserKPI}
             />
           </Folder>
 
+          {/* SALES */}
           <Folder
             title="Sales"
             icon={Target}
-            open={
-              openFolders.sales
-            }
-            onClick={() =>
-              toggleFolder("sales")
-            }
+            open={openFolders.sales}
+            onClick={() => toggleFolder("sales")}
           >
             <NavItem
               icon={LayoutDashboard}
               label="Mastersheet"
-              active={isActive(
-                "marketing-tv"
-              )}
-              onClick={() =>
-                navigate(
-                  "marketing-tv"
-                )
-              }
+              active={isActive("marketing-tv")}
+              onClick={() => navigate("marketing-tv")}
             />
 
             <NavItem
               icon={CalendarDays}
               label="Appointments"
-              active={isActive(
-                "appointments"
-              )}
-              onClick={() =>
-                navigate(
-                  "appointments"
-                )
-              }
+              active={isActive("appointments")}
+              onClick={() => navigate("appointments")}
             />
 
             <NavItem
               icon={FileText}
               label="Deals"
-              active={isActive(
-                "contracts"
-              )}
-              onClick={() =>
-                navigate("contracts")
-              }
+              active={isActive("contracts")}
+              onClick={() => navigate("contracts")}
             />
 
             <NavItem
               icon={FileCheck}
               label="RTS List"
-              active={isActive(
-                "rts-list"
-              )}
-              onClick={() =>
-                navigate("rts-list")
-              }
+              active={isActive("rts-list")}
+              onClick={() => navigate("rts-list")}
             />
 
             <NavItem
               icon={PoundSterling}
               label="Commissions"
-              active={isActive(
-                "commissions"
-              )}
-              onClick={() =>
-                navigate(
-                  "commissions"
-                )
-              }
+              active={isActive("commissions")}
+              onClick={() => navigate("commissions")}
             />
 
             <NavItem
               icon={Trophy}
               label="Sales KPI"
-              active={isActive(
-                "sales-kpi"
-              )}
-              onClick={() =>
-                navigate("sales-kpi")
-              }
+              active={isActive("sales-kpi")}
+              onClick={() => navigate("sales-kpi")}
             />
 
             <NavItem
               icon={BarChart3}
               label="Sales Performance"
-              active={isActive(
-                "sales-performance"
-              )}
-              onClick={() =>
-                navigate(
-                  "sales-performance"
-                )
-              }
-              disabled={
-                !canAccessSalesPerformance
-              }
-              locked={
-                !canAccessSalesPerformance
-              }
+              active={isActive("sales-performance")}
+              onClick={() => navigate("sales-performance")}
+              disabled={!canAccessSalesPerformance}
+              locked={!canAccessSalesPerformance}
             />
           </Folder>
 
+          {/* PROCUREMENT */}
           <Folder
             title="Procurement"
             icon={Clipboard}
-            open={
-              openFolders.procurement
-            }
-            onClick={() =>
-              toggleFolder(
-                "procurement"
-              )
-            }
+            open={openFolders.procurement}
+            onClick={() => toggleFolder("procurement")}
           >
             <NavItem
               icon={ClipboardCheck}
@@ -511,40 +500,25 @@ function Sidebar({
             />
           </Folder>
 
+          {/* INSTALLATIONS */}
           <Folder
             title="Installations"
             icon={Wrench}
-            open={
-              openFolders.installation
-            }
-            onClick={() =>
-              toggleFolder(
-                "installation"
-              )
-            }
+            open={openFolders.installation}
+            onClick={() => toggleFolder("installation")}
           >
             <NavItem
               icon={ClipboardCheck}
               label="Fit Sheet"
-              active={isActive(
-                "fitsheet"
-              )}
-              onClick={() =>
-                navigate("fitsheet")
-              }
+              active={isActive("fitsheet")}
+              onClick={() => navigate("fitsheet")}
             />
 
             <NavItem
               icon={KanbanSquare}
               label="Kanban"
-              active={isActive(
-                "installations"
-              )}
-              onClick={() =>
-                navigate(
-                  "installations"
-                )
-              }
+              active={isActive("installations")}
+              onClick={() => navigate("installations")}
             />
 
             <NavItem
@@ -554,17 +528,12 @@ function Sidebar({
             />
           </Folder>
 
+          {/* REMEDIALS */}
           <Folder
             title="Remedials"
             icon={Headphones}
-            open={
-              openFolders.customerService
-            }
-            onClick={() =>
-              toggleFolder(
-                "customerService"
-              )
-            }
+            open={openFolders.customerService}
+            onClick={() => toggleFolder("customerService")}
           >
             <NavItem
               icon={UserRound}
@@ -585,15 +554,12 @@ function Sidebar({
             />
           </Folder>
 
+          {/* ACCOUNTS */}
           <Folder
             title="Accounts"
             icon={PoundSterling}
-            open={
-              openFolders.finance
-            }
-            onClick={() =>
-              toggleFolder("finance")
-            }
+            open={openFolders.finance}
+            onClick={() => toggleFolder("finance")}
           >
             <NavItem
               icon={PoundSterling}
@@ -614,36 +580,25 @@ function Sidebar({
             />
           </Folder>
 
+          {/* HEAD OFFICE */}
           <Folder
             title="Head Office"
             icon={Building2}
-            open={
-              openFolders.headOffice
-            }
-            onClick={() =>
-              toggleFolder(
-                "headOffice"
-              )
-            }
+            open={openFolders.headOffice}
+            onClick={() => toggleFolder("headOffice")}
           >
             <NavItem
               icon={BarChart3}
               label="MI"
               active={isActive("mi")}
-              onClick={() =>
-                navigate("mi")
-              }
+              onClick={() => navigate("mi")}
             />
 
             <NavItem
               icon={Star}
               label="Reviews"
-              active={isActive(
-                "reviews"
-              )}
-              onClick={() =>
-                navigate("reviews")
-              }
+              active={isActive("reviews")}
+              onClick={() => navigate("reviews")}
             />
 
             <NavItem
@@ -689,84 +644,58 @@ function Sidebar({
             />
           </Folder>
 
+          {/* DIGITAL TEAM */}
           <Folder
             title="Digital Team"
             icon={Search}
-            open={
-              openFolders.digitalTeam
-            }
-            onClick={() =>
-              toggleFolder(
-                "digitalTeam"
-              )
-            }
+            open={openFolders.digitalTeam}
+            onClick={() => toggleFolder("digitalTeam")}
           >
             <NavItem
               icon={Search}
               label="SEO"
               active={isActive("seo")}
-              onClick={() =>
-                navigate("seo")
-              }
+              onClick={() => navigate("seo")}
             />
           </Folder>
 
+          {/* ADMINISTRATION */}
           {isAdministrator && (
             <Folder
               title="Administration"
               icon={Settings}
-              open={
-                openFolders.admin
-              }
-              onClick={() =>
-                toggleFolder("admin")
-              }
+              open={openFolders.admin}
+              onClick={() => toggleFolder("admin")}
             >
               <NavItem
                 icon={UserCog}
                 label="Users"
-                active={isActive(
-                  "users"
-                )}
-                onClick={() =>
-                  navigate("users")
-                }
+                active={isActive("users")}
+                onClick={() => navigate("users")}
               />
 
               <NavItem
                 icon={ClipboardList}
                 label="Tasks"
-                active={isActive(
-                  "tasks"
-                )}
-                onClick={() =>
-                  navigate("tasks")
-                }
+                active={isActive("tasks")}
+                onClick={() => navigate("tasks")}
               />
 
               <NavItem
                 icon={Presentation}
                 label="Templates"
-                active={isActive(
-                  "sales-presentations"
-                )}
+                active={isActive("sales-presentations")}
                 onClick={() =>
-                  navigate(
-                    "sales-presentations"
-                  )
+                  navigate("sales-presentations")
                 }
               />
 
               <NavItem
                 icon={Database}
                 label="API & Webhooks"
-                active={isActive(
-                  "integration-logs"
-                )}
+                active={isActive("integration-logs")}
                 onClick={() =>
-                  navigate(
-                    "integration-logs"
-                  )
+                  navigate("integration-logs")
                 }
               />
 
@@ -779,15 +708,14 @@ function Sidebar({
           )}
         </nav>
 
+        {/* FOOTER */}
         <div
           className="sidebar-footer"
           style={{
             marginTop: "auto",
-            flexDirection:
-              "column",
-            alignItems:
-              "stretch",
-            gap: 10
+            flexDirection: "column",
+            alignItems: "stretch",
+            gap: 10,
           }}
         >
           <button
@@ -796,28 +724,19 @@ function Sidebar({
             style={{
               width: "100%",
               border: 0,
-              background:
-                "transparent",
+              background: "transparent",
               color: "inherit",
               display: "flex",
-              alignItems:
-                "center",
+              alignItems: "center",
               gap: 10,
-              padding:
-                "8px 0",
-              cursor:
-                "pointer",
+              padding: "8px 0",
+              cursor: "pointer",
               font: "inherit",
-              textAlign:
-                "left"
+              textAlign: "left",
             }}
           >
             <LogOut size={16} />
-            <span
-              style={{
-                fontWeight: 600
-              }}
-            >
+            <span style={{ fontWeight: 600 }}>
               Sign out
             </span>
           </button>
@@ -825,9 +744,8 @@ function Sidebar({
           <div
             style={{
               display: "flex",
-              alignItems:
-                "center",
-              gap: 10
+              alignItems: "center",
+              gap: 10,
             }}
           >
             <div className="sidebar-footer-icon">
@@ -835,24 +753,22 @@ function Sidebar({
             </div>
 
             <div>
-              <strong>
-                CRM System
-              </strong>
+              <strong>CRM System</strong>
               <span>v1.0</span>
             </div>
           </div>
         </div>
       </aside>
 
+      {presentationOverlay}
+      {miOverlay}
+      {reviewsOverlay}
+      {integrationLogsOverlay}
       {callLogOverlay}
 
       {showPhoneDialer && (
         <PhoneDialer
-          onClose={() =>
-            setShowPhoneDialer(
-              false
-            )
-          }
+          onClose={() => setShowPhoneDialer(false)}
         />
       )}
     </>
@@ -864,7 +780,7 @@ function Folder({
   icon: Icon,
   open,
   onClick,
-  children
+  children,
 }) {
   return (
     <div className="sidebar-folder">
@@ -900,23 +816,15 @@ function NavItem({
   active = false,
   onClick,
   disabled = false,
-  locked = false
+  locked = false,
 }) {
   return (
     <button
       type="button"
       className={`sidebar-subitem ${
         active ? "active" : ""
-      } ${
-        disabled
-          ? "disabled"
-          : ""
-      }`}
-      onClick={
-        disabled
-          ? undefined
-          : onClick
-      }
+      } ${disabled ? "disabled" : ""}`}
+      onClick={disabled ? undefined : onClick}
       disabled={disabled}
     >
       <span className="sidebar-subitem-icon">
@@ -929,15 +837,10 @@ function NavItem({
         <Lock
           size={13}
           color="#b8c0c8"
-          style={{
-            marginLeft:
-              "auto"
-          }}
+          style={{ marginLeft: "auto" }}
         />
       ) : disabled ? (
-        <span className="coming-soon">
-          Soon
-        </span>
+        <span className="coming-soon">Soon</span>
       ) : null}
     </button>
   )
