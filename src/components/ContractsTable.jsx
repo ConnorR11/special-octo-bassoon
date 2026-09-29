@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 import { FileText, CalendarDays, PoundSterling, ChevronRight, ChevronLeft, Search, X } from "lucide-react"
-import { formatDate, getInitials, money, statusLabel } from "../utils/formatters"
+import { formatDate, getInitials, money } from "../utils/formatters"
 
 function ContractsTable({ contracts, filtered, loading = false, setSelected, query = "", setQuery, page = 0, pageSize = 50, hasMore = false, onPreviousPage, onNextPage }) {
   const rows = contracts ?? filtered ?? []
@@ -33,7 +33,7 @@ function ContractsTable({ contracts, filtered, loading = false, setSelected, que
       </form>
 
       {loading ? <div className="table-loading">Loading contracts...</div> : !rows.length ? <div className="table-empty"><FileText size={32} /><strong>No contracts found</strong><span>{query ? `No deals found matching “${query}”.` : "Try changing your search or filters."}</span></div> : <>
-        <div className="contracts-table-header"><div>Customer</div><div>Contract</div><div>Product</div><div>Sale Date</div><div>Value</div><div>Status</div><div></div></div>
+        <div className="contracts-table-header"><div>Customer</div><div>Contract</div><div>Product</div><div>Sale Date</div><div>Value</div><div>Pipedrive Stage</div><div></div></div>
         <div className="contracts-table-body">
           {rows.map((contract) => (
             <button key={contract.id} type="button" className="contracts-table-row" onClick={() => setSelected?.(contract)}>
@@ -42,7 +42,7 @@ function ContractsTable({ contracts, filtered, loading = false, setSelected, que
               <div className="contract-product">{contract.product || "—"}</div>
               <div className="contract-date"><CalendarDays size={15} /><span>{contract.sale_date ? formatDate(contract.sale_date) : "—"}</span></div>
               <div className="contract-value"><PoundSterling size={15} /><strong>{money(Number(contract.deal_value || 0))}</strong></div>
-              <div><span className={`status-badge status-${String(contract.status || "unknown").toLowerCase().replace(/\s+/g, "-")}`}>{statusLabel(contract.status)}</span></div>
+              <div><span className="status-badge">{contract.pipedrive_stage || "—"}</span></div>
               <div className="contract-arrow"><ChevronRight size={18} /></div>
             </button>
           ))}
