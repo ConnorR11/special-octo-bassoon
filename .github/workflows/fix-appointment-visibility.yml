@@ -8,7 +8,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-      - name: Replace profiles branch_manager references
+      - name: Fix manager visibility and restore page routes
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -16,6 +16,8 @@ jobs:
           replacements = {
               'src/App.jsx': [
                   ('sales_manager.eq.${viewerId},branch_manager.eq.${viewerId}', 'sales_manager.eq.${viewerId},manager_id.eq.${viewerId}'),
+                  (') : page === "fit-sheet" ? (', ') : (page === "fit-sheet" || page === "fitsheet") ? ('),
+                  (') : page === "dashboard" ? (\n          homeContent', ') : page === "sales-performance" ? (\n          <Dashboard\n            contracts={allDeals}\n            total={totalValue}\n            avg={averageValue}\n            upcoming={upcomingInstallations}\n            setSelected={setSelected}\n          />\n        ) : page === "dashboard" ? (\n          homeContent'),
               ],
               'src/pages/SalesCommission.jsx': [
                   ('sales_manager.eq.${viewerProfileId},branch_manager.eq.${viewerProfileId}', 'sales_manager.eq.${viewerProfileId},manager_id.eq.${viewerProfileId}'),
@@ -41,7 +43,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/App.jsx src/pages/SalesCommission.jsx src/pages/Appointments.jsx
-          git diff --cached --quiet || git commit -m "Use manager_id for profile manager visibility"
+          git diff --cached --quiet || git commit -m "Fix Sales Performance and Fit Sheet routes"
           git push
           git rm .github/workflows/fix-appointment-visibility.yml || true
           git commit -m "Remove temporary manager visibility workflow" || true
