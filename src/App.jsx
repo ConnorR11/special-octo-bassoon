@@ -5,6 +5,7 @@ import Sidebar from "./components/Sidebar"
 import Header from "./components/Header"
 import FitSheet from "./FitSheet"
 import Dashboard from "./pages/Dashboard"
+import SalesPerformance from "./pages/SalesPerformance"
 import Installations from "./pages/Installations"
 import MarketingTV from "./pages/MarketingTV"
 import MarketingDashboard from "./pages/MarketingDashboard"
@@ -756,6 +757,14 @@ function App() {
           />
         ) : page === "dashboard" ? (
           homeContent
+        ) : page === "sales-performance" ? (
+          <SalesPerformance
+            contracts={allDeals}
+            total={totalValue}
+            avg={averageValue}
+            upcoming={upcomingInstallations}
+            setSelected={setSelected}
+          />
         ) : page === "epvs" ? (
           <EPVSCalculator />
         ) : page === "fit-sheet" ? (
