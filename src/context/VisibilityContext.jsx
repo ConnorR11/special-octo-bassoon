@@ -111,8 +111,6 @@ export function VisibilityProvider({ children }) {
         )
 
         if (previewError) {
-          // The preview RPC is optional. A normal login should continue if it
-          // is unavailable, while still surfacing the error in the console.
           console.warn("VisibilityContext: preview lookup failed:", previewError)
         } else if (previewId) {
           const { data: previewProfile, error: previewProfileError } = await supabase
@@ -153,12 +151,14 @@ export function VisibilityProvider({ children }) {
   const profileId = effectiveProfile?.id || null
   const pipedrivePersonId = String(effectiveProfile?.pipedrive_person_id || "").trim()
 
+  // Central visibility rule: permission level 3+ can see everything.
+  const canSeeAll = permissionLevel >= 3
   const isAdministrator = permissionLevel >= 4
   const isBranchManager = isBranchManagerRole(role)
   const isSalesManager = isSalesManagerRole(role)
   const isCentralManager = isCentralConfirmationManager(role)
   const isManager = isBranchManager || isSalesManager || isCentralManager
-  const isSalesRep = !isManager && permissionLevel < 4
+  const isSalesRep = !isManager && permissionLevel < 3
 
   useEffect(() => {
     let mounted = true
@@ -231,41 +231,33 @@ export function VisibilityProvider({ children }) {
       .map(row => normaliseEmail(row?.email))
       .filter(Boolean)
 
-    const visibleSalespersonIds = isAdministrator
+    const visibleSalespersonIds = canSeeAll
       ? null
-      : isBranchManager
+      : isBranchManager || isSalesManager
       ? unique([...branchSalespersonIds, pipedrivePersonId])
-      : isSalesManager
-      ? unique([...managedSalespersonIds, pipedrivePersonId])
       : unique([pipedrivePersonId])
 
-    const visibleRepEmails = isAdministrator
+    const visibleRepEmails = canSeeAll
       ? null
-      : isBranchManager
+      : isBranchManager || isSalesManager
       ? unique([...branchEmails, ownEmail])
-      : isSalesManager
-      ? unique([...managedEmails, ownEmail])
       : unique([ownEmail])
 
-    const visibleBranches = isAdministrator
-      ? null
-      : branch
-      ? [branch]
-      : []
-
-    const canSeeAll = isAdministrator
+    const visibleBranches = canSeeAll ? null : branch ? [branch] : []
 
     function canSeeAppointment(appointment) {
       if (!appointment) return false
       if (canSeeAll) return true
 
-      const appointmentBranch = normaliseBranch(appointment?.branch)
+      const appointmentBranch = normalise(appointment?.branch)
       const allocatedEmail = normaliseEmail(appointment?.rep_allocated)
 
-      if ((isBranchManager || isSalesManager) && branch && appointmentBranch === normaliseBranch(branch)) {
+      // Branch managers and sales managers see every appointment in their branch.
+      if ((isBranchManager || isSalesManager) && branch && appointmentBranch === normalise(branch)) {
         return true
       }
 
+      // Sales reps see appointments allocated to their email.
       return !!allocatedEmail && visibleRepEmails?.includes(allocatedEmail)
     }
 
@@ -273,10 +265,10 @@ export function VisibilityProvider({ children }) {
       if (!deal) return false
       if (canSeeAll) return true
 
-      const dealBranch = normaliseBranch(deal?.branch || deal?.branch_name)
+      const dealBranch = normalise(deal?.branch || deal?.branch_name)
       const salesperson = String(deal?.salesperson || "").trim()
 
-      if ((isBranchManager || isSalesManager) && branch && dealBranch === normaliseBranch(branch)) {
+      if ((isBranchManager || isSalesManager) && branch && dealBranch === normalise(branch)) {
         return true
       }
 
@@ -295,7 +287,7 @@ export function VisibilityProvider({ children }) {
         return canSeeDeal(record)
       }
 
-      const recordBranch = normaliseBranch(record?.branch || record?.branch_name)
+      const recordBranch = normalise(record?.branch || record?.branch_name)
       const recordEmail = normaliseEmail(
         record?.email || record?.rep_allocated || record?.salesperson_email
       )
@@ -303,7 +295,7 @@ export function VisibilityProvider({ children }) {
         record?.salesperson || record?.pipedrive_person_id || ""
       ).trim()
 
-      if ((isBranchManager || isSalesManager) && branch && recordBranch === normaliseBranch(branch)) {
+      if ((isBranchManager || isSalesManager) && branch && recordBranch === normalise(branch)) {
         return true
       }
 
@@ -342,6 +334,7 @@ export function VisibilityProvider({ children }) {
     branch,
     branchProfiles,
     email,
+    canSeeAll,
     isAdministrator,
     isBranchManager,
     isCentralManager,
