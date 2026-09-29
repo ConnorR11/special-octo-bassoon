@@ -14,6 +14,7 @@ function getDealNetValue(appointment) { const deal = Array.isArray(appointment?.
 function formatCurrency(value) { if (value === null || value === undefined || !Number.isFinite(Number(value))) return "NULL"; return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(Number(value)) }
 function sumNetValue(rows) { return rows.reduce((total, row) => total + (isSold(row) ? (getDealNetValue(row) ?? 0) : 0), 0) }
 function sortBranches(rows) { return [...new Set(rows.map((row) => display(row.branch, "Unassigned")))].sort((a, b) => { if (a === "Unassigned") return 1; if (b === "Unassigned") return -1; return a.localeCompare(b) }) }
+function isCentralConfirmationManager(role) { const normalized = String(role || "").trim().toLowerCase(); return normalized === "central confirmation manager" || normalized === "central confirmer manager" }
 
 function SummaryTable({ appointments }) {
   const branches = useMemo(() => sortBranches(appointments), [appointments])
@@ -30,10 +31,7 @@ function AppointmentRow({ appointment, onSelect, repNameByEmail }) {
   const hasRep = Boolean(String(repEmail ?? "").trim())
   const repConfirmed = Boolean(appointment.rep_confirmed_time)
   const rowStatusClass = !hasRep ? "mtv-row-unassigned" : repConfirmed ? "mtv-row-confirmed" : "mtv-row-unconfirmed"
-
-  // Replace SOLD with net value when available; otherwise keep SOLD.
   const resultDisplay = sold ? (netValue === null ? "SOLD" : formatCurrency(netValue)) : display(appointment.result)
-
   return <tr className={`mtv-appointment-row ${rowStatusClass}`} onClick={() => onSelect?.(appointment)}><td className="mtv-cell mtv-name-cell" title={appointment.name || "Unnamed customer"}>{display(appointment.name, "Unnamed customer")}</td><td className="mtv-cell" title={display(appointment.branch)}>{display(appointment.branch)}</td><td className="mtv-cell" title={display(repName)}>{display(repName)}</td><td className="mtv-cell mtv-time-cell">{formatTime(appointment.appointment_date)}</td><td className="mtv-cell">{display(appointment.postcode)}</td><td className="mtv-cell">{display(appointment.product)}</td><td className="mtv-cell">{display(appointment.lead_source)}</td><td className="mtv-cell mtv-status-cell"><StatusTick value={isTrueValue(appointment.is_pickup)} /></td><td className="mtv-cell mtv-result-cell">{resultDisplay}</td></tr>
 }
 
@@ -43,7 +41,7 @@ function BranchSection({ branch, appointments, onSelect, repNameByEmail }) {
   return <section className="mtv-branch-section"><button type="button" className="mtv-branch-title" onClick={() => setOpen((value) => !value)}><span>{branch}</span><span className="mtv-branch-count">{appointments.length}</span>{open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</button>{open && <div className="mtv-table-scroll"><table className="mtv-table"><thead><tr className="mtv-table-header"><th>NAME</th><th>BRANCH</th><th>REP</th><th>TIME</th><th>POSTCODE</th><th>MEASURE</th><th>LEAD SOURCE</th><th>PICKUP</th><th>RESULT</th></tr></thead><tbody>{sorted.map((appointment) => <AppointmentRow key={appointment.appointment_row_id} appointment={appointment} onSelect={onSelect} repNameByEmail={repNameByEmail}/>)}</tbody></table></div>}</section>
 }
 
-export default function MarketingTV({ onSelectAppointment }) {
+export default function MarketingTV({ onSelectAppointment, previewUser = null, permissionLevel = 0, role = "" }) {
   const [selectedDate, setSelectedDate] = useState(formatDateForInput(new Date()))
   const [appointments, setAppointments] = useState([])
   const [profiles, setProfiles] = useState([])
@@ -51,20 +49,49 @@ export default function MarketingTV({ onSelectAppointment }) {
   const [error, setError] = useState("")
   const [activeTab, setActiveTab] = useState("mastersheet")
   const [lastUpdated, setLastUpdated] = useState(null)
+  const numericPermissionLevel = Number(permissionLevel) || 0
+  const canViewAllAppointments = numericPermissionLevel >= 3 || isCentralConfirmationManager(role)
+  const canViewBranchAppointments = numericPermissionLevel >= 2
+
   async function loadAppointments(date = selectedDate) {
     if (!supabase) { setError("Supabase is not configured. Check your environment variables."); setLoading(false); return }
     setLoading(true); setError("")
     try {
+      let viewerProfile = previewUser || null
+      if (!viewerProfile) {
+        const { data: authData, error: authError } = await supabase.auth.getUser()
+        if (authError) throw authError
+        const authUserId = authData?.user?.id
+        if (authUserId) {
+          const { data: currentProfile, error: profileError } = await supabase.from("profiles").select("id, auth_user_id, email, full_name, role, permission_level, branch").eq("auth_user_id", authUserId).maybeSingle()
+          if (profileError) throw profileError
+          viewerProfile = currentProfile || null
+        }
+      }
+
       const endDate = new Date(`${date}T00:00:00Z`); endDate.setUTCDate(endDate.getUTCDate() + 1)
       const nextDate = `${endDate.getUTCFullYear()}-${String(endDate.getUTCMonth() + 1).padStart(2, "0")}-${String(endDate.getUTCDate()).padStart(2, "0")}`
-      const [appointmentsResult, profilesResult] = await Promise.all([supabase.from("appointments").select("*, deals(net_value)").gte("appointment_date", `${date}T00:00:00.000Z`).lt("appointment_date", `${nextDate}T00:00:00.000Z`).order("appointment_date", { ascending: true }), supabase.from("profiles").select("email, full_name").order("full_name", { ascending: true })])
+      let appointmentsRequest = supabase.from("appointments").select("*, deals(net_value)").gte("appointment_date", `${date}T00:00:00.000Z`).lt("appointment_date", `${nextDate}T00:00:00.000Z`).order("appointment_date", { ascending: true })
+
+      if (!canViewAllAppointments) {
+        const viewerBranch = String(viewerProfile?.branch || "").trim()
+        if (canViewBranchAppointments && viewerBranch) {
+          appointmentsRequest = appointmentsRequest.eq("branch", viewerBranch)
+        } else {
+          const ownEmail = normaliseEmail(viewerProfile?.email)
+          if (ownEmail) appointmentsRequest = appointmentsRequest.eq("rep_allocated", ownEmail)
+          else appointmentsRequest = appointmentsRequest.eq("rep_allocated", "__NO_VISIBLE_REP__")
+        }
+      }
+
+      const [appointmentsResult, profilesResult] = await Promise.all([appointmentsRequest, supabase.from("profiles").select("email, full_name").order("full_name", { ascending: true })])
       if (appointmentsResult.error) throw appointmentsResult.error
       if (profilesResult.error) throw profilesResult.error
       setAppointments(appointmentsResult.data || []); setProfiles(profilesResult.data || []); setLastUpdated(new Date())
     } catch (err) { console.error("Error loading Mastersheet appointments:", err); setError(err?.message || "Unable to load appointments."); setAppointments([]); setProfiles([]) } finally { setLoading(false) }
   }
-  useEffect(() => { loadAppointments(selectedDate) }, [selectedDate])
-  useEffect(() => { const interval = setInterval(() => loadAppointments(selectedDate), 60000); return () => clearInterval(interval) }, [selectedDate])
+  useEffect(() => { loadAppointments(selectedDate) }, [selectedDate, previewUser?.id, previewUser?.email, permissionLevel, role])
+  useEffect(() => { const interval = setInterval(() => loadAppointments(selectedDate), 60000); return () => clearInterval(interval) }, [selectedDate, previewUser?.id, previewUser?.email, permissionLevel, role])
   const today = formatDateForInput(new Date())
   const repNameByEmail = useMemo(() => profiles.reduce((map, profile) => { const email = normaliseEmail(profile.email); const name = String(profile.full_name ?? "").trim(); if (email && name) map[email] = name; return map }, {}), [profiles])
   const visibleAppointments = useMemo(() => { if (activeTab === "mastersheet") return appointments.filter((appointment) => isTrueValue(appointment.cps_c) || isTrueValue(appointment.cps_s)); if (activeTab === "handover") return appointments.filter((appointment) => !isTrueValue(appointment.cps_c) && !isTrueValue(appointment.cps_s)); return [] }, [appointments, activeTab])
