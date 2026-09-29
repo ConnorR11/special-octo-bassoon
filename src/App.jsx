@@ -25,7 +25,7 @@ import SEO from "./pages/SEO"
 import MI from "./pages/MI"
 import Reviews from "./pages/Reviews"
 import IntegrationLogs from "./pages/IntegrationLogs"
-import CallLog from "./pages/CallLog"
+import SalesPresentations from "./pages/SalesPresentations"
 import AdminUserPreview from "./components/AdminUserPreview"
 
 const DEALS_PAGE_SIZE = 50
@@ -36,33 +36,23 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [profile, setProfile] = useState(null)
   const [previewUser, setPreviewUser] = useState(null)
-
   const [contracts, setContracts] = useState([])
   const [allDeals, setAllDeals] = useState([])
   const [commissionDeals, setCommissionDeals] = useState([])
-
   const [loading, setLoading] = useState(true)
   const [reportingLoading, setReportingLoading] = useState(true)
   const [commissionLoading, setCommissionLoading] = useState(true)
-
   const [error, setError] = useState("")
-
   const [page, setPage] = useState("dashboard")
   const [mobile, setMobile] = useState(false)
-
   const [query, setQuery] = useState("")
   const [status, setStatus] = useState("all")
-
   const [selected, setSelected] = useState(null)
   const [selectedAppointment, setSelectedAppointment] = useState(null)
   const [pickupAppointment, setPickupAppointment] = useState(null)
-
   const [contractsPage, setContractsPage] = useState(0)
   const [hasMoreContracts, setHasMoreContracts] = useState(false)
 
-  /*
-   * AUTH SESSION
-   */
   useEffect(() => {
     if (!supabase) {
       setAuthLoading(false)
@@ -84,7 +74,6 @@ function App() {
           "Error loading auth session:",
           sessionError
         )
-
         setSession(null)
       } else {
         setSession(data?.session || null)
@@ -95,15 +84,14 @@ function App() {
 
     loadSession()
 
-    const {
-      data: authListener,
-    } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
-        if (mounted) {
-          setSession(nextSession || null)
+    const { data: authListener } =
+      supabase.auth.onAuthStateChange(
+        (_event, nextSession) => {
+          if (mounted) {
+            setSession(nextSession || null)
+          }
         }
-      }
-    )
+      )
 
     return () => {
       mounted = false
@@ -111,9 +99,6 @@ function App() {
     }
   }, [])
 
-  /*
-   * LOAD PROFILE + ADMIN PREVIEW
-   */
   useEffect(() => {
     if (!session || !supabase) {
       setProfile(null)
@@ -156,7 +141,6 @@ function App() {
           "Error loading admin preview:",
           previewError
         )
-
         return
       }
 
@@ -185,9 +169,7 @@ function App() {
         )
       }
 
-      setPreviewUser(
-        previewProfile || null
-      )
+      setPreviewUser(previewProfile || null)
     }
 
     loadProfileAndPreview()
@@ -197,9 +179,6 @@ function App() {
     }
   }, [session])
 
-  /*
-   * EFFECTIVE USER
-   */
   const isAdministrator =
     Number(profile?.permission_level) >= 4
 
@@ -218,26 +197,20 @@ function App() {
     session?.user?.email ??
     ""
 
-  /*
-   * ROUTE PERMISSIONS
-   */
-  const restrictedPages = {
-    "sales-performance": 2,
-    "marketing-dashboard": 3,
-    "canvasser-kpi": 3,
-    mi: 4,
-    seo: 4,
-    reviews: 4,
-    users: 4,
-    tasks: 4,
-    "sales-presentations": 4,
-    "integration-logs": 4,
-  }
-
-  /*
-   * PROTECT CURRENT PAGE
-   */
   useEffect(() => {
+    const restrictedPages = {
+      "sales-performance": 2,
+      "marketing-dashboard": 3,
+      "canvasser-kpi": 3,
+      mi: 4,
+      seo: 4,
+      reviews: 4,
+      users: 4,
+      tasks: 4,
+      "sales-presentations": 4,
+      "integration-logs": 4,
+    }
+
     const requiredPermission =
       restrictedPages[page]
 
@@ -247,9 +220,7 @@ function App() {
     ) {
       setPage("dashboard")
 
-      if (
-        window.location.pathname !== "/"
-      ) {
+      if (window.location.pathname !== "/") {
         window.history.replaceState(
           {},
           "",
@@ -257,14 +228,8 @@ function App() {
         )
       }
     }
-  }, [
-    page,
-    effectivePermissionLevel,
-  ])
+  }, [page, effectivePermissionLevel])
 
-  /*
-   * LOAD CONTRACTS
-   */
   async function loadContracts(
     pageNumber = 0,
     searchValue = query,
@@ -277,7 +242,6 @@ function App() {
       setError(
         "Supabase is not configured. Check your environment variables."
       )
-
       setLoading(false)
       return
     }
@@ -299,9 +263,6 @@ function App() {
       })
       .range(from, to)
 
-    /*
-     * SALES VISIBILITY
-     */
     if (effectivePermissionLevel < 3) {
       const viewerId =
         previewUser?.id ||
@@ -328,16 +289,13 @@ function App() {
           (visibleProfiles || [])
             .map(row =>
               String(
-                row?.pipedrive_person_id ||
-                  ""
+                row?.pipedrive_person_id || ""
               ).trim()
             )
             .filter(Boolean)
       }
 
-      if (
-        visibleSalespersonIds.length
-      ) {
+      if (visibleSalespersonIds.length) {
         request = request.in(
           "salesperson",
           visibleSalespersonIds
@@ -350,28 +308,16 @@ function App() {
       }
     }
 
-    /*
-     * SEARCH
-     */
     if (search) {
       const escaped = search
-        .replace(
-          /[%_]/g,
-          "\\$&"
-        )
-        .replace(
-          /,/g,
-          "\\,"
-        )
+        .replace(/[%_]/g, "\\$&")
+        .replace(/,/g, "\\,")
 
       request = request.or(
         `customer_name.ilike.%${escaped}%,postcode.ilike.%${escaped}%,phone.ilike.%${escaped}%,contract_number.ilike.%${escaped}%`
       )
     }
 
-    /*
-     * STATUS
-     */
     if (
       statusValue &&
       statusValue !== "all"
@@ -388,16 +334,12 @@ function App() {
     } = await request
 
     if (supabaseError) {
-      setError(
-        supabaseError.message
-      )
-
+      setError(supabaseError.message)
       setContracts([])
       setHasMoreContracts(false)
     } else {
       setContracts(data || [])
       setContractsPage(pageNumber)
-
       setHasMoreContracts(
         (data || []).length ===
           DEALS_PAGE_SIZE
@@ -407,9 +349,6 @@ function App() {
     setLoading(false)
   }
 
-  /*
-   * LOAD ALL DEALS FOR REPORTING
-   */
   async function loadAllDealsForReporting() {
     if (!supabase) return
 
@@ -431,9 +370,7 @@ function App() {
           })
           .range(
             from,
-            from +
-              REPORTING_PAGE_SIZE -
-              1
+            from + REPORTING_PAGE_SIZE - 1
           )
 
         if (supabaseError) {
@@ -472,9 +409,6 @@ function App() {
     }
   }
 
-  /*
-   * LOAD COMMISSION DEALS
-   */
   async function loadCommissionDeals() {
     if (!supabase) return
 
@@ -512,8 +446,7 @@ function App() {
           (visibleProfiles || [])
             .map(row =>
               String(
-                row?.pipedrive_person_id ||
-                  ""
+                row?.pipedrive_person_id || ""
               ).trim()
             )
             .filter(Boolean)
@@ -544,14 +477,11 @@ function App() {
           )
           .range(
             from,
-            from +
-              REPORTING_PAGE_SIZE -
-              1
+            from + REPORTING_PAGE_SIZE - 1
           )
 
         if (
-          effectivePermissionLevel <
-          3
+          effectivePermissionLevel < 3
         ) {
           request =
             visibleSalespersonIds.length
@@ -606,9 +536,6 @@ function App() {
     }
   }
 
-  /*
-   * INITIAL DATA LOAD
-   */
   useEffect(() => {
     if (!session) return
 
@@ -625,12 +552,8 @@ function App() {
     previewUser?.id,
   ])
 
-  const filteredContracts =
-    contracts
+  const filteredContracts = contracts
 
-  /*
-   * DASHBOARD CALCULATIONS
-   */
   const totalValue =
     allDeals.reduce(
       (total, contract) =>
@@ -643,8 +566,7 @@ function App() {
 
   const averageValue =
     allDeals.length > 0
-      ? totalValue /
-        allDeals.length
+      ? totalValue / allDeals.length
       : 0
 
   const today = new Date()
@@ -659,9 +581,6 @@ function App() {
           today
     ).length
 
-  /*
-   * DEAL NAVIGATION
-   */
   function handleBackToDeals() {
     setSelected(null)
     setPage("contracts")
@@ -687,8 +606,7 @@ function App() {
       ])
 
     const stage = String(
-      updatedDeal?.pipedrive_stage ??
-        ""
+      updatedDeal?.pipedrive_stage ?? ""
     )
       .trim()
       .replace(/\s+/g, " ")
@@ -701,8 +619,7 @@ function App() {
 
     setContracts(current =>
       current.map(contract =>
-        contract.id ===
-        updatedDeal.id
+        contract.id === updatedDeal.id
           ? updatedDeal
           : contract
       )
@@ -710,8 +627,7 @@ function App() {
 
     setAllDeals(current =>
       current.map(contract =>
-        contract.id ===
-        updatedDeal.id
+        contract.id === updatedDeal.id
           ? updatedDeal
           : contract
       )
@@ -735,14 +651,21 @@ function App() {
     setSelected(updatedDeal)
   }
 
-  /*
-   * PAGE NAVIGATION
-   */
   function handlePageChange(
     newPage
   ) {
-    const requiredPermission =
-      restrictedPages[newPage]
+    const requiredPermission = {
+      "sales-performance": 2,
+      "marketing-dashboard": 3,
+      "canvasser-kpi": 3,
+      mi: 4,
+      seo: 4,
+      reviews: 4,
+      users: 4,
+      tasks: 4,
+      "sales-presentations": 4,
+      "integration-logs": 4,
+    }[newPage]
 
     if (
       requiredPermission &&
@@ -755,7 +678,6 @@ function App() {
     setSelected(null)
     setSelectedAppointment(null)
     setPickupAppointment(null)
-
     setPage(newPage)
 
     if (newPage === "contracts") {
@@ -778,14 +700,10 @@ function App() {
     )
   }
 
-  /*
-   * SEARCH
-   */
   function handleSearchChange(
     value
   ) {
     setQuery(value)
-
     loadContracts(
       0,
       value,
@@ -793,9 +711,6 @@ function App() {
     )
   }
 
-  /*
-   * APPOINTMENTS
-   */
   function mapAppointment(
     appointment
   ) {
@@ -827,19 +742,16 @@ function App() {
       )
 
     if (
-      !mappedAppointment
-        ?.appointment_row_id
+      !mappedAppointment?.appointment_row_id
     ) {
       return
     }
 
     setSelected(null)
     setPickupAppointment(null)
-
     setSelectedAppointment(
       mappedAppointment
     )
-
     setPage("appointments")
 
     window.history.pushState(
@@ -900,23 +812,17 @@ function App() {
       )
 
       setPage("appointments")
-
       return
     }
 
     setSelected(null)
     setPickupAppointment(null)
-
     setSelectedAppointment(
       mapAppointment(data)
     )
-
     setPage("appointments")
   }
 
-  /*
-   * URL / BROWSER NAVIGATION
-   */
   useEffect(() => {
     if (!session) return
 
@@ -971,9 +877,6 @@ function App() {
     previewUser?.id,
   ])
 
-  /*
-   * PICKUP APPOINTMENT
-   */
   function handleOpenPickup() {
     if (
       selectedAppointment?.result
@@ -1015,9 +918,6 @@ function App() {
     setPickupAppointment(null)
   }
 
-  /*
-   * SIGN OUT
-   */
   function handleSignOut() {
     if (supabase) {
       supabase.auth
@@ -1031,9 +931,6 @@ function App() {
     }
   }
 
-  /*
-   * APPOINTMENT UPDATED
-   */
   function handleAppointmentUpdated(
     updatedAppointment
   ) {
@@ -1053,9 +950,6 @@ function App() {
     )
   }
 
-  /*
-   * LEGACY APPOINTMENT BUTTONS
-   */
   function clickLegacyButton(
     text
   ) {
@@ -1094,9 +988,6 @@ function App() {
     clickLegacyButton("Result")
   }
 
-  /*
-   * HEADER PAGE
-   */
   const headerPage = selected
     ? "customer"
     : selectedAppointment
@@ -1105,9 +996,6 @@ function App() {
     ? "dashboard"
     : page
 
-  /*
-   * AUTH LOADING
-   */
   if (authLoading) {
     return (
       <div
@@ -1128,16 +1016,10 @@ function App() {
     )
   }
 
-  /*
-   * LOGIN
-   */
   if (!session) {
     return <Login />
   }
 
-  /*
-   * DISPLAY NAME
-   */
   const displayName =
     previewUser?.display_name ||
     previewUser?.full_name ||
@@ -1159,9 +1041,6 @@ function App() {
       ? "Good Afternoon"
       : "Good Evening"
 
-  /*
-   * HOME
-   */
   const homeContent = (
     <section>
       <div
@@ -1186,16 +1065,12 @@ function App() {
             color: "#888",
           }}
         >
-          Welcome to the Homeshield Scotland
-          CRM
+          Welcome to the Homeshield Scotland CRM
         </p>
       </div>
     </section>
   )
 
-  /*
-   * APP
-   */
   return (
     <div className="app">
       <Sidebar
@@ -1222,9 +1097,6 @@ function App() {
           </div>
         )}
 
-      
-         {/* ADMIN USER PREVIEW */}
-      
         {isAdministrator &&
           page === "users" && (
             <AdminUserPreview
@@ -1278,8 +1150,6 @@ function App() {
             />
           )}
 
-        {/* PICKUP APPOINTMENT */}
-        
         {pickupAppointment ? (
           <PickupAppointment
             appointment={
@@ -1293,9 +1163,6 @@ function App() {
             }
           />
         ) : selectedAppointment ? (
-          /*
-           * APPOINTMENT DETAIL
-           */
           <div
             style={{
               position: "relative",
@@ -1314,8 +1181,7 @@ function App() {
                 display: "flex",
                 justifyContent:
                   "flex-end",
-                padding:
-                  "10px 24px 0",
+                padding: "10px 24px 0",
                 background: "#fff",
               }}
             >
@@ -1353,9 +1219,6 @@ function App() {
             </div>
           </div>
         ) : selected ? (
-          /*
-           * CUSTOMER DETAIL
-           */
           <CustomerDetail
             deal={selected}
             onBack={
@@ -1366,24 +1229,12 @@ function App() {
             }
           />
         ) : page === "dashboard" ? (
-          /*
-           * HOME
-           */
           homeContent
         ) : page === "epvs" ? (
-          /*
-           * EPVS
-           */
           <EPVSCalculator />
         ) : page === "fit-sheet" ? (
-          /*
-           * FIT SHEET
-           */
           <FitSheet />
         ) : page === "contracts" ? (
-          /*
-           * CONTRACTS
-           */
           <Contracts
             contracts={
               filteredContracts
@@ -1435,14 +1286,8 @@ function App() {
             onNewContract={() => {}}
           />
         ) : page === "installations" ? (
-          /*
-           * INSTALLATIONS
-           */
           <Installations />
         ) : page === "marketing-tv" ? (
-          /*
-           * MARKETING TV
-           */
           <MarketingTV
             onSelectAppointment={
               handleAppointmentSelect
@@ -1450,19 +1295,10 @@ function App() {
           />
         ) : page ===
           "marketing-dashboard" ? (
-          /*
-           * MARKETING DASHBOARD
-           */
           <MarketingDashboard />
         ) : page === "rts-list" ? (
-          /*
-           * RTS LIST
-           */
           <RTSList />
         ) : page === "commissions" ? (
-          /*
-           * COMMISSIONS
-           */
           <SalesCommission
             deals={commissionDeals}
             loading={
@@ -1473,95 +1309,46 @@ function App() {
             }
           />
         ) : page === "appointments" ? (
-          /*
-           * APPOINTMENTS
-           */
           <Appointments
             onSelect={
               handleAppointmentSelect
             }
           />
         ) : page === "sales-kpi" ? (
-          /*
-           * SALES KPI
-           */
           <SalesKPI
             deals={allDeals}
             loading={
               reportingLoading
             }
           />
-        ) : page ===
-          "canvasser-kpi" ? (
-          /*
-           * CANVASSER KPI
-           */
+        ) : page === "canvasser-kpi" ? (
           <CanvasserKPI
             deals={allDeals}
             loading={
               reportingLoading
             }
           />
-        ) : page === "sales-performance" ? (
-          /*
-           * SALES PERFORMANCE
-           *
-           * Keep this here if the page component
-           * is added to App.jsx later.
-           */
-          <Dashboard
-            deals={allDeals}
-          />
         ) : page === "users" ? (
-          /*
-           * USERS
-           */
           <Users />
         ) : page === "tasks" ? (
-          /*
-           * TASKS
-           */
           <Tasks />
         ) : page === "seo" ? (
-          /*
-           * SEO
-           */
           <SEO />
         ) : page === "mi" ? (
-          /*
-           * MI
-           */
           <MI />
         ) : page === "reviews" ? (
-          /*
-           * REVIEWS
-           */
           <Reviews
             setMobile={setMobile}
           />
         ) : page ===
           "integration-logs" ? (
-          /*
-           * API & WEBHOOKS
-           */
           <IntegrationLogs
             setMobile={setMobile}
           />
-        ) : page === "call-log" ? (
-          /*
-           * CALL LOG
-           */
-          <CallLog
-            onClose={() =>
-              handlePageChange(
-                "dashboard"
-              )
-            }
-          />
+        ) : page ===
+          "sales-presentations" ? (
+          <SalesPresentations />
         ) : (
-          /*
-           * FALLBACK
-           */
           <Dashboard
             deals={allDeals}
           />
