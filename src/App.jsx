@@ -62,18 +62,12 @@ function App() {
     let mounted = true
 
     async function loadSession() {
-      const {
-        data,
-        error: sessionError,
-      } = await supabase.auth.getSession()
+      const { data, error: sessionError } = await supabase.auth.getSession()
 
       if (!mounted) return
 
       if (sessionError) {
-        console.error(
-          "Error loading auth session:",
-          sessionError
-        )
+        console.error("Error loading auth session:", sessionError)
         setSession(null)
       } else {
         setSession(data?.session || null)
@@ -84,14 +78,11 @@ function App() {
 
     loadSession()
 
-    const { data: authListener } =
-      supabase.auth.onAuthStateChange(
-        (_event, nextSession) => {
-          if (mounted) {
-            setSession(nextSession || null)
-          }
-        }
-      )
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, nextSession) => {
+        if (mounted) setSession(nextSession || null)
+      }
+    )
 
     return () => {
       mounted = false
@@ -109,10 +100,7 @@ function App() {
     let mounted = true
 
     async function loadProfileAndPreview() {
-      const {
-        data: profileData,
-        error: profileError,
-      } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("*")
         .eq("auth_user_id", session.user.id)
@@ -121,26 +109,17 @@ function App() {
       if (!mounted) return
 
       if (profileError) {
-        console.error(
-          "Error loading user profile:",
-          profileError
-        )
+        console.error("Error loading user profile:", profileError)
       }
 
       setProfile(profileData || null)
 
-      const {
-        data: previewId,
-        error: previewError,
-      } = await supabase.rpc(
+      const { data: previewId, error: previewError } = await supabase.rpc(
         "current_preview_profile_id"
       )
 
       if (previewError) {
-        console.error(
-          "Error loading admin preview:",
-          previewError
-        )
+        console.error("Error loading admin preview:", previewError)
         return
       }
 
@@ -149,24 +128,16 @@ function App() {
         return
       }
 
-      const {
-        data: previewProfile,
-        error: previewProfileError,
-      } = await supabase
+      const { data: previewProfile, error: previewProfileError } = await supabase
         .from("profiles")
-        .select(
-          "id, full_name, display_name, email, role, permission_level, branch, active"
-        )
+        .select("id, full_name, display_name, email, role, permission_level, branch, active")
         .eq("id", previewId)
         .maybeSingle()
 
       if (!mounted) return
 
       if (previewProfileError) {
-        console.error(
-          "Error loading preview profile:",
-          previewProfileError
-        )
+        console.error("Error loading preview profile:", previewProfileError)
       }
 
       setPreviewUser(previewProfile || null)
@@ -179,23 +150,11 @@ function App() {
     }
   }, [session])
 
-  const isAdministrator =
-    Number(profile?.permission_level) >= 4
-
+  const isAdministrator = Number(profile?.permission_level) >= 4
   const effectivePermissionLevel =
-    previewUser?.permission_level ??
-    profile?.permission_level ??
-    0
-
-  const effectiveRole =
-    previewUser?.role ??
-    profile?.role ??
-    ""
-
-  const effectiveUserEmail =
-    previewUser?.email ??
-    session?.user?.email ??
-    ""
+    previewUser?.permission_level ?? profile?.permission_level ?? 0
+  const effectiveRole = previewUser?.role ?? profile?.role ?? ""
+  const effectiveUserEmail = previewUser?.email ?? session?.user?.email ?? ""
 
   useEffect(() => {
     const restrictedPages = {
@@ -211,127 +170,73 @@ function App() {
       "integration-logs": 4,
     }
 
-    const requiredPermission =
-      restrictedPages[page]
+    const requiredPermission = restrictedPages[page]
 
-    if (
-      requiredPermission &&
-      effectivePermissionLevel < requiredPermission
-    ) {
+    if (requiredPermission && effectivePermissionLevel < requiredPermission) {
       setPage("dashboard")
 
       if (window.location.pathname !== "/") {
-        window.history.replaceState(
-          {},
-          "",
-          "/"
-        )
+        window.history.replaceState({}, "", "/")
       }
     }
   }, [page, effectivePermissionLevel])
 
-  async function loadContracts(
-    pageNumber = 0,
-    searchValue = query,
-    statusValue = status
-  ) {
+  async function loadContracts(pageNumber = 0, searchValue = query, statusValue = status) {
     setLoading(true)
     setError("")
 
     if (!supabase) {
-      setError(
-        "Supabase is not configured. Check your environment variables."
-      )
+      setError("Supabase is not configured. Check your environment variables.")
       setLoading(false)
       return
     }
 
-    const from =
-      pageNumber * DEALS_PAGE_SIZE
-
-    const to =
-      from + DEALS_PAGE_SIZE - 1
-
-    const search =
-      String(searchValue || "").trim()
+    const from = pageNumber * DEALS_PAGE_SIZE
+    const to = from + DEALS_PAGE_SIZE - 1
+    const search = String(searchValue || "").trim()
 
     let request = supabase
       .from("deals")
       .select("*")
-      .order("sale_date", {
-        ascending: false,
-      })
+      .order("sale_date", { ascending: false })
       .range(from, to)
 
     if (effectivePermissionLevel < 3) {
-      const viewerId =
-        previewUser?.id ||
-        profile?.id
-
+      const viewerId = previewUser?.id || profile?.id
       let visibleSalespersonIds = []
 
       if (viewerId) {
-        const {
-          data: visibleProfiles,
-          error: visibleProfilesError,
-        } = await supabase
+        const { data: visibleProfiles, error: visibleProfilesError } = await supabase
           .from("profiles")
           .select("pipedrive_person_id")
-          .or(
-            `id.eq.${viewerId},sales_manager.eq.${viewerId},manager_id.eq.${viewerId}`
-          )
+          .or(`id.eq.${viewerId},sales_manager.eq.${viewerId},manager_id.eq.${viewerId}`)
 
-        if (visibleProfilesError) {
-          throw visibleProfilesError
-        }
+        if (visibleProfilesError) throw visibleProfilesError
 
-        visibleSalespersonIds =
-          (visibleProfiles || [])
-            .map(row =>
-              String(
-                row?.pipedrive_person_id || ""
-              ).trim()
-            )
-            .filter(Boolean)
+        visibleSalespersonIds = (visibleProfiles || [])
+          .map(row => String(row?.pipedrive_person_id || "").trim())
+          .filter(Boolean)
       }
 
       if (visibleSalespersonIds.length) {
-        request = request.in(
-          "salesperson",
-          visibleSalespersonIds
-        )
+        request = request.in("salesperson", visibleSalespersonIds)
       } else {
-        request = request.eq(
-          "salesperson",
-          "__NO_VISIBLE_SALESPERSON__"
-        )
+        request = request.eq("salesperson", "__NO_VISIBLE_SALESPERSON__")
       }
     }
 
     if (search) {
-      const escaped = search
-        .replace(/[%_]/g, "\\$&")
-        .replace(/,/g, "\\,")
-
+      const escaped = search.replace(/[%_]/g, "\\$&").replace(/,/g, "\\,")
       request = request.or(
         `customer_name.ilike.%${escaped}%,postcode.ilike.%${escaped}%,phone.ilike.%${escaped}%,contract_number.ilike.%${escaped}%`
       )
     }
 
-    if (
-      statusValue &&
-      statusValue !== "all"
-    ) {
-      request = request.eq(
-        "status",
-        statusValue
-      )
+    if (statusValue && statusValue !== "all") {
+      request = request.eq("status", statusValue)
     }
 
-    const {
-      data,
-      error: supabaseError,
-    } = await request
+    const { data, error: supabaseError } = await request
 
     if (supabaseError) {
       setError(supabaseError.message)
@@ -340,10 +245,7 @@ function App() {
     } else {
       setContracts(data || [])
       setContractsPage(pageNumber)
-      setHasMoreContracts(
-        (data || []).length ===
-          DEALS_PAGE_SIZE
-      )
+      setHasMoreContracts((data || []).length === DEALS_PAGE_SIZE)
     }
 
     setLoading(false)
@@ -359,50 +261,25 @@ function App() {
       let from = 0
 
       while (true) {
-        const {
-          data,
-          error: supabaseError,
-        } = await supabase
+        const { data, error: supabaseError } = await supabase
           .from("deals")
           .select("*")
-          .order("sale_date", {
-            ascending: false,
-          })
-          .range(
-            from,
-            from + REPORTING_PAGE_SIZE - 1
-          )
+          .order("sale_date", { ascending: false })
+          .range(from, from + REPORTING_PAGE_SIZE - 1)
 
-        if (supabaseError) {
-          throw supabaseError
-        }
+        if (supabaseError) throw supabaseError
 
         const batch = data || []
-
         results.push(...batch)
 
-        if (
-          batch.length <
-          REPORTING_PAGE_SIZE
-        ) {
-          break
-        }
-
+        if (batch.length < REPORTING_PAGE_SIZE) break
         from += REPORTING_PAGE_SIZE
       }
 
       setAllDeals(results)
     } catch (err) {
-      console.error(
-        "Error loading all deals for reporting:",
-        err
-      )
-
-      setError(
-        err?.message ||
-          "Unable to load deals for reporting."
-      )
-
+      console.error("Error loading all deals for reporting:", err)
+      setError(err?.message || "Unable to load deals for reporting.")
       setAllDeals([])
     } finally {
       setReportingLoading(false)
@@ -417,39 +294,20 @@ function App() {
     try {
       const results = []
       let from = 0
-
-      const viewerId =
-        previewUser?.id ||
-        profile?.id
-
+      const viewerId = previewUser?.id || profile?.id
       let visibleSalespersonIds = []
 
-      if (
-        effectivePermissionLevel < 3 &&
-        viewerId
-      ) {
-        const {
-          data: visibleProfiles,
-          error: visibleProfilesError,
-        } = await supabase
+      if (effectivePermissionLevel < 3 && viewerId) {
+        const { data: visibleProfiles, error: visibleProfilesError } = await supabase
           .from("profiles")
           .select("pipedrive_person_id")
-          .or(
-            `id.eq.${viewerId},sales_manager.eq.${viewerId},manager_id.eq.${viewerId}`
-          )
+          .or(`id.eq.${viewerId},sales_manager.eq.${viewerId},manager_id.eq.${viewerId}`)
 
-        if (visibleProfilesError) {
-          throw visibleProfilesError
-        }
+        if (visibleProfilesError) throw visibleProfilesError
 
-        visibleSalespersonIds =
-          (visibleProfiles || [])
-            .map(row =>
-              String(
-                row?.pipedrive_person_id || ""
-              ).trim()
-            )
-            .filter(Boolean)
+        visibleSalespersonIds = (visibleProfiles || [])
+          .map(row => String(row?.pipedrive_person_id || "").trim())
+          .filter(Boolean)
       }
 
       while (true) {
@@ -461,75 +319,32 @@ function App() {
             "in",
             "(Decline,Customer Cancelled,Returned To Sales,Awaiting Funds,On Hold,Pending Cancellation)"
           )
-          .is(
-            "commission_paid_date",
-            null
-          )
-          .gte(
-            "sale_date",
-            "2026-01-01"
-          )
-          .order(
-            "installation_start_date",
-            {
-              ascending: true,
-            }
-          )
-          .range(
-            from,
-            from + REPORTING_PAGE_SIZE - 1
-          )
+          .is("commission_paid_date", null)
+          .gte("sale_date", "2026-01-01")
+          .order("installation_start_date", { ascending: true })
+          .range(from, from + REPORTING_PAGE_SIZE - 1)
 
-        if (
-          effectivePermissionLevel < 3
-        ) {
-          request =
-            visibleSalespersonIds.length
-              ? request.in(
-                  "salesperson",
-                  visibleSalespersonIds
-                )
-              : request.eq(
-                  "salesperson",
-                  "__NO_VISIBLE_SALESPERSON__"
-                )
+        if (effectivePermissionLevel < 3) {
+          request = visibleSalespersonIds.length
+            ? request.in("salesperson", visibleSalespersonIds)
+            : request.eq("salesperson", "__NO_VISIBLE_SALESPERSON__")
         }
 
-        const {
-          data,
-          error: supabaseError,
-        } = await request
+        const { data, error: supabaseError } = await request
 
-        if (supabaseError) {
-          throw supabaseError
-        }
+        if (supabaseError) throw supabaseError
 
         const batch = data || []
-
         results.push(...batch)
 
-        if (
-          batch.length <
-          REPORTING_PAGE_SIZE
-        ) {
-          break
-        }
-
+        if (batch.length < REPORTING_PAGE_SIZE) break
         from += REPORTING_PAGE_SIZE
       }
 
       setCommissionDeals(results)
     } catch (err) {
-      console.error(
-        "Error loading commission deals:",
-        err
-      )
-
-      setError(
-        err?.message ||
-          "Unable to load commission data."
-      )
-
+      console.error("Error loading commission deals:", err)
+      setError(err?.message || "Unable to load commission data.")
       setCommissionDeals([])
     } finally {
       setCommissionLoading(false)
@@ -539,121 +354,73 @@ function App() {
   useEffect(() => {
     if (!session) return
 
-    loadContracts(
-      0,
-      query,
-      status
-    )
-
+    loadContracts(0, query, status)
     loadAllDealsForReporting()
     loadCommissionDeals()
-  }, [
-    session,
-    previewUser?.id,
-  ])
+  }, [session, previewUser?.id])
 
   const filteredContracts = contracts
 
-  const totalValue =
-    allDeals.reduce(
-      (total, contract) =>
-        total +
-        Number(
-          contract.net_value || 0
-        ),
-      0
-    )
+  const totalValue = allDeals.reduce(
+    (total, contract) => total + Number(contract.net_value || 0),
+    0
+  )
 
-  const averageValue =
-    allDeals.length > 0
-      ? totalValue / allDeals.length
-      : 0
+  const averageValue = allDeals.length > 0 ? totalValue / allDeals.length : 0
 
-  const today = new Date()
-    .toISOString()
-    .slice(0, 10)
+  const today = new Date().toISOString().slice(0, 10)
 
-  const upcomingInstallations =
-    allDeals.filter(
-      contract =>
-        contract.installation_date &&
-        contract.installation_date >=
-          today
-    ).length
+  const upcomingInstallations = allDeals.filter(
+    contract => contract.installation_date && contract.installation_date >= today
+  ).length
 
   function handleBackToDeals() {
     setSelected(null)
     setPage("contracts")
-
-    window.history.pushState(
-      {},
-      "",
-      "/contracts"
-    )
+    window.history.pushState({}, "", "/contracts")
   }
 
-  function handleDealUpdated(
-    updatedDeal
-  ) {
-    const excludedCommissionStages =
-      new Set([
-        "decline",
-        "customer cancelled",
-        "returned to sales",
-        "awaiting funds",
-        "on hold",
-        "pending cancellation",
-      ])
+  function handleDealUpdated(updatedDeal) {
+    const excludedCommissionStages = new Set([
+      "decline",
+      "customer cancelled",
+      "returned to sales",
+      "awaiting funds",
+      "on hold",
+      "pending cancellation",
+    ])
 
-    const stage = String(
-      updatedDeal?.pipedrive_stage ?? ""
-    )
+    const stage = String(updatedDeal?.pipedrive_stage ?? "")
       .trim()
       .replace(/\s+/g, " ")
       .toLowerCase()
 
-    const shouldRemoveFromCommissions =
-      excludedCommissionStages.has(
-        stage
-      )
+    const shouldRemoveFromCommissions = excludedCommissionStages.has(stage)
 
     setContracts(current =>
       current.map(contract =>
-        contract.id === updatedDeal.id
-          ? updatedDeal
-          : contract
+        contract.id === updatedDeal.id ? updatedDeal : contract
       )
     )
 
     setAllDeals(current =>
       current.map(contract =>
-        contract.id === updatedDeal.id
-          ? updatedDeal
-          : contract
+        contract.id === updatedDeal.id ? updatedDeal : contract
       )
     )
 
     setCommissionDeals(current =>
       shouldRemoveFromCommissions
-        ? current.filter(
-            contract =>
-              contract.id !==
-              updatedDeal.id
-          )
+        ? current.filter(contract => contract.id !== updatedDeal.id)
         : current.map(contract =>
-            contract.id ===
-            updatedDeal.id
-              ? updatedDeal
-              : contract
+            contract.id === updatedDeal.id ? updatedDeal : contract
           )
     )
 
     setSelected(updatedDeal)
   }
 
-  function handlePageChange(
-    newPage
-  ) {
+  function handlePageChange(newPage) {
     const requiredPermission = {
       "sales-performance": 2,
       "marketing-dashboard": 3,
@@ -667,13 +434,7 @@ function App() {
       "integration-logs": 4,
     }[newPage]
 
-    if (
-      requiredPermission &&
-      effectivePermissionLevel <
-        requiredPermission
-    ) {
-      return
-    }
+    if (requiredPermission && effectivePermissionLevel < requiredPermission) return
 
     setSelected(null)
     setSelectedAppointment(null)
@@ -683,143 +444,68 @@ function App() {
     if (newPage === "contracts") {
       setQuery("")
       setStatus("all")
-
-      loadContracts(
-        0,
-        "",
-        "all"
-      )
+      loadContracts(0, "", "all")
     }
 
-    window.history.pushState(
-      {},
-      "",
-      newPage === "dashboard"
-        ? "/"
-        : `/${newPage}`
-    )
+    window.history.pushState({}, "", newPage === "dashboard" ? "/" : `/${newPage}`)
   }
 
-  function handleSearchChange(
-    value
-  ) {
+  function handleSearchChange(value) {
     setQuery(value)
-    loadContracts(
-      0,
-      value,
-      status
-    )
+    loadContracts(0, value, status)
   }
 
-  function mapAppointment(
-    appointment
-  ) {
+  function mapAppointment(appointment) {
     if (!appointment) return null
-
     return {
       ...appointment,
-      phone:
-        appointment?.phone_number_1,
-      email:
-        appointment?.email_address,
+      phone: appointment?.phone_number_1,
+      email: appointment?.email_address,
     }
   }
 
-  function appointmentUrl(
-    appointment
-  ) {
-    return `/appointments/${encodeURIComponent(
-      appointment.appointment_row_id
-    )}`
+  function appointmentUrl(appointment) {
+    return `/appointments/${encodeURIComponent(appointment.appointment_row_id)}`
   }
 
-  function handleAppointmentSelect(
-    appointment
-  ) {
-    const mappedAppointment =
-      mapAppointment(
-        appointment
-      )
-
-    if (
-      !mappedAppointment?.appointment_row_id
-    ) {
-      return
-    }
+  function handleAppointmentSelect(appointment) {
+    const mappedAppointment = mapAppointment(appointment)
+    if (!mappedAppointment?.appointment_row_id) return
 
     setSelected(null)
     setPickupAppointment(null)
-    setSelectedAppointment(
-      mappedAppointment
-    )
+    setSelectedAppointment(mappedAppointment)
     setPage("appointments")
-
-    window.history.pushState(
-      {},
-      "",
-      appointmentUrl(
-        mappedAppointment
-      )
-    )
+    window.history.pushState({}, "", appointmentUrl(mappedAppointment))
   }
 
-  async function loadAppointmentFromUrl(
-    appointmentId
-  ) {
-    if (
-      !supabase ||
-      !appointmentId
-    ) {
-      return
-    }
+  async function loadAppointmentFromUrl(appointmentId) {
+    if (!supabase || !appointmentId) return
 
     setError("")
 
-    const {
-      data,
-      error: appointmentError,
-    } = await supabase
+    const { data, error: appointmentError } = await supabase
       .from("appointments")
       .select("*")
-      .eq(
-        "appointment_row_id",
-        appointmentId
-      )
+      .eq("appointment_row_id", appointmentId)
       .maybeSingle()
 
     if (appointmentError) {
-      console.error(
-        "Error loading appointment from URL:",
-        appointmentError
-      )
-
-      setError(
-        appointmentError.message
-      )
-
+      console.error("Error loading appointment from URL:", appointmentError)
+      setError(appointmentError.message)
       return
     }
 
     if (!data) {
-      setError(
-        "Appointment not available in this user preview."
-      )
-
-      window.history.replaceState(
-        {},
-        "",
-        "/appointments"
-      )
-
+      setError("Appointment not available in this user preview.")
+      window.history.replaceState({}, "", "/appointments")
       setPage("appointments")
       return
     }
 
     setSelected(null)
     setPickupAppointment(null)
-    setSelectedAppointment(
-      mapAppointment(data)
-    )
+    setSelectedAppointment(mapAppointment(data))
     setPage("appointments")
   }
 
@@ -827,24 +513,11 @@ function App() {
     if (!session) return
 
     function handlePopState() {
-      const path =
-        window.location.pathname.replace(
-          /\/+$/,
-          ""
-        ) || "/"
-
-      const appointmentMatch =
-        path.match(
-          /^\/appointments\/([^/]+)$/
-        )
+      const path = window.location.pathname.replace(/\/+$/, "") || "/"
+      const appointmentMatch = path.match(/^\/appointments\/([^/]+)$/)
 
       if (appointmentMatch) {
-        loadAppointmentFromUrl(
-          decodeURIComponent(
-            appointmentMatch[1]
-          )
-        )
-
+        loadAppointmentFromUrl(decodeURIComponent(appointmentMatch[1]))
         return
       }
 
@@ -853,120 +526,61 @@ function App() {
       setPickupAppointment(null)
 
       setPage(
-        path === "/" ||
-          path === "/dashboard"
-          ? "dashboard"
-          : path.slice(1)
+        path === "/" || path === "/dashboard" ? "dashboard" : path.slice(1)
       )
     }
 
     handlePopState()
+    window.addEventListener("popstate", handlePopState)
 
-    window.addEventListener(
-      "popstate",
-      handlePopState
-    )
-
-    return () =>
-      window.removeEventListener(
-        "popstate",
-        handlePopState
-      )
-  }, [
-    session,
-    previewUser?.id,
-  ])
+    return () => window.removeEventListener("popstate", handlePopState)
+  }, [session, previewUser?.id])
 
   function handleOpenPickup() {
-    if (
-      selectedAppointment?.result
-    ) {
-      setPickupAppointment(
-        selectedAppointment
-      )
-    }
+    if (selectedAppointment?.result) setPickupAppointment(selectedAppointment)
   }
 
   function handleBackToAppointments() {
     setPickupAppointment(null)
     setSelectedAppointment(null)
     setPage("appointments")
-
-    window.history.pushState(
-      {},
-      "",
-      "/appointments"
-    )
+    window.history.pushState({}, "", "/appointments")
   }
 
   function handleBackFromPickup() {
     setPickupAppointment(null)
   }
 
-  function handlePickupCreated(
-    updatedOriginal
-  ) {
+  function handlePickupCreated(updatedOriginal) {
     setSelectedAppointment({
       ...selectedAppointment,
       ...updatedOriginal,
-      phone:
-        updatedOriginal?.phone_number_1,
-      email:
-        updatedOriginal?.email_address,
+      phone: updatedOriginal?.phone_number_1,
+      email: updatedOriginal?.email_address,
     })
-
     setPickupAppointment(null)
   }
 
   function handleSignOut() {
     if (supabase) {
-      supabase.auth
-        .signOut()
-        .catch(err =>
-          console.error(
-            "Error signing out:",
-            err
-          )
-        )
+      supabase.auth.signOut().catch(err =>
+        console.error("Error signing out:", err)
+      )
     }
   }
 
-  function handleAppointmentUpdated(
-    updatedAppointment
-  ) {
-    const mapped =
-      mapAppointment(
-        updatedAppointment
-      )
-
-    setSelectedAppointment(
-      current =>
-        current
-          ? {
-              ...current,
-              ...mapped,
-            }
-          : mapped
+  function handleAppointmentUpdated(updatedAppointment) {
+    const mapped = mapAppointment(updatedAppointment)
+    setSelectedAppointment(current =>
+      current ? { ...current, ...mapped } : mapped
     )
   }
 
-  function clickLegacyButton(
-    text
-  ) {
-    const host =
-      document.querySelector(
-        ".appointment-detail-host"
-      )
-
+  function clickLegacyButton(text) {
+    const host = document.querySelector(".appointment-detail-host")
     const button = host
-      ? Array.from(
-          host.querySelectorAll(
-            "button"
-          )
-        ).find(
-          candidate =>
-            candidate.textContent.trim() ===
-            text
+      ? Array.from(host.querySelectorAll("button")).find(
+          candidate => candidate.textContent.trim() === text
         )
       : null
 
@@ -979,9 +593,7 @@ function App() {
   }
 
   function handleLegacyConfirm() {
-    clickLegacyButton(
-      "Confirm Appointment"
-    )
+    clickLegacyButton("Confirm Appointment")
   }
 
   function handleLegacyResult() {
@@ -1006,8 +618,7 @@ function App() {
           justifyContent: "center",
           background: "#f5f7fa",
           color: "#002d49",
-          fontFamily:
-            "Inter, Arial, sans-serif",
+          fontFamily: "Inter, Arial, sans-serif",
           fontSize: 14,
         }}
       >
@@ -1016,55 +627,28 @@ function App() {
     )
   }
 
-  if (!session) {
-    return <Login />
-  }
+  if (!session) return <Login />
 
   const displayName =
     previewUser?.display_name ||
     previewUser?.full_name ||
     profile?.display_name ||
     profile?.full_name ||
-    session?.user?.user_metadata
-      ?.full_name ||
-    session?.user?.user_metadata
-      ?.name ||
+    session?.user?.user_metadata?.full_name ||
+    session?.user?.user_metadata?.name ||
     "there"
 
-  const currentHour =
-    new Date().getHours()
-
+  const currentHour = new Date().getHours()
   const greeting =
-    currentHour < 12
-      ? "Good Morning"
-      : currentHour < 18
-      ? "Good Afternoon"
-      : "Good Evening"
+    currentHour < 12 ? "Good Morning" : currentHour < 18 ? "Good Afternoon" : "Good Evening"
 
   const homeContent = (
     <section>
-      <div
-        style={{
-          marginBottom: 18,
-        }}
-      >
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 22,
-            color: "#222",
-          }}
-        >
+      <div style={{ marginBottom: 18 }}>
+        <h1 style={{ margin: 0, fontSize: 22, color: "#222" }}>
           {greeting}, {displayName}
         </h1>
-
-        <p
-          style={{
-            margin: "5px 0 0",
-            fontSize: 11,
-            color: "#888",
-          }}
-        >
+        <p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>
           Welcome to the Homeshield Scotland CRM
         </p>
       </div>
@@ -1079,16 +663,11 @@ function App() {
         mobile={mobile}
         setMobile={setMobile}
         onSignOut={handleSignOut}
-        permissionLevel={
-          effectivePermissionLevel
-        }
+        permissionLevel={effectivePermissionLevel}
       />
 
       <main>
-        <Header
-          page={headerPage}
-          setMobile={setMobile}
-        />
+        <Header page={headerPage} setMobile={setMobile} />
 
         {error && page !== "epvs" && (
           <div className="error">
@@ -1097,136 +676,83 @@ function App() {
           </div>
         )}
 
-        {isAdministrator &&
-          page === "users" && (
-            <AdminUserPreview
-              activeUser={previewUser}
-              onStart={user => {
-                setPreviewUser(user)
-                setSelected(null)
-                setSelectedAppointment(null)
-                setPickupAppointment(null)
-                setPage("appointments")
+        {isAdministrator && page === "users" && (
+          <AdminUserPreview
+            activeUser={previewUser}
+            onStart={user => {
+              setPreviewUser(user)
+              setSelected(null)
+              setSelectedAppointment(null)
+              setPickupAppointment(null)
+              setPage("appointments")
+              window.history.pushState({}, "", "/appointments")
+            }}
+            onStop={async () => {
+              setPreviewUser(null)
+              setSelectedAppointment(null)
+              setPickupAppointment(null)
+              setPage("users")
+              window.history.pushState({}, "", "/users")
+            }}
+          />
+        )}
 
-                window.history.pushState(
-                  {},
-                  "",
-                  "/appointments"
-                )
-              }}
-              onStop={async () => {
-                setPreviewUser(null)
-                setSelectedAppointment(null)
-                setPickupAppointment(null)
-                setPage("users")
-
-                window.history.pushState(
-                  {},
-                  "",
-                  "/users"
-                )
-              }}
-            />
-          )}
-
-        {isAdministrator &&
-          previewUser &&
-          page !== "users" && (
-            <AdminUserPreview
-              activeUser={previewUser}
-              onStart={() => {}}
-              onStop={async () => {
-                setPreviewUser(null)
-                setSelectedAppointment(null)
-                setPickupAppointment(null)
-                setPage("users")
-
-                window.history.pushState(
-                  {},
-                  "",
-                  "/users"
-                )
-              }}
-            />
-          )}
+        {isAdministrator && previewUser && page !== "users" && (
+          <AdminUserPreview
+            activeUser={previewUser}
+            onStart={() => {}}
+            onStop={async () => {
+              setPreviewUser(null)
+              setSelectedAppointment(null)
+              setPickupAppointment(null)
+              setPage("users")
+              window.history.pushState({}, "", "/users")
+            }}
+          />
+        )}
 
         {pickupAppointment ? (
           <PickupAppointment
-            appointment={
-              pickupAppointment
-            }
-            onBack={
-              handleBackFromPickup
-            }
-            onCreated={
-              handlePickupCreated
-            }
+            appointment={pickupAppointment}
+            onBack={handleBackFromPickup}
+            onCreated={handlePickupCreated}
           />
         ) : selectedAppointment ? (
-          <div
-            style={{
-              position: "relative",
-            }}
-          >
+          <div style={{ position: "relative" }}>
             <style>
-              {`
-                .appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){
-                  display:none!important
-                }
-              `}
+              {`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}
             </style>
 
             <div
               style={{
                 display: "flex",
-                justifyContent:
-                  "flex-end",
+                justifyContent: "flex-end",
                 padding: "10px 24px 0",
                 background: "#fff",
               }}
             >
               <AppointmentActions
-                appointment={
-                  selectedAppointment
-                }
-                onUpdated={
-                  handleAppointmentUpdated
-                }
-                onConfirm={
-                  handleLegacyConfirm
-                }
-                onResult={
-                  handleLegacyResult
-                }
-                onOpenPickup={
-                  handleOpenPickup
-                }
+                appointment={selectedAppointment}
+                onUpdated={handleAppointmentUpdated}
+                onConfirm={handleLegacyConfirm}
+                onResult={handleLegacyResult}
+                onOpenPickup={handleOpenPickup}
               />
             </div>
 
             <div className="appointment-detail-host">
               <AppointmentDetail
-                appointment={
-                  selectedAppointment
-                }
-                onBack={
-                  handleBackToAppointments
-                }
-                onUpdated={
-                  handleAppointmentUpdated
-                }
+                appointment={selectedAppointment}
+                onBack={handleBackToAppointments}
+                onUpdated={handleAppointmentUpdated}
               />
             </div>
           </div>
         ) : selected ? (
           <CustomerDetail
             deal={selected}
-            onBack={
-              handleBackToDeals
-            }
-            onUpdated={
-              handleDealUpdated
-            }
+            onBack={handleBackToDeals}
+            onUpdated={handleDealUpdated}
           />
         ) : page === "dashboard" ? (
           homeContent
@@ -1236,98 +762,47 @@ function App() {
           <FitSheet />
         ) : page === "contracts" ? (
           <Contracts
-            contracts={
-              filteredContracts
-            }
+            contracts={filteredContracts}
             loading={loading}
             query={query}
             status={status}
-            onSearchChange={
-              handleSearchChange
-            }
+            onSearchChange={handleSearchChange}
             onStatusChange={value => {
               setStatus(value)
-
-              loadContracts(
-                0,
-                query,
-                value
-              )
+              loadContracts(0, query, value)
             }}
-            onNext={() =>
-              loadContracts(
-                contractsPage + 1
-              )
-            }
-            onPrev={() =>
-              loadContracts(
-                Math.max(
-                  contractsPage - 1,
-                  0
-                )
-              )
-            }
-            hasNext={
-              hasMoreContracts
-            }
-            hasPrev={
-              contractsPage > 0
-            }
+            onNext={() => loadContracts(contractsPage + 1)}
+            onPrev={() => loadContracts(Math.max(contractsPage - 1, 0))}
+            hasNext={hasMoreContracts}
+            hasPrev={contractsPage > 0}
             onSelect={deal => {
               setSelected(deal)
               setPage("contracts")
-
-              window.history.pushState(
-                {},
-                "",
-                `/contracts/${deal.id}`
-              )
+              window.history.pushState({}, "", `/contracts/${deal.id}`)
             }}
             onNewContract={() => {}}
           />
         ) : page === "installations" ? (
           <Installations />
         ) : page === "marketing-tv" ? (
-          <MarketingTV
-            onSelectAppointment={
-              handleAppointmentSelect
-            }
-          />
-        ) : page ===
-          "marketing-dashboard" ? (
+          <MarketingTV onSelectAppointment={handleAppointmentSelect} />
+        ) : page === "marketing-dashboard" ? (
           <MarketingDashboard />
         ) : page === "rts-list" ? (
           <RTSList />
         ) : page === "commissions" ? (
           <SalesCommission
             deals={commissionDeals}
-            loading={
-              commissionLoading
-            }
-            permissionLevel={
-              effectivePermissionLevel
-            }
+            loading={commissionLoading}
+            permissionLevel={effectivePermissionLevel}
+            viewerProfileId={previewUser?.id || profile?.id || null}
           />
         ) : page === "appointments" ? (
-          <Appointments
-            onSelect={
-              handleAppointmentSelect
-            }
-          />
+          <Appointments onSelect={handleAppointmentSelect} />
         ) : page === "sales-kpi" ? (
-          <SalesKPI
-            deals={allDeals}
-            loading={
-              reportingLoading
-            }
-          />
+          <SalesKPI deals={allDeals} loading={reportingLoading} />
         ) : page === "canvasser-kpi" ? (
-          <CanvasserKPI
-            deals={allDeals}
-            loading={
-              reportingLoading
-            }
-          />
+          <CanvasserKPI deals={allDeals} loading={reportingLoading} />
         ) : page === "users" ? (
           <Users />
         ) : page === "tasks" ? (
@@ -1337,21 +812,13 @@ function App() {
         ) : page === "mi" ? (
           <MI />
         ) : page === "reviews" ? (
-          <Reviews
-            setMobile={setMobile}
-          />
-        ) : page ===
-          "integration-logs" ? (
-          <IntegrationLogs
-            setMobile={setMobile}
-          />
-        ) : page ===
-          "sales-presentations" ? (
+          <Reviews setMobile={setMobile} />
+        ) : page === "integration-logs" ? (
+          <IntegrationLogs setMobile={setMobile} />
+        ) : page === "sales-presentations" ? (
           <SalesPresentations />
         ) : (
-          <Dashboard
-            deals={allDeals}
-          />
+          <Dashboard deals={allDeals} />
         )}
       </main>
     </div>
