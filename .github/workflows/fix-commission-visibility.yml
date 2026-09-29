@@ -1,0 +1,40 @@
+name: Fix commission visibility
+on:
+  push:
+    branches: [main]
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix commission visibility
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          app = Path('src/App.jsx')
+          s = app.read_text()
+          s = s.replace('if (effectivePermissionLevel < 3 && viewerId)', 'if (effectivePermissionLevel < 4 && viewerId)')
+          s = s.replace('if (effectivePermissionLevel < 3) {\n          request = visibleSalespersonIds.length', 'if (effectivePermissionLevel < 4) {\n          request = visibleSalespersonIds.length')
+          old = '''            permissionLevel={\n              effectivePermissionLevel\n            }\n          />'''
+          new = '''            permissionLevel={\n              effectivePermissionLevel\n            }\n            viewerProfileId={\n              previewUser?.id || profile?.id || null\n            }\n          />'''
+          if old in s:
+              s = s.replace(old, new, 1)
+          app.write_text(s)
+
+          commission = Path('src/pages/SalesCommission.jsx')
+          s = commission.read_text()
+          s = s.replace('if (Number(permissionLevel) >= 3)', 'if (Number(permissionLevel) >= 4)')
+          s = s.replace('if (Number(permissionLevel) < 3) {', 'if (Number(permissionLevel) < 4) {')
+          commission.write_text(s)
+          PY
+      - name: Commit changes and remove workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.jsx src/pages/SalesCommission.jsx
+          git diff --cached --quiet || git commit -m "Fix commission visibility for reps and managers"
+          git push
+          git rm .github/workflows/fix-commission-visibility.yml || true
+          git commit -m "Remove temporary commission visibility workflow" || true
+          git push || true
