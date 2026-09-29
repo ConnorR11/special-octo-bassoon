@@ -49,9 +49,6 @@ export default function MarketingTV({ onSelectAppointment, previewUser = null, p
   const [error, setError] = useState("")
   const [activeTab, setActiveTab] = useState("mastersheet")
   const [lastUpdated, setLastUpdated] = useState(null)
-  const numericPermissionLevel = Number(permissionLevel) || 0
-  const canViewAllAppointments = numericPermissionLevel >= 3 || isCentralConfirmationManager(role)
-  const canViewBranchAppointments = numericPermissionLevel >= 2
 
   async function loadAppointments(date = selectedDate) {
     if (!supabase) { setError("Supabase is not configured. Check your environment variables."); setLoading(false); return }
@@ -68,6 +65,11 @@ export default function MarketingTV({ onSelectAppointment, previewUser = null, p
           viewerProfile = currentProfile || null
         }
       }
+
+      const effectivePermissionLevel = Number(viewerProfile?.permission_level ?? permissionLevel) || 0
+      const effectiveRole = viewerProfile?.role || role
+      const canViewAllAppointments = effectivePermissionLevel >= 3 || isCentralConfirmationManager(effectiveRole)
+      const canViewBranchAppointments = effectivePermissionLevel >= 2
 
       const endDate = new Date(`${date}T00:00:00Z`); endDate.setUTCDate(endDate.getUTCDate() + 1)
       const nextDate = `${endDate.getUTCFullYear()}-${String(endDate.getUTCMonth() + 1).padStart(2, "0")}-${String(endDate.getUTCDate()).padStart(2, "0")}`
