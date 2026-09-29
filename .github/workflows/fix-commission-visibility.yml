@@ -2,12 +2,16 @@ name: Fix commission visibility
 on:
   push:
     branches: [main]
+permissions:
+  contents: write
 jobs:
   patch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fix commission visibility
+        with:
+          fetch-depth: 0
+      - name: Fix commission and MarketingTV visibility
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -27,14 +31,27 @@ jobs:
           s = s.replace('if (Number(permissionLevel) >= 3)', 'if (Number(permissionLevel) >= 4)')
           s = s.replace('if (Number(permissionLevel) < 3) {', 'if (Number(permissionLevel) < 4) {')
           commission.write_text(s)
+
+          marketing = Path('src/pages/MarketingTV.jsx')
+          s = marketing.read_text()
+          s = s.replace('  const numericPermissionLevel = Number(permissionLevel) || 0\n  const canViewAllAppointments = numericPermissionLevel >= 3 || isCentralConfirmationManager(role)\n  const canViewBranchAppointments = numericPermissionLevel >= 2\n', '')
+          old = '      const endDate = new Date(`${date}T00:00:00Z`); endDate.setUTCDate(endDate.getUTCDate() + 1)\n'
+          new = '''      const effectivePermissionLevel = Number(viewerProfile?.permission_level ?? permissionLevel) || 0\n      const effectiveRole = viewerProfile?.role || role\n      const canViewAllAppointments = effectivePermissionLevel >= 3 || isCentralConfirmationManager(effectiveRole)\n      const canViewBranchAppointments = effectivePermissionLevel >= 2\n\n      const endDate = new Date(`${date}T00:00:00Z`); endDate.setUTCDate(endDate.getUTCDate() + 1)\n'''
+          if 'const effectivePermissionLevel' not in s and old in s:
+              s = s.replace(old, new, 1)
+          marketing.write_text(s)
           PY
       - name: Commit changes and remove workflow
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/App.jsx src/pages/SalesCommission.jsx
-          git diff --cached --quiet || git commit -m "Fix commission visibility for reps and managers"
-          git push
+          git add src/App.jsx src/pages/SalesCommission.jsx src/pages/MarketingTV.jsx
           git rm .github/workflows/fix-commission-visibility.yml || true
-          git commit -m "Remove temporary commission visibility workflow" || true
-          git push || true
+          git diff --cached --quiet || git commit -m "Fix commission and MarketingTV visibility"
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then exit 0; fi
+            git fetch origin main
+            git rebase origin/main || { git rebase --abort; }
+            sleep 3
+          done
+          exit 1
