@@ -40,6 +40,7 @@ function FitSheetWithIssues({ setSelected }) {
   }, [currentWeek])
 
   function formatDate(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return ""
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, "0")
     const day = String(date.getDate()).padStart(2, "0")
@@ -52,6 +53,8 @@ function FitSheetWithIssues({ setSelected }) {
   const weekTitle = useMemo(() => {
     const start = weekDays[0]
     const end = weekDays[6]
+    if (!start || !end) return ""
+
     const startText = start.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
     const endText = end.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
     return `${startText} – ${endText}`
@@ -97,48 +100,60 @@ function FitSheetWithIssues({ setSelected }) {
         setLoadError(message)
       }
 
-      setWeekDeals(normalResult.data || [])
-      setWeekIssues(issueResult.data || [])
+      setWeekDeals(Array.isArray(normalResult.data) ? normalResult.data : [])
+      setWeekIssues(Array.isArray(issueResult.data) ? issueResult.data : [])
       setLoading(false)
     }
 
-    loadWeek()
+    loadWeek().catch((err) => {
+      if (!mounted) return
+      console.error("Unexpected error loading Fit Sheet week:", err)
+      setLoadError(err?.message || "Unable to load Fit Sheet data.")
+      setWeekDeals([])
+      setWeekIssues([])
+      setLoading(false)
+    })
 
     return () => {
       mounted = false
     }
   }, [weekStart, weekEnd])
 
+  const safeWeekDeals = Array.isArray(weekDeals) ? weekDeals : []
+  const safeWeekIssues = Array.isArray(weekIssues) ? weekIssues : []
+
   const fitTeams = useMemo(() => {
-    const normalTeams = weekDeals
-      .map((deal) => deal.fit_team_1)
+    const normalTeams = safeWeekDeals
+      .map((deal) => deal?.fit_team_1)
       .filter(Boolean)
       .map((team) => String(team).trim())
       .filter(Boolean)
 
-    const issueTeams = weekIssues
-      .map((deal) => deal.installation_issues_fit_team)
+    const issueTeams = safeWeekIssues
+      .map((deal) => deal?.installation_issues_fit_team)
       .filter(Boolean)
       .map((team) => String(team).trim())
       .filter(Boolean)
 
     return [...new Set([...normalTeams, ...issueTeams])].sort((a, b) => a.localeCompare(b))
-  }, [weekDeals, weekIssues])
+  }, [safeWeekDeals, safeWeekIssues])
+
+  const safeFitTeams = Array.isArray(fitTeams) ? fitTeams : []
 
   function getDeals(team, date) {
     const dateString = formatDate(date)
-    return weekDeals.filter((deal) => {
-      const dealDate = String(deal.installation_start_date || "").slice(0, 10)
-      const dealTeam = String(deal.fit_team_1 || "").trim()
+    return safeWeekDeals.filter((deal) => {
+      const dealDate = String(deal?.installation_start_date || "").slice(0, 10)
+      const dealTeam = String(deal?.fit_team_1 || "").trim()
       return dealDate === dateString && dealTeam === team
     })
   }
 
   function getIssues(team, date) {
     const dateString = formatDate(date)
-    return weekIssues.filter((deal) => {
-      const issueDate = String(deal.installations_issues_start_date || "").slice(0, 10)
-      const issueTeam = String(deal.installation_issues_fit_team || "").trim()
+    return safeWeekIssues.filter((deal) => {
+      const issueDate = String(deal?.installations_issues_start_date || "").slice(0, 10)
+      const issueTeam = String(deal?.installation_issues_fit_team || "").trim()
       return issueDate === dateString && issueTeam === team
     })
   }
@@ -146,7 +161,7 @@ function FitSheetWithIssues({ setSelected }) {
   const todayString = formatDate(new Date())
 
   function openDeal(deal) {
-    if (setSelected) setSelected(deal)
+    if (typeof setSelected === "function") setSelected(deal)
   }
 
   function cardHoverIn(event) {
@@ -291,12 +306,12 @@ function FitSheetWithIssues({ setSelected }) {
             <div style={{ padding: "60px 20px", textAlign: "center", color: "#999", fontSize: "12px" }}>
               Loading this week's fits...
             </div>
-          ) : fitTeams.length === 0 ? (
+          ) : safeFitTeams.length === 0 ? (
             <div style={{ padding: "60px 20px", textAlign: "center", color: "#999", fontSize: "12px" }}>
               No fits or issues found for this week.
             </div>
           ) : (
-            fitTeams.map((team) => (
+            safeFitTeams.map((team) => (
               <div key={team} style={{ display: "grid", gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))", minHeight: "160px", borderBottom: "1px solid #d9dadd" }}>
                 <div style={{ padding: "14px 12px", background: "#f7f7f8", borderRight: "1px solid #d9dadd", fontSize: "11px", fontWeight: 600, color: "#333", display: "flex", alignItems: "center" }}>
                   {team}
