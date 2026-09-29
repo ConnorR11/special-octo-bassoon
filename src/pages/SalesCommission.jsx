@@ -543,7 +543,7 @@ export default function SalesCommission({
     let cancelled = false
 
     async function loadVisibility() {
-      if (Number(permissionLevel) >= 3) {
+      if (Number(permissionLevel) >= 4) {
         setVisibleSalespersonIds(null)
         return
       }

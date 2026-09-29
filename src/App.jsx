@@ -297,7 +297,7 @@ function App() {
       const viewerId = previewUser?.id || profile?.id
       let visibleSalespersonIds = []
 
-      if (effectivePermissionLevel < 3 && viewerId) {
+      if (effectivePermissionLevel < 4 && viewerId) {
         const { data: visibleProfiles, error: visibleProfilesError } = await supabase
           .from("profiles")
           .select("pipedrive_person_id")
@@ -324,7 +324,7 @@ function App() {
           .order("installation_start_date", { ascending: true })
           .range(from, from + REPORTING_PAGE_SIZE - 1)
 
-        if (effectivePermissionLevel < 3) {
+        if (effectivePermissionLevel < 4) {
           request = visibleSalespersonIds.length
             ? request.in("salesperson", visibleSalespersonIds)
             : request.eq("salesperson", "__NO_VISIBLE_SALESPERSON__")
