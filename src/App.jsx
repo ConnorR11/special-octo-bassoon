@@ -791,12 +791,7 @@ function App() {
         ) : page === "rts-list" ? (
           <RTSList />
         ) : page === "commissions" ? (
-          <SalesCommission
-            deals={commissionDeals}
-            loading={commissionLoading}
-            permissionLevel={effectivePermissionLevel}
-            viewerProfileId={previewUser?.id || profile?.id || null}
-          />
+          <SalesCommission />
         ) : page === "appointments" ? (
           <Appointments onSelect={handleAppointmentSelect} />
         ) : page === "sales-kpi" ? (
