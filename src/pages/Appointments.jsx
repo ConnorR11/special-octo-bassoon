@@ -20,6 +20,10 @@ function normaliseEmail(value) {
   return String(value || "").trim().toLowerCase()
 }
 
+function normaliseBranch(value) {
+  return String(value || "").trim().toLowerCase()
+}
+
 function Appointments({ onSelectAppointment, previewUser = null, permissionLevel = 0, role = "" }) {
   const [appointments, setAppointments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -79,49 +83,48 @@ function Appointments({ onSelectAppointment, previewUser = null, permissionLevel
       if (!canViewAllAppointments) {
         const viewerId = String(viewerProfile?.id || "").trim()
         const ownEmail = normaliseEmail(viewerProfile?.email || previewUser?.email)
-        const viewerBranch = String(viewerProfile?.branch || "").trim()
+        const viewerBranch = normaliseBranch(viewerProfile?.branch)
         const viewerRole = viewerProfile?.role || role || ""
         const branchManager = isBranchManagerRole(viewerRole)
         const salesManager = isSalesManagerRole(viewerRole)
 
-        // Build the list of reps this user is responsible for. A rep can be
-        // linked to a manager through either manager_id or sales_manager.
-        // rep_allocated on appointments stores the rep's email address.
-        let teamEmails = []
-
-        if (viewerId) {
-          const { data: managedProfiles, error: managedProfilesError } = await supabase
-            .from("profiles")
-            .select("email, manager_id, sales_manager, branch, role, active")
-            .or(`manager_id.eq.${viewerId},sales_manager.eq.${viewerId}`)
-
-          if (managedProfilesError) throw managedProfilesError
-
-          teamEmails = (managedProfiles || [])
-            .map(profile => normaliseEmail(profile?.email))
-            .filter(Boolean)
-        }
-
-        if (ownEmail) {
-          teamEmails.push(ownEmail)
-        }
-
-        teamEmails = Array.from(new Set(teamEmails))
-
-        if (branchManager && viewerBranch) {
-          // Branch managers can see every appointment in their branch.
-          request = request.eq("branch", viewerBranch)
-        } else if (teamEmails.length) {
-          // Sales managers see their own appointments plus appointments
-          // allocated to reps they manage. Reps only have their own email,
-          // so this also handles normal sales reps.
-          request = request.in("rep_allocated", teamEmails)
-        } else if (salesManager || ownEmail) {
-          // No managed profiles were returned; fall back to the user's own
-          // email rather than hiding their appointments completely.
-          request = request.ilike("rep_allocated", ownEmail || "__NO_VISIBLE_REP__")
+        // Managers see appointments allocated to their branch.
+        // Sales reps only see appointments allocated to their own email.
+        // The appointment branch is matched case-insensitively in JS after
+        // the database query so branch naming/capitalisation differences do
+        // not hide appointments from managers.
+        if ((branchManager || salesManager) && viewerBranch) {
+          request = request.ilike("branch", viewerBranch)
         } else {
-          request = request.eq("rep_allocated", "__NO_VISIBLE_REP__")
+          // For a normal sales rep, match rep_allocated to their email.
+          // Keep the manager relationship fallback for accounts that have no
+          // usable branch value, so existing manager visibility is preserved.
+          let teamEmails = []
+
+          if (viewerId && salesManager) {
+            const { data: managedProfiles, error: managedProfilesError } = await supabase
+              .from("profiles")
+              .select("email, manager_id, sales_manager, branch, role, active")
+              .or(`manager_id.eq.${viewerId},sales_manager.eq.${viewerId}`)
+
+            if (managedProfilesError) throw managedProfilesError
+
+            teamEmails = (managedProfiles || [])
+              .map(profile => normaliseEmail(profile?.email))
+              .filter(Boolean)
+          }
+
+          if (ownEmail) {
+            teamEmails.push(ownEmail)
+          }
+
+          teamEmails = Array.from(new Set(teamEmails))
+
+          if (teamEmails.length) {
+            request = request.in("rep_allocated", teamEmails)
+          } else {
+            request = request.ilike("rep_allocated", "__NO_VISIBLE_REP__")
+          }
         }
       }
 
@@ -232,11 +235,9 @@ function Appointments({ onSelectAppointment, previewUser = null, permissionLevel
               ? `Viewing ${previewUser.full_name || previewUser.email}`
               : canViewAllAppointments
                 ? "All appointments · 50 per page"
-                : isBranchManagerRole(role)
+                : isBranchManagerRole(role) || isSalesManagerRole(role)
                   ? "Branch appointments · 50 per page"
-                  : isSalesManagerRole(role)
-                    ? "Team appointments · 50 per page"
-                    : "Your appointments · 50 per page"}
+                  : "Your appointments · 50 per page"}
           </p>
         </div>
 
