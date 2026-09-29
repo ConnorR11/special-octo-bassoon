@@ -74,54 +74,12 @@ function getCommissionDate(deal, source = "commission") {
   return date.toISOString().slice(0, 10)
 }
 
-// Keep these selects deliberately narrow. The commission page is now the
-// single source for its own COMMS and ADMIN data rather than relying on App.jsx.
-const COMMISSION_SELECT = [
-  "id",
-  "customer_name",
-  "name",
-  "contract_number",
-  "net_value",
-  "survey_costing",
-  "branch",
-  "branch_name",
-  "salesperson",
-  "sales_rep",
-  "rep_name",
-  "rep_allocated",
-  "estimated_commission_due",
-  "installation_start_date",
-  "sale_date",
-  "commission_paid_date",
-  "pipedrive_stage",
-  "postcode",
-].join(",")
-
-const ADMIN_SELECT = [
-  "id",
-  "customer_name",
-  "name",
-  "contract_number",
-  "branch",
-  "branch_name",
-  "salesperson",
-  "sales_rep",
-  "rep_name",
-  "rep_allocated",
-  "sale_date",
-  "pipedrive_stage",
-  "admin_fee_amount",
-  "admin_fee_received_date",
-  "admin_fee_paid_out_date",
-  "postcode",
-].join(",")
-
 const EXCLUDED_STAGES_QUERY = "(Decline,Customer Cancelled,Returned To Sales,Awaiting Funds,On Hold,Pending Cancellation)"
 const columns = ".65fr .95fr 1.55fr 1.25fr 1fr .9fr 1fr 1.1fr .95fr 30px"
 
 function DealRow({ deal, setSelected, type, repName }) {
   const isAdmin = type === "ADMIN"
-  const customer = deal?.customer_name || deal?.name || "Unnamed customer"
+  const customer = deal?.customer_name || "Unnamed customer"
   const paymentDate = getCommissionDate(deal, isAdmin ? "admin" : "commission")
   const surveyCosting = getSurveyCosting(deal)
   const commission = getCommission(deal)
@@ -261,7 +219,7 @@ export default function SalesCommission({ setSelected }) {
       try {
         let request = supabase
           .from("deals")
-          .select(COMMISSION_SELECT)
+          .select("*")
           .is("commission_paid_date", null)
           .gte("sale_date", "2026-01-01")
           .not("pipedrive_stage", "in", EXCLUDED_STAGES_QUERY)
@@ -327,7 +285,7 @@ export default function SalesCommission({ setSelected }) {
       try {
         let request = supabase
           .from("deals")
-          .select(ADMIN_SELECT)
+          .select("*")
           .is("admin_fee_paid_out_date", null)
           .gte("sale_date", "2026-01-01")
           .not("pipedrive_stage", "in", EXCLUDED_STAGES_QUERY)
@@ -509,7 +467,7 @@ export default function SalesCommission({ setSelected }) {
     const rows = filtered.map(({ deal, type }) => ({
       Type: type,
       "Payment Date": getCommissionDate(deal, type === "ADMIN" ? "admin" : "commission") || "",
-      Customer: deal?.customer_name || deal?.name || "",
+      Customer: deal?.customer_name || "",
       Contract: deal?.contract_number || "",
       "Net Sales Value": type === "COMMS" ? getNetSalesValue(deal) : "",
       "Survey Costing": type === "COMMS" ? getSurveyCosting(deal) ?? "" : "",
