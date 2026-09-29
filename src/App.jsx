@@ -1222,9 +1222,9 @@ function App() {
           </div>
         )}
 
-        /*
-         * ADMIN USER PREVIEW
-         */
+      
+         {/* ADMIN USER PREVIEW */}
+      
         {isAdministrator &&
           page === "users" && (
             <AdminUserPreview
@@ -1278,9 +1278,8 @@ function App() {
             />
           )}
 
-        /*
-         * PICKUP APPOINTMENT
-         */
+        {/* PICKUP APPOINTMENT */}
+        
         {pickupAppointment ? (
           <PickupAppointment
             appointment={
