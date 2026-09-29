@@ -25,6 +25,7 @@ import SEO from "./pages/SEO"
 import MI from "./pages/MI"
 import Reviews from "./pages/Reviews"
 import IntegrationLogs from "./pages/IntegrationLogs"
+import CallLog from "./pages/CallLog"
 import AdminUserPreview from "./components/AdminUserPreview"
 
 const DEALS_PAGE_SIZE = 50
@@ -35,23 +36,33 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [profile, setProfile] = useState(null)
   const [previewUser, setPreviewUser] = useState(null)
+
   const [contracts, setContracts] = useState([])
   const [allDeals, setAllDeals] = useState([])
   const [commissionDeals, setCommissionDeals] = useState([])
+
   const [loading, setLoading] = useState(true)
   const [reportingLoading, setReportingLoading] = useState(true)
   const [commissionLoading, setCommissionLoading] = useState(true)
+
   const [error, setError] = useState("")
+
   const [page, setPage] = useState("dashboard")
   const [mobile, setMobile] = useState(false)
+
   const [query, setQuery] = useState("")
   const [status, setStatus] = useState("all")
+
   const [selected, setSelected] = useState(null)
   const [selectedAppointment, setSelectedAppointment] = useState(null)
   const [pickupAppointment, setPickupAppointment] = useState(null)
+
   const [contractsPage, setContractsPage] = useState(0)
   const [hasMoreContracts, setHasMoreContracts] = useState(false)
 
+  /*
+   * AUTH SESSION
+   */
   useEffect(() => {
     if (!supabase) {
       setAuthLoading(false)
@@ -61,12 +72,19 @@ function App() {
     let mounted = true
 
     async function loadSession() {
-      const { data, error: sessionError } = await supabase.auth.getSession()
+      const {
+        data,
+        error: sessionError,
+      } = await supabase.auth.getSession()
 
       if (!mounted) return
 
       if (sessionError) {
-        console.error("Error loading auth session:", sessionError)
+        console.error(
+          "Error loading auth session:",
+          sessionError
+        )
+
         setSession(null)
       } else {
         setSession(data?.session || null)
@@ -77,9 +95,13 @@ function App() {
 
     loadSession()
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(
+    const {
+      data: authListener,
+    } = supabase.auth.onAuthStateChange(
       (_event, nextSession) => {
-        if (mounted) setSession(nextSession || null)
+        if (mounted) {
+          setSession(nextSession || null)
+        }
       }
     )
 
@@ -89,6 +111,9 @@ function App() {
     }
   }, [])
 
+  /*
+   * LOAD PROFILE + ADMIN PREVIEW
+   */
   useEffect(() => {
     if (!session || !supabase) {
       setProfile(null)
@@ -101,7 +126,7 @@ function App() {
     async function loadProfileAndPreview() {
       const {
         data: profileData,
-        error: profileError
+        error: profileError,
       } = await supabase
         .from("profiles")
         .select("*")
@@ -111,18 +136,27 @@ function App() {
       if (!mounted) return
 
       if (profileError) {
-        console.error("Error loading user profile:", profileError)
+        console.error(
+          "Error loading user profile:",
+          profileError
+        )
       }
 
       setProfile(profileData || null)
 
       const {
         data: previewId,
-        error: previewError
-      } = await supabase.rpc("current_preview_profile_id")
+        error: previewError,
+      } = await supabase.rpc(
+        "current_preview_profile_id"
+      )
 
       if (previewError) {
-        console.error("Error loading admin preview:", previewError)
+        console.error(
+          "Error loading admin preview:",
+          previewError
+        )
+
         return
       }
 
@@ -133,7 +167,7 @@ function App() {
 
       const {
         data: previewProfile,
-        error: previewProfileError
+        error: previewProfileError,
       } = await supabase
         .from("profiles")
         .select(
@@ -151,7 +185,9 @@ function App() {
         )
       }
 
-      setPreviewUser(previewProfile || null)
+      setPreviewUser(
+        previewProfile || null
+      )
     }
 
     loadProfileAndPreview()
@@ -161,28 +197,49 @@ function App() {
     }
   }, [session])
 
-  const isAdministrator = Number(profile?.permission_level) >= 4
+  /*
+   * EFFECTIVE USER
+   */
+  const isAdministrator =
+    Number(profile?.permission_level) >= 4
+
   const effectivePermissionLevel =
-    previewUser?.permission_level ?? profile?.permission_level ?? 0
-  const effectiveRole = previewUser?.role ?? profile?.role ?? ""
+    previewUser?.permission_level ??
+    profile?.permission_level ??
+    0
+
+  const effectiveRole =
+    previewUser?.role ??
+    profile?.role ??
+    ""
+
   const effectiveUserEmail =
-    previewUser?.email ?? session?.user?.email ?? ""
+    previewUser?.email ??
+    session?.user?.email ??
+    ""
 
+  /*
+   * ROUTE PERMISSIONS
+   */
+  const restrictedPages = {
+    "sales-performance": 2,
+    "marketing-dashboard": 3,
+    "canvasser-kpi": 3,
+    mi: 4,
+    seo: 4,
+    reviews: 4,
+    users: 4,
+    tasks: 4,
+    "sales-presentations": 4,
+    "integration-logs": 4,
+  }
+
+  /*
+   * PROTECT CURRENT PAGE
+   */
   useEffect(() => {
-    const restrictedPages = {
-      "sales-performance": 2,
-      "marketing-dashboard": 3,
-      "canvasser-kpi": 3,
-      "mi": 4,
-      "seo": 4,
-      "reviews": 4,
-      "users": 4,
-      "tasks": 4,
-      "sales-presentations": 4,
-      "integration-logs": 4,
-    }
-
-    const requiredPermission = restrictedPages[page]
+    const requiredPermission =
+      restrictedPages[page]
 
     if (
       requiredPermission &&
@@ -190,12 +247,24 @@ function App() {
     ) {
       setPage("dashboard")
 
-      if (window.location.pathname !== "/") {
-        window.history.replaceState({}, "", "/")
+      if (
+        window.location.pathname !== "/"
+      ) {
+        window.history.replaceState(
+          {},
+          "",
+          "/"
+        )
       }
     }
-  }, [page, effectivePermissionLevel])
+  }, [
+    page,
+    effectivePermissionLevel,
+  ])
 
+  /*
+   * LOAD CONTRACTS
+   */
   async function loadContracts(
     pageNumber = 0,
     searchValue = query,
@@ -208,28 +277,42 @@ function App() {
       setError(
         "Supabase is not configured. Check your environment variables."
       )
+
       setLoading(false)
       return
     }
 
-    const from = pageNumber * DEALS_PAGE_SIZE
-    const to = from + DEALS_PAGE_SIZE - 1
-    const search = String(searchValue || "").trim()
+    const from =
+      pageNumber * DEALS_PAGE_SIZE
+
+    const to =
+      from + DEALS_PAGE_SIZE - 1
+
+    const search =
+      String(searchValue || "").trim()
 
     let request = supabase
       .from("deals")
       .select("*")
-      .order("sale_date", { ascending: false })
+      .order("sale_date", {
+        ascending: false,
+      })
       .range(from, to)
 
+    /*
+     * SALES VISIBILITY
+     */
     if (effectivePermissionLevel < 3) {
-      const viewerId = previewUser?.id || profile?.id
+      const viewerId =
+        previewUser?.id ||
+        profile?.id
+
       let visibleSalespersonIds = []
 
       if (viewerId) {
         const {
           data: visibleProfiles,
-          error: visibleProfilesError
+          error: visibleProfilesError,
         } = await supabase
           .from("profiles")
           .select("pipedrive_person_id")
@@ -237,16 +320,24 @@ function App() {
             `id.eq.${viewerId},sales_manager.eq.${viewerId},branch_manager.eq.${viewerId}`
           )
 
-        if (visibleProfilesError) throw visibleProfilesError
+        if (visibleProfilesError) {
+          throw visibleProfilesError
+        }
 
-        visibleSalespersonIds = (visibleProfiles || [])
-          .map(row =>
-            String(row?.pipedrive_person_id || "").trim()
-          )
-          .filter(Boolean)
+        visibleSalespersonIds =
+          (visibleProfiles || [])
+            .map(row =>
+              String(
+                row?.pipedrive_person_id ||
+                  ""
+              ).trim()
+            )
+            .filter(Boolean)
       }
 
-      if (visibleSalespersonIds.length) {
+      if (
+        visibleSalespersonIds.length
+      ) {
         request = request.in(
           "salesperson",
           visibleSalespersonIds
@@ -259,40 +350,66 @@ function App() {
       }
     }
 
+    /*
+     * SEARCH
+     */
     if (search) {
       const escaped = search
-        .replace(/[%_]/g, "\\$&")
-        .replace(/,/g, "\\,")
+        .replace(
+          /[%_]/g,
+          "\\$&"
+        )
+        .replace(
+          /,/g,
+          "\\,"
+        )
 
       request = request.or(
         `customer_name.ilike.%${escaped}%,postcode.ilike.%${escaped}%,phone.ilike.%${escaped}%,contract_number.ilike.%${escaped}%`
       )
     }
 
-    if (statusValue && statusValue !== "all") {
-      request = request.eq("status", statusValue)
+    /*
+     * STATUS
+     */
+    if (
+      statusValue &&
+      statusValue !== "all"
+    ) {
+      request = request.eq(
+        "status",
+        statusValue
+      )
     }
 
     const {
       data,
-      error: supabaseError
+      error: supabaseError,
     } = await request
 
     if (supabaseError) {
-      setError(supabaseError.message)
+      setError(
+        supabaseError.message
+      )
+
       setContracts([])
       setHasMoreContracts(false)
     } else {
       setContracts(data || [])
       setContractsPage(pageNumber)
+
       setHasMoreContracts(
-        (data || []).length === DEALS_PAGE_SIZE
+        (data || []).length ===
+          DEALS_PAGE_SIZE
       )
     }
 
     setLoading(false)
   }
 
+  /*
+   * LOAD ALL DEALS FOR REPORTING
+   */
   async function loadAllDealsForReporting() {
     if (!supabase) return
 
@@ -305,22 +422,34 @@ function App() {
       while (true) {
         const {
           data,
-          error: supabaseError
+          error: supabaseError,
         } = await supabase
           .from("deals")
           .select("*")
-          .order("sale_date", { ascending: false })
+          .order("sale_date", {
+            ascending: false,
+          })
           .range(
             from,
-            from + REPORTING_PAGE_SIZE - 1
+            from +
+              REPORTING_PAGE_SIZE -
+              1
           )
 
-        if (supabaseError) throw supabaseError
+        if (supabaseError) {
+          throw supabaseError
+        }
 
         const batch = data || []
+
         results.push(...batch)
 
-        if (batch.length < REPORTING_PAGE_SIZE) break
+        if (
+          batch.length <
+          REPORTING_PAGE_SIZE
+        ) {
+          break
+        }
 
         from += REPORTING_PAGE_SIZE
       }
@@ -343,6 +472,9 @@ function App() {
     }
   }
 
+  /*
+   * LOAD COMMISSION DEALS
+   */
   async function loadCommissionDeals() {
     if (!supabase) return
 
@@ -353,14 +485,18 @@ function App() {
       let from = 0
 
       const viewerId =
-        previewUser?.id || profile?.id
+        previewUser?.id ||
+        profile?.id
 
       let visibleSalespersonIds = []
 
-      if (effectivePermissionLevel < 3 && viewerId) {
+      if (
+        effectivePermissionLevel < 3 &&
+        viewerId
+      ) {
         const {
           data: visibleProfiles,
-          error: visibleProfilesError
+          error: visibleProfilesError,
         } = await supabase
           .from("profiles")
           .select("pipedrive_person_id")
@@ -372,11 +508,15 @@ function App() {
           throw visibleProfilesError
         }
 
-        visibleSalespersonIds = (visibleProfiles || [])
-          .map(row =>
-            String(row?.pipedrive_person_id || "").trim()
-          )
-          .filter(Boolean)
+        visibleSalespersonIds =
+          (visibleProfiles || [])
+            .map(row =>
+              String(
+                row?.pipedrive_person_id ||
+                  ""
+              ).trim()
+            )
+            .filter(Boolean)
       }
 
       while (true) {
@@ -388,39 +528,62 @@ function App() {
             "in",
             "(Decline,Customer Cancelled,Returned To Sales,Awaiting Funds,On Hold,Pending Cancellation)"
           )
-          .is("commission_paid_date", null)
-          .gte("sale_date", "2026-01-01")
-          .order("installation_start_date", {
-            ascending: true
-          })
+          .is(
+            "commission_paid_date",
+            null
+          )
+          .gte(
+            "sale_date",
+            "2026-01-01"
+          )
+          .order(
+            "installation_start_date",
+            {
+              ascending: true,
+            }
+          )
           .range(
             from,
-            from + REPORTING_PAGE_SIZE - 1
+            from +
+              REPORTING_PAGE_SIZE -
+              1
           )
 
-        if (effectivePermissionLevel < 3) {
-          request = visibleSalespersonIds.length
-            ? request.in(
-                "salesperson",
-                visibleSalespersonIds
-              )
-            : request.eq(
-                "salesperson",
-                "__NO_VISIBLE_SALESPERSON__"
-              )
+        if (
+          effectivePermissionLevel <
+          3
+        ) {
+          request =
+            visibleSalespersonIds.length
+              ? request.in(
+                  "salesperson",
+                  visibleSalespersonIds
+                )
+              : request.eq(
+                  "salesperson",
+                  "__NO_VISIBLE_SALESPERSON__"
+                )
         }
 
         const {
           data,
-          error: supabaseError
+          error: supabaseError,
         } = await request
 
-        if (supabaseError) throw supabaseError
+        if (supabaseError) {
+          throw supabaseError
+        }
 
         const batch = data || []
+
         results.push(...batch)
 
-        if (batch.length < REPORTING_PAGE_SIZE) break
+        if (
+          batch.length <
+          REPORTING_PAGE_SIZE
+        ) {
+          break
+        }
 
         from += REPORTING_PAGE_SIZE
       }
@@ -443,40 +606,66 @@ function App() {
     }
   }
 
+  /*
+   * INITIAL DATA LOAD
+   */
   useEffect(() => {
     if (!session) return
 
-    loadContracts(0, query, status)
+    loadContracts(
+      0,
+      query,
+      status
+    )
+
     loadAllDealsForReporting()
     loadCommissionDeals()
-  }, [session, previewUser?.id])
+  }, [
+    session,
+    previewUser?.id,
+  ])
 
-  const filteredContracts = contracts
+  const filteredContracts =
+    contracts
 
-  const totalValue = allDeals.reduce(
-    (total, contract) =>
-      total + Number(contract.net_value || 0),
-    0
-  )
+  /*
+   * DASHBOARD CALCULATIONS
+   */
+  const totalValue =
+    allDeals.reduce(
+      (total, contract) =>
+        total +
+        Number(
+          contract.net_value || 0
+        ),
+      0
+    )
 
   const averageValue =
     allDeals.length > 0
-      ? totalValue / allDeals.length
+      ? totalValue /
+        allDeals.length
       : 0
 
   const today = new Date()
     .toISOString()
     .slice(0, 10)
 
-  const upcomingInstallations = allDeals.filter(
-    contract =>
-      contract.installation_date &&
-      contract.installation_date >= today
-  ).length
+  const upcomingInstallations =
+    allDeals.filter(
+      contract =>
+        contract.installation_date &&
+        contract.installation_date >=
+          today
+    ).length
 
+  /*
+   * DEAL NAVIGATION
+   */
   function handleBackToDeals() {
     setSelected(null)
     setPage("contracts")
+
     window.history.pushState(
       {},
       "",
@@ -484,29 +673,36 @@ function App() {
     )
   }
 
-  function handleDealUpdated(updatedDeal) {
-    const excludedCommissionStages = new Set([
-      "decline",
-      "customer cancelled",
-      "returned to sales",
-      "awaiting funds",
-      "on hold",
-      "pending cancellation",
-    ])
+  function handleDealUpdated(
+    updatedDeal
+  ) {
+    const excludedCommissionStages =
+      new Set([
+        "decline",
+        "customer cancelled",
+        "returned to sales",
+        "awaiting funds",
+        "on hold",
+        "pending cancellation",
+      ])
 
     const stage = String(
-      updatedDeal?.pipedrive_stage ?? ""
+      updatedDeal?.pipedrive_stage ??
+        ""
     )
       .trim()
       .replace(/\s+/g, " ")
       .toLowerCase()
 
     const shouldRemoveFromCommissions =
-      excludedCommissionStages.has(stage)
+      excludedCommissionStages.has(
+        stage
+      )
 
     setContracts(current =>
       current.map(contract =>
-        contract.id === updatedDeal.id
+        contract.id ===
+        updatedDeal.id
           ? updatedDeal
           : contract
       )
@@ -514,7 +710,8 @@ function App() {
 
     setAllDeals(current =>
       current.map(contract =>
-        contract.id === updatedDeal.id
+        contract.id ===
+        updatedDeal.id
           ? updatedDeal
           : contract
       )
@@ -523,10 +720,13 @@ function App() {
     setCommissionDeals(current =>
       shouldRemoveFromCommissions
         ? current.filter(
-            contract => contract.id !== updatedDeal.id
+            contract =>
+              contract.id !==
+              updatedDeal.id
           )
         : current.map(contract =>
-            contract.id === updatedDeal.id
+            contract.id ===
+            updatedDeal.id
               ? updatedDeal
               : contract
           )
@@ -535,23 +735,19 @@ function App() {
     setSelected(updatedDeal)
   }
 
-  function handlePageChange(newPage) {
-    const requiredPermission = {
-      "sales-performance": 2,
-      "marketing-dashboard": 3,
-      "canvasser-kpi": 3,
-      "mi": 4,
-      seo: 4,
-      reviews: 4,
-      users: 4,
-      tasks: 4,
-      "sales-presentations": 4,
-      "integration-logs": 4,
-    }[newPage]
+  /*
+   * PAGE NAVIGATION
+   */
+  function handlePageChange(
+    newPage
+  ) {
+    const requiredPermission =
+      restrictedPages[newPage]
 
     if (
       requiredPermission &&
-      effectivePermissionLevel < requiredPermission
+      effectivePermissionLevel <
+        requiredPermission
     ) {
       return
     }
@@ -559,12 +755,18 @@ function App() {
     setSelected(null)
     setSelectedAppointment(null)
     setPickupAppointment(null)
+
     setPage(newPage)
 
     if (newPage === "contracts") {
       setQuery("")
       setStatus("all")
-      loadContracts(0, "", "all")
+
+      loadContracts(
+        0,
+        "",
+        "all"
+      )
     }
 
     window.history.pushState(
@@ -576,59 +778,101 @@ function App() {
     )
   }
 
-  function handleSearchChange(value) {
+  /*
+   * SEARCH
+   */
+  function handleSearchChange(
+    value
+  ) {
     setQuery(value)
-    loadContracts(0, value, status)
+
+    loadContracts(
+      0,
+      value,
+      status
+    )
   }
 
-  function mapAppointment(appointment) {
+  /*
+   * APPOINTMENTS
+   */
+  function mapAppointment(
+    appointment
+  ) {
     if (!appointment) return null
 
     return {
       ...appointment,
-      phone: appointment?.phone_number_1,
-      email: appointment?.email_address,
+      phone:
+        appointment?.phone_number_1,
+      email:
+        appointment?.email_address,
     }
   }
 
-  function appointmentUrl(appointment) {
+  function appointmentUrl(
+    appointment
+  ) {
     return `/appointments/${encodeURIComponent(
       appointment.appointment_row_id
     )}`
   }
 
-  function handleAppointmentSelect(appointment) {
+  function handleAppointmentSelect(
+    appointment
+  ) {
     const mappedAppointment =
-      mapAppointment(appointment)
+      mapAppointment(
+        appointment
+      )
 
-    if (!mappedAppointment?.appointment_row_id) {
+    if (
+      !mappedAppointment
+        ?.appointment_row_id
+    ) {
       return
     }
 
     setSelected(null)
     setPickupAppointment(null)
-    setSelectedAppointment(mappedAppointment)
+
+    setSelectedAppointment(
+      mappedAppointment
+    )
+
     setPage("appointments")
 
     window.history.pushState(
       {},
       "",
-      appointmentUrl(mappedAppointment)
+      appointmentUrl(
+        mappedAppointment
+      )
     )
   }
 
-  async function loadAppointmentFromUrl(appointmentId) {
-    if (!supabase || !appointmentId) return
+  async function loadAppointmentFromUrl(
+    appointmentId
+  ) {
+    if (
+      !supabase ||
+      !appointmentId
+    ) {
+      return
+    }
 
     setError("")
 
     const {
       data,
-      error: appointmentError
+      error: appointmentError,
     } = await supabase
       .from("appointments")
       .select("*")
-      .eq("appointment_row_id", appointmentId)
+      .eq(
+        "appointment_row_id",
+        appointmentId
+      )
       .maybeSingle()
 
     if (appointmentError) {
@@ -637,7 +881,10 @@ function App() {
         appointmentError
       )
 
-      setError(appointmentError.message)
+      setError(
+        appointmentError.message
+      )
+
       return
     }
 
@@ -653,17 +900,23 @@ function App() {
       )
 
       setPage("appointments")
+
       return
     }
 
     setSelected(null)
     setPickupAppointment(null)
+
     setSelectedAppointment(
       mapAppointment(data)
     )
+
     setPage("appointments")
   }
 
+  /*
+   * URL / BROWSER NAVIGATION
+   */
   useEffect(() => {
     if (!session) return
 
@@ -713,10 +966,18 @@ function App() {
         "popstate",
         handlePopState
       )
-  }, [session, previewUser?.id])
+  }, [
+    session,
+    previewUser?.id,
+  ])
 
+  /*
+   * PICKUP APPOINTMENT
+   */
   function handleOpenPickup() {
-    if (selectedAppointment?.result) {
+    if (
+      selectedAppointment?.result
+    ) {
       setPickupAppointment(
         selectedAppointment
       )
@@ -739,7 +1000,9 @@ function App() {
     setPickupAppointment(null)
   }
 
-  function handlePickupCreated(updatedOriginal) {
+  function handlePickupCreated(
+    updatedOriginal
+  ) {
     setSelectedAppointment({
       ...selectedAppointment,
       ...updatedOriginal,
@@ -752,6 +1015,9 @@ function App() {
     setPickupAppointment(null)
   }
 
+  /*
+   * SIGN OUT
+   */
   function handleSignOut() {
     if (supabase) {
       supabase.auth
@@ -765,6 +1031,9 @@ function App() {
     }
   }
 
+  /*
+   * APPOINTMENT UPDATED
+   */
   function handleAppointmentUpdated(
     updatedAppointment
   ) {
@@ -784,7 +1053,12 @@ function App() {
     )
   }
 
-  function clickLegacyButton(text) {
+  /*
+   * LEGACY APPOINTMENT BUTTONS
+   */
+  function clickLegacyButton(
+    text
+  ) {
     const host =
       document.querySelector(
         ".appointment-detail-host"
@@ -792,7 +1066,9 @@ function App() {
 
     const button = host
       ? Array.from(
-          host.querySelectorAll("button")
+          host.querySelectorAll(
+            "button"
+          )
         ).find(
           candidate =>
             candidate.textContent.trim() ===
@@ -818,6 +1094,9 @@ function App() {
     clickLegacyButton("Result")
   }
 
+  /*
+   * HEADER PAGE
+   */
   const headerPage = selected
     ? "customer"
     : selectedAppointment
@@ -826,6 +1105,9 @@ function App() {
     ? "dashboard"
     : page
 
+  /*
+   * AUTH LOADING
+   */
   if (authLoading) {
     return (
       <div
@@ -846,17 +1128,25 @@ function App() {
     )
   }
 
+  /*
+   * LOGIN
+   */
   if (!session) {
     return <Login />
   }
 
+  /*
+   * DISPLAY NAME
+   */
   const displayName =
     previewUser?.display_name ||
     previewUser?.full_name ||
     profile?.display_name ||
     profile?.full_name ||
-    session?.user?.user_metadata?.full_name ||
-    session?.user?.user_metadata?.name ||
+    session?.user?.user_metadata
+      ?.full_name ||
+    session?.user?.user_metadata
+      ?.name ||
     "there"
 
   const currentHour =
@@ -869,6 +1159,9 @@ function App() {
       ? "Good Afternoon"
       : "Good Evening"
 
+  /*
+   * HOME
+   */
   const homeContent = (
     <section>
       <div
@@ -893,12 +1186,16 @@ function App() {
             color: "#888",
           }}
         >
-          Welcome to the Homeshield Scotland CRM
+          Welcome to the Homeshield Scotland
+          CRM
         </p>
       </div>
     </section>
   )
 
+  /*
+   * APP
+   */
   return (
     <div className="app">
       <Sidebar
@@ -925,6 +1222,9 @@ function App() {
           </div>
         )}
 
+        /*
+         * ADMIN USER PREVIEW
+         */
         {isAdministrator &&
           page === "users" && (
             <AdminUserPreview
@@ -978,13 +1278,25 @@ function App() {
             />
           )}
 
+        /*
+         * PICKUP APPOINTMENT
+         */
         {pickupAppointment ? (
           <PickupAppointment
-            appointment={pickupAppointment}
-            onBack={handleBackFromPickup}
-            onCreated={handlePickupCreated}
+            appointment={
+              pickupAppointment
+            }
+            onBack={
+              handleBackFromPickup
+            }
+            onCreated={
+              handlePickupCreated
+            }
           />
         ) : selectedAppointment ? (
+          /*
+           * APPOINTMENT DETAIL
+           */
           <div
             style={{
               position: "relative",
@@ -1001,8 +1313,10 @@ function App() {
             <div
               style={{
                 display: "flex",
-                justifyContent: "flex-end",
-                padding: "10px 24px 0",
+                justifyContent:
+                  "flex-end",
+                padding:
+                  "10px 24px 0",
                 background: "#fff",
               }}
             >
@@ -1040,26 +1354,50 @@ function App() {
             </div>
           </div>
         ) : selected ? (
+          /*
+           * CUSTOMER DETAIL
+           */
           <CustomerDetail
             deal={selected}
-            onBack={handleBackToDeals}
-            onUpdated={handleDealUpdated}
+            onBack={
+              handleBackToDeals
+            }
+            onUpdated={
+              handleDealUpdated
+            }
           />
         ) : page === "dashboard" ? (
+          /*
+           * HOME
+           */
           homeContent
         ) : page === "epvs" ? (
+          /*
+           * EPVS
+           */
           <EPVSCalculator />
         ) : page === "fit-sheet" ? (
+          /*
+           * FIT SHEET
+           */
           <FitSheet />
         ) : page === "contracts" ? (
+          /*
+           * CONTRACTS
+           */
           <Contracts
-            contracts={filteredContracts}
+            contracts={
+              filteredContracts
+            }
             loading={loading}
             query={query}
             status={status}
-            onSearchChange={handleSearchChange}
+            onSearchChange={
+              handleSearchChange
+            }
             onStatusChange={value => {
               setStatus(value)
+
               loadContracts(
                 0,
                 query,
@@ -1098,62 +1436,133 @@ function App() {
             onNewContract={() => {}}
           />
         ) : page === "installations" ? (
+          /*
+           * INSTALLATIONS
+           */
           <Installations />
         ) : page === "marketing-tv" ? (
+          /*
+           * MARKETING TV
+           */
           <MarketingTV
             onSelectAppointment={
               handleAppointmentSelect
             }
           />
-        ) : page === "marketing-dashboard" ? (
+        ) : page ===
+          "marketing-dashboard" ? (
+          /*
+           * MARKETING DASHBOARD
+           */
           <MarketingDashboard />
         ) : page === "rts-list" ? (
+          /*
+           * RTS LIST
+           */
           <RTSList />
         ) : page === "commissions" ? (
+          /*
+           * COMMISSIONS
+           */
           <SalesCommission
             deals={commissionDeals}
-            loading={commissionLoading}
+            loading={
+              commissionLoading
+            }
             permissionLevel={
               effectivePermissionLevel
             }
           />
         ) : page === "appointments" ? (
+          /*
+           * APPOINTMENTS
+           */
           <Appointments
             onSelect={
               handleAppointmentSelect
             }
           />
         ) : page === "sales-kpi" ? (
+          /*
+           * SALES KPI
+           */
           <SalesKPI
             deals={allDeals}
             loading={
               reportingLoading
             }
           />
-        ) : page === "canvasser-kpi" ? (
+        ) : page ===
+          "canvasser-kpi" ? (
+          /*
+           * CANVASSER KPI
+           */
           <CanvasserKPI
             deals={allDeals}
             loading={
               reportingLoading
             }
           />
+        ) : page === "sales-performance" ? (
+          /*
+           * SALES PERFORMANCE
+           *
+           * Keep this here if the page component
+           * is added to App.jsx later.
+           */
+          <Dashboard
+            deals={allDeals}
+          />
         ) : page === "users" ? (
+          /*
+           * USERS
+           */
           <Users />
         ) : page === "tasks" ? (
+          /*
+           * TASKS
+           */
           <Tasks />
         ) : page === "seo" ? (
+          /*
+           * SEO
+           */
           <SEO />
         ) : page === "mi" ? (
+          /*
+           * MI
+           */
           <MI />
         ) : page === "reviews" ? (
+          /*
+           * REVIEWS
+           */
           <Reviews
             setMobile={setMobile}
           />
-        ) : page === "integration-logs" ? (
+        ) : page ===
+          "integration-logs" ? (
+          /*
+           * API & WEBHOOKS
+           */
           <IntegrationLogs
             setMobile={setMobile}
           />
+        ) : page === "call-log" ? (
+          /*
+           * CALL LOG
+           */
+          <CallLog
+            onClose={() =>
+              handlePageChange(
+                "dashboard"
+              )
+            }
+          />
         ) : (
+          /*
+           * FALLBACK
+           */
           <Dashboard
             deals={allDeals}
           />
