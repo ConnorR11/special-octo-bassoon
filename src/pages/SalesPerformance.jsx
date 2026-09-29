@@ -11,12 +11,17 @@ import SalesChart from "../components/SalesChart"
 import Installations from "./Installations"
 import { money } from "../utils/formatters"
 
-function SalesPerformance(props) {
-  const contracts = Array.isArray(props?.contracts) ? props.contracts : []
-  const total = Number.isFinite(Number(props?.total)) ? Number(props.total) : 0
-  const avg = Number.isFinite(Number(props?.avg)) ? Number(props.avg) : 0
-  const upcoming = Number.isFinite(Number(props?.upcoming)) ? Number(props.upcoming) : 0
-  const setSelected = props?.setSelected
+function SalesPerformance({
+  contracts = [],
+  total = 0,
+  avg = 0,
+  upcoming = 0,
+  setSelected,
+} = {}) {
+  const safeContracts = Array.isArray(contracts) ? contracts : []
+  const safeTotal = Number.isFinite(Number(total)) ? Number(total) : 0
+  const safeAvg = Number.isFinite(Number(avg)) ? Number(avg) : 0
+  const safeUpcoming = Number.isFinite(Number(upcoming)) ? Number(upcoming) : 0
 
   if (window.location.pathname === "/installations") {
     return <Installations setSelected={setSelected} />
@@ -47,26 +52,26 @@ function SalesPerformance(props) {
         <Stat
           icon={<FileText size={20} />}
           label="Deals (since 2018)"
-          value={contracts.length}
+          value={safeContracts.length}
         />
         <Stat
           icon={<PoundSterling size={20} />}
           label="Net Value (since 2018)"
-          value={money(total)}
+          value={money(safeTotal)}
         />
         <Stat
           icon={<PoundSterling size={20} />}
           label="Average contract"
-          value={money(avg)}
+          value={money(safeAvg)}
         />
         <Stat
           icon={<CalendarDays size={20} />}
           label="Upcoming installations"
-          value={upcoming}
+          value={safeUpcoming}
         />
       </div>
 
-      <SalesChart contracts={contracts} />
+      <SalesChart contracts={safeContracts} />
     </section>
   )
 }
