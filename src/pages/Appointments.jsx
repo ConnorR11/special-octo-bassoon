@@ -2,29 +2,28 @@ import React, { useEffect, useState } from "react"
 import { Search, CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react"
 import { supabase } from "../lib/supabase"
 import CreateAppointment from "./CreateAppointment"
-
-function isCentralConfirmationManager(role) {
-  const normalized = String(role || "").trim().toLowerCase()
-  return normalized === "central confirmation manager" || normalized === "central confirmer manager"
-}
-
-function isBranchManagerRole(role) {
-  return String(role || "").trim().toLowerCase().endsWith("branch manager")
-}
-
-function isSalesManagerRole(role) {
-  return String(role || "").trim().toLowerCase().endsWith("sales manager")
-}
+import { useVisibility } from "../context/VisibilityContext"
 
 function normaliseEmail(value) {
   return String(value || "").trim().toLowerCase()
 }
 
 function normaliseBranch(value) {
-  return String(value || "").trim().toLowerCase()
+  return String(value || "").trim()
 }
 
-function Appointments({ onSelectAppointment, previewUser = null, permissionLevel = 0, role = "" }) {
+function Appointments({ onSelectAppointment }) {
+  const {
+    effectiveProfile,
+    previewUser,
+    canSeeAll,
+    isBranchManager,
+    isSalesManager,
+    branch,
+    email,
+    loading: visibilityLoading,
+  } = useVisibility()
+
   const [appointments, setAppointments] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -33,46 +32,16 @@ function Appointments({ onSelectAppointment, previewUser = null, permissionLevel
   const [hasMore, setHasMore] = useState(false)
   const [showCreateAppointment, setShowCreateAppointment] = useState(false)
   const pageSize = 50
-  const numericPermissionLevel = Number(permissionLevel) || 0
-  const canViewAllAppointments = numericPermissionLevel >= 3 || isCentralConfirmationManager(role)
 
   async function loadAppointments() {
+    if (visibilityLoading) return
+
     setLoading(true)
     setError("")
 
     try {
       const from = page * pageSize
       const to = from + pageSize
-      let viewerProfile = previewUser || null
-
-      if (!viewerProfile) {
-        const { data: authData, error: authError } = await supabase.auth.getUser()
-        if (authError) throw authError
-
-        const authUserId = authData?.user?.id
-
-        if (authUserId) {
-          const { data: currentProfile, error: profileError } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("auth_user_id", authUserId)
-            .maybeSingle()
-
-          if (profileError) throw profileError
-          viewerProfile = currentProfile || null
-        }
-      } else if (viewerProfile?.id) {
-        // Preview users do not currently include the management fields in the
-        // profile passed down from App.jsx, so load the complete profile here.
-        const { data: completeProfile, error: profileError } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", viewerProfile.id)
-          .maybeSingle()
-
-        if (profileError) throw profileError
-        viewerProfile = completeProfile || viewerProfile
-      }
 
       let request = supabase
         .from("appointments")
@@ -80,51 +49,21 @@ function Appointments({ onSelectAppointment, previewUser = null, permissionLevel
         .order("appointment_date", { ascending: false, nullsFirst: false })
         .range(from, to)
 
-      if (!canViewAllAppointments) {
-        const viewerId = String(viewerProfile?.id || "").trim()
-        const ownEmail = normaliseEmail(viewerProfile?.email || previewUser?.email)
-        const viewerBranch = normaliseBranch(viewerProfile?.branch)
-        const viewerRole = viewerProfile?.role || role || ""
-        const branchManager = isBranchManagerRole(viewerRole)
-        const salesManager = isSalesManagerRole(viewerRole)
+      // Central visibility rules:
+      // Level 3+ -> all appointments
+      // Branch Manager -> appointments in their branch
+      // Sales Manager -> appointments in their branch
+      // Sales Rep -> appointments where rep_allocated matches their email
+      if (!canSeeAll) {
+        const viewerBranch = normaliseBranch(branch || effectiveProfile?.branch)
+        const viewerEmail = normaliseEmail(email || effectiveProfile?.email)
 
-        // Managers see appointments allocated to their branch.
-        // Sales reps only see appointments allocated to their own email.
-        // The appointment branch is matched case-insensitively in JS after
-        // the database query so branch naming/capitalisation differences do
-        // not hide appointments from managers.
-        if ((branchManager || salesManager) && viewerBranch) {
+        if ((isBranchManager || isSalesManager) && viewerBranch) {
           request = request.ilike("branch", viewerBranch)
+        } else if (viewerEmail) {
+          request = request.ilike("rep_allocated", viewerEmail)
         } else {
-          // For a normal sales rep, match rep_allocated to their email.
-          // Keep the manager relationship fallback for accounts that have no
-          // usable branch value, so existing manager visibility is preserved.
-          let teamEmails = []
-
-          if (viewerId && salesManager) {
-            const { data: managedProfiles, error: managedProfilesError } = await supabase
-              .from("profiles")
-              .select("email, manager_id, sales_manager, branch, role, active")
-              .or(`manager_id.eq.${viewerId},sales_manager.eq.${viewerId}`)
-
-            if (managedProfilesError) throw managedProfilesError
-
-            teamEmails = (managedProfiles || [])
-              .map(profile => normaliseEmail(profile?.email))
-              .filter(Boolean)
-          }
-
-          if (ownEmail) {
-            teamEmails.push(ownEmail)
-          }
-
-          teamEmails = Array.from(new Set(teamEmails))
-
-          if (teamEmails.length) {
-            request = request.in("rep_allocated", teamEmails)
-          } else {
-            request = request.ilike("rep_allocated", "__NO_VISIBLE_REP__")
-          }
+          request = request.ilike("rep_allocated", "__NO_VISIBLE_REP__")
         }
       }
 
@@ -175,10 +114,12 @@ function Appointments({ onSelectAppointment, previewUser = null, permissionLevel
     page,
     query,
     previewUser?.id,
-    previewUser?.email,
-    canViewAllAppointments,
-    permissionLevel,
-    role,
+    canSeeAll,
+    isBranchManager,
+    isSalesManager,
+    branch,
+    email,
+    visibilityLoading,
   ])
 
   function handleSearch(value) {
@@ -225,20 +166,20 @@ function Appointments({ onSelectAppointment, previewUser = null, permissionLevel
     )
   }
 
+  const viewDescription = previewUser
+    ? `Viewing ${previewUser.full_name || previewUser.email}`
+    : canSeeAll
+      ? "All appointments · 50 per page"
+      : isBranchManager || isSalesManager
+        ? "Branch appointments · 50 per page"
+        : "Your appointments · 50 per page"
+
   return (
     <section>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, gap: 16 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, color: "#222" }}>Appointments</h1>
-          <p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>
-            {previewUser
-              ? `Viewing ${previewUser.full_name || previewUser.email}`
-              : canViewAllAppointments
-                ? "All appointments · 50 per page"
-                : isBranchManagerRole(role) || isSalesManagerRole(role)
-                  ? "Branch appointments · 50 per page"
-                  : "Your appointments · 50 per page"}
-          </p>
+          <p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>{viewDescription}</p>
         </div>
 
         {!previewUser && (
@@ -270,7 +211,7 @@ function Appointments({ onSelectAppointment, previewUser = null, permissionLevel
           <div>Customer</div><div>Appointment</div><div>Postcode</div><div>Type</div><div>Sales Rep</div><div>Result</div>
         </div>
 
-        {loading ? (
+        {loading || visibilityLoading ? (
           <div style={{ padding: "60px 20px", textAlign: "center", color: "#999", fontSize: 12 }}>Loading appointments...</div>
         ) : appointments.length === 0 ? (
           <div style={{ padding: "60px 20px", textAlign: "center", color: "#999", fontSize: 12 }}>
