@@ -3,4 +3,12 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import './current-energy.css'
 import App from './App'
-createRoot(document.getElementById('root')).render(<React.StrictMode><App/></React.StrictMode>)
+import { VisibilityProvider } from './context/VisibilityContext'
+
+createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <VisibilityProvider>
+      <App />
+    </VisibilityProvider>
+  </React.StrictMode>
+)
