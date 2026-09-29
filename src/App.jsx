@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react"
 import { supabase } from "./lib/supabase"
-import { useVisibility } from "./context/VisibilityContext"
 import EPVSCalculator from "./EPVSCalculator"
 import Sidebar from "./components/Sidebar"
 import Header from "./components/Header"
@@ -33,12 +32,6 @@ const DEALS_PAGE_SIZE = 50
 const REPORTING_PAGE_SIZE = 1000
 
 function App() {
-  const {
-    loading: visibilityLoading,
-    canSeeAll,
-    visibleSalespersonIds,
-  } = useVisibility()
-
   const [session, setSession] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [profile, setProfile] = useState(null)
@@ -294,13 +287,28 @@ function App() {
   }
 
   async function loadCommissionDeals() {
-    if (!supabase || visibilityLoading) return
+    if (!supabase) return
 
     setCommissionLoading(true)
 
     try {
       const results = []
       let from = 0
+      const viewerId = previewUser?.id || profile?.id
+      let visibleSalespersonIds = []
+
+      if (effectivePermissionLevel < 4 && viewerId) {
+        const { data: visibleProfiles, error: visibleProfilesError } = await supabase
+          .from("profiles")
+          .select("pipedrive_person_id")
+          .or(`id.eq.${viewerId},sales_manager.eq.${viewerId},manager_id.eq.${viewerId}`)
+
+        if (visibleProfilesError) throw visibleProfilesError
+
+        visibleSalespersonIds = (visibleProfiles || [])
+          .map(row => String(row?.pipedrive_person_id || "").trim())
+          .filter(Boolean)
+      }
 
       while (true) {
         let request = supabase
@@ -313,20 +321,13 @@ function App() {
           )
           .is("commission_paid_date", null)
           .gte("sale_date", "2026-01-01")
-          .neq("net_value", 0)
           .order("installation_start_date", { ascending: true })
           .range(from, from + REPORTING_PAGE_SIZE - 1)
 
-        // Use the central visibility context at the database level.
-        // This prevents the COMMS query from downloading deals that the
-        // current user will never be allowed to see.
-        if (!canSeeAll) {
-          if (!visibleSalespersonIds?.length) {
-            setCommissionDeals([])
-            return
-          }
-
-          request = request.in("salesperson", visibleSalespersonIds)
+        if (effectivePermissionLevel < 4) {
+          request = visibleSalespersonIds.length
+            ? request.in("salesperson", visibleSalespersonIds)
+            : request.eq("salesperson", "__NO_VISIBLE_SALESPERSON__")
         }
 
         const { data, error: supabaseError } = await request
@@ -355,12 +356,8 @@ function App() {
 
     loadContracts(0, query, status)
     loadAllDealsForReporting()
-  }, [session, previewUser?.id])
-
-  useEffect(() => {
-    if (!session || visibilityLoading) return
     loadCommissionDeals()
-  }, [session, previewUser?.id, visibilityLoading, canSeeAll, visibleSalespersonIds])
+  }, [session, previewUser?.id])
 
   const filteredContracts = contracts
 
@@ -500,12 +497,332 @@ function App() {
     }
 
     if (!data) {
-      setError("Appointment not available in this user's visibility scope.")
+      setError("Appointment not available in this user preview.")
+      window.history.replaceState({}, "", "/appointments")
+      setPage("appointments")
       return
     }
 
-    handleAppointmentSelect(data)
+    setSelected(null)
+    setPickupAppointment(null)
+    setSelectedAppointment(mapAppointment(data))
+    setPage("appointments")
   }
 
-  return null
+  useEffect(() => {
+    if (!session) return
+
+    function handlePopState() {
+      const path = window.location.pathname.replace(/\/+$/, "") || "/"
+      const appointmentMatch = path.match(/^\/appointments\/([^/]+)$/)
+
+      if (appointmentMatch) {
+        loadAppointmentFromUrl(decodeURIComponent(appointmentMatch[1]))
+        return
+      }
+
+      setSelected(null)
+      setSelectedAppointment(null)
+      setPickupAppointment(null)
+
+      setPage(
+        path === "/" || path === "/dashboard" ? "dashboard" : path.slice(1)
+      )
+    }
+
+    handlePopState()
+    window.addEventListener("popstate", handlePopState)
+
+    return () => window.removeEventListener("popstate", handlePopState)
+  }, [session, previewUser?.id])
+
+  function handleOpenPickup() {
+    if (selectedAppointment?.result) setPickupAppointment(selectedAppointment)
+  }
+
+  function handleBackToAppointments() {
+    setPickupAppointment(null)
+    setSelectedAppointment(null)
+    setPage("appointments")
+    window.history.pushState({}, "", "/appointments")
+  }
+
+  function handleBackFromPickup() {
+    setPickupAppointment(null)
+  }
+
+  function handlePickupCreated(updatedOriginal) {
+    setSelectedAppointment({
+      ...selectedAppointment,
+      ...updatedOriginal,
+      phone: updatedOriginal?.phone_number_1,
+      email: updatedOriginal?.email_address,
+    })
+    setPickupAppointment(null)
+  }
+
+  function handleSignOut() {
+    if (supabase) {
+      supabase.auth.signOut().catch(err =>
+        console.error("Error signing out:", err)
+      )
+    }
+  }
+
+  function handleAppointmentUpdated(updatedAppointment) {
+    const mapped = mapAppointment(updatedAppointment)
+    setSelectedAppointment(current =>
+      current ? { ...current, ...mapped } : mapped
+    )
+  }
+
+  function clickLegacyButton(text) {
+    const host = document.querySelector(".appointment-detail-host")
+    const button = host
+      ? Array.from(host.querySelectorAll("button")).find(
+          candidate => candidate.textContent.trim() === text
+        )
+      : null
+
+    if (button) {
+      button.click()
+      return true
+    }
+
+    return false
+  }
+
+  function handleLegacyConfirm() {
+    clickLegacyButton("Confirm Appointment")
+  }
+
+  function handleLegacyResult() {
+    clickLegacyButton("Result")
+  }
+
+  const headerPage = selected
+    ? "customer"
+    : selectedAppointment
+    ? "appointment"
+    : page === "canvasser-kpi"
+    ? "dashboard"
+    : page
+
+  if (authLoading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#f5f7fa",
+          color: "#002d49",
+          fontFamily: "Inter, Arial, sans-serif",
+          fontSize: 14,
+        }}
+      >
+        Loading CRM...
+      </div>
+    )
+  }
+
+  if (!session) return <Login />
+
+  const displayName =
+    previewUser?.display_name ||
+    previewUser?.full_name ||
+    profile?.display_name ||
+    profile?.full_name ||
+    session?.user?.user_metadata?.full_name ||
+    session?.user?.user_metadata?.name ||
+    "there"
+
+  const currentHour = new Date().getHours()
+  const greeting =
+    currentHour < 12 ? "Good Morning" : currentHour < 18 ? "Good Afternoon" : "Good Evening"
+
+  const homeContent = (
+    <section>
+      <div style={{ marginBottom: 18 }}>
+        <h1 style={{ margin: 0, fontSize: 22, color: "#222" }}>
+          {greeting}, {displayName}
+        </h1>
+        <p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>
+          Welcome to the Homeshield Scotland CRM
+        </p>
+      </div>
+    </section>
+  )
+
+  return (
+    <div className="app">
+      <Sidebar
+        page={page}
+        setPage={handlePageChange}
+        mobile={mobile}
+        setMobile={setMobile}
+        onSignOut={handleSignOut}
+        permissionLevel={effectivePermissionLevel}
+      />
+
+      <main>
+        <Header page={headerPage} setMobile={setMobile} />
+
+        {error && page !== "epvs" && (
+          <div className="error">
+            <b>Database error</b>
+            <span>{error}</span>
+          </div>
+        )}
+
+        {isAdministrator && page === "users" && (
+          <AdminUserPreview
+            activeUser={previewUser}
+            onStart={user => {
+              setPreviewUser(user)
+              setSelected(null)
+              setSelectedAppointment(null)
+              setPickupAppointment(null)
+              setPage("appointments")
+              window.history.pushState({}, "", "/appointments")
+            }}
+            onStop={async () => {
+              setPreviewUser(null)
+              setSelectedAppointment(null)
+              setPickupAppointment(null)
+              setPage("users")
+              window.history.pushState({}, "", "/users")
+            }}
+          />
+        )}
+
+        {isAdministrator && previewUser && page !== "users" && (
+          <AdminUserPreview
+            activeUser={previewUser}
+            onStart={() => {}}
+            onStop={async () => {
+              setPreviewUser(null)
+              setSelectedAppointment(null)
+              setPickupAppointment(null)
+              setPage("users")
+              window.history.pushState({}, "", "/users")
+            }}
+          />
+        )}
+
+        {pickupAppointment ? (
+          <PickupAppointment
+            appointment={pickupAppointment}
+            onBack={handleBackFromPickup}
+            onCreated={handlePickupCreated}
+          />
+        ) : selectedAppointment ? (
+          <div style={{ position: "relative" }}>
+            <style>
+              {`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}
+            </style>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                padding: "10px 24px 0",
+                background: "#fff",
+              }}
+            >
+              <AppointmentActions
+                appointment={selectedAppointment}
+                onUpdated={handleAppointmentUpdated}
+                onConfirm={handleLegacyConfirm}
+                onResult={handleLegacyResult}
+                onOpenPickup={handleOpenPickup}
+              />
+            </div>
+
+            <div className="appointment-detail-host">
+              <AppointmentDetail
+                appointment={selectedAppointment}
+                onBack={handleBackToAppointments}
+                onUpdated={handleAppointmentUpdated}
+              />
+            </div>
+          </div>
+        ) : selected ? (
+          <CustomerDetail
+            deal={selected}
+            onBack={handleBackToDeals}
+            onUpdated={handleDealUpdated}
+          />
+        ) : page === "dashboard" ? (
+          homeContent
+        ) : page === "epvs" ? (
+          <EPVSCalculator />
+        ) : page === "fit-sheet" ? (
+          <FitSheet />
+        ) : page === "contracts" ? (
+          <Contracts
+            contracts={filteredContracts}
+            loading={loading}
+            query={query}
+            status={status}
+            onSearchChange={handleSearchChange}
+            onStatusChange={value => {
+              setStatus(value)
+              loadContracts(0, query, value)
+            }}
+            onNext={() => loadContracts(contractsPage + 1)}
+            onPrev={() => loadContracts(Math.max(contractsPage - 1, 0))}
+            hasNext={hasMoreContracts}
+            hasPrev={contractsPage > 0}
+            onSelect={deal => {
+              setSelected(deal)
+              setPage("contracts")
+              window.history.pushState({}, "", `/contracts/${deal.id}`)
+            }}
+            onNewContract={() => {}}
+          />
+        ) : page === "installations" ? (
+          <Installations />
+        ) : page === "marketing-tv" ? (
+          <MarketingTV onSelectAppointment={handleAppointmentSelect} />
+        ) : page === "marketing-dashboard" ? (
+          <MarketingDashboard />
+        ) : page === "rts-list" ? (
+          <RTSList />
+        ) : page === "commissions" ? (
+          <SalesCommission
+            deals={commissionDeals}
+            loading={commissionLoading}
+            permissionLevel={effectivePermissionLevel}
+            viewerProfileId={previewUser?.id || profile?.id || null}
+          />
+        ) : page === "appointments" ? (
+          <Appointments onSelect={handleAppointmentSelect} />
+        ) : page === "sales-kpi" ? (
+          <SalesKPI deals={allDeals} loading={reportingLoading} />
+        ) : page === "canvasser-kpi" ? (
+          <CanvasserKPI deals={allDeals} loading={reportingLoading} />
+        ) : page === "users" ? (
+          <Users />
+        ) : page === "tasks" ? (
+          <Tasks />
+        ) : page === "seo" ? (
+          <SEO />
+        ) : page === "mi" ? (
+          <MI />
+        ) : page === "reviews" ? (
+          <Reviews setMobile={setMobile} />
+        ) : page === "integration-logs" ? (
+          <IntegrationLogs setMobile={setMobile} />
+        ) : page === "sales-presentations" ? (
+          <SalesPresentations />
+        ) : (
+          <Dashboard deals={allDeals} />
+        )}
+      </main>
+    </div>
+  )
 }
+
+export default App
