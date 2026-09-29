@@ -1,0 +1,66 @@
+name: Fix MarketingTV visibility
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/fix-marketing-tv-visibility.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch MarketingTV visibility
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/pages/MarketingTV.jsx')
+          s = p.read_text()
+
+          old = '''  const numericPermissionLevel = Number(permissionLevel) || 0
+  const canViewAllAppointments = numericPermissionLevel >= 3 || isCentralConfirmationManager(role)
+  const canViewBranchAppointments = numericPermissionLevel >= 2
+'''
+          new = ''''''
+          if old not in s:
+              raise SystemExit('Expected permission block was not found')
+          s = s.replace(old, new, 1)
+
+          old = '''      const endDate = new Date(`${date}T00:00:00Z`); endDate.setUTCDate(endDate.getUTCDate() + 1)
+      const nextDate = `${endDate.getUTCFullYear()}-${String(endDate.getUTCMonth() + 1).padStart(2, "0")}-${String(endDate.getUTCDate()).padStart(2, "0")}`
+      let appointmentsRequest = supabase.from("appointments").select("*, deals(net_value)").gte("appointment_date", `${date}T00:00:00.000Z`).lt("appointment_date", `${nextDate}T00:00:00.000Z`).order("appointment_date", { ascending: true })
+
+      if (!canViewAllAppointments) {
+'''
+          new = '''      const effectivePermissionLevel = Number(viewerProfile?.permission_level ?? permissionLevel) || 0
+      const effectiveRole = viewerProfile?.role || role
+      const canViewAllAppointments = effectivePermissionLevel >= 3 || isCentralConfirmationManager(effectiveRole)
+      const canViewBranchAppointments = effectivePermissionLevel >= 2
+
+      const endDate = new Date(`${date}T00:00:00Z`); endDate.setUTCDate(endDate.getUTCDate() + 1)
+      const nextDate = `${endDate.getUTCFullYear()}-${String(endDate.getUTCMonth() + 1).padStart(2, "0")}-${String(endDate.getUTCDate()).padStart(2, "0")}`
+      let appointmentsRequest = supabase.from("appointments").select("*, deals(net_value)").gte("appointment_date", `${date}T00:00:00.000Z`).lt("appointment_date", `${nextDate}T00:00:00.000Z`).order("appointment_date", { ascending: true })
+
+      if (!canViewAllAppointments) {
+'''
+          if old not in s:
+              raise SystemExit('Expected appointment query block was not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+
+      - name: Commit patch and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/pages/MarketingTV.jsx
+          git rm .github/workflows/fix-marketing-tv-visibility.yml
+          git commit -m "Fix MarketingTV profile-based visibility"
+          git push
