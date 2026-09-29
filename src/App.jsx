@@ -278,7 +278,7 @@ function App() {
           .from("profiles")
           .select("pipedrive_person_id")
           .or(
-            `id.eq.${viewerId},sales_manager.eq.${viewerId},branch_manager.eq.${viewerId}`
+            `id.eq.${viewerId},sales_manager.eq.${viewerId},manager_id.eq.${viewerId}`
           )
 
         if (visibleProfilesError) {
@@ -435,7 +435,7 @@ function App() {
           .from("profiles")
           .select("pipedrive_person_id")
           .or(
-            `id.eq.${viewerId},sales_manager.eq.${viewerId},branch_manager.eq.${viewerId}`
+            `id.eq.${viewerId},sales_manager.eq.${viewerId},manager_id.eq.${viewerId}`
           )
 
         if (visibleProfilesError) {
@@ -1306,11 +1306,6 @@ function App() {
             }
             permissionLevel={
               effectivePermissionLevel
-            }
-            viewerProfileId={
-              previewUser?.id ||
-              profile?.id ||
-              null
             }
           />
         ) : page === "appointments" ? (
