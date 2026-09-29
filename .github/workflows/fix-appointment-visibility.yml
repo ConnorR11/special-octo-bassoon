@@ -5,10 +5,14 @@ on:
 jobs:
   patch:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
-      - name: Fix manager visibility and restore page routes
+      - name: Fix manager visibility and MarketingTV profile visibility
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -24,6 +28,10 @@ jobs:
               ],
               'src/pages/Appointments.jsx': [
                   ('sales_manager.eq.${viewerId},branch_manager.eq.${viewerId}', 'sales_manager.eq.${viewerId},manager_id.eq.${viewerId}'),
+              ],
+              'src/pages/MarketingTV.jsx': [
+                  ('  const numericPermissionLevel = Number(permissionLevel) || 0\n  const canViewAllAppointments = numericPermissionLevel >= 3 || isCentralConfirmationManager(role)\n  const canViewBranchAppointments = numericPermissionLevel >= 2\n', ''),
+                  ('      const endDate = new Date(`${date}T00:00:00Z`); endDate.setUTCDate(endDate.getUTCDate() + 1)\n', '      const effectivePermissionLevel = Number(viewerProfile?.permission_level ?? permissionLevel) || 0\n      const effectiveRole = viewerProfile?.role || role\n      const canViewAllAppointments = effectivePermissionLevel >= 3 || isCentralConfirmationManager(effectiveRole)\n      const canViewBranchAppointments = effectivePermissionLevel >= 2\n\n      const endDate = new Date(`${date}T00:00:00Z`); endDate.setUTCDate(endDate.getUTCDate() + 1)\n'),
               ],
           }
 
@@ -42,9 +50,26 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/App.jsx src/pages/SalesCommission.jsx src/pages/Appointments.jsx
-          git diff --cached --quiet || git commit -m "Fix Sales Performance and Fit Sheet routes"
-          git push
-          git rm .github/workflows/fix-appointment-visibility.yml || true
-          git commit -m "Remove temporary manager visibility workflow" || true
-          git push || true
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            python - <<'PY'
+          from pathlib import Path
+          p = Path('src/pages/MarketingTV.jsx')
+          s = p.read_text()
+          old = '  const numericPermissionLevel = Number(permissionLevel) || 0\n  const canViewAllAppointments = numericPermissionLevel >= 3 || isCentralConfirmationManager(role)\n  const canViewBranchAppointments = numericPermissionLevel >= 2\n'
+          if old in s:
+              s = s.replace(old, '', 1)
+          old = '      const endDate = new Date(`${date}T00:00:00Z`); endDate.setUTCDate(endDate.getUTCDate() + 1)\n'
+          new = '      const effectivePermissionLevel = Number(viewerProfile?.permission_level ?? permissionLevel) || 0\n      const effectiveRole = viewerProfile?.role || role\n      const canViewAllAppointments = effectivePermissionLevel >= 3 || isCentralConfirmationManager(effectiveRole)\n      const canViewBranchAppointments = effectivePermissionLevel >= 2\n\n      const endDate = new Date(`${date}T00:00:00Z`); endDate.setUTCDate(endDate.getUTCDate() + 1)\n'
+          if 'const effectivePermissionLevel' not in s and old in s:
+              s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+            git add src/ .github/workflows/fix-appointment-visibility.yml
+            git rm .github/workflows/fix-appointment-visibility.yml || true
+            git commit -m "Fix MarketingTV profile-based visibility" || true
+            if git push origin HEAD:main; then exit 0; fi
+            sleep 5
+          done
+          exit 1
