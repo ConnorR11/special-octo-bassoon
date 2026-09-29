@@ -1307,6 +1307,11 @@ function App() {
             permissionLevel={
               effectivePermissionLevel
             }
+            viewerProfileId={
+              previewUser?.id ||
+              profile?.id ||
+              null
+            }
           />
         ) : page === "appointments" ? (
           <Appointments
