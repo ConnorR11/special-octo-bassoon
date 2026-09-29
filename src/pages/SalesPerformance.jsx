@@ -11,13 +11,13 @@ import SalesChart from "../components/SalesChart"
 import Installations from "./Installations"
 import { money } from "../utils/formatters"
 
-function SalesPerformance({
-  contracts = [],
-  total = 0,
-  avg = 0,
-  upcoming = 0,
-  setSelected,
-}) {
+function SalesPerformance(props) {
+  const contracts = Array.isArray(props?.contracts) ? props.contracts : []
+  const total = Number.isFinite(Number(props?.total)) ? Number(props.total) : 0
+  const avg = Number.isFinite(Number(props?.avg)) ? Number(props.avg) : 0
+  const upcoming = Number.isFinite(Number(props?.upcoming)) ? Number(props.upcoming) : 0
+  const setSelected = props?.setSelected
+
   if (window.location.pathname === "/installations") {
     return <Installations setSelected={setSelected} />
   }
