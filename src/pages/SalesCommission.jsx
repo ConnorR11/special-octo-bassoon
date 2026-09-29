@@ -56,7 +56,7 @@ function getCommissionDate(deal, source = "commission") {
 
 const columns = ".65fr .95fr 1.55fr 1.25fr 1fr .9fr 1fr 1.1fr .95fr 30px"
 
-function DealRow({ deal, setSelected, type }) {
+function DealRow({ deal, setSelected, type, repName }) {
   const isAdmin = type === "ADMIN"
   const customer = deal?.customer_name || deal?.name || "Unnamed customer"
   const paymentDate = getCommissionDate(deal, isAdmin ? "admin" : "commission")
@@ -73,7 +73,7 @@ function DealRow({ deal, setSelected, type }) {
     <div style={{ display: "flex", alignItems: "center", gap: 5, color: isAdmin ? "#a0a8ae" : "#263645", fontSize: 10 }}>{!isAdmin && <PoundSterling size={13} />}<strong>{isAdmin ? "—" : money(getNetSalesValue(deal))}</strong></div>
     <div style={{ fontSize: 10, color: isAdmin ? "#a0a8ae" : surveyCosting === null ? "#a0a8ae" : "#263645", fontWeight: !isAdmin && surveyCosting !== null ? 700 : 400 }}>{isAdmin ? "—" : surveyCosting === null ? "—" : surveyCosting.toLocaleString("en-GB")}</div>
     <div style={{ display: "flex", alignItems: "center", gap: 5, color: "#66737d", fontSize: 10 }}><MapPin size={13} /><span>{getBranchName(deal)}</span></div>
-    <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#53616b", fontSize: 10, minWidth: 0 }}><UserRound size={13} /><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getRepName(deal)}</span></div>
+    <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#53616b", fontSize: 10, minWidth: 0 }}><UserRound size={13} /><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{repName}</span></div>
     <div style={{ fontSize: 11, fontWeight: 800, color: isAdmin ? (adminFee === "query" ? "#c45b18" : "#1676b8") : commission === null ? "#a0a8ae" : "#1676b8" }}>{isAdmin ? (adminFee === "query" ? "query" : money(adminFee)) : commission === null ? "—" : money(commission)}</div>
     <div style={{ display: "flex", justifyContent: "flex-end", color: "#9aa5ad" }}><ChevronRight size={17} /></div>
   </button>
@@ -88,6 +88,12 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
   const [commissionDate, setCommissionDate] = useState("all")
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [visibleSalespersonIds, setVisibleSalespersonIds] = useState(null)
+  const [salespersonNames, setSalespersonNames] = useState({})
+
+  const displayRepName = deal => {
+    const salespersonId = String(deal?.salesperson || "").trim()
+    return salespersonNames[salespersonId] || getRepName(deal)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -155,7 +161,50 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
     return () => { cancelled = true }
   }, [permissionLevel, visibleSalespersonIds])
 
-  const reps = useMemo(() => Array.from(new Set([...deals, ...adminDeals].map(getRepName))).sort((a, b) => a.localeCompare(b)), [deals, adminDeals])
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadSalespersonNames() {
+      if (!supabase) return
+
+      const ids = Array.from(new Set(
+        [...deals, ...adminDeals]
+          .map(deal => String(deal?.salesperson || "").trim())
+          .filter(Boolean)
+      ))
+
+      if (!ids.length) {
+        setSalespersonNames({})
+        return
+      }
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("pipedrive_person_id, full_name, display_name")
+        .in("pipedrive_person_id", ids)
+
+      if (cancelled) return
+
+      if (error) {
+        console.error("Error loading salesperson names:", error)
+        return
+      }
+
+      const names = {}
+      ;(data || []).forEach(profile => {
+        const id = String(profile?.pipedrive_person_id || "").trim()
+        const name = profile?.full_name || profile?.display_name
+        if (id && name) names[id] = name
+      })
+
+      setSalespersonNames(names)
+    }
+
+    loadSalespersonNames()
+    return () => { cancelled = true }
+  }, [deals, adminDeals])
+
+  const reps = useMemo(() => Array.from(new Set([...deals, ...adminDeals].map(displayRepName))).sort((a, b) => a.localeCompare(b)), [deals, adminDeals, salespersonNames])
   const branches = useMemo(() => Array.from(new Set([...deals, ...adminDeals].map(getBranchName))).sort((a, b) => a.localeCompare(b)), [deals, adminDeals])
   const combined = useMemo(() => [...deals.filter(deal => getNetSalesValue(deal) !== 0 && !isExcludedCommissionStage(deal) && String(deal?.sale_date || "").slice(0, 10) >= "2026-01-01").map(deal => ({ deal, type: "COMMS" })), ...adminDeals.filter(deal => !isExcludedCommissionStage(deal)).map(deal => ({ deal, type: "ADMIN" }))], [deals, adminDeals])
   const commissionDates = useMemo(() => Array.from(new Set(combined.map(({ deal, type }) => getCommissionDate(deal, type === "ADMIN" ? "admin" : "commission")).filter(Boolean))).sort((a, b) => new Date(a) - new Date(b)), [combined])
@@ -163,18 +212,18 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
     const search = query.trim().toLowerCase()
     return combined.filter(({ deal, type }) => {
       const date = getCommissionDate(deal, type === "ADMIN" ? "admin" : "commission")
-      if (rep !== "all" && getRepName(deal) !== rep) return false
+      if (rep !== "all" && displayRepName(deal) !== rep) return false
       if (branch !== "all" && getBranchName(deal) !== branch) return false
       if (commissionDate !== "all" && date !== commissionDate) return false
       if (!search) return true
-      return [deal?.customer_name, deal?.name, deal?.contract_number, deal?.postcode, getRepName(deal), getBranchName(deal), type].filter(Boolean).join(" ").toLowerCase().includes(search)
+      return [deal?.customer_name, deal?.name, deal?.contract_number, deal?.postcode, displayRepName(deal), getBranchName(deal), type].filter(Boolean).join(" ").toLowerCase().includes(search)
     }).sort((a, b) => {
       const ad = getCommissionDate(a.deal, a.type === "ADMIN" ? "admin" : "commission")
       const bd = getCommissionDate(b.deal, b.type === "ADMIN" ? "admin" : "commission")
       if (!ad && !bd) {
         const branchCompare = getBranchName(a.deal).localeCompare(getBranchName(b.deal))
         if (branchCompare) return branchCompare
-        const repCompare = getRepName(a.deal).localeCompare(getRepName(b.deal))
+        const repCompare = displayRepName(a.deal).localeCompare(displayRepName(b.deal))
         if (repCompare) return repCompare
         return a.type.localeCompare(b.type)
       }
@@ -184,11 +233,11 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
       if (dateCompare) return dateCompare
       const branchCompare = getBranchName(a.deal).localeCompare(getBranchName(b.deal))
       if (branchCompare) return branchCompare
-      const repCompare = getRepName(a.deal).localeCompare(getRepName(b.deal))
+      const repCompare = displayRepName(a.deal).localeCompare(displayRepName(b.deal))
       if (repCompare) return repCompare
       return a.type.localeCompare(b.type)
     })
-  }, [combined, query, rep, branch, commissionDate])
+  }, [combined, query, rep, branch, commissionDate, salespersonNames])
 
   const commsDeals = filtered.filter(({ type }) => type === "COMMS")
   const adminRows = filtered.filter(({ type }) => type === "ADMIN")
@@ -214,7 +263,7 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
       "Admin fee taken": type === "ADMIN" ? (deal?.admin_fee_amount ?? null) : null,
       "Survey costing": type === "COMMS" ? getSurveyCosting(deal) : null,
       Branch: getBranchName(deal),
-      Rep: getRepName(deal),
+      Rep: displayRepName(deal),
       "Sales Manager": deal?.sales_manager || deal?.primary_sales_manager || "",
       "Branch Manager": deal?.branch_manager || "",
       "Amount Due": type === "ADMIN" ? (getAdminFee(deal) === "query" ? "query" : getAdminFee(deal)) : (getCommission(deal) ?? null)
@@ -285,6 +334,6 @@ export default function SalesCommission({ deals = [], loading = false, setSelect
         </div>}
       </div>
     </div>
-    {(loading || adminLoading) ? <div style={{ padding: 35, textAlign: "center", color: "#89939c", fontSize: 11, border: "1px solid #e0e5e9", borderRadius: 10, background: "#fff" }}>Loading commission data...</div> : !filtered.length ? <div style={{ padding: 40, textAlign: "center", border: "1px solid #e0e5e9", borderRadius: 10, background: "#fff", color: "#89939c", fontSize: 11 }}>No commission or admin records found.</div> : <div className="commission-table-scroll"><div className="commission-table"><div style={{ display: "grid", gridTemplateColumns: columns, gap: 12, alignItems: "center", padding: "10px 14px", background: "#f3f6f8", borderBottom: "1px solid #e0e5e9", color: "#687782", fontSize: 9, fontWeight: 800, textTransform: "uppercase" }}><div>Type</div><div>Commission Date</div><div>Customer</div><div>Contract Number</div><div>Net Value</div><div>Survey Costing</div><div>Branch</div><div>Rep</div><div>Amount Due</div><div /></div>{filtered.map(({ deal, type }) => <DealRow key={`${type}-${deal?.id || deal?.deal_id}`} deal={deal} type={type} setSelected={setSelected} />)}</div></div>}
+    {(loading || adminLoading) ? <div style={{ padding: 35, textAlign: "center", color: "#89939c", fontSize: 11, border: "1px solid #e0e5e9", borderRadius: 10, background: "#fff" }}>Loading commission data...</div> : !filtered.length ? <div style={{ padding: 40, textAlign: "center", border: "1px solid #e0e5e9", borderRadius: 10, background: "#fff", color: "#89939c", fontSize: 11 }}>No commission or admin records found.</div> : <div className="commission-table-scroll"><div className="commission-table"><div style={{ display: "grid", gridTemplateColumns: columns, gap: 12, alignItems: "center", padding: "10px 14px", background: "#f3f6f8", borderBottom: "1px solid #e0e5e9", color: "#687782", fontSize: 9, fontWeight: 800, textTransform: "uppercase" }}><div>Type</div><div>Commission Date</div><div>Customer</div><div>Contract Number</div><div>Net Value</div><div>Survey Costing</div><div>Branch</div><div>Rep</div><div>Amount Due</div><div /></div>{filtered.map(({ deal, type }) => <DealRow key={`${type}-${deal?.id || deal?.deal_id}`} deal={deal} type={type} repName={displayRepName(deal)} setSelected={setSelected} />)}</div></div>}
   </section>
 }
