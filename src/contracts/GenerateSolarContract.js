@@ -6,6 +6,7 @@ const CONTRACT_NAME = "Digital Solar Contract"
 
 const rgb = (value, fallback = [11, 93, 138]) => {
   const hex = String(value || "").replace("#", "")
+
   return /^[0-9a-f]{6}$/i.test(hex)
     ? [
         parseInt(hex.slice(0, 2), 16),
@@ -16,7 +17,9 @@ const rgb = (value, fallback = [11, 93, 138]) => {
 }
 
 const textValue = (v, fallback = "—") =>
-  v === undefined || v === null || v === "" ? fallback : String(v)
+  v === undefined || v === null || v === ""
+    ? fallback
+    : String(v)
 
 const num = (v, d = 0) =>
   Number(v || 0).toLocaleString("en-GB", {
@@ -46,27 +49,53 @@ const date = v => {
 }
 
 function getOpenSolarImageUrl(appointment) {
-  return String(appointment?.open_solar_image || "").trim()
+  return String(
+    appointment?.open_solar_image || ""
+  ).trim()
 }
 
 function interpolate(body, appointment, epvs) {
   const data = epvs?.data || {}
   const results = epvs?.results || {}
-  const batteryCapacity = Number(data.batteryCapacity || 0)
+
+  const batteryCapacity =
+    Number(data.batteryCapacity || 0)
 
   const values = {
-    customer_name: appointment?.name || data.customerName,
-    customer_address: appointment?.address || data.address,
-    postcode: appointment?.postcode || data.postcode,
-    phone: appointment?.phone || appointment?.phone_number_1,
-    email: appointment?.email || appointment?.email_address,
-    appointment_date: date(appointment?.appointment_date),
-    salesperson: appointment?.salesperson || appointment?.rep_allocated,
-    open_solar_image: getOpenSolarImageUrl(appointment),
+    customer_name:
+      appointment?.name ||
+      data.customerName,
 
-    system_size: results.systemSize
-      ? `${num(results.systemSize, 2)} kWp`
-      : "—",
+    customer_address:
+      appointment?.address ||
+      data.address,
+
+    postcode:
+      appointment?.postcode ||
+      data.postcode,
+
+    phone:
+      appointment?.phone ||
+      appointment?.phone_number_1,
+
+    email:
+      appointment?.email ||
+      appointment?.email_address,
+
+    appointment_date:
+      date(appointment?.appointment_date),
+
+    salesperson:
+      appointment?.salesperson ||
+      appointment?.rep_allocated,
+
+    open_solar_image:
+      getOpenSolarImageUrl(appointment),
+
+    system_size:
+      results.systemSize
+        ? `${num(results.systemSize, 2)} kWp`
+        : "—",
 
     panel_type:
       data.panelType ||
@@ -77,11 +106,13 @@ function interpolate(body, appointment, epvs) {
       data.panel_name ||
       "Panels",
 
-    panel_count: num(data.panelCount),
+    panel_count:
+      num(data.panelCount),
 
-    panel_wattage: data.panelWattage
-      ? `${num(data.panelWattage)} W`
-      : "—",
+    panel_wattage:
+      data.panelWattage
+        ? `${num(data.panelWattage)} W`
+        : "—",
 
     inverter_type:
       data.inverterType ||
@@ -97,9 +128,10 @@ function interpolate(body, appointment, epvs) {
       data.inverter_quantity ??
       1,
 
-    inverter_capacity: data.inverterCapacity
-      ? `${num(data.inverterCapacity, 1)} kW`
-      : "—",
+    inverter_capacity:
+      data.inverterCapacity
+        ? `${num(data.inverterCapacity, 1)} kW`
+        : "—",
 
     battery_type:
       data.batteryType ||
@@ -120,18 +152,22 @@ function interpolate(body, appointment, epvs) {
         ? `${num(batteryCapacity, 1)} kWh`
         : "Not included",
 
-    system_cost: money(data.systemCost),
+    system_cost:
+      money(data.systemCost),
 
-    annual_generation: results.generation
-      ? `${num(results.generation)} kWh`
-      : "—",
+    annual_generation:
+      results.generation
+        ? `${num(results.generation)} kWh`
+        : "—",
 
-    annual_saving: money(results.annualSaving)
+    annual_saving:
+      money(results.annualSaving)
   }
 
   return String(body || "").replace(
     /{{\s*([a-zA-Z0-9_]+)\s*}}/g,
-    (_, key) => textValue(values[key])
+    (_, key) =>
+      textValue(values[key])
   )
 }
 
@@ -139,7 +175,9 @@ async function imageData(url) {
   const source = String(url || "").trim()
 
   if (!source) {
-    throw new Error("No image URL was provided.")
+    throw new Error(
+      "No image URL was provided."
+    )
   }
 
   try {
@@ -167,15 +205,18 @@ async function imageData(url) {
     }
 
     const blob = await response.blob()
-    const objectUrl = URL.createObjectURL(blob)
+    const objectUrl =
+      URL.createObjectURL(blob)
 
     try {
       const image = new Image()
+
       image.src = objectUrl
 
       await image.decode()
 
-      const canvas = document.createElement("canvas")
+      const canvas =
+        document.createElement("canvas")
 
       canvas.width =
         image.naturalWidth ||
@@ -185,13 +226,17 @@ async function imageData(url) {
         image.naturalHeight ||
         image.height
 
-      if (!canvas.width || !canvas.height) {
+      if (
+        !canvas.width ||
+        !canvas.height
+      ) {
         throw new Error(
           "Image returned no dimensions."
         )
       }
 
-      const context = canvas.getContext("2d")
+      const context =
+        canvas.getContext("2d")
 
       if (!context) {
         throw new Error(
@@ -199,12 +244,21 @@ async function imageData(url) {
         )
       }
 
-      context.drawImage(image, 0, 0)
+      context.drawImage(
+        image,
+        0,
+        0
+      )
 
       return {
-        dataUrl: canvas.toDataURL("image/png"),
-        width: canvas.width,
-        height: canvas.height
+        dataUrl:
+          canvas.toDataURL("image/png"),
+
+        width:
+          canvas.width,
+
+        height:
+          canvas.height
       }
     } finally {
       URL.revokeObjectURL(objectUrl)
@@ -219,13 +273,17 @@ async function imageData(url) {
   }
 }
 
-async function getSignatureImageUrl(appointment) {
+async function getSignatureImageUrl(
+  appointment
+) {
   const signaturePath =
     String(
       appointment?.signature_path || ""
     ).trim()
 
-  if (!signaturePath) return null
+  if (!signaturePath) {
+    return null
+  }
 
   try {
     const {
@@ -312,23 +370,23 @@ function getContractProductNames(
 
   add(
     data.inverterModel ||
-      data.inverter_model ||
-      data.inverterName ||
-      data.inverter_name
+    data.inverter_model ||
+    data.inverterName ||
+    data.inverter_name
   )
 
   add(
     data.batteryModel ||
-      data.battery_model ||
-      data.batteryName ||
-      data.battery_name
+    data.battery_model ||
+    data.batteryName ||
+    data.battery_name
   )
 
   add(
     data.panelModel ||
-      data.panel_model ||
-      data.panelName ||
-      data.panel_name
+    data.panel_model ||
+    data.panelName ||
+    data.panel_name
   )
 
   ;(
@@ -338,9 +396,9 @@ function getContractProductNames(
   ).forEach(array => {
     add(
       array?.panelModel ||
-        array?.panel_model ||
-        array?.panelName ||
-        array?.panel_name
+      array?.panel_model ||
+      array?.panelName ||
+      array?.panel_name
     )
   })
 
@@ -369,7 +427,8 @@ function productMatchesContractItem(
   ]
     .map(normaliseDatasheetName)
     .filter(
-      value => value.length >= 3
+      value =>
+        value.length >= 3
     )
 
   return candidateValues.some(
@@ -411,7 +470,9 @@ async function getProductDatasheetPaths(
       null
     )
 
-  if (error) throw error
+  if (error) {
+    throw error
+  }
 
   const paths = []
   const seen = new Set()
@@ -432,14 +493,17 @@ async function getProductDatasheetPaths(
     }
 
     const matched =
-      itemNames.some(itemName =>
-        productMatchesContractItem(
-          product,
-          itemName
-        )
+      itemNames.some(
+        itemName =>
+          productMatchesContractItem(
+            product,
+            itemName
+          )
       )
 
-    if (!matched) return
+    if (!matched) {
+      return
+    }
 
     seen.add(path)
     paths.push(path)
@@ -553,7 +617,10 @@ async function drawImage(
     await imageData(url)
 
   const innerWidth =
-    Math.max(1, width - 4)
+    Math.max(
+      1,
+      width - 4
+    )
 
   const ratio =
     image.width /
@@ -807,7 +874,9 @@ function rows(
   compact = false
 ) {
   const h =
-    compact ? 8 : 10
+    compact
+      ? 8
+      : 10
 
   values.forEach(
     ([label, value], i) => {
@@ -839,7 +908,9 @@ function rows(
       )
 
       pdf.setFontSize(
-        compact ? 7.5 : 8.5
+        compact
+          ? 7.5
+          : 8.5
       )
 
       pdf.text(
@@ -885,7 +956,9 @@ function body(
   appointment,
   epvs
 ) {
-  if (!content) return y
+  if (!content) {
+    return y
+  }
 
   const withoutImageToken =
     String(content).replace(
@@ -939,9 +1012,6 @@ function body(
 
 /*
  * ITEMISED BREAKDOWN
- *
- * Signature is displayed underneath
- * the total system price.
  */
 async function drawItemisedBreakdown(
   pdf,
@@ -1203,9 +1273,6 @@ async function drawItemisedBreakdown(
     appointment?.sale_value ??
     appointment?.price
 
-  /*
-   * TOTAL SYSTEM PRICE
-   */
   pdf.setFillColor(
     ...ctx.accent
   )
@@ -1349,18 +1416,14 @@ async function drawItemisedBreakdown(
 
       const signatureX =
         signatureAreaX +
-        (
-          signatureBoxWidth -
-          signatureWidth
-        ) /
+        (signatureBoxWidth -
+          signatureWidth) /
           2
 
       const signatureY =
         signatureAreaY +
-        (
-          signatureBoxHeight -
-          signatureHeight
-        ) /
+        (signatureBoxHeight -
+          signatureHeight) /
           2
 
       pdf.addImage(
@@ -1382,7 +1445,9 @@ async function drawItemisedBreakdown(
   }
 }
 
-function parseTermsSections(raw) {
+function parseTermsSections(
+  raw
+) {
   const sections = []
   let current = []
 
@@ -1400,7 +1465,9 @@ function parseTermsSections(raw) {
       ) {
         if (current.length) {
           sections.push(
-            current.join(" ").trim()
+            current
+              .join(" ")
+              .trim()
           )
         }
 
@@ -1412,7 +1479,9 @@ function parseTermsSections(raw) {
 
   if (current.length) {
     sections.push(
-      current.join(" ").trim()
+      current
+        .join(" ")
+        .trim()
     )
   }
 
@@ -1429,79 +1498,18 @@ function buildTermsLines(
 ) {
   const lines = []
 
-  sections.forEach(
-    section => {
-      const normal =
-        String(section)
-          .replace(/\s+/g, " ")
-          .trim()
+  sections.forEach(section => {
+    const normal =
+      String(section)
+        .replace(/\s+/g, " ")
+        .trim()
 
-      const numbered =
-        normal.match(
-          /^(\d+\.\s+)(.*)$/
-        )
-
-      if (!numbered) {
-        pdf.setFont(
-          "helvetica",
-          "normal"
-        )
-
-        pdf.setFontSize(
-          fontSize
-        )
-
-        pdf
-          .splitTextToSize(
-            normal,
-            columnWidth
-          )
-          .forEach(text =>
-            lines.push({
-              text,
-              boldPrefix: ""
-            })
-          )
-
-        lines.push({
-          spacing: sectionSpacing
-        })
-
-        return
-      }
-
-      const headingMatch =
-        numbered[2].match(
-          /^(.+?\.)\s+(.*)$/
-        )
-
-      const prefix =
-        numbered[1] +
-        (
-          headingMatch
-            ? headingMatch[1] + " "
-            : ""
-        )
-
-      const bodyText =
-        headingMatch
-          ? headingMatch[2]
-          : numbered[2]
-
-      pdf.setFont(
-        "helvetica",
-        "bold"
+    const numbered =
+      normal.match(
+        /^(\d+\.\s+)(.*)$/
       )
 
-      pdf.setFontSize(
-        headingSize
-      )
-
-      const prefixWidth =
-        pdf.getTextWidth(
-          prefix
-        )
-
+    if (!numbered) {
       pdf.setFont(
         "helvetica",
         "normal"
@@ -1511,55 +1519,96 @@ function buildTermsLines(
         fontSize
       )
 
-      if (
-        prefixWidth <
-        columnWidth - 10
-      ) {
-        const first =
-          pdf
-            .splitTextToSize(
-              bodyText,
-              Math.max(
-                10,
-                columnWidth -
-                  prefixWidth
-              )
-            )[0] || ""
+      pdf
+        .splitTextToSize(
+          normal,
+          columnWidth
+        )
+        .forEach(text =>
+          lines.push({
+            text,
+            boldPrefix: ""
+          })
+        )
 
-        lines.push({
-          text: first,
-          boldPrefix: prefix
-        })
+      lines.push({
+        spacing:
+          sectionSpacing
+      })
 
-        const rest =
-          bodyText
-            .slice(
-              first.length
-            )
-            .trim()
+      return
+    }
 
-        if (rest) {
-          pdf
-            .splitTextToSize(
-              rest,
-              columnWidth
-            )
-            .forEach(text =>
-              lines.push({
-                text,
-                boldPrefix: ""
-              })
-            )
-        }
-      } else {
-        lines.push({
-          text: prefix,
-          boldPrefix: ""
-        })
+    const headingMatch =
+      numbered[2].match(
+        /^(.+?\.)\s+(.*)$/
+      )
 
+    const prefix =
+      numbered[1] +
+      (
+        headingMatch
+          ? headingMatch[1] + " "
+          : ""
+      )
+
+    const bodyText =
+      headingMatch
+        ? headingMatch[2]
+        : numbered[2]
+
+    pdf.setFont(
+      "helvetica",
+      "bold"
+    )
+
+    pdf.setFontSize(
+      headingSize
+    )
+
+    const prefixWidth =
+      pdf.getTextWidth(
+        prefix
+      )
+
+    pdf.setFont(
+      "helvetica",
+      "normal"
+    )
+
+    pdf.setFontSize(
+      fontSize
+    )
+
+    if (
+      prefixWidth <
+      columnWidth - 10
+    ) {
+      const first =
         pdf
           .splitTextToSize(
             bodyText,
+            Math.max(
+              10,
+              columnWidth -
+                prefixWidth
+            )
+          )[0] || ""
+
+      lines.push({
+        text: first,
+        boldPrefix: prefix
+      })
+
+      const rest =
+        bodyText
+          .slice(first.length)
+          .trim()
+
+      if (rest) {
+        pdf
+          .splitTextToSize(
+            rest,
             columnWidth
           )
           .forEach(text =>
@@ -1569,12 +1618,30 @@ function buildTermsLines(
             })
           )
       }
-
+    } else {
       lines.push({
-        spacing: sectionSpacing
+        text: prefix,
+        boldPrefix: ""
       })
+
+      pdf
+        .splitTextToSize(
+          bodyText,
+          columnWidth
+        )
+        .forEach(text =>
+          lines.push({
+            text,
+            boldPrefix: ""
+          })
+        )
     }
-  )
+
+    lines.push({
+      spacing:
+        sectionSpacing
+    })
+  })
 
   return lines
 }
@@ -1630,7 +1697,9 @@ function drawTermsConditions(
   const sections =
     parseTermsSections(
       interpolate(
-        String(page.body || ""),
+        String(
+          page.body || ""
+        ),
         appointment,
         epvs
       )
@@ -1661,11 +1730,9 @@ function drawTermsConditions(
       lines.reduce(
         (count, line) =>
           count +
-          (
-            line.spacing
-              ? 0
-              : 1
-          ),
+          (line.spacing
+            ? 0
+            : 1),
         0
       )
 
@@ -1874,10 +1941,8 @@ async function renderPage(
 
       const logoHeight =
         logoWidth *
-        (
-          logo.height /
-          logo.width
-        )
+        (logo.height /
+          logo.width)
 
       pdf.addImage(
         logo.dataUrl,
@@ -2055,12 +2120,17 @@ async function renderPage(
       ...cyan
     )
 
-    pdf.setLineWidth(0.3)
+    pdf.setLineWidth(
+      0.3
+    )
 
     pdf.line(
-      ctx.width - ctx.padding - 16,
+      ctx.width -
+        ctx.padding -
+        16,
       72,
-      ctx.width - ctx.padding,
+      ctx.width -
+        ctx.padding,
       72
     )
 
@@ -2400,8 +2470,7 @@ async function renderPage(
       y + 2
 
     const tableHeight =
-      systemRows.length *
-        10 +
+      systemRows.length * 10 +
       5
 
     pdf.setFillColor(
@@ -2440,9 +2509,11 @@ async function renderPage(
       appointment,
       epvs
     )
+
   } else if (
     kind === "itemised_breakdown"
   ) {
+
     await drawItemisedBreakdown(
       pdf,
       page,
@@ -2452,9 +2523,11 @@ async function renderPage(
       appointment,
       epvs
     )
+
   } else if (
     kind === "terms_conditions"
   ) {
+
     drawTermsConditions(
       pdf,
       page,
@@ -2462,11 +2535,15 @@ async function renderPage(
       appointment,
       epvs
     )
+
   } else if (
     kind === "accreditations"
   ) {
+
     const items =
-      Array.isArray(settings.items)
+      Array.isArray(
+        settings.items
+      )
         ? settings.items
         : []
 
@@ -2555,7 +2632,8 @@ async function renderPage(
           cardTop + 15,
           {
             align: textAlign,
-            maxWidth: width - 18
+            maxWidth:
+              width - 18
           }
         )
 
@@ -2574,17 +2652,23 @@ async function renderPage(
       appointment,
       epvs
     )
+
   } else if (
     kind === "epvs"
   ) {
+
     /*
-     * EPVS SUMMARY TABLE
-     *
      * IMPORTANT:
-     * rows() returns the new Y position.
-     * We assign it back to y so the array
-     * table starts underneath the summary.
+     *
+     * rows() returns the Y position immediately
+     * underneath the last row.
+     *
+     * Previously this return value was ignored,
+     * which meant the SAP array table was drawn
+     * using the original Y position and could
+     * overlap the EPVS calculation table.
      */
+
     y =
       rows(
         pdf,
@@ -2628,7 +2712,10 @@ async function renderPage(
           [
             "Simple payback",
             results.simplePayback
-              ? `${num(results.simplePayback, 1)} years`
+              ? `${num(
+                  results.simplePayback,
+                  1
+                )} years`
               : "—"
           ],
           [
@@ -2652,13 +2739,17 @@ async function renderPage(
       )
 
     /*
-     * Add a deliberate gap after the
-     * summary table before the array table.
+     * Add space after the final EPVS row.
+     * Because y now contains the actual position
+     * returned by rows(), the SAP table cannot
+     * overlap the figures above it.
      */
-    y += 9
+    y += 10
 
     const solarArrays =
-      Array.isArray(data.arrays)
+      Array.isArray(
+        data.arrays
+      )
         ? data.arrays
             .slice(
               0,
@@ -2668,7 +2759,10 @@ async function renderPage(
               )
             )
             .map(
-              (array, index) => ({
+              (
+                array,
+                index
+              ) => ({
                 array,
                 index,
                 calculated:
@@ -2693,14 +2787,10 @@ async function renderPage(
       solarArrays.length
     ) {
       /*
-       * This position is now calculated
-       * from the END of the summary table.
-       *
-       * Therefore the array heading/table
-       * cannot overlap the rows above it.
+       * SAP CALCULATION
        */
       const tableTitleY =
-        y
+        y + 3
 
       pdf.setTextColor(
         ...ctx.text
@@ -2714,7 +2804,7 @@ async function renderPage(
       pdf.setFontSize(9)
 
       pdf.text(
-        "Solar PV array",
+        "SAP Calculation",
         ctx.padding,
         tableTitleY
       )
@@ -2731,10 +2821,6 @@ async function renderPage(
         "Generation (kWh)"
       ]
 
-      /*
-       * Start the actual table below
-       * the heading.
-       */
       const tableY =
         tableTitleY + 5
 
@@ -2797,11 +2883,9 @@ async function renderPage(
               tableWidths[index] /
                 2,
             tableY +
-              (
-                lines.length > 1
-                  ? 3
-                  : 5
-              ),
+              (lines.length > 1
+                ? 3
+                : 5),
             {
               align: "center"
             }
@@ -2816,32 +2900,77 @@ async function renderPage(
         tableY +
         headerHeight
 
+      /*
+       * Totals for the SAP table.
+       */
+      let totalPanels = 0
+      let totalSystemSize = 0
+      let totalGeneration = 0
+
       solarArrays.forEach(
         ({
           array,
           index,
           calculated
         }) => {
+          const panelCount =
+            Number(
+              array?.panelCount || 0
+            )
+
+          const systemSize =
+            Number(
+              calculated?.systemSize || 0
+            )
+
+          const generation =
+            Number(
+              calculated?.generation || 0
+            )
+
+          totalPanels +=
+            panelCount
+
+          totalSystemSize +=
+            systemSize
+
+          totalGeneration +=
+            generation
+
           const values = [
             `Array ${index + 1}`,
+
             num(
               array.panelCount
             ),
-            `${num(array.panelWattage)} W`,
-            `${num(array.orientation)}°`,
-            `${num(array.pitch)}°`,
+
+            `${num(
+              array.panelWattage
+            )} W`,
+
+            `${num(
+              array.orientation
+            )}°`,
+
+            `${num(
+              array.pitch
+            )}°`,
+
             num(
               array.irradiance,
               2
             ),
+
             num(
               array.shading,
               2
             ),
+
             `${num(
               calculated.systemSize,
               2
             )} kWp`,
+
             num(
               calculated.generation,
               2
@@ -2921,12 +3050,102 @@ async function renderPage(
       )
 
       /*
-       * Keep y updated to the END of the
-       * array table as well.
+       * TOTAL ROW
+       *
+       * We deliberately total the numerical
+       * SAP outputs rather than using the overall
+       * EPVS systemSize/generation fields.
+       *
+       * This means the total directly reflects
+       * the individual SAP array rows shown above.
        */
-      y =
-        rowY + 6
+      const totalValues = [
+        "TOTAL",
+        num(totalPanels),
+        "—",
+        "—",
+        "—",
+        "—",
+        "—",
+        `${num(
+          totalSystemSize,
+          2
+        )} kWp`,
+        num(
+          totalGeneration,
+          2
+        )
+      ]
+
+      tx = tableX
+
+      totalValues.forEach(
+        (
+          value,
+          cellIndex
+        ) => {
+          pdf.setFillColor(
+            ...ctx.accent
+          )
+
+          pdf.setDrawColor(
+            255,
+            255,
+            255
+          )
+
+          pdf.rect(
+            tx,
+            rowY,
+            tableWidths[
+              cellIndex
+            ],
+            rowHeight,
+            "FD"
+          )
+
+          pdf.setTextColor(
+            255,
+            255,
+            255
+          )
+
+          pdf.setFont(
+            "helvetica",
+            "bold"
+          )
+
+          pdf.setFontSize(5.9)
+
+          pdf.text(
+            String(value),
+            tx +
+              tableWidths[
+                cellIndex
+              ] /
+                2,
+            rowY + 4.6,
+            {
+              align: "center"
+            }
+          )
+
+          tx +=
+            tableWidths[
+              cellIndex
+            ]
+        }
+      )
+
+      rowY += rowHeight
+
+      /*
+       * Leave enough room underneath the table
+       * for any page content that may follow.
+       */
+      y = rowY + 8
     }
+
   } else if (
     kind === "datasheets"
   ) {
@@ -2937,51 +3156,53 @@ async function renderPage(
         ? settings.documents
         : []
 
-    documents.forEach(doc => {
-      pdf.setTextColor(
-        ...ctx.text
-      )
+    documents.forEach(
+      doc => {
+        pdf.setTextColor(
+          ...ctx.text
+        )
 
-      pdf.setFont(
-        "helvetica",
-        "bold"
-      )
+        pdf.setFont(
+          "helvetica",
+          "bold"
+        )
 
-      pdf.setFontSize(9)
+        pdf.setFontSize(9)
 
-      pdf.text(
-        textValue(
-          doc.title,
-          "Datasheet"
-        ),
-        ctx.padding,
-        y
-      )
+        pdf.text(
+          textValue(
+            doc.title,
+            "Datasheet"
+          ),
+          ctx.padding,
+          y
+        )
 
-      pdf.setFont(
-        "helvetica",
-        "normal"
-      )
+        pdf.setFont(
+          "helvetica",
+          "normal"
+        )
 
-      pdf.setFontSize(7)
+        pdf.setFontSize(7)
 
-      pdf.setTextColor(
-        105,
-        116,
-        124
-      )
+        pdf.setTextColor(
+          105,
+          116,
+          124
+        )
 
-      pdf.text(
-        textValue(
-          doc.description,
-          ""
-        ),
-        ctx.padding,
-        y + 5
-      )
+        pdf.text(
+          textValue(
+            doc.description,
+            ""
+          ),
+          ctx.padding,
+          y + 5
+        )
 
-      y += 14
-    })
+        y += 14
+      }
+    )
 
     body(
       pdf,
@@ -2993,6 +3214,7 @@ async function renderPage(
       appointment,
       epvs
     )
+
   } else {
     body(
       pdf,
@@ -3239,7 +3461,8 @@ export async function GenerateSolarContract({
     new Blob(
       [finalPdfBytes],
       {
-        type: "application/pdf"
+        type:
+          "application/pdf"
       }
     )
 
