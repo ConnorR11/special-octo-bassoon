@@ -50,6 +50,14 @@ if (source.includes("function drawThirtyYearBreakdown")) {
     'const isNegative = String(value).trim().startsWith("-")\n    pdf.setTextColor(...(isNegative ? [255, 120, 120] : [255, 255, 255]))\n    pdf.setFont("helvetica", "bold")\n    pdf.setFontSize(8)\n    pdf.text(String(value), x + widths[index] - 0.8, y + totalHeight - 1.8, { align: "right" })'
   )
 
+  // Tidy the table heading: keep the page title above it, then use one compact
+  // descriptor immediately above the table instead of a separate heading and
+  // subtitle with a large gap.
+  source = source.replace(
+    /pdf\.setTextColor\(\.\.\.ctx\.text\)\n  pdf\.setFont\("helvetica", "bold"\)\n  pdf\.setFontSize\(9\)\n  pdf\.text\("30 Year Benefit Breakdown", tableX, ctx\.y \+ 8\)\n\n  pdf\.setFont\("helvetica", "normal"\)\n  pdf\.setFontSize\(6\.5\)\n  pdf\.setTextColor\(100, 112, 120\)\n  pdf\.text\("Average inflation scenario \(7\.6%\)", tableX, ctx\.y \+ 14\)/,
+    'pdf.setTextColor(...ctx.text)\n  pdf.setFont("helvetica", "bold")\n  pdf.setFontSize(7.5)\n  pdf.text("30 Year Breakdown – 7.6% Inflation Rate", tableX, ctx.y + 17)'
+  )
+
   fs.writeFileSync(filePath, source)
   console.log("EPVS 30-year layout patch applied")
   process.exit(0)
@@ -105,18 +113,15 @@ function drawThirtyYearBreakdown(pdf, page, ctx, epvs) {
   const exportValue = (row) => valueFrom(row, "exportBenefit")
   const annualBenefit = (row) => solarValue(row) + batteryValue(row) + exportValue(row)
 
+  // Compact descriptor immediately above the table.
   pdf.setTextColor(...ctx.text)
   pdf.setFont("helvetica", "bold")
-  pdf.setFontSize(9)
-  pdf.text("30 Year Benefit Breakdown", tableX, ctx.y + 8)
-
-  pdf.setFont("helvetica", "normal")
-  pdf.setFontSize(6.5)
-  pdf.setTextColor(100, 112, 120)
-  pdf.text("Average inflation scenario (7.6%)", tableX, ctx.y + 14)
+  pdf.setFontSize(7.5)
+  pdf.text("30 Year Breakdown – 7.6% Inflation Rate", tableX, ctx.y + 17)
 
   let x = tableX
   pdf.setFillColor(...ctx.accent)
+  // The header sits directly against the first table row.
   pdf.roundedRect(tableX, headerY - 5.5, tableWidth, headerHeight, 1.8, 1.8, "F")
   pdf.setTextColor(255, 255, 255)
   pdf.setFont("helvetica", "bold")
