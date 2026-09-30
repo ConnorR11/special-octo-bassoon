@@ -15,5 +15,12 @@ source = source.replace(
   'const headerY = ctx.y + 28'
 )
 
+// Remove the white gap between the blue table header and the first data row.
+// The rounded header ends at headerY + 4.5, so the first row starts there.
+source = source.replace(
+  'let y = headerY + headerHeight',
+  'let y = headerY + 4.5'
+)
+
 fs.writeFileSync(filePath, source)
 console.log("EPVS 30-year table heading layout adjusted")
