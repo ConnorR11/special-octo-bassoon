@@ -1052,64 +1052,66 @@ async function drawItemisedBreakdown(
    * the quantity stored against the template item.
    */
 
-  const solarArrays = Array.isArray(data.arrays)
-    ? data.arrays.filter(
-        array =>
-          Number(array?.panelCount || 0) > 0
-      )
-    : []
+const solarArrays = Array.isArray(data?.arrays)
+  ? data.arrays
+  : []
 
-  const totalPanelCount = solarArrays.reduce(
-    (total, array) =>
-      total + Number(array?.panelCount || 0),
-    0
-  )
+const calculatedPanelCount = solarArrays.reduce(
+  (total, array) =>
+    total + Number(array?.panelCount || 0),
+  0
+)
 
-  const fallbackPanelCount = Number(
-    data.panelCount || 0
-  )
+const panelCount =
+  calculatedPanelCount > 0
+    ? calculatedPanelCount
+    : Number(data?.panelCount || 0)
 
-  const actualPanelCount =
-    totalPanelCount > 0
-      ? totalPanelCount
-      : fallbackPanelCount
+const items = configured.map(item => {
+  const name =
+    typeof item === "string"
+      ? item
+      : item?.name ?? "—"
+
+  const type =
+    typeof item === "string"
+      ? ""
+      : item?.type ?? ""
+
+  let quantity =
+    typeof item === "string"
+      ? 1
+      : item?.quantity ?? 1
 
   /*
-   * Returns the correct quantity for each item.
+   * ONLY change the quantity for the item
+   * named exactly "Panels".
    */
-  const getItemQuantity = item => {
-    const itemName = String(item?.name || "")
-      .trim()
-      .toLowerCase()
-
-    /*
-     * Panels = actual number of panels from EPVS
-     */
-    if (itemName === "panels") {
-      return actualPanelCount > 0
-        ? String(actualPanelCount)
-        : "-"
-    }
-
-    /*
-     * These are intentionally displayed as "-".
-     */
-    if (
-      itemName === "roof hooks" ||
-      itemName === "rail fix kit"
-    ) {
-      return "-"
-    }
-
-    /*
-     * Everything else behaves as it did previously.
-     */
-    return interpolate(
-      String(item?.quantity ?? 1),
-      appointment,
-      epvs
-    )
+  if (
+    String(name).trim().toLowerCase() === "panels"
+  ) {
+    quantity = panelCount
   }
+
+  /*
+   * Keep these as configured/displayed as "-"
+   */
+  const normalisedName =
+    String(name).trim().toLowerCase()
+
+  if (
+    normalisedName === "roof hooks" ||
+    normalisedName === "rail fix kit"
+  ) {
+    quantity = "-"
+  }
+
+  return {
+    name,
+    quantity,
+    type
+  }
+})
 
   const headerY = ctx.y + 28
 
