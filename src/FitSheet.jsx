@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react"
-
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react"
 import { supabase } from "./lib/supabase"
 import { money } from "./utils/formatters"
@@ -47,9 +46,7 @@ function FitSheet({ setSelected }) {
     const start = weekDays[0]
     const end = weekDays[6]
     if (!start || !end) return ""
-    const startText = start.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
-    const endText = end.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
-    return `${startText} – ${endText}`
+    return `${start.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} – ${end.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
   }, [weekDays])
 
   useEffect(() => {
@@ -66,8 +63,8 @@ function FitSheet({ setSelected }) {
       setLoading(true)
       setLoadError("")
 
-      const dealSelect = "id,customer_name,postcode,contract_number,deal_value,installation_start_date,fit_team_1,pipedrive_stage"
-      const issueSelect = "id,customer_name,postcode,contract_number,deal_value,installations_issues_start_date,installation_issues_fit_team,pipedrive_stage"
+      const dealSelect = "id,customer_name,postcode,contract_number,deal_value,balance_outstanding,installation_start_date,fit_team_1,pipedrive_stage"
+      const issueSelect = "id,customer_name,postcode,contract_number,deal_value,balance_outstanding,installations_issues_start_date,installation_issues_fit_team,pipedrive_stage"
 
       const [normalResult, issueResult] = await Promise.all([
         supabase.from("deals").select(dealSelect).gte("installation_start_date", weekStart).lte("installation_start_date", weekEnd).order("installation_start_date", { ascending: true }),
@@ -109,9 +106,9 @@ function FitSheet({ setSelected }) {
   }, [safeWeekDeals, safeWeekIssues])
 
   const safeFitTeams = Array.isArray(fitTeams) ? fitTeams : []
-
   const freshFitsCount = safeWeekDeals.length
   const freshFitsValue = safeWeekDeals.reduce((total, deal) => total + (Number(deal?.deal_value) || 0), 0)
+  const freshFitsBalance = safeWeekDeals.reduce((total, deal) => total + (Number(deal?.balance_outstanding) || 0), 0)
   const issueFitsCount = safeWeekIssues.length
 
   function getDeals(team, date) {
@@ -146,7 +143,7 @@ function FitSheet({ setSelected }) {
       {deal.pipedrive_stage && <div style={{ marginTop: "3px", fontSize: "8px", fontWeight: 700, color: "#40523a" }}>{deal.pipedrive_stage}</div>}
       {deal.postcode && <div style={{ marginTop: "3px", fontSize: "9px", color: "#596455" }}>{deal.postcode}</div>}
       {deal.contract_number && <div style={{ marginTop: "3px", fontSize: "9px", color: "#596455" }}>{deal.contract_number}</div>}
-      {deal.deal_value != null && <div style={{ marginTop: "5px", fontSize: "9px", fontWeight: 700, color: "#263522" }}>{money(deal.deal_value)}</div>}
+      {(deal.deal_value != null || deal.balance_outstanding != null) && <div style={{ marginTop: "5px", fontSize: "9px", fontWeight: 700, color: "#263522" }}>{money(deal.deal_value || 0)} <span style={{ color: "#777", fontWeight: 600 }}>|</span> <span style={{ color: "#8a4a4a" }}>{money(deal.balance_outstanding || 0)}</span></div>}
     </button>
   }
 
@@ -160,17 +157,16 @@ function FitSheet({ setSelected }) {
     </button>
   }
 
-  const statCard = (label, value, valueColor = "#172554") => (
-    <div className="card" style={{ flex: 1, minWidth: "180px", padding: "18px 20px", margin: 0 }}>
-      <div style={{ fontSize: "10px", fontWeight: 700, color: "#777", textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</div>
-      <div style={{ marginTop: "7px", fontSize: "28px", lineHeight: 1.1, fontWeight: 800, color: valueColor }}>{value}</div>
-    </div>
-  )
+  const statCard = (label, value, valueColor = "#172554") => <div className="card" style={{ flex: 1, minWidth: "180px", padding: "18px 20px", margin: 0 }}>
+    <div style={{ fontSize: "10px", fontWeight: 700, color: "#777", textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</div>
+    <div style={{ marginTop: "7px", fontSize: "28px", lineHeight: 1.1, fontWeight: 800, color: valueColor }}>{value}</div>
+  </div>
 
   return <section>
     <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "18px" }}>
       {statCard("Fresh fits", freshFitsCount)}
       {statCard("Fresh fit value", money(freshFitsValue))}
+      {statCard("Fresh fit balance", money(freshFitsBalance), "#8a4a4a")}
       {statCard("Issue fits", issueFitsCount, "#b42318")}
     </div>
 
@@ -178,10 +174,7 @@ function FitSheet({ setSelected }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <CalendarDays size={20} color="#172554" />
-          <div>
-            <h1 style={{ margin: 0, fontSize: "20px", lineHeight: 1.2 }}>FitSheet</h1>
-            <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#888" }}>{weekTitle}</p>
-          </div>
+          <div><h1 style={{ margin: 0, fontSize: "20px", lineHeight: 1.2 }}>FitSheet</h1><p style={{ margin: "4px 0 0", fontSize: "11px", color: "#888" }}>{weekTitle}</p></div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           <button type="button" onClick={() => setWeekOffset(value => value - 1)} style={{ width: "34px", height: "34px", border: "1px solid #dddfe3", borderRadius: "7px", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronLeft size={16} /></button>
@@ -195,29 +188,11 @@ function FitSheet({ setSelected }) {
       <div style={{ minWidth: "1250px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))", borderBottom: "2px solid #172554", position: "sticky", top: 0, zIndex: 10, background: "#fff" }}>
           <div style={{ padding: "10px 12px", background: "#f2f3f5", borderRight: "1px solid #d9dadd", fontSize: "10px", fontWeight: 700, color: "#555", textTransform: "uppercase" }}>Fit Team</div>
-          {weekDays.map(date => {
-            const dateString = formatDate(date)
-            const isToday = dateString === todayString
-            return <div key={dateString} style={{ padding: "8px 10px", textAlign: "center", background: isToday ? "#eef2ff" : "#f2f3f5", borderRight: "1px solid #d9dadd" }}>
-              <div style={{ fontSize: "10px", fontWeight: 700, color: isToday ? "#172554" : "#555", textTransform: "uppercase" }}>{date.toLocaleDateString("en-GB", { weekday: "short" })}</div>
-              <div style={{ marginTop: "3px", fontSize: "12px", fontWeight: 600, color: isToday ? "#172554" : "#333" }}>{date.getDate()} {date.toLocaleDateString("en-GB", { month: "short" })}</div>
-            </div>
-          })}
+          {weekDays.map(date => { const dateString = formatDate(date); const isToday = dateString === todayString; return <div key={dateString} style={{ padding: "8px 10px", textAlign: "center", background: isToday ? "#eef2ff" : "#f2f3f5", borderRight: "1px solid #d9dadd" }}><div style={{ fontSize: "10px", fontWeight: 700, color: isToday ? "#172554" : "#555", textTransform: "uppercase" }}>{date.toLocaleDateString("en-GB", { weekday: "short" })}</div><div style={{ marginTop: "3px", fontSize: "12px", fontWeight: 600, color: isToday ? "#172554" : "#333" }}>{date.getDate()} {date.toLocaleDateString("en-GB", { month: "short" })}</div></div> })}
         </div>
 
         {loadError && <div style={{ padding: "8px 12px", background: "#fff4f4", color: "#b42318", fontSize: "10px", borderBottom: "1px solid #f0b8b8" }}>Unable to load Fit Sheet data: {loadError}</div>}
-
-        {loading ? <div style={{ padding: "60px 20px", textAlign: "center", color: "#999", fontSize: "12px" }}>Loading this week's fits...</div> : safeFitTeams.length === 0 ? <div style={{ padding: "60px 20px", textAlign: "center", color: "#999", fontSize: "12px" }}>No fits or issues found for this week.</div> : safeFitTeams.map(team => <div key={team} style={{ display: "grid", gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))", minHeight: "160px", borderBottom: "1px solid #d9dadd" }}>
-          <div style={{ padding: "14px 12px", background: "#f7f7f8", borderRight: "1px solid #d9dadd", fontSize: "11px", fontWeight: 600, color: "#333", display: "flex", alignItems: "center" }}>{team}</div>
-          {weekDays.map(date => {
-            const deals = getDeals(team, date)
-            const issues = getIssues(team, date)
-            return <div key={`${team}-${formatDate(date)}`} style={{ padding: "6px", borderRight: "1px solid #d9dadd", background: "#fff", minHeight: "160px" }}>
-              {deals.map(renderDealCard)}
-              {issues.map(renderIssueCard)}
-            </div>
-          })}
-        </div>)}
+        {loading ? <div style={{ padding: "60px 20px", textAlign: "center", color: "#999", fontSize: "12px" }}>Loading this week's fits...</div> : safeFitTeams.length === 0 ? <div style={{ padding: "60px 20px", textAlign: "center", color: "#999", fontSize: "12px" }}>No fits or issues found for this week.</div> : safeFitTeams.map(team => <div key={team} style={{ display: "grid", gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))", minHeight: "160px", borderBottom: "1px solid #d9dadd" }}><div style={{ padding: "14px 12px", background: "#f7f7f8", borderRight: "1px solid #d9dadd", fontSize: "11px", fontWeight: 600, color: "#333", display: "flex", alignItems: "center" }}>{team}</div>{weekDays.map(date => { const deals = getDeals(team, date); const issues = getIssues(team, date); return <div key={`${team}-${formatDate(date)}`} style={{ padding: "6px", borderRight: "1px solid #d9dadd", background: "#fff", minHeight: "160px" }}>{deals.map(renderDealCard)}{issues.map(renderIssueCard)}</div> })}</div>)}
       </div>
     </div>
   </section>
