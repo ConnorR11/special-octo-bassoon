@@ -1011,6 +1011,61 @@ function body(
 }
 
 /*
+ * ------------------------------------------------------------
+ * GET DYNAMIC PANEL COUNT
+ * ------------------------------------------------------------
+ *
+ * This is deliberately ONLY used for the "Panels" item.
+ *
+ * Priority:
+ * 1. Sum panelCount from all EPVS arrays
+ * 2. Fall back to data.panelCount
+ * 3. Fall back to data.panel_count
+ *
+ * No other item quantity uses this value.
+ */
+function getDynamicPanelCount(data) {
+  const arrays =
+    Array.isArray(data?.arrays)
+      ? data.arrays
+      : []
+
+  const arrayPanelCount =
+    arrays.reduce(
+      (total, array) => {
+        const count =
+          Number(
+            array?.panelCount ??
+            array?.panel_count ??
+            0
+          )
+
+        return total + (
+          Number.isFinite(count)
+            ? count
+            : 0
+        )
+      },
+      0
+    )
+
+  if (arrayPanelCount > 0) {
+    return arrayPanelCount
+  }
+
+  const directPanelCount =
+    Number(
+      data?.panelCount ??
+      data?.panel_count ??
+      0
+    )
+
+  return Number.isFinite(directPanelCount)
+    ? directPanelCount
+    : 0
+}
+
+/*
  * ITEMISED BREAKDOWN
  */
 async function drawItemisedBreakdown(
@@ -1022,98 +1077,90 @@ async function drawItemisedBreakdown(
   appointment,
   epvs
 ) {
-  const width = ctx.width - ctx.padding * 2
-  const settings = page.settings || {}
+  const width =
+    ctx.width -
+    ctx.padding * 2
 
-  const configured = Array.isArray(settings.included_items)
-    ? settings.included_items
-    : []
+  const settings =
+    page.settings || {}
 
-  const items = configured.map(item =>
-    typeof item === "string"
-      ? {
-          name: item,
-          quantity: 1,
-          type: ""
-        }
-      : {
-          name: item?.name ?? "—",
-          quantity: item?.quantity ?? 1,
-          type: item?.type ?? ""
-        }
-  )
+  const configured =
+    Array.isArray(
+      settings.included_items
+    )
+      ? settings.included_items
+      : []
 
   /*
    * ------------------------------------------------------------
-   * PANEL / ARRAY DATA
+   * ITEMS
    * ------------------------------------------------------------
    *
-   * Panels should use the actual EPVS panel count rather than
-   * the quantity stored against the template item.
+   * Everything uses the configured quantity EXCEPT:
+   *
+   * - Panels -> dynamic EPVS panel count
+   * - Roof Hooks -> "-"
+   * - Rail Fix Kit -> "-"
+   *
+   * Panel Installation is NOT changed and therefore
+   * remains whatever quantity is configured in the template.
    */
+  const panelCount =
+    getDynamicPanelCount(data)
 
-const solarArrays = Array.isArray(data?.arrays)
-  ? data.arrays
-  : []
+  const items =
+    configured.map(item => {
+      const name =
+        typeof item === "string"
+          ? item
+          : item?.name ?? "—"
 
-const calculatedPanelCount = solarArrays.reduce(
-  (total, array) =>
-    total + Number(array?.panelCount || 0),
-  0
-)
+      const type =
+        typeof item === "string"
+          ? ""
+          : item?.type ?? ""
 
-const panelCount =
-  calculatedPanelCount > 0
-    ? calculatedPanelCount
-    : Number(data?.panelCount || 0)
+      let quantity =
+        typeof item === "string"
+          ? 1
+          : item?.quantity ?? 1
 
-const items = configured.map(item => {
-  const name =
-    typeof item === "string"
-      ? item
-      : item?.name ?? "—"
+      const normalisedName =
+        String(name)
+          .trim()
+          .toLowerCase()
 
-  const type =
-    typeof item === "string"
-      ? ""
-      : item?.type ?? ""
+      /*
+       * ONLY the "Panels" item gets the
+       * dynamic panel count.
+       */
+      if (
+        normalisedName === "panels"
+      ) {
+        quantity =
+          panelCount
+      }
 
-  let quantity =
-    typeof item === "string"
-      ? 1
-      : item?.quantity ?? 1
+      /*
+       * Roof Hooks and Rail Fix Kit
+       * deliberately display "-".
+       */
+      if (
+        normalisedName === "roof hooks" ||
+        normalisedName === "rail fix kit"
+      ) {
+        quantity = "-"
+      }
 
-  /*
-   * ONLY change the quantity for the item
-   * named exactly "Panels".
-   */
-  if (
-    String(name).trim().toLowerCase() === "panels"
-  ) {
-    quantity = panelCount
-  }
+      return {
+        name,
+        quantity,
+        type
+      }
+    })
 
-  /*
-   * Keep these as configured/displayed as "-"
-   */
-  const normalisedName =
-    String(name).trim().toLowerCase()
-
-  if (
-    normalisedName === "roof hooks" ||
-    normalisedName === "rail fix kit"
-  ) {
-    quantity = "-"
-  }
-
-  return {
-    name,
-    quantity,
-    type
-  }
-})
-
-  const headerY = ctx.y + 28
+  const headerY =
+    ctx.y + 28
 
   const typeX =
     ctx.padding +
@@ -1128,7 +1175,9 @@ const items = configured.map(item => {
    * ------------------------------------------------------------
    */
 
-  pdf.setFillColor(...ctx.accent)
+  pdf.setFillColor(
+    ...ctx.accent
+  )
 
   pdf.roundedRect(
     ctx.padding,
@@ -1140,8 +1189,17 @@ const items = configured.map(item => {
     "F"
   )
 
-  pdf.setTextColor(255, 255, 255)
-  pdf.setFont("helvetica", "bold")
+  pdf.setTextColor(
+    255,
+    255,
+    255
+  )
+
+  pdf.setFont(
+    "helvetica",
+    "bold"
+  )
+
   pdf.setFontSize(8)
 
   pdf.text(
@@ -1154,17 +1212,22 @@ const items = configured.map(item => {
     "TYPE",
     typeX,
     headerY,
-    { align: "center" }
+    {
+      align: "center"
+    }
   )
 
   pdf.text(
     "QTY",
     ctx.padding + width - 7,
     headerY,
-    { align: "right" }
+    {
+      align: "right"
+    }
   )
 
-  let y = headerY + 9
+  let y =
+    headerY + 9
 
   /*
    * ------------------------------------------------------------
@@ -1172,115 +1235,157 @@ const items = configured.map(item => {
    * ------------------------------------------------------------
    */
 
-  items.forEach((item, index) => {
-    const name = interpolate(
-      String(item.name),
-      appointment,
-      epvs
-    )
+  items.forEach(
+    (item, index) => {
+      const name =
+        interpolate(
+          String(item.name),
+          appointment,
+          epvs
+        )
 
-    const type = interpolate(
-      String(item.type),
-      appointment,
-      epvs
-    )
+      const type =
+        interpolate(
+          String(item.type),
+          appointment,
+          epvs
+        )
 
-    const quantity = getItemQuantity(item)
+      /*
+       * IMPORTANT:
+       *
+       * Use the quantity calculated above directly.
+       * Do NOT recalculate it here.
+       */
+      const quantity =
+        item.quantity
 
-    if (index % 2 === 0) {
-      pdf.setFillColor(247, 249, 250)
+      if (index % 2 === 0) {
+        pdf.setFillColor(
+          247,
+          249,
+          250
+        )
 
-      pdf.roundedRect(
-        ctx.padding,
-        y - 5.2,
-        width,
-        rowHeight,
-        1.2,
-        1.2,
-        "F"
+        pdf.roundedRect(
+          ctx.padding,
+          y - 5.2,
+          width,
+          rowHeight,
+          1.2,
+          1.2,
+          "F"
+        )
+      }
+
+      /*
+       * PRODUCT / SERVICE
+       */
+
+      pdf.setTextColor(
+        ...ctx.text
       )
-    }
 
-    /*
-     * PRODUCT / SERVICE
-     */
-
-    pdf.setTextColor(...ctx.text)
-    pdf.setFont("helvetica", "normal")
-    pdf.setFontSize(8.1)
-
-    pdf.text(
-      name,
-      ctx.padding + 7,
-      y
-    )
-
-    /*
-     * TYPE TAG
-     */
-
-    if (type) {
-      pdf.setFont("helvetica", "bold")
-      pdf.setFontSize(6.5)
-
-      const tagWidth =
-        pdf.getTextWidth(type) + 6
-
-      const typeKey =
-        type.toLowerCase()
-
-      const fill =
-        typeKey === "service"
-          ? [255, 241, 230]
-          : typeKey === "product"
-            ? [231, 242, 248]
-            : [238, 240, 242]
-
-      const colour =
-        typeKey === "service"
-          ? [199, 106, 0]
-          : typeKey === "product"
-            ? [11, 93, 138]
-            : [75, 85, 92]
-
-      pdf.setFillColor(...fill)
-      pdf.setTextColor(...colour)
-
-      pdf.roundedRect(
-        typeX - tagWidth / 2,
-        y - 3.8,
-        tagWidth,
-        4.5,
-        2,
-        2,
-        "F"
+      pdf.setFont(
+        "helvetica",
+        "normal"
       )
+
+      pdf.setFontSize(8.1)
 
       pdf.text(
-        type,
-        typeX,
-        y - 0.5,
-        { align: "center" }
+        name,
+        ctx.padding + 7,
+        y
       )
+
+      /*
+       * TYPE TAG
+       */
+
+      if (type) {
+        pdf.setFont(
+          "helvetica",
+          "bold"
+        )
+
+        pdf.setFontSize(6.5)
+
+        const tagWidth =
+          pdf.getTextWidth(type) + 6
+
+        const typeKey =
+          type.toLowerCase()
+
+        const fill =
+          typeKey === "service"
+            ? [255, 241, 230]
+            : typeKey === "product"
+              ? [231, 242, 248]
+              : [238, 240, 242]
+
+        const colour =
+          typeKey === "service"
+            ? [199, 106, 0]
+            : typeKey === "product"
+              ? [11, 93, 138]
+              : [75, 85, 92]
+
+        pdf.setFillColor(
+          ...fill
+        )
+
+        pdf.setTextColor(
+          ...colour
+        )
+
+        pdf.roundedRect(
+          typeX - tagWidth / 2,
+          y - 3.8,
+          tagWidth,
+          4.5,
+          2,
+          2,
+          "F"
+        )
+
+        pdf.text(
+          type,
+          typeX,
+          y - 0.5,
+          {
+            align: "center"
+          }
+        )
+      }
+
+      /*
+       * QUANTITY
+       */
+
+      pdf.setTextColor(
+        ...ctx.text
+      )
+
+      pdf.setFont(
+        "helvetica",
+        "bold"
+      )
+
+      pdf.setFontSize(8.1)
+
+      pdf.text(
+        String(quantity),
+        ctx.padding + width - 7,
+        y,
+        {
+          align: "right"
+        }
+      )
+
+      y += rowHeight
     }
-
-    /*
-     * QUANTITY
-     */
-
-    pdf.setTextColor(...ctx.text)
-    pdf.setFont("helvetica", "bold")
-    pdf.setFontSize(8.1)
-
-    pdf.text(
-      quantity,
-      ctx.padding + width - 7,
-      y,
-      { align: "right" }
-    )
-
-    y += rowHeight
-  })
+  )
 
   y += 7
 
@@ -1299,12 +1404,16 @@ const items = configured.map(item => {
     appointment?.price
 
   /*
-   * Make the card slightly taller so the signature can sit
-   * neatly inside it without overlapping anything.
+   * Total card containing both:
+   *
+   * LEFT  = Customer signature
+   * RIGHT = Total system price
    */
   const totalCardHeight = 32
 
-  pdf.setFillColor(...ctx.accent)
+  pdf.setFillColor(
+    ...ctx.accent
+  )
 
   pdf.roundedRect(
     ctx.padding,
@@ -1323,15 +1432,20 @@ const items = configured.map(item => {
    */
 
   const signatureUrl =
-    await getSignatureImageUrl(appointment)
+    await getSignatureImageUrl(
+      appointment
+    )
 
   if (signatureUrl) {
     try {
       const signature =
-        await imageData(signatureUrl)
+        await imageData(
+          signatureUrl
+        )
 
       /*
-       * Signature occupies the left side of the card.
+       * Signature area on the LEFT
+       * side of the blue card.
        */
       const signatureAreaX =
         ctx.padding + 7
@@ -1340,19 +1454,28 @@ const items = configured.map(item => {
         y + 6
 
       const signatureAreaWidth =
-        Math.min(65, width * 0.45)
+        Math.min(
+          65,
+          width * 0.45
+        )
 
-      const signatureAreaHeight = 20
+      const signatureAreaHeight =
+        20
 
       /*
-       * Title
+       * Signature title
        */
+      pdf.setTextColor(
+        255,
+        255,
+        255
+      )
 
-      pdf.setTextColor(255, 255, 255)
       pdf.setFont(
         "helvetica",
         "bold"
       )
+
       pdf.setFontSize(6.5)
 
       pdf.text(
@@ -1362,9 +1485,8 @@ const items = configured.map(item => {
       )
 
       /*
-       * Signature background
+       * White signature box
        */
-
       pdf.setFillColor(
         252,
         253,
@@ -1382,9 +1504,9 @@ const items = configured.map(item => {
       )
 
       /*
-       * Keep the actual signature nicely contained.
+       * Keep signature contained inside
+       * the white box.
        */
-
       const maxSignatureWidth =
         signatureAreaWidth - 8
 
@@ -1439,7 +1561,6 @@ const items = configured.map(item => {
         undefined,
         "FAST"
       )
-
     } catch (error) {
       console.error(
         "Unable to add customer signature to contract:",
@@ -1452,8 +1573,6 @@ const items = configured.map(item => {
    * ------------------------------------------------------------
    * TOTAL PRICE
    * ------------------------------------------------------------
-   *
-   * The price sits on the right side of the same card.
    */
 
   const priceX =
@@ -1478,7 +1597,9 @@ const items = configured.map(item => {
     "TOTAL SYSTEM PRICE",
     priceX,
     y + 10,
-    { align: "right" }
+    {
+      align: "right"
+    }
   )
 
   pdf.setFont(
@@ -1492,7 +1613,9 @@ const items = configured.map(item => {
     money(price),
     priceX,
     y + 22,
-    { align: "right" }
+    {
+      align: "right"
+    }
   )
 }
 
@@ -2708,18 +2831,6 @@ async function renderPage(
     kind === "epvs"
   ) {
 
-    /*
-     * IMPORTANT:
-     *
-     * rows() returns the Y position immediately
-     * underneath the last row.
-     *
-     * Previously this return value was ignored,
-     * which meant the SAP array table was drawn
-     * using the original Y position and could
-     * overlap the EPVS calculation table.
-     */
-
     y =
       rows(
         pdf,
@@ -2789,12 +2900,6 @@ async function renderPage(
         true
       )
 
-    /*
-     * Add space after the final EPVS row.
-     * Because y now contains the actual position
-     * returned by rows(), the SAP table cannot
-     * overlap the figures above it.
-     */
     y += 10
 
     const solarArrays =
@@ -2837,9 +2942,6 @@ async function renderPage(
     if (
       solarArrays.length
     ) {
-      /*
-       * SAP CALCULATION
-       */
       const tableTitleY =
         y + 3
 
@@ -2951,9 +3053,6 @@ async function renderPage(
         tableY +
         headerHeight
 
-      /*
-       * Totals for the SAP table.
-       */
       let totalPanels = 0
       let totalSystemSize = 0
       let totalGeneration = 0
@@ -3100,16 +3199,6 @@ async function renderPage(
         }
       )
 
-      /*
-       * TOTAL ROW
-       *
-       * We deliberately total the numerical
-       * SAP outputs rather than using the overall
-       * EPVS systemSize/generation fields.
-       *
-       * This means the total directly reflects
-       * the individual SAP array rows shown above.
-       */
       const totalValues = [
         "TOTAL",
         num(totalPanels),
@@ -3190,10 +3279,6 @@ async function renderPage(
 
       rowY += rowHeight
 
-      /*
-       * Leave enough room underneath the table
-       * for any page content that may follow.
-       */
       y = rowY + 8
     }
 
