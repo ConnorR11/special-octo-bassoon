@@ -1011,61 +1011,6 @@ function body(
 }
 
 /*
- * ------------------------------------------------------------
- * GET DYNAMIC PANEL COUNT
- * ------------------------------------------------------------
- *
- * This is deliberately ONLY used for the "Panels" item.
- *
- * Priority:
- * 1. Sum panelCount from all EPVS arrays
- * 2. Fall back to data.panelCount
- * 3. Fall back to data.panel_count
- *
- * No other item quantity uses this value.
- */
-function getDynamicPanelCount(data) {
-  const arrays =
-    Array.isArray(data?.arrays)
-      ? data.arrays
-      : []
-
-  const arrayPanelCount =
-    arrays.reduce(
-      (total, array) => {
-        const count =
-          Number(
-            array?.panelCount ??
-            array?.panel_count ??
-            0
-          )
-
-        return total + (
-          Number.isFinite(count)
-            ? count
-            : 0
-        )
-      },
-      0
-    )
-
-  if (arrayPanelCount > 0) {
-    return arrayPanelCount
-  }
-
-  const directPanelCount =
-    Number(
-      data?.panelCount ??
-      data?.panel_count ??
-      0
-    )
-
-  return Number.isFinite(directPanelCount)
-    ? directPanelCount
-    : 0
-}
-
-/*
  * ITEMISED BREAKDOWN
  */
 async function drawItemisedBreakdown(
@@ -1078,35 +1023,52 @@ async function drawItemisedBreakdown(
   epvs
 ) {
   const width =
-    ctx.width -
-    ctx.padding * 2
+    ctx.width - ctx.padding * 2
 
   const settings =
     page.settings || {}
 
   const configured =
-    Array.isArray(
-      settings.included_items
-    )
+    Array.isArray(settings.included_items)
       ? settings.included_items
       : []
 
   /*
    * ------------------------------------------------------------
-   * ITEMS
+   * PANEL COUNT
    * ------------------------------------------------------------
    *
-   * Everything uses the configured quantity EXCEPT:
-   *
-   * - Panels -> dynamic EPVS panel count
-   * - Roof Hooks -> "-"
-   * - Rail Fix Kit -> "-"
-   *
-   * Panel Installation is NOT changed and therefore
-   * remains whatever quantity is configured in the template.
+   * Panels are the ONLY item whose quantity is calculated
+   * dynamically from the EPVS array data.
    */
+
+  const solarArrays =
+    Array.isArray(data?.arrays)
+      ? data.arrays
+      : []
+
+  const calculatedPanelCount =
+    solarArrays.reduce(
+      (total, array) =>
+        total +
+        Number(
+          array?.panelCount || 0
+        ),
+      0
+    )
+
   const panelCount =
-    getDynamicPanelCount(data)
+    calculatedPanelCount > 0
+      ? calculatedPanelCount
+      : Number(
+          data?.panelCount || 0
+        )
+
+  /*
+   * ------------------------------------------------------------
+   * ITEMS
+   * ------------------------------------------------------------
+   */
 
   const items =
     configured.map(item => {
@@ -1120,6 +1082,10 @@ async function drawItemisedBreakdown(
           ? ""
           : item?.type ?? ""
 
+      /*
+       * Start with the quantity configured in the template.
+       */
+
       let quantity =
         typeof item === "string"
           ? 1
@@ -1131,25 +1097,64 @@ async function drawItemisedBreakdown(
           .toLowerCase()
 
       /*
-       * ONLY the "Panels" item gets the
-       * dynamic panel count.
+       * ONLY PANELS USE THE DYNAMIC PANEL COUNT.
        */
+
       if (
         normalisedName === "panels"
       ) {
         quantity =
-          panelCount
+          panelCount > 0
+            ? panelCount
+            : 0
       }
 
       /*
-       * Roof Hooks and Rail Fix Kit
-       * deliberately display "-".
+       * ROOF HOOKS
        */
+
       if (
-        normalisedName === "roof hooks" ||
+        normalisedName === "roof hooks"
+      ) {
+        quantity = "-"
+      }
+
+      /*
+       * RAIL FIX KIT
+       */
+
+      if (
         normalisedName === "rail fix kit"
       ) {
         quantity = "-"
+      }
+
+      /*
+       * PANEL INSTALLATION IS ONE SERVICE.
+       */
+
+      if (
+        normalisedName ===
+        "panel installation"
+      ) {
+        quantity = 1
+      }
+
+      /*
+       * If a template quantity has accidentally been
+       * stored as {{something}}, never print the
+       * placeholder into the PDF.
+       *
+       * Default it to 1.
+       */
+
+      if (
+        typeof quantity === "string" &&
+        /^\s*\{\{\s*[a-zA-Z0-9_]+\s*\}\}\s*$/.test(
+          quantity
+        )
+      ) {
+        quantity = 1
       }
 
       return {
@@ -1254,11 +1259,18 @@ async function drawItemisedBreakdown(
       /*
        * IMPORTANT:
        *
-       * Use the quantity calculated above directly.
-       * Do NOT recalculate it here.
+       * Quantity is NOT passed through interpolate().
+       *
+       * This is what prevents things such as
+       * {{panel_count}} from being printed literally.
        */
+
       const quantity =
         item.quantity
+
+      /*
+       * Alternating row background
+       */
 
       if (index % 2 === 0) {
         pdf.setFillColor(
@@ -1404,11 +1416,10 @@ async function drawItemisedBreakdown(
     appointment?.price
 
   /*
-   * Total card containing both:
-   *
-   * LEFT  = Customer signature
-   * RIGHT = Total system price
+   * Keep the signature and price together
+   * inside the same blue card.
    */
+
   const totalCardHeight = 32
 
   pdf.setFillColor(
@@ -1444,9 +1455,9 @@ async function drawItemisedBreakdown(
         )
 
       /*
-       * Signature area on the LEFT
-       * side of the blue card.
+       * Signature area on the LEFT.
        */
+
       const signatureAreaX =
         ctx.padding + 7
 
@@ -1463,8 +1474,9 @@ async function drawItemisedBreakdown(
         20
 
       /*
-       * Signature title
+       * CUSTOMER SIGNATURE TITLE
        */
+
       pdf.setTextColor(
         255,
         255,
@@ -1485,8 +1497,9 @@ async function drawItemisedBreakdown(
       )
 
       /*
-       * White signature box
+       * WHITE SIGNATURE BOX
        */
+
       pdf.setFillColor(
         252,
         253,
@@ -1504,9 +1517,9 @@ async function drawItemisedBreakdown(
       )
 
       /*
-       * Keep signature contained inside
-       * the white box.
+       * Keep the signature nicely contained.
        */
+
       const maxSignatureWidth =
         signatureAreaWidth - 8
 
@@ -1541,7 +1554,8 @@ async function drawItemisedBreakdown(
         (
           signatureAreaWidth -
           signatureWidth
-        ) / 2
+        ) /
+          2
 
       const signatureY =
         signatureAreaY +
@@ -1549,7 +1563,8 @@ async function drawItemisedBreakdown(
         (
           maxSignatureHeight -
           signatureHeight
-        ) / 2
+        ) /
+          2
 
       pdf.addImage(
         signature.dataUrl,
@@ -1571,7 +1586,7 @@ async function drawItemisedBreakdown(
 
   /*
    * ------------------------------------------------------------
-   * TOTAL PRICE
+   * TOTAL SYSTEM PRICE
    * ------------------------------------------------------------
    */
 
