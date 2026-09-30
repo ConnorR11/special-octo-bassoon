@@ -67,7 +67,7 @@ function drawThirtyYearBreakdown(pdf, page, ctx, epvs) {
   pdf.setFont("helvetica", "normal")
   pdf.setFontSize(6.5)
   pdf.setTextColor(100, 112, 120)
-  pdf.text("Average inflation scenario (3.8%)", tableX, ctx.y + 14)
+  pdf.text("Average inflation scenario (7.6%)", tableX, ctx.y + 14)
 
   let x = tableX
   pdf.setFillColor(...ctx.accent)
@@ -205,7 +205,7 @@ if (!source.includes(renderMarker)) {
 let updated = source.replace(renderMarker, helper + "\n" + renderMarker)
 
 const pageMarker = `  title(pdf, page, ctx)\n  let y = ctx.y + 28\n  const width = ctx.width - ctx.padding * 2\n`
-const pageReplacement = `${pageMarker}\n  const pageTitle = String(page?.title || "").trim().toLowerCase()\n  if (pageTitle === "epvs calculations cont." || kind === "epvs_continuation") {\n    drawThirtyYearBreakdown(pdf, page, ctx, epvs)\n    return\n  }\n`
+const pageReplacement = `${pageMarker}\n  const pageTitle = String(page?.title || "").trim().toLowerCase()\n  if (pageTitle === "epvs calculations cont." || kind === "epvs_cont" || kind === "epvs_continuation") {\n    drawThirtyYearBreakdown(pdf, page, ctx, epvs)\n    return\n  }\n`
 
 if (!updated.includes(pageMarker)) {
   throw new Error("Could not locate the renderPage content marker in GenerateSolarContract.js")
@@ -213,4 +213,4 @@ if (!updated.includes(pageMarker)) {
 
 updated = updated.replace(pageMarker, pageReplacement)
 fs.writeFileSync(filePath, updated)
-console.log("Patched EPVS Calculations Cont. with 30-year breakdown")
+console.log("Patched EPVS Calculations Cont. with 30-year breakdown using the 7.6% average inflation scenario")
