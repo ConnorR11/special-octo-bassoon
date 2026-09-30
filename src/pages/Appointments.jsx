@@ -174,7 +174,7 @@ function Appointments({ onSelectAppointment }) {
       <div className="card" style={{ marginBottom: 18, padding: "12px 14px" }}>
         <div style={{ position: "relative" }}>
           <Search size={15} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "#999" }} />
-          <input type="text" value={query} onChange={(e) => handleSearch(e.target.value)} placeholder="Search customer, postcode, phone, email or sales rep..." style={{ width: "100%", boxSizing: "border-box", height: 38, padding: "0 12px 0 34px", border: "1px solid #d9dadd", borderRadius: 7, outline: "none", fontFamily: "inherit", fontSize: 12 }} />
+          <input type="text" value={query} onChange={(e) => handleSearch(e.target.value)} placeholder="Search customer, postcode, email or sales rep..." style={{ width: "100%", boxSizing: "border-box", height: 38, padding: "0 12px 0 34px", border: "1px solid #d9dadd", borderRadius: 7, outline: "none", fontFamily: "inherit", fontSize: 12 }} />
         </div>
       </div>
 
@@ -208,7 +208,6 @@ function Appointments({ onSelectAppointment }) {
             >
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#222", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{appointment.name || "Unnamed customer"}</div>
-                {appointment.phone_number_1 && <div style={{ marginTop: 3, fontSize: 9, color: "#888" }}>{appointment.phone_number_1}</div>}
               </div>
               <div style={{ fontSize: 10, color: "#444" }}>{formatDate(appointment.appointment_date)}</div>
               <div style={{ fontSize: 10, color: "#555" }}>{appointment.postcode || "—"}</div>
