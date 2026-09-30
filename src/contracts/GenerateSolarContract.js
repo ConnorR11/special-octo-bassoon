@@ -23,14 +23,23 @@ function getOpenSolarImageUrl(appointment) {
   return String(appointment?.open_solar_image || "").trim()
 }
 
+// OpenSolar hardware is stored inside data.openSolar.hardware in the current
+// canonical EPVS_calculation structure. Keep data.hardware as a fallback for
+// older calculations.
+function getOpenSolarHardware(data) {
+  return data?.hardware || data?.openSolar?.hardware || null
+}
+
 function getPanelHardware(data) {
-  const panels = Array.isArray(data?.hardware?.panels) ? data.hardware.panels : []
+  const hardware = getOpenSolarHardware(data)
+  const panels = Array.isArray(hardware?.panels) ? hardware.panels : []
   return panels[0] || null
 }
 
 function getTotalPanelCount(data) {
   const source = data || {}
-  const hardwarePanels = Array.isArray(source.hardware?.panels) ? source.hardware.panels : []
+  const hardware = getOpenSolarHardware(source)
+  const hardwarePanels = Array.isArray(hardware?.panels) ? hardware.panels : []
   const hardwareTotal = hardwarePanels.reduce((total, panel) => {
     const count = Number(panel?.quantity ?? panel?.panelCount ?? panel?.panel_count ?? 0)
     return total + (Number.isFinite(count) && count > 0 ? count : 0)
@@ -163,7 +172,8 @@ function getContractProductNames(appointment, epvs, pages) {
   ;(Array.isArray(data.inverters) ? data.inverters : []).forEach((item) => { add(item?.model); add(item?.name) })
   ;(Array.isArray(data.batteries) ? data.batteries : []).forEach((item) => { add(item?.model); add(item?.name) })
   ;(Array.isArray(data.panels) ? data.panels : []).forEach((item) => { add(item?.model); add(item?.name) })
-  ;(Array.isArray(data.hardware?.panels) ? data.hardware.panels : []).forEach((item) => {
+  const hardware = getOpenSolarHardware(data)
+  ;(Array.isArray(hardware?.panels) ? hardware.panels : []).forEach((item) => {
     add(item?.model)
     add(item?.name)
     if (item?.manufacturer && item?.model) add(`${item.manufacturer} ${item.model}`)
@@ -329,14 +339,17 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
     let name = typeof item === "string" ? item : item?.name ?? "—"
     const type = typeof item === "string" ? "" : item?.type ?? ""
     let quantity = typeof item === "string" ? 1 : item?.quantity ?? 1
-    const normalisedName = String(name).trim().toLowerCase()
+    const normalizedName = String(name).trim().toLowerCase()
 
-    if (normalisedName === "panels") {
+    // The template still calls this item "Panels", but the actual product
+    // displayed in the contract must come from OpenSolar hardware.
+    if (normalizedName === "panels") {
       name = panelHardware?.model || name
       quantity = panelHardware?.quantity ?? getTotalPanelCount(data)
     }
-    if (normalisedName === "roof hooks" || normalisedName === "rail fix kit") quantity = "-"
-    if (normalisedName === "panel installation") quantity = 1
+
+    if (normalizedName === "roof hooks" || normalizedName === "rail fix kit") quantity = "-"
+    if (normalizedName === "panel installation") quantity = 1
 
     return { name, type, quantity }
   })
@@ -393,6 +406,7 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
   y += 7
   const price = results?.systemCost ?? data?.systemCost ?? appointment?.system_cost ?? appointment?.contract_value ?? appointment?.sale_value ?? appointment?.price
   const totalCardHeight = 32
+
   pdf.setFillColor(...ctx.accent)
   pdf.roundedRect(ctx.padding, y, width, totalCardHeight, 3, 3, "F")
 
@@ -463,16 +477,15 @@ function drawTermsConditions(pdf, page, ctx, appointment, epvs) {
   const spacing = Number(settings.section_spacing || 2)
   const headingSize = Number(settings.heading_font_size || 7)
   const sections = parseTermsSections(interpolate(String(page.body || ""), appointment, epvs))
-
   const makeLines = () => {
     const lines = []
     sections.forEach((section) => {
-      const normalised = section.replace(/\s+/g, " ").trim()
-      const match = normalised.match(/^(\d+\.\s+)(.*)$/)
+      const normalized = section.replace(/\s+/g, " ").trim()
+      const match = normalized.match(/^(\d+\.\s+)(.*)$/)
       if (!match) {
         pdf.setFont("helvetica", "normal")
         pdf.setFontSize(fontSize)
-        pdf.splitTextToSize(normalised, columnWidth).forEach((text) => lines.push({ text }))
+        pdf.splitTextToSize(normalized, columnWidth).forEach((text) => lines.push({ text }))
         lines.push({ spacing })
         return
       }
@@ -485,7 +498,7 @@ function drawTermsConditions(pdf, page, ctx, appointment, epvs) {
       pdf.setFont("helvetica", "normal")
       pdf.setFontSize(fontSize)
       if (prefixWidth < columnWidth - 10) {
-        const first = pdf.splitTextToSize(bodyText, Math.max(10, columnWidth - prefixWidth))[0] || ""
+        const first = (pdf.splitTextToSize(bodyText, Math.max(10, columnWidth - prefixWidth))[0] || "")
         lines.push({ text: first, boldPrefix: prefix })
         const rest = bodyText.slice(first.length).trim()
         if (rest) pdf.splitTextToSize(rest, columnWidth).forEach((text) => lines.push({ text }))
@@ -551,7 +564,9 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs) {
     pdf.setFillColor(...rgb(settings.background, [5, 47, 79]))
     pdf.rect(0, 0, ctx.width, ctx.height, "F")
     let logo = null
-    try { logo = await imageData("/homeshield-logo.png") } catch {}
+    try {
+      logo = await imageData("/homeshield-logo.png")
+    } catch {}
     if (logo) {
       const w = 38
       pdf.addImage(logo.dataUrl, "PNG", ctx.padding, 14, w, w * logo.height / logo.width, undefined, "FAST")
@@ -605,18 +620,18 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs) {
     const items = Array.isArray(settings.items) ? settings.items : []
     items.forEach((item, index) => {
       const top = y
-      const rx = index % 2 === 1 ? ctx.padding + width : ctx.padding
+      const x = index % 2 === 1 ? ctx.padding + width : ctx.padding
       const align = index % 2 === 1 ? "right" : "left"
       pdf.setFillColor(246, 248, 250)
       pdf.roundedRect(ctx.padding, top, width, 27, 3, 3, "F")
       pdf.setTextColor(...ctx.text)
       pdf.setFont("helvetica", "bold")
       pdf.setFontSize(10)
-      pdf.text(textValue(item.name, "Accreditation"), rx, top + 9, { align })
+      pdf.text(textValue(item.name, "Accreditation"), x, top + 9, { align })
       pdf.setFont("helvetica", "normal")
       pdf.setFontSize(8)
       pdf.setTextColor(100, 112, 120)
-      pdf.text(pdf.splitTextToSize(textValue(item.description, ""), width - 18), rx, top + 15, { align, maxWidth: width - 18 })
+      pdf.text(pdf.splitTextToSize(textValue(item.description, ""), width - 18), x, top + 15, { align, maxWidth: width - 18 })
       y += 35
     })
     body(pdf, page.body, ctx.padding, y + 4, width, ctx.text, appointment, epvs)
@@ -633,8 +648,11 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs) {
       ["30 year return", money(results.thirtyYearProfit)]
     ], ctx.padding, y, width, ctx.text, true)
     y += 10
+
     const arrays = Array.isArray(data.arrays)
-      ? data.arrays.slice(0, Number(data.numberOfArrays || data.arrays.length)).map((array, index) => ({ array, index, calculated: Array.isArray(results.arrays) ? results.arrays[index] || {} : {} })).filter((item) => getTotalPanelCount({ arrays: [item.array] }) > 0)
+      ? data.arrays.slice(0, Number(data.numberOfArrays || data.arrays.length))
+        .map((array, index) => ({ array, index, calculated: Array.isArray(results.arrays) ? results.arrays[index] || {} : {} }))
+        .filter((item) => getTotalPanelCount({ arrays: [item.array] }) > 0)
       : []
 
     if (arrays.length) {
@@ -649,21 +667,23 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs) {
       const tableX = ctx.padding
       const headerHeight = 8
       const rowHeight = 7
-      let tx = tableX
+      let x = tableX
       pdf.setFont("helvetica", "bold")
       pdf.setFontSize(5.8)
-      headers.forEach((headerText, index) => {
+      headers.forEach((header, index) => {
         pdf.setFillColor(...ctx.accent)
-        pdf.rect(tx, tableY, widths[index], headerHeight, "F")
+        pdf.rect(x, tableY, widths[index], headerHeight, "F")
         pdf.setTextColor(255, 255, 255)
-        const lines = pdf.splitTextToSize(headerText, widths[index] - 2)
-        pdf.text(lines.slice(0, 2), tx + widths[index] / 2, tableY + (lines.length > 1 ? 3 : 5), { align: "center" })
-        tx += widths[index]
+        const lines = pdf.splitTextToSize(header, widths[index] - 2)
+        pdf.text(lines.slice(0, 2), x + widths[index] / 2, tableY + (lines.length > 1 ? 3 : 5), { align: "center" })
+        x += widths[index]
       })
+
       let rowY = tableY + headerHeight
       let totalPanels = 0
       let totalSystemSize = 0
       let totalGeneration = 0
+
       arrays.forEach(({ array, index, calculated }) => {
         const panelCount = getTotalPanelCount({ arrays: [array] })
         const systemSize = Number(calculated?.systemSize || 0)
@@ -682,31 +702,31 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs) {
           `${num(systemSize, 2)} kWp`,
           num(generation, 2)
         ]
-        tx = tableX
+        x = tableX
         values.forEach((value, valueIndex) => {
-          const fill = valueIndex % 2 === 0 ? [247, 249, 250] : [255, 255, 255]
-          pdf.setFillColor(...fill)
+          pdf.setFillColor(valueIndex % 2 === 0 ? 247 : 255, valueIndex % 2 === 0 ? 249 : 255, valueIndex % 2 === 0 ? 250 : 255)
           pdf.setDrawColor(230, 235, 240)
-          pdf.rect(tx, rowY, widths[valueIndex], rowHeight, "FD")
+          pdf.rect(x, rowY, widths[valueIndex], rowHeight, "FD")
           pdf.setTextColor(...ctx.text)
           pdf.setFont("helvetica", valueIndex === 0 ? "bold" : "normal")
           pdf.setFontSize(5.9)
-          pdf.text(String(value), tx + widths[valueIndex] / 2, rowY + 4.6, { align: "center" })
-          tx += widths[valueIndex]
+          pdf.text(String(value), x + widths[valueIndex] / 2, rowY + 4.6, { align: "center" })
+          x += widths[valueIndex]
         })
         rowY += rowHeight
       })
+
       const totals = ["TOTAL", num(totalPanels), "—", "—", "—", "—", "—", `${num(totalSystemSize, 2)} kWp`, num(totalGeneration, 2)]
-      tx = tableX
+      x = tableX
       totals.forEach((value, index) => {
         pdf.setFillColor(...ctx.accent)
         pdf.setDrawColor(255, 255, 255)
-        pdf.rect(tx, rowY, widths[index], rowHeight, "FD")
+        pdf.rect(x, rowY, widths[index], rowHeight, "FD")
         pdf.setTextColor(255, 255, 255)
         pdf.setFont("helvetica", "bold")
         pdf.setFontSize(5.9)
-        pdf.text(String(value), tx + widths[index] / 2, rowY + 4.6, { align: "center" })
-        tx += widths[index]
+        pdf.text(String(value), x + widths[index] / 2, rowY + 4.6, { align: "center" })
+        x += widths[index]
       })
       y = rowY + rowHeight + 8
     }
@@ -766,21 +786,25 @@ export async function GenerateSolarContract({ appointment, epvsCalculation }) {
 
   let epvs = epvsCalculation || appointment?.epvs_calculation || null
   if (typeof epvs === "string") {
-    try { epvs = JSON.parse(epvs) } catch {}
+    try {
+      epvs = JSON.parse(epvs)
+    } catch {}
   }
 
   const pageSize = pages.find((page) => page.settings?.page_size)?.settings?.page_size || "A4"
   const orientation = pages.find((page) => page.settings?.orientation)?.settings?.orientation || "portrait"
   const pdf = new jsPDF({ unit: "mm", format: pageSize.toLowerCase(), orientation })
 
-  for (let i = 0; i < pages.length; i += 1) {
-    if (i > 0) pdf.addPage(pageSize.toLowerCase(), orientation)
-    const page = pages[i]
-    await renderPage(pdf, page, i, pages.length, appointment, epvs)
-    footer(pdf, i, pages.length, page.settings || {}, appointment)
+  for (let index = 0; index < pages.length; index += 1) {
+    if (index > 0) pdf.addPage(pageSize.toLowerCase(), orientation)
+    const page = pages[index]
+    await renderPage(pdf, page, index, pages.length, appointment, epvs)
+    footer(pdf, index, pages.length, page.settings || {}, appointment)
   }
 
-  const safeName = textValue(appointment?.name, "Customer").replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "") || "Customer"
+  const safeName = textValue(appointment?.name, "Customer")
+    .replace(/[^a-z0-9]+/gi, "-")
+    .replace(/^-+|-+$/g, "") || "Customer"
   const bytes = await appendProductDatasheets(pdf, appointment, epvs, pages)
   const blob = new Blob([bytes], { type: "application/pdf" })
   const url = URL.createObjectURL(blob)
