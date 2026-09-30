@@ -275,6 +275,30 @@ export function VisibilityProvider({ children }) {
       return !!allocatedEmail && visibleRepEmails?.includes(allocatedEmail)
     }
 
+    // Apply the same appointment visibility rules directly to a Supabase query.
+    // Pages should use this instead of implementing their own role/date logic.
+    function applyAppointmentVisibility(request) {
+      if (!request || canSeeAll) return request
+
+      if ((isBranchManager || isSalesManager) && branch) {
+        return request.ilike("branch", branch)
+      }
+
+      if (isSalesRep && ownEmail) {
+        const sevenDaysAgo = new Date()
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+        return request
+          .ilike("rep_allocated", ownEmail)
+          .gte("appointment_date", sevenDaysAgo.toISOString())
+      }
+
+      if (ownEmail) {
+        return request.ilike("rep_allocated", ownEmail)
+      }
+
+      return request.ilike("rep_allocated", "__NO_VISIBLE_REP__")
+    }
+
     function canSeeDeal(deal) {
       if (!deal) return false
       if (canSeeAll) return true
@@ -341,6 +365,7 @@ export function VisibilityProvider({ children }) {
       visibleRepEmails,
       visibleBranches,
       canSeeAppointment,
+      applyAppointmentVisibility,
       canSeeDeal,
       canSeeRecord,
     }
