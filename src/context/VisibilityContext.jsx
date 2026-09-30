@@ -252,6 +252,20 @@ export function VisibilityProvider({ children }) {
       const appointmentBranch = normalise(appointment?.branch)
       const allocatedEmail = normaliseEmail(appointment?.rep_allocated)
 
+      // Sales reps can only see their own appointments while the appointment
+      // date is within the last seven days. Future appointments remain visible.
+      if (isSalesRep) {
+        const rawAppointmentDate = appointment?.appointment_date
+        if (rawAppointmentDate) {
+          const appointmentDate = new Date(rawAppointmentDate)
+          if (!Number.isNaN(appointmentDate.getTime())) {
+            const sevenDaysAgo = new Date()
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+            if (appointmentDate < sevenDaysAgo) return false
+          }
+        }
+      }
+
       // Branch managers and sales managers see every appointment in their branch.
       if ((isBranchManager || isSalesManager) && branch && appointmentBranch === normalise(branch)) {
         return true
