@@ -24,18 +24,32 @@ for (const label of labels) {
 }
 
 // Keep the existing 30-year table dimensions and row heights, but make the
-// figures larger and easier to read without changing the table size.
-source = source.replace(/pdf\.setFontSize\(4\.8\)/g, "pdf.setFontSize(7.2)")
+// figures 8pt and display negative figures in red.
+source = source.replace(/pdf\.setFontSize\(4\.8\)/g, "pdf.setFontSize(8)")
+source = source.replace(/pdf\.setFontSize\(7\.2\)/g, "pdf.setFontSize(8)")
 source = source.replace(
   /pdf\.setFont\("helvetica", columnIndex === 0 \? "bold" : "normal"\)\n\s*pdf\.setFontSize\(6\)/g,
-  'pdf.setFont("helvetica", columnIndex === 0 ? "bold" : "normal")\n      pdf.setFontSize(7.2)'
+  'pdf.setFont("helvetica", columnIndex === 0 ? "bold" : "normal")\n      pdf.setFontSize(8)'
 )
 source = source.replace(
   /pdf\.setFont\("helvetica", "bold"\)\n\s*pdf\.setFontSize\(6\)\n\s*pdf\.text\(String\(value\)/g,
-  'pdf.setFont("helvetica", "bold")\n    pdf.setFontSize(7.2)\n    pdf.text(String(value)'
+  'pdf.setFont("helvetica", "bold")\n    pdf.setFontSize(8)\n    pdf.text(String(value)'
 )
 
 if (source.includes("function drawThirtyYearBreakdown")) {
+  // Update an already-injected helper so repeated builds keep the styling.
+  source = source.replace(/pdf\.setFontSize\(7\.2\)/g, "pdf.setFontSize(8)")
+
+  source = source.replace(
+    /pdf\.setTextColor\(\.\.\.\(highlighted \? \[38, 120, 58\] : ctx\.text\)\)/g,
+    'const isNegative = String(value).trim().startsWith("-")\n      pdf.setTextColor(...(isNegative ? [220, 38, 38] : highlighted ? [38, 120, 58] : ctx.text))'
+  )
+
+  source = source.replace(
+    /pdf\.setTextColor\(255, 255, 255\)\n    pdf\.setFont\("helvetica", "bold"\)\n    pdf\.setFontSize\(7\.2\)\n    pdf\.text\(String\(value\), x \+ widths\[index\] - 0\.8, y \+ totalHeight - 1\.8, \{ align: "right" \}\)/g,
+    'const isNegative = String(value).trim().startsWith("-")\n    pdf.setTextColor(...(isNegative ? [255, 120, 120] : [255, 255, 255]))\n    pdf.setFont("helvetica", "bold")\n    pdf.setFontSize(8)\n    pdf.text(String(value), x + widths[index] - 0.8, y + totalHeight - 1.8, { align: "right" })'
+  )
+
   fs.writeFileSync(filePath, source)
   console.log("EPVS 30-year layout patch applied")
   process.exit(0)
@@ -188,12 +202,13 @@ function drawThirtyYearBreakdown(pdf, page, ctx, epvs) {
     x = tableX
     values.forEach((value, columnIndex) => {
       const highlighted = columnIndex === 5 || columnIndex === 8
+      const isNegative = String(value).trim().startsWith("-")
       pdf.setFillColor(...(highlighted ? [232, 245, 235] : rowIndex % 2 === 0 ? [247, 249, 250] : [255, 255, 255]))
       pdf.setDrawColor(225, 230, 234)
       pdf.rect(x, y, widths[columnIndex], rowHeight, "FD")
-      pdf.setTextColor(...(highlighted ? [38, 120, 58] : ctx.text))
+      pdf.setTextColor(...(isNegative ? [220, 38, 38] : highlighted ? [38, 120, 58] : ctx.text))
       pdf.setFont("helvetica", columnIndex === 0 ? "bold" : "normal")
-      pdf.setFontSize(7.2)
+      pdf.setFontSize(8)
       pdf.text(String(value), x + widths[columnIndex] - 0.8, y + rowHeight - 1.55, { align: "right" })
       x += widths[columnIndex]
     })
@@ -220,9 +235,10 @@ function drawThirtyYearBreakdown(pdf, page, ctx, epvs) {
     pdf.setFillColor(...(index === 5 || index === 8 ? ctx.accent : [82, 92, 100]))
     pdf.setDrawColor(255, 255, 255)
     pdf.rect(x, y, widths[index], totalHeight, "FD")
-    pdf.setTextColor(255, 255, 255)
+    const isNegative = String(value).trim().startsWith("-")
+    pdf.setTextColor(...(isNegative ? [255, 120, 120] : [255, 255, 255]))
     pdf.setFont("helvetica", "bold")
-    pdf.setFontSize(7.2)
+    pdf.setFontSize(8)
     pdf.text(String(value), x + widths[index] - 0.8, y + totalHeight - 1.8, { align: "right" })
     x += widths[index]
   })
