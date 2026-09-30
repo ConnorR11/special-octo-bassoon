@@ -1029,83 +1029,87 @@ async function drawItemisedBreakdown(
     ? settings.included_items
     : []
 
+  const items = configured.map(item =>
+    typeof item === "string"
+      ? {
+          name: item,
+          quantity: 1,
+          type: ""
+        }
+      : {
+          name: item?.name ?? "—",
+          quantity: item?.quantity ?? 1,
+          type: item?.type ?? ""
+        }
+  )
+
   /*
-   * Get the actual number of solar panels from the EPVS arrays.
+   * ------------------------------------------------------------
+   * PANEL / ARRAY DATA
+   * ------------------------------------------------------------
+   *
+   * Panels should use the actual EPVS panel count rather than
+   * the quantity stored against the template item.
    */
-  const solarArrays = Array.isArray(data?.arrays)
-    ? data.arrays
+
+  const solarArrays = Array.isArray(data.arrays)
+    ? data.arrays.filter(
+        array =>
+          Number(array?.panelCount || 0) > 0
+      )
     : []
 
-  const calculatedPanelCount = solarArrays.reduce(
+  const totalPanelCount = solarArrays.reduce(
     (total, array) =>
       total + Number(array?.panelCount || 0),
     0
   )
 
-  const panelCount =
-    calculatedPanelCount > 0
-      ? calculatedPanelCount
-      : Number(data?.panelCount || 0)
+  const fallbackPanelCount = Number(
+    data.panelCount || 0
+  )
+
+  const actualPanelCount =
+    totalPanelCount > 0
+      ? totalPanelCount
+      : fallbackPanelCount
 
   /*
-   * Build the itemised list.
-   *
-   * IMPORTANT:
-   * Only "Panels" gets replaced with the actual panel count.
-   *
-   * "Panel Installation" remains whatever quantity is configured
-   * in the template, normally 1.
+   * Returns the correct quantity for each item.
    */
-  const items = configured.map(item => {
-    const name =
-      typeof item === "string"
-        ? item
-        : item?.name ?? "—"
-
-    const type =
-      typeof item === "string"
-        ? ""
-        : item?.type ?? ""
-
-    let quantity =
-      typeof item === "string"
-        ? 1
-        : item?.quantity ?? 1
-
-    const normalisedName =
-      String(name)
-        .trim()
-        .toLowerCase()
+  const getItemQuantity = item => {
+    const itemName = String(item?.name || "")
+      .trim()
+      .toLowerCase()
 
     /*
-     * ONLY the actual Panels item uses the EPVS panel count.
-     *
-     * Do not use includes("panel"), because that would also
-     * catch "Panel Installation".
+     * Panels = actual number of panels from EPVS
      */
-    if (
-      normalisedName === "panels" ||
-      normalisedName === "solar panels"
-    ) {
-      quantity = panelCount
+    if (itemName === "panels") {
+      return actualPanelCount > 0
+        ? String(actualPanelCount)
+        : "-"
     }
 
     /*
-     * These products are intentionally displayed as "-".
+     * These are intentionally displayed as "-".
      */
     if (
-      normalisedName === "roof hooks" ||
-      normalisedName === "rail fix kit"
+      itemName === "roof hooks" ||
+      itemName === "rail fix kit"
     ) {
-      quantity = "-"
+      return "-"
     }
 
-    return {
-      name,
-      quantity,
-      type
-    }
-  })
+    /*
+     * Everything else behaves as it did previously.
+     */
+    return interpolate(
+      String(item?.quantity ?? 1),
+      appointment,
+      epvs
+    )
+  }
 
   const headerY = ctx.y + 28
 
@@ -1117,8 +1121,11 @@ async function drawItemisedBreakdown(
   const rowHeight = 7.15
 
   /*
+   * ------------------------------------------------------------
    * TABLE HEADER
+   * ------------------------------------------------------------
    */
+
   pdf.setFillColor(...ctx.accent)
 
   pdf.roundedRect(
@@ -1158,8 +1165,11 @@ async function drawItemisedBreakdown(
   let y = headerY + 9
 
   /*
+   * ------------------------------------------------------------
    * TABLE ROWS
+   * ------------------------------------------------------------
    */
+
   items.forEach((item, index) => {
     const name = interpolate(
       String(item.name),
@@ -1173,11 +1183,7 @@ async function drawItemisedBreakdown(
       epvs
     )
 
-    const quantity = interpolate(
-      String(item.quantity),
-      appointment,
-      epvs
-    )
+    const quantity = getItemQuantity(item)
 
     if (index % 2 === 0) {
       pdf.setFillColor(247, 249, 250)
@@ -1196,6 +1202,7 @@ async function drawItemisedBreakdown(
     /*
      * PRODUCT / SERVICE
      */
+
     pdf.setTextColor(...ctx.text)
     pdf.setFont("helvetica", "normal")
     pdf.setFontSize(8.1)
@@ -1209,6 +1216,7 @@ async function drawItemisedBreakdown(
     /*
      * TYPE TAG
      */
+
     if (type) {
       pdf.setFont("helvetica", "bold")
       pdf.setFontSize(6.5)
@@ -1257,6 +1265,7 @@ async function drawItemisedBreakdown(
     /*
      * QUANTITY
      */
+
     pdf.setTextColor(...ctx.text)
     pdf.setFont("helvetica", "bold")
     pdf.setFontSize(8.1)
@@ -1274,8 +1283,11 @@ async function drawItemisedBreakdown(
   y += 7
 
   /*
+   * ------------------------------------------------------------
    * TOTAL SYSTEM PRICE
+   * ------------------------------------------------------------
    */
+
   const price =
     results?.systemCost ??
     data?.systemCost ??
@@ -1284,7 +1296,11 @@ async function drawItemisedBreakdown(
     appointment?.sale_value ??
     appointment?.price
 
-  const totalBarHeight = 42
+  /*
+   * Make the card slightly taller so the signature can sit
+   * neatly inside it without overlapping anything.
+   */
+  const totalCardHeight = 32
 
   pdf.setFillColor(...ctx.accent)
 
@@ -1292,43 +1308,18 @@ async function drawItemisedBreakdown(
     ctx.padding,
     y,
     width,
-    totalBarHeight,
+    totalCardHeight,
     3,
     3,
     "F"
   )
 
   /*
-   * TOTAL LABEL
-   */
-  pdf.setTextColor(255, 255, 255)
-  pdf.setFont("helvetica", "normal")
-  pdf.setFontSize(8)
-
-  pdf.text(
-    "TOTAL SYSTEM PRICE",
-    ctx.padding + 8,
-    y + 10
-  )
-
-  /*
-   * TOTAL PRICE
-   */
-  pdf.setFont("helvetica", "bold")
-  pdf.setFontSize(18)
-
-  pdf.text(
-    money(price),
-    ctx.padding + width - 8,
-    y + 15,
-    { align: "right" }
-  )
-
-  /*
+   * ------------------------------------------------------------
    * CUSTOMER SIGNATURE
-   *
-   * Put the signature back inside the blue total bar.
+   * ------------------------------------------------------------
    */
+
   const signatureUrl =
     await getSignatureImageUrl(appointment)
 
@@ -1338,62 +1329,76 @@ async function drawItemisedBreakdown(
         await imageData(signatureUrl)
 
       /*
-       * Signature area on the right side of the
-       * total system price bar.
+       * Signature occupies the left side of the card.
        */
-      const signatureBoxWidth = 75
-      const signatureBoxHeight = 20
-
       const signatureAreaX =
-        ctx.width -
-        ctx.padding -
-        signatureBoxWidth
+        ctx.padding + 7
 
       const signatureAreaY =
-        y + 20
+        y + 6
+
+      const signatureAreaWidth =
+        Math.min(65, width * 0.45)
+
+      const signatureAreaHeight = 20
 
       /*
-       * Signature title
+       * Title
        */
+
       pdf.setTextColor(255, 255, 255)
-      pdf.setFont("helvetica", "bold")
+      pdf.setFont(
+        "helvetica",
+        "bold"
+      )
       pdf.setFontSize(6.5)
 
       pdf.text(
         "CUSTOMER SIGNATURE",
         signatureAreaX,
-        signatureAreaY + 2
+        signatureAreaY
       )
 
       /*
        * Signature background
        */
-      pdf.setFillColor(255, 255, 255)
+
+      pdf.setFillColor(
+        252,
+        253,
+        254
+      )
 
       pdf.roundedRect(
         signatureAreaX,
-        signatureAreaY + 4,
-        signatureBoxWidth,
-        signatureBoxHeight,
-        2,
-        2,
+        signatureAreaY + 2.5,
+        signatureAreaWidth,
+        signatureAreaHeight - 4,
+        1.5,
+        1.5,
         "F"
       )
 
+      /*
+       * Keep the actual signature nicely contained.
+       */
+
       const maxSignatureWidth =
-        signatureBoxWidth - 8
+        signatureAreaWidth - 8
 
       const maxSignatureHeight =
-        signatureBoxHeight - 6
+        signatureAreaHeight - 9
 
       const signatureRatio =
-        signature.width / signature.height
+        signature.width /
+        signature.height
 
       let signatureWidth =
         maxSignatureWidth
 
       let signatureHeight =
-        signatureWidth / signatureRatio
+        signatureWidth /
+        signatureRatio
 
       if (
         signatureHeight >
@@ -1409,14 +1414,18 @@ async function drawItemisedBreakdown(
 
       const signatureX =
         signatureAreaX +
-        (signatureBoxWidth -
-          signatureWidth) / 2
+        (
+          signatureAreaWidth -
+          signatureWidth
+        ) / 2
 
       const signatureY =
         signatureAreaY +
-        4 +
-        (signatureBoxHeight -
-          signatureHeight) / 2
+        3 +
+        (
+          maxSignatureHeight -
+          signatureHeight
+        ) / 2
 
       pdf.addImage(
         signature.dataUrl,
@@ -1436,6 +1445,53 @@ async function drawItemisedBreakdown(
       )
     }
   }
+
+  /*
+   * ------------------------------------------------------------
+   * TOTAL PRICE
+   * ------------------------------------------------------------
+   *
+   * The price sits on the right side of the same card.
+   */
+
+  const priceX =
+    ctx.padding +
+    width -
+    8
+
+  pdf.setTextColor(
+    255,
+    255,
+    255
+  )
+
+  pdf.setFont(
+    "helvetica",
+    "normal"
+  )
+
+  pdf.setFontSize(7)
+
+  pdf.text(
+    "TOTAL SYSTEM PRICE",
+    priceX,
+    y + 10,
+    { align: "right" }
+  )
+
+  pdf.setFont(
+    "helvetica",
+    "bold"
+  )
+
+  pdf.setFontSize(18)
+
+  pdf.text(
+    money(price),
+    priceX,
+    y + 22,
+    { align: "right" }
+  )
 }
 
 function parseTermsSections(
