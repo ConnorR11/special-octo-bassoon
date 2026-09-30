@@ -409,9 +409,11 @@ function BodyCell({ children, green = false, negative = false }) {
         background,
         color,
         border: "1px solid #222",
-        padding: "6px 7px",
+        padding: "5px 7px",
         textAlign: "right",
         whiteSpace: "nowrap",
+        fontSize: 12,
+        fontWeight: 600,
       }}
     >
       {children}
