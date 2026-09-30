@@ -19,6 +19,7 @@ function Appointments({ onSelectAppointment }) {
     canSeeAll,
     isBranchManager,
     isSalesManager,
+    isSalesRep,
     branch,
     email,
     loading: visibilityLoading,
@@ -54,6 +55,7 @@ function Appointments({ onSelectAppointment }) {
       // Branch Manager -> appointments in their branch
       // Sales Manager -> appointments in their branch
       // Sales Rep -> appointments where rep_allocated matches their email
+      //               AND the appointment is no more than 7 days old.
       if (!canSeeAll) {
         const viewerBranch = normaliseBranch(branch || effectiveProfile?.branch)
         const viewerEmail = normaliseEmail(email || effectiveProfile?.email)
@@ -62,6 +64,12 @@ function Appointments({ onSelectAppointment }) {
           request = request.ilike("branch", viewerBranch)
         } else if (viewerEmail) {
           request = request.ilike("rep_allocated", viewerEmail)
+
+          if (isSalesRep) {
+            const sevenDaysAgo = new Date()
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+            request = request.gte("appointment_date", sevenDaysAgo.toISOString())
+          }
         } else {
           request = request.ilike("rep_allocated", "__NO_VISIBLE_REP__")
         }
@@ -117,6 +125,7 @@ function Appointments({ onSelectAppointment }) {
     canSeeAll,
     isBranchManager,
     isSalesManager,
+    isSalesRep,
     branch,
     email,
     visibilityLoading,
@@ -172,7 +181,7 @@ function Appointments({ onSelectAppointment }) {
       ? "All appointments · 50 per page"
       : isBranchManager || isSalesManager
         ? "Branch appointments · 50 per page"
-        : "Your appointments · 50 per page"
+        : "Your appointments · Last 7 days · 50 per page"
 
   return (
     <section>
