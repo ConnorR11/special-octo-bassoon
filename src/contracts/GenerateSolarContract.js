@@ -23,9 +23,6 @@ function getOpenSolarImageUrl(appointment) {
   return String(appointment?.open_solar_image || "").trim()
 }
 
-// OpenSolar hardware is stored inside data.openSolar.hardware in the current
-// canonical EPVS_calculation structure. Keep data.hardware as a fallback for
-// older calculations.
 function getOpenSolarHardware(data) {
   return data?.hardware || data?.openSolar?.hardware || null
 }
@@ -732,10 +729,7 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs) {
       ["Estimated generation", results.generation ? `${num(results.generation)} kWh` : "—"],
       ["Solar self-consumption", results.solarSelfConsumption ? `${num(results.solarSelfConsumption)} kWh` : "—"],
       ["Estimated export", results.exportKwh ? `${num(results.exportKwh)} kWh` : "—"],
-      ["Annual saving", money(results.annualSaving)],
-      ["Simple payback", results.simplePayback ? `${num(results.simplePayback, 1)} years` : "—"],
-      ["30 year saving", money(results.thirtyYearSavings)],
-      ["30 year return", money(results.thirtyYearProfit)]
+      ["Annual saving", money(results.annualSaving)]
     ], ctx.padding, y, width, ctx.text, true)
     y += 10
 
