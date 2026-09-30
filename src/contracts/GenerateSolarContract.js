@@ -1035,11 +1035,22 @@ async function drawItemisedBreakdown(
 
   /*
    * ------------------------------------------------------------
-   * PANEL COUNT
+   * GET TOTAL PANEL COUNT
    * ------------------------------------------------------------
    *
-   * Panels are the ONLY item whose quantity is calculated
-   * dynamically from the EPVS array data.
+   * Panels must come from the actual EPVS array data.
+   *
+   * Example:
+   *
+   * arrays: [
+   *   { panelCount: 8 },
+   *   { panelCount: 10 }
+   * ]
+   *
+   * Result = 18
+   *
+   * This is deliberately independent of the quantity configured
+   * against the "Panels" template item.
    */
 
   const solarArrays =
@@ -1047,26 +1058,61 @@ async function drawItemisedBreakdown(
       ? data.arrays
       : []
 
-  const calculatedPanelCount =
+  const arrayPanelCount =
     solarArrays.reduce(
-      (total, array) =>
-        total +
-        Number(
-          array?.panelCount || 0
-        ),
+      (total, array) => {
+        const count =
+          Number(
+            array?.panelCount ??
+            array?.panel_count ??
+            0
+          )
+
+        return total + (
+          Number.isFinite(count)
+            ? count
+            : 0
+        )
+      },
+      0
+    )
+
+  /*
+   * Fallbacks in case the EPVS data does not contain arrays.
+   */
+  const fallbackPanelCount =
+    Number(
+      data?.panelCount ??
+      data?.panel_count ??
+      data?.numberOfPanels ??
+      data?.number_of_panels ??
       0
     )
 
   const panelCount =
-    calculatedPanelCount > 0
-      ? calculatedPanelCount
-      : Number(
-          data?.panelCount || 0
+    arrayPanelCount > 0
+      ? arrayPanelCount
+      : (
+          Number.isFinite(
+            fallbackPanelCount
+          )
+            ? fallbackPanelCount
+            : 0
         )
+
+  console.log(
+    "Digital Solar Contract - panel count:",
+    {
+      arrays: solarArrays,
+      arrayPanelCount,
+      fallbackPanelCount,
+      panelCount
+    }
+  )
 
   /*
    * ------------------------------------------------------------
-   * ITEMS
+   * BUILD ITEMS
    * ------------------------------------------------------------
    */
 
@@ -1082,79 +1128,38 @@ async function drawItemisedBreakdown(
           ? ""
           : item?.type ?? ""
 
-      /*
-       * Start with the quantity configured in the template.
-       */
-
       let quantity =
         typeof item === "string"
           ? 1
           : item?.quantity ?? 1
 
+      /*
+       * ONLY the item called "Panels" gets the dynamic
+       * EPVS panel count.
+       *
+       * Panel Installation is NOT changed.
+       */
+      if (
+        String(name)
+          .trim()
+          .toLowerCase() === "panels"
+      ) {
+        quantity = panelCount
+      }
+
+      /*
+       * Keep these as configured/displayed as "-".
+       */
       const normalisedName =
         String(name)
           .trim()
           .toLowerCase()
 
-      /*
-       * ONLY PANELS USE THE DYNAMIC PANEL COUNT.
-       */
-
       if (
-        normalisedName === "panels"
-      ) {
-        quantity =
-          panelCount > 0
-            ? panelCount
-            : 0
-      }
-
-      /*
-       * ROOF HOOKS
-       */
-
-      if (
-        normalisedName === "roof hooks"
-      ) {
-        quantity = "-"
-      }
-
-      /*
-       * RAIL FIX KIT
-       */
-
-      if (
+        normalisedName === "roof hooks" ||
         normalisedName === "rail fix kit"
       ) {
         quantity = "-"
-      }
-
-      /*
-       * PANEL INSTALLATION IS ONE SERVICE.
-       */
-
-      if (
-        normalisedName ===
-        "panel installation"
-      ) {
-        quantity = 1
-      }
-
-      /*
-       * If a template quantity has accidentally been
-       * stored as {{something}}, never print the
-       * placeholder into the PDF.
-       *
-       * Default it to 1.
-       */
-
-      if (
-        typeof quantity === "string" &&
-        /^\s*\{\{\s*[a-zA-Z0-9_]+\s*\}\}\s*$/.test(
-          quantity
-        )
-      ) {
-        quantity = 1
       }
 
       return {
@@ -1164,6 +1169,12 @@ async function drawItemisedBreakdown(
       }
     })
 
+  /*
+   * ------------------------------------------------------------
+   * TABLE POSITION
+   * ------------------------------------------------------------
+   */
+
   const headerY =
     ctx.y + 28
 
@@ -1172,7 +1183,8 @@ async function drawItemisedBreakdown(
     width -
     43
 
-  const rowHeight = 7.15
+  const rowHeight =
+    7.15
 
   /*
    * ------------------------------------------------------------
@@ -1257,20 +1269,24 @@ async function drawItemisedBreakdown(
         )
 
       /*
-       * IMPORTANT:
+       * Quantity can either be:
        *
-       * Quantity is NOT passed through interpolate().
+       * 18
+       * 1
+       * "-"
+       * "{{inverter_quantity}}"
        *
-       * This is what prevents things such as
-       * {{panel_count}} from being printed literally.
+       * Interpolate it so template placeholders work.
+       *
+       * Panels will already contain the calculated
+       * panelCount from above.
        */
-
       const quantity =
-        item.quantity
-
-      /*
-       * Alternating row background
-       */
+        interpolate(
+          String(item.quantity),
+          appointment,
+          epvs
+        )
 
       if (index % 2 === 0) {
         pdf.setFillColor(
@@ -1291,7 +1307,9 @@ async function drawItemisedBreakdown(
       }
 
       /*
+       * --------------------------------------------------------
        * PRODUCT / SERVICE
+       * --------------------------------------------------------
        */
 
       pdf.setTextColor(
@@ -1312,7 +1330,9 @@ async function drawItemisedBreakdown(
       )
 
       /*
+       * --------------------------------------------------------
        * TYPE TAG
+       * --------------------------------------------------------
        */
 
       if (type) {
@@ -1372,7 +1392,9 @@ async function drawItemisedBreakdown(
       }
 
       /*
+       * --------------------------------------------------------
        * QUANTITY
+       * --------------------------------------------------------
        */
 
       pdf.setTextColor(
@@ -1387,7 +1409,7 @@ async function drawItemisedBreakdown(
       pdf.setFontSize(8.1)
 
       pdf.text(
-        String(quantity),
+        quantity,
         ctx.padding + width - 7,
         y,
         {
@@ -1416,11 +1438,13 @@ async function drawItemisedBreakdown(
     appointment?.price
 
   /*
-   * Keep the signature and price together
-   * inside the same blue card.
+   * Same card layout as your previous version:
+   *
+   * CUSTOMER SIGNATURE | TOTAL SYSTEM PRICE
    */
 
-  const totalCardHeight = 32
+  const totalCardHeight =
+    32
 
   pdf.setFillColor(
     ...ctx.accent
@@ -1454,10 +1478,6 @@ async function drawItemisedBreakdown(
           signatureUrl
         )
 
-      /*
-       * Signature area on the LEFT.
-       */
-
       const signatureAreaX =
         ctx.padding + 7
 
@@ -1474,7 +1494,7 @@ async function drawItemisedBreakdown(
         20
 
       /*
-       * CUSTOMER SIGNATURE TITLE
+       * Signature title
        */
 
       pdf.setTextColor(
@@ -1497,7 +1517,7 @@ async function drawItemisedBreakdown(
       )
 
       /*
-       * WHITE SIGNATURE BOX
+       * Signature white background
        */
 
       pdf.setFillColor(
@@ -1517,7 +1537,7 @@ async function drawItemisedBreakdown(
       )
 
       /*
-       * Keep the signature nicely contained.
+       * Keep signature inside white box.
        */
 
       const maxSignatureWidth =
@@ -1554,8 +1574,7 @@ async function drawItemisedBreakdown(
         (
           signatureAreaWidth -
           signatureWidth
-        ) /
-          2
+        ) / 2
 
       const signatureY =
         signatureAreaY +
@@ -1563,8 +1582,7 @@ async function drawItemisedBreakdown(
         (
           maxSignatureHeight -
           signatureHeight
-        ) /
-          2
+        ) / 2
 
       pdf.addImage(
         signature.dataUrl,
@@ -1583,6 +1601,56 @@ async function drawItemisedBreakdown(
       )
     }
   }
+
+  /*
+   * ------------------------------------------------------------
+   * TOTAL PRICE
+   * ------------------------------------------------------------
+   */
+
+  const priceX =
+    ctx.padding +
+    width -
+    8
+
+  pdf.setTextColor(
+    255,
+    255,
+    255
+  )
+
+  pdf.setFont(
+    "helvetica",
+    "bold"
+  )
+
+  pdf.setFontSize(6.5)
+
+  pdf.text(
+    "TOTAL SYSTEM PRICE",
+    priceX,
+    y + 10,
+    {
+      align: "right"
+    }
+  )
+
+  pdf.setFont(
+    "helvetica",
+    "bold"
+  )
+
+  pdf.setFontSize(18)
+
+  pdf.text(
+    money(price),
+    priceX,
+    y + 22,
+    {
+      align: "right"
+    }
+  )
+}
 
   /*
    * ------------------------------------------------------------
