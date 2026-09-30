@@ -2,10 +2,27 @@ import fs from "node:fs"
 import path from "node:path"
 
 const filePath = path.resolve("src/contracts/GenerateSolarContract.js")
-const source = fs.readFileSync(filePath, "utf8")
+let source = fs.readFileSync(filePath, "utf8")
+
+// Remove the three legacy summary rows from the EPVS summary table.
+const rowsToRemove = [
+  /\s*\["Simple payback", results\.simplePayback \? `\$\{num\(results\.simplePayback, 1\)\} years` : "—"\],\n?/g,
+  /\s*\["30 year saving", money\(results\.thirtyYearSavings\)\],\n?/g,
+  /\s*\["30 year return", money\(results\.thirtyYearProfit\)\],\n?/g,
+]
+
+for (const pattern of rowsToRemove) {
+  source = source.replace(pattern, "\n")
+}
+
+// The continuation page already has the 30-year table helper. Keep the
+// existing table dimensions/row heights, but make the actual figures more
+// readable. 6pt is larger than the previous 4.8pt without changing layout.
+source = source.replace(/pdf\.setFontSize\(4\.8\)/g, "pdf.setFontSize(6)")
 
 if (source.includes("function drawThirtyYearBreakdown")) {
-  console.log("30-year EPVS breakdown patch already applied")
+  fs.writeFileSync(filePath, source)
+  console.log("EPVS 30-year layout patch applied")
   process.exit(0)
 }
 
@@ -161,7 +178,7 @@ function drawThirtyYearBreakdown(pdf, page, ctx, epvs) {
       pdf.rect(x, y, widths[columnIndex], rowHeight, "FD")
       pdf.setTextColor(...(highlighted ? [38, 120, 58] : ctx.text))
       pdf.setFont("helvetica", columnIndex === 0 ? "bold" : "normal")
-      pdf.setFontSize(4.8)
+      pdf.setFontSize(6)
       pdf.text(String(value), x + widths[columnIndex] - 0.8, y + rowHeight - 1.55, { align: "right" })
       x += widths[columnIndex]
     })
@@ -190,7 +207,7 @@ function drawThirtyYearBreakdown(pdf, page, ctx, epvs) {
     pdf.rect(x, y, widths[index], totalHeight, "FD")
     pdf.setTextColor(255, 255, 255)
     pdf.setFont("helvetica", "bold")
-    pdf.setFontSize(4.8)
+    pdf.setFontSize(6)
     pdf.text(String(value), x + widths[index] - 0.8, y + totalHeight - 1.8, { align: "right" })
     x += widths[index]
   })
@@ -212,5 +229,6 @@ if (!updated.includes(pageMarker)) {
 }
 
 updated = updated.replace(pageMarker, pageReplacement)
+
 fs.writeFileSync(filePath, updated)
 console.log("Patched EPVS Calculations Cont. with 30-year breakdown using the 7.6% average inflation scenario")
