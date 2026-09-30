@@ -1030,10 +1030,7 @@ async function drawItemisedBreakdown(
     : []
 
   /*
-   * PANEL QUANTITY
-   *
-   * The itemised template can contain "Panels" with a quantity of 0.
-   * The actual quantity should come from the EPVS array data.
+   * Get the actual number of solar panels from the EPVS arrays.
    */
   const solarArrays = Array.isArray(data?.arrays)
     ? data.arrays
@@ -1050,6 +1047,15 @@ async function drawItemisedBreakdown(
       ? calculatedPanelCount
       : Number(data?.panelCount || 0)
 
+  /*
+   * Build the itemised list.
+   *
+   * IMPORTANT:
+   * Only "Panels" gets replaced with the actual panel count.
+   *
+   * "Panel Installation" remains whatever quantity is configured
+   * in the template, normally 1.
+   */
   const items = configured.map(item => {
     const name =
       typeof item === "string"
@@ -1072,24 +1078,20 @@ async function drawItemisedBreakdown(
         .toLowerCase()
 
     /*
-     * PANELS
+     * ONLY the actual Panels item uses the EPVS panel count.
      *
-     * Always use the actual EPVS panel count rather than
-     * the quantity stored against the item.
+     * Do not use includes("panel"), because that would also
+     * catch "Panel Installation".
      */
     if (
       normalisedName === "panels" ||
-      normalisedName === "solar panels" ||
-      normalisedName.includes("panel")
+      normalisedName === "solar panels"
     ) {
       quantity = panelCount
     }
 
     /*
-     * ROOF HOOKS / RAIL FIX KIT
-     *
-     * These are displayed as "-" when there is no meaningful
-     * quantity configured.
+     * These products are intentionally displayed as "-".
      */
     if (
       normalisedName === "roof hooks" ||
@@ -1269,13 +1271,10 @@ async function drawItemisedBreakdown(
     y += rowHeight
   })
 
-  /*
-   * SPACE AFTER TABLE
-   */
   y += 7
 
   /*
-   * SYSTEM PRICE
+   * TOTAL SYSTEM PRICE
    */
   const price =
     results?.systemCost ??
@@ -1285,21 +1284,23 @@ async function drawItemisedBreakdown(
     appointment?.sale_value ??
     appointment?.price
 
-  /*
-   * TOTAL SYSTEM PRICE CARD
-   */
+  const totalBarHeight = 42
+
   pdf.setFillColor(...ctx.accent)
 
   pdf.roundedRect(
     ctx.padding,
     y,
     width,
-    25,
+    totalBarHeight,
     3,
     3,
     "F"
   )
 
+  /*
+   * TOTAL LABEL
+   */
   pdf.setTextColor(255, 255, 255)
   pdf.setFont("helvetica", "normal")
   pdf.setFontSize(8)
@@ -1310,6 +1311,9 @@ async function drawItemisedBreakdown(
     y + 10
   )
 
+  /*
+   * TOTAL PRICE
+   */
   pdf.setFont("helvetica", "bold")
   pdf.setFontSize(18)
 
@@ -1323,8 +1327,7 @@ async function drawItemisedBreakdown(
   /*
    * CUSTOMER SIGNATURE
    *
-   * Keep the signature below the price card with a clean
-   * gap and prevent it from sitting on top of the card.
+   * Put the signature back inside the blue total bar.
    */
   const signatureUrl =
     await getSignatureImageUrl(appointment)
@@ -1334,46 +1337,46 @@ async function drawItemisedBreakdown(
       const signature =
         await imageData(signatureUrl)
 
+      /*
+       * Signature area on the right side of the
+       * total system price bar.
+       */
       const signatureBoxWidth = 75
-      const signatureBoxHeight = 25
+      const signatureBoxHeight = 20
 
       const signatureAreaX =
         ctx.width -
         ctx.padding -
         signatureBoxWidth
 
-      /*
-       * Position the signature below the price card.
-       */
       const signatureAreaY =
-        y + 32
+        y + 20
 
       /*
-       * Signature heading
+       * Signature title
        */
-      pdf.setTextColor(...ctx.text)
+      pdf.setTextColor(255, 255, 255)
       pdf.setFont("helvetica", "bold")
-      pdf.setFontSize(7)
+      pdf.setFontSize(6.5)
 
       pdf.text(
         "CUSTOMER SIGNATURE",
         signatureAreaX,
-        signatureAreaY,
-        { align: "left" }
+        signatureAreaY + 2
       )
 
       /*
-       * Signature box
+       * Signature background
        */
-      pdf.setFillColor(252, 253, 254)
+      pdf.setFillColor(255, 255, 255)
 
       pdf.roundedRect(
         signatureAreaX,
-        signatureAreaY + 3,
+        signatureAreaY + 4,
         signatureBoxWidth,
         signatureBoxHeight,
-        2.5,
-        2.5,
+        2,
+        2,
         "F"
       )
 
@@ -1411,7 +1414,7 @@ async function drawItemisedBreakdown(
 
       const signatureY =
         signatureAreaY +
-        3 +
+        4 +
         (signatureBoxHeight -
           signatureHeight) / 2
 
