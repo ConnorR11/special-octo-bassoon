@@ -110,6 +110,10 @@ function FitSheet({ setSelected }) {
 
   const safeFitTeams = Array.isArray(fitTeams) ? fitTeams : []
 
+  const freshFitsCount = safeWeekDeals.length
+  const freshFitsValue = safeWeekDeals.reduce((total, deal) => total + (Number(deal?.deal_value) || 0), 0)
+  const issueFitsCount = safeWeekIssues.length
+
   function getDeals(team, date) {
     const dateString = formatDate(date)
     return safeWeekDeals.filter(deal => String(deal?.installation_start_date || "").slice(0, 10) === dateString && String(deal?.fit_team_1 || "").trim() === team)
@@ -156,7 +160,20 @@ function FitSheet({ setSelected }) {
     </button>
   }
 
+  const statCard = (label, value, valueColor = "#172554") => (
+    <div className="card" style={{ flex: 1, minWidth: "180px", padding: "18px 20px", margin: 0 }}>
+      <div style={{ fontSize: "10px", fontWeight: 700, color: "#777", textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</div>
+      <div style={{ marginTop: "7px", fontSize: "28px", lineHeight: 1.1, fontWeight: 800, color: valueColor }}>{value}</div>
+    </div>
+  )
+
   return <section>
+    <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "18px" }}>
+      {statCard("Fresh fits", freshFitsCount)}
+      {statCard("Fresh fit value", money(freshFitsValue))}
+      {statCard("Issue fits", issueFitsCount, "#b42318")}
+    </div>
+
     <div className="card" style={{ marginBottom: "18px", overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
