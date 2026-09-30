@@ -250,6 +250,77 @@ async function drawImage(pdf, url, x, y, width, maxHeight = 110) {
   return y + h + 12
 }
 
+function drawAccreditationLogo(pdf, item, x, y, width, height, accent) {
+  const name = String(item?.name || "").trim().toLowerCase()
+  const logoType = String(item?.logo_type || "").trim().toLowerCase() ||
+    (name.includes("napit") ? "napit" : name.includes("hies") ? "hies" : name.includes("mcs") ? "mcs" : "generic")
+
+  pdf.setFillColor(255, 255, 255)
+  pdf.roundedRect(x, y, width, height, 2.5, 2.5, "F")
+
+  if (logoType === "mcs") {
+    const size = Math.min(height - 5, width - 5)
+    const bx = x + (width - size) / 2
+    const by = y + 2.5
+    pdf.setFillColor(18, 18, 18)
+    pdf.rect(bx, by, size, size, "F")
+    pdf.setTextColor(255, 255, 255)
+    pdf.setFont("helvetica", "bold")
+    pdf.setFontSize(Math.max(10, size * 0.58))
+    pdf.text("MCS", bx + size / 2, by + size * 0.53, { align: "center" })
+    pdf.setFontSize(Math.max(4.5, size * 0.18))
+    pdf.text("CERTIFIED", bx + size / 2, by + size * 0.84, { align: "center" })
+    return
+  }
+
+  if (logoType === "napit") {
+    const iconX = x + 6
+    const iconY = y + 4
+    const iconW = 13
+    const iconH = height - 8
+    pdf.setFillColor(0, 82, 155)
+    for (let i = 0; i < 8; i += 1) pdf.rect(iconX, iconY + i * (iconH / 8), iconW * 0.72, iconH / 8 - 0.7, "F")
+    pdf.setDrawColor(235, 55, 50)
+    pdf.setLineWidth(2.2)
+    pdf.line(iconX + 1, iconY + iconH * 0.55, iconX + iconW * 0.34, iconY + iconH * 0.82)
+    pdf.line(iconX + iconW * 0.34, iconY + iconH * 0.82, iconX + iconW, iconY + iconH * 0.18)
+    pdf.setTextColor(0, 82, 155)
+    pdf.setFont("helvetica", "bold")
+    pdf.setFontSize(15)
+    pdf.text("NAPIT", x + width - 5, y + height * 0.61, { align: "right" })
+    return
+  }
+
+  if (logoType === "hies") {
+    pdf.setTextColor(0, 112, 82)
+    pdf.setFont("helvetica", "bold")
+    pdf.setFontSize(23)
+    pdf.text("hies", x + width / 2, y + height * 0.52, { align: "center" })
+    pdf.setDrawColor(230, 119, 49)
+    pdf.setLineWidth(0.8)
+    pdf.line(x + 8, y + height * 0.64, x + width - 8, y + height * 0.64)
+    pdf.setTextColor(0, 112, 82)
+    pdf.setFont("helvetica", "normal")
+    pdf.setFontSize(4.8)
+    pdf.text("QUALITY ASSURED CONTRACTORS SCHEME", x + width / 2, y + height * 0.79, { align: "center" })
+    return
+  }
+
+  const initials = String(item?.name || "Accreditation")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 3)
+    .toUpperCase()
+  pdf.setFillColor(...accent)
+  pdf.circle(x + width / 2, y + height / 2 - 1, Math.min(width, height) * 0.25, "F")
+  pdf.setTextColor(255, 255, 255)
+  pdf.setFont("helvetica", "bold")
+  pdf.setFontSize(11)
+  pdf.text(initials, x + width / 2, y + height / 2 + 3, { align: "center" })
+}
+
 function header(pdf, settings) {
   const width = pdf.internal.pageSize.getWidth()
   const height = pdf.internal.pageSize.getHeight()
@@ -341,8 +412,6 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
     let quantity = typeof item === "string" ? 1 : item?.quantity ?? 1
     const normalizedName = String(name).trim().toLowerCase()
 
-    // The template still calls this item "Panels", but the actual product
-    // displayed in the contract must come from OpenSolar hardware.
     if (normalizedName === "panels") {
       name = panelHardware?.model || name
       quantity = panelHardware?.quantity ?? getTotalPanelCount(data)
@@ -618,23 +687,44 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs) {
     drawTermsConditions(pdf, page, ctx, appointment, epvs)
   } else if (kind === "accreditations") {
     const items = Array.isArray(settings.items) ? settings.items : []
+    const cardHeight = Number(settings.card_height_mm || 46)
+    const cardGap = Number(settings.card_gap_mm || 7)
+    const logoWidth = Number(settings.logo_width_mm || 43)
+    const logoHeight = cardHeight - 12
+    const logoX = ctx.padding + 6
+    const contentX = logoX + logoWidth + 8
+    const contentWidth = ctx.width - ctx.padding - contentX - 6
+
+    pdf.setTextColor(100, 112, 120)
+    pdf.setFont("helvetica", "normal")
+    pdf.setFontSize(8)
+    const intro = textValue(settings.intro_text, "Our accreditations and certifications help give customers confidence in the quality, safety and consumer protection behind our installations.")
+    const introLines = pdf.splitTextToSize(intro, width)
+    pdf.text(introLines, ctx.padding, y)
+    y += introLines.length * 4.2 + 6
+
     items.forEach((item, index) => {
-      const top = y
-      const x = index % 2 === 1 ? ctx.padding + width : ctx.padding
-      const align = index % 2 === 1 ? "right" : "left"
+      const top = y + index * (cardHeight + cardGap)
+
       pdf.setFillColor(246, 248, 250)
-      pdf.roundedRect(ctx.padding, top, width, 27, 3, 3, "F")
+      pdf.roundedRect(ctx.padding, top, width, cardHeight, 3.5, 3.5, "F")
+
+      drawAccreditationLogo(pdf, item, logoX, top + 6, logoWidth, logoHeight, ctx.accent)
+
       pdf.setTextColor(...ctx.text)
       pdf.setFont("helvetica", "bold")
-      pdf.setFontSize(10)
-      pdf.text(textValue(item.name, "Accreditation"), x, top + 9, { align })
+      pdf.setFontSize(12)
+      pdf.text(textValue(item.name, "Accreditation"), contentX, top + 11)
+
       pdf.setFont("helvetica", "normal")
-      pdf.setFontSize(8)
+      pdf.setFontSize(7.2)
       pdf.setTextColor(100, 112, 120)
-      pdf.text(pdf.splitTextToSize(textValue(item.description, ""), width - 18), x, top + 15, { align, maxWidth: width - 18 })
-      y += 35
+      const description = pdf.splitTextToSize(textValue(item.description, ""), contentWidth)
+      pdf.text(description.slice(0, 4), contentX, top + 18)
     })
-    body(pdf, page.body, ctx.padding, y + 4, width, ctx.text, appointment, epvs)
+
+    const cardsEnd = y + items.length * (cardHeight + cardGap) - cardGap
+    if (page.body) body(pdf, page.body, ctx.padding, cardsEnd + 7, width, ctx.text, appointment, epvs)
   } else if (kind === "epvs") {
     y = rows(pdf, [
       ["System size", results.systemSize ? `${num(results.systemSize, 2)} kWp` : "—"],
