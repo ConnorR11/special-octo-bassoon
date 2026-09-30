@@ -11,13 +11,48 @@ const money=v=>new Intl.NumberFormat("en-GB",{style:"currency",currency:"GBP",ma
 const date=v=>{if(!v)return"—";const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}
 
 function getOpenSolarImageUrl(a){return String(a?.open_solar_image||"").trim()}
+
+// Resolve the panel count once from all supported EPVS/OpenSolar structures.
+// This same helper is used by interpolation, System Overview, EPVS and the
+// itemised breakdown so the contract cannot show different panel quantities.
 function getTotalPanelCount(data){
-  const arrays=Array.isArray(data?.arrays)?data.arrays:[]
-  const total=arrays.reduce((n,a)=>{const c=Number(a?.panelCount??a?.panel_count??0);return n+(Number.isFinite(c)?c:0)},0)
-  if(total>0)return total
-  const fallback=Number(data?.panelCount??data?.panel_count??data?.numberOfPanels??data?.number_of_panels??0)
-  return Number.isFinite(fallback)?fallback:0
+  const source=data||{}
+  const toPositiveNumber=v=>{
+    const n=Number(v)
+    return Number.isFinite(n)&&n>0?n:0
+  }
+
+  const getCount=entry=>toPositiveNumber(
+    entry?.panelCount??
+    entry?.panel_count??
+    entry?.numberOfPanels??
+    entry?.number_of_panels??
+    entry?.moduleCount??
+    entry?.module_count??
+    entry?.quantity??
+    entry?.count??
+    (typeof entry?.panels==="number"?entry.panels:undefined)
+  )
+
+  const arrays=Array.isArray(source.arrays)?source.arrays:[]
+  const arrayTotal=arrays.reduce((total,array)=>total+getCount(array),0)
+  if(arrayTotal>0)return arrayTotal
+
+  const panels=Array.isArray(source.panels)?source.panels:[]
+  const panelTotal=panels.reduce((total,panel)=>total+getCount(panel),0)
+  if(panelTotal>0)return panelTotal
+
+  const fallback=getCount(source)||toPositiveNumber(
+    source.totalPanels??source.total_panels??source.totalPanelCount??source.total_panel_count
+  )
+  return fallback
 }
+
+function isPanelItem(name,type=""){
+  const value=`${String(name||"")} ${String(type||"")}`.trim().toLowerCase()
+  return value.includes("panel")||value.includes("solar module")||value.includes("pv module")
+}
+
 function interpolate(body,appointment,epvs){
   const data=epvs?.data||{},results=epvs?.results||{},batteryCapacity=Number(data.batteryCapacity||0)
   const values={
@@ -69,7 +104,8 @@ function body(pdf,content,x,y,width,textRgb,appointment,epvs){if(!content)return
 
 async function drawItemisedBreakdown(pdf,page,ctx,data,results,appointment,epvs){
   const width=ctx.width-ctx.padding*2,settings=page.settings||{},configured=Array.isArray(settings.included_items)?settings.included_items:[]
-  const items=configured.map(item=>{const name=typeof item==="string"?item:item?.name??"—",type=typeof item==="string"?"":item?.type??"";let quantity=typeof item==="string"?1:item?.quantity??1;const n=String(name).trim().toLowerCase();if(n==="panels")quantity=getTotalPanelCount(data);if(n==="roof hooks"||n==="rail fix kit")quantity="-";if(n==="panel installation")quantity=1;return{name,type,quantity}})
+  const panelCount=getTotalPanelCount(data)
+  const items=configured.map(item=>{const name=typeof item==="string"?item:item?.name??"—",type=typeof item==="string"?"":item?.type??"";let quantity=typeof item==="string"?1:item?.quantity??1;if(isPanelItem(name,type))quantity=panelCount;if(String(name).trim().toLowerCase()==="roof hooks"||String(name).trim().toLowerCase()==="rail fix kit")quantity="-";if(String(name).trim().toLowerCase()==="panel installation")quantity=1;return{name,type,quantity}})
   const headerY=ctx.y+28,typeX=ctx.padding+width-43,rowHeight=7.15
   pdf.setFillColor(...ctx.accent);pdf.roundedRect(ctx.padding,headerY-7,width,11,2,2,"F");pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text("PRODUCT / SERVICE",ctx.padding+7,headerY);pdf.text("TYPE",typeX,headerY,{align:"center"});pdf.text("QTY",ctx.padding+width-7,headerY,{align:"right"})
   let y=headerY+9
@@ -87,14 +123,14 @@ function drawTermsConditions(pdf,page,ctx,appointment,epvs){const s=page.setting
 
 async function renderPage(pdf,page,index,pageCount,appointment,epvs){const settings=page.settings||{},ctx=header(pdf,settings),kind=settings.page_kind||"standard",data=epvs?.data||{},results=epvs?.results||{};if(kind==="cover"){pdf.setFillColor(...rgb(settings.background,[5,47,79]));pdf.rect(0,0,ctx.width,ctx.height,"F");let logo=null;try{logo=await imageData("/homeshield-logo.png")}catch{}if(logo){const w=38;pdf.addImage(logo.dataUrl,"PNG",ctx.padding,14,w,w*logo.height/logo.width,undefined,"FAST")}pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(27);pdf.text("Solar Contract",ctx.padding,76);pdf.setFont("helvetica","normal");pdf.setFontSize(11);pdf.text("Prepared for",ctx.padding,89);pdf.setFont("helvetica","bold");pdf.setFontSize(17);pdf.text(textValue(appointment?.name||data.customerName,"Customer"),ctx.padding,102);const address=[appointment?.address,appointment?.postcode].filter(Boolean).join(", ");if(address){pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.text(address,ctx.padding,112)}return}
 title(pdf,page,ctx);let y=ctx.y+28,width=ctx.width-ctx.padding*2
-if(kind==="system_overview"){const image=getOpenSolarImageUrl(appointment);if(!image)throw new Error("appointments.open_solar_image is empty on this appointment.");y=await drawImage(pdf,image,ctx.padding,y,width,110);const bc=Number(data.batteryCapacity||0),arrays=Array.isArray(data.arrays)?data.arrays.filter(a=>Number(a?.panelCount||0)>0):[],pc=getTotalPanelCount(data),pw=arrays.map(a=>Number(a?.panelWattage||0)).find(v=>v>0)||Number(data.panelWattage||0);const rowsData=[["Customer",textValue(appointment?.name)],["System size",results.systemSize?`${num(results.systemSize,2)} kWp`:"—"],["Solar panels",pc>0?`${num(pc)} × ${num(pw)} W`:"—"],["Inverter",data.inverterCapacity?`${num(data.inverterCapacity,1)} kW`:"—"],["Battery",bc>0?`${num(bc,1)} kWh`:"Not included"],["Estimated generation",results.generation?`${num(results.generation)} kWh / year`:"—"]];y=rows(pdf,rowsData,ctx.padding,y+2,width,ctx.text);body(pdf,page.body,ctx.padding,y+8,width,ctx.text,appointment,epvs)}
+if(kind==="system_overview"){const image=getOpenSolarImageUrl(appointment);if(!image)throw new Error("appointments.open_solar_image is empty on this appointment.");y=await drawImage(pdf,image,ctx.padding,y,width,110);const bc=Number(data.batteryCapacity||0),pc=getTotalPanelCount(data),arrays=Array.isArray(data.arrays)?data.arrays:[],pw=arrays.map(a=>Number(a?.panelWattage||a?.panel_wattage||0)).find(v=>v>0)||Number(data.panelWattage||data.panel_wattage||0);const rowsData=[["Customer",textValue(appointment?.name)],["System size",results.systemSize?`${num(results.systemSize,2)} kWp`:"—"],["Solar panels",pc>0?`${num(pc)} × ${num(pw)} W`:"—"],["Inverter",data.inverterCapacity?`${num(data.inverterCapacity,1)} kW`:"—"],["Battery",bc>0?`${num(bc,1)} kWh`:"Not included"],["Estimated generation",results.generation?`${num(results.generation)} kWh / year`:"—"]];y=rows(pdf,rowsData,ctx.padding,y+2,width,ctx.text);body(pdf,page.body,ctx.padding,y+8,width,ctx.text,appointment,epvs)}
 else if(kind==="itemised_breakdown")await drawItemisedBreakdown(pdf,page,ctx,data,results,appointment,epvs)
 else if(kind==="terms_conditions")drawTermsConditions(pdf,page,ctx,appointment,epvs)
 else if(kind==="accreditations"){const items=Array.isArray(settings.items)?settings.items:[];items.forEach((item,i)=>{const top=y,rx=i%2===1?ctx.padding+width:ctx.padding,align=i%2===1?"right":"left";pdf.setFillColor(246,248,250);pdf.roundedRect(ctx.padding,top,width,27,3,3,"F");pdf.setTextColor(...ctx.text);pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text(textValue(item.name,"Accreditation"),rx,top+9,{align});pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(100,112,120);pdf.text(pdf.splitTextToSize(textValue(item.description,""),width-18),rx,top+15,{align,maxWidth:width-18});y+=35});body(pdf,page.body,ctx.padding,y+4,width,ctx.text,appointment,epvs)}
 else if(kind==="epvs"){
   y=rows(pdf,[["System size",results.systemSize?`${num(results.systemSize,2)} kWp`:"—"],["Annual consumption",data.annualConsumption?`${num(data.annualConsumption)} kWh`:"—"],["Estimated generation",results.generation?`${num(results.generation)} kWh`:"—"],["Solar self-consumption",results.solarSelfConsumption?`${num(results.solarSelfConsumption)} kWh`:"—"],["Estimated export",results.exportKwh?`${num(results.exportKwh)} kWh`:"—"],["Annual saving",money(results.annualSaving)],["Simple payback",results.simplePayback?`${num(results.simplePayback,1)} years`:"—"],["30 year saving",money(results.thirtyYearSavings)],["30 year return",money(results.thirtyYearProfit)]],ctx.padding,y,width,ctx.text,true);y+=10
-  const arrays=Array.isArray(data.arrays)?data.arrays.slice(0,Number(data.numberOfArrays||data.arrays.length)).map((array,index)=>({array,index,calculated:Array.isArray(results.arrays)?results.arrays[index]||{}:{}})).filter(x=>Number(x.array?.panelCount||0)>0):[]
-  if(arrays.length){const titleY=y+3;pdf.setTextColor(...ctx.text);pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.text("SAP Calculation",ctx.padding,titleY);const headers=["Array","Panels","Panel Wp","Orientation (°)","Pitch (°)","Irradiance / Kk","SF","System size (kWp)","Generation (kWh)"],tableY=titleY+5,widths=[14,14,17,23,17,25,14,25,29],tableX=ctx.padding,hh=8,rh=7;let tx=tableX;pdf.setFont("helvetica","bold");pdf.setFontSize(5.8);headers.forEach((h,i)=>{pdf.setFillColor(...ctx.accent);pdf.rect(tx,tableY,widths[i],hh,"F");pdf.setTextColor(255,255,255);const ls=pdf.splitTextToSize(h,widths[i]-2);pdf.text(ls.slice(0,2),tx+widths[i]/2,tableY+(ls.length>1?3:5),{align:"center"});tx+=widths[i]});let rowY=tableY+hh,totalPanels=0,totalSystemSize=0,totalGeneration=0;arrays.forEach(({array,index,calculated})=>{const panelCount=Number(array?.panelCount??array?.panel_count??0),systemSize=Number(calculated?.systemSize||0),generation=Number(calculated?.generation||0);totalPanels+=Number.isFinite(panelCount)?panelCount:0;totalSystemSize+=Number.isFinite(systemSize)?systemSize:0;totalGeneration+=Number.isFinite(generation)?generation:0;const vals=[`Array ${index+1}`,num(panelCount),`${num(array.panelWattage)} W`,`${num(array.orientation)}°`,`${num(array.pitch)}°`,num(array.irradiance,2),num(array.shading,2),`${num(systemSize,2)} kWp`,num(generation,2)];tx=tableX;vals.forEach((v,i)=>{pdf.setFillColor(i%2===0?247:255,i%2===0?249:255,i%2===0?250:255);pdf.setDrawColor(230,235,240);pdf.rect(tx,rowY,widths[i],rh,"FD");pdf.setTextColor(...ctx.text);pdf.setFont("helvetica",i===0?"bold":"normal");pdf.setFontSize(5.9);pdf.text(String(v),tx+widths[i]/2,rowY+4.6,{align:"center"});tx+=widths[i]});rowY+=rh});const totals=["TOTAL",num(totalPanels),"—","—","—","—","—",`${num(totalSystemSize,2)} kWp`,num(totalGeneration,2)];tx=tableX;totals.forEach((v,i)=>{pdf.setFillColor(...ctx.accent);pdf.setDrawColor(255,255,255);pdf.rect(tx,rowY,widths[i],rh,"FD");pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(5.9);pdf.text(String(v),tx+widths[i]/2,rowY+4.6,{align:"center"});tx+=widths[i]});y=rowY+rh+8}
+  const arrays=Array.isArray(data.arrays)?data.arrays.slice(0,Number(data.numberOfArrays||data.arrays.length)).map((array,index)=>({array,index,calculated:Array.isArray(results.arrays)?results.arrays[index]||{}:{}})).filter(x=>getTotalPanelCount({arrays:[x.array]})>0):[]
+  if(arrays.length){const titleY=y+3;pdf.setTextColor(...ctx.text);pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.text("SAP Calculation",ctx.padding,titleY);const headers=["Array","Panels","Panel Wp","Orientation (°)","Pitch (°)","Irradiance / Kk","SF","System size (kWp)","Generation (kWh)"],tableY=titleY+5,widths=[14,14,17,23,17,25,14,25,29],tableX=ctx.padding,hh=8,rh=7;let tx=tableX;pdf.setFont("helvetica","bold");pdf.setFontSize(5.8);headers.forEach((h,i)=>{pdf.setFillColor(...ctx.accent);pdf.rect(tx,tableY,widths[i],hh,"F");pdf.setTextColor(255,255,255);const ls=pdf.splitTextToSize(h,widths[i]-2);pdf.text(ls.slice(0,2),tx+widths[i]/2,tableY+(ls.length>1?3:5),{align:"center"});tx+=widths[i]});let rowY=tableY+hh,totalPanels=0,totalSystemSize=0,totalGeneration=0;arrays.forEach(({array,index,calculated})=>{const panelCount=getTotalPanelCount({arrays:[array]}),systemSize=Number(calculated?.systemSize||0),generation=Number(calculated?.generation||0);totalPanels+=panelCount;totalSystemSize+=Number.isFinite(systemSize)?systemSize:0;totalGeneration+=Number.isFinite(generation)?generation:0;const vals=[`Array ${index+1}`,num(panelCount),`${num(array.panelWattage||array.panel_wattage)} W`,`${num(array.orientation)}°`,`${num(array.pitch)}°`,num(array.irradiance,2),num(array.shading,2),`${num(systemSize,2)} kWp`,num(generation,2)];tx=tableX;vals.forEach((v,i)=>{pdf.setFillColor(i%2===0?247:255,i%2===0?249:255,i%2===0?250:255);pdf.setDrawColor(230,235,240);pdf.rect(tx,rowY,widths[i],rh,"FD");pdf.setTextColor(...ctx.text);pdf.setFont("helvetica",i===0?"bold":"normal");pdf.setFontSize(5.9);pdf.text(String(v),tx+widths[i]/2,rowY+4.6,{align:"center"});tx+=widths[i]});rowY+=rh});const totals=["TOTAL",num(totalPanels),"—","—","—","—","—",`${num(totalSystemSize,2)} kWp`,num(totalGeneration,2)];tx=tableX;totals.forEach((v,i)=>{pdf.setFillColor(...ctx.accent);pdf.setDrawColor(255,255,255);pdf.rect(tx,rowY,widths[i],rh,"FD");pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(5.9);pdf.text(String(v),tx+widths[i]/2,rowY+4.6,{align:"center"});tx+=widths[i]});y=rowY+rh+8}
 }
 else if(kind==="datasheets"){const docs=Array.isArray(settings.documents)?settings.documents:[];docs.forEach(doc=>{pdf.setTextColor(...ctx.text);pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.text(textValue(doc.title,"Datasheet"),ctx.padding,y);pdf.setFont("helvetica","normal");pdf.setFontSize(7);pdf.setTextColor(105,116,124);pdf.text(textValue(doc.description,""),ctx.padding,y+5);y+=14});body(pdf,page.body,ctx.padding,y+4,width,ctx.text,appointment,epvs)}
 else body(pdf,page.body,ctx.padding,y,width,ctx.text,appointment,epvs)
