@@ -24,8 +24,16 @@ for (const label of labels) {
 }
 
 // Keep the existing 30-year table dimensions and row heights, but make the
-// figures more readable.
-source = source.replace(/pdf\.setFontSize\(4\.8\)/g, "pdf.setFontSize(6)")
+// figures larger and easier to read without changing the table size.
+source = source.replace(/pdf\.setFontSize\(4\.8\)/g, "pdf.setFontSize(7.2)")
+source = source.replace(
+  /pdf\.setFont\("helvetica", columnIndex === 0 \? "bold" : "normal"\)\n\s*pdf\.setFontSize\(6\)/g,
+  'pdf.setFont("helvetica", columnIndex === 0 ? "bold" : "normal")\n      pdf.setFontSize(7.2)'
+)
+source = source.replace(
+  /pdf\.setFont\("helvetica", "bold"\)\n\s*pdf\.setFontSize\(6\)\n\s*pdf\.text\(String\(value\)/g,
+  'pdf.setFont("helvetica", "bold")\n    pdf.setFontSize(7.2)\n    pdf.text(String(value)'
+)
 
 if (source.includes("function drawThirtyYearBreakdown")) {
   fs.writeFileSync(filePath, source)
@@ -185,7 +193,7 @@ function drawThirtyYearBreakdown(pdf, page, ctx, epvs) {
       pdf.rect(x, y, widths[columnIndex], rowHeight, "FD")
       pdf.setTextColor(...(highlighted ? [38, 120, 58] : ctx.text))
       pdf.setFont("helvetica", columnIndex === 0 ? "bold" : "normal")
-      pdf.setFontSize(6)
+      pdf.setFontSize(7.2)
       pdf.text(String(value), x + widths[columnIndex] - 0.8, y + rowHeight - 1.55, { align: "right" })
       x += widths[columnIndex]
     })
@@ -214,7 +222,7 @@ function drawThirtyYearBreakdown(pdf, page, ctx, epvs) {
     pdf.rect(x, y, widths[index], totalHeight, "FD")
     pdf.setTextColor(255, 255, 255)
     pdf.setFont("helvetica", "bold")
-    pdf.setFontSize(6)
+    pdf.setFontSize(7.2)
     pdf.text(String(value), x + widths[index] - 0.8, y + totalHeight - 1.8, { align: "right" })
     x += widths[index]
   })
