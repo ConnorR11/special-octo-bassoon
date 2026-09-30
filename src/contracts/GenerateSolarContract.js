@@ -1022,52 +1022,111 @@ async function drawItemisedBreakdown(
   appointment,
   epvs
 ) {
-  const width =
-    ctx.width -
-    ctx.padding * 2
+  const width = ctx.width - ctx.padding * 2
+  const settings = page.settings || {}
 
-  const settings =
-    page.settings || {}
+  const configured = Array.isArray(settings.included_items)
+    ? settings.included_items
+    : []
 
-  const configured =
-    Array.isArray(
-      settings.included_items
+  const items = configured.map(item =>
+    typeof item === "string"
+      ? {
+          name: item,
+          quantity: 1,
+          type: ""
+        }
+      : {
+          name: item?.name ?? "—",
+          quantity: item?.quantity ?? 1,
+          type: item?.type ?? ""
+        }
+  )
+
+  /*
+   * ------------------------------------------------------------
+   * PANEL / ARRAY DATA
+   * ------------------------------------------------------------
+   *
+   * Panels should use the actual EPVS panel count rather than
+   * the quantity stored against the template item.
+   */
+
+  const solarArrays = Array.isArray(data.arrays)
+    ? data.arrays.filter(
+        array =>
+          Number(array?.panelCount || 0) > 0
+      )
+    : []
+
+  const totalPanelCount = solarArrays.reduce(
+    (total, array) =>
+      total + Number(array?.panelCount || 0),
+    0
+  )
+
+  const fallbackPanelCount = Number(
+    data.panelCount || 0
+  )
+
+  const actualPanelCount =
+    totalPanelCount > 0
+      ? totalPanelCount
+      : fallbackPanelCount
+
+  /*
+   * Returns the correct quantity for each item.
+   */
+  const getItemQuantity = item => {
+    const itemName = String(item?.name || "")
+      .trim()
+      .toLowerCase()
+
+    /*
+     * Panels = actual number of panels from EPVS
+     */
+    if (itemName === "panels") {
+      return actualPanelCount > 0
+        ? String(actualPanelCount)
+        : "-"
+    }
+
+    /*
+     * These are intentionally displayed as "-".
+     */
+    if (
+      itemName === "roof hooks" ||
+      itemName === "rail fix kit"
+    ) {
+      return "-"
+    }
+
+    /*
+     * Everything else behaves as it did previously.
+     */
+    return interpolate(
+      String(item?.quantity ?? 1),
+      appointment,
+      epvs
     )
-      ? settings.included_items
-      : []
+  }
 
-  const items =
-    configured.map(item =>
-      typeof item === "string"
-        ? {
-            name: item,
-            quantity: 1,
-            type: ""
-          }
-        : {
-            name:
-              item?.name ?? "—",
-            quantity:
-              item?.quantity ?? 1,
-            type:
-              item?.type ?? ""
-          }
-    )
-
-  const headerY =
-    ctx.y + 28
+  const headerY = ctx.y + 28
 
   const typeX =
     ctx.padding +
     width -
     43
 
-  const rowHeight =
-    7.15
+  const rowHeight = 7.15
 
-  pdf.setFillColor(
-    ...ctx.accent
-  )
+  /*
+   * ------------------------------------------------------------
+   * TABLE HEADER
+   * ------------------------------------------------------------
+   */
+
+  pdf.setFillColor(...ctx.accent)
 
   pdf.roundedRect(
     ctx.padding,
@@ -1079,17 +1138,8 @@ async function drawItemisedBreakdown(
     "F"
   )
 
-  pdf.setTextColor(
-    255,
-    255,
-    255
-  )
-
-  pdf.setFont(
-    "helvetica",
-    "bold"
-  )
-
+  pdf.setTextColor(255, 255, 255)
+  pdf.setFont("helvetica", "bold")
   pdf.setFontSize(8)
 
   pdf.text(
@@ -1102,168 +1152,141 @@ async function drawItemisedBreakdown(
     "TYPE",
     typeX,
     headerY,
-    {
-      align: "center"
-    }
+    { align: "center" }
   )
 
   pdf.text(
     "QTY",
-    ctx.padding +
-      width -
-      7,
+    ctx.padding + width - 7,
     headerY,
-    {
-      align: "right"
-    }
+    { align: "right" }
   )
 
-  let y =
-    headerY + 9
+  let y = headerY + 9
 
-  items.forEach(
-    (item, index) => {
-      const name =
-        interpolate(
-          String(item.name),
-          appointment,
-          epvs
-        )
+  /*
+   * ------------------------------------------------------------
+   * TABLE ROWS
+   * ------------------------------------------------------------
+   */
 
-      const type =
-        interpolate(
-          String(item.type),
-          appointment,
-          epvs
-        )
+  items.forEach((item, index) => {
+    const name = interpolate(
+      String(item.name),
+      appointment,
+      epvs
+    )
 
-      const quantity =
-        interpolate(
-          String(item.quantity),
-          appointment,
-          epvs
-        )
+    const type = interpolate(
+      String(item.type),
+      appointment,
+      epvs
+    )
 
-      if (index % 2 === 0) {
-        pdf.setFillColor(
-          247,
-          249,
-          250
-        )
+    const quantity = getItemQuantity(item)
 
-        pdf.roundedRect(
-          ctx.padding,
-          y - 5.2,
-          width,
-          rowHeight,
-          1.2,
-          1.2,
-          "F"
-        )
-      }
+    if (index % 2 === 0) {
+      pdf.setFillColor(247, 249, 250)
 
-      pdf.setTextColor(
-        ...ctx.text
+      pdf.roundedRect(
+        ctx.padding,
+        y - 5.2,
+        width,
+        rowHeight,
+        1.2,
+        1.2,
+        "F"
       )
-
-      pdf.setFont(
-        "helvetica",
-        "normal"
-      )
-
-      pdf.setFontSize(8.1)
-
-      pdf.text(
-        name,
-        ctx.padding + 7,
-        y
-      )
-
-      if (type) {
-        pdf.setFont(
-          "helvetica",
-          "bold"
-        )
-
-        pdf.setFontSize(6.5)
-
-        const tagWidth =
-          pdf.getTextWidth(type) +
-          6
-
-        const typeKey =
-          type.toLowerCase()
-
-        const fill =
-          typeKey === "service"
-            ? [255, 241, 230]
-            : typeKey === "product"
-              ? [231, 242, 248]
-              : [238, 240, 242]
-
-        const colour =
-          typeKey === "service"
-            ? [199, 106, 0]
-            : typeKey === "product"
-              ? [11, 93, 138]
-              : [75, 85, 92]
-
-        pdf.setFillColor(
-          ...fill
-        )
-
-        pdf.setTextColor(
-          ...colour
-        )
-
-        pdf.roundedRect(
-          typeX -
-            tagWidth / 2,
-          y - 3.8,
-          tagWidth,
-          4.5,
-          2,
-          2,
-          "F"
-        )
-
-        pdf.text(
-          type,
-          typeX,
-          y - 0.5,
-          {
-            align: "center"
-          }
-        )
-      }
-
-      pdf.setTextColor(
-        ...ctx.text
-      )
-
-      pdf.setFont(
-        "helvetica",
-        "bold"
-      )
-
-      pdf.setFontSize(8.1)
-
-      pdf.text(
-        quantity,
-        ctx.padding +
-          width -
-          7,
-        y,
-        {
-          align: "right"
-        }
-      )
-
-      y += rowHeight
     }
-  )
+
+    /*
+     * PRODUCT / SERVICE
+     */
+
+    pdf.setTextColor(...ctx.text)
+    pdf.setFont("helvetica", "normal")
+    pdf.setFontSize(8.1)
+
+    pdf.text(
+      name,
+      ctx.padding + 7,
+      y
+    )
+
+    /*
+     * TYPE TAG
+     */
+
+    if (type) {
+      pdf.setFont("helvetica", "bold")
+      pdf.setFontSize(6.5)
+
+      const tagWidth =
+        pdf.getTextWidth(type) + 6
+
+      const typeKey =
+        type.toLowerCase()
+
+      const fill =
+        typeKey === "service"
+          ? [255, 241, 230]
+          : typeKey === "product"
+            ? [231, 242, 248]
+            : [238, 240, 242]
+
+      const colour =
+        typeKey === "service"
+          ? [199, 106, 0]
+          : typeKey === "product"
+            ? [11, 93, 138]
+            : [75, 85, 92]
+
+      pdf.setFillColor(...fill)
+      pdf.setTextColor(...colour)
+
+      pdf.roundedRect(
+        typeX - tagWidth / 2,
+        y - 3.8,
+        tagWidth,
+        4.5,
+        2,
+        2,
+        "F"
+      )
+
+      pdf.text(
+        type,
+        typeX,
+        y - 0.5,
+        { align: "center" }
+      )
+    }
+
+    /*
+     * QUANTITY
+     */
+
+    pdf.setTextColor(...ctx.text)
+    pdf.setFont("helvetica", "bold")
+    pdf.setFontSize(8.1)
+
+    pdf.text(
+      quantity,
+      ctx.padding + width - 7,
+      y,
+      { align: "right" }
+    )
+
+    y += rowHeight
+  })
 
   y += 7
+
+  /*
+   * ------------------------------------------------------------
+   * TOTAL SYSTEM PRICE
+   * ------------------------------------------------------------
+   */
 
   const price =
     results?.systemCost ??
@@ -1273,101 +1296,72 @@ async function drawItemisedBreakdown(
     appointment?.sale_value ??
     appointment?.price
 
-  pdf.setFillColor(
-    ...ctx.accent
-  )
+  /*
+   * Make the card slightly taller so the signature can sit
+   * neatly inside it without overlapping anything.
+   */
+  const totalCardHeight = 32
+
+  pdf.setFillColor(...ctx.accent)
 
   pdf.roundedRect(
     ctx.padding,
     y,
     width,
-    25,
+    totalCardHeight,
     3,
     3,
     "F"
   )
 
-  pdf.setTextColor(
-    255,
-    255,
-    255
-  )
-
-  pdf.setFont(
-    "helvetica",
-    "normal"
-  )
-
-  pdf.setFontSize(8)
-
-  pdf.text(
-    "TOTAL SYSTEM PRICE",
-    ctx.padding + 8,
-    y + 10
-  )
-
-  pdf.setFont(
-    "helvetica",
-    "bold"
-  )
-
-  pdf.setFontSize(18)
-
-  pdf.text(
-    money(price),
-    ctx.padding +
-      width -
-      8,
-    y + 15,
-    {
-      align: "right"
-    }
-  )
+  /*
+   * ------------------------------------------------------------
+   * CUSTOMER SIGNATURE
+   * ------------------------------------------------------------
+   */
 
   const signatureUrl =
-    await getSignatureImageUrl(
-      appointment
-    )
+    await getSignatureImageUrl(appointment)
 
   if (signatureUrl) {
     try {
       const signature =
-        await imageData(
-          signatureUrl
-        )
+        await imageData(signatureUrl)
 
-      const signatureBoxWidth =
-        75
-
-      const signatureBoxHeight =
-        32
-
+      /*
+       * Signature occupies the left side of the card.
+       */
       const signatureAreaX =
-        ctx.width -
-        ctx.padding -
-        signatureBoxWidth
+        ctx.padding + 7
 
       const signatureAreaY =
-        ctx.height -
-        10 -
-        signatureBoxHeight
+        y + 6
 
-      pdf.setTextColor(
-        ...ctx.text
-      )
+      const signatureAreaWidth =
+        Math.min(65, width * 0.45)
 
+      const signatureAreaHeight = 20
+
+      /*
+       * Title
+       */
+
+      pdf.setTextColor(255, 255, 255)
       pdf.setFont(
         "helvetica",
         "bold"
       )
-
-      pdf.setFontSize(8)
+      pdf.setFontSize(6.5)
 
       pdf.text(
         "CUSTOMER SIGNATURE",
         signatureAreaX,
-        signatureAreaY - 4
+        signatureAreaY
       )
+
+      /*
+       * Signature background
+       */
 
       pdf.setFillColor(
         252,
@@ -1377,19 +1371,23 @@ async function drawItemisedBreakdown(
 
       pdf.roundedRect(
         signatureAreaX,
-        signatureAreaY,
-        signatureBoxWidth,
-        signatureBoxHeight,
-        2.5,
-        2.5,
+        signatureAreaY + 2.5,
+        signatureAreaWidth,
+        signatureAreaHeight - 4,
+        1.5,
+        1.5,
         "F"
       )
 
+      /*
+       * Keep the actual signature nicely contained.
+       */
+
       const maxSignatureWidth =
-        signatureBoxWidth - 6
+        signatureAreaWidth - 8
 
       const maxSignatureHeight =
-        signatureBoxHeight - 6
+        signatureAreaHeight - 9
 
       const signatureRatio =
         signature.width /
@@ -1416,15 +1414,18 @@ async function drawItemisedBreakdown(
 
       const signatureX =
         signatureAreaX +
-        (signatureBoxWidth -
-          signatureWidth) /
-          2
+        (
+          signatureAreaWidth -
+          signatureWidth
+        ) / 2
 
       const signatureY =
         signatureAreaY +
-        (signatureBoxHeight -
-          signatureHeight) /
-          2
+        3 +
+        (
+          maxSignatureHeight -
+          signatureHeight
+        ) / 2
 
       pdf.addImage(
         signature.dataUrl,
@@ -1436,6 +1437,7 @@ async function drawItemisedBreakdown(
         undefined,
         "FAST"
       )
+
     } catch (error) {
       console.error(
         "Unable to add customer signature to contract:",
@@ -1443,8 +1445,54 @@ async function drawItemisedBreakdown(
       )
     }
   }
-}
 
+  /*
+   * ------------------------------------------------------------
+   * TOTAL PRICE
+   * ------------------------------------------------------------
+   *
+   * The price sits on the right side of the same card.
+   */
+
+  const priceX =
+    ctx.padding +
+    width -
+    8
+
+  pdf.setTextColor(
+    255,
+    255,
+    255
+  )
+
+  pdf.setFont(
+    "helvetica",
+    "normal"
+  )
+
+  pdf.setFontSize(7)
+
+  pdf.text(
+    "TOTAL SYSTEM PRICE",
+    priceX,
+    y + 10,
+    { align: "right" }
+  )
+
+  pdf.setFont(
+    "helvetica",
+    "bold"
+  )
+
+  pdf.setFontSize(18)
+
+  pdf.text(
+    money(price),
+    priceX,
+    y + 22,
+    { align: "right" }
+  )
+}
 function parseTermsSections(
   raw
 ) {
