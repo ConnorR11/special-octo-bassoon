@@ -88,9 +88,6 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
       }
     })
 
-    // Net Position follows the same logic as the reference table:
-    // start with the total cost of all scheduled payments, then add the
-    // cumulative annual benefit as each year passes.
     const totalPayments = preparedRows.reduce(
       (total, row) => total + row.yearlyPayment,
       0
@@ -395,13 +392,15 @@ function HeaderCell({ children, green = false, minWidth }) {
 function BodyCell({ children, green = false, negative = false }) {
   let background = "#fff"
   let color = "#333"
+  const textValue = String(children ?? "").trim()
+  const isNegative = negative || textValue.startsWith("-")
 
   if (green) {
     background = "#e8f5eb"
     color = "#26783a"
   }
 
-  if (negative) color = "#ff0000"
+  if (isNegative) color = "#ff0000"
 
   return (
     <td
@@ -412,7 +411,7 @@ function BodyCell({ children, green = false, negative = false }) {
         padding: "5px 7px",
         textAlign: "right",
         whiteSpace: "nowrap",
-        fontSize: 12,
+        fontSize: 8,
         fontWeight: 600,
       }}
     >
@@ -429,4 +428,5 @@ const totalCell = {
   textAlign: "right",
   fontWeight: 700,
   whiteSpace: "nowrap",
+  fontSize: 8,
 }
