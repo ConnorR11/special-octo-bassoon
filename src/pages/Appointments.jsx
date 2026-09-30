@@ -4,14 +4,6 @@ import { supabase } from "../lib/supabase"
 import CreateAppointment from "./CreateAppointment"
 import { useVisibility } from "../context/VisibilityContext"
 
-function normaliseEmail(value) {
-  return String(value || "").trim().toLowerCase()
-}
-
-function normaliseBranch(value) {
-  return String(value || "").trim()
-}
-
 function Appointments({ onSelectAppointment }) {
   const {
     effectiveProfile,
@@ -20,8 +12,7 @@ function Appointments({ onSelectAppointment }) {
     isBranchManager,
     isSalesManager,
     isSalesRep,
-    branch,
-    email,
+    applyAppointmentVisibility,
     loading: visibilityLoading,
   } = useVisibility()
 
@@ -50,30 +41,9 @@ function Appointments({ onSelectAppointment }) {
         .order("appointment_date", { ascending: false, nullsFirst: false })
         .range(from, to)
 
-      // Central visibility rules:
-      // Level 3+ -> all appointments
-      // Branch Manager -> appointments in their branch
-      // Sales Manager -> appointments in their branch
-      // Sales Rep -> appointments where rep_allocated matches their email
-      //               AND the appointment is no more than 7 days old.
-      if (!canSeeAll) {
-        const viewerBranch = normaliseBranch(branch || effectiveProfile?.branch)
-        const viewerEmail = normaliseEmail(email || effectiveProfile?.email)
-
-        if ((isBranchManager || isSalesManager) && viewerBranch) {
-          request = request.ilike("branch", viewerBranch)
-        } else if (viewerEmail) {
-          request = request.ilike("rep_allocated", viewerEmail)
-
-          if (isSalesRep) {
-            const sevenDaysAgo = new Date()
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-            request = request.gte("appointment_date", sevenDaysAgo.toISOString())
-          }
-        } else {
-          request = request.ilike("rep_allocated", "__NO_VISIBLE_REP__")
-        }
-      }
+      // Appointment visibility is owned by VisibilityContext.
+      // This page deliberately does not duplicate role, branch, rep or date rules.
+      request = applyAppointmentVisibility(request)
 
       const search = query.trim()
 
@@ -126,8 +96,7 @@ function Appointments({ onSelectAppointment }) {
     isBranchManager,
     isSalesManager,
     isSalesRep,
-    branch,
-    email,
+    applyAppointmentVisibility,
     visibilityLoading,
   ])
 
