@@ -67,7 +67,7 @@ const PIPEDRIVE_FIELDS = {
   adminFeePaidOutDate: { name: "Comms | Admin Paid Out Date", key: null },
   adminFeeReceivedDate: { name: "AF: Date Received", key: null },
   salesperson: { name: "Sales Rep", key: null },
-  balanceOutstanding: { name: "Balance Outstanding", key: null },
+  balanceOutstanding: { name: "Balance: Outstanding Amount", key: null },
 }
 
 let fieldResolutionPromise = null
@@ -325,7 +325,7 @@ export default async function handler(req, res) {
       "Comms | Admin Paid Out Date": adminFeePaidOutDate,
       "AF: Date Received": adminFeeReceivedDate,
       "Sales Rep": salesperson,
-      "Balance Outstanding": balanceOutstanding,
+      "Balance: Outstanding Amount": balanceOutstanding,
       "Stage": pipedriveStage,
     }
     const fieldCodes = Object.fromEntries(Object.entries(fields).map(([key, field]) => [field.name, field.key]))
