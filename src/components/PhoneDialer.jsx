@@ -83,6 +83,7 @@ function PhoneDialer({ onClose, initialNumber = "", customerName = "", callConte
         CrmAppointmentId: callContext?.appointmentId || "",
         CrmEntityId: callContext?.entityId || "",
         CrmContextType: callContext?.type || "",
+        CrmCustomerName: customerName || "",
       }
       console.info("Twilio call starting", { destination, identity, deviceState: device.state, callContext })
       setDiagnostic(`Starting call → ${destination}${customerName ? ` | ${customerName}` : ""}`)
