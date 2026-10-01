@@ -26,7 +26,7 @@ import SEO from "./pages/SEO"
 import MI from "./pages/MI"
 import Reviews from "./pages/Reviews"
 import IntegrationLogs from "./pages/IntegrationLogs"
-import SalesPresentations from "./pages/SalesPresentations"
+import Templates from "./pages/templates"
 import AdminUserPreview from "./components/AdminUserPreview"
 
 const DEALS_PAGE_SIZE = 50
@@ -129,16 +129,22 @@ function App() {
         return
       }
 
-      const { data: previewProfile, error: previewProfileError } = await supabase
-        .from("profiles")
-        .select("id, full_name, display_name, email, role, permission_level, branch, active")
-        .eq("id", previewId)
-        .maybeSingle()
+      const { data: previewProfile, error: previewProfileError } =
+        await supabase
+          .from("profiles")
+          .select(
+            "id, full_name, display_name, email, role, permission_level, branch, active"
+          )
+          .eq("id", previewId)
+          .maybeSingle()
 
       if (!mounted) return
 
       if (previewProfileError) {
-        console.error("Error loading preview profile:", previewProfileError)
+        console.error(
+          "Error loading preview profile:",
+          previewProfileError
+        )
       }
 
       setPreviewUser(previewProfile || null)
@@ -152,10 +158,14 @@ function App() {
   }, [session])
 
   const isAdministrator = Number(profile?.permission_level) >= 4
+
   const effectivePermissionLevel =
     previewUser?.permission_level ?? profile?.permission_level ?? 0
+
   const effectiveRole = previewUser?.role ?? profile?.role ?? ""
-  const effectiveUserEmail = previewUser?.email ?? session?.user?.email ?? ""
+
+  const effectiveUserEmail =
+    previewUser?.email ?? session?.user?.email ?? ""
 
   useEffect(() => {
     const restrictedPages = {
@@ -167,13 +177,16 @@ function App() {
       reviews: 4,
       users: 4,
       tasks: 4,
-      "templates": 4,
+      templates: 4,
       "integration-logs": 4,
     }
 
     const requiredPermission = restrictedPages[page]
 
-    if (requiredPermission && effectivePermissionLevel < requiredPermission) {
+    if (
+      requiredPermission &&
+      effectivePermissionLevel < requiredPermission
+    ) {
       setPage("dashboard")
 
       if (window.location.pathname !== "/") {
@@ -182,12 +195,18 @@ function App() {
     }
   }, [page, effectivePermissionLevel])
 
-  async function loadContracts(pageNumber = 0, searchValue = query, statusValue = status) {
+  async function loadContracts(
+    pageNumber = 0,
+    searchValue = query,
+    statusValue = status
+  ) {
     setLoading(true)
     setError("")
 
     if (!supabase) {
-      setError("Supabase is not configured. Check your environment variables.")
+      setError(
+        "Supabase is not configured. Check your environment variables."
+      )
       setLoading(false)
       return
     }
@@ -207,27 +226,43 @@ function App() {
       let visibleSalespersonIds = []
 
       if (viewerId) {
-        const { data: visibleProfiles, error: visibleProfilesError } = await supabase
+        const {
+          data: visibleProfiles,
+          error: visibleProfilesError,
+        } = await supabase
           .from("profiles")
           .select("pipedrive_person_id")
-          .or(`id.eq.${viewerId},sales_manager.eq.${viewerId},manager_id.eq.${viewerId}`)
+          .or(
+            `id.eq.${viewerId},sales_manager.eq.${viewerId},manager_id.eq.${viewerId}`
+          )
 
         if (visibleProfilesError) throw visibleProfilesError
 
         visibleSalespersonIds = (visibleProfiles || [])
-          .map(row => String(row?.pipedrive_person_id || "").trim())
+          .map(row =>
+            String(row?.pipedrive_person_id || "").trim()
+          )
           .filter(Boolean)
       }
 
       if (visibleSalespersonIds.length) {
-        request = request.in("salesperson", visibleSalespersonIds)
+        request = request.in(
+          "salesperson",
+          visibleSalespersonIds
+        )
       } else {
-        request = request.eq("salesperson", "__NO_VISIBLE_SALESPERSON__")
+        request = request.eq(
+          "salesperson",
+          "__NO_VISIBLE_SALESPERSON__"
+        )
       }
     }
 
     if (search) {
-      const escaped = search.replace(/[%_]/g, "\\$&").replace(/,/g, "\\,")
+      const escaped = search
+        .replace(/[%_]/g, "\\$&")
+        .replace(/,/g, "\\,")
+
       request = request.or(
         `customer_name.ilike.%${escaped}%,postcode.ilike.%${escaped}%,phone.ilike.%${escaped}%,contract_number.ilike.%${escaped}%`
       )
@@ -246,7 +281,9 @@ function App() {
     } else {
       setContracts(data || [])
       setContractsPage(pageNumber)
-      setHasMoreContracts((data || []).length === DEALS_PAGE_SIZE)
+      setHasMoreContracts(
+        (data || []).length === DEALS_PAGE_SIZE
+      )
     }
 
     setLoading(false)
@@ -274,13 +311,22 @@ function App() {
         results.push(...batch)
 
         if (batch.length < REPORTING_PAGE_SIZE) break
+
         from += REPORTING_PAGE_SIZE
       }
 
       setAllDeals(results)
     } catch (err) {
-      console.error("Error loading all deals for reporting:", err)
-      setError(err?.message || "Unable to load deals for reporting.")
+      console.error(
+        "Error loading all deals for reporting:",
+        err
+      )
+
+      setError(
+        err?.message ||
+          "Unable to load deals for reporting."
+      )
+
       setAllDeals([])
     } finally {
       setReportingLoading(false)
@@ -295,19 +341,27 @@ function App() {
     try {
       const results = []
       let from = 0
+
       const viewerId = previewUser?.id || profile?.id
       let visibleSalespersonIds = []
 
       if (effectivePermissionLevel < 4 && viewerId) {
-        const { data: visibleProfiles, error: visibleProfilesError } = await supabase
+        const {
+          data: visibleProfiles,
+          error: visibleProfilesError,
+        } = await supabase
           .from("profiles")
           .select("pipedrive_person_id")
-          .or(`id.eq.${viewerId},sales_manager.eq.${viewerId},manager_id.eq.${viewerId}`)
+          .or(
+            `id.eq.${viewerId},sales_manager.eq.${viewerId},manager_id.eq.${viewerId}`
+          )
 
         if (visibleProfilesError) throw visibleProfilesError
 
         visibleSalespersonIds = (visibleProfiles || [])
-          .map(row => String(row?.pipedrive_person_id || "").trim())
+          .map(row =>
+            String(row?.pipedrive_person_id || "").trim()
+          )
           .filter(Boolean)
       }
 
@@ -322,16 +376,30 @@ function App() {
           )
           .is("commission_paid_date", null)
           .gte("sale_date", "2026-01-01")
-          .order("installation_start_date", { ascending: true })
-          .range(from, from + REPORTING_PAGE_SIZE - 1)
+          .order("installation_start_date", {
+            ascending: true,
+          })
+          .range(
+            from,
+            from + REPORTING_PAGE_SIZE - 1
+          )
 
         if (effectivePermissionLevel < 4) {
           request = visibleSalespersonIds.length
-            ? request.in("salesperson", visibleSalespersonIds)
-            : request.eq("salesperson", "__NO_VISIBLE_SALESPERSON__")
+            ? request.in(
+                "salesperson",
+                visibleSalespersonIds
+              )
+            : request.eq(
+                "salesperson",
+                "__NO_VISIBLE_SALESPERSON__"
+              )
         }
 
-        const { data, error: supabaseError } = await request
+        const {
+          data,
+          error: supabaseError,
+        } = await request
 
         if (supabaseError) throw supabaseError
 
@@ -339,13 +407,22 @@ function App() {
         results.push(...batch)
 
         if (batch.length < REPORTING_PAGE_SIZE) break
+
         from += REPORTING_PAGE_SIZE
       }
 
       setCommissionDeals(results)
     } catch (err) {
-      console.error("Error loading commission deals:", err)
-      setError(err?.message || "Unable to load commission data.")
+      console.error(
+        "Error loading commission deals:",
+        err
+      )
+
+      setError(
+        err?.message ||
+          "Unable to load commission data."
+      )
+
       setCommissionDeals([])
     } finally {
       setCommissionLoading(false)
@@ -363,22 +440,32 @@ function App() {
   const filteredContracts = contracts
 
   const totalValue = allDeals.reduce(
-    (total, contract) => total + Number(contract.net_value || 0),
+    (total, contract) =>
+      total + Number(contract.net_value || 0),
     0
   )
 
-  const averageValue = allDeals.length > 0 ? totalValue / allDeals.length : 0
+  const averageValue =
+    allDeals.length > 0
+      ? totalValue / allDeals.length
+      : 0
 
   const today = new Date().toISOString().slice(0, 10)
 
   const upcomingInstallations = allDeals.filter(
-    contract => contract.installation_date && contract.installation_date >= today
+    contract =>
+      contract.installation_date &&
+      contract.installation_date >= today
   ).length
 
   function handleBackToDeals() {
     setSelected(null)
     setPage("contracts")
-    window.history.pushState({}, "", "/contracts")
+    window.history.pushState(
+      {},
+      "",
+      "/contracts"
+    )
   }
 
   function handleDealUpdated(updatedDeal) {
@@ -391,30 +478,42 @@ function App() {
       "pending cancellation",
     ])
 
-    const stage = String(updatedDeal?.pipedrive_stage ?? "")
+    const stage = String(
+      updatedDeal?.pipedrive_stage ?? ""
+    )
       .trim()
       .replace(/\s+/g, " ")
       .toLowerCase()
 
-    const shouldRemoveFromCommissions = excludedCommissionStages.has(stage)
+    const shouldRemoveFromCommissions =
+      excludedCommissionStages.has(stage)
 
     setContracts(current =>
       current.map(contract =>
-        contract.id === updatedDeal.id ? updatedDeal : contract
+        contract.id === updatedDeal.id
+          ? updatedDeal
+          : contract
       )
     )
 
     setAllDeals(current =>
       current.map(contract =>
-        contract.id === updatedDeal.id ? updatedDeal : contract
+        contract.id === updatedDeal.id
+          ? updatedDeal
+          : contract
       )
     )
 
     setCommissionDeals(current =>
       shouldRemoveFromCommissions
-        ? current.filter(contract => contract.id !== updatedDeal.id)
+        ? current.filter(
+            contract =>
+              contract.id !== updatedDeal.id
+          )
         : current.map(contract =>
-            contract.id === updatedDeal.id ? updatedDeal : contract
+            contract.id === updatedDeal.id
+              ? updatedDeal
+              : contract
           )
     )
 
@@ -431,11 +530,16 @@ function App() {
       reviews: 4,
       users: 4,
       tasks: 4,
-      "templates": 4,
+      templates: 4,
       "integration-logs": 4,
     }[newPage]
 
-    if (requiredPermission && effectivePermissionLevel < requiredPermission) return
+    if (
+      requiredPermission &&
+      effectivePermissionLevel < requiredPermission
+    ) {
+      return
+    }
 
     setSelected(null)
     setSelectedAppointment(null)
@@ -448,7 +552,13 @@ function App() {
       loadContracts(0, "", "all")
     }
 
-    window.history.pushState({}, "", newPage === "dashboard" ? "/" : `/${newPage}`)
+    window.history.pushState(
+      {},
+      "",
+      newPage === "dashboard"
+        ? "/"
+        : `/${newPage}`
+    )
   }
 
   function handleSearchChange(value) {
@@ -458,6 +568,7 @@ function App() {
 
   function mapAppointment(appointment) {
     if (!appointment) return null
+
     return {
       ...appointment,
       phone: appointment?.phone_number_1,
@@ -466,47 +577,79 @@ function App() {
   }
 
   function appointmentUrl(appointment) {
-    return `/appointments/${encodeURIComponent(appointment.appointment_row_id)}`
+    return `/appointments/${encodeURIComponent(
+      appointment.appointment_row_id
+    )}`
   }
 
   function handleAppointmentSelect(appointment) {
-    const mappedAppointment = mapAppointment(appointment)
+    const mappedAppointment =
+      mapAppointment(appointment)
+
     if (!mappedAppointment?.appointment_row_id) return
 
     setSelected(null)
     setPickupAppointment(null)
     setSelectedAppointment(mappedAppointment)
     setPage("appointments")
-    window.history.pushState({}, "", appointmentUrl(mappedAppointment))
+
+    window.history.pushState(
+      {},
+      "",
+      appointmentUrl(mappedAppointment)
+    )
   }
 
-  async function loadAppointmentFromUrl(appointmentId) {
+  async function loadAppointmentFromUrl(
+    appointmentId
+  ) {
     if (!supabase || !appointmentId) return
 
     setError("")
 
-    const { data, error: appointmentError } = await supabase
+    const {
+      data,
+      error: appointmentError,
+    } = await supabase
       .from("appointments")
       .select("*")
-      .eq("appointment_row_id", appointmentId)
+      .eq(
+        "appointment_row_id",
+        appointmentId
+      )
       .maybeSingle()
 
     if (appointmentError) {
-      console.error("Error loading appointment from URL:", appointmentError)
+      console.error(
+        "Error loading appointment from URL:",
+        appointmentError
+      )
+
       setError(appointmentError.message)
       return
     }
 
     if (!data) {
-      setError("Appointment not available in this user preview.")
-      window.history.replaceState({}, "", "/appointments")
+      setError(
+        "Appointment not available in this user preview."
+      )
+
+      window.history.replaceState(
+        {},
+        "",
+        "/appointments"
+      )
+
       setPage("appointments")
       return
     }
 
     setSelected(null)
     setPickupAppointment(null)
-    setSelectedAppointment(mapAppointment(data))
+    setSelectedAppointment(
+      mapAppointment(data)
+    )
+
     setPage("appointments")
   }
 
@@ -514,11 +657,24 @@ function App() {
     if (!session) return
 
     function handlePopState() {
-      const path = window.location.pathname.replace(/\/+$/, "") || "/"
-      const appointmentMatch = path.match(/^\/appointments\/([^/]+)$/)
+      const path =
+        window.location.pathname.replace(
+          /\/+$/,
+          ""
+        ) || "/"
+
+      const appointmentMatch =
+        path.match(
+          /^\/appointments\/([^/]+)$/
+        )
 
       if (appointmentMatch) {
-        loadAppointmentFromUrl(decodeURIComponent(appointmentMatch[1]))
+        loadAppointmentFromUrl(
+          decodeURIComponent(
+            appointmentMatch[1]
+          )
+        )
+
         return
       }
 
@@ -527,61 +683,102 @@ function App() {
       setPickupAppointment(null)
 
       setPage(
-        path === "/" || path === "/dashboard" ? "dashboard" : path.slice(1)
+        path === "/" ||
+          path === "/dashboard"
+          ? "dashboard"
+          : path.slice(1)
       )
     }
 
     handlePopState()
-    window.addEventListener("popstate", handlePopState)
 
-    return () => window.removeEventListener("popstate", handlePopState)
+    window.addEventListener(
+      "popstate",
+      handlePopState
+    )
+
+    return () =>
+      window.removeEventListener(
+        "popstate",
+        handlePopState
+      )
   }, [session, previewUser?.id])
 
   function handleOpenPickup() {
-    if (selectedAppointment?.result) setPickupAppointment(selectedAppointment)
+    if (selectedAppointment?.result) {
+      setPickupAppointment(
+        selectedAppointment
+      )
+    }
   }
 
   function handleBackToAppointments() {
     setPickupAppointment(null)
     setSelectedAppointment(null)
     setPage("appointments")
-    window.history.pushState({}, "", "/appointments")
+
+    window.history.pushState(
+      {},
+      "",
+      "/appointments"
+    )
   }
 
   function handleBackFromPickup() {
     setPickupAppointment(null)
   }
 
-  function handlePickupCreated(updatedOriginal) {
+  function handlePickupCreated(
+    updatedOriginal
+  ) {
     setSelectedAppointment({
       ...selectedAppointment,
       ...updatedOriginal,
-      phone: updatedOriginal?.phone_number_1,
-      email: updatedOriginal?.email_address,
+      phone:
+        updatedOriginal?.phone_number_1,
+      email:
+        updatedOriginal?.email_address,
     })
+
     setPickupAppointment(null)
   }
 
   function handleSignOut() {
     if (supabase) {
       supabase.auth.signOut().catch(err =>
-        console.error("Error signing out:", err)
+        console.error(
+          "Error signing out:",
+          err
+        )
       )
     }
   }
 
-  function handleAppointmentUpdated(updatedAppointment) {
-    const mapped = mapAppointment(updatedAppointment)
+  function handleAppointmentUpdated(
+    updatedAppointment
+  ) {
+    const mapped =
+      mapAppointment(updatedAppointment)
+
     setSelectedAppointment(current =>
-      current ? { ...current, ...mapped } : mapped
+      current
+        ? { ...current, ...mapped }
+        : mapped
     )
   }
 
   function clickLegacyButton(text) {
-    const host = document.querySelector(".appointment-detail-host")
+    const host = document.querySelector(
+      ".appointment-detail-host"
+    )
+
     const button = host
-      ? Array.from(host.querySelectorAll("button")).find(
-          candidate => candidate.textContent.trim() === text
+      ? Array.from(
+          host.querySelectorAll("button")
+        ).find(
+          candidate =>
+            candidate.textContent.trim() ===
+            text
         )
       : null
 
@@ -594,7 +791,9 @@ function App() {
   }
 
   function handleLegacyConfirm() {
-    clickLegacyButton("Confirm Appointment")
+    clickLegacyButton(
+      "Confirm Appointment"
+    )
   }
 
   function handleLegacyResult() {
@@ -619,7 +818,8 @@ function App() {
           justifyContent: "center",
           background: "#f5f7fa",
           color: "#002d49",
-          fontFamily: "Inter, Arial, sans-serif",
+          fontFamily:
+            "Inter, Arial, sans-serif",
           fontSize: 14,
         }}
       >
@@ -635,21 +835,41 @@ function App() {
     previewUser?.full_name ||
     profile?.display_name ||
     profile?.full_name ||
-    session?.user?.user_metadata?.full_name ||
+    session?.user?.user_metadata
+      ?.full_name ||
     session?.user?.user_metadata?.name ||
     "there"
 
-  const currentHour = new Date().getHours()
+  const currentHour =
+    new Date().getHours()
+
   const greeting =
-    currentHour < 12 ? "Good Morning" : currentHour < 18 ? "Good Afternoon" : "Good Evening"
+    currentHour < 12
+      ? "Good Morning"
+      : currentHour < 18
+      ? "Good Afternoon"
+      : "Good Evening"
 
   const homeContent = (
     <section>
       <div style={{ marginBottom: 18 }}>
-        <h1 style={{ margin: 0, fontSize: 22, color: "#222" }}>
+        <h1
+          style={{
+            margin: 0,
+            fontSize: 22,
+            color: "#222",
+          }}
+        >
           {greeting}, {displayName}
         </h1>
-        <p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>
+
+        <p
+          style={{
+            margin: "5px 0 0",
+            fontSize: 11,
+            color: "#888",
+          }}
+        >
           Welcome to the Homeshield Scotland CRM
         </p>
       </div>
@@ -664,11 +884,16 @@ function App() {
         mobile={mobile}
         setMobile={setMobile}
         onSignOut={handleSignOut}
-        permissionLevel={effectivePermissionLevel}
+        permissionLevel={
+          effectivePermissionLevel
+        }
       />
 
       <main>
-        <Header page={headerPage} setMobile={setMobile} />
+        <Header
+          page={headerPage}
+          setMobile={setMobile}
+        />
 
         {error && page !== "epvs" && (
           <div className="error">
@@ -677,40 +902,58 @@ function App() {
           </div>
         )}
 
-        {isAdministrator && page === "users" && (
-          <AdminUserPreview
-            activeUser={previewUser}
-            onStart={user => {
-              setPreviewUser(user)
-              setSelected(null)
-              setSelectedAppointment(null)
-              setPickupAppointment(null)
-              setPage("appointments")
-              window.history.pushState({}, "", "/appointments")
-            }}
-            onStop={async () => {
-              setPreviewUser(null)
-              setSelectedAppointment(null)
-              setPickupAppointment(null)
-              setPage("users")
-              window.history.pushState({}, "", "/users")
-            }}
-          />
-        )}
+        {isAdministrator &&
+          page === "users" && (
+            <AdminUserPreview
+              activeUser={previewUser}
+              onStart={user => {
+                setPreviewUser(user)
+                setSelected(null)
+                setSelectedAppointment(null)
+                setPickupAppointment(null)
+                setPage("appointments")
 
-        {isAdministrator && previewUser && page !== "users" && (
-          <AdminUserPreview
-            activeUser={previewUser}
-            onStart={() => {}}
-            onStop={async () => {
-              setPreviewUser(null)
-              setSelectedAppointment(null)
-              setPickupAppointment(null)
-              setPage("users")
-              window.history.pushState({}, "", "/users")
-            }}
-          />
-        )}
+                window.history.pushState(
+                  {},
+                  "",
+                  "/appointments"
+                )
+              }}
+              onStop={async () => {
+                setPreviewUser(null)
+                setSelectedAppointment(null)
+                setPickupAppointment(null)
+                setPage("users")
+
+                window.history.pushState(
+                  {},
+                  "",
+                  "/users"
+                )
+              }}
+            />
+          )}
+
+        {isAdministrator &&
+          previewUser &&
+          page !== "users" && (
+            <AdminUserPreview
+              activeUser={previewUser}
+              onStart={() => {}}
+              onStop={async () => {
+                setPreviewUser(null)
+                setSelectedAppointment(null)
+                setPickupAppointment(null)
+                setPage("users")
+
+                window.history.pushState(
+                  {},
+                  "",
+                  "/users"
+                )
+              }}
+            />
+          )}
 
         {pickupAppointment ? (
           <PickupAppointment
@@ -719,7 +962,11 @@ function App() {
             onCreated={handlePickupCreated}
           />
         ) : selectedAppointment ? (
-          <div style={{ position: "relative" }}>
+          <div
+            style={{
+              position: "relative",
+            }}
+          >
             <style>
               {`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}
             </style>
@@ -733,19 +980,35 @@ function App() {
               }}
             >
               <AppointmentActions
-                appointment={selectedAppointment}
-                onUpdated={handleAppointmentUpdated}
-                onConfirm={handleLegacyConfirm}
-                onResult={handleLegacyResult}
-                onOpenPickup={handleOpenPickup}
+                appointment={
+                  selectedAppointment
+                }
+                onUpdated={
+                  handleAppointmentUpdated
+                }
+                onConfirm={
+                  handleLegacyConfirm
+                }
+                onResult={
+                  handleLegacyResult
+                }
+                onOpenPickup={
+                  handleOpenPickup
+                }
               />
             </div>
 
             <div className="appointment-detail-host">
               <AppointmentDetail
-                appointment={selectedAppointment}
-                onBack={handleBackToAppointments}
-                onUpdated={handleAppointmentUpdated}
+                appointment={
+                  selectedAppointment
+                }
+                onBack={
+                  handleBackToAppointments
+                }
+                onUpdated={
+                  handleAppointmentUpdated
+                }
               />
             </div>
           </div>
@@ -762,7 +1025,9 @@ function App() {
             contracts={allDeals}
             total={totalValue}
             avg={averageValue}
-            upcoming={upcomingInstallations}
+            upcoming={
+              upcomingInstallations
+            }
             setSelected={setSelected}
           />
         ) : page === "epvs" ? (
@@ -775,26 +1040,54 @@ function App() {
             loading={loading}
             query={query}
             status={status}
-            onSearchChange={handleSearchChange}
+            onSearchChange={
+              handleSearchChange
+            }
             onStatusChange={value => {
               setStatus(value)
-              loadContracts(0, query, value)
+              loadContracts(
+                0,
+                query,
+                value
+              )
             }}
-            onNext={() => loadContracts(contractsPage + 1)}
-            onPrev={() => loadContracts(Math.max(contractsPage - 1, 0))}
+            onNext={() =>
+              loadContracts(
+                contractsPage + 1
+              )
+            }
+            onPrev={() =>
+              loadContracts(
+                Math.max(
+                  contractsPage - 1,
+                  0
+                )
+              )
+            }
             hasNext={hasMoreContracts}
-            hasPrev={contractsPage > 0}
+            hasPrev={
+              contractsPage > 0
+            }
             onSelect={deal => {
               setSelected(deal)
               setPage("contracts")
-              window.history.pushState({}, "", `/contracts/${deal.id}`)
+
+              window.history.pushState(
+                {},
+                "",
+                `/contracts/${deal.id}`
+              )
             }}
             onNewContract={() => {}}
           />
         ) : page === "installations" ? (
           <Installations />
         ) : page === "marketing-tv" ? (
-          <MarketingTV onSelectAppointment={handleAppointmentSelect} />
+          <MarketingTV
+            onSelectAppointment={
+              handleAppointmentSelect
+            }
+          />
         ) : page === "marketing-dashboard" ? (
           <MarketingDashboard />
         ) : page === "rts-list" ? (
@@ -802,11 +1095,21 @@ function App() {
         ) : page === "commissions" ? (
           <SalesCommission />
         ) : page === "appointments" ? (
-          <Appointments onSelect={handleAppointmentSelect} />
+          <Appointments
+            onSelect={
+              handleAppointmentSelect
+            }
+          />
         ) : page === "sales-kpi" ? (
-          <SalesKPI deals={allDeals} loading={reportingLoading} />
+          <SalesKPI
+            deals={allDeals}
+            loading={reportingLoading}
+          />
         ) : page === "canvasser-kpi" ? (
-          <CanvasserKPI deals={allDeals} loading={reportingLoading} />
+          <CanvasserKPI
+            deals={allDeals}
+            loading={reportingLoading}
+          />
         ) : page === "users" ? (
           <Users />
         ) : page === "tasks" ? (
@@ -816,11 +1119,15 @@ function App() {
         ) : page === "mi" ? (
           <MI />
         ) : page === "reviews" ? (
-          <Reviews setMobile={setMobile} />
+          <Reviews
+            setMobile={setMobile}
+          />
         ) : page === "integration-logs" ? (
-          <IntegrationLogs setMobile={setMobile} />
+          <IntegrationLogs
+            setMobile={setMobile}
+          />
         ) : page === "templates" ? (
-          <SalesPresentations />
+          <Templates />
         ) : (
           <Dashboard deals={allDeals} />
         )}
