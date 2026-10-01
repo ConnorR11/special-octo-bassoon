@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react"
-import { CalendarDays, RefreshCw, Car } from "lucide-react"
+import { RefreshCw, Car } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
 const DAY_START_MINUTES = 9 * 60
@@ -7,11 +7,18 @@ const DAY_END_MINUTES = 22 * 60
 const APPOINTMENT_DURATION_MINUTES = 120
 const TRAVEL_TABLE = "sales_schedule_travel_times"
 
+// ------------------------------------------------------------
+// Helpers
+// ------------------------------------------------------------
+
 function formatTime(value) {
   if (!value) return "—"
 
   const text = String(value).trim()
 
+  // Handles ISO timestamps such as:
+  // 2026-09-30T13:00:00
+  // 2026-09-30 13:00:00
   const match = text.match(/[T ](\d{2}):(\d{2})/)
 
   if (match) {
@@ -28,6 +35,7 @@ function formatTime(value) {
 function getMinutes(value) {
   const text = String(value ?? "").trim()
 
+  // Handles ISO timestamps correctly
   const match = text.match(/[T ](\d{2}):(\d{2})/)
 
   if (!match) return null
@@ -41,7 +49,6 @@ function normaliseEmail(value) {
 
 function display(value, fallback = "—") {
   const text = String(value ?? "").trim()
-
   return text || fallback
 }
 
@@ -135,6 +142,10 @@ function getTodayInLondon() {
   }).format(new Date())
 }
 
+// ------------------------------------------------------------
+// Appointment positioning
+// ------------------------------------------------------------
+
 function getPosition(appointment) {
   const start = getMinutes(
     appointment?.appointment_date
@@ -190,12 +201,17 @@ function getPosition(appointment) {
   }
 }
 
+// ------------------------------------------------------------
+// Appointment card
+// ------------------------------------------------------------
+
 function AppointmentCard({
   appointment,
   onSelect,
 }) {
   const sold = isSold(appointment)
   const netValue = getNetValue(appointment)
+
   const position = getPosition(appointment)
 
   if (position.hidden) return null
@@ -225,9 +241,13 @@ function AppointmentCard({
       )}`}
     >
       <div className="sales-schedule-time">
-        {formatTime(appointment.appointment_date)} –{" "}
+        {formatTime(
+          appointment.appointment_date
+        )}{" "}
+        –{" "}
         {formatTimeFromMinutes(
-          start + APPOINTMENT_DURATION_MINUTES
+          start +
+            APPOINTMENT_DURATION_MINUTES
         )}
       </div>
 
@@ -268,38 +288,9 @@ function AppointmentCard({
   )
 }
 
-function TimelineHeader() {
-  const hours = []
-
-  for (
-    let m = DAY_START_MINUTES;
-    m <= DAY_END_MINUTES;
-    m += 60
-  ) {
-    hours.push(m)
-  }
-
-  return (
-    <div className="sales-schedule-timeline-header">
-      {hours.map((m) => (
-        <div
-          key={m}
-          className="sales-schedule-hour-label"
-          style={{
-            left: `${
-              ((m - DAY_START_MINUTES) /
-                (DAY_END_MINUTES -
-                  DAY_START_MINUTES)) *
-              100
-            }%`,
-          }}
-        >
-          {formatTimeFromMinutes(m)}
-        </div>
-      ))}
-    </div>
-  )
-}
+// ------------------------------------------------------------
+// Timeline grid
+// ------------------------------------------------------------
 
 function TimelineGrid() {
   const hours = []
@@ -332,17 +323,10 @@ function TimelineGrid() {
   )
 }
 
-/**
- * Travel block
- *
- * IMPORTANT:
- * Travel is only rendered when there is an actual
- * visible next appointment.
- *
- * This prevents the final appointment of the day
- * from showing a pointless travel block to an
- * appointment later outside the visible schedule.
- */
+// ------------------------------------------------------------
+// Travel block
+// ------------------------------------------------------------
+
 function TravelBlock({
   travel,
   fromAppointment,
@@ -362,34 +346,24 @@ function TravelBlock({
     return null
   }
 
-  // Do not display travel to an appointment
-  // outside the visible schedule.
-  if (
-    next < DAY_START_MINUTES ||
-    next >= DAY_END_MINUTES
-  ) {
-    return null
-  }
-
-  const durationMinutes = Number(
-    travel.durationMinutes
-  )
-
-  if (
-    !Number.isFinite(durationMinutes) ||
-    durationMinutes <= 0
-  ) {
-    return null
-  }
-
   const travelStart =
     from + APPOINTMENT_DURATION_MINUTES
 
   const travelEnd =
-    travelStart + durationMinutes
+    travelStart + travel.durationMinutes
 
-  // Travel is overlapping if the journey finishes
-  // after the next appointment has already started.
+  /*
+   * IMPORTANT:
+   *
+   * We only care whether the travel time
+   * overlaps the START of the next appointment.
+   *
+   * If the journey finishes before the next
+   * appointment starts = GREEN.
+   *
+   * If the journey runs into the next
+   * appointment = RED.
+   */
   const overlapsNextAppointment =
     travelEnd > next
 
@@ -437,11 +411,13 @@ function TravelBlock({
         left: `${left}%`,
         width: `${width}%`,
       }}
-      title={`Travel: ${durationMinutes} min${
+      title={`Travel: ${
+        travel.durationMinutes
+      } min${
         travel.distanceMiles != null
-          ? ` • ${Number(
-              travel.distanceMiles
-            ).toFixed(1)} miles`
+          ? ` • ${travel.distanceMiles.toFixed(
+              1
+            )} miles`
           : ""
       }${
         overlapsNextAppointment
@@ -452,11 +428,15 @@ function TravelBlock({
       <Car size={11} />
 
       <span>
-        {durationMinutes} min
+        {travel.durationMinutes} min
       </span>
     </div>
   )
 }
+
+// ------------------------------------------------------------
+// Main component
+// ------------------------------------------------------------
 
 export default function SalesSchedule({
   selectedDate,
@@ -474,10 +454,18 @@ export default function SalesSchedule({
   const isHistoricalDate =
     selectedDate < getTodayInLondon()
 
+  // ----------------------------------------------------------
+  // Load schedule
+  // ----------------------------------------------------------
+
   async function loadSchedule() {
     if (!supabase) {
-      setError("Supabase is not configured.")
+      setError(
+        "Supabase is not configured."
+      )
+
       setLoading(false)
+
       return
     }
 
@@ -562,6 +550,10 @@ export default function SalesSchedule({
     }
   }
 
+  // ----------------------------------------------------------
+  // Refresh schedule
+  // ----------------------------------------------------------
+
   useEffect(() => {
     loadSchedule()
 
@@ -573,6 +565,10 @@ export default function SalesSchedule({
     return () =>
       clearInterval(interval)
   }, [selectedDate])
+
+  // ----------------------------------------------------------
+  // Appointments by rep
+  // ----------------------------------------------------------
 
   const appointmentsByRep = useMemo(() => {
     const map = new Map()
@@ -586,14 +582,15 @@ export default function SalesSchedule({
 
     appointments.forEach(
       (appointment) => {
-        const email = normaliseEmail(
-          appointment.rep_allocated
-        )
+        const email =
+          normaliseEmail(
+            appointment.rep_allocated
+          )
 
         if (map.has(email)) {
-          map.get(email).push(
-            appointment
-          )
+          map
+            .get(email)
+            .push(appointment)
         }
       }
     )
@@ -612,6 +609,10 @@ export default function SalesSchedule({
 
     return map
   }, [reps, appointments])
+
+  // ----------------------------------------------------------
+  // Branch groups
+  // ----------------------------------------------------------
 
   const branchGroups = useMemo(() => {
     const groups = new Map()
@@ -659,6 +660,10 @@ export default function SalesSchedule({
       )
   }, [reps])
 
+  // ----------------------------------------------------------
+  // Unassigned appointments
+  // ----------------------------------------------------------
+
   const unassigned = useMemo(
     () =>
       appointments.filter(
@@ -669,6 +674,10 @@ export default function SalesSchedule({
       ),
     [appointments]
   )
+
+  // ----------------------------------------------------------
+  // Calculate / load travel
+  // ----------------------------------------------------------
 
   useEffect(() => {
     let cancelled = false
@@ -688,48 +697,9 @@ export default function SalesSchedule({
             i < items.length - 1;
             i += 1
           ) {
-            const from = items[i]
-            const to = items[i + 1]
-
-            const fromMinutes =
-              getMinutes(
-                from?.appointment_date
-              )
-
-            const toMinutes =
-              getMinutes(
-                to?.appointment_date
-              )
-
-            if (
-              fromMinutes === null ||
-              toMinutes === null
-            ) {
-              continue
-            }
-
-            // ------------------------------------------------
-            // IMPORTANT:
-            // Only calculate travel when BOTH appointments
-            // are actually visible on the schedule.
-            // ------------------------------------------------
-
-            if (
-              fromMinutes <
-                DAY_START_MINUTES ||
-              fromMinutes >=
-                DAY_END_MINUTES ||
-              toMinutes <
-                DAY_START_MINUTES ||
-              toMinutes >=
-                DAY_END_MINUTES
-            ) {
-              continue
-            }
-
             requests.push({
-              from,
-              to,
+              from: items[i],
+              to: items[i + 1],
             })
           }
         }
@@ -740,47 +710,47 @@ export default function SalesSchedule({
         return
       }
 
+      // ------------------------------------------------------
+      // Load saved travel times
+      // ------------------------------------------------------
+
       let saved = []
 
-      // Historical dates can load all saved travel
-      // for the selected day in one query.
-      if (isHistoricalDate) {
-        const result =
-          await supabase
-            .from(TRAVEL_TABLE)
-            .select(
-              "from_appointment_id, to_appointment_id, duration_minutes, distance_miles, origin, destination"
-            )
-            .eq(
-              "travel_date",
-              selectedDate
-            )
-
-        if (result.error) {
-          console.error(
-            "Unable to load saved travel times:",
-            result.error
+      const result =
+        await supabase
+          .from(TRAVEL_TABLE)
+          .select(
+            "from_appointment_id, to_appointment_id, duration_minutes, distance_miles, origin, destination"
           )
-        } else {
-          saved =
-            result.data || []
-        }
+          .eq(
+            "travel_date",
+            selectedDate
+          )
+
+      if (result.error) {
+        console.error(
+          "Unable to load saved travel times:",
+          result.error
+        )
+      } else {
+        saved =
+          result.data || []
       }
 
       const resolved = {}
+
+      // ------------------------------------------------------
+      // Resolve each journey
+      // ------------------------------------------------------
 
       for (const request of requests) {
         if (cancelled) break
 
         const fromId =
-          appointmentId(
-            request.from
-          )
+          appointmentId(request.from)
 
         const toId =
-          appointmentId(
-            request.to
-          )
+          appointmentId(request.to)
 
         const origin =
           getAppointmentLocation(
@@ -808,21 +778,19 @@ export default function SalesSchedule({
           destination,
         ].join("|")
 
-        // ------------------------------------------------
-        // First check already loaded historical records.
-        // ------------------------------------------------
+        // ----------------------------------------------------
+        // Check existing saved result
+        // ----------------------------------------------------
 
         const existing =
           saved.find(
             (row) =>
+              row.from_appointment_id ===
+                fromId &&
+              row.to_appointment_id ===
+                toId &&
               String(
-                row.from_appointment_id
-              ) === fromId &&
-              String(
-                row.to_appointment_id
-              ) === toId &&
-              String(
-                row.origin ?? ""
+                row.origin || ""
               )
                 .trim()
                 .toLowerCase() ===
@@ -830,7 +798,7 @@ export default function SalesSchedule({
                   .trim()
                   .toLowerCase() &&
               String(
-                row.destination ?? ""
+                row.destination || ""
               )
                 .trim()
                 .toLowerCase() ===
@@ -840,65 +808,54 @@ export default function SalesSchedule({
           )
 
         if (existing) {
-          const duration =
-            Number(
-              existing.duration_minutes
-            )
+          resolved[key] = {
+            durationMinutes:
+              Number(
+                existing.duration_minutes
+              ) || null,
 
-          if (
-            Number.isFinite(duration) &&
-            duration > 0
-          ) {
-            resolved[key] = {
-              durationMinutes:
-                duration,
+            distanceMiles:
+              existing.distance_miles ==
+              null
+                ? null
+                : Number(
+                    existing.distance_miles
+                  ),
 
-              distanceMiles:
-                existing.distance_miles ==
-                null
-                  ? null
-                  : Number(
-                      existing.distance_miles
-                    ),
-
-              cached: true,
-            }
-
-            continue
+            cached: true,
           }
+
+          continue
         }
 
-        // ------------------------------------------------
-        // Call our API.
-        //
-        // IMPORTANT:
-        // Pass the appointment IDs and date so the API
-        // can also check Supabase before calling ORS.
-        // ------------------------------------------------
+        // ----------------------------------------------------
+        // No saved result - call API
+        // ----------------------------------------------------
 
         try {
-          const response = await fetch(
-            "/api/travel-time",
-            {
-              method: "POST",
+          const response =
+            await fetch(
+              "/api/travel-time",
+              {
+                method: "POST",
 
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
 
-              body: JSON.stringify({
-                origin,
-                destination,
-                fromAppointmentId:
-                  fromId,
-                toAppointmentId:
-                  toId,
-                travelDate:
-                  selectedDate,
-              }),
-            }
-          )
+                body: JSON.stringify({
+                  origin,
+                  destination,
+                  fromAppointmentId:
+                    fromId,
+                  toAppointmentId:
+                    toId,
+                  travelDate:
+                    selectedDate,
+                }),
+              }
+            )
 
           const data =
             await response
@@ -912,18 +869,11 @@ export default function SalesSchedule({
             )
           }
 
-          const duration =
-            Number(
-              data?.durationMinutes
-            )
-
           const result = {
             durationMinutes:
-              Number.isFinite(
-                duration
-              )
-                ? duration
-                : null,
+              Number(
+                data?.durationMinutes
+              ) || null,
 
             distanceMiles:
               Number.isFinite(
@@ -936,17 +886,16 @@ export default function SalesSchedule({
                   )
                 : null,
 
-            cached:
-              data?.cached === true,
+            cached: Boolean(
+              data?.cached
+            ),
           }
 
-          resolved[key] =
-            result
+          resolved[key] = result
 
-          // ------------------------------------------------
-          // Historical dates:
-          // ensure the result is saved locally too.
-          // ------------------------------------------------
+          // --------------------------------------------------
+          // Save historical result
+          // --------------------------------------------------
 
           if (
             isHistoricalDate &&
@@ -1006,9 +955,7 @@ export default function SalesSchedule({
       }
 
       if (!cancelled) {
-        setTravelTimes(
-          resolved
-        )
+        setTravelTimes(resolved)
       }
     }
 
@@ -1023,6 +970,10 @@ export default function SalesSchedule({
     isHistoricalDate,
   ])
 
+  // ----------------------------------------------------------
+  // Get travel
+  // ----------------------------------------------------------
+
   function getTravel(from, to) {
     const key = [
       appointmentId(from),
@@ -1034,437 +985,324 @@ export default function SalesSchedule({
     return travelTimes[key]
   }
 
+  // ----------------------------------------------------------
+  // Render
+  // ----------------------------------------------------------
+
   return (
     <section className="sales-schedule-wrap">
       <style>{`
-        .sales-schedule-wrap{
-          width:100%;
-          margin-top:4px;
-          color:#172033
+        .sales-schedule-wrap {
+          width: 100%;
+          margin-top: 4px;
+          color: #172033;
         }
 
-        .sales-schedule-card{
-          width:100%;
-          background:#fff;
-          border:1px solid #dfe4e8;
-          border-radius:12px;
-          overflow:hidden;
-          box-shadow:0 1px 3px rgba(15,23,42,.04)
+        .sales-schedule-card {
+          width: 100%;
+          background: #fff;
+          border: 1px solid #dfe4e8;
+          border-radius: 12px;
+          overflow: hidden;
+          box-shadow: 0 1px 3px rgba(15,23,42,.04);
         }
 
-        .sales-schedule-heading{
-          display:flex;
-          align-items:center;
-          justify-content:space-between;
-          gap:14px;
-          padding:16px 18px;
-          border-bottom:1px solid #e1e5e9
+        .sales-schedule-error {
+          padding: 10px 16px;
+          background: #fff4f4;
+          color: #b42318;
+          font-size: 11px;
         }
 
-        .sales-schedule-title-wrap{
-          display:flex;
-          align-items:center;
-          gap:10px
-        }
-
-        .sales-schedule-title-wrap svg{
-          color:#263a5e
-        }
-
-        .sales-schedule-title-wrap h2{
-          margin:0;
-          font-size:20px;
-          font-weight:800
-        }
-
-        .sales-schedule-title-wrap p{
-          margin:4px 0 0;
-          font-size:11px;
-          color:#64748b;
-          font-weight:600
-        }
-
-        .sales-schedule-refresh{
-          display:flex;
-          align-items:center;
-          gap:6px;
-          border:1px solid #dbe1e6;
-          background:#f8fafb;
-          color:#64748b;
-          border-radius:7px;
-          padding:7px 10px;
-          font-size:10px;
-          font-weight:700;
-          cursor:pointer
-        }
-
-        .sales-schedule-refresh:disabled{
-          opacity:.55
-        }
-
-        .sales-schedule-error{
-          padding:10px 16px;
-          background:#fff4f4;
-          color:#b42318;
-          font-size:11px
-        }
-
-        .sales-schedule-scroll{
-          width:100%;
-          overflow-x:auto
+        .sales-schedule-scroll {
+          width: 100%;
+          overflow-x: auto;
         }
 
         .sales-schedule-header,
-        .sales-schedule-row{
-          display:grid;
-          grid-template-columns:220px minmax(620px,1fr);
-          min-width:840px
+        .sales-schedule-row {
+          display: grid;
+          grid-template-columns: 220px minmax(620px, 1fr);
+          min-width: 840px;
         }
 
-        .sales-schedule-header{
-          background:#f1f3f5;
-          border-bottom:3px solid #26395d;
-          color:#52606d;
-          font-size:10px;
-          font-weight:800;
-          text-transform:uppercase
+        .sales-schedule-header {
+          background: #f1f3f5;
+          border-bottom: 3px solid #26395d;
+          color: #52606d;
+          font-size: 10px;
+          font-weight: 800;
+          text-transform: uppercase;
+          min-height: 34px;
         }
 
-        .sales-schedule-header>div{
-          padding:0 20px;
-          display:flex;
-          align-items:center
+        .sales-schedule-header > div {
+          padding: 0 20px;
+          display: flex;
+          align-items: center;
         }
 
-        .sales-schedule-branch{
-          display:flex;
-          gap:8px;
-          align-items:center;
-          padding:11px 20px;
-          background:#e9edf1;
-          border-top:1px solid #d4dbe1;
-          border-bottom:1px solid #d4dbe1;
-          color:#26395d;
-          font-size:13px;
-          font-weight:800
+        .sales-schedule-branch {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          padding: 11px 20px;
+          background: #e9edf1;
+          border-top: 1px solid #d4dbe1;
+          border-bottom: 1px solid #d4dbe1;
+          color: #26395d;
+          font-size: 13px;
+          font-weight: 800;
         }
 
-        .sales-schedule-branch-count{
-          font-size:10px;
-          color:#7a8794
+        .sales-schedule-branch-count {
+          font-size: 10px;
+          color: #7a8794;
         }
 
-        .sales-schedule-row{
-          min-height:118px;
-          border-bottom:1px solid #d8dde2
+        .sales-schedule-row {
+          min-height: 118px;
+          border-bottom: 1px solid #d8dde2;
         }
 
-        .sales-schedule-rep{
-          display:flex;
-          flex-direction:column;
-          justify-content:center;
-          padding:16px 20px;
-          background:#f8f9fa;
-          border-right:1px solid #d8dde2
+        .sales-schedule-rep {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          padding: 16px 20px;
+          background: #f8f9fa;
+          border-right: 1px solid #d8dde2;
         }
 
-        .sales-schedule-rep-name{
-          font-size:15px;
-          font-weight:700;
-          white-space:nowrap;
-          overflow:hidden;
-          text-overflow:ellipsis
+        .sales-schedule-rep-name {
+          font-size: 15px;
+          font-weight: 700;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
-        .sales-schedule-rep-email{
-          margin-top:5px;
-          font-size:10px;
-          color:#7a8794;
-          white-space:nowrap;
-          overflow:hidden;
-          text-overflow:ellipsis
+        .sales-schedule-rep-email {
+          margin-top: 5px;
+          font-size: 10px;
+          color: #7a8794;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
-        .sales-schedule-timeline{
-          position:relative;
-          min-width:620px;
-          min-height:118px;
-          overflow:visible
+        .sales-schedule-timeline {
+          position: relative;
+          min-width: 620px;
+          min-height: 118px;
+          overflow: visible;
         }
 
-        .sales-schedule-timeline-header{
-          position:relative;
-          height:34px;
-          background:#f7f8f9;
-          border-bottom:1px solid #dce2e7
+        .sales-schedule-timeline-lines {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
         }
 
-        .sales-schedule-hour-label{
-          position:absolute;
-          top:10px;
-          transform:translateX(-50%);
-          font-size:9px;
-          font-weight:800;
-          color:#667481
+        .sales-schedule-hour-line {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          width: 1px;
+          background: #e5e9ed;
         }
 
-        .sales-schedule-hour-label:first-child{
-          transform:none
+        .sales-schedule-appointments {
+          position: absolute;
+          inset: 0;
+
+          background:
+            repeating-linear-gradient(
+              to right,
+              transparent 0,
+              transparent calc(100% / 13 - 1px),
+              #edf0f2 calc(100% / 13 - 1px),
+              #edf0f2 calc(100% / 13)
+            );
         }
 
-        .sales-schedule-hour-label:last-child{
-          transform:translateX(-100%)
+        .sales-schedule-appointment {
+          position: absolute;
+          top: 10px;
+          height: calc(100% - 20px);
+          display: flex;
+          min-width: 54px;
+          flex-direction: column;
+          justify-content: center;
+          align-items: flex-start;
+          text-align: left;
+          padding: 8px 10px;
+          border: 1px solid #c7d1d9;
+          border-radius: 8px;
+          background: #eef4f8;
+          color: #27303b;
+          box-sizing: border-box;
+          cursor: pointer;
+          overflow: hidden;
+          z-index: 2;
         }
 
-        .sales-schedule-timeline-lines{
-          position:absolute;
-          inset:0;
-          pointer-events:none
+        .sales-schedule-appointment:hover {
+          border-color: #8da4b5;
+          box-shadow:
+            0 3px 8px rgba(15,23,42,.12);
         }
 
-        .sales-schedule-hour-line{
-          position:absolute;
-          top:0;
-          bottom:0;
-          width:1px;
-          background:#e5e9ed
+        .sales-schedule-sold {
+          background: #eaf4e5;
+          border-color: #c8dbc1;
         }
 
-        .sales-schedule-appointments{
-          position:absolute;
-          inset:0;
-          background:repeating-linear-gradient(
-            to right,
-            transparent 0,
-            transparent calc(100% / 13 - 1px),
-            #edf0f2 calc(100% / 13 - 1px),
-            #edf0f2 calc(100% / 13)
-          )
+        .sales-schedule-time {
+          width: 100%;
+          font-size: 9px;
+          font-weight: 800;
+          color: #4b5563;
+          white-space: nowrap;
+          overflow: hidden;
         }
 
-        .sales-schedule-appointment{
-          position:absolute;
-          top:10px;
-          height:calc(100% - 20px);
-          display:flex;
-          min-width:54px;
-          flex-direction:column;
-          justify-content:center;
-          align-items:flex-start;
-          text-align:left;
-          padding:8px 10px;
-          border:1px solid #c7d1d9;
-          border-radius:8px;
-          background:#eef4f8;
-          color:#27303b;
-          box-sizing:border-box;
-          cursor:pointer;
-          overflow:hidden;
-          z-index:2
+        .sales-schedule-customer {
+          width: 100%;
+          font-size: 12px;
+          font-weight: 750;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
-        .sales-schedule-appointment:hover{
-          border-color:#8da4b5;
-          box-shadow:0 3px 8px rgba(15,23,42,.12)
+        .sales-schedule-meta {
+          display: flex;
+          width: 100%;
+          justify-content: space-between;
+          gap: 6px;
+          margin-top: 4px;
+          font-size: 8px;
+          color: #687580;
         }
 
-        .sales-schedule-sold{
-          background:#eaf4e5;
-          border-color:#c8dbc1
+        .sales-schedule-meta span {
+          min-width: 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
-        .sales-schedule-time{
-          width:100%;
-          font-size:9px;
-          font-weight:800;
-          color:#4b5563;
-          white-space:nowrap;
-          overflow:hidden
+        .sales-schedule-meta span:last-child {
+          font-weight: 700;
         }
 
-        .sales-schedule-customer{
-          width:100%;
-          font-size:12px;
-          font-weight:750;
-          white-space:nowrap;
-          overflow:hidden;
-          text-overflow:ellipsis
+        .sales-schedule-travel {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          height: 28px;
+          min-width: 34px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          padding: 0 6px;
+          border: 1px dashed;
+          border-radius: 5px;
+          font-size: 8px;
+          font-weight: 800;
+          z-index: 3;
+          overflow: hidden;
+          box-sizing: border-box;
         }
 
-        .sales-schedule-meta{
-          display:flex;
-          width:100%;
-          justify-content:space-between;
-          gap:6px;
-          margin-top:4px;
-          font-size:8px;
-          color:#687580
+        .sales-schedule-travel-clear {
+          background: #ecfdf3;
+          color: #16803a;
+          border-color: #8ed2a5;
         }
 
-        .sales-schedule-meta span{
-          min-width:0;
-          white-space:nowrap;
-          overflow:hidden;
-          text-overflow:ellipsis
+        .sales-schedule-travel-overlap {
+          background: #fff0f0;
+          color: #c62828;
+          border-color: #e59a9a;
         }
 
-        .sales-schedule-meta span:last-child{
-          font-weight:700
+        .sales-schedule-no-appointments {
+          position: absolute;
+          left: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #9aa4ad;
+          font-size: 11px;
+          font-weight: 600;
         }
 
-        .sales-schedule-travel{
-          position:absolute;
-          top:50%;
-          transform:translateY(-50%);
-          height:28px;
-          min-width:34px;
-          display:flex;
-          align-items:center;
-          justify-content:center;
-          gap:4px;
-          padding:0 6px;
-          border:1px dashed;
-          border-radius:5px;
-          font-size:8px;
-          font-weight:800;
-          z-index:3;
-          overflow:hidden;
-          box-sizing:border-box
+        .sales-schedule-empty {
+          padding: 28px;
+          text-align: center;
+          color: #7b8792;
+          font-size: 12px;
         }
 
-        .sales-schedule-travel-clear{
-          background:#ecfdf3;
-          color:#16803a;
-          border-color:#8ed2a5
+        .sales-schedule-spin {
+          animation: salesScheduleSpin .8s linear infinite;
         }
 
-        .sales-schedule-travel-overlap{
-          background:#fff0f0;
-          color:#c62828;
-          border-color:#e59a9a
-        }
-
-        .sales-schedule-no-appointments{
-          position:absolute;
-          left:12px;
-          top:50%;
-          transform:translateY(-50%);
-          color:#9aa4ad;
-          font-size:11px;
-          font-weight:600
-        }
-
-        .sales-schedule-empty{
-          padding:28px;
-          text-align:center;
-          color:#7b8792;
-          font-size:12px
-        }
-
-        .sales-schedule-spin{
-          animation:salesScheduleSpin .8s linear infinite
-        }
-
-        @keyframes salesScheduleSpin{
-          to{
-            transform:rotate(360deg)
+        @keyframes salesScheduleSpin {
+          to {
+            transform: rotate(360deg);
           }
         }
 
-        @media(max-width:700px){
+        @media(max-width:700px) {
           .sales-schedule-header,
-          .sales-schedule-row{
-            grid-template-columns:145px minmax(620px,1fr);
-            min-width:765px
+          .sales-schedule-row {
+            grid-template-columns:
+              145px minmax(620px, 1fr);
+
+            min-width: 765px;
           }
 
-          .sales-schedule-heading{
-            padding:12px
+          .sales-schedule-row {
+            min-height: 108px;
           }
 
-          .sales-schedule-row{
-            min-height:108px
+          .sales-schedule-rep {
+            padding: 12px;
           }
 
-          .sales-schedule-rep{
-            padding:12px
+          .sales-schedule-rep-name {
+            font-size: 13px;
           }
 
-          .sales-schedule-rep-name{
-            font-size:13px
+          .sales-schedule-timeline {
+            min-height: 108px;
           }
 
-          .sales-schedule-timeline{
-            min-height:108px
+          .sales-schedule-appointment {
+            top: 8px;
+            height: calc(100% - 16px);
+            padding: 7px 8px;
           }
 
-          .sales-schedule-appointment{
-            top:8px;
-            height:calc(100% - 16px);
-            padding:7px 8px
+          .sales-schedule-customer {
+            font-size: 11px;
           }
 
-          .sales-schedule-customer{
-            font-size:11px
+          .sales-schedule-meta {
+            font-size: 7px;
           }
 
-          .sales-schedule-meta{
-            font-size:7px
-          }
-
-          .sales-schedule-travel{
-            height:24px;
-            font-size:7px
+          .sales-schedule-travel {
+            height: 24px;
+            font-size: 7px;
           }
         }
       `}</style>
 
       <div className="sales-schedule-card">
-        <div className="sales-schedule-heading">
-          <div className="sales-schedule-title-wrap">
-            <CalendarDays size={19} />
-
-            <div>
-              <h2>Sales Schedule</h2>
-
-              <p>
-                {new Date(
-                  `${selectedDate}T12:00:00`
-                ).toLocaleDateString(
-                  "en-GB",
-                  {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  }
-                )}
-
-                {isHistoricalDate
-                  ? " • Historical travel saved"
-                  : ""}
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className="sales-schedule-refresh"
-            onClick={loadSchedule}
-            disabled={loading}
-          >
-            <RefreshCw
-              size={13}
-              className={
-                loading
-                  ? "sales-schedule-spin"
-                  : ""
-              }
-            />
-
-            Refresh
-          </button>
-        </div>
 
         {error && (
           <div className="sales-schedule-error">
@@ -1474,12 +1312,11 @@ export default function SalesSchedule({
 
         <div className="sales-schedule-scroll">
           <div>
+
+            {/* Simple column header - no title/date/time header */}
             <div className="sales-schedule-header">
               <div>SALES REP</div>
-
-              <div>
-                <TimelineHeader />
-              </div>
+              <div></div>
             </div>
 
             {loading ? (
@@ -1548,6 +1385,7 @@ export default function SalesSchedule({
                                 <TimelineGrid />
 
                                 <div className="sales-schedule-appointments">
+
                                   {items.length ? (
                                     items.map(
                                       (
@@ -1606,6 +1444,7 @@ export default function SalesSchedule({
                                       No appointments
                                     </span>
                                   )}
+
                                 </div>
                               </div>
                             </div>
