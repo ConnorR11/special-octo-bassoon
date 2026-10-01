@@ -95,7 +95,7 @@ function Sidebar({
       reviews: 4,
       users: 4,
       tasks: 4,
-      "sales-presentations": 4,
+      "templates": 4,
       "integration-logs": 4,
     }[route]
 
@@ -599,11 +599,11 @@ function Sidebar({
                 icon={Presentation}
                 label="Templates"
                 active={isActive(
-                  "sales-presentations"
+                  "templates"
                 )}
                 onClick={() =>
                   navigate(
-                    "sales-presentations"
+                    "templates"
                   )
                 }
               />

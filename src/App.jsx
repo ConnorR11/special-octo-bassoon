@@ -167,7 +167,7 @@ function App() {
       reviews: 4,
       users: 4,
       tasks: 4,
-      "sales-presentations": 4,
+      "templates": 4,
       "integration-logs": 4,
     }
 
@@ -431,7 +431,7 @@ function App() {
       reviews: 4,
       users: 4,
       tasks: 4,
-      "sales-presentations": 4,
+      "templates": 4,
       "integration-logs": 4,
     }[newPage]
 
@@ -819,7 +819,7 @@ function App() {
           <Reviews setMobile={setMobile} />
         ) : page === "integration-logs" ? (
           <IntegrationLogs setMobile={setMobile} />
-        ) : page === "sales-presentations" ? (
+        ) : page === "templates" ? (
           <SalesPresentations />
         ) : (
           <Dashboard deals={allDeals} />
