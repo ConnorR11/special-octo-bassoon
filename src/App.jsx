@@ -200,6 +200,67 @@ function App() {
   const greeting=currentHour<12?"Good Morning":currentHour<18?"Good Afternoon":"Good Evening"
   const homeContent=<section><div style={{marginBottom:18}}><h1 style={{margin:0,fontSize:22,color:"#222"}}>{greeting}, {displayName}</h1><p style={{margin:"5px 0 0",fontSize:11,color:"#888"}}>Welcome to the Homeshield Scotland CRM</p></div></section>
 
+  let pageContent
+  if (pickupAppointment) {
+    pageContent = <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated}/>
+  } else if (selectedAppointment) {
+    pageContent = <div style={{position:"relative"}}>
+      <style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}</style>
+      <div style={{display:"flex",justifyContent:"flex-end",padding:"10px 24px 0",background:"#fff"}}>
+        <AppointmentActions appointment={selectedAppointment} onUpdated={handleAppointmentUpdated} onConfirm={handleLegacyConfirm} onResult={handleLegacyResult} onOpenPickup={handleOpenPickup}/>
+      </div>
+      <div className="appointment-detail-host">
+        <AppointmentDetail appointment={selectedAppointment} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated}/>
+      </div>
+    </div>
+  } else if (selected) {
+    pageContent = <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated}/>
+  } else if (page === "dashboard") {
+    pageContent = homeContent
+  } else if (page === "sales-performance") {
+    pageContent = <SalesPerformance contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setSelected={setSelected}/>
+  } else if (page === "epvs") {
+    pageContent = <EPVSCalculator/>
+  } else if (page === "fit-sheet") {
+    pageContent = <FitSheet/>
+  } else if (page === "contracts") {
+    pageContent = <Contracts contracts={filteredContracts} loading={loading} query={query} status={status} onSearchChange={handleSearchChange} onStatusChange={value=>{setStatus(value);loadContracts(0,query,value)}} onNext={()=>loadContracts(contractsPage+1)} onPrev={()=>loadContracts(Math.max(contractsPage-1,0))} hasNext={hasMoreContracts} hasPrev={contractsPage>0} onSelect={deal=>{setSelected(deal);setPage("contracts");window.history.pushState({},"",`/contracts/${deal.id}`)}} onNewContract={()=>{}}/>
+  } else if (page === "installations") {
+    pageContent = <Installations/>
+  } else if (page === "marketing-tv") {
+    pageContent = <MarketingTV onSelectAppointment={handleAppointmentSelect}/>
+  } else if (page === "marketing-dashboard") {
+    pageContent = <MarketingDashboard/>
+  } else if (page === "leads") {
+    pageContent = <Leads/>
+  } else if (page === "rts-list") {
+    pageContent = <RTSList/>
+  } else if (page === "commissions") {
+    pageContent = <SalesCommission/>
+  } else if (page === "appointments") {
+    pageContent = <Appointments onSelect={handleAppointmentSelect}/>
+  } else if (page === "sales-kpi") {
+    pageContent = <SalesKPI deals={allDeals} loading={reportingLoading}/>
+  } else if (page === "canvasser-kpi") {
+    pageContent = <CanvasserKPI deals={allDeals} loading={reportingLoading}/>
+  } else if (page === "users") {
+    pageContent = <Users/>
+  } else if (page === "tasks") {
+    pageContent = <Tasks/>
+  } else if (page === "seo") {
+    pageContent = <SEO/>
+  } else if (page === "mi") {
+    pageContent = <MI/>
+  } else if (page === "reviews") {
+    pageContent = <Reviews setMobile={setMobile}/>
+  } else if (page === "integration-logs") {
+    pageContent = <IntegrationLogs setMobile={setMobile}/>
+  } else if (page === "templates") {
+    pageContent = <Templates/>
+  } else {
+    pageContent = <Dashboard deals={allDeals}/>
+  }
+
   return <div className="app">
     <Sidebar page={page} setPage={handlePageChange} mobile={mobile} setMobile={setMobile} onSignOut={handleSignOut} permissionLevel={effectivePermissionLevel}/>
     <main>
@@ -207,7 +268,7 @@ function App() {
       {error&&page!=="epvs"&&<div className="error"><b>Database error</b><span>{error}</span></div>}
       {isAdministrator&&page==="users"&&<AdminUserPreview activeUser={previewUser} onStart={user=>{setPreviewUser(user);setSelected(null);setSelectedAppointment(null);setPickupAppointment(null);setPage("appointments");window.history.pushState({},"","/appointments")}} onStop={async()=>{setPreviewUser(null);setSelectedAppointment(null);setPickupAppointment(null);setPage("users");window.history.pushState({},"","/users")}}/>}
       {isAdministrator&&previewUser&&page!=="users"&&<AdminUserPreview activeUser={previewUser} onStart={()=>{}} onStop={async()=>{setPreviewUser(null);setSelectedAppointment(null);setPickupAppointment(null);setPage("users");window.history.pushState({},"","/users")}}/>}
-      {pickupAppointment?<PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated}/>:selectedAppointment?<div style={{position:"relative"}}><style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}</style><div style={{display:"flex",justifyContent:"flex-end",padding:"10px 24px 0",background:"#fff"}}><AppointmentActions appointment={selectedAppointment} onUpdated={handleAppointmentUpdated} onConfirm={handleLegacyConfirm} onResult={handleLegacyResult} onOpenPickup={handleOpenPickup}/></div><div className="appointment-detail-host"><AppointmentDetail appointment={selectedAppointment} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated}/></div></div>:selected?<CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated}/>:page==="dashboard"?homeContent:page==="sales-performance"?<SalesPerformance contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setSelected={setSelected}/>:page==="epvs"?<EPVSCalculator/>:page==="fit-sheet"?<FitSheet/>:page==="contracts"?<Contracts contracts={filteredContracts} loading={loading} query={query} status={status} onSearchChange={handleSearchChange} onStatusChange={value=>{setStatus(value);loadContracts(0,query,value)}} onNext={()=>loadContracts(contractsPage+1)} onPrev={()=>loadContracts(Math.max(contractsPage-1,0))} hasNext={hasMoreContracts} hasPrev={contractsPage>0} onSelect={deal=>{setSelected(deal);setPage("contracts");window.history.pushState({},"",`/contracts/${deal.id}`)}} onNewContract={()=>{}}/>:page==="installations"?<Installations/>:page==="marketing-tv"?<MarketingTV onSelectAppointment={handleAppointmentSelect}/>:page==="marketing-dashboard"?<MarketingDashboard/>:page==="leads"?<Leads/>:page==="rts-list"?<RTSList/>:page==="commissions"?<SalesCommission/>:page==="appointments"?<Appointments onSelect={handleAppointmentSelect}/>:page==="sales-kpi"?<SalesKPI deals={allDeals} loading={reportingLoading}/>:page==="canvasser-kpi"?<CanvasserKPI deals={allDeals} loading={reportingLoading}/>:page==="users"?<Users/>:page==="tasks"?<Tasks/>:page==="seo"?<SEO/>:page==="mi"?<MI/>:page==="reviews"?<Reviews setMobile={setMobile}/>:page==="integration-logs"?<IntegrationLogs setMobile={setMobile}/>:page==="templates"?<Templates/>:<Dashboard deals={allDeals}/>
+      {pageContent}
     </main>
   </div>
 }
