@@ -500,6 +500,14 @@ export default function Leads() {
           </div>
         </div>
       </div>
+      {showDialer && currentLead && (
+        <PhoneDialer
+          onClose={() => setShowDialer(false)}
+          initialNumber={currentLead.primary_phone_number || currentLead.secondary_phone_number || ""}
+          customerName={displayName(currentLead)}
+          callContext={{ type: "lead" }}
+        />
+      )}
     </section>
   )
 }
