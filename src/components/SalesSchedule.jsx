@@ -752,11 +752,11 @@ export default function SalesSchedule({
           continue
         }
 
+        // Use the appointment IDs as the stable journey key.
+        // Address formatting can change without changing the journey.
         const key = [
           fromId,
           toId,
-          origin,
-          destination,
         ].join("|")
 
         const existing =
@@ -942,8 +942,6 @@ export default function SalesSchedule({
     const key = [
       appointmentId(from),
       appointmentId(to),
-      getAppointmentLocation(from),
-      getAppointmentLocation(to),
     ].join("|")
 
     return travelTimes[key]
