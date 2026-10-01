@@ -151,7 +151,6 @@ export function VisibilityProvider({ children }) {
   const profileId = effectiveProfile?.id || null
   const pipedrivePersonId = String(effectiveProfile?.pipedrive_person_id || "").trim()
 
-  // Central visibility rule: permission level 3+ can see everything.
   const canSeeAll = permissionLevel >= 3
   const isAdministrator = permissionLevel >= 4
   const isBranchManager = isBranchManagerRole(role)
@@ -180,10 +179,7 @@ export function VisibilityProvider({ children }) {
           .or(`manager_id.eq.${viewerId},sales_manager.eq.${viewerId}`)
 
         const branchPromise = viewerBranch
-          ? supabase
-              .from("profiles")
-              .select("*")
-              .eq("branch", viewerBranch)
+          ? supabase.from("profiles").select("*").eq("branch", viewerBranch)
           : Promise.resolve({ data: [], error: null })
 
         const [managedResult, branchResult] = await Promise.all([
@@ -252,18 +248,19 @@ export function VisibilityProvider({ children }) {
       const appointmentBranch = normalise(appointment?.branch)
       const allocatedEmail = normaliseEmail(appointment?.rep_allocated)
 
-      // Sales reps can only see their own appointments while the appointment
-      // date is within the last seven days. Future appointments remain visible.
+      // Sales reps can only see their own appointments from the last 7 days.
+      // Future appointments and appointments older than 7 days are excluded.
       if (isSalesRep) {
         const rawAppointmentDate = appointment?.appointment_date
-        if (rawAppointmentDate) {
-          const appointmentDate = new Date(rawAppointmentDate)
-          if (!Number.isNaN(appointmentDate.getTime())) {
-            const sevenDaysAgo = new Date()
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-            if (appointmentDate < sevenDaysAgo) return false
-          }
-        }
+        if (!rawAppointmentDate) return false
+
+        const appointmentDate = new Date(rawAppointmentDate)
+        if (Number.isNaN(appointmentDate.getTime())) return false
+
+        const now = new Date()
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+        if (appointmentDate < sevenDaysAgo || appointmentDate > now) return false
       }
 
       // Branch managers and sales managers see every appointment in their branch.
@@ -275,8 +272,6 @@ export function VisibilityProvider({ children }) {
       return !!allocatedEmail && visibleRepEmails?.includes(allocatedEmail)
     }
 
-    // Apply the same appointment visibility rules directly to a Supabase query.
-    // Pages should use this instead of implementing their own role/date logic.
     function applyAppointmentVisibility(request) {
       if (!request || canSeeAll) return request
 
@@ -285,11 +280,12 @@ export function VisibilityProvider({ children }) {
       }
 
       if (isSalesRep && ownEmail) {
-        const sevenDaysAgo = new Date()
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+        const now = new Date()
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
         return request
           .ilike("rep_allocated", ownEmail)
           .gte("appointment_date", sevenDaysAgo.toISOString())
+          .lte("appointment_date", now.toISOString())
       }
 
       if (ownEmail) {
@@ -359,8 +355,6 @@ export function VisibilityProvider({ children }) {
       isSalesRep,
       managedProfiles,
       branchProfiles,
-      managedSalespersonIds: unique(managedSalespersonIds),
-      branchSalespersonIds: unique(branchSalespersonIds),
       visibleSalespersonIds,
       visibleRepEmails,
       visibleBranches,
@@ -370,51 +364,36 @@ export function VisibilityProvider({ children }) {
       canSeeRecord,
     }
   }, [
-    branch,
-    branchProfiles,
-    email,
     canSeeAll,
+    permissionLevel,
+    role,
+    email,
+    branch,
+    profileId,
+    pipedrivePersonId,
     isAdministrator,
-    isBranchManager,
-    isCentralManager,
     isManager,
+    isBranchManager,
     isSalesManager,
+    isCentralManager,
     isSalesRep,
     managedProfiles,
-    permissionLevel,
-    pipedrivePersonId,
-    profileId,
-    role,
+    branchProfiles,
   ])
 
-  const value = useMemo(
-    () => ({
-      session,
-      profile,
-      previewUser,
-      effectiveProfile,
-      loading,
-      error,
-      ...visibility,
-    }),
-    [session, profile, previewUser, effectiveProfile, loading, error, visibility]
-  )
+  const value = useMemo(() => ({
+    effectiveProfile,
+    previewUser,
+    loading,
+    error,
+    ...visibility,
+  }), [effectiveProfile, previewUser, loading, error, visibility])
 
-  return (
-    <VisibilityContext.Provider value={value}>
-      {children}
-    </VisibilityContext.Provider>
-  )
+  return <VisibilityContext.Provider value={value}>{children}</VisibilityContext.Provider>
 }
 
 export function useVisibility() {
   const context = useContext(VisibilityContext)
-
-  if (!context) {
-    throw new Error("useVisibility must be used inside a VisibilityProvider")
-  }
-
+  if (!context) throw new Error("useVisibility must be used inside VisibilityProvider")
   return context
 }
-
-export default VisibilityContext
