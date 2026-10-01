@@ -353,7 +353,7 @@ export default async function handler(req, res) {
       provider: "openrouteservice",
       integrationName: "OpenRouteService Routing",
       direction: "outbound",
-      eventName: "travel-time",
+      eventName: "sales-travel-time",
       eventType: "api-request",
       externalId: `${origin} -> ${destination}`,
       payload: {
