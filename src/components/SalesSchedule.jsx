@@ -118,64 +118,62 @@ export default function SalesSchedule({ selectedDate, onSelectAppointment }) {
 
   return <section className="sales-schedule-wrap">
     <style>{`
-      .sales-schedule-wrap{width:100%;min-width:0}
-      .sales-schedule-card{width:100%;min-width:0}
-      .sales-schedule-grid{width:100%;min-width:0}
-      .sales-schedule-row,.sales-schedule-header{min-width:0}
-      .sales-schedule-day{min-width:0}
-      .sales-schedule-appointment{min-width:0}
+      .sales-schedule-wrap{width:100%;min-width:0;margin-top:4px;color:#172033}
+      .sales-schedule-card{width:100%;min-width:0;background:#fff;border:1px solid #dfe4e8;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.04)}
+      .sales-schedule-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 18px;background:#fff;border-bottom:1px solid #e1e5e9}
+      .sales-schedule-title-wrap{display:flex;align-items:center;gap:10px;color:#172033;min-width:0}
+      .sales-schedule-title-wrap svg{color:#263a5e;flex:0 0 auto}
+      .sales-schedule-title-wrap h2{margin:0;font-size:20px;line-height:1.15;font-weight:800;letter-spacing:-.3px}
+      .sales-schedule-title-wrap p{margin:4px 0 0;font-size:11px;color:#64748b;font-weight:600}
+      .sales-schedule-refresh{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid #dbe1e6;background:#f8fafb;color:#64748b;border-radius:7px;padding:7px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap}
+      .sales-schedule-refresh:hover{background:#f1f5f8}
+      .sales-schedule-refresh:disabled{opacity:.55;cursor:default}
+      .sales-schedule-error{padding:10px 16px;background:#fff4f4;color:#b42318;border-bottom:1px solid #f0cccc;font-size:11px}
+      .sales-schedule-grid{width:100%;min-width:0;border-top:0}
+      .sales-schedule-header{display:grid;grid-template-columns:220px minmax(0,1fr);min-width:0;background:#f1f3f5;border-bottom:3px solid #26395d;color:#52606d;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+      .sales-schedule-header>div{padding:11px 20px;min-width:0}
+      .sales-schedule-header>div+div{border-left:1px solid #d9dee3}
+      .sales-schedule-row{display:grid;grid-template-columns:220px minmax(0,1fr);min-width:0;min-height:118px;border-bottom:1px solid #d8dde2;background:#fff}
+      .sales-schedule-row:last-child{border-bottom:0}
+      .sales-schedule-rep{min-width:0;display:flex;flex-direction:column;justify-content:center;padding:16px 20px;background:#f8f9fa;border-right:1px solid #d8dde2}
+      .sales-schedule-rep-name{font-size:15px;line-height:1.25;font-weight:700;color:#27303b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .sales-schedule-rep-email{margin-top:5px;font-size:10px;line-height:1.2;color:#7a8794;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .sales-schedule-day{min-width:0;display:grid;grid-auto-flow:column;grid-auto-columns:220px;align-items:stretch;gap:10px;overflow-x:auto;overflow-y:hidden;padding:10px;background:#fff;-webkit-overflow-scrolling:touch}
+      .sales-schedule-day::-webkit-scrollbar{height:6px}
+      .sales-schedule-day::-webkit-scrollbar-thumb{background:#cbd3db;border-radius:8px}
+      .sales-schedule-appointment{display:flex;min-width:0;width:220px;height:100%;min-height:94px;box-sizing:border-box;flex-direction:column;align-items:flex-start;justify-content:center;text-align:left;padding:12px 13px;border:1px solid #d3dbe2;border-radius:9px;background:#fff;color:#27303b;box-shadow:0 1px 2px rgba(15,23,42,.04);cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s}
+      .sales-schedule-appointment:hover{border-color:#9db1c2;box-shadow:0 3px 8px rgba(15,23,42,.08);transform:translateY(-1px)}
+      .sales-schedule-sold{background:#eaf4e5;border-color:#c8dbc1}
+      .sales-schedule-time{font-size:10px;line-height:1.2;font-weight:800;color:#4b5563;margin-bottom:4px}
+      .sales-schedule-customer{width:100%;font-size:14px;line-height:1.25;font-weight:750;color:#263238;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .sales-schedule-meta{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;margin-top:5px;font-size:10px;line-height:1.2;color:#687580}
+      .sales-schedule-meta span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .sales-schedule-meta span:last-child{font-weight:700;text-align:right}
+      .sales-schedule-sold .sales-schedule-meta span:last-child{color:#3f6840}
+      .sales-schedule-no-appointments{align-self:center;padding-left:4px;color:#9aa4ad;font-size:11px;font-weight:600}
+      .sales-schedule-empty{padding:28px 20px;text-align:center;color:#7b8792;font-size:12px}
+      .sales-schedule-unassigned-row .sales-schedule-rep{background:#f3f5f7}
+      .sales-schedule-spin{animation:salesScheduleSpin .8s linear infinite}
+      @keyframes salesScheduleSpin{to{transform:rotate(360deg)}}
 
       @media (max-width:700px){
-        .sales-schedule-grid{display:block !important;width:100%}
-        .sales-schedule-header{
-          display:grid !important;
-          grid-template-columns:minmax(110px,32%) minmax(0,1fr) !important;
-          width:100%;
-        }
-        .sales-schedule-row{
-          display:grid !important;
-          grid-template-columns:minmax(110px,32%) minmax(0,1fr) !important;
-          align-items:stretch;
-          width:100%;
-          min-height:76px;
-        }
-        .sales-schedule-rep{
-          min-width:0 !important;
-          width:auto !important;
-          overflow:hidden;
-        }
-        .sales-schedule-rep-name{
-          white-space:nowrap;
-          overflow:hidden;
-          text-overflow:ellipsis;
-        }
-        .sales-schedule-rep-email{
-          white-space:nowrap;
-          overflow:hidden;
-          text-overflow:ellipsis;
-          font-size:10px;
-        }
-        .sales-schedule-day{
-          min-width:0 !important;
-          width:auto !important;
-          display:flex !important;
-          flex-direction:row !important;
-          align-items:stretch;
-          gap:8px;
-          overflow-x:auto !important;
-          overflow-y:hidden;
-          padding-bottom:2px;
-          -webkit-overflow-scrolling:touch;
-        }
-        .sales-schedule-appointment{
-          flex:0 0 190px !important;
-          width:190px !important;
-          max-width:190px !important;
-        }
-        .sales-schedule-no-appointments{
-          align-self:center;
-          white-space:nowrap;
-        }
+        .sales-schedule-wrap{margin-top:2px}
+        .sales-schedule-card{border-radius:9px}
+        .sales-schedule-heading{padding:12px 12px}
+        .sales-schedule-title-wrap h2{font-size:17px}
+        .sales-schedule-title-wrap p{font-size:10px}
+        .sales-schedule-header{grid-template-columns:145px minmax(0,1fr);font-size:8px}
+        .sales-schedule-header>div{padding:9px 12px}
+        .sales-schedule-row{grid-template-columns:145px minmax(0,1fr);min-height:108px}
+        .sales-schedule-rep{padding:12px 12px}
+        .sales-schedule-rep-name{font-size:13px}
+        .sales-schedule-rep-email{font-size:9px;margin-top:4px}
+        .sales-schedule-day{grid-auto-columns:190px;gap:8px;padding:8px}
+        .sales-schedule-appointment{width:190px;min-height:90px;padding:10px 11px;border-radius:8px}
+        .sales-schedule-customer{font-size:13px}
+        .sales-schedule-meta{font-size:9px;margin-top:4px}
+        .sales-schedule-time{font-size:9px}
+        .sales-schedule-no-appointments{font-size:10px}
       }
     `}</style>
     <div className="sales-schedule-card">
