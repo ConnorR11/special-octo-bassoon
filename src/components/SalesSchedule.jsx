@@ -35,8 +35,8 @@ function formatCurrency(value) {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(Number(value))
 }
 
-function dateOnly(value) {
-  return String(value || "").slice(0, 10)
+function branchName(value) {
+  return String(value ?? "").trim() || "Unassigned Branch"
 }
 
 function AppointmentCard({ appointment, onSelect }) {
@@ -78,7 +78,7 @@ export default function SalesSchedule({ selectedDate, onSelectAppointment }) {
       const nextDate = `${endDate.getUTCFullYear()}-${String(endDate.getUTCMonth() + 1).padStart(2, "0")}-${String(endDate.getUTCDate()).padStart(2, "0")}`
 
       const [profilesResult, appointmentsResult] = await Promise.all([
-        supabase.from("profiles").select("id, full_name, display_name, email, active, role").eq("active", true).eq("role", "Sales Rep").order("full_name", { ascending: true }),
+        supabase.from("profiles").select("id, full_name, display_name, email, active, role, branch").eq("active", true).eq("role", "Sales Rep").order("full_name", { ascending: true }),
         supabase.from("appointments").select("*, deals(net_value)").gte("appointment_date", `${selectedDate}T00:00:00.000Z`).lt("appointment_date", `${nextDate}T00:00:00.000Z`).order("appointment_date", { ascending: true }),
       ])
 
@@ -114,6 +114,23 @@ export default function SalesSchedule({ selectedDate, onSelectAppointment }) {
     return map
   }, [reps, appointments])
 
+  const branchGroups = useMemo(() => {
+    const groups = new Map()
+    reps.forEach((rep) => {
+      const branch = branchName(rep.branch)
+      if (!groups.has(branch)) groups.set(branch, [])
+      groups.get(branch).push(rep)
+    })
+
+    return Array.from(groups.entries())
+      .sort(([a], [b]) => {
+        if (a === "Unassigned Branch") return 1
+        if (b === "Unassigned Branch") return -1
+        return a.localeCompare(b)
+      })
+      .map(([branch, branchReps]) => [branch, branchReps.sort((a, b) => display(a.display_name || a.full_name, a.email).localeCompare(display(b.display_name || b.full_name, b.email)))])
+  }, [reps])
+
   const unassigned = useMemo(() => appointments.filter((appointment) => !normaliseEmail(appointment.rep_allocated)), [appointments])
 
   return <section className="sales-schedule-wrap">
@@ -133,6 +150,8 @@ export default function SalesSchedule({ selectedDate, onSelectAppointment }) {
       .sales-schedule-header{display:grid;grid-template-columns:220px minmax(0,1fr);min-width:0;background:#f1f3f5;border-bottom:3px solid #26395d;color:#52606d;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
       .sales-schedule-header>div{padding:11px 20px;min-width:0}
       .sales-schedule-header>div+div{border-left:1px solid #d9dee3}
+      .sales-schedule-branch{display:flex;align-items:center;gap:8px;padding:11px 20px;background:#e9edf1;border-top:1px solid #d4dbe1;border-bottom:1px solid #d4dbe1;color:#26395d;font-size:13px;font-weight:800;letter-spacing:.01em}
+      .sales-schedule-branch-count{font-size:10px;font-weight:700;color:#7a8794}
       .sales-schedule-row{display:grid;grid-template-columns:220px minmax(0,1fr);min-width:0;min-height:118px;border-bottom:1px solid #d8dde2;background:#fff}
       .sales-schedule-row:last-child{border-bottom:0}
       .sales-schedule-rep{min-width:0;display:flex;flex-direction:column;justify-content:center;padding:16px 20px;background:#f8f9fa;border-right:1px solid #d8dde2}
@@ -164,6 +183,8 @@ export default function SalesSchedule({ selectedDate, onSelectAppointment }) {
         .sales-schedule-title-wrap p{font-size:10px}
         .sales-schedule-header{grid-template-columns:145px minmax(0,1fr);font-size:8px}
         .sales-schedule-header>div{padding:9px 12px}
+        .sales-schedule-branch{padding:9px 12px;font-size:11px}
+        .sales-schedule-branch-count{font-size:9px}
         .sales-schedule-row{grid-template-columns:145px minmax(0,1fr);min-height:108px}
         .sales-schedule-rep{padding:12px 12px}
         .sales-schedule-rep-name{font-size:13px}
@@ -197,24 +218,33 @@ export default function SalesSchedule({ selectedDate, onSelectAppointment }) {
         </div>
 
         {loading ? <div className="sales-schedule-empty">Loading sales schedule...</div> : reps.length === 0 ? <div className="sales-schedule-empty">No active Sales Rep profiles found.</div> : <>
-          {reps.map((rep) => {
-            const repAppointments = appointmentsByRep.get(normaliseEmail(rep.email)) || []
-            const name = display(rep.display_name || rep.full_name, rep.email)
-            return <div className="sales-schedule-row" key={rep.id || rep.email}>
-              <div className="sales-schedule-rep">
-                <div className="sales-schedule-rep-name">{name}</div>
-                {rep.email && <div className="sales-schedule-rep-email">{rep.email}</div>}
-              </div>
-              <div className="sales-schedule-day">
-                {repAppointments.length ? repAppointments.map((appointment) => <AppointmentCard key={appointment.appointment_row_id || appointment.id} appointment={appointment} onSelect={onSelectAppointment}/>) : <span className="sales-schedule-no-appointments">No appointments</span>}
-              </div>
+          {branchGroups.map(([branch, branchReps]) => <React.Fragment key={branch}>
+            <div className="sales-schedule-branch">
+              <span>{branch}</span>
+              <span className="sales-schedule-branch-count">{branchReps.length} {branchReps.length === 1 ? "rep" : "reps"}</span>
             </div>
-          })}
+            {branchReps.map((rep) => {
+              const repAppointments = appointmentsByRep.get(normaliseEmail(rep.email)) || []
+              const name = display(rep.display_name || rep.full_name, rep.email)
+              return <div className="sales-schedule-row" key={rep.id || rep.email}>
+                <div className="sales-schedule-rep">
+                  <div className="sales-schedule-rep-name">{name}</div>
+                  {rep.email && <div className="sales-schedule-rep-email">{rep.email}</div>}
+                </div>
+                <div className="sales-schedule-day">
+                  {repAppointments.length ? repAppointments.map((appointment) => <AppointmentCard key={appointment.appointment_row_id || appointment.id} appointment={appointment} onSelect={onSelectAppointment}/>) : <span className="sales-schedule-no-appointments">No appointments</span>}
+                </div>
+              </div>
+            })}
+          </React.Fragment>)}
 
-          {unassigned.length > 0 && <div className="sales-schedule-row sales-schedule-unassigned-row">
-            <div className="sales-schedule-rep"><div className="sales-schedule-rep-name">Unassigned</div></div>
-            <div className="sales-schedule-day">{unassigned.map((appointment) => <AppointmentCard key={appointment.appointment_row_id || appointment.id} appointment={appointment} onSelect={onSelectAppointment}/>)}</div>
-          </div>}
+          {unassigned.length > 0 && <React.Fragment>
+            <div className="sales-schedule-branch"><span>Unassigned</span></div>
+            <div className="sales-schedule-row sales-schedule-unassigned-row">
+              <div className="sales-schedule-rep"><div className="sales-schedule-rep-name">Unassigned</div></div>
+              <div className="sales-schedule-day">{unassigned.map((appointment) => <AppointmentCard key={appointment.appointment_row_id || appointment.id} appointment={appointment} onSelect={onSelectAppointment}/>)}</div>
+            </div>
+          </React.Fragment>}
         </>}
       </div>
     </div>
