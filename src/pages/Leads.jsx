@@ -319,7 +319,17 @@ export default function Leads() {
             ) : (
               <>
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(3,minmax(0,1fr))", gap:12, marginBottom:18 }}>
-                  <Info label="Phone" value={currentLead.primary_phone_number || "—"} icon={<Phone size={16} />} />
+                                    <div style={cardStyle({ padding:14, background:"#fbfcfe" })}>
+                    <div style={{ display:"flex", alignItems:"center", gap:7, color:"#64748b", fontSize:11, textTransform:"uppercase", letterSpacing:"0.05em", fontWeight:800 }}>
+                      <Phone size={16} />Phone
+                    </div>
+                    <div style={{ marginTop:7, display:"flex", alignItems:"center", justifyContent:"space-between", gap:10 }}>
+                      <span style={{ color:"#17324d", fontWeight:800 }}>{currentLead.primary_phone_number || currentLead.secondary_phone_number || "—"}</span>
+                      <button type="button" onClick={() => setShowDialer(true)} disabled={!currentLead.primary_phone_number && !currentLead.secondary_phone_number} style={{ border:0, background:"#17804b", color:"#fff", borderRadius:8, padding:"7px 10px", display:"inline-flex", alignItems:"center", gap:6, fontWeight:800, cursor:"pointer", opacity:(currentLead.primary_phone_number || currentLead.secondary_phone_number) ? 1 : .5 }}>
+                        <PhoneCall size={14} />Call
+                      </button>
+                    </div>
+                  </div>
                   <Info label="Campaign" value={currentLead.campaign || "—"} icon={<TargetIcon />} />
                   <Info label="Lead Age" value={leadAge} icon={<Clock size={16} />} />
                 </div>
