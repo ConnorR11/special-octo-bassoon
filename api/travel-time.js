@@ -70,7 +70,12 @@ export default async function handler(req, res) {
     const data = await response.json().catch(() => ({}))
     if (!response.ok) {
       const message = data?.error?.message || data?.message || "Routing provider returned an error"
-      if (log?.id) await updateIntegrationLog(log.id, { status: "failed", http_status: response.status, error_message: message, response_payload: data })
+      if (log?.id) await updateIntegrationLog(log.id, {
+        status: "failed",
+        http_status: response.status,
+        error_message: message,
+        result: data,
+      })
       return json(res, response.status >= 500 ? 502 : response.status, { error: message })
     }
 
@@ -81,15 +86,30 @@ export default async function handler(req, res) {
 
     if (!durationMinutes && !distanceMiles) {
       const message = "No route found"
-      if (log?.id) await updateIntegrationLog(log.id, { status: "failed", http_status: 200, error_message: message, response_payload: data })
+      if (log?.id) await updateIntegrationLog(log.id, {
+        status: "failed",
+        http_status: 200,
+        error_message: message,
+        result: data,
+      })
       return json(res, 404, { error: message })
     }
 
-    if (log?.id) await updateIntegrationLog(log.id, { status: "success", http_status: response.status, response_payload: result })
+    if (log?.id) await updateIntegrationLog(log.id, {
+      status: "success",
+      http_status: response.status,
+      result,
+    })
+
     return json(res, 200, result)
   } catch (error) {
     const message = error?.message || "Unable to calculate travel time"
-    if (log?.id) await updateIntegrationLog(log.id, { status: "failed", http_status: error?.status || null, error_message: message, response_payload: error?.providerPayload || null })
+    if (log?.id) await updateIntegrationLog(log.id, {
+      status: "failed",
+      http_status: error?.status || null,
+      error_message: message,
+      result: error?.providerPayload || null,
+    })
     return json(res, 500, { error: message })
   }
 }
