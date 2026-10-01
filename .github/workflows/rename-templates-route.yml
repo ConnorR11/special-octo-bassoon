@@ -1,0 +1,30 @@
+name: Rename templates route
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  rename-route:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rename sales-presentations route to templates
+        run: |
+          set -e
+          sed -i 's/sales-presentations/templates/g' src/App.jsx
+          sed -i 's/sales-presentations/templates/g' src/components/Sidebar.jsx
+          rm -f .github/workflows/rename-templates-route.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.jsx src/components/Sidebar.jsx .github/workflows/rename-templates-route.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "Rename sales presentations route to templates"
+          git push
