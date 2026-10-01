@@ -16,7 +16,7 @@ function formatTime(value) {
 
   const text = String(value).trim()
 
-  // Handles ISO timestamps such as:
+  // Handles:
   // 2026-09-30T13:00:00
   // 2026-09-30 13:00:00
   const match = text.match(/[T ](\d{2}):(\d{2})/)
@@ -35,24 +35,11 @@ function formatTime(value) {
 function getMinutes(value) {
   const text = String(value ?? "").trim()
 
-  // Handles ISO timestamps correctly
   const match = text.match(/[T ](\d{2}):(\d{2})/)
 
-  if (match) {
-    return Number(match[1]) * 60 + Number(match[2])
-  }
+  if (!match) return null
 
-  // Also handles plain HH:MM values
-  const timeMatch = text.match(/^(\d{2}):(\d{2})/)
-
-  if (timeMatch) {
-    return (
-      Number(timeMatch[1]) * 60 +
-      Number(timeMatch[2])
-    )
-  }
-
-  return null
+  return Number(match[1]) * 60 + Number(match[2])
 }
 
 function normaliseEmail(value) {
@@ -111,9 +98,10 @@ function formatTimeFromMinutes(minutes) {
   const hours = Math.floor(safe / 60)
   const mins = safe % 60
 
-  return `${String(hours).padStart(2, "0")}:${String(
-    mins
-  ).padStart(2, "0")}`
+  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(
+    2,
+    "0"
+  )}`
 }
 
 function appointmentId(appointment) {
@@ -251,6 +239,7 @@ function AppointmentCard({
         "Unnamed customer"
       )}`}
     >
+      {/* TIME */}
       <div className="sales-schedule-time">
         {formatTime(
           appointment.appointment_date
@@ -261,6 +250,7 @@ function AppointmentCard({
         )}
       </div>
 
+      {/* CUSTOMER */}
       <div className="sales-schedule-customer">
         {display(
           appointment.name,
@@ -268,6 +258,7 @@ function AppointmentCard({
         )}
       </div>
 
+      {/* POSTCODE + PRODUCT */}
       <div className="sales-schedule-meta">
         <span>
           {display(appointment.postcode)}
@@ -277,66 +268,7 @@ function AppointmentCard({
           {display(appointment.product)}
         </span>
       </div>
-
-      <div className="sales-schedule-meta">
-        <span>
-          {display(appointment.branch)}
-        </span>
-
-        <span>
-          {sold
-            ? netValue === null
-              ? "SOLD"
-              : formatCurrency(netValue)
-            : display(
-                appointment.result,
-                "Booked"
-              )}
-        </span>
-      </div>
     </button>
-  )
-}
-
-// ------------------------------------------------------------
-// Timeline header
-// ------------------------------------------------------------
-
-function TimelineHeader() {
-  const hours = []
-
-  for (
-    let m = DAY_START_MINUTES;
-    m <= DAY_END_MINUTES;
-    m += 60
-  ) {
-    hours.push(m)
-  }
-
-  const total =
-    DAY_END_MINUTES - DAY_START_MINUTES
-
-  return (
-    <div className="sales-schedule-header-timeline">
-      {hours.map((minutes) => {
-        const position =
-          ((minutes - DAY_START_MINUTES) /
-            total) *
-          100
-
-        return (
-          <div
-            key={minutes}
-            className="sales-schedule-header-time"
-            style={{
-              left: `${position}%`,
-            }}
-          >
-            {formatTimeFromMinutes(minutes)}
-          </div>
-        )
-      })}
-    </div>
   )
 }
 
@@ -403,17 +335,6 @@ function TravelBlock({
 
   const travelEnd =
     travelStart + travel.durationMinutes
-
-  /*
-   * We only care whether the travel time
-   * overlaps the START of the next appointment.
-   *
-   * If the journey finishes before the next
-   * appointment starts = GREEN.
-   *
-   * If the journey runs into the next
-   * appointment = RED.
-   */
 
   const overlapsNextAppointment =
     travelEnd > next
@@ -761,10 +682,6 @@ export default function SalesSchedule({
         return
       }
 
-      // ------------------------------------------------------
-      // Load saved travel times
-      // ------------------------------------------------------
-
       let saved = []
 
       const result =
@@ -789,10 +706,6 @@ export default function SalesSchedule({
       }
 
       const resolved = {}
-
-      // ------------------------------------------------------
-      // Resolve each journey
-      // ------------------------------------------------------
 
       for (const request of requests) {
         if (cancelled) break
@@ -828,10 +741,6 @@ export default function SalesSchedule({
           origin,
           destination,
         ].join("|")
-
-        // ----------------------------------------------------
-        // Check existing saved result
-        // ----------------------------------------------------
 
         const existing =
           saved.find(
@@ -878,10 +787,6 @@ export default function SalesSchedule({
 
           continue
         }
-
-        // ----------------------------------------------------
-        // No saved result - call API
-        // ----------------------------------------------------
 
         try {
           const response =
@@ -942,11 +847,8 @@ export default function SalesSchedule({
             ),
           }
 
-          resolved[key] = travelResult
-
-          // --------------------------------------------------
-          // Save historical result
-          // --------------------------------------------------
+          resolved[key] =
+            travelResult
 
           if (
             isHistoricalDate &&
@@ -1087,37 +989,10 @@ export default function SalesSchedule({
           min-height: 34px;
         }
 
-        .sales-schedule-header > div:first-child {
+        .sales-schedule-header > div {
           padding: 0 20px;
           display: flex;
           align-items: center;
-        }
-
-        .sales-schedule-header-timeline {
-          position: relative;
-          min-width: 620px;
-          height: 34px;
-          overflow: hidden;
-        }
-
-        .sales-schedule-header-time {
-          position: absolute;
-          top: 50%;
-          transform: translate(-50%, -50%);
-          font-size: 9px;
-          font-weight: 800;
-          color: #52606d;
-          white-space: nowrap;
-          text-transform: none;
-          pointer-events: none;
-        }
-
-        .sales-schedule-header-time:first-child {
-          transform: translate(0, -50%);
-        }
-
-        .sales-schedule-header-time:last-child {
-          transform: translate(-100%, -50%);
         }
 
         .sales-schedule-branch {
@@ -1204,21 +1079,31 @@ export default function SalesSchedule({
             );
         }
 
+        /* --------------------------------------------------
+           APPOINTMENT CARD
+           -------------------------------------------------- */
+
         .sales-schedule-appointment {
           position: absolute;
-          top: 10px;
-          height: calc(100% - 20px);
+
+          /* Reduced card height */
+          top: 16px;
+          height: calc(100% - 32px);
+
           display: flex;
           min-width: 54px;
           flex-direction: column;
           justify-content: center;
           align-items: flex-start;
           text-align: left;
-          padding: 8px 10px;
+
+          padding: 7px 9px;
+
           border: 1px solid #c7d1d9;
           border-radius: 8px;
           background: #eef4f8;
           color: #27303b;
+
           box-sizing: border-box;
           cursor: pointer;
           overflow: hidden;
@@ -1252,6 +1137,7 @@ export default function SalesSchedule({
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+          margin-top: 1px;
         }
 
         .sales-schedule-meta {
@@ -1259,7 +1145,7 @@ export default function SalesSchedule({
           width: 100%;
           justify-content: space-between;
           gap: 6px;
-          margin-top: 4px;
+          margin-top: 3px;
           font-size: 8px;
           color: #687580;
         }
@@ -1274,6 +1160,10 @@ export default function SalesSchedule({
         .sales-schedule-meta span:last-child {
           font-weight: 700;
         }
+
+        /* --------------------------------------------------
+           TRAVEL
+           -------------------------------------------------- */
 
         .sales-schedule-travel {
           position: absolute;
@@ -1359,14 +1249,10 @@ export default function SalesSchedule({
             min-height: 108px;
           }
 
-          .sales-schedule-header-timeline {
-            min-width: 620px;
-          }
-
           .sales-schedule-appointment {
-            top: 8px;
-            height: calc(100% - 16px);
-            padding: 7px 8px;
+            top: 12px;
+            height: calc(100% - 24px);
+            padding: 6px 8px;
           }
 
           .sales-schedule-customer {
@@ -1395,13 +1281,55 @@ export default function SalesSchedule({
         <div className="sales-schedule-scroll">
           <div>
 
-            {/* Header with Sales Rep + timeline times */}
+            {/* TIME HEADER */}
             <div className="sales-schedule-header">
-              <div>
-                SALES REP
-              </div>
+              <div>SALES REP</div>
 
-              <TimelineHeader />
+              <div
+                style={{
+                  position: "relative",
+                  width: "100%",
+                  height: "34px",
+                  padding: 0,
+                }}
+              >
+                {Array.from(
+                  { length: 14 },
+                  (_, index) =>
+                    DAY_START_MINUTES +
+                    index * 60
+                ).map((minutes) => {
+                  const left =
+                    ((minutes -
+                      DAY_START_MINUTES) /
+                      (DAY_END_MINUTES -
+                        DAY_START_MINUTES)) *
+                    100
+
+                  return (
+                    <span
+                      key={minutes}
+                      style={{
+                        position:
+                          "absolute",
+                        left: `${left}%`,
+                        top: "50%",
+                        transform:
+                          "translate(-50%, -50%)",
+                        fontSize: "9px",
+                        fontWeight: 700,
+                        color: "#52606d",
+                        whiteSpace:
+                          "nowrap",
+                      }}
+                    >
+                      {formatTimeFromMinutes(
+                        minutes
+                      )}
+                    </span>
+                  )
+                })}
+              </div>
             </div>
 
             {loading ? (
@@ -1450,6 +1378,7 @@ export default function SalesSchedule({
                                 rep.email
                               }
                             >
+                              {/* SALES REP */}
                               <div className="sales-schedule-rep">
                                 <div className="sales-schedule-rep-name">
                                   {display(
@@ -1466,6 +1395,7 @@ export default function SalesSchedule({
                                 )}
                               </div>
 
+                              {/* TIMELINE */}
                               <div className="sales-schedule-timeline">
                                 <TimelineGrid />
 
