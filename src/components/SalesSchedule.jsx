@@ -1,5 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react"
-import { Car } from "lucide-react"
+import {
+  Car,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react"
 import { supabase } from "../lib/supabase"
 
 const DAY_START_MINUTES = 9 * 60
@@ -403,6 +407,155 @@ function TravelBlock({
         {travel.durationMinutes} min
       </span>
     </div>
+  )
+}
+
+// ------------------------------------------------------------
+// Collapsible branch section
+// ------------------------------------------------------------
+
+function BranchSection({
+  branch,
+  branchReps,
+  appointmentsByRep,
+  getTravel,
+  onSelectAppointment,
+}) {
+  const [open, setOpen] = useState(true)
+
+  return (
+    <section className="sales-schedule-branch-section">
+      <button
+        type="button"
+        className="sales-schedule-branch"
+        onClick={() =>
+          setOpen((value) => !value)
+        }
+        aria-expanded={open}
+      >
+        <span className="sales-schedule-branch-name">
+          {branch}
+        </span>
+
+        <span className="sales-schedule-branch-count">
+          {branchReps.length}{" "}
+          {branchReps.length === 1
+            ? "rep"
+            : "reps"}
+        </span>
+
+        <span className="sales-schedule-branch-chevron">
+          {open ? (
+            <ChevronUp size={17} />
+          ) : (
+            <ChevronDown size={17} />
+          )}
+        </span>
+      </button>
+
+      {open && (
+        <>
+          {branchReps.map((rep) => {
+            const items =
+              appointmentsByRep.get(
+                normaliseEmail(rep.email)
+              ) || []
+
+            return (
+              <div
+                className="sales-schedule-row"
+                key={
+                  rep.id ||
+                  rep.email
+                }
+              >
+                {/* SALES REP */}
+                <div className="sales-schedule-rep">
+                  <div className="sales-schedule-rep-name">
+                    {display(
+                      rep.display_name ||
+                        rep.full_name,
+                      rep.email
+                    )}
+                  </div>
+
+                  {rep.email && (
+                    <div className="sales-schedule-rep-email">
+                      {rep.email}
+                    </div>
+                  )}
+                </div>
+
+                {/* TIMELINE */}
+                <div className="sales-schedule-timeline">
+                  <TimelineGrid />
+
+                  <div className="sales-schedule-appointments">
+                    {items.length ? (
+                      items.map(
+                        (
+                          appointment,
+                          index
+                        ) => {
+                          const next =
+                            items[
+                              index + 1
+                            ]
+
+                          const travel =
+                            next
+                              ? getTravel(
+                                  appointment,
+                                  next
+                                )
+                              : null
+
+                          return (
+                            <React.Fragment
+                              key={appointmentId(
+                                appointment
+                              )}
+                            >
+                              {next &&
+                                travel && (
+                                  <TravelBlock
+                                    travel={
+                                      travel
+                                    }
+                                    fromAppointment={
+                                      appointment
+                                    }
+                                    toAppointment={
+                                      next
+                                    }
+                                  />
+                                )}
+
+                              <AppointmentCard
+                                appointment={
+                                  appointment
+                                }
+                                onSelect={
+                                  onSelectAppointment
+                                }
+                              />
+                            </React.Fragment>
+                          )
+                        }
+                      )
+                    ) : (
+                      <span className="sales-schedule-no-appointments">
+                        No appointments
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </>
+      )}
+    </section>
   )
 }
 
@@ -995,22 +1148,52 @@ export default function SalesSchedule({
           align-items: center;
         }
 
+        /* --------------------------------------------------
+           COLLAPSIBLE BRANCH
+           -------------------------------------------------- */
+
+        .sales-schedule-branch-section {
+          width: 100%;
+        }
+
         .sales-schedule-branch {
+          width: 100%;
           display: flex;
           gap: 8px;
           align-items: center;
           padding: 11px 20px;
           background: #e9edf1;
+          border: 0;
           border-top: 1px solid #d4dbe1;
           border-bottom: 1px solid #d4dbe1;
           color: #26395d;
           font-size: 13px;
           font-weight: 800;
+          text-align: left;
+          cursor: pointer;
+          box-sizing: border-box;
+        }
+
+        .sales-schedule-branch:hover {
+          background: #e1e6eb;
+        }
+
+        .sales-schedule-branch-name {
+          flex: 1;
         }
 
         .sales-schedule-branch-count {
           font-size: 10px;
           color: #7a8794;
+          font-weight: 700;
+        }
+
+        .sales-schedule-branch-chevron {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #52606d;
+          flex-shrink: 0;
         }
 
         .sales-schedule-row {
@@ -1086,7 +1269,6 @@ export default function SalesSchedule({
         .sales-schedule-appointment {
           position: absolute;
 
-          /* Reduced card height */
           top: 16px;
           height: calc(100% - 32px);
 
@@ -1267,6 +1449,10 @@ export default function SalesSchedule({
             height: 24px;
             font-size: 7px;
           }
+
+          .sales-schedule-branch {
+            padding: 10px 12px;
+          }
         }
       `}</style>
 
@@ -1283,7 +1469,9 @@ export default function SalesSchedule({
 
             {/* TIME HEADER */}
             <div className="sales-schedule-header">
-              <div>SALES REP</div>
+              <div>
+                SALES REP
+              </div>
 
               <div
                 style={{
@@ -1342,139 +1530,40 @@ export default function SalesSchedule({
               </div>
             ) : (
               <>
+                {/* ------------------------------------------------
+                    BRANCHES
+                   ------------------------------------------------ */}
+
                 {branchGroups.map(
                   ([branch, branchReps]) => (
-                    <React.Fragment
+                    <BranchSection
                       key={branch}
-                    >
-                      <div className="sales-schedule-branch">
-                        <span>
-                          {branch}
-                        </span>
-
-                        <span className="sales-schedule-branch-count">
-                          {branchReps.length}{" "}
-                          {branchReps.length ===
-                          1
-                            ? "rep"
-                            : "reps"}
-                        </span>
-                      </div>
-
-                      {branchReps.map(
-                        (rep) => {
-                          const items =
-                            appointmentsByRep.get(
-                              normaliseEmail(
-                                rep.email
-                              )
-                            ) || []
-
-                          return (
-                            <div
-                              className="sales-schedule-row"
-                              key={
-                                rep.id ||
-                                rep.email
-                              }
-                            >
-                              {/* SALES REP */}
-                              <div className="sales-schedule-rep">
-                                <div className="sales-schedule-rep-name">
-                                  {display(
-                                    rep.display_name ||
-                                      rep.full_name,
-                                    rep.email
-                                  )}
-                                </div>
-
-                                {rep.email && (
-                                  <div className="sales-schedule-rep-email">
-                                    {rep.email}
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* TIMELINE */}
-                              <div className="sales-schedule-timeline">
-                                <TimelineGrid />
-
-                                <div className="sales-schedule-appointments">
-
-                                  {items.length ? (
-                                    items.map(
-                                      (
-                                        appointment,
-                                        index
-                                      ) => {
-                                        const next =
-                                          items[
-                                            index +
-                                              1
-                                          ]
-
-                                        const travel =
-                                          next
-                                            ? getTravel(
-                                                appointment,
-                                                next
-                                              )
-                                            : null
-
-                                        return (
-                                          <React.Fragment
-                                            key={appointmentId(
-                                              appointment
-                                            )}
-                                          >
-                                            {next &&
-                                              travel && (
-                                                <TravelBlock
-                                                  travel={
-                                                    travel
-                                                  }
-                                                  fromAppointment={
-                                                    appointment
-                                                  }
-                                                  toAppointment={
-                                                    next
-                                                  }
-                                                />
-                                              )}
-
-                                            <AppointmentCard
-                                              appointment={
-                                                appointment
-                                              }
-                                              onSelect={
-                                                onSelectAppointment
-                                              }
-                                            />
-                                          </React.Fragment>
-                                        )
-                                      }
-                                    )
-                                  ) : (
-                                    <span className="sales-schedule-no-appointments">
-                                      No appointments
-                                    </span>
-                                  )}
-
-                                </div>
-                              </div>
-                            </div>
-                          )
-                        }
-                      )}
-                    </React.Fragment>
+                      branch={branch}
+                      branchReps={branchReps}
+                      appointmentsByRep={
+                        appointmentsByRep
+                      }
+                      getTravel={getTravel}
+                      onSelectAppointment={
+                        onSelectAppointment
+                      }
+                    />
                   )
                 )}
+
+                {/* ------------------------------------------------
+                    UNASSIGNED
+                   ------------------------------------------------ */}
 
                 {unassigned.length > 0 && (
                   <>
                     <div className="sales-schedule-branch">
-                      <span>
+                      <span className="sales-schedule-branch-name">
                         Unassigned
+                      </span>
+
+                      <span className="sales-schedule-branch-chevron">
+                        <ChevronDown size={17} />
                       </span>
                     </div>
 
