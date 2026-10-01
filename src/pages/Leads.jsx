@@ -445,35 +445,27 @@ export default function Leads() {
                   key={lead.delete_row_id || index}
                   type="button"
                   onClick={async () => {
-                    setCurrentLead(lead)
+                    if (!supabase || loading || saving) return
                     setError("")
                     try {
-                      const userId = await getCurrentUserId()
-                      const now = new Date().toISOString()
-                      const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString()
-                      const { data: claimed, error: claimError } = await supabase
-                        .from("leads")
-                        .update({ claimed_by:userId, claimed_at:now, claim_expires_at:expires })
-                        .eq("delete_row_id", lead.delete_row_id)
-                        .or(`claim_expires_at.is.null,claim_expires_at.lte.${now}`)
-                        .select(QUEUE_SELECT)
-                        .maybeSingle()
+                      const { data: claimed, error: claimError } = await supabase.rpc("claim_specific_lead", {
+                        p_lead_id: lead.delete_row_id,
+                      })
                       if (claimError) throw claimError
                       if (!claimed) {
-                        setCurrentLead(null)
                         await loadQueuePreview()
-                        setError("That lead was just claimed by another canvasser. The queue has been refreshed.")
+                        setError("That lead is no longer eligible or was just claimed by another canvasser.")
                         return
                       }
                       setCurrentLead(claimed)
+                      setResult("")
+                      setNote("")
                       await loadQueuePreview()
                     } catch (err) {
                       console.error("Error claiming queue lead:", err)
-                      setCurrentLead(null)
                       setError(err?.message || "Unable to claim that lead.")
                     }
-                  }}
-                  style={{ border:"1px solid #e6ebf0", background:"#fff", borderRadius:10, padding:11, textAlign:"left", cursor:"pointer", display:"grid", gridTemplateColumns:"1fr auto", gap:10, alignItems:"center" }}
+                  }}                 style={{ border:"1px solid #e6ebf0", background:"#fff", borderRadius:10, padding:11, textAlign:"left", cursor:"pointer", display:"grid", gridTemplateColumns:"1fr auto", gap:10, alignItems:"center" }}
                 >
                   <div style={{ minWidth:0 }}>
                     <div style={{ fontWeight:800, color:"#17324d", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{displayName(lead)}</div>
