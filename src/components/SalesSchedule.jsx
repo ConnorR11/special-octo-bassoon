@@ -1,15 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react"
-import {
-  Car,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react"
+import { Car, ChevronDown, ChevronRight } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
 const DAY_START_MINUTES = 9 * 60
 const DAY_END_MINUTES = 22 * 60
 const APPOINTMENT_DURATION_MINUTES = 120
-const TRAVEL_TABLE = "sales_schedule_travel_times"
+
+// Sales-specific travel table
+const TRAVEL_TABLE = "sales_travel_times"
+
+// Sales-specific travel API
+const TRAVEL_API = "/api/sales-travel-time"
 
 // ------------------------------------------------------------
 // Helpers
@@ -20,9 +21,6 @@ function formatTime(value) {
 
   const text = String(value).trim()
 
-  // Handles:
-  // 2026-09-30T13:00:00
-  // 2026-09-30 13:00:00
   const match = text.match(/[T ](\d{2}):(\d{2})/)
 
   if (match) {
@@ -196,8 +194,7 @@ function getPosition(appointment) {
       100,
 
     width:
-      ((visibleEnd - visibleStart) /
-        total) *
+      ((visibleEnd - visibleStart) / total) *
       100,
 
     hidden: false,
@@ -213,7 +210,6 @@ function AppointmentCard({
   onSelect,
 }) {
   const sold = isSold(appointment)
-  const netValue = getNetValue(appointment)
 
   const position = getPosition(appointment)
 
@@ -243,7 +239,6 @@ function AppointmentCard({
         "Unnamed customer"
       )}`}
     >
-      {/* TIME */}
       <div className="sales-schedule-time">
         {formatTime(
           appointment.appointment_date
@@ -254,7 +249,6 @@ function AppointmentCard({
         )}
       </div>
 
-      {/* CUSTOMER */}
       <div className="sales-schedule-customer">
         {display(
           appointment.name,
@@ -262,7 +256,6 @@ function AppointmentCard({
         )}
       </div>
 
-      {/* POSTCODE + PRODUCT */}
       <div className="sales-schedule-meta">
         <span>
           {display(appointment.postcode)}
@@ -369,8 +362,7 @@ function TravelBlock({
     100
 
   const width =
-    ((visibleEnd - visibleStart) /
-      total) *
+    ((visibleEnd - visibleStart) / total) *
     100
 
   if (width <= 0) return null
@@ -411,155 +403,6 @@ function TravelBlock({
 }
 
 // ------------------------------------------------------------
-// Collapsible branch section
-// ------------------------------------------------------------
-
-function BranchSection({
-  branch,
-  branchReps,
-  appointmentsByRep,
-  getTravel,
-  onSelectAppointment,
-}) {
-  const [open, setOpen] = useState(true)
-
-  return (
-    <section className="sales-schedule-branch-section">
-      <button
-        type="button"
-        className="sales-schedule-branch"
-        onClick={() =>
-          setOpen((value) => !value)
-        }
-        aria-expanded={open}
-      >
-        <span className="sales-schedule-branch-name">
-          {branch}
-        </span>
-
-        <span className="sales-schedule-branch-count">
-          {branchReps.length}{" "}
-          {branchReps.length === 1
-            ? "rep"
-            : "reps"}
-        </span>
-
-        <span className="sales-schedule-branch-chevron">
-          {open ? (
-            <ChevronUp size={17} />
-          ) : (
-            <ChevronDown size={17} />
-          )}
-        </span>
-      </button>
-
-      {open && (
-        <>
-          {branchReps.map((rep) => {
-            const items =
-              appointmentsByRep.get(
-                normaliseEmail(rep.email)
-              ) || []
-
-            return (
-              <div
-                className="sales-schedule-row"
-                key={
-                  rep.id ||
-                  rep.email
-                }
-              >
-                {/* SALES REP */}
-                <div className="sales-schedule-rep">
-                  <div className="sales-schedule-rep-name">
-                    {display(
-                      rep.display_name ||
-                        rep.full_name,
-                      rep.email
-                    )}
-                  </div>
-
-                  {rep.email && (
-                    <div className="sales-schedule-rep-email">
-                      {rep.email}
-                    </div>
-                  )}
-                </div>
-
-                {/* TIMELINE */}
-                <div className="sales-schedule-timeline">
-                  <TimelineGrid />
-
-                  <div className="sales-schedule-appointments">
-                    {items.length ? (
-                      items.map(
-                        (
-                          appointment,
-                          index
-                        ) => {
-                          const next =
-                            items[
-                              index + 1
-                            ]
-
-                          const travel =
-                            next
-                              ? getTravel(
-                                  appointment,
-                                  next
-                                )
-                              : null
-
-                          return (
-                            <React.Fragment
-                              key={appointmentId(
-                                appointment
-                              )}
-                            >
-                              {next &&
-                                travel && (
-                                  <TravelBlock
-                                    travel={
-                                      travel
-                                    }
-                                    fromAppointment={
-                                      appointment
-                                    }
-                                    toAppointment={
-                                      next
-                                    }
-                                  />
-                                )}
-
-                              <AppointmentCard
-                                appointment={
-                                  appointment
-                                }
-                                onSelect={
-                                  onSelectAppointment
-                                }
-                              />
-                            </React.Fragment>
-                          )
-                        }
-                      )
-                    ) : (
-                      <span className="sales-schedule-no-appointments">
-                        No appointments
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </>
-      )}
-    </section>
-  )
-}
-
-// ------------------------------------------------------------
 // Main component
 // ------------------------------------------------------------
 
@@ -570,14 +413,35 @@ export default function SalesSchedule({
   const [reps, setReps] = useState([])
   const [appointments, setAppointments] =
     useState([])
+
   const [travelTimes, setTravelTimes] =
     useState({})
+
   const [loading, setLoading] =
     useState(true)
+
   const [error, setError] = useState("")
+
+  // ----------------------------------------------------------
+  // Branch collapse state
+  // ----------------------------------------------------------
+
+  const [collapsedBranches, setCollapsedBranches] =
+    useState({})
 
   const isHistoricalDate =
     selectedDate < getTodayInLondon()
+
+  // ----------------------------------------------------------
+  // Toggle branch
+  // ----------------------------------------------------------
+
+  function toggleBranch(branch) {
+    setCollapsedBranches((current) => ({
+      ...current,
+      [branch]: !current[branch],
+    }))
+  }
 
   // ----------------------------------------------------------
   // Load schedule
@@ -850,7 +714,7 @@ export default function SalesSchedule({
 
       if (result.error) {
         console.error(
-          "Unable to load saved travel times:",
+          "Unable to load saved Sales Travel Times:",
           result.error
         )
       } else {
@@ -944,7 +808,7 @@ export default function SalesSchedule({
         try {
           const response =
             await fetch(
-              "/api/travel-time",
+              TRAVEL_API,
               {
                 method: "POST",
 
@@ -956,12 +820,20 @@ export default function SalesSchedule({
                 body: JSON.stringify({
                   origin,
                   destination,
+
                   fromAppointmentId:
                     fromId,
+
                   toAppointmentId:
                     toId,
+
                   travelDate:
                     selectedDate,
+
+                  // Identifies this as
+                  // Sales Travel Times
+                  eventType:
+                    "sales_travel_time",
                 }),
               }
             )
@@ -974,7 +846,7 @@ export default function SalesSchedule({
           if (!response.ok) {
             throw new Error(
               data?.error ||
-                "Unable to calculate travel time"
+                "Unable to calculate Sales Travel Time"
             )
           }
 
@@ -1003,6 +875,8 @@ export default function SalesSchedule({
           resolved[key] =
             travelResult
 
+          // Save historical travel
+          // calculations
           if (
             isHistoricalDate &&
             travelResult.durationMinutes
@@ -1045,14 +919,14 @@ export default function SalesSchedule({
 
             if (saveResult.error) {
               console.error(
-                "Unable to save historical travel time:",
+                "Unable to save historical Sales Travel Time:",
                 saveResult.error
               )
             }
           }
         } catch (err) {
           console.error(
-            "Travel-time calculation failed:",
+            "Sales Travel Time calculation failed:",
             err
           )
 
@@ -1149,37 +1023,56 @@ export default function SalesSchedule({
         }
 
         /* --------------------------------------------------
-           COLLAPSIBLE BRANCH
+           BRANCH HEADER
            -------------------------------------------------- */
-
-        .sales-schedule-branch-section {
-          width: 100%;
-        }
 
         .sales-schedule-branch {
           width: 100%;
+          min-width: 840px;
+          box-sizing: border-box;
           display: flex;
-          gap: 8px;
           align-items: center;
-          padding: 11px 20px;
+          gap: 8px;
+          padding: 0;
           background: #e9edf1;
-          border: 0;
           border-top: 1px solid #d4dbe1;
           border-bottom: 1px solid #d4dbe1;
           color: #26395d;
           font-size: 13px;
           font-weight: 800;
-          text-align: left;
-          cursor: pointer;
-          box-sizing: border-box;
         }
 
-        .sales-schedule-branch:hover {
-          background: #e1e6eb;
+        .sales-schedule-branch-button {
+          width: 100%;
+          min-height: 42px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 20px;
+          border: 0;
+          background: transparent;
+          color: inherit;
+          font: inherit;
+          text-align: left;
+          cursor: pointer;
+        }
+
+        .sales-schedule-branch-button:hover {
+          background: #e2e7eb;
+        }
+
+        .sales-schedule-branch-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 16px;
+          flex: 0 0 16px;
+          color: #52606d;
         }
 
         .sales-schedule-branch-name {
-          flex: 1;
+          min-width: 0;
+          flex: 0 0 auto;
         }
 
         .sales-schedule-branch-count {
@@ -1188,13 +1081,9 @@ export default function SalesSchedule({
           font-weight: 700;
         }
 
-        .sales-schedule-branch-chevron {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #52606d;
-          flex-shrink: 0;
-        }
+        /* --------------------------------------------------
+           REP ROW
+           -------------------------------------------------- */
 
         .sales-schedule-row {
           min-height: 118px;
@@ -1226,6 +1115,10 @@ export default function SalesSchedule({
           overflow: hidden;
           text-overflow: ellipsis;
         }
+
+        /* --------------------------------------------------
+           TIMELINE
+           -------------------------------------------------- */
 
         .sales-schedule-timeline {
           position: relative;
@@ -1415,6 +1308,10 @@ export default function SalesSchedule({
             min-width: 765px;
           }
 
+          .sales-schedule-branch {
+            min-width: 765px;
+          }
+
           .sales-schedule-row {
             min-height: 108px;
           }
@@ -1449,10 +1346,6 @@ export default function SalesSchedule({
             height: 24px;
             font-size: 7px;
           }
-
-          .sales-schedule-branch {
-            padding: 10px 12px;
-          }
         }
       `}</style>
 
@@ -1468,6 +1361,7 @@ export default function SalesSchedule({
           <div>
 
             {/* TIME HEADER */}
+
             <div className="sales-schedule-header">
               <div>
                 SALES REP
@@ -1530,76 +1424,273 @@ export default function SalesSchedule({
               </div>
             ) : (
               <>
-                {/* ------------------------------------------------
-                    BRANCHES
-                   ------------------------------------------------ */}
-
                 {branchGroups.map(
-                  ([branch, branchReps]) => (
-                    <BranchSection
-                      key={branch}
-                      branch={branch}
-                      branchReps={branchReps}
-                      appointmentsByRep={
-                        appointmentsByRep
-                      }
-                      getTravel={getTravel}
-                      onSelectAppointment={
-                        onSelectAppointment
-                      }
-                    />
-                  )
+                  ([branch, branchReps]) => {
+                    const collapsed =
+                      Boolean(
+                        collapsedBranches[
+                          branch
+                        ]
+                      )
+
+                    return (
+                      <React.Fragment
+                        key={branch}
+                      >
+
+                        {/* BRANCH HEADER */}
+
+                        <div className="sales-schedule-branch">
+                          <button
+                            type="button"
+                            className="sales-schedule-branch-button"
+                            onClick={() =>
+                              toggleBranch(
+                                branch
+                              )
+                            }
+                            aria-expanded={
+                              !collapsed
+                            }
+                          >
+                            <span className="sales-schedule-branch-icon">
+                              {collapsed ? (
+                                <ChevronRight
+                                  size={16}
+                                  strokeWidth={2.5}
+                                />
+                              ) : (
+                                <ChevronDown
+                                  size={16}
+                                  strokeWidth={2.5}
+                                />
+                              )}
+                            </span>
+
+                            <span className="sales-schedule-branch-name">
+                              {branch}
+                            </span>
+
+                            <span className="sales-schedule-branch-count">
+                              {branchReps.length}{" "}
+                              {branchReps.length ===
+                              1
+                                ? "rep"
+                                : "reps"}
+                            </span>
+                          </button>
+                        </div>
+
+                        {/* BRANCH CONTENT */}
+
+                        {!collapsed &&
+                          branchReps.map(
+                            (rep) => {
+                              const items =
+                                appointmentsByRep.get(
+                                  normaliseEmail(
+                                    rep.email
+                                  )
+                                ) || []
+
+                              return (
+                                <div
+                                  className="sales-schedule-row"
+                                  key={
+                                    rep.id ||
+                                    rep.email
+                                  }
+                                >
+
+                                  {/* SALES REP */}
+
+                                  <div className="sales-schedule-rep">
+                                    <div className="sales-schedule-rep-name">
+                                      {display(
+                                        rep.display_name ||
+                                          rep.full_name,
+                                        rep.email
+                                      )}
+                                    </div>
+
+                                    {rep.email && (
+                                      <div className="sales-schedule-rep-email">
+                                        {
+                                          rep.email
+                                        }
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* TIMELINE */}
+
+                                  <div className="sales-schedule-timeline">
+                                    <TimelineGrid />
+
+                                    <div className="sales-schedule-appointments">
+
+                                      {items.length ? (
+                                        items.map(
+                                          (
+                                            appointment,
+                                            index
+                                          ) => {
+                                            const next =
+                                              items[
+                                                index +
+                                                  1
+                                              ]
+
+                                            const travel =
+                                              next
+                                                ? getTravel(
+                                                    appointment,
+                                                    next
+                                                  )
+                                                : null
+
+                                            return (
+                                              <React.Fragment
+                                                key={appointmentId(
+                                                  appointment
+                                                )}
+                                              >
+
+                                                {next &&
+                                                  travel && (
+                                                    <TravelBlock
+                                                      travel={
+                                                        travel
+                                                      }
+                                                      fromAppointment={
+                                                        appointment
+                                                      }
+                                                      toAppointment={
+                                                        next
+                                                      }
+                                                    />
+                                                  )}
+
+                                                <AppointmentCard
+                                                  appointment={
+                                                    appointment
+                                                  }
+                                                  onSelect={
+                                                    onSelectAppointment
+                                                  }
+                                                />
+
+                                              </React.Fragment>
+                                            )
+                                          }
+                                        )
+                                      ) : (
+                                        <span className="sales-schedule-no-appointments">
+                                          No appointments
+                                        </span>
+                                      )}
+
+                                    </div>
+                                  </div>
+
+                                </div>
+                              )
+                            }
+                          )}
+                      </React.Fragment>
+                    )
+                  }
                 )}
 
-                {/* ------------------------------------------------
-                    UNASSIGNED
-                   ------------------------------------------------ */}
+                {/* UNASSIGNED */}
 
                 {unassigned.length > 0 && (
                   <>
                     <div className="sales-schedule-branch">
-                      <span className="sales-schedule-branch-name">
-                        Unassigned
-                      </span>
-
-                      <span className="sales-schedule-branch-chevron">
-                        <ChevronDown size={17} />
-                      </span>
-                    </div>
-
-                    <div className="sales-schedule-row">
-                      <div className="sales-schedule-rep">
-                        <div className="sales-schedule-rep-name">
-                          Unassigned
-                        </div>
-                      </div>
-
-                      <div className="sales-schedule-timeline">
-                        <TimelineGrid />
-
-                        <div className="sales-schedule-appointments">
-                          {unassigned.map(
-                            (appointment) => (
-                              <AppointmentCard
-                                key={appointmentId(
-                                  appointment
-                                )}
-                                appointment={
-                                  appointment
-                                }
-                                onSelect={
-                                  onSelectAppointment
-                                }
-                              />
-                            )
+                      <button
+                        type="button"
+                        className="sales-schedule-branch-button"
+                        onClick={() =>
+                          toggleBranch(
+                            "Unassigned"
+                          )
+                        }
+                        aria-expanded={
+                          !collapsedBranches[
+                            "Unassigned"
+                          ]
+                        }
+                      >
+                        <span className="sales-schedule-branch-icon">
+                          {collapsedBranches[
+                            "Unassigned"
+                          ] ? (
+                            <ChevronRight
+                              size={16}
+                              strokeWidth={2.5}
+                            />
+                          ) : (
+                            <ChevronDown
+                              size={16}
+                              strokeWidth={2.5}
+                            />
                           )}
-                        </div>
-                      </div>
+                        </span>
+
+                        <span className="sales-schedule-branch-name">
+                          Unassigned
+                        </span>
+
+                        <span className="sales-schedule-branch-count">
+                          {unassigned.length}{" "}
+                          {unassigned.length ===
+                          1
+                            ? "appointment"
+                            : "appointments"}
+                        </span>
+                      </button>
                     </div>
+
+                    {!collapsedBranches[
+                      "Unassigned"
+                    ] && (
+                      <div className="sales-schedule-row">
+
+                        <div className="sales-schedule-rep">
+                          <div className="sales-schedule-rep-name">
+                            Unassigned
+                          </div>
+                        </div>
+
+                        <div className="sales-schedule-timeline">
+                          <TimelineGrid />
+
+                          <div className="sales-schedule-appointments">
+                            {unassigned.map(
+                              (appointment) => (
+                                <AppointmentCard
+                                  key={appointmentId(
+                                    appointment
+                                  )}
+                                  appointment={
+                                    appointment
+                                  }
+                                  onSelect={
+                                    onSelectAppointment
+                                  }
+                                />
+                              )
+                            )}
+                          </div>
+                        </div>
+
+                      </div>
+                    )}
                   </>
                 )}
               </>
             )}
+
           </div>
         </div>
       </div>
