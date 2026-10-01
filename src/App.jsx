@@ -26,7 +26,7 @@ import SEO from "./pages/SEO"
 import MI from "./pages/MI"
 import Reviews from "./pages/Reviews"
 import IntegrationLogs from "./pages/IntegrationLogs"
-import Templates from "./pages/templates"
+import Templates from "./pages/Templates"
 import AdminUserPreview from "./components/AdminUserPreview"
 
 const DEALS_PAGE_SIZE = 50
