@@ -672,228 +672,172 @@ export default function SalesSchedule({
     let cancelled = false
 
     async function calculateTravelTimes() {
-      if (!appointments.length) {
+      if (!supabase || !appointments.length) {
         setTravelTimes({})
         return
       }
 
       const requests = []
 
-      appointmentsByRep.forEach(
-        (items) => {
-          for (
-            let i = 0;
-            i < items.length - 1;
-            i += 1
-          ) {
-            requests.push({
-              from: items[i],
-              to: items[i + 1],
-            })
-          }
+      appointmentsByRep.forEach((items) => {
+        for (let i = 0; i < items.length - 1; i += 1) {
+          requests.push({
+            from: items[i],
+            to: items[i + 1],
+          })
         }
-      )
+      })
 
       if (!requests.length) {
         setTravelTimes({})
         return
       }
 
-      let saved = []
+      // Load all saved travel for the selected date once. The appointment
+      // IDs are the stable key; address text is deliberately not part of
+      // the frontend lookup because formatting can change.
+      const result = await supabase
+        .from(TRAVEL_TABLE)
+        .select(
+          "from_appointment_id, to_appointment_id, duration_minutes, distance_miles"
+        )
+        .eq("travel_date", selectedDate)
 
-      const result =
-        await supabase
-          .from(TRAVEL_TABLE)
-          .select(
-            "from_appointment_id, to_appointment_id, duration_minutes, distance_miles, origin, destination"
-          )
-          .eq(
-            "travel_date",
-            selectedDate
-          )
+      if (cancelled) return
 
       if (result.error) {
         console.error(
           "Unable to load saved Sales Travel Times:",
           result.error
         )
-      } else {
-        saved =
-          result.data || []
       }
 
-      const resolved = {}
+      const savedByKey = new Map()
 
-      for (const request of requests) {
-        if (cancelled) break
-
-        const fromId =
-          appointmentId(request.from)
-
-        const toId =
-          appointmentId(request.to)
-
-        const origin =
-          getAppointmentLocation(
-            request.from
-          )
-
-        const destination =
-          getAppointmentLocation(
-            request.to
-          )
-
-        if (
-          !fromId ||
-          !toId ||
-          !origin ||
-          !destination
-        ) {
-          continue
-        }
-
-        // Use the appointment IDs as the stable journey key.
-        // Address formatting can change without changing the journey.
+      ;(result.data || []).forEach((row) => {
         const key = [
-          fromId,
-          toId,
+          String(row.from_appointment_id || ""),
+          String(row.to_appointment_id || ""),
         ].join("|")
 
-        const existing =
-          saved.find(
-            (row) =>
-              String(row.from_appointment_id || "") ===
-                String(fromId) &&
-              String(row.to_appointment_id || "") ===
-                String(toId)
-          )
+        if (key !== "|") {
+          savedByKey.set(key, row)
+        }
+      })
 
-        if (existing) {
+      const resolved = {}
+      const pending = []
+
+      // Resolve anything already cached immediately.
+      for (const request of requests) {
+        const fromId = appointmentId(request.from)
+        const toId = appointmentId(request.to)
+        const key = [fromId, toId].join("|")
+
+        if (!fromId || !toId) continue
+
+        const existing = savedByKey.get(key)
+        const durationMinutes = Number(existing?.duration_minutes)
+
+        if (existing && Number.isFinite(durationMinutes) && durationMinutes > 0) {
           resolved[key] = {
-            durationMinutes:
-              Number(
-                existing.duration_minutes
-              ) || null,
-
+            durationMinutes,
             distanceMiles:
-              existing.distance_miles ==
-              null
+              existing.distance_miles == null
                 ? null
-                : Number(
-                    existing.distance_miles
-                  ),
-
+                : Number(existing.distance_miles),
             cached: true,
           }
-
           continue
         }
 
-        try {
-          const response =
-            await fetch(
-              TRAVEL_API,
-              {
-                method: "POST",
+        const origin = getAppointmentLocation(request.from)
+        const destination = getAppointmentLocation(request.to)
 
-                headers: {
-                  "Content-Type":
-                    "application/json",
-                },
+        if (!origin || !destination) {
+          console.warn(
+            "Skipping Sales Travel Time - missing origin/destination:",
+            { fromId, toId, origin, destination }
+          )
+          continue
+        }
 
-                body: JSON.stringify({
-                  origin,
-                  destination,
+        pending.push({
+          fromId,
+          toId,
+          origin,
+          destination,
+          key,
+        })
+      }
 
-                  fromAppointmentId:
-                    fromId,
+      // Calculate missing journeys concurrently, with a small concurrency
+      // limit so a busy sales day does not flood the routing API.
+      let cursor = 0
+      const workerCount = Math.min(4, pending.length)
 
-                  toAppointmentId:
-                    toId,
+      async function worker() {
+        while (!cancelled) {
+          const index = cursor++
+          if (index >= pending.length) return
 
-                  travelDate:
-                    selectedDate,
+          const request = pending[index]
 
-                  // Identifies this as
-                  // Sales Travel Times
-                  eventType:
-                    "sales_travel_time",
-                }),
-              }
-            )
+          try {
+            const response = await fetch(TRAVEL_API, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                origin: request.origin,
+                destination: request.destination,
+                fromAppointmentId: request.fromId,
+                toAppointmentId: request.toId,
+                travelDate: selectedDate,
+                eventType: "sales_travel_time",
+              }),
+            })
 
-          const data =
-            await response
-              .json()
-              .catch(() => ({}))
+            const data = await response.json().catch(() => ({}))
 
-          if (!response.ok) {
-            throw new Error(
-              data?.error ||
-                "Unable to calculate Sales Travel Time"
-            )
-          }
-
-          const travelResult = {
-            durationMinutes:
-              Number(
-                data?.durationMinutes
-              ) || null,
-
-            distanceMiles:
-              Number.isFinite(
-                Number(
-                  data?.distanceMiles
-                )
+            if (!response.ok) {
+              throw new Error(
+                data?.error ||
+                  "Unable to calculate Sales Travel Time"
               )
-                ? Number(
-                    data.distanceMiles
-                  )
+            }
+
+            const durationMinutes = Number(data?.durationMinutes)
+
+            if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+              throw new Error("Travel API returned no valid duration")
+            }
+
+            resolved[request.key] = {
+              durationMinutes,
+              distanceMiles: Number.isFinite(Number(data?.distanceMiles))
+                ? Number(data.distanceMiles)
                 : null,
+              cached: Boolean(data?.cached),
+            }
 
-            cached: Boolean(
-              data?.cached
-            ),
-          }
-
-          resolved[key] =
-            travelResult
-
-          // Save historical travel
-          // calculations
-          if (
-            isHistoricalDate &&
-            travelResult.durationMinutes
-          ) {
-            const saveResult =
-              await supabase
+            // The API already saves the result. Keep the frontend historical
+            // upsert for compatibility with existing behaviour.
+            if (isHistoricalDate) {
+              const saveResult = await supabase
                 .from(TRAVEL_TABLE)
                 .upsert(
                   {
-                    from_appointment_id:
-                      fromId,
-
-                    to_appointment_id:
-                      toId,
-
-                    travel_date:
-                      selectedDate,
-
-                    origin,
-
-                    destination,
-
-                    duration_minutes:
-                      travelResult.durationMinutes,
-
-                    distance_miles:
-                      travelResult.distanceMiles,
-
-                    source:
-                      "openrouteservice",
-
-                    updated_at:
-                      new Date().toISOString(),
+                    from_appointment_id: request.fromId,
+                    to_appointment_id: request.toId,
+                    travel_date: selectedDate,
+                    origin: request.origin,
+                    destination: request.destination,
+                    duration_minutes: durationMinutes,
+                    distance_miles: resolved[request.key].distanceMiles,
+                    source: "openrouteservice",
+                    updated_at: new Date().toISOString(),
                   },
                   {
                     onConflict:
@@ -901,21 +845,27 @@ export default function SalesSchedule({
                   }
                 )
 
-            if (saveResult.error) {
-              console.error(
-                "Unable to save historical Sales Travel Time:",
-                saveResult.error
-              )
+              if (saveResult.error) {
+                console.error(
+                  "Unable to save historical Sales Travel Time:",
+                  saveResult.error
+                )
+              }
             }
+          } catch (err) {
+            console.error(
+              "Sales Travel Time calculation failed:",
+              request,
+              err
+            )
           }
-        } catch (err) {
-          console.error(
-            "Sales Travel Time calculation failed:",
-            err
-          )
-
-          resolved[key] = null
         }
+      }
+
+      if (workerCount) {
+        await Promise.all(
+          Array.from({ length: workerCount }, () => worker())
+        )
       }
 
       if (!cancelled) {
@@ -928,11 +878,7 @@ export default function SalesSchedule({
     return () => {
       cancelled = true
     }
-  }, [
-    appointmentsByRep,
-    selectedDate,
-    isHistoricalDate,
-  ])
+  }, [appointmentsByRep, selectedDate, isHistoricalDate])
 
   // ----------------------------------------------------------
   // Get travel
