@@ -178,20 +178,19 @@ export default function Leads() {
   async function releaseCurrentLead() {
     if (!currentLead || !supabase) return
     try {
-      await supabase
-        .from("leads")
-        .update({
-          claimed_by: null,
-          claimed_at: null,
-          claim_expires_at: null,
-        })
-        .eq("delete_row_id", currentLead.delete_row_id)
+      const { error: releaseError } = await supabase.rpc("release_claimed_lead", {
+        p_lead_id: currentLead.delete_row_id,
+      })
+      if (releaseError) throw releaseError
+      setCurrentLead(null)
+      setResult("")
+      setNote("")
+      await loadQueuePreview()
     } catch (err) {
       console.error("Error releasing lead:", err)
+      setError(err?.message || "Unable to release the lead.")
     }
-    setCurrentLead(null)
   }
-
   async function submitResult() {
     if (!currentLead || !result || saving || !supabase) return
 
