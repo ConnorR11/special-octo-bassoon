@@ -7,7 +7,7 @@ const DAY_END_MINUTES = 22 * 60
 const APPOINTMENT_DURATION_MINUTES = 120
 
 // Sales-specific travel table
-const TRAVEL_TABLE = "sales_travel_times"
+const TRAVEL_TABLE = "sales_schedule_travel_times"
 
 // Sales-specific travel API
 const TRAVEL_API = "/api/sales-travel-time"
@@ -752,8 +752,6 @@ export default function SalesSchedule({
           continue
         }
 
-        // Use the appointment IDs as the primary key. The address is
-        // only used as a fallback because address formatting can change.
         const key = [
           fromId,
           toId,
@@ -764,17 +762,10 @@ export default function SalesSchedule({
         const existing =
           saved.find(
             (row) =>
-              String(row.from_appointment_id || "").trim() === fromId &&
-              String(row.to_appointment_id || "").trim() === toId
-          ) ||
-          saved.find(
-            (row) =>
-              String(row.origin || "")
-                .trim()
-                .toLowerCase() === origin.trim().toLowerCase() &&
-              String(row.destination || "")
-                .trim()
-                .toLowerCase() === destination.trim().toLowerCase()
+              String(row.from_appointment_id || "") ===
+                String(fromId) &&
+              String(row.to_appointment_id || "") ===
+                String(toId)
           )
 
         if (existing) {
