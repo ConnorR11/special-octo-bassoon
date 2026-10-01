@@ -16,6 +16,7 @@ import {
   UserRound,
 } from "lucide-react"
 import { supabase } from "../lib/supabase"
+import PhoneDialer from "../components/PhoneDialer"
 
 const QUEUE_SELECT = [
   "delete_row_id",
@@ -122,7 +123,7 @@ export default function Leads() {
   const [result, setResult] = useState("")
   const [note, setNote] = useState("")
   const [search, setSearch] = useState("")
-  const [myClaims, setMyClaims] = useState(0)
+  const [showDialer, setShowDialer] = useState(false)
 
   async function getCurrentUserId() {
     const { data, error: authError } = await supabase.auth.getUser()
@@ -148,7 +149,6 @@ export default function Leads() {
 
       if (queryError) throw queryError
       setQueuePreview(data || [])
-      setMyClaims((data || []).filter(lead => lead.claimed_by).length)
     } catch (err) {
       console.error("Error loading leads queue:", err)
       setError(err?.message || "Unable to load leads queue.")
