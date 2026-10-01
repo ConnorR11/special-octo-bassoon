@@ -4,25 +4,116 @@ import { supabase } from "../lib/supabase"
 import { useVisibility } from "../context/VisibilityContext"
 import SalesSchedule from "../components/SalesSchedule"
 
-function formatDateForInput(date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}` }
-function formatDisplayDate(value) { if (!value) return "—"; const date = new Date(`${value}T12:00:00`); if (Number.isNaN(date.getTime())) return value; return date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) }
-function formatTime(value) { if (!value) return "—"; const text = String(value).trim(); const match = text.match(/[T ](\d{2}):(\d{2})/); if (match) return `${match[1]}:${match[2]}`; const timeMatch = text.match(/^(\d{2}):(\d{2})/); return timeMatch ? `${timeMatch[1]}:${timeMatch[2]}` : text.slice(0, 5) }
-function display(value, fallback = "—") { const text = String(value ?? "").trim(); return text || fallback }
-function normaliseEmail(value) { return String(value ?? "").trim().toLowerCase() }
-function isTrueValue(value) { if (value === true) return true; if (typeof value === "string") { const v = value.trim().toLowerCase(); return ["true", "t", "1", "yes", "y"].includes(v) } return typeof value === "number" && value === 1 }
-function countTrue(rows, field) { return rows.reduce((total, row) => total + (isTrueValue(row[field]) ? 1 : 0), 0) }
-function isSold(appointment) { return String(appointment?.result ?? "").trim().toLowerCase() === "sold" }
-function getDealNetValue(appointment) { const deal = Array.isArray(appointment?.deals) ? appointment.deals[0] : appointment?.deals; const value = Number(deal?.net_value); return Number.isFinite(value) ? value : null }
-function formatCurrency(value) { if (value === null || value === undefined || !Number.isFinite(Number(value))) return "NULL"; return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(Number(value)) }
-function sumNetValue(rows) { return rows.reduce((total, row) => total + (isSold(row) ? (getDealNetValue(row) ?? 0) : 0), 0) }
-function sortBranches(rows) { return [...new Set(rows.map((row) => display(row.branch, "Unassigned")))].sort((a, b) => { if (a === "Unassigned") return 1; if (b === "Unassigned") return -1; return a.localeCompare(b) }) }
+function formatDateForInput(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+}
+
+function formatDisplayDate(value) {
+  if (!value) return "—"
+  const date = new Date(`${value}T12:00:00`)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })
+}
+
+function formatTime(value) {
+  if (!value) return "—"
+  const text = String(value).trim()
+  const match = text.match(/[T ](\d{2}):(\d{2})/)
+  if (match) return `${match[1]}:${match[2]}`
+  const timeMatch = text.match(/^(\d{2}):(\d{2})/)
+  return timeMatch ? `${timeMatch[1]}:${timeMatch[2]}` : text.slice(0, 5)
+}
+
+function display(value, fallback = "—") {
+  const text = String(value ?? "").trim()
+  return text || fallback
+}
+
+function normaliseEmail(value) {
+  return String(value ?? "").trim().toLowerCase()
+}
+
+function isTrueValue(value) {
+  if (value === true) return true
+  if (typeof value === "string") {
+    const v = value.trim().toLowerCase()
+    return ["true", "t", "1", "yes", "y"].includes(v)
+  }
+  return typeof value === "number" && value === 1
+}
+
+function countTrue(rows, field) {
+  return rows.reduce((total, row) => total + (isTrueValue(row[field]) ? 1 : 0), 0)
+}
+
+function isSold(appointment) {
+  return String(appointment?.result ?? "").trim().toLowerCase() === "sold"
+}
+
+function getDealNetValue(appointment) {
+  const deal = Array.isArray(appointment?.deals) ? appointment.deals[0] : appointment?.deals
+  const value = Number(deal?.net_value)
+  return Number.isFinite(value) ? value : null
+}
+
+function formatCurrency(value) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return "NULL"
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(Number(value))
+}
+
+function sumNetValue(rows) {
+  return rows.reduce((total, row) => total + (isSold(row) ? (getDealNetValue(row) ?? 0) : 0), 0)
+}
+
+function sortBranches(rows) {
+  return [...new Set(rows.map((row) => display(row.branch, "Unassigned")))].sort((a, b) => {
+    if (a === "Unassigned") return 1
+    if (b === "Unassigned") return -1
+    return a.localeCompare(b)
+  })
+}
 
 function SummaryTable({ appointments }) {
   const branches = useMemo(() => sortBranches(appointments), [appointments])
-  return <div className="mtv-summary-wrap"><div className="mtv-summary-header"><div>BRANCH</div><div className="mtv-summary-columns"><span>H</span><span>C</span><span>P</span><span>S</span><span>VALUE</span></div></div><div className="mtv-summary-row mtv-summary-total"><span>Total</span><div className="mtv-summary-values"><span>{countTrue(appointments, "cps_h")}</span><span>{countTrue(appointments, "cps_c")}</span><span>{countTrue(appointments, "cps_p")}</span><span>{countTrue(appointments, "cps_s")}</span><span>{formatCurrency(sumNetValue(appointments))}</span></div></div>{branches.map((branch) => { const rows = appointments.filter((row) => display(row.branch, "Unassigned") === branch); return <div className="mtv-summary-row" key={branch}><span className="mtv-summary-branch">{branch}</span><div className="mtv-summary-values"><span>{countTrue(rows, "cps_h")}</span><span>{countTrue(rows, "cps_c")}</span><span>{countTrue(rows, "cps_p")}</span><span>{countTrue(rows, "cps_s")}</span><span>{formatCurrency(sumNetValue(rows))}</span></div></div> })}</div>
+
+  return (
+    <div className="mtv-summary-wrap">
+      <div className="mtv-summary-header">
+        <div>BRANCH</div>
+        <div className="mtv-summary-columns"><span>H</span><span>C</span><span>P</span><span>S</span><span>VALUE</span></div>
+      </div>
+      <div className="mtv-summary-row mtv-summary-total">
+        <span>Total</span>
+        <div className="mtv-summary-values">
+          <span>{countTrue(appointments, "cps_h")}</span>
+          <span>{countTrue(appointments, "cps_c")}</span>
+          <span>{countTrue(appointments, "cps_p")}</span>
+          <span>{countTrue(appointments, "cps_s")}</span>
+          <span>{formatCurrency(sumNetValue(appointments))}</span>
+        </div>
+      </div>
+      {branches.map((branch) => {
+        const rows = appointments.filter((row) => display(row.branch, "Unassigned") === branch)
+        return (
+          <div className="mtv-summary-row" key={branch}>
+            <span className="mtv-summary-branch">{branch}</span>
+            <div className="mtv-summary-values">
+              <span>{countTrue(rows, "cps_h")}</span>
+              <span>{countTrue(rows, "cps_c")}</span>
+              <span>{countTrue(rows, "cps_p")}</span>
+              <span>{countTrue(rows, "cps_s")}</span>
+              <span>{formatCurrency(sumNetValue(rows))}</span>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
-function StatusTick({ value }) { return value ? <span className="mtv-tick"><Check size={13} /></span> : <span className="mtv-cross"><X size={13} /></span> }
+function StatusTick({ value }) {
+  return value ? <span className="mtv-tick"><Check size={13} /></span> : <span className="mtv-cross"><X size={13} /></span>
+}
 
 function AppointmentRow({ appointment, onSelect, repNameByEmail }) {
   const repEmail = appointment.rep_allocated
@@ -33,13 +124,47 @@ function AppointmentRow({ appointment, onSelect, repNameByEmail }) {
   const repConfirmed = Boolean(appointment.rep_confirmed_time)
   const rowStatusClass = !hasRep ? "mtv-row-unassigned" : repConfirmed ? "mtv-row-confirmed" : "mtv-row-unconfirmed"
   const resultDisplay = sold ? (netValue === null ? "SOLD" : formatCurrency(netValue)) : display(appointment.result)
-  return <tr className={`mtv-appointment-row ${rowStatusClass}`} onClick={() => onSelect?.(appointment)}><td className="mtv-cell mtv-name-cell" title={appointment.name || "Unnamed customer"}>{display(appointment.name, "Unnamed customer")}</td><td className="mtv-cell" title={display(appointment.branch)}>{display(appointment.branch)}</td><td className="mtv-cell" title={display(repName)}>{display(repName)}</td><td className="mtv-cell mtv-time-cell">{formatTime(appointment.appointment_date)}</td><td className="mtv-cell">{display(appointment.postcode)}</td><td className="mtv-cell">{display(appointment.product)}</td><td className="mtv-cell">{display(appointment.lead_source)}</td><td className="mtv-cell mtv-status-cell"><StatusTick value={isTrueValue(appointment.is_pickup)} /></td><td className="mtv-cell mtv-result-cell">{resultDisplay}</td></tr>
+
+  return (
+    <tr className={`mtv-appointment-row ${rowStatusClass}`} onClick={() => onSelect?.(appointment)}>
+      <td className="mtv-cell mtv-name-cell" title={appointment.name || "Unnamed customer"}>{display(appointment.name, "Unnamed customer")}</td>
+      <td className="mtv-cell" title={display(appointment.branch)}>{display(appointment.branch)}</td>
+      <td className="mtv-cell" title={display(repName)}>{display(repName)}</td>
+      <td className="mtv-cell mtv-time-cell">{formatTime(appointment.appointment_date)}</td>
+      <td className="mtv-cell">{display(appointment.postcode)}</td>
+      <td className="mtv-cell">{display(appointment.product)}</td>
+      <td className="mtv-cell">{display(appointment.lead_source)}</td>
+      <td className="mtv-cell mtv-status-cell"><StatusTick value={isTrueValue(appointment.is_pickup)} /></td>
+      <td className="mtv-cell mtv-result-cell">{resultDisplay}</td>
+    </tr>
+  )
 }
 
 function BranchSection({ branch, appointments, onSelect, repNameByEmail }) {
   const [open, setOpen] = useState(true)
   const sorted = [...appointments].sort((a, b) => String(a.appointment_date || "").localeCompare(String(b.appointment_date || "")))
-  return <section className="mtv-branch-section"><button type="button" className="mtv-branch-title" onClick={() => setOpen((value) => !value)}><span>{branch}</span><span className="mtv-branch-count">{appointments.length}</span>{open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</button>{open && <div className="mtv-table-scroll"><table className="mtv-table"><thead><tr className="mtv-table-header"><th>NAME</th><th>BRANCH</th><th>REP</th><th>TIME</th><th>POSTCODE</th><th>MEASURE</th><th>LEAD SOURCE</th><th>PICKUP</th><th>RESULT</th></tr></thead><tbody>{sorted.map((appointment) => <AppointmentRow key={appointment.appointment_row_id} appointment={appointment} onSelect={onSelect} repNameByEmail={repNameByEmail}/>)}</tbody></table></div>}</section>
+
+  return (
+    <section className="mtv-branch-section">
+      <button type="button" className="mtv-branch-title" onClick={() => setOpen((value) => !value)}>
+        <span>{branch}</span>
+        <span className="mtv-branch-count">{appointments.length}</span>
+        {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+      </button>
+      {open && (
+        <div className="mtv-table-scroll">
+          <table className="mtv-table">
+            <thead>
+              <tr className="mtv-table-header">
+                <th>NAME</th><th>BRANCH</th><th>REP</th><th>TIME</th><th>POSTCODE</th><th>MEASURE</th><th>LEAD SOURCE</th><th>PICKUP</th><th>RESULT</th>
+              </tr>
+            </thead>
+            <tbody>{sorted.map((appointment) => <AppointmentRow key={appointment.appointment_row_id || appointment.id} appointment={appointment} onSelect={onSelect} repNameByEmail={repNameByEmail} />)}</tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  )
 }
 
 export default function MarketingTV({ onSelectAppointment }) {
@@ -53,11 +178,18 @@ export default function MarketingTV({ onSelectAppointment }) {
   const [lastUpdated, setLastUpdated] = useState(null)
 
   async function loadAppointments(date = selectedDate) {
-    if (!supabase) { setError("Supabase is not configured. Check your environment variables."); setLoading(false); return }
+    if (!supabase) {
+      setError("Supabase is not configured. Check your environment variables.")
+      setLoading(false)
+      return
+    }
     if (visibilityLoading) return
-    setLoading(true); setError("")
+    setLoading(true)
+    setError("")
+
     try {
-      const endDate = new Date(`${date}T00:00:00Z`); endDate.setUTCDate(endDate.getUTCDate() + 1)
+      const endDate = new Date(`${date}T00:00:00Z`)
+      endDate.setUTCDate(endDate.getUTCDate() + 1)
       const nextDate = `${endDate.getUTCFullYear()}-${String(endDate.getUTCMonth() + 1).padStart(2, "0")}-${String(endDate.getUTCDate()).padStart(2, "0")}`
       let appointmentsRequest = supabase.from("appointments").select("*, deals(net_value)").gte("appointment_date", `${date}T00:00:00.000Z`).lt("appointment_date", `${nextDate}T00:00:00.000Z`).order("appointment_date", { ascending: true })
 
@@ -85,16 +217,115 @@ export default function MarketingTV({ onSelectAppointment }) {
       setError(err?.message || "Unable to load appointments.")
       setAppointments([])
       setProfiles([])
-    } finally { setLoading(false) }
+    } finally {
+      setLoading(false)
+    }
   }
 
-  useEffect(() => { if (!visibilityLoading) loadAppointments(selectedDate) }, [selectedDate, previewUser?.id, canSeeAll, isBranchManager, isSalesManager, branch, email, visibilityLoading])
-  useEffect(() => { const interval = setInterval(() => { if (!visibilityLoading) loadAppointments(selectedDate) }, 60000); return () => clearInterval(interval) }, [selectedDate, canSeeAll, isBranchManager, isSalesManager, branch, email, visibilityLoading])
+  useEffect(() => {
+    if (!visibilityLoading) loadAppointments(selectedDate)
+  }, [selectedDate, previewUser?.id, canSeeAll, isBranchManager, isSalesManager, branch, email, visibilityLoading])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!visibilityLoading) loadAppointments(selectedDate)
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [selectedDate, canSeeAll, isBranchManager, isSalesManager, branch, email, visibilityLoading])
 
   const today = formatDateForInput(new Date())
-  const repNameByEmail = useMemo(() => profiles.reduce((map, profile) => { const email = normaliseEmail(profile.email); const name = String(profile.full_name ?? "").trim(); if (email && name) map[email] = name; return map }, {}), [profiles])
-  const visibleAppointments = useMemo(() => { if (activeTab === "mastersheet") return appointments.filter((appointment) => isTrueValue(appointment.cps_c) || isTrueValue(appointment.cps_s)); if (activeTab === "handover") return appointments.filter((appointment) => !isTrueValue(appointment.cps_c) && !isTrueValue(appointment.cps_s)); return [] }, [appointments, activeTab])
-  const visibleGrouped = useMemo(() => { const groups = {}; visibleAppointments.forEach((appointment) => { const branch = display(appointment.branch, "Unassigned"); if (!groups[branch]) groups[branch] = []; groups[branch].push(appointment) }); return Object.entries(groups).sort(([a], [b]) => { if (a === "Unassigned") return 1; if (b === "Unassigned") return -1; return a.localeCompare(b) }).map(([branch, rows]) => ({ branch, rows })) }, [visibleAppointments])
+  const repNameByEmail = useMemo(() => profiles.reduce((map, profile) => {
+    const profileEmail = normaliseEmail(profile.email)
+    const name = String(profile.full_name ?? "").trim()
+    if (profileEmail && name) map[profileEmail] = name
+    return map
+  }, {}), [profiles])
+
+  const visibleAppointments = useMemo(() => {
+    if (activeTab === "mastersheet") return appointments.filter((appointment) => isTrueValue(appointment.cps_c) || isTrueValue(appointment.cps_s))
+    if (activeTab === "handover") return appointments.filter((appointment) => !isTrueValue(appointment.cps_c) && !isTrueValue(appointment.cps_s))
+    return []
+  }, [appointments, activeTab])
+
+  const visibleGrouped = useMemo(() => {
+    const groups = {}
+    visibleAppointments.forEach((appointment) => {
+      const branchName = display(appointment.branch, "Unassigned")
+      if (!groups[branchName]) groups[branchName] = []
+      groups[branchName].push(appointment)
+    })
+    return Object.entries(groups)
+      .sort(([a], [b]) => {
+        if (a === "Unassigned") return 1
+        if (b === "Unassigned") return -1
+        return a.localeCompare(b)
+      })
+      .map(([branchName, rows]) => ({ branch: branchName, rows }))
+  }, [visibleAppointments])
+
   const combinedError = error || visibilityError
 
-  return <section className="marketing-tv-page"><style>{`.marketing-tv-page{margin:-24px;min-height:calc(100vh - 90px);background:#f5f6f8;color:#172033;font-family:Inter,Arial,sans-serif}.mtv-top-card{margin:10px 14px 8px;background:#fff;border:1px solid #dfe5ea;border-radius:8px;overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.04)}.mtv-hero{background:#00304b;color:#fff;min-height:112px;padding:20px 24px 18px;display:flex;align-items:center;justify-content:space-between;gap:28px}.mtv-hero-title-block{min-width:0}.mtv-hero h1{margin:0;font-size:clamp(28px,3vw,46px);line-height:1;font-weight:700;letter-spacing:-1.5px}.mtv-hero-date{margin-top:7px;font-size:12px;font-weight:600;color:#b8cfdb}.mtv-summary-wrap{width:440px;max-width:44vw;flex:0 0 440px;margin-left:auto;font-size:11px;background:rgba(255,255,255,.025);border-radius:6px;overflow:hidden}.mtv-summary-header,.mtv-summary-row{display:grid;grid-template-columns:105px 1fr;align-items:center}.mtv-summary-header{min-height:26px;padding:0 9px;color:#d7e3e9;font-size:10px;font-weight:800;letter-spacing:.05em}.mtv-summary-columns,.mtv-summary-values{display:grid;grid-template-columns:repeat(4,28px) minmax(65px,65px);gap:2px;text-align:center}.mtv-summary-columns span,.mtv-summary-values span{display:flex;align-items:center;justify-content:center}.mtv-summary-row{gap:8px;min-height:26px;padding:0 9px;border-top:1px solid rgba(255,255,255,.08)}.mtv-summary-total{background:rgba(255,255,255,.07);font-weight:800}.mtv-summary-values span:last-child{justify-content:flex-end;padding-right:7px}.mtv-summary-branch{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mtv-controls-wrap{padding:10px 14px;background:#fff;border-top:1px solid #e6eaee}.mtv-controls{display:flex;align-items:center;gap:8px}.mtv-date-label{font-size:10px;font-weight:700;color:#64748b}.mtv-date-control{display:inline-flex;align-items:center;gap:7px;border:1px solid #e1e5ea;border-radius:6px;padding:6px 9px;background:#fff;color:#475569;font-size:11px}.mtv-date-control input{border:0;outline:0;font:inherit;color:#475569;background:transparent}.mtv-today-button{border:0;border-radius:6px;background:#2d9bf0;color:#fff;padding:7px 24px;font-size:11px;font-weight:700;cursor:pointer}.mtv-main{margin:0 14px 20px;background:#fff;border:1px solid #e1e5ea;border-radius:7px;overflow:hidden}.mtv-tabs{height:38px;display:flex;align-items:flex-end;gap:24px;padding:0 16px;border-bottom:1px solid #e5e7eb}.mtv-tab{border:0;background:transparent;padding:0 0 8px;font-size:10px;color:#64748b;cursor:pointer;position:relative}.mtv-tab.active{color:#172033;font-weight:700}.mtv-tab.active:after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:#2698ed}.mtv-content{padding:8px 10px 14px}.mtv-date-title{color:#2398ed;font-size:13px;font-weight:800;margin:0 0 9px}.mtv-toolbar{display:flex;justify-content:flex-end;margin-bottom:3px}.mtv-refresh{display:inline-flex;align-items:center;gap:5px;border:1px solid #e2e6ea;background:#f8f9fa;color:#64748b;border-radius:5px;padding:5px 8px;font-size:9px;cursor:pointer}.mtv-refresh:disabled{opacity:.55;cursor:default}.mtv-branch-section{margin-top:10px}.mtv-branch-title{width:100%;display:flex;align-items:center;gap:7px;border:0;background:transparent;color:#2398ed;text-align:left;font-size:18px;font-weight:800;padding:0 0 4px;cursor:pointer}.mtv-branch-count{font-size:9px;font-weight:700;color:#94a3b8;margin-left:1px}.mtv-table-scroll{width:100%;overflow-x:auto;border:1px solid #e5e9ee;border-radius:5px;background:#fff}.mtv-table{width:100%;min-width:0;border-collapse:separate;border-spacing:0;table-layout:fixed}.mtv-table th:nth-child(1),.mtv-table td:nth-child(1){width:18%}.mtv-table th:nth-child(2),.mtv-table td:nth-child(2){width:10%}.mtv-table th:nth-child(3),.mtv-table td:nth-child(3){width:14%}.mtv-table th:nth-child(4),.mtv-table td:nth-child(4){width:7%}.mtv-table th:nth-child(5),.mtv-table td:nth-child(5){width:9%}.mtv-table th:nth-child(6),.mtv-table td:nth-child(6){width:8%}.mtv-table th:nth-child(7),.mtv-table td:nth-child(7){width:14%}.mtv-table th:nth-child(8),.mtv-table td:nth-child(8){width:4%}.mtv-table th:nth-child(9),.mtv-table td:nth-child(9){width:16%}.mtv-table-header th{padding:6px 8px;background:#f7f9fb;border-bottom:1px solid #dfe5ea;color:#64748b;font-size:8px;font-weight:800;line-height:1;letter-spacing:.04em;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mtv-appointment-row{cursor:pointer}.mtv-appointment-row td{padding:7px 8px;border-bottom:1px solid #edf0f3;color:#172033;font-size:12px;line-height:1.15;white-space:nowrap;vertical-align:middle;overflow:hidden;text-overflow:ellipsis}.mtv-appointment-row td:first-child{padding-left:10px}.mtv-appointment-row td:last-child{padding-right:10px}.mtv-appointment-row:nth-child(even) td{background:#fbfcfd}.mtv-appointment-row:hover td{background:#eef7ff}.mtv-name-cell{font-weight:700}.mtv-time-cell{font-weight:700}.mtv-result-cell{font-weight:600}.mtv-status-cell{text-align:center}.mtv-tick,.mtv-cross{display:inline-flex;width:18px;height:18px;align-items:center;justify-content:center;border-radius:50%}.mtv-tick{color:#249cf1;background:#eaf6ff}.mtv-cross{color:#b7bdc5;background:#f3f5f7}.mtv-empty{padding:60px 20px;text-align:center;color:#94a3b8;font-size:12px}.mtv-error{margin:8px 14px 0;padding:9px 11px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;border-radius:6px;font-size:11px}.mtv-placeholder{min-height:340px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:12px}.mtv-last-updated{padding:0 14px 14px;color:#a1aab5;font-size:8px}.mtv-row-unassigned td{background:#fce4e4!important}.mtv-row-unconfirmed td{background:#fff0d9!important}.mtv-row-confirmed td{background:#e5f3fb!important}.mtv-row-unassigned:hover td,.mtv-row-unconfirmed:hover td,.mtv-row-confirmed:hover td{background:#eef7ff!important}.sales-schedule-wrap{margin-top:4px}.sales-schedule-card{border:1px solid #e1e5ea;border-radius:7px;background:#fff;overflow:hidden}.sales-schedule-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid #e5e7eb}.sales-schedule-title-wrap{display:flex;align-items:center;gap:10px;color:#172554}.sales-schedule-title-wrap h2{margin:0;font-size:18px;line-height:1.2}.sales-schedule-title-wrap p{margin:3px 0 0;font-size:10px;color:#888}.sales-schedule-refresh{display:inline-flex;align-items:center;gap:5px;border:1px solid #e2e6ea;background:#f8f9fa;color:#64748b;border-radius:5px;padding:6px 9px;font-size:9px;cursor:pointer}.sales-schedule-refresh:disabled{opacity:.55;cursor:default}.sales-schedule-grid{overflow:auto}.sales-schedule-header,.sales-schedule-row{display:grid;grid-template-columns:190px minmax(600px,1fr);min-width:790px}.sales-schedule-header{border-bottom:2px solid #172554;background:#f2f3f5;color:#555;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase}.sales-schedule-header>div{padding:9px 12px;border-right:1px solid #d9dadd}.sales-schedule-row{min-height:108px;border-bottom:1px solid #d9dadd}.sales-schedule-rep{padding:12px;background:#f7f7f8;border-right:1px solid #d9dadd}.sales-schedule-rep-name{font-size:11px;font-weight:700;color:#333}.sales-schedule-rep-email{margin-top:4px;font-size:8px;color:#8a8f96;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sales-schedule-day{display:flex;align-items:flex-start;gap:6px;padding:7px;min-height:108px;background:#fff;overflow-x:auto}.sales-schedule-appointment{flex:0 0 205px;text-align:left;border:1px solid #cbd8e5;border-radius:5px;background:#eef6fc;padding:7px;cursor:pointer;font-family:inherit;transition:box-shadow .15s ease,transform .15s ease}.sales-schedule-appointment:hover{box-shadow:0 2px 7px rgba(0,0,0,.1);transform:translateY(-1px)}.sales-schedule-sold{border-color:#b9d9c0;background:#edf8ef}.sales-schedule-time{font-size:9px;font-weight:800;color:#1769aa}.sales-schedule-customer{margin-top:3px;font-size:10px;font-weight:700;color:#172033;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sales-schedule-meta{display:flex;justify-content:space-between;gap:8px;margin-top:4px;font-size:8px;color:#596455}.sales-schedule-meta span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sales-schedule-meta span:last-child{text-align:right}.sales-schedule-no-appointments{align-self:center;color:#a1a8b0;font-size:9px;font-style:italic}.sales-schedule-unassigned-row .sales-schedule-rep{background:#fce4e4}.sales-schedule-error{padding:8px 12px;background:#fff4f4;color:#b42318;border-bottom:1px solid #f0b8b8;font-size:10px}.sales-schedule-empty{padding:50px 20px;text-align:center;color:#999;font-size:11px}.sales-schedule-spin{animation:salesScheduleSpin 1s linear infinite}@keyframes salesScheduleSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}@media(max-width:1100px){.mtv-hero{align-items:flex-start;flex-direction:column;gap:16px}.mtv-summary-wrap{width:100%}}@media(max-width:850px){.marketing-tv-page{margin:-16px}.mtv-top-card{margin:8px 10px 7px}.mtv-main{margin:0 10px 16px}.mtv-hero{padding:18px}.mtv-controls-wrap{padding:10px 12px}.mtv-table{min-width:900px}.sales-schedule-header,.sales-schedule-row{grid-template-columns:150px minmax(600px,1fr);min-width:750px}.sales-schedule-appointment{flex-basis:190px}}@media(max-width:600px){.mtv-hero{min-height:0;gap:14px;padding:18px 16px 16px}.mtv-summary-wrap{width:100%;max-width:none;flex:0 1 auto;margin-left:0}.mtv-summary-header,.mtv-summary-row{grid-template-columns:minmax(82px,1fr) auto;gap:5px;padding-left:7px;padding-right:7px}.mtv-summary-columns,.mtv-summary-values{grid-template-columns:repeat(4,22px) minmax(48px,1fr);gap:1px}.mtv-summary-header{min-height:24px;font-size:9px}.mtv-summary-row{min-height:25px;font-size:11px}.mtv-summary-values span:last-child{padding-right:3px}.mtv-hero h1{font-size:34px}.mtv-hero-date{font-size:11px}.mtv-controls{flex-wrap:wrap}.mtv-date-label{width:100%}.mtv-today-button{padding-left:18px;padding-right:18px}.sales-schedule-header,.sales-schedule-row{grid-template-columns:125px minmax(600px,1fr);min-width:725px}.sales-schedule-heading{padding:12px}.sales-schedule-title-wrap h2{font-size:16px}.sales-schedule-rep{padding:10px}.sales-schedule-day{min-height:96px}.sales-schedule-row{min-height:96px}.sales-schedule-appointment{flex-basis:175px}}`}</style><div className="mtv-top-card"><div className="mtv-hero"><div className="mtv-hero-title-block"><h1>Mastersheet</h1><div className="mtv-hero-date">{formatDisplayDate(selectedDate)}</div></div><SummaryTable appointments={appointments}/></div><div className="mtv-controls-wrap"><div className="mtv-controls"><span className="mtv-date-label">Viewing date</span><label className="mtv-date-control"><CalendarDays size={14}/><input type="date" value={selectedDate} onChange={(event)=>setSelectedDate(event.target.value)}/></label><button type="button" className="mtv-today-button" onClick={()=>setSelectedDate(today)}><Clock3 size={13} style={{verticalAlign:"-2px",marginRight:5}}/>Today</button></div></div></div>{combinedError && <div className="mtv-error">{combinedError}</div>}<div className="mtv-main"><div className="mtv-tabs"><button className={`mtv-tab ${activeTab === "mastersheet" ? "active" : ""}`} onClick={()=>setActiveTab("mastersheet")}>Mastersheet</button><button className={`mtv-tab ${activeTab === "handover" ? "active" : ""}`} onClick={()=>setActiveTab("handover")}>Handover</button><button className={`mtv-tab ${activeTab === "sales-schedule" ? "active" : ""}`} onClick={()=>setActiveTab("sales-schedule")}>Sales Schedule</button></div>{activeTab === "mastersheet" || activeTab === "handover" ? <div className="mtv-content"><div className="mtv-toolbar"><button type="button" className="mtv-refresh" onClick={()=>loadAppointments(selectedDate)} disabled={loading || visibilityLoading}><RefreshCw size={12} className={loading ? "mtv-spin" : ""}/>Refresh</button></div>{visibleGrouped.length ? visibleGrouped.map(({ branch, rows }) => <BranchSection key={branch} branch={branch} appointments={rows} onSelect={onSelectAppointment} repNameByEmail={repNameByEmail}/>) : <div className="mtv-empty">{loading || visibilityLoading ? "Loading appointments..." : "No appointments for this view."}</div>}</div> : <SalesSchedule selectedDate={selectedDate} onSelectAppointment={onSelectAppointment}/>}<div className="mtv-last-updated">{lastUpdated ? `Last updated ${lastUpdated.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : ""}</div></div></section>
+  return (
+    <section className="marketing-tv-page">
+      <style>{`
+        .marketing-tv-page{margin:-24px;min-height:calc(100vh - 90px);background:#f5f6f8;color:#172033;font-family:Inter,Arial,sans-serif}
+        .mtv-top-card{margin:10px 14px 8px;background:#fff;border:1px solid #dfe5ea;border-radius:8px;overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+        .mtv-hero{background:#00304b;color:#fff;min-height:112px;padding:20px 24px 18px;display:flex;align-items:center;justify-content:space-between;gap:28px}
+        .mtv-hero-title-block{min-width:0}.mtv-hero h1{margin:0;font-size:clamp(28px,3vw,46px);line-height:1;font-weight:700;letter-spacing:-1.5px}.mtv-hero-date{margin-top:7px;font-size:12px;font-weight:600;color:#b8cfdb}
+        .mtv-summary-wrap{width:440px;max-width:44vw;flex:0 0 440px;margin-left:auto;font-size:11px;background:rgba(255,255,255,.025);border-radius:6px;overflow:hidden}
+        .mtv-summary-header,.mtv-summary-row{display:grid;grid-template-columns:105px 1fr;align-items:center}.mtv-summary-header{min-height:26px;padding:0 9px;color:#d7e3e9;font-size:10px;font-weight:800;letter-spacing:.05em}
+        .mtv-summary-columns,.mtv-summary-values{display:grid;grid-template-columns:repeat(4,28px) minmax(65px,65px);gap:2px;text-align:center}.mtv-summary-columns span,.mtv-summary-values span{display:flex;align-items:center;justify-content:center}.mtv-summary-row{gap:8px;min-height:26px;padding:0 9px;border-top:1px solid rgba(255,255,255,.08)}.mtv-summary-total{background:rgba(255,255,255,.07);font-weight:800}.mtv-summary-values span:last-child{justify-content:flex-end;padding-right:7px}.mtv-summary-branch{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .mtv-controls-wrap{padding:10px 14px;background:#fff;border-top:1px solid #e6eaee}.mtv-controls{display:flex;align-items:center;gap:8px}.mtv-date-label{font-size:10px;font-weight:700;color:#64748b}.mtv-date-control{display:inline-flex;align-items:center;gap:7px;border:1px solid #e1e5ea;border-radius:6px;padding:6px 9px;background:#fff;color:#475569;font-size:11px}.mtv-date-control input{border:0;outline:0;font:inherit;color:#475569;background:transparent}.mtv-today-button{border:0;border-radius:6px;background:#2d9bf0;color:#fff;padding:7px 24px;font-size:11px;font-weight:700;cursor:pointer}
+        .mtv-main{margin:0 14px 20px;background:#fff;border:1px solid #e1e5ea;border-radius:7px;overflow:hidden}.mtv-tabs{height:38px;display:flex;align-items:flex-end;gap:24px;padding:0 16px;border-bottom:1px solid #e5e7eb}.mtv-tab{border:0;background:transparent;padding:0 0 8px;font-size:10px;color:#64748b;cursor:pointer;position:relative}.mtv-tab.active{color:#172033;font-weight:700}.mtv-tab.active:after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:#2698ed}
+        .mtv-content{padding:8px 10px 14px}.mtv-toolbar{display:flex;justify-content:flex-end;margin-bottom:3px}.mtv-refresh{display:inline-flex;align-items:center;gap:5px;border:1px solid #e2e6ea;background:#f8f9fa;color:#64748b;border-radius:5px;padding:5px 8px;font-size:9px;cursor:pointer}.mtv-refresh:disabled{opacity:.55;cursor:default}
+        .mtv-branch-section{margin-top:10px}.mtv-branch-title{width:100%;display:flex;align-items:center;gap:7px;border:0;background:transparent;color:#2398ed;text-align:left;font-size:18px;font-weight:800;padding:0 0 4px;cursor:pointer}.mtv-branch-count{font-size:9px;font-weight:700;color:#94a3b8;margin-left:1px}.mtv-table-scroll{width:100%;overflow-x:auto;border:1px solid #e5e9ee;border-radius:5px;background:#fff}
+        .mtv-table{width:100%;min-width:0;border-collapse:separate;border-spacing:0;table-layout:fixed}.mtv-table th:nth-child(1),.mtv-table td:nth-child(1){width:18%}.mtv-table th:nth-child(2),.mtv-table td:nth-child(2){width:10%}.mtv-table th:nth-child(3),.mtv-table td:nth-child(3){width:14%}.mtv-table th:nth-child(4),.mtv-table td:nth-child(4){width:7%}.mtv-table th:nth-child(5),.mtv-table td:nth-child(5){width:9%}.mtv-table th:nth-child(6),.mtv-table td:nth-child(6){width:8%}.mtv-table th:nth-child(7),.mtv-table td:nth-child(7){width:14%}.mtv-table th:nth-child(8),.mtv-table td:nth-child(8){width:4%}.mtv-table th:nth-child(9),.mtv-table td:nth-child(9){width:16%}
+        .mtv-table-header th{padding:6px 8px;background:#f7f9fb;border-bottom:1px solid #dfe5ea;color:#64748b;font-size:8px;font-weight:800;line-height:1;letter-spacing:.04em;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mtv-appointment-row{cursor:pointer}.mtv-appointment-row td{padding:7px 8px;border-bottom:1px solid #edf0f3;color:#172033;font-size:12px;line-height:1.15;white-space:nowrap;vertical-align:middle;overflow:hidden;text-overflow:ellipsis}.mtv-appointment-row td:first-child{padding-left:10px}.mtv-appointment-row td:last-child{padding-right:10px}.mtv-appointment-row:nth-child(even) td{background:#fbfcfd}.mtv-appointment-row:hover td{background:#eef7ff}.mtv-name-cell{font-weight:700}.mtv-time-cell{font-weight:700}.mtv-result-cell{font-weight:600}.mtv-status-cell{text-align:center}
+        .mtv-tick,.mtv-cross{display:inline-flex;width:18px;height:18px;align-items:center;justify-content:center;border-radius:50%}.mtv-tick{color:#249cf1;background:#eaf6ff}.mtv-cross{color:#b7bdc5;background:#f3f5f7}.mtv-empty{padding:60px 20px;text-align:center;color:#94a3b8;font-size:12px}.mtv-error{margin:8px 14px 0;padding:9px 11px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;border-radius:6px;font-size:11px}.mtv-placeholder{min-height:340px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:12px}.mtv-last-updated{padding:0 14px 14px;color:#a1aab5;font-size:8px}.mtv-row-unassigned td{background:#fce4e4!important}.mtv-row-unconfirmed td{background:#fff0d9!important}.mtv-row-confirmed td{background:#e5f3fb!important}.mtv-row-unassigned:hover td,.mtv-row-unconfirmed:hover td,.mtv-row-confirmed:hover td{background:#eef7ff!important}
+        @media(max-width:1100px){.mtv-hero{align-items:flex-start;flex-direction:column;gap:16px}.mtv-summary-wrap{width:100%}}
+        @media(max-width:850px){.marketing-tv-page{margin:-16px}.mtv-top-card{margin:8px 10px 7px}.mtv-main{margin:0 10px 16px}.mtv-hero{padding:18px}.mtv-controls-wrap{padding:10px 12px}.mtv-table{min-width:900px}}
+        @media(max-width:600px){.mtv-hero{min-height:0;gap:14px;padding:18px 16px 16px}.mtv-summary-wrap{width:100%;max-width:none;flex:0 1 auto;margin-left:0}.mtv-summary-header,.mtv-summary-row{grid-template-columns:minmax(82px,1fr) auto;gap:5px;padding-left:7px;padding-right:7px}.mtv-summary-columns,.mtv-summary-values{grid-template-columns:repeat(4,22px) minmax(48px,1fr);gap:1px}.mtv-summary-header{min-height:24px;font-size:9px}.mtv-summary-row{min-height:25px;font-size:11px}.mtv-summary-values span:last-child{padding-right:3px}.mtv-hero h1{font-size:34px}.mtv-hero-date{font-size:11px}.mtv-controls{flex-wrap:wrap}.mtv-date-label{width:100%}.mtv-today-button{padding-left:18px;padding-right:18px}}
+      `}</style>
+
+      <div className="mtv-top-card">
+        <div className="mtv-hero">
+          <div className="mtv-hero-title-block">
+            <h1>Mastersheet</h1>
+            <div className="mtv-hero-date">{formatDisplayDate(selectedDate)}</div>
+          </div>
+          <SummaryTable appointments={appointments} />
+        </div>
+        <div className="mtv-controls-wrap">
+          <div className="mtv-controls">
+            <span className="mtv-date-label">Viewing date</span>
+            <label className="mtv-date-control"><CalendarDays size={14} /><input type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} /></label>
+            <button type="button" className="mtv-today-button" onClick={() => setSelectedDate(today)}><Clock3 size={13} style={{ verticalAlign: "-2px", marginRight: 5 }} />Today</button>
+          </div>
+        </div>
+      </div>
+
+      {combinedError && <div className="mtv-error">{combinedError}</div>}
+
+      <div className="mtv-main">
+        <div className="mtv-tabs">
+          <button className={`mtv-tab ${activeTab === "mastersheet" ? "active" : ""}`} onClick={() => setActiveTab("mastersheet")}>Mastersheet</button>
+          <button className={`mtv-tab ${activeTab === "handover" ? "active" : ""}`} onClick={() => setActiveTab("handover")}>Handover</button>
+          <button className={`mtv-tab ${activeTab === "sales-schedule" ? "active" : ""}`} onClick={() => setActiveTab("sales-schedule")}>Sales Schedule</button>
+        </div>
+
+        {activeTab === "mastersheet" || activeTab === "handover" ? (
+          <div className="mtv-content">
+            <div className="mtv-toolbar">
+              <button type="button" className="mtv-refresh" onClick={() => loadAppointments(selectedDate)} disabled={loading || visibilityLoading}><RefreshCw size={12} className={loading ? "mtv-spin" : ""} />Refresh</button>
+            </div>
+            {visibleGrouped.length ? visibleGrouped.map(({ branch: branchName, rows }) => <BranchSection key={branchName} branch={branchName} appointments={rows} onSelect={onSelectAppointment} repNameByEmail={repNameByEmail} />) : <div className="mtv-empty">{loading || visibilityLoading ? "Loading appointments..." : "No appointments for this view."}</div>}
+          </div>
+        ) : (
+          <SalesSchedule selectedDate={selectedDate} onSelectAppointment={onSelectAppointment} />
+        )}
+
+        <div className="mtv-last-updated">{lastUpdated ? `Last updated ${lastUpdated.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : ""}</div>
+      </div>
+    </section>
+  )
+}
