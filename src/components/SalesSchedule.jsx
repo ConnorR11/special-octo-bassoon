@@ -212,8 +212,9 @@ export default function SalesSchedule({ selectedDate, onSelectAppointment }) {
       .sales-schedule-error{padding:10px 16px;background:#fff4f4;color:#b42318;border-bottom:1px solid #f0cccc;font-size:11px}
       .sales-schedule-grid{width:100%;min-width:0;border-top:0}
       .sales-schedule-header{display:grid;grid-template-columns:220px minmax(620px,1fr);min-width:840px;background:#f1f3f5;border-bottom:3px solid #26395d;color:#52606d;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
-      .sales-schedule-header>div{padding:11px 20px;min-width:0}
+      .sales-schedule-header>div{padding:0 20px;min-width:0;display:flex;align-items:center}
       .sales-schedule-header>div+div{border-left:1px solid #d9dee3}
+      .sales-schedule-header .sales-schedule-timeline-header{width:100%;padding:0;display:block;border-left:0}
       .sales-schedule-branch{display:flex;align-items:center;gap:8px;padding:11px 20px;background:#e9edf1;border-top:1px solid #d4dbe1;border-bottom:1px solid #d4dbe1;color:#26395d;font-size:13px;font-weight:800;letter-spacing:.01em}
       .sales-schedule-branch-count{font-size:10px;font-weight:700;color:#7a8794}
       .sales-schedule-row{display:grid;grid-template-columns:220px minmax(620px,1fr);min-width:840px;min-height:118px;border-bottom:1px solid #d8dde2;background:#fff}
@@ -226,9 +227,9 @@ export default function SalesSchedule({ selectedDate, onSelectAppointment }) {
       .sales-schedule-hour-label{position:absolute;top:10px;transform:translateX(-50%);font-size:9px;font-weight:800;color:#667481;white-space:nowrap}
       .sales-schedule-hour-label:first-child{transform:none}
       .sales-schedule-hour-label:last-child{transform:translateX(-100%)}
-      .sales-schedule-timeline-lines{position:absolute;inset:34px 0 0;pointer-events:none}
+      .sales-schedule-timeline-lines{position:absolute;inset:0;pointer-events:none}
       .sales-schedule-hour-line{position:absolute;top:0;bottom:0;width:1px;background:#e5e9ed}
-      .sales-schedule-appointments{position:absolute;inset:34px 0 0;min-width:620px;background:repeating-linear-gradient(to right,transparent 0,transparent calc(100% / 14 - 1px),#edf0f2 calc(100% / 14 - 1px),#edf0f2 calc(100% / 14))}
+      .sales-schedule-appointments{position:absolute;inset:0;min-width:620px;background:repeating-linear-gradient(to right,transparent 0,transparent calc(100% / 14 - 1px),#edf0f2 calc(100% / 14 - 1px),#edf0f2 calc(100% / 14))}
       .sales-schedule-appointment{position:absolute;top:10px;height:calc(100% - 20px);box-sizing:border-box;display:flex;min-width:54px;flex-direction:column;align-items:flex-start;justify-content:center;text-align:left;padding:8px 10px;border:1px solid #c7d1d9;border-radius:8px;background:#eef4f8;color:#27303b;box-shadow:0 1px 2px rgba(15,23,42,.05);cursor:pointer;overflow:hidden;transition:border-color .15s,box-shadow .15s,transform .15s;z-index:2}
       .sales-schedule-appointment:hover{border-color:#8da4b5;box-shadow:0 3px 8px rgba(15,23,42,.12);transform:translateY(-1px);z-index:5}
       .sales-schedule-sold{background:#eaf4e5;border-color:#c8dbc1}
@@ -256,7 +257,7 @@ export default function SalesSchedule({ selectedDate, onSelectAppointment }) {
         .sales-schedule-title-wrap p{font-size:10px}
         .sales-schedule-header,.sales-schedule-row{grid-template-columns:145px minmax(620px,1fr);min-width:765px}
         .sales-schedule-header{font-size:8px}
-        .sales-schedule-header>div{padding:9px 12px}
+        .sales-schedule-header>div{padding:0 12px}
         .sales-schedule-branch{padding:9px 12px;font-size:11px}
         .sales-schedule-branch-count{font-size:9px}
         .sales-schedule-row{min-height:108px}
@@ -289,7 +290,7 @@ export default function SalesSchedule({ selectedDate, onSelectAppointment }) {
         <div className="sales-schedule-grid">
           <div className="sales-schedule-header">
             <div>SALES REP</div>
-            <div>APPOINTMENTS — 2 HOUR BLOCKS</div>
+            <div><TimelineHeader /></div>
           </div>
 
           {loading ? <div className="sales-schedule-empty">Loading sales schedule...</div> : reps.length === 0 ? <div className="sales-schedule-empty">No active Sales Rep profiles found.</div> : <>
@@ -307,7 +308,6 @@ export default function SalesSchedule({ selectedDate, onSelectAppointment }) {
                     {rep.email && <div className="sales-schedule-rep-email">{rep.email}</div>}
                   </div>
                   <div className="sales-schedule-timeline">
-                    <TimelineHeader />
                     <TimelineGrid />
                     <div className="sales-schedule-appointments">
                       {repAppointments.length ? repAppointments.map((appointment) => <AppointmentCard key={appointment.appointment_row_id || appointment.id} appointment={appointment} onSelect={onSelectAppointment}/>) : <span className="sales-schedule-no-appointments">No appointments</span>}
@@ -322,7 +322,6 @@ export default function SalesSchedule({ selectedDate, onSelectAppointment }) {
               <div className="sales-schedule-row sales-schedule-unassigned-row">
                 <div className="sales-schedule-rep"><div className="sales-schedule-rep-name">Unassigned</div></div>
                 <div className="sales-schedule-timeline">
-                  <TimelineHeader />
                   <TimelineGrid />
                   <div className="sales-schedule-appointments">{unassigned.map((appointment) => <AppointmentCard key={appointment.appointment_row_id || appointment.id} appointment={appointment} onSelect={onSelectAppointment}/>)}</div>
                 </div>
