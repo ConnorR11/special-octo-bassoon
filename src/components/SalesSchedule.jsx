@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react"
-import { RefreshCw, Car } from "lucide-react"
+import { Car } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
 const DAY_START_MINUTES = 9 * 60
@@ -38,9 +38,21 @@ function getMinutes(value) {
   // Handles ISO timestamps correctly
   const match = text.match(/[T ](\d{2}):(\d{2})/)
 
-  if (!match) return null
+  if (match) {
+    return Number(match[1]) * 60 + Number(match[2])
+  }
 
-  return Number(match[1]) * 60 + Number(match[2])
+  // Also handles plain HH:MM values
+  const timeMatch = text.match(/^(\d{2}):(\d{2})/)
+
+  if (timeMatch) {
+    return (
+      Number(timeMatch[1]) * 60 +
+      Number(timeMatch[2])
+    )
+  }
+
+  return null
 }
 
 function normaliseEmail(value) {
@@ -99,10 +111,9 @@ function formatTimeFromMinutes(minutes) {
   const hours = Math.floor(safe / 60)
   const mins = safe % 60
 
-  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(
-    2,
-    "0"
-  )}`
+  return `${String(hours).padStart(2, "0")}:${String(
+    mins
+  ).padStart(2, "0")}`
 }
 
 function appointmentId(appointment) {
@@ -246,8 +257,7 @@ function AppointmentCard({
         )}{" "}
         –{" "}
         {formatTimeFromMinutes(
-          start +
-            APPOINTMENT_DURATION_MINUTES
+          start + APPOINTMENT_DURATION_MINUTES
         )}
       </div>
 
@@ -285,6 +295,48 @@ function AppointmentCard({
         </span>
       </div>
     </button>
+  )
+}
+
+// ------------------------------------------------------------
+// Timeline header
+// ------------------------------------------------------------
+
+function TimelineHeader() {
+  const hours = []
+
+  for (
+    let m = DAY_START_MINUTES;
+    m <= DAY_END_MINUTES;
+    m += 60
+  ) {
+    hours.push(m)
+  }
+
+  const total =
+    DAY_END_MINUTES - DAY_START_MINUTES
+
+  return (
+    <div className="sales-schedule-header-timeline">
+      {hours.map((minutes) => {
+        const position =
+          ((minutes - DAY_START_MINUTES) /
+            total) *
+          100
+
+        return (
+          <div
+            key={minutes}
+            className="sales-schedule-header-time"
+            style={{
+              left: `${position}%`,
+            }}
+          >
+            {formatTimeFromMinutes(minutes)}
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
@@ -353,8 +405,6 @@ function TravelBlock({
     travelStart + travel.durationMinutes
 
   /*
-   * IMPORTANT:
-   *
    * We only care whether the travel time
    * overlaps the START of the next appointment.
    *
@@ -364,6 +414,7 @@ function TravelBlock({
    * If the journey runs into the next
    * appointment = RED.
    */
+
   const overlapsNextAppointment =
     travelEnd > next
 
@@ -869,7 +920,7 @@ export default function SalesSchedule({
             )
           }
 
-          const result = {
+          const travelResult = {
             durationMinutes:
               Number(
                 data?.durationMinutes
@@ -891,7 +942,7 @@ export default function SalesSchedule({
             ),
           }
 
-          resolved[key] = result
+          resolved[key] = travelResult
 
           // --------------------------------------------------
           // Save historical result
@@ -899,7 +950,7 @@ export default function SalesSchedule({
 
           if (
             isHistoricalDate &&
-            result.durationMinutes
+            travelResult.durationMinutes
           ) {
             const saveResult =
               await supabase
@@ -920,10 +971,10 @@ export default function SalesSchedule({
                     destination,
 
                     duration_minutes:
-                      result.durationMinutes,
+                      travelResult.durationMinutes,
 
                     distance_miles:
-                      result.distanceMiles,
+                      travelResult.distanceMiles,
 
                     source:
                       "openrouteservice",
@@ -1036,10 +1087,37 @@ export default function SalesSchedule({
           min-height: 34px;
         }
 
-        .sales-schedule-header > div {
+        .sales-schedule-header > div:first-child {
           padding: 0 20px;
           display: flex;
           align-items: center;
+        }
+
+        .sales-schedule-header-timeline {
+          position: relative;
+          min-width: 620px;
+          height: 34px;
+          overflow: hidden;
+        }
+
+        .sales-schedule-header-time {
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          font-size: 9px;
+          font-weight: 800;
+          color: #52606d;
+          white-space: nowrap;
+          text-transform: none;
+          pointer-events: none;
+        }
+
+        .sales-schedule-header-time:first-child {
+          transform: translate(0, -50%);
+        }
+
+        .sales-schedule-header-time:last-child {
+          transform: translate(-100%, -50%);
         }
 
         .sales-schedule-branch {
@@ -1281,6 +1359,10 @@ export default function SalesSchedule({
             min-height: 108px;
           }
 
+          .sales-schedule-header-timeline {
+            min-width: 620px;
+          }
+
           .sales-schedule-appointment {
             top: 8px;
             height: calc(100% - 16px);
@@ -1313,10 +1395,13 @@ export default function SalesSchedule({
         <div className="sales-schedule-scroll">
           <div>
 
-            {/* Simple column header - no title/date/time header */}
+            {/* Header with Sales Rep + timeline times */}
             <div className="sales-schedule-header">
-              <div>SALES REP</div>
-              <div></div>
+              <div>
+                SALES REP
+              </div>
+
+              <TimelineHeader />
             </div>
 
             {loading ? (
