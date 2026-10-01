@@ -248,7 +248,8 @@ function Sidebar({
             <NavItem
               icon={Target}
               label="Leads"
-              disabled
+              active={isActive("leads")}
+              onClick={() => navigate("leads")}
             />
 
             <NavItem
