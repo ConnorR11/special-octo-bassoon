@@ -158,57 +158,15 @@ export default function Leads() {
   }
 
   async function claimNextLead() {
-    if (!supabase || loading || saving) return
-
+    if (!supabase || loading) return
     setLoading(true)
     setError("")
     setResult("")
     setNote("")
-
     try {
-      const userId = await getCurrentUserId()
-      if (!userId) throw new Error("You must be signed in to claim a lead.")
-
-      const now = new Date().toISOString()
-      const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
-
-      const { data, error: queryError } = await supabase
-        .from("leads")
-        .select(QUEUE_SELECT)
-        .or(`last_called_at.is.null,last_called_at.lte.${threeHoursAgo}`)
-        .or(`claim_expires_at.is.null,claim_expires_at.lte.${now}`)
-        .order("call_count", { ascending: true })
-        .order("received_at_parsed", { ascending: false, nullsFirst: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (queryError) throw queryError
-      if (!data) {
-        setCurrentLead(null)
-        await loadQueuePreview()
-        return
-      }
-
-      const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString()
-      const { data: claimed, error: claimError } = await supabase
-        .from("leads")
-        .update({
-          claimed_by: userId,
-          claimed_at: now,
-          claim_expires_at: expires,
-        })
-        .eq("delete_row_id", data.delete_row_id)
-        .or(`claim_expires_at.is.null,claim_expires_at.lte.${now}`)
-        .select(QUEUE_SELECT)
-        .maybeSingle()
-
-      if (claimError) throw claimError
-      if (!claimed) {
-        await claimNextLead()
-        return
-      }
-
-      setCurrentLead(claimed)
+      const { data, error: rpcError } = await supabase.rpc("claim_next_lead")
+      if (rpcError) throw rpcError
+      setCurrentLead(data || null)
       await loadQueuePreview()
     } catch (err) {
       console.error("Error claiming lead:", err)
@@ -217,7 +175,6 @@ export default function Leads() {
       setLoading(false)
     }
   }
-
   async function releaseCurrentLead() {
     if (!currentLead || !supabase) return
     try {
