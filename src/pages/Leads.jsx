@@ -193,48 +193,28 @@ export default function Leads() {
   }
   async function submitResult() {
     if (!currentLead || !result || saving || !supabase) return
-
     setSaving(true)
     setError("")
     try {
-      const userId = await getCurrentUserId()
-      const now = new Date().toISOString()
-      const previousCount = normaliseCount(currentLead.call_count ?? currentLead.call_counter)
-      const nextCount = previousCount + 1
-
-      const { error: updateError } = await supabase
-        .from("leads")
-        .update({
-          call_count: nextCount,
-          last_called_at: now,
-          last_time_called: now,
-          last_called_by: userId,
-          last_disposition: result,
-          disposition: result,
-          call_note: note || null,
-          last_call_note: note || null,
-          claimed_by: null,
-          claimed_at: null,
-          claim_expires_at: null,
-          first_time_called: currentLead.first_time_called || now,
-        })
-        .eq("delete_row_id", currentLead.delete_row_id)
-
-      if (updateError) throw updateError
-
+      const { error: resultError } = await supabase.rpc("result_claimed_lead", {
+        p_lead_id: currentLead.delete_row_id,
+        p_result: result,
+        p_note: note || null,
+      })
+      if (resultError) throw resultError
       setCurrentLead(null)
       setResult("")
       setNote("")
       await loadQueuePreview()
-      await claimNextLead()
     } catch (err) {
       console.error("Error saving lead result:", err)
       setError(err?.message || "Unable to save the lead result.")
+      return
     } finally {
       setSaving(false)
     }
+    await claimNextLead()
   }
-
   useEffect(() => {
     loadQueuePreview()
   }, [])
