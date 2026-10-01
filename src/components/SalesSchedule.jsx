@@ -117,6 +117,67 @@ export default function SalesSchedule({ selectedDate, onSelectAppointment }) {
   const unassigned = useMemo(() => appointments.filter((appointment) => !normaliseEmail(appointment.rep_allocated)), [appointments])
 
   return <section className="sales-schedule-wrap">
+    <style>{`
+      .sales-schedule-wrap{width:100%;min-width:0}
+      .sales-schedule-card{width:100%;min-width:0}
+      .sales-schedule-grid{width:100%;min-width:0}
+      .sales-schedule-row,.sales-schedule-header{min-width:0}
+      .sales-schedule-day{min-width:0}
+      .sales-schedule-appointment{min-width:0}
+
+      @media (max-width:700px){
+        .sales-schedule-grid{display:block !important;width:100%}
+        .sales-schedule-header{
+          display:grid !important;
+          grid-template-columns:minmax(110px,32%) minmax(0,1fr) !important;
+          width:100%;
+        }
+        .sales-schedule-row{
+          display:grid !important;
+          grid-template-columns:minmax(110px,32%) minmax(0,1fr) !important;
+          align-items:stretch;
+          width:100%;
+          min-height:76px;
+        }
+        .sales-schedule-rep{
+          min-width:0 !important;
+          width:auto !important;
+          overflow:hidden;
+        }
+        .sales-schedule-rep-name{
+          white-space:nowrap;
+          overflow:hidden;
+          text-overflow:ellipsis;
+        }
+        .sales-schedule-rep-email{
+          white-space:nowrap;
+          overflow:hidden;
+          text-overflow:ellipsis;
+          font-size:10px;
+        }
+        .sales-schedule-day{
+          min-width:0 !important;
+          width:auto !important;
+          display:flex !important;
+          flex-direction:row !important;
+          align-items:stretch;
+          gap:8px;
+          overflow-x:auto !important;
+          overflow-y:hidden;
+          padding-bottom:2px;
+          -webkit-overflow-scrolling:touch;
+        }
+        .sales-schedule-appointment{
+          flex:0 0 190px !important;
+          width:190px !important;
+          max-width:190px !important;
+        }
+        .sales-schedule-no-appointments{
+          align-self:center;
+          white-space:nowrap;
+        }
+      }
+    `}</style>
     <div className="sales-schedule-card">
       <div className="sales-schedule-heading">
         <div className="sales-schedule-title-wrap">
