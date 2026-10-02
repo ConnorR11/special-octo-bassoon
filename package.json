@@ -11,7 +11,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",
     "@twilio/voice-sdk": "^2.18.5",
-    "lucide-react": "^19.1.1",
+    "lucide-react": "^0.468.0",
     "recharts": "^3.10.1",
     "xlsx": "^0.18.0",
     "pdf-lib": "^1.17.1"
