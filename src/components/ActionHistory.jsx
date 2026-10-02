@@ -95,7 +95,7 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
 
     const handleActionClick = async (event) => {
       // Capture the click before any button/link handler can stop propagation.
-      // composedPath also handles clicks on nested SVG/icon elements.
+      // composedPath also handles clicks on nested SVG/icon elements .
       const path = typeof event.composedPath === "function" ? event.composedPath() : []
       const element =
         path.find((node) => node?.tagName === "BUTTON" || node?.tagName === "A") ||
