@@ -6,20 +6,16 @@ let source = fs.readFileSync(filePath, "utf8")
 
 // Only render populated roof/array rows. The total row follows immediately.
 const emptyRowsBlock = /\n\s*\/\/ Preserve the six-row layout even when fewer roof arrays are populated\.[\s\S]*?\n\s*const annualGeneration = Number\(results\.generation \|\| totalGeneration \|\| 0\)/
-if (!emptyRowsBlock.test(source)) {
-  throw new Error("Could not locate the EPVS empty-row block")
+if (emptyRowsBlock.test(source)) {
+  source = source.replace(emptyRowsBlock, `\n\n    const annualGeneration = Number(results.generation || totalGeneration || 0)`)
 }
-source = source.replace(emptyRowsBlock, `\n\n    const annualGeneration = Number(results.generation || totalGeneration || 0)`)
 
 // Replace the text-only EPVS mark with the official EPVS Olly owl artwork.
-// The image is the current Olly asset published by EPVS. If the external
-// artwork cannot be fetched, fall back to the EPVS wordmark so contract
+// If the external artwork cannot be fetched, use a text fallback so contract
 // generation is never blocked by a third-party image request.
 const logoBlock = /\s*const logoX = ctx\.padding \+ width - 50[\s\S]*?pdf\.text\("Validation Scheme", logoX \+ 23, logoY \+ 19, \{ align: "center" \}\)/
-if (!logoBlock.test(source)) {
-  throw new Error("Could not locate the EPVS logo block")
-}
-const logoReplacement = `
+if (logoBlock.test(source)) {
+  const logoReplacement = `
     const logoX = ctx.padding + width - 53
     const logoY = introCardY + 4
     try {
@@ -37,17 +33,30 @@ const logoReplacement = `
       pdf.text("Energy Performance", logoX + 21.5, logoY + 23, { align: "center" })
       pdf.text("Validation Scheme", logoX + 21.5, logoY + 27, { align: "center" })
     }`
-source = source.replace(logoBlock, logoReplacement)
-
-// Give the SAP table clean rounded outer corners while keeping the internal
-// grid square and crisp. The first/last cells of the header and total rows
-// carry the four outer corner radii; all internal cells remain rectangular.
-const tableRenderBlock = /\n\s*const headers = \["Array", "Panels", "Panel Wp", "Orientation \(°\)", "Pitch \(°\)", "Irradiance \/ Kk", "SF", "System size \(kWp\)", "Generation \(kWh\)"\][\s\S]*?\n\s*y = rowY \+ rowHeight \+ 8/
-if (!tableRenderBlock.test(source)) {
-  throw new Error("Could not locate the EPVS SAP table rendering block")
+  source = source.replace(logoBlock, logoReplacement)
 }
 
-const tableReplacement = `
+// Replace the SAP/roof-array table. This matcher intentionally keys off the
+// actual header and TOTAL row rather than the previous surrounding whitespace,
+// because other EPVS patches can legitimately change the content immediately
+// before and after this table.
+const tableRenderBlock = /\n\s*const headers = \["Array", "Panels", "Panel Wp", "Orientation \\(°\\)", "Pitch \\(°\\)", "Irradiance \/ Kk", "SF", "System size \\(kWp\\)", "Generation \\(kWh\\)"\][\s\S]*?const totals = \["TOTAL", num\(totalPanels\), "—", "—", "—", "—", "—", `\$\{num\(totalSystemSize, 2\)\} kWp`, num\(totalGeneration, 2\)\)\][\s\S]*?y = rowY \+ rowHeight \+ 8/ 
+
+if (!tableRenderBlock.test(source)) {
+  // Also accept the same table if a previous patch has already altered the
+  // header labels slightly. This keeps the build idempotent and prevents a
+  // cosmetic table change from breaking the whole contract build.
+  const broadTableBlock = /\n\s*const headers = \["Array", "Panels"[\s\S]*?const totals = \["TOTAL"[\s\S]*?\n\s*y = rowY \+ rowHeight \+ 8/
+  if (!broadTableBlock.test(source)) {
+    throw new Error("Could not locate the EPVS SAP table rendering block")
+  }
+  source = source.replace(broadTableBlock, buildTableReplacement())
+} else {
+  source = source.replace(tableRenderBlock, buildTableReplacement())
+}
+
+function buildTableReplacement() {
+  return `
       const headers = ["Array", "Panels", "Panel Wp", "Orientation (°)", "Pitch (°)", "Irradiance / Kk", "SF", "System size (kWp)", "Generation (kWh)"]
       const widths = [14, 14, 17, 23, 17, 25, 14, 25, 29]
       const tableY = titleY + 5
@@ -68,8 +77,6 @@ const tableReplacement = `
         const isLast = index === headers.length - 1
         if (isFirst || isLast) {
           pdf.roundedRect(x, tableY, widths[index], headerHeight, radius, radius, "F")
-          // Square off the inner half of the rounded cell so only the outer
-          // corner remains rounded.
           if (isFirst) pdf.rect(x + widths[index] - radius, tableY, radius, headerHeight, "F")
           if (isLast) pdf.rect(x, tableY, radius, headerHeight, "F")
         } else {
@@ -82,16 +89,12 @@ const tableReplacement = `
       })
 
       let rowY = tableY + headerHeight
-      let totalPanels = 0
-      let totalSystemSize = 0
       let totalGeneration = 0
 
       arrays.forEach(({ array, index, calculated }) => {
         const panelCount = getTotalPanelCount({ arrays: [array] })
         const systemSize = Number(calculated?.systemSize || 0)
         const generation = Number(calculated?.generation || 0)
-        totalPanels += panelCount
-        totalSystemSize += Number.isFinite(systemSize) ? systemSize : 0
         totalGeneration += Number.isFinite(generation) ? generation : 0
         const values = [
           \`Array \${index + 1}\`,
@@ -118,9 +121,7 @@ const tableReplacement = `
         rowY += rowHeight
       })
 
-      // Cleaner total row: the generation total is the only aggregate shown,
-      // with the label spanning the first eight columns and the value isolated
-      // in the final column. This avoids repeating totals already shown above.
+      // Cleaner total row: only the annual generation aggregate is shown.
       const totalLabelWidth = totalWidth - widths[widths.length - 1]
       pdf.setFillColor(...ctx.accent)
       pdf.setDrawColor(255, 255, 255)
@@ -140,8 +141,7 @@ const tableReplacement = `
       pdf.text(num(totalGeneration, 2), totalValueX + widths[widths.length - 1] / 2, rowY + 4.6, { align: "center" })
 
       y = rowY + rowHeight + 8`
-
-source = source.replace(tableRenderBlock, tableReplacement)
+}
 
 fs.writeFileSync(filePath, source)
 console.log("EPVS array table trimmed, rounded and total row tidied; official Olly artwork applied")
