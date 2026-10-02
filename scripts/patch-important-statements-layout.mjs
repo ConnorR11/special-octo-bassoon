@@ -14,9 +14,11 @@ if (start < 0 || end < 0) {
 
 let block = source.slice(start, end)
 
-// Reduce only the vertical gaps between statement sections/paragraphs.
-block = block.replace(/y \+= 4\.8/g, "y += 3.9")
-block = block.replace(/y \+= 4\n/g, "y += 3.2\n")
+// Tighten only the vertical gaps between statement sections/paragraphs so the
+// complete Important Customer Statements page fits cleanly above the footer.
+// Leave fonts, character spacing, wording and all other PDF styling unchanged.
+block = block.replace(/y \+= 4\.8/g, "y += 2.8")
+block = block.replace(/y \+= 4\n/g, "y += 2.2\n")
 
 source = source.slice(0, start) + block + source.slice(end)
 fs.writeFileSync(file, source)
