@@ -36,25 +36,6 @@ if (logoBlock.test(source)) {
   source = source.replace(logoBlock, logoReplacement)
 }
 
-// Replace the SAP/roof-array table. This matcher intentionally keys off the
-// actual header and TOTAL row rather than the previous surrounding whitespace,
-// because other EPVS patches can legitimately change the content immediately
-// before and after this table.
-const tableRenderBlock = /\n\s*const headers = \["Array", "Panels", "Panel Wp", "Orientation \\(°\\)", "Pitch \\(°\\)", "Irradiance \/ Kk", "SF", "System size \\(kWp\\)", "Generation \\(kWh\\)"\][\s\S]*?const totals = \["TOTAL", num\(totalPanels\), "—", "—", "—", "—", "—", `\$\{num\(totalSystemSize, 2\)\} kWp`, num\(totalGeneration, 2\)\)\][\s\S]*?y = rowY \+ rowHeight \+ 8/ 
-
-if (!tableRenderBlock.test(source)) {
-  // Also accept the same table if a previous patch has already altered the
-  // header labels slightly. This keeps the build idempotent and prevents a
-  // cosmetic table change from breaking the whole contract build.
-  const broadTableBlock = /\n\s*const headers = \["Array", "Panels"[\s\S]*?const totals = \["TOTAL"[\s\S]*?\n\s*y = rowY \+ rowHeight \+ 8/
-  if (!broadTableBlock.test(source)) {
-    throw new Error("Could not locate the EPVS SAP table rendering block")
-  }
-  source = source.replace(broadTableBlock, buildTableReplacement())
-} else {
-  source = source.replace(tableRenderBlock, buildTableReplacement())
-}
-
 function buildTableReplacement() {
   return `
       const headers = ["Array", "Panels", "Panel Wp", "Orientation (°)", "Pitch (°)", "Irradiance / Kk", "SF", "System size (kWp)", "Generation (kWh)"]
@@ -141,6 +122,22 @@ function buildTableReplacement() {
       pdf.text(num(totalGeneration, 2), totalValueX + widths[widths.length - 1] / 2, rowY + 4.6, { align: "center" })
 
       y = rowY + rowHeight + 8`
+}
+
+// If a previous EPVS patch has already installed our final table, do not try
+// to match the original renderer again. This makes the patch safe when build
+// scripts run more than once or when another layout patch runs first.
+const finalTablePresent = /const headers = \["Array", "Panels", "Panel Wp", "Orientation \(°\)", "Pitch \(°\)", "Irradiance \/ Kk", "SF", "System size \(kWp\)", "Generation \(kWh\)"\]/.test(source)
+
+if (!finalTablePresent) {
+  // Match the original renderer by its stable header and TOTAL row. The broad
+  // fallback tolerates harmless formatting/spacing changes made by other
+  // contract layout patches.
+  const tableRenderBlock = /\n\s*const headers = \["Array", "Panels"[\s\S]*?const totals = \["TOTAL"[\s\S]*?\n\s*y = rowY \+ rowHeight \+ 8/
+  if (!tableRenderBlock.test(source)) {
+    throw new Error("Could not locate the EPVS SAP table rendering block")
+  }
+  source = source.replace(tableRenderBlock, buildTableReplacement())
 }
 
 fs.writeFileSync(filePath, source)
