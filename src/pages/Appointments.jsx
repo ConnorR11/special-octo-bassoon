@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState } from "lucide-react"
 import { Search, CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react"
 import { supabase } from "../lib/supabase"
 import CreateAppointment from "./CreateAppointment"
@@ -36,9 +36,10 @@ function Appointments({ onSelectAppointment }) {
 
       // Keep this select deliberately narrow. The appointments table is large,
       // so loading every column for every matching row is unnecessarily expensive.
+      // Use only columns that exist in the current appointments schema.
       let request = supabase
         .from("appointments")
-        .select("appointment_row_id,name,appointment_date,postcode,product,type,appointment_type,rep_allocated,result,status,branch,phone_number_1,email_address")
+        .select("appointment_row_id,name,appointment_date,postcode,product,job_type,rep_allocated,result,branch,phone_number_1,email_address")
         .order("appointment_date", { ascending: false, nullsFirst: false })
         .range(from, to)
 
@@ -98,7 +99,7 @@ function Appointments({ onSelectAppointment }) {
   }
 
   function getResult(appointment) {
-    return appointment.result || appointment.status || "—"
+    return appointment.result || "—"
   }
 
   function openAppointment(appointment) {
@@ -177,7 +178,7 @@ function Appointments({ onSelectAppointment }) {
               <div style={{ minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 600, color: "#222", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{appointment.name || "Unnamed customer"}</div></div>
               <div style={{ fontSize: 10, color: "#444" }}>{formatDate(appointment.appointment_date)}</div>
               <div style={{ fontSize: 10, color: "#555" }}>{appointment.postcode || "—"}</div>
-              <div style={{ fontSize: 10, color: "#555" }}>{appointment.product || appointment.type || appointment.appointment_type || "—"}</div>
+              <div style={{ fontSize: 10, color: "#555" }}>{appointment.product || appointment.job_type || "—"}</div>
               <div style={{ fontSize: 10, color: "#555" }}>{appointment.rep_allocated || "—"}</div>
               <div><span style={{ display: "inline-block", padding: "4px 7px", borderRadius: 5, background: "#f2f3f5", color: "#555", fontSize: 9, fontWeight: 600 }}>{getResult(appointment)}</span></div>
             </button>
