@@ -39,5 +39,109 @@ const logoReplacement = `
     }`
 source = source.replace(logoBlock, logoReplacement)
 
+// Give the SAP table clean rounded outer corners while keeping the internal
+// grid square and crisp. The first/last cells of the header and total rows
+// carry the four outer corner radii; all internal cells remain rectangular.
+const tableRenderBlock = /\n\s*const headers = \["Array", "Panels", "Panel Wp", "Orientation \(°\)", "Pitch \(°\)", "Irradiance \/ Kk", "SF", "System size \(kWp\)", "Generation \(kWh\)"\][\s\S]*?\n\s*y = rowY \+ rowHeight \+ 8/
+if (!tableRenderBlock.test(source)) {
+  throw new Error("Could not locate the EPVS SAP table rendering block")
+}
+
+const tableReplacement = `
+      const headers = ["Array", "Panels", "Panel Wp", "Orientation (°)", "Pitch (°)", "Irradiance / Kk", "SF", "System size (kWp)", "Generation (kWh)"]
+      const widths = [14, 14, 17, 23, 17, 25, 14, 25, 29]
+      const tableY = titleY + 5
+      const tableX = ctx.padding
+      const headerHeight = 8
+      const rowHeight = 7
+      const radius = 2.2
+      const totalWidth = widths.reduce((sum, value) => sum + value, 0)
+      let x = tableX
+
+      // Header row: rounded only at the two outer top corners.
+      pdf.setFont("helvetica", "bold")
+      pdf.setFontSize(5.8)
+      headers.forEach((header, index) => {
+        pdf.setFillColor(...ctx.accent)
+        pdf.setDrawColor(255, 255, 255)
+        const isFirst = index === 0
+        const isLast = index === headers.length - 1
+        if (isFirst || isLast) {
+          pdf.roundedRect(x, tableY, widths[index], headerHeight, radius, radius, "F")
+          // Square off the inner half of the rounded cell so only the outer
+          // corner remains rounded.
+          if (isFirst) pdf.rect(x + widths[index] - radius, tableY, radius, headerHeight, "F")
+          if (isLast) pdf.rect(x, tableY, radius, headerHeight, "F")
+        } else {
+          pdf.rect(x, tableY, widths[index], headerHeight, "F")
+        }
+        pdf.setTextColor(255, 255, 255)
+        const lines = pdf.splitTextToSize(header, widths[index] - 2)
+        pdf.text(lines.slice(0, 2), x + widths[index] / 2, tableY + (lines.length > 1 ? 3 : 5), { align: "center" })
+        x += widths[index]
+      })
+
+      let rowY = tableY + headerHeight
+      let totalPanels = 0
+      let totalSystemSize = 0
+      let totalGeneration = 0
+
+      arrays.forEach(({ array, index, calculated }) => {
+        const panelCount = getTotalPanelCount({ arrays: [array] })
+        const systemSize = Number(calculated?.systemSize || 0)
+        const generation = Number(calculated?.generation || 0)
+        totalPanels += panelCount
+        totalSystemSize += Number.isFinite(systemSize) ? systemSize : 0
+        totalGeneration += Number.isFinite(generation) ? generation : 0
+        const values = [
+          \`Array \${index + 1}\`,
+          num(panelCount),
+          \`\${num(array.panelWattage || array.panel_wattage)} W\`,
+          \`\${num(array.orientation)}°\`,
+          \`\${num(array.pitch)}°\`,
+          num(array.irradiance, 2),
+          num(array.shading, 2),
+          \`\${num(systemSize, 2)} kWp\`,
+          num(generation, 2)
+        ]
+        x = tableX
+        values.forEach((value, valueIndex) => {
+          pdf.setFillColor(valueIndex % 2 === 0 ? 247 : 255, valueIndex % 2 === 0 ? 249 : 255, valueIndex % 2 === 0 ? 250 : 255)
+          pdf.setDrawColor(230, 235, 240)
+          pdf.rect(x, rowY, widths[valueIndex], rowHeight, "FD")
+          pdf.setTextColor(...ctx.text)
+          pdf.setFont("helvetica", valueIndex === 0 ? "bold" : "normal")
+          pdf.setFontSize(5.9)
+          pdf.text(String(value), x + widths[valueIndex] / 2, rowY + 4.6, { align: "center" })
+          x += widths[valueIndex]
+        })
+        rowY += rowHeight
+      })
+
+      // Cleaner total row: the generation total is the only aggregate shown,
+      // with the label spanning the first eight columns and the value isolated
+      // in the final column. This avoids repeating totals already shown above.
+      const totalLabelWidth = totalWidth - widths[widths.length - 1]
+      pdf.setFillColor(...ctx.accent)
+      pdf.setDrawColor(255, 255, 255)
+      pdf.roundedRect(tableX, rowY, totalLabelWidth, rowHeight, radius, radius, "F")
+      pdf.rect(tableX + totalLabelWidth - radius, rowY, radius, rowHeight, "F")
+      pdf.setTextColor(255, 255, 255)
+      pdf.setFont("helvetica", "bold")
+      pdf.setFontSize(5.9)
+      pdf.text("Total Annual Generation (kWh)", tableX + totalLabelWidth - 3, rowY + 4.6, { align: "right" })
+
+      const totalValueX = tableX + totalLabelWidth
+      pdf.roundedRect(totalValueX, rowY, widths[widths.length - 1], rowHeight, radius, radius, "F")
+      pdf.rect(totalValueX, rowY, radius, rowHeight, "F")
+      pdf.setTextColor(255, 255, 255)
+      pdf.setFont("helvetica", "bold")
+      pdf.setFontSize(5.9)
+      pdf.text(num(totalGeneration, 2), totalValueX + widths[widths.length - 1] / 2, rowY + 4.6, { align: "center" })
+
+      y = rowY + rowHeight + 8`
+
+source = source.replace(tableRenderBlock, tableReplacement)
+
 fs.writeFileSync(filePath, source)
-console.log("EPVS array table trimmed and official Olly artwork applied")
+console.log("EPVS array table trimmed, rounded and total row tidied; official Olly artwork applied")
