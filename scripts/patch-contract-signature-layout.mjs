@@ -212,9 +212,9 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
 source = source.slice(0, start) + replacement + source.slice(end)
 
 const oldOverview = `    y = rows(pdf, rowsData, ctx.padding, y + 2, width, ctx.text)\n    body(pdf, page.body, ctx.padding, y + 8, width, ctx.text, appointment, epvs)\n  } else if (kind === "itemised_breakdown") {`
-const newOverview = `    y = rows(pdf, rowsData, ctx.padding, y + 2, width, ctx.text)\n    y = body(pdf, page.body, ctx.padding, y + 8, width, ctx.text, appointment, epvs) + 6\n    await drawContractTotalAndSignature(pdf, ctx, data, results, appointment, y)\n  } else if (kind === "itemised_breakdown") {`
+const newOverview = `    y = rows(pdf, rowsData, ctx.padding, y + 2, width, ctx.text)\n    y = body(pdf, page.body, ctx.padding, y + 8, width, ctx.text, appointment, epvs) + 6\n    const signatureCardY = Math.max(ctx.padding + 20, y - 8)\n    await drawContractTotalAndSignature(pdf, ctx, data, results, appointment, signatureCardY)\n  } else if (kind === "itemised_breakdown") {`
 if (!source.includes(oldOverview)) throw new Error("Could not locate system overview block.")
 source = source.replace(oldOverview, newOverview)
 
 fs.writeFileSync(file, source)
-console.log("Moved contract total/signature to system overview and Express Fit section to itemised breakdown.")
+console.log("Moved contract total/signature to system overview and Express Fit section to itemised breakdown with footer clearance.")
