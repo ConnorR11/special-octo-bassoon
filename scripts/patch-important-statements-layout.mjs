@@ -14,12 +14,12 @@ let block = source.slice(start, end)
 
 block = block.replace(
   '    sections.forEach((section) => {\n      const normalized = section.replace(/\\s+/g, " ").trim()',
-  '    sections.forEach((section) => {\n      if (typeof pdf.setCharSpace === "function") pdf.setCharSpace(0)\n      pdf.setFont("helvetica", "normal")\n      pdf.setFontSize(fontSize)\n      const normalized = section.replace(/\\s+/g, " ").trim()'
+  '    sections.forEach((section) => {\n      if (typeof pdf.setCharSpace === "function") pdf.setCharSpace(0)\n      pdf.setFont("helvetica", "normal")\n      pdf.setFontSize(Math.min(fontSize, 8.2))\n      const normalized = section.replace(/\\s+/g, " ").trim()'
 )
 
 // Reduce vertical density on the statements page so the final section stays clear of the footer.
-block = block.replace(/y \+= 4\.8/g, "y += 4.2")
-block = block.replace(/y \+= 4\n/g, "y += 3.6\n")
+block = block.replace(/y \+= 4\.8/g, "y += 3.9")
+block = block.replace(/y \+= 4\n/g, "y += 3.2\n")
 
 source = source.slice(0, start) + block + source.slice(end)
 fs.writeFileSync(file, source)
