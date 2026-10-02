@@ -4,12 +4,13 @@ import path from "node:path"
 const filePath = path.resolve("src/contracts/GenerateSolarContract.js")
 let source = fs.readFileSync(filePath, "utf8")
 
-if (source.includes("Why have we shown savings based on varying rates on inflation?")) {
+const marker = "Why have we shown savings based on varying rates on inflation?"
+if (source.includes(marker)) {
   console.log("EPVS inflation explanation already present")
   process.exit(0)
 }
 
-const block = String.raw`      // Inflation explanation shown directly below the completed SAP array table.
+const block = String.raw`      // EPVS inflation explanation: render immediately below the completed SAP table.
       const inflationCardY = y + 4
       const inflationCardH = 39
       pdf.setFillColor(241, 245, 248)
@@ -33,26 +34,32 @@ const block = String.raw`      // Inflation explanation shown directly below the
 
       y = inflationCardY + inflationCardH + 4`
 
+// The SAP renderer ends with the TOTAL row followed by this y-position update.
+// Insert immediately after that update so the card can never overlap the table.
+const completedTableMarker = /([ \t]*y = rowY \+ rowHeight \+ 8)/
+const match = source.match(completedTableMarker)
+
+if (match && typeof match.index === "number") {
+  const insertAt = match.index + match[0].length
+  source = source.slice(0, insertAt) + "\n" + block + source.slice(insertAt)
+  fs.writeFileSync(filePath, source)
+  console.log("Added EPVS inflation explanation below completed SAP table")
+  process.exit(0)
+}
+
+// Fallback: locate the closing totals loop and place the card after it.
 const totalsStart = source.indexOf('const totals = ["TOTAL"')
 if (totalsStart >= 0) {
-  const afterTotals = source.indexOf("      y = rowY + rowHeight + 8", totalsStart)
-  if (afterTotals >= 0) {
-    source = source.slice(0, afterTotals) + block + source.slice(afterTotals + "      y = rowY + rowHeight + 8".length)
+  const totalsLoopEnd = source.indexOf("      y = rowY + rowHeight", totalsStart)
+  if (totalsLoopEnd >= 0) {
+    const endLine = source.indexOf("\n", totalsLoopEnd)
+    const insertAt = endLine >= 0 ? endLine : source.length
+    source = source.slice(0, insertAt) + "\n" + block + source.slice(insertAt)
     fs.writeFileSync(filePath, source)
-    console.log("Added inflation explanation card below EPVS SAP table")
+    console.log("Added EPVS inflation explanation using SAP totals fallback")
     process.exit(0)
   }
 }
 
-const totalsPattern = /(const totals = \["TOTAL"[\s\S]*?totals\.forEach\(\(value, index\) => \{[\s\S]*?\n      \}\)\n)(\s*)(\n\s*\}\n\s*\} else if \(kind === "datasheets"\))/
-const match = source.match(totalsPattern)
-if (match) {
-  const replacement = `${match[1]}\n${block}${match[3]}`
-  source = source.replace(totalsPattern, replacement)
-  fs.writeFileSync(filePath, source)
-  console.log("Added inflation explanation card below EPVS SAP totals using resilient fallback")
-  process.exit(0)
-}
-
-console.warn("EPVS SAP table changed; inflation explanation patch skipped rather than failing the build")
+console.warn("EPVS SAP table marker not found; inflation explanation patch skipped")
 process.exit(0)
