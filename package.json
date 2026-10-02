@@ -13,12 +13,11 @@
     "@twilio/voice-sdk": "^2.18.5",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.468.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
     "recharts": "^3.10.1",
     "xlsx": "^0.18.1",
-    "pdf-lib": "^1.17.0",
-    "jspdf-autotable": "^5.0.2",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "pdf-lib": "^1.17.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
