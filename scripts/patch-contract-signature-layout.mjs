@@ -76,8 +76,25 @@ async function drawContractTotalAndSignature(pdf, ctx, data, results, appointmen
 
 async function drawExpressFitSection(pdf, ctx, appointment, y) {
   const width = ctx.width - ctx.padding * 2
-  const cardHeight = 61
-  const top = y
+  const signatureBoxWidth = 58
+  const signatureBoxHeight = 18
+  const textWidth = Math.max(80, width - 14 - signatureBoxWidth - 7)
+  const lineHeight = 3.1
+  const paragraphGap = 2.5
+  const paragraphs = EXPRESS_FIT_DISCLAIMER.split(/\n\n/)
+
+  pdf.setFont("helvetica", "normal")
+  pdf.setFontSize(6.2)
+  const paragraphLines = paragraphs.map((paragraph) => pdf.splitTextToSize(paragraph, textWidth))
+  const textHeight = paragraphLines.reduce((total, lines) => total + lines.length * lineHeight + paragraphGap, 0)
+  const cardHeight = Math.max(61, 17 + textHeight + 8, signatureBoxHeight + 28)
+
+  // Keep the card detached from the footer and leave a small gap above it.
+  // The footer divider is drawn at pageHeight - 13mm.
+  const footerY = pdf.internal.pageSize.getHeight() - 13
+  const footerGap = 6
+  const desiredTop = y + 5
+  const top = Math.min(desiredTop, footerY - footerGap - cardHeight)
 
   pdf.setFillColor(246, 248, 250)
   pdf.setDrawColor(218, 226, 232)
@@ -93,28 +110,28 @@ async function drawExpressFitSection(pdf, ctx, appointment, y) {
   pdf.setFontSize(6.2)
   pdf.setTextColor(72, 84, 92)
   let textY = top + 17
-  EXPRESS_FIT_DISCLAIMER.split(/\n\n/).forEach((paragraph) => {
-    const lines = pdf.splitTextToSize(paragraph, width - 14)
+  paragraphLines.forEach((lines) => {
     pdf.text(lines, ctx.padding + 7, textY)
-    textY += lines.length * 3.1 + 2.5
+    textY += lines.length * lineHeight + paragraphGap
   })
 
-  const signatureUrl = await getExpressFitSignatureImageUrl(appointment)
+  // Signature sits in its own column at the bottom-right so the disclaimer
+  // text never runs underneath or through the signature area.
+  const signatureX = ctx.padding + width - signatureBoxWidth - 7
   const signatureLabelY = top + cardHeight - 25
   pdf.setTextColor(...ctx.text)
   pdf.setFont("helvetica", "bold")
   pdf.setFontSize(6.5)
-  pdf.text("CUSTOMER EXPRESS FIT ACCEPTANCE SIGNATURE", ctx.padding + 7, signatureLabelY)
+  pdf.text("CUSTOMER EXPRESS FIT ACCEPTANCE SIGNATURE", signatureX, signatureLabelY, { align: "left", maxWidth: signatureBoxWidth })
   pdf.setFillColor(255, 255, 255)
-  pdf.roundedRect(ctx.padding + 7, signatureLabelY + 2.5, 65, 18, 1.5, 1.5, "F")
+  pdf.roundedRect(signatureX, signatureLabelY + 2.5, signatureBoxWidth, signatureBoxHeight, 1.5, 1.5, "F")
 
+  const signatureUrl = await getExpressFitSignatureImageUrl(appointment)
   if (signatureUrl) {
     try {
       const signature = await imageData(signatureUrl)
-      const sw = 65
-      const sh = 18
-      const mw = sw - 8
-      const mh = sh - 7
+      const mw = signatureBoxWidth - 8
+      const mh = signatureBoxHeight - 7
       const ratio = signature.width / signature.height
       let w = mw
       let h = w / ratio
@@ -122,7 +139,7 @@ async function drawExpressFitSection(pdf, ctx, appointment, y) {
         h = mh
         w = h * ratio
       }
-      pdf.addImage(signature.dataUrl, "PNG", ctx.padding + 7 + (sw - w) / 2, signatureLabelY + 4 + (mh - h) / 2, w, h, undefined, "FAST")
+      pdf.addImage(signature.dataUrl, "PNG", signatureX + (signatureBoxWidth - w) / 2, signatureLabelY + 4 + (mh - h) / 2, w, h, undefined, "FAST")
     } catch (error) {
       console.error("Unable to add Express Fit signature to contract:", error)
     }
@@ -211,10 +228,10 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
 
 source = source.slice(0, start) + replacement + source.slice(end)
 
-const oldOverview = `    y = rows(pdf, rowsData, ctx.padding, y + 2, width, ctx.text)\n    body(pdf, page.body, ctx.padding, y + 8, width, ctx.text, appointment, epvs)\n  } else if (kind === "itemised_breakdown") {`
-const newOverview = `    y = rows(pdf, rowsData, ctx.padding, y + 2, width, ctx.text)\n    y = body(pdf, page.body, ctx.padding, y + 8, width, ctx.text, appointment, epvs) + 6\n    const signatureCardY = Math.max(ctx.padding + 20, y - 8)\n    await drawContractTotalAndSignature(pdf, ctx, data, results, appointment, signatureCardY)\n  } else if (kind === "itemised_breakdown") {`
+const oldOverview = `    y = rows(pdf, rowsData, ctx.padding, y + 2, width, ctx.text, appointment, epvs)\n    body(pdf, page.body, ctx.padding, y + 8, width, ctx.text, appointment, epvs)\n  } else if (kind === "itemised_breakdown") {`
+const newOverview = `    y = rows(pdf, rowsData, ctx.padding, y + 2, width, ctx.text, appointment, epvs)\n    y = body(pdf, page.body, ctx.padding, y + 8, width, ctx.text, appointment, epvs) + 6\n    const signatureCardY = Math.max(ctx.padding + 20, y - 8)\n    await drawContractTotalAndSignature(pdf, ctx, data, results, appointment, signatureCardY)\n  } else if (kind === "itemised_breakdown") {`
 if (!source.includes(oldOverview)) throw new Error("Could not locate system overview block.")
 source = source.replace(oldOverview, newOverview)
 
 fs.writeFileSync(file, source)
-console.log("Moved contract total/signature to system overview and Express Fit section to itemised breakdown with footer clearance.")
+console.log("Moved contract total/signature to system overview and improved Express Fit card positioning and signature layout.")
