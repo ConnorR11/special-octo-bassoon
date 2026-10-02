@@ -26,30 +26,29 @@ function Appointments({ onSelectAppointment }) {
   const pageSize = 50
 
   async function loadAppointments() {
-    if (visibilityLoading) return
-
+    if (visibilityLoading || !supabase) return
     setLoading(true)
     setError("")
 
     try {
       const from = page * pageSize
-      const to = from + pageSize
+      const to = from + pageSize - 1
 
+      // Keep this select deliberately narrow. The appointments table is large,
+      // so loading every column for every matching row is unnecessarily expensive.
       let request = supabase
         .from("appointments")
-        .select("*")
+        .select("appointment_row_id,name,appointment_date,postcode,product,type,appointment_type,rep_allocated,result,status,branch,phone_number_1,email_address")
         .order("appointment_date", { ascending: false, nullsFirst: false })
         .range(from, to)
 
-      // Appointment visibility is owned by VisibilityContext.
-      // This page deliberately does not duplicate role, branch, rep or date rules.
+      // Sales reps: their own appointments from 7 days ago onwards, including
+      // every future appointment. Managers/admins retain their wider visibility.
       request = applyAppointmentVisibility(request)
 
       const search = query.trim()
-
       if (search) {
         const safeSearch = search.replace(/[%(),]/g, " ").trim()
-
         if (safeSearch) {
           request = request.or([
             `name.ilike.%${safeSearch}%`,
@@ -62,12 +61,11 @@ function Appointments({ onSelectAppointment }) {
       }
 
       const { data, error: supabaseError } = await request
-
       if (supabaseError) throw supabaseError
 
       const rows = data || []
-      setHasMore(rows.length > pageSize)
-      setAppointments(rows.slice(0, pageSize))
+      setHasMore(rows.length === pageSize)
+      setAppointments(rows)
     } catch (err) {
       console.error("Error loading appointments:", err)
       setError(err?.message || "Unable to load appointments.")
@@ -83,22 +81,9 @@ function Appointments({ onSelectAppointment }) {
   }, [previewUser?.id])
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      loadAppointments()
-    }, query ? 300 : 0)
-
+    const timer = window.setTimeout(() => loadAppointments(), query ? 300 : 0)
     return () => window.clearTimeout(timer)
-  }, [
-    page,
-    query,
-    previewUser?.id,
-    canSeeAll,
-    isBranchManager,
-    isSalesManager,
-    isSalesRep,
-    applyAppointmentVisibility,
-    visibilityLoading,
-  ])
+  }, [page, query, previewUser?.id, canSeeAll, isBranchManager, isSalesManager, isSalesRep, applyAppointmentVisibility, visibilityLoading])
 
   function handleSearch(value) {
     setQuery(value)
@@ -109,13 +94,7 @@ function Appointments({ onSelectAppointment }) {
     if (!value) return "—"
     const date = new Date(value)
     if (Number.isNaN(date.getTime())) return value
-    return date.toLocaleString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
+    return date.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
   }
 
   function getResult(appointment) {
@@ -150,7 +129,11 @@ function Appointments({ onSelectAppointment }) {
       ? "All appointments · 50 per page"
       : isBranchManager || isSalesManager
         ? "Branch appointments · 50 per page"
-        : "Your appointments · Last 7 days · 50 per page"
+        : "Your appointments · 7 days ago → future · 50 per page"
+
+  const queryDescription = isSalesRep && !previewUser
+    ? "Sales rep query: rep_allocated = your email AND appointment_date >= 7 days ago"
+    : null
 
   return (
     <section>
@@ -158,14 +141,13 @@ function Appointments({ onSelectAppointment }) {
         <div>
           <h1 style={{ margin: 0, fontSize: 22, color: "#222" }}>Appointments</h1>
           <p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>{viewDescription}</p>
+          {queryDescription && (
+            <p style={{ margin: "5px 0 0", fontSize: 10, color: "#aaa", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{queryDescription}</p>
+          )}
         </div>
 
         {!previewUser && (
-          <button
-            type="button"
-            onClick={() => setShowCreateAppointment(true)}
-            style={{ display: "inline-flex", alignItems: "center", gap: 7, height: 38, padding: "0 14px", border: 0, borderRadius: 8, background: "#0877bd", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", boxShadow: "0 2px 5px rgba(8,119,189,.18)", whiteSpace: "nowrap" }}
-          >
+          <button type="button" onClick={() => setShowCreateAppointment(true)} style={{ display: "inline-flex", alignItems: "center", gap: 7, height: 38, padding: "0 14px", border: 0, borderRadius: 8, background: "#0877bd", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", boxShadow: "0 2px 5px rgba(8,119,189,.18)", whiteSpace: "nowrap" }}>
             <Plus size={15} />Create Appointment
           </button>
         )}
@@ -178,11 +160,7 @@ function Appointments({ onSelectAppointment }) {
         </div>
       </div>
 
-      {error && (
-        <div className="error" style={{ marginBottom: 18 }}>
-          <b>Database error</b><span>{error}</span>
-        </div>
-      )}
+      {error && <div className="error" style={{ marginBottom: 18 }}><b>Database error</b><span>{error}</span></div>}
 
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1.7fr 1.4fr 1fr 1fr 1fr 100px", padding: "11px 16px", background: "#f7f7f8", borderBottom: "1px solid #dddfe3", fontSize: 9, fontWeight: 700, color: "#777", textTransform: "uppercase", letterSpacing: "0.04em" }}>
@@ -192,23 +170,11 @@ function Appointments({ onSelectAppointment }) {
         {loading || visibilityLoading ? (
           <div style={{ padding: "60px 20px", textAlign: "center", color: "#999", fontSize: 12 }}>Loading appointments...</div>
         ) : appointments.length === 0 ? (
-          <div style={{ padding: "60px 20px", textAlign: "center", color: "#999", fontSize: 12 }}>
-            <CalendarDays size={28} style={{ marginBottom: 8 }} />
-            <div>No appointments found.</div>
-          </div>
+          <div style={{ padding: "60px 20px", textAlign: "center", color: "#999", fontSize: 12 }}><CalendarDays size={28} style={{ marginBottom: 8 }} /><div>No appointments found.</div></div>
         ) : (
           appointments.map((appointment) => (
-            <button
-              key={appointment.appointment_row_id}
-              type="button"
-              onClick={() => openAppointment(appointment)}
-              style={{ width: "100%", display: "grid", gridTemplateColumns: "1.7fr 1.4fr 1fr 1fr 1fr 100px", padding: "13px 16px", border: 0, borderBottom: "1px solid #eeeeef", background: "#fff", textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "#fafbfc" }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "#fff" }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#222", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{appointment.name || "Unnamed customer"}</div>
-              </div>
+            <button key={appointment.appointment_row_id} type="button" onClick={() => openAppointment(appointment)} style={{ width: "100%", display: "grid", gridTemplateColumns: "1.7fr 1.4fr 1fr 1fr 1fr 100px", padding: "13px 16px", border: 0, borderBottom: "1px solid #eeeeef", background: "#fff", textAlign: "left", cursor: "pointer", fontFamily: "inherit" }} onMouseEnter={(e) => { e.currentTarget.style.background = "#fafbfc" }} onMouseLeave={(e) => { e.currentTarget.style.background = "#fff" }}>
+              <div style={{ minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 600, color: "#222", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{appointment.name || "Unnamed customer"}</div></div>
               <div style={{ fontSize: 10, color: "#444" }}>{formatDate(appointment.appointment_date)}</div>
               <div style={{ fontSize: 10, color: "#555" }}>{appointment.postcode || "—"}</div>
               <div style={{ fontSize: 10, color: "#555" }}>{appointment.product || appointment.type || appointment.appointment_type || "—"}</div>
