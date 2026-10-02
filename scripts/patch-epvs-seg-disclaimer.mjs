@@ -15,33 +15,37 @@ async function drawSegDisclaimer(pdf, ctx, appointment) {
   const disclaimer = "The savings calculations include Smart Export Guarantee (SEG) payments which you receive for any export of energy to the grid, subject to the utility company criteria and requirements. We strongly recommend that all customers carry out their own research into SEG payments and tariffs available as these vary from supplier to supplier. Not registering for SEG will mean you do not receive the export payments detailed in the proposal.\n\nSEG tariffs are likely to change regularly and may go up or down. You may have to change suppliers and you should also check that the rate you buy your electricity at, does not outweigh the benefits of changing. The figures should be considered as an illustration and will differ, up or down, during the lifetime of your solar system."
   const width = ctx.width - ctx.padding * 2
   const boxX = ctx.padding
-  const boxY = ctx.height - 67
-  const boxH = 61
+
+  // Keep the card clearly separated from the footer while moving it slightly
+  // higher on the page. The larger card also gives the disclaimer more room.
+  const boxY = ctx.height - 91
+  const boxH = 69
 
   pdf.setFillColor(247, 249, 250)
-  pdf.setDrawColor(220, 226, 230)
-  pdf.roundedRect(boxX, boxY, width, boxH, 2.5, 2.5, "FD")
+  pdf.setDrawColor(205, 215, 221)
+  pdf.setLineWidth(0.45)
+  pdf.roundedRect(boxX, boxY, width, boxH, 3, 3, "FD")
 
   pdf.setTextColor(...ctx.text)
   pdf.setFont("helvetica", "bold")
-  pdf.setFontSize(7.2)
-  pdf.text("SEG DISCLAIMER", boxX + 5, boxY + 7)
+  pdf.setFontSize(8)
+  pdf.text("SEG DISCLAIMER", boxX + 6, boxY + 9)
 
   pdf.setFont("helvetica", "normal")
-  pdf.setFontSize(5.35)
-  pdf.setTextColor(65, 76, 84)
+  pdf.setFontSize(6.35)
+  pdf.setTextColor(55, 65, 72)
   const lines = disclaimer.split("\n").flatMap((paragraph) => {
     if (!paragraph.trim()) return [""]
-    return pdf.splitTextToSize(paragraph, width - 10)
+    return pdf.splitTextToSize(paragraph, width - 12)
   })
-  let textY = boxY + 12
+  let textY = boxY + 17
   lines.forEach((line) => {
     if (!line) {
-      textY += 2.1
+      textY += 2.6
       return
     }
-    pdf.text(line, boxX + 5, textY)
-    textY += 2.65
+    pdf.text(line, boxX + 6, textY)
+    textY += 3.35
   })
 
   const path = String(appointment?.seg_disclaimer_signature_path || "").trim()
@@ -51,10 +55,10 @@ async function drawSegDisclaimer(pdf, ctx, appointment) {
     const { data, error } = await supabase.storage.from("signatures").createSignedUrl(path, 600)
     if (error || !data?.signedUrl) return
     const signature = await imageData(data.signedUrl)
-    const signatureBoxX = boxX + 5
+    const signatureBoxX = boxX + 6
     const signatureBoxY = boxY + boxH - 17
     const signatureBoxW = 52
-    const signatureBoxH = 12
+    const signatureBoxH = 11
 
     pdf.setTextColor(...ctx.text)
     pdf.setFont("helvetica", "bold")
@@ -97,4 +101,4 @@ const replacement = `  if (pageTitle === "epvs calculations cont." || kind === "
 source = source.replace(pageMarker, replacement)
 
 fs.writeFileSync(filePath, source)
-console.log("Patched EPVS Calculations Cont. with SEG disclaimer and customer signature")
+console.log("Patched EPVS Calculations Cont. with improved SEG disclaimer card and customer signature")
