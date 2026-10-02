@@ -43,7 +43,6 @@ const QUEUE_SELECT = [
   "first_time_called",
   "first_called_by",
   "received_date_time",
-  "received_at_parsed",
   "claimed_by",
   "claimed_at",
   "claim_expires_at",
@@ -144,7 +143,7 @@ export default function Leads() {
         .or(`last_called_at.is.null,last_called_at.lte.${threeHoursAgo}`)
         .or(`claim_expires_at.is.null,claim_expires_at.lte.${now}`)
         .order("call_count", { ascending: true })
-        .order("received_at_parsed", { ascending: false, nullsFirst: false })
+        .order("received_date_time", { ascending: false, nullsFirst: false })
         .limit(12)
 
       if (queryError) throw queryError
@@ -175,6 +174,7 @@ export default function Leads() {
       setLoading(false)
     }
   }
+
   async function releaseCurrentLead() {
     if (!currentLead || !supabase) return
     try {
@@ -191,6 +191,7 @@ export default function Leads() {
       setError(err?.message || "Unable to release the lead.")
     }
   }
+
   async function submitResult() {
     if (!currentLead || !result || saving || !supabase) return
     setSaving(true)
@@ -215,6 +216,7 @@ export default function Leads() {
     }
     await claimNextLead()
   }
+
   useEffect(() => {
     loadQueuePreview()
   }, [])
@@ -228,9 +230,7 @@ export default function Leads() {
     )
   }, [queuePreview, search])
 
-  const leadAge = currentLead?.received_at_parsed
-    ? formatAgo(currentLead.received_at_parsed)
-    : formatAgo(currentLead?.received_date_time)
+  const leadAge = formatAgo(currentLead?.received_date_time)
 
   return (
     <section>
@@ -319,7 +319,7 @@ export default function Leads() {
             ) : (
               <>
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(3,minmax(0,1fr))", gap:12, marginBottom:18 }}>
-                                    <div style={cardStyle({ padding:14, background:"#fbfcfe" })}>
+                  <div style={cardStyle({ padding:14, background:"#fbfcfe" })}>
                     <div style={{ display:"flex", alignItems:"center", gap:7, color:"#64748b", fontSize:11, textTransform:"uppercase", letterSpacing:"0.05em", fontWeight:800 }}>
                       <Phone size={16} />Phone
                     </div>
@@ -475,7 +475,8 @@ export default function Leads() {
                       console.error("Error claiming queue lead:", err)
                       setError(err?.message || "Unable to claim that lead.")
                     }
-                  }}                 style={{ border:"1px solid #e6ebf0", background:"#fff", borderRadius:10, padding:11, textAlign:"left", cursor:"pointer", display:"grid", gridTemplateColumns:"1fr auto", gap:10, alignItems:"center" }}
+                  }}
+                  style={{ border:"1px solid #e6ebf0", background:"#fff", borderRadius:10, padding:11, textAlign:"left", cursor:"pointer", display:"grid", gridTemplateColumns:"1fr auto", gap:10, alignItems:"center" }}
                 >
                   <div style={{ minWidth:0 }}>
                     <div style={{ fontWeight:800, color:"#17324d", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{displayName(lead)}</div>
@@ -485,7 +486,7 @@ export default function Leads() {
                     <div style={{ display:"flex", alignItems:"center", gap:7, marginTop:6, fontSize:11, color:"#94a3b8" }}>
                       <span style={{ fontWeight:800, color:"#475569" }}>{normaliseCount(lead.call_count)} calls</span>
                       <span>·</span>
-                      <span>{lead.received_at_parsed ? formatDateTime(lead.received_at_parsed) : "Received time unavailable"}</span>
+                      <span>{lead.received_date_time ? formatDateTime(lead.received_date_time) : "Received time unavailable"}</span>
                     </div>
                   </div>
                   <ChevronRight size={17} color="#94a3b8" />
@@ -500,6 +501,7 @@ export default function Leads() {
           </div>
         </div>
       </div>
+
       {showDialer && currentLead && (
         <PhoneDialer
           onClose={() => setShowDialer(false)}
