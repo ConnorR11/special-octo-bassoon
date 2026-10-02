@@ -12,7 +12,7 @@ if (source.includes("function drawSegDisclaimer")) {
 const helper = String.raw`
 
 async function drawSegDisclaimer(pdf, ctx, appointment) {
-  const disclaimer = "The savings calculations include Smart Export Guarantee (SEG) payments which you receive for any export of energy to the grid, subject to the utility company criteria and requirements. We strongly recommend that all customers carry out their own research into SEG payments and tariffs available as these vary from supplier to supplier. Not registering for SEG will mean you do not receive the export payments detailed in the proposal.\\n\\nSEG tariffs are likely to change regularly and may go up or down. You may have to change suppliers and you should also check that the rate you buy your electricity at, does not outweigh the benefits of changing. The figures should be considered as an illustration and will differ, up or down, during the lifetime of your solar system."
+  const disclaimer = "The savings calculations include Smart Export Guarantee (SEG) payments which you receive for any export of energy to the grid, subject to the utility company criteria and requirements. We strongly recommend that all customers carry out their own research into SEG payments and tariffs available as these vary from supplier to supplier. Not registering for SEG will mean you do not receive the export payments detailed in the proposal.\n\nSEG tariffs are likely to change regularly and may go up or down. You may have to change suppliers and you should also check that the rate you buy your electricity at, does not outweigh the benefits of changing. The figures should be considered as an illustration and will differ, up or down, during the lifetime of your solar system."
   const width = ctx.width - ctx.padding * 2
   const boxX = ctx.padding
   const boxY = ctx.height - 67
@@ -30,7 +30,7 @@ async function drawSegDisclaimer(pdf, ctx, appointment) {
   pdf.setFont("helvetica", "normal")
   pdf.setFontSize(5.35)
   pdf.setTextColor(65, 76, 84)
-  const lines = disclaimer.split("\\n").flatMap((paragraph) => {
+  const lines = disclaimer.split("\n").flatMap((paragraph) => {
     if (!paragraph.trim()) return [""]
     return pdf.splitTextToSize(paragraph, width - 10)
   })
@@ -83,10 +83,17 @@ const renderMarker = "async function renderPage(pdf, page, index, pageCount, app
 if (!source.includes(renderMarker)) throw new Error("Could not locate renderPage in GenerateSolarContract.js")
 source = source.replace(renderMarker, helper + "\n" + renderMarker)
 
-const pageMarker = `  if (pageTitle === "epvs calculations cont." || kind === "epvs_cont" || kind === "epvs_continuation") {\n    drawThirtyYearBreakdown(pdf, page, ctx, epvs)\n    return\n  }`
+const pageMarker = `  if (pageTitle === "epvs calculations cont." || kind === "epvs_cont" || kind === "epvs_continuation") {
+    drawThirtyYearBreakdown(pdf, page, ctx, epvs)
+    return
+  }`
 if (!source.includes(pageMarker)) throw new Error("Could not locate EPVS continuation render block")
 
-const replacement = `${pageMarker.replace("    return\\n", "    return\\n")}\n  if (pageTitle === "epvs calculations cont." || kind === "epvs_cont" || kind === "epvs_continuation") {\n    await drawSegDisclaimer(pdf, ctx, appointment)\n  }`
+const replacement = `  if (pageTitle === "epvs calculations cont." || kind === "epvs_cont" || kind === "epvs_continuation") {
+    drawThirtyYearBreakdown(pdf, page, ctx, epvs)
+    await drawSegDisclaimer(pdf, ctx, appointment)
+    return
+  }`
 source = source.replace(pageMarker, replacement)
 
 fs.writeFileSync(filePath, source)
