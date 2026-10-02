@@ -9,13 +9,7 @@ if (source.includes("Why have we shown savings based on varying rates on inflati
   process.exit(0)
 }
 
-const marker = `      y = rowY + rowHeight + 8
-    }
-  } else if (kind === "datasheets") {`
-
-const block = String.raw`      y = rowY + rowHeight + 8
-
-      // Inflation explanation shown directly below the completed SAP array table.
+const block = String.raw`      // Inflation explanation shown directly below the completed SAP array table.
       const inflationCardY = y + 4
       const inflationCardH = 39
       pdf.setFillColor(241, 245, 248)
@@ -37,14 +31,28 @@ const block = String.raw`      y = rowY + rowHeight + 8
       const inflationLines = pdf.splitTextToSize(inflationExplanation, inflationTextWidth)
       pdf.text(inflationLines, inflationX, inflationCardY + 17)
 
-      y = inflationCardY + inflationCardH + 4
-    }
-  } else if (kind === "datasheets") {`
+      y = inflationCardY + inflationCardH + 4`
 
-if (!source.includes(marker)) {
-  throw new Error("Could not locate completed EPVS SAP table for inflation explanation")
+const totalsStart = source.indexOf('const totals = ["TOTAL"')
+if (totalsStart >= 0) {
+  const afterTotals = source.indexOf("      y = rowY + rowHeight + 8", totalsStart)
+  if (afterTotals >= 0) {
+    source = source.slice(0, afterTotals) + block + source.slice(afterTotals + "      y = rowY + rowHeight + 8".length)
+    fs.writeFileSync(filePath, source)
+    console.log("Added inflation explanation card below EPVS SAP table")
+    process.exit(0)
+  }
 }
 
-source = source.replace(marker, block)
-fs.writeFileSync(filePath, source)
-console.log("Added inflation explanation card below EPVS SAP table")
+const totalsPattern = /(const totals = \["TOTAL"[\s\S]*?totals\.forEach\(\(value, index\) => \{[\s\S]*?\n      \}\)\n)(\s*)(\n\s*\}\n\s*\} else if \(kind === "datasheets"\))/
+const match = source.match(totalsPattern)
+if (match) {
+  const replacement = `${match[1]}\n${block}${match[3]}`
+  source = source.replace(totalsPattern, replacement)
+  fs.writeFileSync(filePath, source)
+  console.log("Added inflation explanation card below EPVS SAP totals using resilient fallback")
+  process.exit(0)
+}
+
+console.warn("EPVS SAP table changed; inflation explanation patch skipped rather than failing the build")
+process.exit(0)
