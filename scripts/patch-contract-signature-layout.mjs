@@ -75,23 +75,32 @@ async function drawContractTotalAndSignature(pdf, ctx, data, results, appointmen
 
 async function drawExpressFitSection(pdf, ctx, appointment, y) {
   const width = ctx.width - ctx.padding * 2
-  const signatureBoxWidth = 58
-  const signatureBoxHeight = 18
-  const textWidth = Math.max(80, width - 14 - signatureBoxWidth - 7)
-  const lineHeight = 3.1
-  const paragraphGap = 2.5
-  const paragraphs = EXPRESS_FIT_DISCLAIMER.split(/\\n\\n/)
+  const footerY = pdf.internal.pageSize.getHeight() - 13
+  const footerGap = 4
+  const side = 6
+  const availableHeight = Math.max(28, footerY - footerGap - (y + 3))
+
+  // Keep the disclaimer on the same page as the itemised table. The section is
+  // deliberately compact so it can fit into the remaining space without ever
+  // moving upwards over the final product rows.
+  const signatureBoxWidth = Math.min(52, width * 0.28)
+  const signatureBoxHeight = Math.min(14, Math.max(11, availableHeight * 0.27))
+  const signatureColumnWidth = signatureBoxWidth + 4
+  const textWidth = Math.max(90, width - side * 2 - signatureColumnWidth - 5)
+  const lineHeight = Math.max(2.45, Math.min(2.8, availableHeight / 22))
+  const paragraphGap = Math.max(0.8, Math.min(1.5, availableHeight / 42))
+  const titleHeight = 7
 
   pdf.setFont("helvetica", "normal")
-  pdf.setFontSize(6.2)
+  pdf.setFontSize(5.35)
+  const paragraphs = EXPRESS_FIT_DISCLAIMER.split(/\\n\\n/)
   const paragraphLines = paragraphs.map((paragraph) => pdf.splitTextToSize(paragraph, textWidth))
   const textHeight = paragraphLines.reduce((total, lines) => total + lines.length * lineHeight + paragraphGap, 0)
-  const cardHeight = Math.max(61, 17 + textHeight + 8, signatureBoxHeight + 28)
 
-  const footerY = pdf.internal.pageSize.getHeight() - 13
-  const footerGap = 6
-  const desiredTop = y + 5
-  const top = Math.min(desiredTop, footerY - footerGap - cardHeight)
+  // Size to the space actually available. Never position the card above `y`.
+  const naturalHeight = titleHeight + textHeight + 5
+  const cardHeight = Math.min(availableHeight, Math.max(27, naturalHeight))
+  const top = y + 3
 
   pdf.setFillColor(246, 248, 250)
   pdf.setDrawColor(218, 226, 232)
@@ -100,33 +109,43 @@ async function drawExpressFitSection(pdf, ctx, appointment, y) {
 
   pdf.setTextColor(...ctx.text)
   pdf.setFont("helvetica", "bold")
-  pdf.setFontSize(8)
-  pdf.text("EXPRESS FIT CONSENT", ctx.padding + 7, top + 9)
+  pdf.setFontSize(7)
+  pdf.text("EXPRESS FIT CONSENT", ctx.padding + side, top + 7)
 
   pdf.setFont("helvetica", "normal")
-  pdf.setFontSize(6.2)
+  pdf.setFontSize(5.35)
   pdf.setTextColor(72, 84, 92)
-  let textY = top + 17
-  paragraphLines.forEach((lines) => {
-    pdf.text(lines, ctx.padding + 7, textY)
-    textY += lines.length * lineHeight + paragraphGap
+  let textY = top + 13
+  const maxTextY = top + cardHeight - 4
+  paragraphLines.forEach((lines, paragraphIndex) => {
+    const visibleLines = Math.max(1, Math.floor((maxTextY - textY) / lineHeight))
+    const clippedLines = lines.slice(0, visibleLines)
+    if (clippedLines.length) {
+      pdf.text(clippedLines, ctx.padding + side, textY)
+      textY += clippedLines.length * lineHeight + paragraphGap
+    }
+    if (paragraphIndex === paragraphLines.length - 1) return
   })
 
-  const signatureX = ctx.padding + width - signatureBoxWidth - 7
-  const signatureLabelY = top + cardHeight - 25
+  // Signature occupies its own column on the right and is anchored to the
+  // bottom of the card, so the disclaimer text can never run underneath it.
+  const signatureX = ctx.padding + width - signatureBoxWidth - side
+  const signatureLabelY = top + cardHeight - signatureBoxHeight - 7
   pdf.setTextColor(...ctx.text)
   pdf.setFont("helvetica", "bold")
-  pdf.setFontSize(6.5)
-  pdf.text("CUSTOMER EXPRESS FIT ACCEPTANCE SIGNATURE", signatureX, signatureLabelY, { maxWidth: signatureBoxWidth })
+  pdf.setFontSize(5.5)
+  const labelLines = pdf.splitTextToSize("CUSTOMER EXPRESS FIT ACCEPTANCE SIGNATURE", signatureBoxWidth)
+  pdf.text(labelLines, signatureX, signatureLabelY - Math.max(0, (labelLines.length - 1) * 2.1))
+
   pdf.setFillColor(255, 255, 255)
-  pdf.roundedRect(signatureX, signatureLabelY + 2.5, signatureBoxWidth, signatureBoxHeight, 1.5, 1.5, "F")
+  pdf.roundedRect(signatureX, signatureLabelY + 1.5, signatureBoxWidth, signatureBoxHeight, 1.3, 1.3, "F")
 
   const signatureUrl = await getExpressFitSignatureImageUrl(appointment)
   if (signatureUrl) {
     try {
       const signature = await imageData(signatureUrl)
-      const mw = signatureBoxWidth - 8
-      const mh = signatureBoxHeight - 7
+      const mw = signatureBoxWidth - 6
+      const mh = signatureBoxHeight - 4
       const ratio = signature.width / signature.height
       let w = mw
       let h = w / ratio
@@ -134,7 +153,7 @@ async function drawExpressFitSection(pdf, ctx, appointment, y) {
         h = mh
         w = h * ratio
       }
-      pdf.addImage(signature.dataUrl, "PNG", signatureX + (signatureBoxWidth - w) / 2, signatureLabelY + 4 + (mh - h) / 2, w, h, undefined, "FAST")
+      pdf.addImage(signature.dataUrl, "PNG", signatureX + (signatureBoxWidth - w) / 2, signatureLabelY + 2 + (mh - h) / 2, w, h, undefined, "FAST")
     } catch (error) {
       console.error("Unable to add Express Fit signature to contract:", error)
     }
@@ -163,7 +182,7 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
 
   const headerY = ctx.y + 28
   const typeX = ctx.padding + width - 43
-  const rowHeight = 7.15
+  const rowHeight = 6.8
   pdf.setFillColor(...ctx.accent)
   pdf.roundedRect(ctx.padding, headerY - 7, width, 11, 2, 2, "F")
   pdf.setTextColor(255, 255, 255)
@@ -173,38 +192,38 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
   pdf.text("TYPE", typeX, headerY, { align: "center" })
   pdf.text("QTY", ctx.padding + width - 7, headerY, { align: "right" })
 
-  let y = headerY + 9
+  let y = headerY + 8.3
   items.forEach((item, index) => {
     const name = interpolate(String(item.name), appointment, epvs)
     const type = interpolate(String(item.type), appointment, epvs)
     const quantity = interpolate(String(item.quantity), appointment, epvs)
     if (index % 2 === 0) {
       pdf.setFillColor(247, 249, 250)
-      pdf.roundedRect(ctx.padding, y - 5.2, width, rowHeight, 1.2, 1.2, "F")
+      pdf.roundedRect(ctx.padding, y - 5.0, width, rowHeight, 1.2, 1.2, "F")
     }
     pdf.setTextColor(...ctx.text)
     pdf.setFont("helvetica", "normal")
-    pdf.setFontSize(8.1)
+    pdf.setFontSize(8)
     pdf.text(name, ctx.padding + 7, y)
     if (type) {
       pdf.setFont("helvetica", "bold")
-      pdf.setFontSize(6.5)
+      pdf.setFontSize(6.2)
       const tw = pdf.getTextWidth(type) + 6
       const key = type.toLowerCase()
       const fill = key === "service" ? [255, 241, 230] : key === "product" ? [231, 242, 248] : [238, 240, 242]
       const colour = key === "service" ? [199, 106, 0] : key === "product" ? [11, 93, 138] : [75, 85, 92]
       pdf.setFillColor(...fill)
       pdf.setTextColor(...colour)
-      pdf.roundedRect(typeX - tw / 2, y - 3.8, tw, 4.5, 2, 2, "F")
-      pdf.text(type, typeX, y - 0.5, { align: "center" })
+      pdf.roundedRect(typeX - tw / 2, y - 3.6, tw, 4.2, 2, 2, "F")
+      pdf.text(type, typeX, y - 0.45, { align: "center" })
     }
     pdf.setTextColor(...ctx.text)
     pdf.setFont("helvetica", "bold")
-    pdf.setFontSize(8.1)
+    pdf.setFontSize(8)
     pdf.text(quantity, ctx.padding + width - 7, y, { align: "right" })
     y += rowHeight
   })
-  y += 7
+  y += 3
   await drawExpressFitSection(pdf, ctx, appointment, y)
 }
 
@@ -229,4 +248,4 @@ if (!overviewPattern.test(source)) {
 }
 
 fs.writeFileSync(file, source)
-console.log("Moved contract total/signature to system overview and improved Express Fit card positioning and signature layout.")
+console.log("Moved contract total/signature to system overview and fitted Express Fit consent into the remaining itemised-breakdown space.")
