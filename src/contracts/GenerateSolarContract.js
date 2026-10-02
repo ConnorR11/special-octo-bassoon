@@ -534,14 +534,16 @@ function parseTermsSections(raw) {
 function drawTermsConditions(pdf, page, ctx, appointment, epvs) {
   const settings = page.settings || {}
   const width = ctx.width - ctx.padding * 2
-  const gap = Number(settings.column_gap_mm || 6)
-  const columnWidth = (width - gap) / 2
-  const top = ctx.y + 10
-  const bottom = ctx.height - 17
-  let fontSize = Number(settings.font_size || 6.5)
-  let lineHeight = Number(settings.line_height || 3.1)
-  const spacing = Number(settings.section_spacing || 2)
-  const headingSize = Number(settings.heading_font_size || 7)
+  const columns = Math.max(1, Math.min(4, Number(settings.columns ?? settings.column_count ?? 2) || 2))
+  const gap = Math.max(0, Number(settings.column_gap_mm ?? settings.column_gap ?? 6) || 6)
+  const columnWidth = (width - gap * (columns - 1)) / columns
+  const top = ctx.y + Number(settings.content_top_mm ?? settings.top_offset_mm ?? 10)
+  const bottom = ctx.height - Number(settings.content_bottom_mm ?? settings.bottom_offset_mm ?? 17)
+  let fontSize = Number(settings.font_size ?? 6.5)
+  let lineHeight = Number(settings.line_height ?? 3.1)
+  const spacing = Math.max(0, Number(settings.section_spacing ?? 2) || 2)
+  const headingSize = Number(settings.heading_font_size ?? 7)
+  const headingBold = settings.heading_bold !== false
   const sections = parseTermsSections(interpolate(String(page.body || ""), appointment, epvs))
   const makeLines = () => {
     const lines = []
@@ -579,11 +581,14 @@ function drawTermsConditions(pdf, page, ctx, appointment, epvs) {
 
   let lines = makeLines()
   for (let i = 0; i < 12; i += 1) {
-    const capacity = Math.floor((bottom - top) / lineHeight) * 2
+    const capacity = Math.floor((bottom - top) / lineHeight) * columns
     const required = lines.filter((line) => !line.spacing).length
     if (required <= capacity) break
-    fontSize = Math.max(5.15, fontSize * 0.96)
-    lineHeight = Math.max(2.35, lineHeight * 0.96)
+    const minFontSize = Math.max(1, Number(settings.min_font_size ?? 4.5) || 4.5)
+    const minLineHeight = Math.max(0.5, Number(settings.min_line_height ?? 2) || 2)
+    const shrinkFactor = Math.min(0.99, Math.max(0.8, Number(settings.shrink_factor ?? 0.96) || 0.96))
+    fontSize = Math.max(minFontSize, fontSize * shrinkFactor)
+    lineHeight = Math.max(minLineHeight, lineHeight * shrinkFactor)
     lines = makeLines()
   }
 
@@ -597,12 +602,12 @@ function drawTermsConditions(pdf, page, ctx, appointment, epvs) {
     }
     if (y + lineHeight > bottom) {
       column += 1
-      x = ctx.padding + columnWidth + gap
+      x = ctx.padding + column * (columnWidth + gap)
       y = top
     }
-    if (column > 1) return
+    if (column >= columns) return
     pdf.setTextColor(...ctx.text)
-    if (line.boldPrefix) {
+    if (line.boldPrefix && headingBold) {
       pdf.setFont("helvetica", "bold")
       pdf.setFontSize(headingSize)
       const prefixWidth = pdf.getTextWidth(line.boldPrefix)
@@ -878,6 +883,7 @@ export async function GenerateSolarContract({ appointment, epvsCalculation }) {
   const pageSize = pages.find((page) => page.settings?.page_size)?.settings?.page_size || "A4"
   const orientation = pages.find((page) => page.settings?.orientation)?.settings?.orientation || "portrait"
   const pdf = new jsPDF({ unit: "mm", format: pageSize.toLowerCase(), orientation })
+  if (typeof pdf.setCharSpace === "function") pdf.setCharSpace(0)
 
   for (let index = 0; index < pages.length; index += 1) {
     if (index > 0) pdf.addPage(pageSize.toLowerCase(), orientation)
