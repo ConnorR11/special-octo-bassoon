@@ -38,10 +38,19 @@ export default function DataDashboard() {
   useEffect(() => {
     let mounted = true
     async function load() {
-      if (!supabase) return
+      if (!supabase) {
+        if (mounted) {
+          setError("Supabase is not configured.")
+          setLoading(false)
+        }
+        return
+      }
       setLoading(true)
       setError("")
       try {
+        // Fetch the two fields without filtering in PostgREST. We filter valid
+        // first-call records in JavaScript so text values such as whitespace do
+        // not cause the report query to exclude valid records unexpectedly.
         const results = []
         let from = 0
         const pageSize = 1000
@@ -49,8 +58,6 @@ export default function DataDashboard() {
           const { data, error: queryError } = await supabase
             .from("leads")
             .select("received_date_time,first_time_called")
-            .not("first_time_called", "is", null)
-            .neq("first_time_called", "")
             .range(from, from + pageSize - 1)
           if (queryError) throw queryError
           const batch = data || []
@@ -72,13 +79,16 @@ export default function DataDashboard() {
     return () => { mounted = false }
   }, [])
 
+  const validRows = useMemo(() => rows.filter(row => {
+    const called = String(row?.first_time_called ?? "").trim()
+    return called !== "" && minutesBetween(row?.received_date_time, row?.first_time_called) != null
+  }), [rows])
+
   const monthly = useMemo(() => {
     const map = new Map()
-    for (const row of rows) {
-      const received = row.received_date_time
-      const called = row.first_time_called
-      const receivedDate = parseDate(received)
-      const minutes = minutesBetween(received, called)
+    for (const row of validRows) {
+      const receivedDate = parseDate(row.received_date_time)
+      const minutes = minutesBetween(row.received_date_time, row.first_time_called)
       if (!receivedDate || minutes == null) continue
       const key = `${receivedDate.getFullYear()}-${String(receivedDate.getMonth() + 1).padStart(2, "0")}`
       const current = map.get(key) || { key, year: receivedDate.getFullYear(), month: receivedDate.getMonth(), total: 0, speedTotal: 0 }
@@ -87,18 +97,13 @@ export default function DataDashboard() {
       map.set(key, current)
     }
     return Array.from(map.values()).sort((a,b) => a.key.localeCompare(b.key)).map(item => ({ ...item, average: item.speedTotal / item.total }))
-  }, [rows])
+  }, [validRows])
 
   const average = useMemo(() => {
-    if (!rows.length) return null
-    let total = 0
-    let count = 0
-    for (const row of rows) {
-      const minutes = minutesBetween(row.received_date_time, row.first_time_called)
-      if (minutes != null) { total += minutes; count += 1 }
-    }
-    return count ? total / count : null
-  }, [rows])
+    if (!validRows.length) return null
+    const total = validRows.reduce((sum, row) => sum + minutesBetween(row.received_date_time, row.first_time_called), 0)
+    return total / validRows.length
+  }, [validRows])
 
   const chart = useMemo(() => {
     const width = 1100
@@ -129,7 +134,7 @@ export default function DataDashboard() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 14, marginBottom: 18 }}>
         <div style={{ background: "#fff", border: "1px solid #e7eaee", borderRadius: 10, padding: 18 }}>
           <div style={{ color: "#777", fontSize: 12 }}>Leads with first call</div>
-          <div style={{ fontSize: 28, fontWeight: 700, marginTop: 5 }}>{loading ? "—" : rows.length.toLocaleString()}</div>
+          <div style={{ fontSize: 28, fontWeight: 700, marginTop: 5 }}>{loading ? "—" : validRows.length.toLocaleString()}</div>
         </div>
         <div style={{ background: "#fff", border: "1px solid #e7eaee", borderRadius: 10, padding: 18 }}>
           <div style={{ color: "#777", fontSize: 12 }}>Average speed to lead</div>
