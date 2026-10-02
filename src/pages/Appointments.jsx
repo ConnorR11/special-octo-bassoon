@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabase"
 import CreateAppointment from "./CreateAppointment"
 import { useVisibility } from "../context/VisibilityContext"
 
-function Appointments({ onSelectAppointment }) {
+function Appointments({ onSelectAppointment, onSelect }) {
   const {
     effectiveProfile,
     previewUser,
@@ -36,14 +36,6 @@ function Appointments({ onSelectAppointment }) {
       const from = page * pageSize
       const to = from + pageSize
 
-      /*
-       * IMPORTANT:
-       * Do not request appointments.type here.
-       * The appointments table does not contain a "type" column.
-       *
-       * We use product / job_type / appointment_type for the
-       * displayed Type value instead.
-       */
       let request = supabase
         .from("appointments")
         .select("*")
@@ -80,19 +72,11 @@ function Appointments({ onSelectAppointment }) {
       }
 
       const rows = data || []
-
-      /*
-       * Request one extra row so we know whether another page exists.
-       */
       setHasMore(rows.length > pageSize)
       setAppointments(rows.slice(0, pageSize))
     } catch (err) {
       console.error("Error loading appointments:", err)
-
-      setError(
-        err?.message || "Unable to load appointments."
-      )
-
+      setError(err?.message || "Unable to load appointments.")
       setAppointments([])
       setHasMore(false)
     } finally {
@@ -160,17 +144,16 @@ function Appointments({ onSelectAppointment }) {
   }
 
   function openAppointment(appointment) {
-    onSelectAppointment?.(appointment)
+    const handler = onSelectAppointment || onSelect
+    if (typeof handler === "function") {
+      handler(appointment)
+    }
   }
 
   const canGoBack = page > 0
   const canGoForward = hasMore
-
-  const showingFrom =
-    page * pageSize + 1
-
-  const showingTo =
-    page * pageSize + appointments.length
+  const showingFrom = page * pageSize + 1
+  const showingTo = page * pageSize + appointments.length
 
   if (showCreateAppointment) {
     return (
@@ -205,23 +188,10 @@ function Appointments({ onSelectAppointment }) {
         }}
       >
         <div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: 22,
-              color: "#222",
-            }}
-          >
+          <h1 style={{ margin: 0, fontSize: 22, color: "#222" }}>
             Appointments
           </h1>
-
-          <p
-            style={{
-              margin: "5px 0 0",
-              fontSize: 11,
-              color: "#888",
-            }}
-          >
+          <p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>
             {viewDescription}
           </p>
         </div>
@@ -229,9 +199,7 @@ function Appointments({ onSelectAppointment }) {
         {!previewUser && (
           <button
             type="button"
-            onClick={() =>
-              setShowCreateAppointment(true)
-            }
+            onClick={() => setShowCreateAppointment(true)}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -245,8 +213,7 @@ function Appointments({ onSelectAppointment }) {
               fontSize: 12,
               fontWeight: 700,
               cursor: "pointer",
-              boxShadow:
-                "0 2px 5px rgba(8,119,189,.18)",
+              boxShadow: "0 2px 5px rgba(8,119,189,.18)",
               whiteSpace: "nowrap",
             }}
           >
@@ -256,18 +223,8 @@ function Appointments({ onSelectAppointment }) {
         )}
       </div>
 
-      <div
-        className="card"
-        style={{
-          marginBottom: 18,
-          padding: "12px 14px",
-        }}
-      >
-        <div
-          style={{
-            position: "relative",
-          }}
-        >
+      <div className="card" style={{ marginBottom: 18, padding: "12px 14px" }}>
+        <div style={{ position: "relative" }}>
           <Search
             size={15}
             style={{
@@ -278,13 +235,10 @@ function Appointments({ onSelectAppointment }) {
               color: "#999",
             }}
           />
-
           <input
             type="text"
             value={query}
-            onChange={(e) =>
-              handleSearch(e.target.value)
-            }
+            onChange={(e) => handleSearch(e.target.value)}
             placeholder="Search customer, postcode, email or sales rep..."
             style={{
               width: "100%",
@@ -302,29 +256,17 @@ function Appointments({ onSelectAppointment }) {
       </div>
 
       {error && (
-        <div
-          className="error"
-          style={{
-            marginBottom: 18,
-          }}
-        >
+        <div className="error" style={{ marginBottom: 18 }}>
           <b>Database error</b>
           <span>{error}</span>
         </div>
       )}
 
-      <div
-        className="card"
-        style={{
-          padding: 0,
-          overflow: "hidden",
-        }}
-      >
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         <div
           style={{
             display: "grid",
-            gridTemplateColumns:
-              "1.7fr 1.4fr 1fr 1fr 1fr 100px",
+            gridTemplateColumns: "1.7fr 1.4fr 1fr 1fr 1fr 100px",
             padding: "11px 16px",
             background: "#f7f7f8",
             borderBottom: "1px solid #dddfe3",
@@ -344,72 +286,40 @@ function Appointments({ onSelectAppointment }) {
         </div>
 
         {loading || visibilityLoading ? (
-          <div
-            style={{
-              padding: "60px 20px",
-              textAlign: "center",
-              color: "#999",
-              fontSize: 12,
-            }}
-          >
+          <div style={{ padding: "60px 20px", textAlign: "center", color: "#999", fontSize: 12 }}>
             Loading appointments...
           </div>
         ) : appointments.length === 0 ? (
-          <div
-            style={{
-              padding: "60px 20px",
-              textAlign: "center",
-              color: "#999",
-              fontSize: 12,
-            }}
-          >
-            <CalendarDays
-              size={28}
-              style={{
-                marginBottom: 8,
-              }}
-            />
-
-            <div>
-              No appointments found.
-            </div>
+          <div style={{ padding: "60px 20px", textAlign: "center", color: "#999", fontSize: 12 }}>
+            <CalendarDays size={28} style={{ marginBottom: 8 }} />
+            <div>No appointments found.</div>
           </div>
         ) : (
           appointments.map((appointment) => (
             <button
               key={appointment.appointment_row_id}
               type="button"
-              onClick={() =>
-                openAppointment(appointment)
-              }
+              onClick={() => openAppointment(appointment)}
               style={{
                 width: "100%",
                 display: "grid",
-                gridTemplateColumns:
-                  "1.7fr 1.4fr 1fr 1fr 1fr 100px",
+                gridTemplateColumns: "1.7fr 1.4fr 1fr 1fr 1fr 100px",
                 padding: "13px 16px",
                 border: 0,
-                borderBottom:
-                  "1px solid #eeeeef",
+                borderBottom: "1px solid #eeeeef",
                 background: "#fff",
                 textAlign: "left",
                 cursor: "pointer",
                 fontFamily: "inherit",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background =
-                  "#fafbfc"
+                e.currentTarget.style.background = "#fafbfc"
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background =
-                  "#fff"
+                e.currentTarget.style.background = "#fff"
               }}
             >
-              <div
-                style={{
-                  minWidth: 0,
-                }}
-              >
+              <div style={{ minWidth: 0 }}>
                 <div
                   style={{
                     fontSize: 11,
@@ -420,46 +330,23 @@ function Appointments({ onSelectAppointment }) {
                     textOverflow: "ellipsis",
                   }}
                 >
-                  {appointment.name ||
-                    "Unnamed customer"}
+                  {appointment.name || "Unnamed customer"}
                 </div>
               </div>
 
-              <div
-                style={{
-                  fontSize: 10,
-                  color: "#444",
-                }}
-              >
-                {formatDate(
-                  appointment.appointment_date
-                )}
+              <div style={{ fontSize: 10, color: "#444" }}>
+                {formatDate(appointment.appointment_date)}
               </div>
 
-              <div
-                style={{
-                  fontSize: 10,
-                  color: "#555",
-                }}
-              >
+              <div style={{ fontSize: 10, color: "#555" }}>
                 {appointment.postcode || "—"}
               </div>
 
-              <div
-                style={{
-                  fontSize: 10,
-                  color: "#555",
-                }}
-              >
+              <div style={{ fontSize: 10, color: "#555" }}>
                 {getAppointmentType(appointment)}
               </div>
 
-              <div
-                style={{
-                  fontSize: 10,
-                  color: "#555",
-                }}
-              >
+              <div style={{ fontSize: 10, color: "#555" }}>
                 {appointment.rep_allocated || "—"}
               </div>
 
@@ -484,63 +371,29 @@ function Appointments({ onSelectAppointment }) {
       </div>
 
       {(appointments.length > 0 || canGoBack) && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginTop: 14,
-          }}
-        >
-          <div
-            style={{
-              fontSize: 10,
-              color: "#888",
-            }}
-          >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14 }}>
+          <div style={{ fontSize: 10, color: "#888" }}>
             Showing {showingFrom} – {showingTo}
-            {hasMore
-              ? " · More available"
-              : " · End of results"}
+            {hasMore ? " · More available" : " · End of results"}
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              gap: 6,
-              alignItems: "center",
-            }}
-          >
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <button
               type="button"
               disabled={!canGoBack}
-              onClick={() =>
-                setPage((value) => value - 1)
-              }
+              onClick={() => setPage((value) => value - 1)}
             >
               <ChevronLeft size={15} />
             </button>
 
-            <div
-              style={{
-                minWidth: 70,
-                height: 32,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 10,
-                color: "#555",
-              }}
-            >
+            <div style={{ minWidth: 70, height: 32, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#555" }}>
               Page {page + 1}
             </div>
 
             <button
               type="button"
               disabled={!canGoForward}
-              onClick={() =>
-                setPage((value) => value + 1)
-              }
+              onClick={() => setPage((value) => value + 1)}
             >
               <ChevronRight size={15} />
             </button>
