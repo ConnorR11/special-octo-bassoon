@@ -48,7 +48,7 @@ export default function DataDashboard() {
         while (true) {
           const { data, error: queryError } = await supabase
             .from("leads")
-            .select("received_at,received_at_parsed,first_time_called")
+            .select("received_date_time,first_time_called")
             .not("first_time_called", "is", null)
             .neq("first_time_called", "")
             .range(from, from + pageSize - 1)
@@ -75,7 +75,7 @@ export default function DataDashboard() {
   const monthly = useMemo(() => {
     const map = new Map()
     for (const row of rows) {
-      const received = row.received_at_parsed || row.received_at
+      const received = row.received_date_time
       const called = row.first_time_called
       const receivedDate = parseDate(received)
       const minutes = minutesBetween(received, called)
@@ -94,7 +94,7 @@ export default function DataDashboard() {
     let total = 0
     let count = 0
     for (const row of rows) {
-      const minutes = minutesBetween(row.received_at_parsed || row.received_at, row.first_time_called)
+      const minutes = minutesBetween(row.received_date_time, row.first_time_called)
       if (minutes != null) { total += minutes; count += 1 }
     }
     return count ? total / count : null
@@ -141,7 +141,7 @@ export default function DataDashboard() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 17 }}>Speed to Lead</h2>
-            <div style={{ marginTop: 4, color: "#888", fontSize: 12 }}>Average time from lead received to first call. Only leads with a recorded first call are included.</div>
+            <div style={{ marginTop: 4, color: "#888", fontSize: 12 }}>Average time from received date/time to first call. Only leads with a recorded first call are included.</div>
           </div>
         </div>
         {loading ? <div style={{ height: 420, display: "grid", placeItems: "center", color: "#777" }}>Loading lead data…</div> : !monthly.length ? <div style={{ height: 420, display: "grid", placeItems: "center", color: "#777" }}>No completed speed-to-lead data found.</div> : (
@@ -152,7 +152,7 @@ export default function DataDashboard() {
               return <g key={ratio}><line x1={chart.pad.left} x2={chart.width - chart.pad.right} y1={y} y2={y} stroke="#e7eaee"/><text x={chart.pad.left - 10} y={y + 4} textAnchor="end" fontSize="11" fill="#777">{formatMinutes(value)}</text></g>
             })}
             <path d={chart.path} fill="none" stroke="#1479b8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-            {chart.points.map((p, i) => <g key={p.key}><circle cx={p.x} cy={p.y} r="4" fill="#1479b8"/><text x={p.x} y={chart.height - 37} textAnchor="middle" fontSize="10" fill="#666">{MONTHS[p.month]} {p.year}</text><title>{`${MONTHS[p.month]} ${p.year}: ${formatMinutes(p.average)} average · ${p.total.toLocaleString()} leads`}</title></g>)}
+            {chart.points.map(p => <g key={p.key}><circle cx={p.x} cy={p.y} r="4" fill="#1479b8"/><text x={p.x} y={chart.height - 37} textAnchor="middle" fontSize="10" fill="#666">{MONTHS[p.month]} {p.year}</text><title>{`${MONTHS[p.month]} ${p.year}: ${formatMinutes(p.average)} average · ${p.total.toLocaleString()} leads`}</title></g>)}
             <text x={chart.pad.left} y={18} fontSize="11" fill="#777">Average speed to lead</text>
             <text x={chart.width / 2} y={chart.height - 8} textAnchor="middle" fontSize="11" fill="#777">Year / Month</text>
           </svg>
