@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "lucide-react"
+import React, { useEffect, useState } from "react"
 import { Search, CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react"
 import { supabase } from "../lib/supabase"
 import CreateAppointment from "./CreateAppointment"
