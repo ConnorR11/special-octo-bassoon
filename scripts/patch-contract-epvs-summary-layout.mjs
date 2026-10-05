@@ -24,6 +24,13 @@ if (source.includes("function drawEpvsContractSummary(pdf, ctx, data, results, s
     '  rightY += 5\n  rightY = drawSection(rightX, rightY, "NEW FLUX RATES"'
   )
 
+  // Give the Energy Usage & Current Rates table slightly more vertical room so
+  // the longer second-row label remains clear and readable in the PDF.
+  source = source.replace(
+    '  ], { subHeaders: ["SINGLE/DAY", "NIGHT"] })',
+    '  ], { subHeaders: ["SINGLE/DAY", "NIGHT"], rowHeight: 6.1 })'
+  )
+
   // Reduce the gap between the inflation disclaimer and the first summary tables.
   source = source.replace(
     'drawEpvsContractSummary(pdf, ctx, data, results, y + 8)',
