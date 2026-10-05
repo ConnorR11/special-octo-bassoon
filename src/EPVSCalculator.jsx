@@ -2494,10 +2494,6 @@ export default function EPVSCalculator({
                 key={product.id}
                 value={product.id}
               >
-                {product.product ||
-                  product.internal_reference ||
-                  "Finance product"}
-
                 {product.term
                   ? ` — ${product.term} months`
                   : ""}
