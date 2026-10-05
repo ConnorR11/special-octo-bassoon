@@ -61,23 +61,36 @@ export default function DatabaseSalesPresenter({ appointment, onClose, templateI
 
   return <div style={{ position: "fixed", inset: 0, zIndex: 3000, background: "#07111c", color: "#fff", display: "flex", flexDirection: "column" }}>
     <style>{`
-      @keyframes presenterSlideNext {
-        from { opacity: 0; transform: translate3d(48px, 0, 0) scale(.985); }
-        to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+      @keyframes presenterNext {
+        0% { opacity: 0; transform: translate3d(9%, 0, 0) scale(.94) rotateY(-7deg); filter: blur(4px); }
+        55% { opacity: 1; filter: blur(0); }
+        100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1) rotateY(0); filter: blur(0); }
       }
-      @keyframes presenterSlidePrevious {
-        from { opacity: 0; transform: translate3d(-48px, 0, 0) scale(.985); }
-        to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+      @keyframes presenterPrevious {
+        0% { opacity: 0; transform: translate3d(-9%, 0, 0) scale(.94) rotateY(7deg); filter: blur(4px); }
+        55% { opacity: 1; filter: blur(0); }
+        100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1) rotateY(0); filter: blur(0); }
       }
-      .presenter-page-transition-next { animation: presenterSlideNext .38s cubic-bezier(.22,.61,.36,1) both; }
-      .presenter-page-transition-previous { animation: presenterSlidePrevious .38s cubic-bezier(.22,.61,.36,1) both; }
+      @keyframes presenterGlow {
+        0% { opacity: 0; transform: scale(.96); }
+        45% { opacity: .55; }
+        100% { opacity: 0; transform: scale(1.04); }
+      }
+      .presenter-stage { perspective: 1400px; }
+      .presenter-page-transition-next, .presenter-page-transition-previous { transform-origin: center center; will-change: transform, opacity, filter; }
+      .presenter-page-transition-next { animation: presenterNext .62s cubic-bezier(.16,1,.3,1) both; }
+      .presenter-page-transition-previous { animation: presenterPrevious .62s cubic-bezier(.16,1,.3,1) both; }
+      .presenter-stage::after { content: ""; position: absolute; inset: 12%; border-radius: 28px; background: radial-gradient(ellipse, rgba(125,211,252,.12), transparent 68%); pointer-events: none; opacity: 0; animation: presenterGlow .62s ease-out both; }
+      .presenter-progress { position: absolute; left: 0; top: 58px; height: 2px; background: linear-gradient(90deg,#38bdf8,#7dd3fc); transition: width .45s cubic-bezier(.16,1,.3,1); box-shadow: 0 0 12px rgba(56,189,248,.65); }
       @media (prefers-reduced-motion: reduce) {
-        .presenter-page-transition-next, .presenter-page-transition-previous { animation: none; }
+        .presenter-page-transition-next, .presenter-page-transition-previous, .presenter-stage::after { animation: none; }
+        .presenter-progress { transition: none; }
       }
     `}</style>
     <div style={{ height: 58, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 22px", borderBottom: "1px solid rgba(255,255,255,.12)", flex: "0 0 auto" }}><div><div style={{ fontSize: 14, fontWeight: 800 }}>{template?.name || (type === "solar" ? "Solar Presentation" : "Windows & Doors Presentation")}</div><div style={{ fontSize: 10, opacity: .65, marginTop: 3 }}>{appointment?.name || appointment?.customer_name || "Customer"}</div></div><button type="button" onClick={onClose} style={{ border: 0, background: "rgba(255,255,255,.08)", color: "#fff", width: 36, height: 36, borderRadius: 8, cursor: "pointer" }} aria-label="Close presenter"><X size={18} /></button></div>
-    <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: isSlideOne ? 0 : 28, overflow: "hidden" }}>
-      {loading ? <div style={{ fontSize: 14, opacity: .7 }}>Loading presentation...</div> : error ? <div style={{ maxWidth: 520, textAlign: "center" }}><div style={{ fontSize: 18, fontWeight: 800, marginBottom: 10 }}>Presenter unavailable</div><div style={{ fontSize: 12, opacity: .7 }}>{error}</div></div> : page ? <div key={transitionKey} className={`presenter-page-transition-${direction}`} style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>{isSlideOne ? <SlideOne slide={page} appointment={appointment} /> : <StandardSlide slide={page} appointment={appointment} />}</div> : <div style={{ fontSize: 14, opacity: .7 }}>This template has no pages yet.</div>}
+    <div className="presenter-progress" style={{ width: pages.length ? `${((index + 1) / pages.length) * 100}%` : "0%" }} />
+    <div className="presenter-stage" style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: isSlideOne ? 0 : 28, overflow: "hidden" }}>
+      {loading ? <div style={{ fontSize: 14, opacity: .7 }}>Loading presentation...</div> : error ? <div style={{ maxWidth: 520, textAlign: "center" }}><div style={{ fontSize: 18, fontWeight: 800, marginBottom: 10 }}>Presenter unavailable</div><div style={{ fontSize: 12, opacity: .7 }}>{error}</div></div> : page ? <div key={transitionKey} className={`presenter-page-transition-${direction}`} style={{ position: "relative", zIndex: 2, width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>{isSlideOne ? <SlideOne slide={page} appointment={appointment} /> : <StandardSlide slide={page} appointment={appointment} />}</div> : <div style={{ fontSize: 14, opacity: .7 }}>This template has no pages yet.</div>}
     </div>
     <div style={{ height: 68, display: "flex", alignItems: "center", justifyContent: "center", gap: 18, flex: "0 0 auto" }}><button type="button" disabled={index === 0 || !pages.length} onClick={() => goToPage(-1)} style={{ width: 42, height: 42, border: 0, borderRadius: 21, background: index === 0 ? "rgba(255,255,255,.06)" : "rgba(255,255,255,.12)", color: "#fff" }}><ChevronLeft size={20} /></button><div style={{ minWidth: 80, textAlign: "center", fontSize: 11, opacity: .7 }}>{pages.length ? `${index + 1} / ${pages.length}` : "0 / 0"}</div><button type="button" disabled={index >= pages.length - 1 || !pages.length} onClick={() => goToPage(1)} style={{ width: 42, height: 42, border: 0, borderRadius: 21, background: index >= pages.length - 1 ? "rgba(255,255,255,.06)" : "rgba(255,255,255,.12)", color: "#fff" }}><ChevronRight size={20} /></button></div>
   </div>
