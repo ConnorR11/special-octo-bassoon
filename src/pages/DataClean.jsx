@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabase"
 
 const REPORTS = [
   { id: "missing-result", title: "Appointments missing result", description: "Appointments where no result has been recorded." },
-  { id: "wrong-cps", title: "Wrong CPS", description: "Appointments where HCPS is 0001 but is_pickup is FALSE." },
+  { id: "wrong-cps", title: "Wrong CPS", description: "Appointments where CPS-P is FALSE, CPS-S is TRUE and is_pickup is FALSE." },
 ]
 
 function formatDate(value) {
@@ -64,8 +64,6 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
           query = supabase
             .from("appointments")
             .select("appointment_row_id,name,phone_number_1,email_address,postcode,address,appointment_date,product,job_type,branch,rep_allocated,cps_h,cps_c,cps_p,cps_s,is_pickup,result")
-            .eq("cps_h", false)
-            .eq("cps_c", false)
             .eq("cps_p", false)
             .eq("cps_s", true)
             .eq("is_pickup", false)
