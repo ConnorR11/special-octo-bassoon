@@ -21,7 +21,7 @@ const ISSUE_DEFINITIONS = [
   ["missing_branch","Missing branch","Appointments that have not been allocated to a branch.","Missing information","high"],
   ["missing_rep","Missing sales rep","Appointments without an allocated sales representative.","Missing information","high"],
   ["missing_appointment_date","Missing appointment date","Appointments without an appointment date.","Missing information","critical"],
-  ["missing_result","Missing result","Appointments where no result or status has been recorded.","Missing information","medium"],
+  ["missing_result","Missing result","Appointments where the result field is blank or has not been recorded.","Missing information","medium"],
   ["missing_arrival","Missing rep arrival time","Resulted appointments where the rep arrival time has not been recorded.","Missing information","medium"],
   ["missing_result_updated","Missing result updated time","Resulted appointments where the result timestamp has not been recorded.","Missing information","medium"],
   ["result_before_arrival","Result before arrival","Appointments where the result timestamp is earlier than the rep arrival time.","Invalid data","critical"],
@@ -30,7 +30,7 @@ const ISSUE_DEFINITIONS = [
 function hasValue(value) { return String(value ?? "").trim() !== "" }
 function emailValue(row) { return row?.email_address || row?.email || "" }
 function phoneValue(row) { return row?.phone_number_1 || row?.phone || "" }
-function resultValue(row) { return row?.result || row?.status || "" }
+function resultValue(row) { return row?.result || "" }
 function validEmail(value) { const email=String(value||"").trim(); return !!email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) }
 function formatNumber(value) { return new Intl.NumberFormat("en-GB").format(Number(value||0)) }
 function formatDate(value) {
@@ -49,9 +49,9 @@ function getIssueRows(id,rows) {
     case "missing_branch": return rows.filter(r=>!hasValue(r.branch))
     case "missing_rep": return rows.filter(r=>!hasValue(r.rep_allocated))
     case "missing_appointment_date": return rows.filter(r=>!hasValue(r.appointment_date))
-    case "missing_result": return rows.filter(r=>!hasValue(resultValue(r)))
-    case "missing_arrival": return rows.filter(r=>hasValue(resultValue(r))&&!hasValue(r.rep_arrival_time))
-    case "missing_result_updated": return rows.filter(r=>hasValue(resultValue(r))&&!hasValue(r.result_updated))
+    case "missing_result": return rows.filter(r=>!hasValue(r.result))
+    case "missing_arrival": return rows.filter(r=>hasValue(r.result)&&!hasValue(r.rep_arrival_time))
+    case "missing_result_updated": return rows.filter(r=>hasValue(r.result)&&!hasValue(r.result_updated))
     case "result_before_arrival": return rows.filter(r=>{
       if(!r.rep_arrival_time||!r.result_updated)return false
       const a=new Date(r.rep_arrival_time), b=new Date(r.result_updated)
@@ -142,10 +142,10 @@ export default function DataClean({ onOpenAppointment }) {
       </div>
       <div className="data-clean-toolbar"><div className="data-clean-search"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search affected records..."/></div></div>
       {filteredAffected.length===0 ? <div className="data-clean-empty"><CheckCircle2 size={28}/><strong>No matching records</strong><span>This issue currently has no matching records.</span></div> :
-      <div className="data-clean-table-wrap"><table className="data-clean-table"><thead><tr><th>Customer</th><th>Appointment</th><th>Postcode</th><th>Branch</th><th>Sales Rep</th><th>Email</th><th></th></tr></thead><tbody>
+      <div className="data-clean-table-wrap"><table className="data-clean-table"><thead><tr><th>Customer</th><th>Appointment</th><th>Postcode</th><th>Product</th><th>Job Type</th><th>Branch</th><th>Sales Rep</th><th>Email</th><th></th></tr></thead><tbody>
         {filteredAffected.slice(0,250).map(r=><tr key={r.appointment_row_id}>
           <td><strong>{r.name||"Unnamed customer"}</strong><small>{r.appointment_row_id}</small></td>
-          <td>{formatDate(r.appointment_date)}</td><td>{r.postcode||"—"}</td><td>{r.branch||"—"}</td><td>{r.rep_allocated||"—"}</td><td>{emailValue(r)||"—"}</td>
+          <td>{formatDate(r.appointment_date)}</td><td>{r.postcode||"—"}</td><td>{r.product||"—"}</td><td>{r.job_type||"—"}</td><td>{r.branch||"—"}</td><td>{r.rep_allocated||"—"}</td><td>{emailValue(r)||"—"}</td>
           <td><button className="data-clean-open" onClick={()=>onOpenAppointment?.(r)}>Open</button></td>
         </tr>)}
       </tbody></table></div>}
