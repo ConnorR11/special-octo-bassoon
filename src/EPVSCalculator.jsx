@@ -90,6 +90,7 @@ const initial = {
   financeProductId: "",
   financeTerm: "",
   financeRate: "",
+  financeFactor: "",
 }
 
 function OctopusLogo() {
@@ -274,14 +275,11 @@ function monthlyPaymentForYear(data) {
   const systemCost = Number(data.systemCost || 0)
   const deposit = Number(data.deposit || 0)
   const financeAmount = Math.max(0, systemCost - deposit)
-  const months = Math.max(0, Number(data.financeTerm || 0) * 12)
-  if (financeAmount <= 0 || months <= 0) return 0
-  const monthlyRate = Number(data.financeRate || 0) / 100 / 12
-  if (monthlyRate <= 0) return financeAmount / months
-  return financeAmount * (
-    (monthlyRate * Math.pow(1 + monthlyRate, months)) /
-    (Math.pow(1 + monthlyRate, months) - 1)
-  )
+  const factor = Number(data.financeFactor || 0)
+
+  if (financeAmount <= 0 || factor <= 0) return 0
+
+  return (financeAmount / 1000) * factor
 }
 
 function calculateStandardFluxYear({
@@ -2443,9 +2441,11 @@ export default function EPVSCalculator({
           if (product) {
             update("financeTerm", Number(product.term || 0) / 12)
             update("financeRate", Number(product.apr || 0))
+            update("financeFactor", Number(product.factor || 0))
           } else {
             update("financeTerm", "")
             update("financeRate", "")
+            update("financeFactor", "")
           }
         }}
         disabled={financeProductsLoading}
