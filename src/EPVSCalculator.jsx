@@ -673,6 +673,22 @@ export default function EPVSCalculator({
       [key]: value,
     }))
   }
+  
+  const eligibleFinanceProducts = financeProducts.filter((financeProduct) => {
+  const jobType = String(appointment?.job_type || "")
+    .trim()
+    .toLowerCase()
+
+  if (!jobType) return false
+
+  const products = String(financeProduct.product || "")
+    .split(",")
+    .map((product) => product.trim().toLowerCase())
+    .filter(Boolean)
+
+  return products.includes(jobType)
+})
+  
 
   const getCurrentFluxRates = async () => {
     const postcode = String(data.postcode || "").trim()
@@ -2325,225 +2341,246 @@ export default function EPVSCalculator({
           </Card>
 
         {/* =================================================
-            FINANCE
-            ================================================= */}
+    FINANCE
+    ================================================= */}
 
-                  <Card
-            title="Payment"
-            subtitle="Choose how the customer is paying for the system."
-            action={
-              <button
-                type="button"
-                onClick={saveCalculation}
-                disabled={savingCalculation || !hasRequiredEnergyInputs}
-                style={{
-                  ...styles.primary,
-                  opacity:
-                    savingCalculation || !hasRequiredEnergyInputs ? 0.65 : 1,
-                  cursor:
-                    savingCalculation || !hasRequiredEnergyInputs
-                      ? "default"
-                      : "pointer",
-                }}
-              >
-                {savingCalculation
-                  ? "Saving..."
-                  : "Save payment & calculation"}
-              </button>
-            }
-          >
-            <div
-              style={styles.grid}
-            >
+<Card
+  title="Payment"
+  subtitle="Choose how the customer is paying for the system."
+  action={
+    <button
+      type="button"
+      onClick={saveCalculation}
+      disabled={savingCalculation || !hasRequiredEnergyInputs}
+      style={{
+        ...styles.primary,
+        opacity:
+          savingCalculation || !hasRequiredEnergyInputs ? 0.65 : 1,
+        cursor:
+          savingCalculation || !hasRequiredEnergyInputs
+            ? "default"
+            : "pointer",
+      }}
+    >
+      {savingCalculation
+        ? "Saving..."
+        : "Save payment & calculation"}
+    </button>
+  }
+>
+  <div style={styles.grid}>
 
-              <label
-                style={
-                  styles.field
-                }
-              >
-                <span>
-                  Payment method
-                </span>
-
-                <select
-                  value={
-                    data.paymentMethod
-                  }
-                  onChange={(
-                    event
-                  ) =>
-                    update(
-                      "paymentMethod",
-                      event.target
-                        .value
-                    )
-                  }
-                >
-                  <option value="Finance">
-                    Finance
-                  </option>
-
-                  <option value="Cash">
-                    Cash
-                  </option>
-                </select>
-              </label>
-
-              <Input
-                label="System cost (£)"
-                type="number"
-                value={
-                  data.systemCost
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "systemCost",
-                    value
-                  )
-                }
-                min={0}
-              />
-
-              <Input
-                label="Deposit (£)"
-                type="number"
-                value={
-                  data.deposit
-                }
-                onChange={(
-                  value
-                ) =>
-                  update(
-                    "deposit",
-                    value
-                  )
-                }
-                min={0}
-              />
-
-              {data.paymentMethod === "Finance" && (
-  <>
     <label style={styles.field}>
-      <span>Finance product</span>
+      <span>Payment method</span>
 
       <select
-        value={data.financeProductId || ""}
-        onChange={(event) => {
-          const productId = event.target.value
-          const product = financeProducts.find(
-            (item) => String(item.id) === String(productId)
+        value={data.paymentMethod}
+        onChange={(event) =>
+          update(
+            "paymentMethod",
+            event.target.value
           )
-
-          update("financeProductId", productId)
-
-          if (product) {
-            update("financeTerm", Number(product.term || 0) / 12)
-            update("financeRate", Number(product.apr || 0))
-            update("financeFactor", Number(product.factor || 0))
-          } else {
-            update("financeTerm", "")
-            update("financeRate", "")
-            update("financeFactor", "")
-          }
-        }}
-        disabled={financeProductsLoading}
-        style={{
-          width: "100%",
-          padding: "10px 12px",
-          border: "1px solid #d9dadd",
-          borderRadius: "7px",
-          background: "#fff",
-          fontSize: "13px",
-          color: "#333",
-        }}
+        }
       >
-        <option value="">
-          {financeProductsLoading
-            ? "Loading finance products..."
-            : "Select finance product"}
+        <option value="Finance">
+          Finance
         </option>
 
-        {financeProducts.map((product) => (
-          <option key={product.id} value={product.id}>
-            {product.product || product.internal_reference || "Finance product"}
-            {product.term
-              ? ` — ${product.term} months`
-              : ""}
-            {product.apr != null
-              ? ` @ ${product.apr}%`
-              : ""}
-          </option>
-        ))}
+        <option value="Cash">
+          Cash
+        </option>
       </select>
     </label>
-  </>
-)}
 
-              <div
-                style={{
-                  padding: 15,
-                  background:
-                    "#f8fafc",
-                  border:
-                    "1px solid #e2e8f0",
-                  borderRadius: 9,
-                }}
+    <Input
+      label="System cost (£)"
+      type="number"
+      value={data.systemCost}
+      onChange={(value) =>
+        update(
+          "systemCost",
+          value
+        )
+      }
+      min={0}
+    />
+
+    <Input
+      label="Deposit (£)"
+      type="number"
+      value={data.deposit}
+      onChange={(value) =>
+        update(
+          "deposit",
+          value
+        )
+      }
+      min={0}
+    />
+
+    {data.paymentMethod === "Finance" && (
+      <>
+        <label style={styles.field}>
+          <span>Finance product</span>
+
+          <select
+            value={data.financeProductId || ""}
+            onChange={(event) => {
+              const productId = event.target.value
+
+              const product = financeProducts.find(
+                (item) =>
+                  String(item.id) === String(productId)
+              )
+
+              update(
+                "financeProductId",
+                productId
+              )
+
+              if (product) {
+                update(
+                  "financeTerm",
+                  Number(product.term || 0) / 12
+                )
+
+                update(
+                  "financeRate",
+                  Number(product.apr || 0)
+                )
+
+                update(
+                  "financeFactor",
+                  Number(product.factor || 0)
+                )
+              } else {
+                update(
+                  "financeTerm",
+                  ""
+                )
+
+                update(
+                  "financeRate",
+                  ""
+                )
+
+                update(
+                  "financeFactor",
+                  ""
+                )
+              }
+            }}
+            disabled={financeProductsLoading}
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              border: "1px solid #d9dadd",
+              borderRadius: "7px",
+              background: "#fff",
+              fontSize: "13px",
+              color: "#333",
+            }}
+          >
+            <option value="">
+              {financeProductsLoading
+                ? "Loading finance products..."
+                : eligibleFinanceProducts.length === 0
+                  ? "No finance products available"
+                  : "Select finance product"}
+            </option>
+
+            {eligibleFinanceProducts.map((product) => (
+              <option
+                key={product.id}
+                value={product.id}
               >
-                <div
-                  style={{
-                    fontSize: 11,
-                    color:
-                      "#64748b",
-                  }}
-                >
-                  Amount after
-                  deposit
-                </div>
+                {product.product ||
+                  product.internal_reference ||
+                  "Finance product"}
 
-                <strong
-                  style={{
-                    display:
-                      "block",
-                    marginTop: 5,
-                    fontSize: 18,
-                    color:
-                      "#172554",
-                  }}
-                >
-                  {money(
-                    Math.max(
-                      0,
-                      Number(
-                        data.systemCost ||
-                          0
-                      ) -
-                        Number(
-                          data.deposit ||
-                            0
-                        )
-                    )
-                  )}
-                </strong>
-              </div>
+                {product.term
+                  ? ` — ${product.term} months`
+                  : ""}
 
-              {(saveError || saveMessage) && (
-                <div
-                  style={{
-                    marginTop: 12,
-                    fontSize: 11,
-                    color: saveError ? "#b42318" : "#299d48",
-                    fontWeight: 600,
-                    textAlign: "right",
-                  }}
-                >
-                  {saveError || saveMessage}
-                </div>
-              )}
-            </div>
-          </Card>
+                {product.apr != null
+                  ? ` @ ${product.apr}%`
+                  : ""}
+              </option>
+            ))}
+          </select>
+        </label>
 
+        <div
+          style={{
+            padding: 15,
+            background: "#f8fafc",
+            border: "1px solid #e2e8f0",
+            borderRadius: 9,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              color: "#64748b",
+            }}
+          >
+            Amount after deposit
+          </div>
+
+          <strong
+            style={{
+              display: "block",
+              marginTop: 5,
+              fontSize: 18,
+              color: "#172554",
+            }}
+          >
+            {money(
+              Math.max(
+                0,
+                Number(data.systemCost || 0) -
+                  Number(data.deposit || 0)
+              )
+            )}
+          </strong>
+        </div>
+
+        {(saveError || saveMessage) && (
+          <div
+            style={{
+              marginTop: 12,
+              fontSize: 11,
+              color: saveError ? "#b42318" : "#299d48",
+              fontWeight: 600,
+              textAlign: "right",
+            }}
+          >
+            {saveError || saveMessage}
+          </div>
+        )}
+      </>
+    )}
+
+    {data.paymentMethod === "Cash" && (
+      <>
+        {(saveError || saveMessage) && (
+          <div
+            style={{
+              marginTop: 12,
+              fontSize: 11,
+              color: saveError ? "#b42318" : "#299d48",
+              fontWeight: 600,
+              textAlign: "right",
+            }}
+          >
+            {saveError || saveMessage}
+          </div>
+        )}
+      </>
+    )}
+
+  </div>
+</Card>
         {/* =================================================
             RESULTS
             ================================================= */}
