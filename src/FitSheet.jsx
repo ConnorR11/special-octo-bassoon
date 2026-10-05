@@ -1,4 +1,3 @@
-```jsx
 import React, { useEffect, useMemo, useState } from "react"
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react"
 import { supabase } from "./lib/supabase"
