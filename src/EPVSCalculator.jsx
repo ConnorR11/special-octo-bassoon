@@ -2494,17 +2494,17 @@ export default function EPVSCalculator({
                 key={product.id}
                 value={product.id}
               >
+                {product.lender || "Finance product"}
                 {product.term
                   ? ` — ${product.term} months`
                   : ""}
-
                 {product.apr != null
                   ? ` @ ${product.apr}%`
                   : ""}
               </option>
             ))}
           </select>
-        </label>
+          </label>
 
         <div
           style={{
