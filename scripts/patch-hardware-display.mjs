@@ -3,20 +3,17 @@ import fs from "node:fs"
 const path = "src/EPVSCalculator.jsx"
 const text = fs.readFileSync(path, "utf8")
 
-// The hardware display may already have been applied by an earlier source update,
-// or the Battery & Inverter card may have been restructured by another EPVS patch.
-// In either case this build-time patch must not fail the production build.
+// The hardware display may already have been applied by an earlier source update.
+// Do not use the manual field labels as a guard because those labels are also
+// present in the old Battery & Inverter card that this patch is meant to replace.
 if (
   text.includes('title="Battery, Inverter & EV Charger"') ||
-  text.includes('title="System Equipment"') ||
-  text.includes('Battery configuration') && text.includes('Inverter capacity')
+  text.includes('title="System Equipment"')
 ) {
-  console.log("EPVS hardware display is already present or the hardware section has been restructured; nothing to patch.")
+  console.log("EPVS hardware display is already present; nothing to patch.")
   process.exit(0)
 }
 
-// Allow the card to have additional attributes such as className while still
-// targeting only the existing Battery & Inverter card.
 const batteryCardRegex = /\n\s*<Card\s+title="Battery & Inverter"[\s\S]*?\n\s*<\/Card>/
 
 const replacement = `
@@ -89,4 +86,4 @@ if (replaced === text) {
 }
 
 fs.writeFileSync(path, replaced)
-console.log("Refined OpenSolar equipment display to three structured cards including EV charger.")
+console.log("Restored OpenSolar battery, inverter and EV charger display.")
