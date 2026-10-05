@@ -87,6 +87,7 @@ const initial = {
   systemCost: "",
   deposit: "",
 
+  financeProductId: "",
   financeTerm: "",
   financeRate: "",
 }
@@ -2424,45 +2425,61 @@ export default function EPVSCalculator({
                 min={0}
               />
 
-              {data.paymentMethod ===
-                "Finance" && (
-                <>
-                  <Input
-                    label="Finance term (years)"
-                    type="number"
-                    value={
-                      data.financeTerm
-                    }
-                    onChange={(
-                      value
-                    ) =>
-                      update(
-                        "financeTerm",
-                        value
-                      )
-                    }
-                    min={1}
-                  />
+              {data.paymentMethod === "Finance" && (
+  <>
+    <label style={styles.field}>
+      <span>Finance product</span>
 
-                  <Input
-                    label="Interest rate (%)"
-                    type="number"
-                    value={
-                      data.financeRate
-                    }
-                    onChange={(
-                      value
-                    ) =>
-                      update(
-                        "financeRate",
-                        value
-                      )
-                    }
-                    min={0}
-                    step={0.1}
-                  />
-                </>
-              )}
+      <select
+        value={data.financeProductId || ""}
+        onChange={(event) => {
+          const productId = event.target.value
+          const product = financeProducts.find(
+            (item) => String(item.id) === String(productId)
+          )
+
+          update("financeProductId", productId)
+
+          if (product) {
+            update("financeTerm", Number(product.term || 0) / 12)
+            update("financeRate", Number(product.apr || 0))
+          } else {
+            update("financeTerm", "")
+            update("financeRate", "")
+          }
+        }}
+        disabled={financeProductsLoading}
+        style={{
+          width: "100%",
+          padding: "10px 12px",
+          border: "1px solid #d9dadd",
+          borderRadius: "7px",
+          background: "#fff",
+          fontSize: "13px",
+          color: "#333",
+        }}
+      >
+        <option value="">
+          {financeProductsLoading
+            ? "Loading finance products..."
+            : "Select finance product"}
+        </option>
+
+        {financeProducts.map((product) => (
+          <option key={product.id} value={product.id}>
+            {product.product || product.internal_reference || "Finance product"}
+            {product.term
+              ? ` — ${product.term} months`
+              : ""}
+            {product.apr != null
+              ? ` @ ${product.apr}%`
+              : ""}
+          </option>
+        ))}
+      </select>
+    </label>
+  </>
+)}
 
               <div
                 style={{
