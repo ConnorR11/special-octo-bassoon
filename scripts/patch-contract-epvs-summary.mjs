@@ -155,11 +155,19 @@ function drawEpvsContractSummary(pdf, ctx, data, results, startY) {
   source = source.replace(marker, helper + "\n" + marker)
 }
 
-const epvsMarker = "    }\n  } else if (kind === \"datasheets\") {"
-const epvsReplacement = "    }\n\n    y = drawEpvsContractSummary(pdf, ctx, data, results, y + 8)\n  } else if (kind === \"datasheets\") {"
+const datasheetsMarker = '  } else if (kind === "datasheets") {'
+const summaryCall = '    y = drawEpvsContractSummary(pdf, ctx, data, results, y + 8)\n'
 
-if (!source.includes(epvsMarker)) throw new Error("Could not locate the end of the EPVS page in GenerateSolarContract.js")
-if (!source.includes("drawEpvsContractSummary(pdf, ctx, data, results, y + 8)")) source = source.replace(epvsMarker, epvsReplacement)
+if (!source.includes(datasheetsMarker)) {
+  throw new Error("Could not locate the datasheets branch in GenerateSolarContract.js")
+}
+
+// Insert the summary immediately before the datasheets branch. This is deliberately
+// anchored to the next branch rather than the internal ending of the EPVS branch,
+// because the EPVS branch has changed shape across earlier contract patches.
+if (!source.includes("drawEpvsContractSummary(pdf, ctx, data, results, y + 8)")) {
+  source = source.replace(datasheetsMarker, summaryCall + datasheetsMarker)
+}
 
 fs.writeFileSync(file, source)
 console.log("EPVS contract summary patch applied.")
