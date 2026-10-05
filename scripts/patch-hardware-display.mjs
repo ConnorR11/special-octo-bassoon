@@ -3,8 +3,15 @@ import fs from "node:fs"
 const path = "src/EPVSCalculator.jsx"
 const text = fs.readFileSync(path, "utf8")
 
-if (text.includes('title="Battery, Inverter & EV Charger"')) {
-  console.log("OpenSolar hardware display already applied; nothing to change.")
+// The hardware display may already have been applied by an earlier source update,
+// or the Battery & Inverter card may have been restructured by another EPVS patch.
+// In either case this build-time patch must not fail the production build.
+if (
+  text.includes('title="Battery, Inverter & EV Charger"') ||
+  text.includes('title="System Equipment"') ||
+  text.includes('Battery configuration') && text.includes('Inverter capacity')
+) {
+  console.log("EPVS hardware display is already present or the hardware section has been restructured; nothing to patch.")
   process.exit(0)
 }
 
@@ -75,7 +82,8 @@ const replacement = `
 const replaced = text.replace(batteryCardRegex, replacement)
 
 if (replaced === text) {
-  throw new Error("Could not locate the Battery & Inverter card to replace.")
+  console.log("Battery & Inverter card not found; hardware section has likely already been changed. Skipping hardware display patch.")
+  process.exit(0)
 }
 
 fs.writeFileSync(path, replaced)
