@@ -1,5 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react"
-import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react"
+import {
+  ChevronLeft,
+  ChevronRight,
+  CalendarDays,
+} from "lucide-react"
 import { supabase } from "./lib/supabase"
 import { money } from "./utils/formatters"
 
@@ -9,7 +13,8 @@ function FitSheet({ setSelected }) {
   const [weekIssues, setWeekIssues] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState("")
-  const [productFilter, setProductFilter] = useState("all")
+  const [installationTypeFilter, setInstallationTypeFilter] =
+    useState("all")
 
   function getMonday(date) {
     const d = new Date(date)
@@ -116,12 +121,6 @@ function FitSheet({ setSelected }) {
       setLoading(true)
       setLoadError("")
 
-      /*
-       * IMPORTANT:
-       * Product filtering uses the `product` column.
-       * There is NO job_type column here.
-       */
-
       const dealSelect =
         "id,customer_name,postcode,contract_number,deal_value,balance_outstanding,product,installation_start_date,fit_team_1,installation_roof_start_date,installation_roof_team,installation_electrics_start_date,installation_electrics_team,remedial_start_date,remedial_fit_team,pipedrive_stage"
 
@@ -188,14 +187,6 @@ function FitSheet({ setSelected }) {
         Array.isArray(normalResult.data)
           ? normalResult.data
           : []
-
-      /*
-       * The Supabase OR query above finds deals
-       * after the start of the week.
-       *
-       * We still filter locally so only jobs
-       * actually falling inside this week are shown.
-       */
 
       const filteredDeals =
         rawDeals.filter((deal) => {
@@ -360,11 +351,6 @@ function FitSheet({ setSelected }) {
             team: String(
               rawTeam
             ).trim(),
-
-            /*
-             * PRODUCT COMES DIRECTLY FROM
-             * THE deals.product COLUMN.
-             */
             product: String(
               deal.product || ""
             ).trim(),
@@ -385,9 +371,10 @@ function FitSheet({ setSelected }) {
         return
       }
 
-      const date = String(
-        deal.installations_issues_start_date
-      ).slice(0, 10)
+      const date =
+        String(
+          deal.installations_issues_start_date
+        ).slice(0, 10)
 
       if (
         date < weekStart ||
@@ -420,76 +407,27 @@ function FitSheet({ setSelected }) {
 
   /*
    * ------------------------------------------------------------
-   * PRODUCT FILTER
-   *
-   * The filter is based ONLY on deals.product.
+   * INSTALLATION TYPE FILTER
    * ------------------------------------------------------------
    */
 
-  const availableProducts = useMemo(() => {
-    const products = jobs
-      .map((job) =>
-        String(
-          job.product || ""
-        ).trim()
-      )
-      .filter(Boolean)
-
-    return [
-      ...new Set(products),
-    ].sort((a, b) =>
-      a.localeCompare(
-        b,
-        undefined,
-        {
-          sensitivity: "base",
-        }
-      )
-    )
-  }, [jobs])
-
-  /*
-   * Reset the filter if the selected
-   * product is not present in the new week.
-   */
-
-  useEffect(() => {
+  const filteredJobs = useMemo(() => {
     if (
-      productFilter !== "all" &&
-      !availableProducts.includes(
-        productFilter
-      )
+      installationTypeFilter ===
+      "all"
     ) {
-      setProductFilter("all")
+      return jobs
     }
+
+    return jobs.filter(
+      (job) =>
+        job.type ===
+        installationTypeFilter
+    )
   }, [
-    availableProducts,
-    productFilter,
+    jobs,
+    installationTypeFilter,
   ])
-
-  /*
-   * Apply product filter to jobs.
-   */
-
-  const filteredJobs =
-    useMemo(() => {
-      if (
-        productFilter === "all"
-      ) {
-        return jobs
-      }
-
-      return jobs.filter(
-        (job) =>
-          String(
-            job.product || ""
-          ).trim() ===
-          productFilter
-      )
-    }, [
-      jobs,
-      productFilter,
-    ])
 
   /*
    * ------------------------------------------------------------
@@ -497,25 +435,22 @@ function FitSheet({ setSelected }) {
    * ------------------------------------------------------------
    */
 
-  const fitTeams =
-    useMemo(() => {
-      const teams =
-        filteredJobs
-          .map((job) =>
-            String(
-              job.team || ""
-            ).trim()
-          )
-          .filter(Boolean)
+  const fitTeams = useMemo(() => {
+    const teams =
+      filteredJobs
+        .map((job) =>
+          String(
+            job.team || ""
+          ).trim()
+        )
+        .filter(Boolean)
 
-      return [
-        ...new Set(teams),
-      ].sort((a, b) =>
-        a.localeCompare(b)
-      )
-    }, [
-      filteredJobs,
-    ])
+    return [
+      ...new Set(teams),
+    ].sort((a, b) =>
+      a.localeCompare(b)
+    )
+  }, [filteredJobs])
 
   /*
    * ------------------------------------------------------------
@@ -612,12 +547,10 @@ function FitSheet({ setSelected }) {
             style={{
               fontSize: "8px",
               fontWeight: 800,
-              color:
-                colours.text,
+              color: colours.text,
               textTransform:
                 "uppercase",
-              letterSpacing:
-                "0.5px",
+              letterSpacing: "0.5px",
             }}
           >
             {colours.label}
@@ -641,8 +574,7 @@ function FitSheet({ setSelected }) {
           style={{
             fontSize: "10px",
             fontWeight: 700,
-            color:
-              colours.text,
+            color: colours.text,
             lineHeight: "1.3",
           }}
         >
@@ -656,8 +588,7 @@ function FitSheet({ setSelected }) {
               marginTop: "3px",
               fontSize: "8px",
               fontWeight: 700,
-              color:
-                colours.text,
+              color: colours.text,
               opacity: 0.85,
             }}
           >
@@ -670,8 +601,7 @@ function FitSheet({ setSelected }) {
             style={{
               marginTop: "3px",
               fontSize: "9px",
-              color:
-                colours.text,
+              color: colours.text,
               opacity: 0.8,
             }}
           >
@@ -684,8 +614,7 @@ function FitSheet({ setSelected }) {
             style={{
               marginTop: "3px",
               fontSize: "9px",
-              color:
-                colours.text,
+              color: colours.text,
               opacity: 0.8,
             }}
           >
@@ -699,8 +628,7 @@ function FitSheet({ setSelected }) {
               marginTop: "4px",
               fontSize: "8px",
               fontWeight: 700,
-              color:
-                colours.text,
+              color: colours.text,
               opacity: 0.75,
             }}
           >
@@ -708,34 +636,27 @@ function FitSheet({ setSelected }) {
           </div>
         )}
 
-        {job.type ===
-          "fit" &&
-          (
-            deal.deal_value !=
-              null ||
+        {job.type === "fit" &&
+          (deal.deal_value != null ||
             deal.balance_outstanding !=
-              null
-          ) && (
+              null) && (
             <div
               style={{
                 marginTop: "5px",
                 fontSize: "9px",
                 fontWeight: 700,
-                color:
-                  colours.text,
+                color: colours.text,
               }}
             >
               {money(
-                deal.deal_value ||
-                  0
+                deal.deal_value || 0
               )}
 
               <span
                 style={{
                   color: "#777",
                   fontWeight: 600,
-                  margin:
-                    "0 3px",
+                  margin: "0 3px",
                 }}
               >
                 |
@@ -810,8 +731,7 @@ function FitSheet({ setSelected }) {
 
               <p
                 style={{
-                  margin:
-                    "4px 0 0",
+                  margin: "4px 0 0",
                   fontSize: "11px",
                   color: "#888",
                 }}
@@ -829,51 +749,53 @@ function FitSheet({ setSelected }) {
               flexWrap: "wrap",
             }}
           >
-            {/* PRODUCT FILTER */}
+            {/* INSTALLATION TYPE FILTER */}
 
             <select
               value={
-                productFilter
+                installationTypeFilter
               }
               onChange={(event) =>
-                setProductFilter(
+                setInstallationTypeFilter(
                   event.target.value
                 )
               }
               style={{
                 height: "34px",
-                padding:
-                  "0 10px",
+                padding: "0 10px",
                 border:
                   "1px solid #dddfe3",
-                borderRadius:
-                  "7px",
-                background:
-                  "#fff",
-                cursor:
-                  "pointer",
-                fontSize:
-                  "11px",
-                fontWeight:
-                  600,
-                color:
-                  "#333",
+                borderRadius: "7px",
+                background: "#fff",
+                cursor: "pointer",
+                fontSize: "11px",
+                fontWeight: 600,
+                color: "#333",
               }}
             >
               <option value="all">
-                All products
+                All installation types
               </option>
 
-              {availableProducts.map(
-                (product) => (
-                  <option
-                    key={product}
-                    value={product}
-                  >
-                    {product}
-                  </option>
-                )
-              )}
+              <option value="fit">
+                Fit
+              </option>
+
+              <option value="roofer">
+                Roofer
+              </option>
+
+              <option value="electrics">
+                Electrics
+              </option>
+
+              <option value="remedial">
+                Remedial
+              </option>
+
+              <option value="issue">
+                Issue
+              </option>
             </select>
 
             {/* LEGEND */}
@@ -905,8 +827,7 @@ function FitSheet({ setSelected }) {
                       style={{
                         width: "9px",
                         height: "9px",
-                        borderRadius:
-                          "2px",
+                        borderRadius: "2px",
                         background:
                           type.background,
                         border: `1px solid ${type.border}`,
@@ -934,15 +855,11 @@ function FitSheet({ setSelected }) {
                 height: "34px",
                 border:
                   "1px solid #dddfe3",
-                borderRadius:
-                  "7px",
-                background:
-                  "#fff",
-                cursor:
-                  "pointer",
+                borderRadius: "7px",
+                background: "#fff",
+                cursor: "pointer",
                 display: "flex",
-                alignItems:
-                  "center",
+                alignItems: "center",
                 justifyContent:
                   "center",
               }}
@@ -957,26 +874,18 @@ function FitSheet({ setSelected }) {
             <button
               type="button"
               onClick={() =>
-                setWeekOffset(
-                  0
-                )
+                setWeekOffset(0)
               }
               style={{
                 height: "34px",
-                padding:
-                  "0 12px",
+                padding: "0 12px",
                 border:
                   "1px solid #dddfe3",
-                borderRadius:
-                  "7px",
-                background:
-                  "#fff",
-                cursor:
-                  "pointer",
-                fontSize:
-                  "11px",
-                fontWeight:
-                  600,
+                borderRadius: "7px",
+                background: "#fff",
+                cursor: "pointer",
+                fontSize: "11px",
+                fontWeight: 600,
               }}
             >
               This week
@@ -997,15 +906,11 @@ function FitSheet({ setSelected }) {
                 height: "34px",
                 border:
                   "1px solid #dddfe3",
-                borderRadius:
-                  "7px",
-                background:
-                  "#fff",
-                cursor:
-                  "pointer",
+                borderRadius: "7px",
+                background: "#fff",
+                cursor: "pointer",
                 display: "flex",
-                alignItems:
-                  "center",
+                alignItems: "center",
                 justifyContent:
                   "center",
               }}
@@ -1031,8 +936,7 @@ function FitSheet({ setSelected }) {
       >
         <div
           style={{
-            minWidth:
-              "1250px",
+            minWidth: "1250px",
           }}
         >
           {/* STICKY HEADER */}
@@ -1054,10 +958,8 @@ function FitSheet({ setSelected }) {
           >
             <div
               style={{
-                padding:
-                  "10px 12px",
-                background:
-                  "#f2f3f5",
+                padding: "10px 12px",
+                background: "#f2f3f5",
                 borderRight:
                   "1px solid #d9dadd",
                 fontSize: "10px",
@@ -1076,9 +978,7 @@ function FitSheet({ setSelected }) {
             {weekDays.map(
               (date) => {
                 const dateString =
-                  formatDate(
-                    date
-                  )
+                  formatDate(date)
 
                 const isToday =
                   dateString ===
@@ -1086,9 +986,7 @@ function FitSheet({ setSelected }) {
 
                 return (
                   <div
-                    key={
-                      dateString
-                    }
+                    key={dateString}
                     style={{
                       padding:
                         "8px 10px",
@@ -1104,10 +1002,8 @@ function FitSheet({ setSelected }) {
                   >
                     <div
                       style={{
-                        fontSize:
-                          "10px",
-                        fontWeight:
-                          700,
+                        fontSize: "10px",
+                        fontWeight: 700,
                         color:
                           isToday
                             ? "#172554"
@@ -1127,12 +1023,9 @@ function FitSheet({ setSelected }) {
 
                     <div
                       style={{
-                        marginTop:
-                          "3px",
-                        fontSize:
-                          "12px",
-                        fontWeight:
-                          600,
+                        marginTop: "3px",
+                        fontSize: "12px",
+                        fontWeight: 600,
                         color:
                           isToday
                             ? "#172554"
@@ -1157,35 +1050,26 @@ function FitSheet({ setSelected }) {
           {loadError && (
             <div
               style={{
-                padding:
-                  "8px 12px",
-                background:
-                  "#fff4f4",
-                color:
-                  "#b42318",
-                fontSize:
-                  "10px",
+                padding: "8px 12px",
+                background: "#fff4f4",
+                color: "#b42318",
+                fontSize: "10px",
                 borderBottom:
                   "1px solid #f0b8b8",
               }}
             >
-              Unable to load Fit
-              Sheet data:{" "}
-              {loadError}
+              Unable to load Fit Sheet
+              data: {loadError}
             </div>
           )}
 
           {loading ? (
             <div
               style={{
-                padding:
-                  "60px 20px",
-                textAlign:
-                  "center",
-                color:
-                  "#999",
-                fontSize:
-                  "12px",
+                padding: "60px 20px",
+                textAlign: "center",
+                color: "#999",
+                fontSize: "12px",
               }}
             >
               Loading this week's
@@ -1195,19 +1079,15 @@ function FitSheet({ setSelected }) {
             0 ? (
             <div
               style={{
-                padding:
-                  "60px 20px",
-                textAlign:
-                  "center",
-                color:
-                  "#999",
-                fontSize:
-                  "12px",
+                padding: "60px 20px",
+                textAlign: "center",
+                color: "#999",
+                fontSize: "12px",
               }}
             >
               No jobs found for
-              the selected
-              week/filter.
+              the selected week/
+              filter.
             </div>
           ) : (
             fitTeams.map(
@@ -1215,12 +1095,10 @@ function FitSheet({ setSelected }) {
                 <div
                   key={team}
                   style={{
-                    display:
-                      "grid",
+                    display: "grid",
                     gridTemplateColumns:
                       "190px repeat(7, minmax(150px, 1fr))",
-                    minHeight:
-                      "160px",
+                    minHeight: "160px",
                     borderBottom:
                       "1px solid #d9dadd",
                   }}
@@ -1235,18 +1113,13 @@ function FitSheet({ setSelected }) {
                         "#f7f7f8",
                       borderRight:
                         "1px solid #d9dadd",
-                      fontSize:
-                        "11px",
-                      fontWeight:
-                        600,
-                      color:
-                        "#333",
-                      display:
-                        "flex",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      color: "#333",
+                      display: "flex",
                       alignItems:
                         "flex-start",
-                      position:
-                        "sticky",
+                      position: "sticky",
                       left: 0,
                       zIndex: 5,
                     }}
@@ -1270,8 +1143,7 @@ function FitSheet({ setSelected }) {
                             date
                           )}`}
                           style={{
-                            padding:
-                              "6px",
+                            padding: "6px",
                             borderRight:
                               "1px solid #d9dadd",
                             background:
