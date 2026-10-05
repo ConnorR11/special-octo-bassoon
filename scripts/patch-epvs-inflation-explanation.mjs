@@ -26,7 +26,8 @@ const block = String.raw`
 
     // EPVS inflation explanation: immediately below the completed SAP table.
     const inflationCardY = rowY + rowHeight + 4
-    const inflationCardH = 39
+    // Keep the disclaimer compact while leaving enough room for the wrapped text.
+    const inflationCardH = 34
     pdf.setFillColor(241, 245, 248)
     pdf.setDrawColor(220, 228, 234)
     pdf.setLineWidth(0.35)
