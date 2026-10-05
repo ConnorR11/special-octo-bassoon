@@ -581,7 +581,57 @@ export default function EPVSCalculator({
   const [savingCalculation, setSavingCalculation] = useState(false)
   const [saveMessage, setSaveMessage] = useState("")
   const [saveError, setSaveError] = useState("")
+  const [financeProducts, setFinanceProducts] = useState([])
+  const [financeProductsLoading, setFinanceProductsLoading] = useState(false)
 
+  useEffect(() => {
+  let mounted = true
+
+  async function loadFinanceProducts() {
+    if (!supabase) return
+
+    setFinanceProductsLoading(true)
+
+    try {
+      const { data, error } = await supabase
+        .from("finance_products")
+        .select(
+          "id,internal_reference,sort_order,product,term,factor,apr,deferral_period,lender,portal,method"
+        )
+        .order("sort_order", {
+          ascending: true,
+        })
+
+      if (error) throw error
+
+      if (mounted) {
+        setFinanceProducts(
+          Array.isArray(data) ? data : []
+        )
+      }
+    } catch (error) {
+      console.error(
+        "Error loading finance products:",
+        error
+      )
+
+      if (mounted) {
+        setFinanceProducts([])
+      }
+    } finally {
+      if (mounted) {
+        setFinanceProductsLoading(false)
+      }
+    }
+  }
+
+  loadFinanceProducts()
+
+  return () => {
+    mounted = false
+  }
+}, [])
+  
   const appointmentInitial = useMemo(() => {
     const saved = appointment?.epvs_calculation?.data || {}
     const savedArrays = Array.isArray(saved.arrays) ? saved.arrays : initial.arrays
