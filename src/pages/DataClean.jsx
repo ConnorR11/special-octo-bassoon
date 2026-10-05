@@ -9,10 +9,6 @@ function formatDate(value) {
   return date.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
 }
 
-function hasResult(value) {
-  return String(value ?? "").trim() !== ""
-}
-
 function searchValue(value) {
   return String(value ?? "").trim()
 }
@@ -34,6 +30,9 @@ export default function DataClean({ onOpenAppointment }) {
     setError("")
 
     try {
+      // Only ask Supabase for appointments that actually have no result.
+      // This is much faster than downloading the entire appointments table
+      // and filtering it in the browser.
       const pageSize = 1000
       let from = 0
       let allRows = []
@@ -42,6 +41,7 @@ export default function DataClean({ onOpenAppointment }) {
         const { data, error: queryError } = await supabase
           .from("appointments")
           .select("appointment_row_id,name,phone_number_1,email_address,postcode,address,appointment_date,product,job_type,branch,rep_allocated,result")
+          .or('result.is.null,result.eq.""')
           .order("appointment_date", { ascending: false, nullsFirst: false })
           .range(from, from + pageSize - 1)
 
@@ -54,7 +54,7 @@ export default function DataClean({ onOpenAppointment }) {
         from += pageSize
       }
 
-      setRows(allRows.filter((row) => !hasResult(row.result)))
+      setRows(allRows)
     } catch (err) {
       console.error("Data Clean load error:", err)
       setError(err?.message || "Unable to load appointments.")
