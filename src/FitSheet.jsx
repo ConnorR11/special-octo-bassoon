@@ -7,7 +7,6 @@ function FitSheet({ setSelected }) {
   const [weekOffset, setWeekOffset] = useState(0)
   const [weekDeals, setWeekDeals] = useState([])
   const [weekIssues, setWeekIssues] = useState([])
-  const [weekWorks, setWeekWorks] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState("")
 
@@ -15,10 +14,8 @@ function FitSheet({ setSelected }) {
     const d = new Date(date)
     const day = d.getDay()
     const difference = day === 0 ? -6 : 1 - day
-
     d.setDate(d.getDate() + difference)
     d.setHours(0, 0, 0, 0)
-
     return d
   }
 
@@ -73,7 +70,6 @@ function FitSheet({ setSelected }) {
       if (!supabase) {
         setWeekDeals([])
         setWeekIssues([])
-        setWeekWorks([])
         setLoading(false)
         return
       }
@@ -81,96 +77,96 @@ function FitSheet({ setSelected }) {
       setLoading(true)
       setLoadError("")
 
-      const dealSelect = `
-        id,
-        customer_name,
-        postcode,
-        contract_number,
-        deal_value,
-        balance_outstanding,
-        installation_start_date,
-        fit_team_1,
-        pipedrive_stage,
-        installation_roof_start_date,
-        installation_roof_team,
-        installation_electrics_start_date,
-        installation_electrics_team,
-        remedial_start_date,
-        remedial_fit_team
-      `
-
-      const issueSelect = `
-        id,
-        customer_name,
-        postcode,
-        contract_number,
-        deal_value,
-        balance_outstanding,
-        installations_issues_start_date,
-        installation_issues_fit_team,
-        pipedrive_stage
-      `
-
       /*
-       * Get normal fits for the selected week.
-       */
-      const normalPromise = supabase
-        .from("deals")
-        .select(dealSelect)
-        .gte("installation_start_date", weekStart)
-        .lte("installation_start_date", weekEnd)
-        .order("installation_start_date", { ascending: true })
-
-      /*
-       * Get installation issues for the selected week.
-       */
-      const issuePromise = supabase
-        .from("deals")
-        .select(issueSelect)
-        .gte("installations_issues_start_date", weekStart)
-        .lte("installations_issues_start_date", weekEnd)
-        .order("installations_issues_start_date", { ascending: true })
-
-      /*
-       * Get all deals which have ANY roofing/electrics/remedial date.
+       * We load all of the installation / fit information here.
        *
-       * We deliberately don't filter this query by date in Supabase.
-       * This keeps the query reliable with multiple date columns and
-       * allows the individual sections below to determine which jobs
-       * belong to the selected week.
+       * Normal fit:
+       * installation_start_date
+       * fit_team_1
+       *
+       * Roofer:
+       * installation_roof_start_date
+       * installation_roof_team
+       *
+       * Electrics:
+       * installation_electrics_start_date
+       * installation_electrics_team
+       *
+       * Remedial:
+       * remedial_start_date
+       * remedial_fit_team
+       *
+       * Issues:
+       * installations_issues_start_date
+       * installation_issues_fit_team
        */
-      const worksPromise = supabase
-        .from("deals")
-        .select(dealSelect)
-        .or(
-          [
-            `installation_roof_start_date.gte.${weekStart}`,
-            `installation_roof_start_date.lte.${weekEnd}`,
-            `installation_electrics_start_date.gte.${weekStart}`,
-            `installation_electrics_start_date.lte.${weekEnd}`,
-            `remedial_start_date.gte.${weekStart}`,
-            `remedial_start_date.lte.${weekEnd}`,
-          ].join(",")
-        )
+      const dealSelect = [
+        "id",
+        "customer_name",
+        "postcode",
+        "contract_number",
+        "deal_value",
+        "balance_outstanding",
+        "installation_start_date",
+        "fit_team_1",
+        "installation_roof_start_date",
+        "installation_roof_team",
+        "installation_electrics_start_date",
+        "installation_electrics_team",
+        "remedial_start_date",
+        "remedial_fit_team",
+        "pipedrive_stage",
+      ].join(",")
 
-      const [normalResult, issueResult, worksResult] = await Promise.all([
-        normalPromise,
-        issuePromise,
-        worksPromise,
+      const issueSelect = [
+        "id",
+        "customer_name",
+        "postcode",
+        "contract_number",
+        "deal_value",
+        "balance_outstanding",
+        "installations_issues_start_date",
+        "installation_issues_fit_team",
+        "pipedrive_stage",
+      ].join(",")
+
+      /*
+       * We deliberately fetch the full week by checking every relevant
+       * date field separately. This means a job can appear in the row
+       * for its fit team, roofer, electrician or remedial team.
+       */
+      const [
+        normalResult,
+        issueResult,
+      ] = await Promise.all([
+        supabase
+          .from("deals")
+          .select(dealSelect)
+          .or(
+            `and(installation_start_date.gte.${weekStart},installation_start_date.lte.${weekEnd}),` +
+            `and(installation_roof_start_date.gte.${weekStart},installation_roof_start_date.lte.${weekEnd}),` +
+            `and(installation_electrics_start_date.gte.${weekStart},installation_electrics_start_date.lte.${weekEnd}),` +
+            `and(remedial_start_date.gte.${weekStart},remedial_start_date.lte.${weekEnd})`
+          ),
+
+        supabase
+          .from("deals")
+          .select(issueSelect)
+          .gte("installations_issues_start_date", weekStart)
+          .lte("installations_issues_start_date", weekEnd),
       ])
 
       if (!mounted) return
 
-      if (normalResult.error || issueResult.error || worksResult.error) {
+      if (normalResult.error || issueResult.error) {
         const message =
           normalResult.error?.message ||
           issueResult.error?.message ||
-          worksResult.error?.message ||
           "Unable to load Fit Sheet data."
 
         console.error(
           "Error loading Fit Sheet week:",
-          normalResult.error || issueResult.error || worksResult.error
+          normalResult.error || issueResult.error
         )
 
         setLoadError(message)
@@ -182,10 +178,6 @@ function FitSheet({ setSelected }) {
 
       setWeekIssues(
         Array.isArray(issueResult.data) ? issueResult.data : []
-      )
-
-      setWeekWorks(
-        Array.isArray(worksResult.data) ? worksResult.data : []
       )
 
       setLoading(false)
@@ -202,7 +194,6 @@ function FitSheet({ setSelected }) {
 
       setWeekDeals([])
       setWeekIssues([])
-      setWeekWorks([])
       setLoading(false)
     })
 
@@ -211,184 +202,185 @@ function FitSheet({ setSelected }) {
     }
   }, [weekStart, weekEnd])
 
-  const safeWeekDeals = Array.isArray(weekDeals) ? weekDeals : []
-  const safeWeekIssues = Array.isArray(weekIssues) ? weekIssues : []
-  const safeWeekWorks = Array.isArray(weekWorks) ? weekWorks : []
+  const safeWeekDeals = Array.isArray(weekDeals)
+    ? weekDeals
+    : []
+
+  const safeWeekIssues = Array.isArray(weekIssues)
+    ? weekIssues
+    : []
 
   /*
-   * Existing Fit Teams
+   * Build a list of all teams that have something happening during
+   * this week.
+   *
+   * A single job may therefore contribute several teams:
+   *
+   * Fit Team
+   * Roofer
+   * Electrician
+   * Remedial
+   * Issue Fit Team
    */
   const fitTeams = useMemo(() => {
-    const normalTeams = safeWeekDeals
-      .map((deal) => deal?.fit_team_1)
-      .filter(Boolean)
-      .map((team) => String(team).trim())
-      .filter(Boolean)
+    const teams = new Set()
 
-    const issueTeams = safeWeekIssues
-      .map((deal) => deal?.installation_issues_fit_team)
-      .filter(Boolean)
-      .map((team) => String(team).trim())
-      .filter(Boolean)
+    safeWeekDeals.forEach((deal) => {
+      const values = [
+        deal?.fit_team_1,
+        deal?.installation_roof_team,
+        deal?.installation_electrics_team,
+        deal?.remedial_fit_team,
+      ]
 
-    return [
-      ...new Set([
-        ...normalTeams,
-        ...issueTeams,
-      ]),
-    ].sort((a, b) => a.localeCompare(b))
+      values.forEach((team) => {
+        const value = String(team || "").trim()
+
+        if (value) teams.add(value)
+      })
+    })
+
+    safeWeekIssues.forEach((deal) => {
+      const team = String(
+        deal?.installation_issues_fit_team || ""
+      ).trim()
+
+      if (team) teams.add(team)
+    })
+
+    return [...teams].sort((a, b) =>
+      a.localeCompare(b)
+    )
   }, [safeWeekDeals, safeWeekIssues])
 
-  /*
-   * Roofing teams
-   */
-  const rooferTeams = useMemo(() => {
-    return [
-      ...new Set(
-        safeWeekWorks
-          .filter((deal) => {
-            const date = String(
-              deal?.installation_roof_start_date || ""
-            ).slice(0, 10)
-
-            return date >= weekStart && date <= weekEnd
-          })
-          .map((deal) => deal?.installation_roof_team)
-          .filter(Boolean)
-          .map((team) => String(team).trim())
-          .filter(Boolean)
-      ),
-    ].sort((a, b) => a.localeCompare(b))
-  }, [safeWeekWorks, weekStart, weekEnd])
-
-  /*
-   * Electrical teams
-   */
-  const electricTeams = useMemo(() => {
-    return [
-      ...new Set(
-        safeWeekWorks
-          .filter((deal) => {
-            const date = String(
-              deal?.installation_electrics_start_date || ""
-            ).slice(0, 10)
-
-            return date >= weekStart && date <= weekEnd
-          })
-          .map((deal) => deal?.installation_electrics_team)
-          .filter(Boolean)
-          .map((team) => String(team).trim())
-          .filter(Boolean)
-      ),
-    ].sort((a, b) => a.localeCompare(b))
-  }, [safeWeekWorks, weekStart, weekEnd])
-
-  /*
-   * Remedial teams
-   */
-  const remedialTeams = useMemo(() => {
-    return [
-      ...new Set(
-        safeWeekWorks
-          .filter((deal) => {
-            const date = String(
-              deal?.remedial_start_date || ""
-            ).slice(0, 10)
-
-            return date >= weekStart && date <= weekEnd
-          })
-          .map((deal) => deal?.remedial_fit_team)
-          .filter(Boolean)
-          .map((team) => String(team).trim())
-          .filter(Boolean)
-      ),
-    ].sort((a, b) => a.localeCompare(b))
-  }, [safeWeekWorks, weekStart, weekEnd])
-
-  const safeFitTeams = Array.isArray(fitTeams) ? fitTeams : []
-  const safeRooferTeams = Array.isArray(rooferTeams) ? rooferTeams : []
-  const safeElectricTeams = Array.isArray(electricTeams)
-    ? electricTeams
-    : []
-  const safeRemedialTeams = Array.isArray(remedialTeams)
-    ? remedialTeams
+  const safeFitTeams = Array.isArray(fitTeams)
+    ? fitTeams
     : []
 
-  const freshFitsCount = safeWeekDeals.length
+  const freshFitsCount = safeWeekDeals.filter(
+    (deal) => deal?.installation_start_date
+  ).length
 
-  const freshFitsValue = safeWeekDeals.reduce(
-    (total, deal) => total + (Number(deal?.deal_value) || 0),
-    0
-  )
+  const freshFitsValue = safeWeekDeals
+    .filter((deal) => deal?.installation_start_date)
+    .reduce(
+      (total, deal) =>
+        total + (Number(deal?.deal_value) || 0),
+      0
+    )
 
-  const freshFitsBalance = safeWeekDeals.reduce(
-    (total, deal) =>
-      total + (Number(deal?.balance_outstanding) || 0),
-    0
-  )
+  const freshFitsBalance = safeWeekDeals
+    .filter((deal) => deal?.installation_start_date)
+    .reduce(
+      (total, deal) =>
+        total + (Number(deal?.balance_outstanding) || 0),
+      0
+    )
 
   const issueFitsCount = safeWeekIssues.length
 
-  function getDeals(team, date) {
+  /*
+   * Returns every job that belongs in a particular team's row
+   * and particular day's column.
+   *
+   * IMPORTANT:
+   * A job can appear more than once in the week if it has different
+   * installation stages on different dates.
+   */
+  function getJobs(team, date) {
     const dateString = formatDate(date)
+    const jobs = []
 
-    return safeWeekDeals.filter(
-      (deal) =>
+    safeWeekDeals.forEach((deal) => {
+      /*
+       * Standard fit
+       */
+      if (
         String(deal?.installation_start_date || "").slice(0, 10) ===
           dateString &&
         String(deal?.fit_team_1 || "").trim() === team
-    )
-  }
+      ) {
+        jobs.push({
+          deal,
+          type: "fit",
+          date: deal.installation_start_date,
+        })
+      }
 
-  function getIssues(team, date) {
-    const dateString = formatDate(date)
-
-    return safeWeekIssues.filter(
-      (deal) =>
-        String(
-          deal?.installations_issues_start_date || ""
-        ).slice(0, 10) === dateString &&
-        String(
-          deal?.installation_issues_fit_team || ""
-        ).trim() === team
-    )
-  }
-
-  function getRoofing(team, date) {
-    const dateString = formatDate(date)
-
-    return safeWeekWorks.filter(
-      (deal) =>
+      /*
+       * Roofer
+       */
+      if (
         String(
           deal?.installation_roof_start_date || ""
         ).slice(0, 10) === dateString &&
         String(deal?.installation_roof_team || "").trim() === team
-    )
-  }
+      ) {
+        jobs.push({
+          deal,
+          type: "roofer",
+          date: deal.installation_roof_start_date,
+        })
+      }
 
-  function getElectrics(team, date) {
-    const dateString = formatDate(date)
-
-    return safeWeekWorks.filter(
-      (deal) =>
+      /*
+       * Electrics
+       */
+      if (
         String(
           deal?.installation_electrics_start_date || ""
         ).slice(0, 10) === dateString &&
         String(
           deal?.installation_electrics_team || ""
         ).trim() === team
-    )
-  }
+      ) {
+        jobs.push({
+          deal,
+          type: "electrics",
+          date: deal.installation_electrics_start_date,
+        })
+      }
 
-  function getRemedial(team, date) {
-    const dateString = formatDate(date)
+      /*
+       * Remedial
+       */
+      if (
+        String(
+          deal?.remedial_start_date || ""
+        ).slice(0, 10) === dateString &&
+        String(
+          deal?.remedial_fit_team || ""
+        ).trim() === team
+      ) {
+        jobs.push({
+          deal,
+          type: "remedial",
+          date: deal.remedial_start_date,
+        })
+      }
+    })
 
-    return safeWeekWorks.filter(
-      (deal) =>
-        String(deal?.remedial_start_date || "").slice(0, 10) ===
-          dateString &&
-        String(deal?.remedial_fit_team || "").trim() === team
-    )
+    /*
+     * Installation issues
+     */
+    safeWeekIssues.forEach((deal) => {
+      if (
+        String(
+          deal?.installations_issues_start_date || ""
+        ).slice(0, 10) === dateString &&
+        String(
+          deal?.installation_issues_fit_team || ""
+        ).trim() === team
+      ) {
+        jobs.push({
+          deal,
+          type: "issue",
+          date: deal.installations_issues_start_date,
+        })
+      }
+    })
+
+    return jobs
   }
 
   const todayString = formatDate(new Date())
@@ -402,48 +394,53 @@ function FitSheet({ setSelected }) {
   function cardHoverIn(event) {
     event.currentTarget.style.boxShadow =
       "0 2px 7px rgba(0,0,0,0.10)"
-    event.currentTarget.style.transform = "translateY(-1px)"
+
+    event.currentTarget.style.transform =
+      "translateY(-1px)"
   }
 
   function cardHoverOut(event) {
     event.currentTarget.style.boxShadow = "none"
-    event.currentTarget.style.transform = "translateY(0)"
+    event.currentTarget.style.transform =
+      "translateY(0)"
   }
 
-  function renderDealCard(deal, type = "fit") {
-    const isRoof = type === "roof"
-    const isElectric = type === "electric"
-    const isRemedial = type === "remedial"
+  /*
+   * Display name for the type of work.
+   */
+  function getJobTypeLabel(type) {
+    switch (type) {
+      case "fit":
+        return "Fit"
 
-    let background = "#e8f4e2"
-    let border = "#cbd8c5"
-    let customerColor = "#263522"
-    let secondaryColor = "#596455"
+      case "roofer":
+        return "Roofer"
 
-    if (isRoof) {
-      background = "#fff4df"
-      border = "#e6c88a"
-      customerColor = "#704b00"
-      secondaryColor = "#80652c"
+      case "electrics":
+        return "Electrics"
+
+      case "remedial":
+        return "Remedial"
+
+      case "issue":
+        return "Issue"
+
+      default:
+        return "Job"
     }
+  }
 
-    if (isElectric) {
-      background = "#e9f2ff"
-      border = "#b9d0ed"
-      customerColor = "#1e416b"
-      secondaryColor = "#466789"
-    }
-
-    if (isRemedial) {
-      background = "#f3eaff"
-      border = "#d5b9ec"
-      customerColor = "#5a3275"
-      secondaryColor = "#76558d"
-    }
+  /*
+   * Fresh / normal job card.
+   *
+   * All of these remain GREEN, as requested.
+   */
+  function renderJobCard(job) {
+    const deal = job.deal
 
     return (
       <button
-        key={`${type}-${deal.id}`}
+        key={`${job.type}-${deal.id}-${job.date}`}
         type="button"
         onClick={() => openDeal(deal)}
         onMouseEnter={cardHoverIn}
@@ -451,9 +448,9 @@ function FitSheet({ setSelected }) {
         style={{
           width: "100%",
           textAlign: "left",
-          border: `1px solid ${border}`,
+          border: "1px solid #cbd8c5",
           borderRadius: "5px",
-          background,
+          background: "#e8f4e2",
           padding: "8px",
           marginBottom: "5px",
           cursor: "pointer",
@@ -462,56 +459,24 @@ function FitSheet({ setSelected }) {
             "box-shadow 0.15s ease, transform 0.15s ease",
         }}
       >
-        {isRoof && (
-          <div
-            style={{
-              fontSize: "8px",
-              fontWeight: 800,
-              color: "#8a5a00",
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
-              marginBottom: "3px",
-            }}
-          >
-            Roofer
-          </div>
-        )}
-
-        {isElectric && (
-          <div
-            style={{
-              fontSize: "8px",
-              fontWeight: 800,
-              color: "#24568c",
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
-              marginBottom: "3px",
-            }}
-          >
-            Electrics
-          </div>
-        )}
-
-        {isRemedial && (
-          <div
-            style={{
-              fontSize: "8px",
-              fontWeight: 800,
-              color: "#6b3c8a",
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
-              marginBottom: "3px",
-            }}
-          >
-            Remedial
-          </div>
-        )}
+        <div
+          style={{
+            fontSize: "8px",
+            fontWeight: 800,
+            color: "#40523a",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+            marginBottom: "3px",
+          }}
+        >
+          {getJobTypeLabel(job.type)}
+        </div>
 
         <div
           style={{
             fontSize: "10px",
             fontWeight: 700,
-            color: customerColor,
+            color: "#263522",
             lineHeight: "1.3",
           }}
         >
@@ -524,7 +489,7 @@ function FitSheet({ setSelected }) {
               marginTop: "3px",
               fontSize: "8px",
               fontWeight: 700,
-              color: secondaryColor,
+              color: "#40523a",
             }}
           >
             {deal.pipedrive_stage}
@@ -536,7 +501,7 @@ function FitSheet({ setSelected }) {
             style={{
               marginTop: "3px",
               fontSize: "9px",
-              color: secondaryColor,
+              color: "#596455",
             }}
           >
             {deal.postcode}
@@ -548,56 +513,57 @@ function FitSheet({ setSelected }) {
             style={{
               marginTop: "3px",
               fontSize: "9px",
-              color: secondaryColor,
+              color: "#596455",
             }}
           >
             {deal.contract_number}
           </div>
         )}
 
-        {!isRoof && !isElectric && !isRemedial && (
-          <>
-            {(deal.deal_value != null ||
-              deal.balance_outstanding != null) && (
-              <div
-                style={{
-                  marginTop: "5px",
-                  fontSize: "9px",
-                  fontWeight: 700,
-                  color: "#263522",
-                }}
-              >
-                {money(deal.deal_value || 0)}
+        {(deal.deal_value != null ||
+          deal.balance_outstanding != null) && (
+          <div
+            style={{
+              marginTop: "5px",
+              fontSize: "9px",
+              fontWeight: 700,
+              color: "#263522",
+            }}
+          >
+            {money(deal.deal_value || 0)}
 
-                <span
-                  style={{
-                    color: "#777",
-                    fontWeight: 600,
-                  }}
-                >
-                  {" "}
-                  |{" "}
-                </span>
+            <span
+              style={{
+                color: "#777",
+                fontWeight: 600,
+              }}
+            >
+              {" "}
+              |{" "}
+            </span>
 
-                <span
-                  style={{
-                    color: "#8a4a4a",
-                  }}
-                >
-                  {money(deal.balance_outstanding || 0)}
-                </span>
-              </div>
-            )}
-          </>
+            <span
+              style={{
+                color: "#8a4a4a",
+              }}
+            >
+              {money(deal.balance_outstanding || 0)}
+            </span>
+          </div>
         )}
       </button>
     )
   }
 
-  function renderIssueCard(deal) {
+  /*
+   * Issue cards remain RED.
+   */
+  function renderIssueCard(job) {
+    const deal = job.deal
+
     return (
       <button
-        key={`issue-${deal.id}`}
+        key={`issue-${deal.id}-${job.date}`}
         type="button"
         onClick={() => openDeal(deal)}
         onMouseEnter={cardHoverIn}
@@ -720,194 +686,6 @@ function FitSheet({ setSelected }) {
     </div>
   )
 
-  function renderCalendarHeader() {
-    return (
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "190px repeat(7, minmax(150px, 1fr))",
-          borderBottom: "2px solid #172554",
-          position: "sticky",
-          top: 0,
-          zIndex: 10,
-          background: "#fff",
-        }}
-      >
-        <div
-          style={{
-            padding: "10px 12px",
-            background: "#f2f3f5",
-            borderRight: "1px solid #d9dadd",
-            fontSize: "10px",
-            fontWeight: 700,
-            color: "#555",
-            textTransform: "uppercase",
-          }}
-        >
-          Team
-        </div>
-
-        {weekDays.map((date) => {
-          const dateString = formatDate(date)
-          const isToday = dateString === todayString
-
-          return (
-            <div
-              key={dateString}
-              style={{
-                padding: "8px 10px",
-                textAlign: "center",
-                background: isToday
-                  ? "#eef2ff"
-                  : "#f2f3f5",
-                borderRight: "1px solid #d9dadd",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  color: isToday ? "#172554" : "#555",
-                  textTransform: "uppercase",
-                }}
-              >
-                {date.toLocaleDateString("en-GB", {
-                  weekday: "short",
-                })}
-              </div>
-
-              <div
-                style={{
-                  marginTop: "3px",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  color: isToday ? "#172554" : "#333",
-                }}
-              >
-                {date.getDate()}{" "}
-                {date.toLocaleDateString("en-GB", {
-                  month: "short",
-                })}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    )
-  }
-
-  function renderSectionTitle(
-    title,
-    subtitle,
-    background = "#f7f7f8"
-  ) {
-    return (
-      <div
-        style={{
-          padding: "12px 14px",
-          background,
-          borderTop: "1px solid #d9dadd",
-          borderBottom: "1px solid #d9dadd",
-        }}
-      >
-        <div
-          style={{
-            fontSize: "12px",
-            fontWeight: 800,
-            color: "#263238",
-          }}
-        >
-          {title}
-        </div>
-
-        {subtitle && (
-          <div
-            style={{
-              marginTop: "3px",
-              fontSize: "9px",
-              color: "#777",
-            }}
-          >
-            {subtitle}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  function renderTeamRows(
-    teams,
-    getItems,
-    cardType = "fit"
-  ) {
-    if (!teams.length) {
-      return (
-        <div
-          style={{
-            padding: "20px",
-            textAlign: "center",
-            color: "#999",
-            fontSize: "10px",
-            borderBottom: "1px solid #d9dadd",
-          }}
-        >
-          No work scheduled this week.
-        </div>
-      )
-    }
-
-    return teams.map((team) => (
-      <div
-        key={`${cardType}-${team}`}
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "190px repeat(7, minmax(150px, 1fr))",
-          minHeight: "160px",
-          borderBottom: "1px solid #d9dadd",
-        }}
-      >
-        <div
-          style={{
-            padding: "14px 12px",
-            background: "#f7f7f8",
-            borderRight: "1px solid #d9dadd",
-            fontSize: "11px",
-            fontWeight: 600,
-            color: "#333",
-            display: "flex",
-            alignItems: "center",
-          }}
-        >
-          {team}
-        </div>
-
-        {weekDays.map((date) => {
-          const items = getItems(team, date)
-
-          return (
-            <div
-              key={`${cardType}-${team}-${formatDate(date)}`}
-              style={{
-                padding: "6px",
-                borderRight: "1px solid #d9dadd",
-                background: "#fff",
-                minHeight: "160px",
-              }}
-            >
-              {items.map((deal) =>
-                cardType === "issue"
-                  ? renderIssueCard(deal)
-                  : renderDealCard(deal, cardType)
-              )}
-            </div>
-          )
-        })}
-      </div>
-    ))
-  }
-
   return (
     <section>
       <div
@@ -918,7 +696,10 @@ function FitSheet({ setSelected }) {
           marginBottom: "18px",
         }}
       >
-        {statCard("Fresh fits", freshFitsCount)}
+        {statCard(
+          "Fresh fits",
+          freshFitsCount
+        )}
 
         {statCard(
           "Fresh fit value",
@@ -998,7 +779,9 @@ function FitSheet({ setSelected }) {
             <button
               type="button"
               onClick={() =>
-                setWeekOffset((value) => value - 1)
+                setWeekOffset(
+                  (value) => value - 1
+                )
               }
               style={{
                 width: "34px",
@@ -1035,7 +818,9 @@ function FitSheet({ setSelected }) {
             <button
               type="button"
               onClick={() =>
-                setWeekOffset((value) => value + 1)
+                setWeekOffset(
+                  (value) => value + 1
+                )
               }
               style={{
                 width: "34px",
@@ -1062,8 +847,101 @@ function FitSheet({ setSelected }) {
           overflow: "auto",
         }}
       >
-        <div style={{ minWidth: "1250px" }}>
-          {renderCalendarHeader()}
+        <div
+          style={{
+            minWidth: "1250px",
+          }}
+        >
+          {/* HEADER */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "190px repeat(7, minmax(150px, 1fr))",
+              borderBottom:
+                "2px solid #172554",
+              position: "sticky",
+              top: 0,
+              zIndex: 10,
+              background: "#fff",
+            }}
+          >
+            <div
+              style={{
+                padding: "10px 12px",
+                background: "#f2f3f5",
+                borderRight:
+                  "1px solid #d9dadd",
+                fontSize: "10px",
+                fontWeight: 700,
+                color: "#555",
+                textTransform: "uppercase",
+              }}
+            >
+              Fit Team
+            </div>
+
+            {weekDays.map((date) => {
+              const dateString =
+                formatDate(date)
+
+              const isToday =
+                dateString === todayString
+
+              return (
+                <div
+                  key={dateString}
+                  style={{
+                    padding: "8px 10px",
+                    textAlign: "center",
+                    background: isToday
+                      ? "#eef2ff"
+                      : "#f2f3f5",
+                    borderRight:
+                      "1px solid #d9dadd",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "10px",
+                      fontWeight: 700,
+                      color: isToday
+                        ? "#172554"
+                        : "#555",
+                      textTransform:
+                        "uppercase",
+                    }}
+                  >
+                    {date.toLocaleDateString(
+                      "en-GB",
+                      {
+                        weekday: "short",
+                      }
+                    )}
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: "3px",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      color: isToday
+                        ? "#172554"
+                        : "#333",
+                    }}
+                  >
+                    {date.getDate()}{" "}
+                    {date.toLocaleDateString(
+                      "en-GB",
+                      {
+                        month: "short",
+                      }
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
 
           {loadError && (
             <div
@@ -1072,10 +950,12 @@ function FitSheet({ setSelected }) {
                 background: "#fff4f4",
                 color: "#b42318",
                 fontSize: "10px",
-                borderBottom: "1px solid #f0b8b8",
+                borderBottom:
+                  "1px solid #f0b8b8",
               }}
             >
-              Unable to load Fit Sheet data: {loadError}
+              Unable to load Fit Sheet data:{" "}
+              {loadError}
             </div>
           )}
 
@@ -1090,87 +970,85 @@ function FitSheet({ setSelected }) {
             >
               Loading this week's fits...
             </div>
+          ) : safeFitTeams.length === 0 ? (
+            <div
+              style={{
+                padding: "60px 20px",
+                textAlign: "center",
+                color: "#999",
+                fontSize: "12px",
+              }}
+            >
+              No fits or issues found for this week.
+            </div>
           ) : (
-            <>
-              {/* FRESH FITS */}
-              {renderSectionTitle(
-                "Fresh Fits",
-                "Installation start dates and fit teams"
-              )}
+            safeFitTeams.map((team) => (
+              /*
+               * ONE AND ONLY ONE ROW PER TEAM.
+               *
+               * Every job belonging to that team is rendered
+               * inside the appropriate day cell.
+               */
+              <div
+                key={team}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "190px repeat(7, minmax(150px, 1fr))",
+                  minHeight: "160px",
+                  borderBottom:
+                    "1px solid #d9dadd",
+                }}
+              >
+                {/* TEAM NAME */}
+                <div
+                  style={{
+                    padding: "14px 12px",
+                    background: "#f7f7f8",
+                    borderRight:
+                      "1px solid #d9dadd",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    color: "#333",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  {team}
+                </div>
 
-              {renderTeamRows(
-                safeFitTeams,
-                getDeals,
-                "fit"
-              )}
+                {/* DAYS */}
+                {weekDays.map((date) => {
+                  const jobs = getJobs(
+                    team,
+                    date
+                  )
 
-              {/* INSTALLATION ISSUES */}
-              {renderSectionTitle(
-                "Installation Issues",
-                "Booked installation issues",
-                "#fff7f7"
-              )}
-
-              {renderTeamRows(
-                [
-                  ...new Set(
-                    safeWeekIssues
-                      .map(
-                        (deal) =>
-                          deal?.installation_issues_fit_team
-                      )
-                      .filter(Boolean)
-                      .map((team) =>
-                        String(team).trim()
-                      )
-                      .filter(Boolean)
-                  ),
-                ].sort((a, b) =>
-                  a.localeCompare(b)
-                ),
-                getIssues,
-                "issue"
-              )}
-
-              {/* ROOFING */}
-              {renderSectionTitle(
-                "Roofing",
-                "Roof start date and roofer team",
-                "#fff8e9"
-              )}
-
-              {renderTeamRows(
-                safeRooferTeams,
-                getRoofing,
-                "roof"
-              )}
-
-              {/* ELECTRICS */}
-              {renderSectionTitle(
-                "Electrics",
-                "Electrics start date and installation team",
-                "#f1f7ff"
-              )}
-
-              {renderTeamRows(
-                safeElectricTeams,
-                getElectrics,
-                "electric"
-              )}
-
-              {/* REMEDIAL */}
-              {renderSectionTitle(
-                "Remedial",
-                "Remedial start date and fit team",
-                "#f8f2ff"
-              )}
-
-              {renderTeamRows(
-                safeRemedialTeams,
-                getRemedial,
-                "remedial"
-              )}
-            </>
+                  return (
+                    <div
+                      key={`${team}-${formatDate(
+                        date
+                      )}`}
+                      style={{
+                        padding: "6px",
+                        borderRight:
+                          "1px solid #d9dadd",
+                        background: "#fff",
+                        minHeight: "160px",
+                        verticalAlign:
+                          "top",
+                      }}
+                    >
+                      {jobs.map((job) =>
+                        job.type === "issue"
+                          ? renderIssueCard(job)
+                          : renderJobCard(job)
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ))
           )}
         </div>
       </div>
