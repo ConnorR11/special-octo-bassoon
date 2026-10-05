@@ -60,8 +60,11 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
         } else if (reportId === "wrong-cps") {
           query = supabase
             .from("leads")
-            .select("delete_row_id,first_name,last_name,salutations,primary_phone_number,secondary_phone_number,email,address,postcode,campaign,lead_type,disposition,received_date_time,hcps,is_pickup")
-            .eq("hcps", "0001")
+            .select("delete_row_id,first_name,last_name,salutations,primary_phone_number,secondary_phone_number,email,address,postcode,campaign,lead_type,disposition,received_date_time,cps_h,cps_c,cps_p,cps_s,is_pickup")
+            .eq("cps_h", false)
+            .eq("cps_c", false)
+            .eq("cps_p", false)
+            .eq("cps_s", true)
             .eq("is_pickup", false)
             .order("received_date_time", { ascending: false, nullsFirst: false })
         } else {
@@ -99,7 +102,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
     return rows.filter(row => {
       const values = activeReport === "missing-result"
         ? [row.name, row.appointment_row_id, row.postcode, row.product, row.job_type, row.branch, row.rep_allocated, row.email_address, row.phone_number_1]
-        : [displayName(row), row.delete_row_id, row.postcode, row.campaign, row.lead_type, row.disposition, row.primary_phone_number, row.secondary_phone_number, row.email, row.hcps]
+        : [displayName(row), row.delete_row_id, row.postcode, row.campaign, row.lead_type, row.disposition, row.primary_phone_number, row.secondary_phone_number, row.email, "0001"]
 
       return values.map(searchValue).join(" ").toLowerCase().includes(term)
     })
@@ -191,7 +194,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                         <tr key={row.delete_row_id || `${displayName(row)}-${index}`}>
                           <td><strong>{displayName(row)}</strong>{row.delete_row_id && <small>{row.delete_row_id}</small>}</td>
                           <td>{row.primary_phone_number || row.secondary_phone_number || "—"}</td><td>{row.email || "—"}</td><td>{row.postcode || "—"}</td><td>{row.campaign || "—"}</td><td>{row.lead_type || "—"}</td><td>{row.disposition || "—"}</td>
-                          <td><span className="data-clean-badge warning">{row.hcps || "—"}</span></td><td><span className="data-clean-badge danger">FALSE</span></td><td>{formatDate(row.received_date_time)}</td>
+                          <td><span className="data-clean-badge warning">0001</span></td><td><span className="data-clean-badge danger">FALSE</span></td><td>{formatDate(row.received_date_time)}</td>
                           <td><button type="button" className="data-clean-open" onClick={() => openRow(row)}>Open</button></td>
                         </tr>
                       ))}
