@@ -77,29 +77,6 @@ function FitSheet({ setSelected }) {
       setLoading(true)
       setLoadError("")
 
-      /*
-       * We load all of the installation / fit information here.
-       *
-       * Normal fit:
-       * installation_start_date
-       * fit_team_1
-       *
-       * Roofer:
-       * installation_roof_start_date
-       * installation_roof_team
-       *
-       * Electrics:
-       * installation_electrics_start_date
-       * installation_electrics_team
-       *
-       * Remedial:
-       * remedial_start_date
-       * remedial_fit_team
-       *
-       * Issues:
-       * installations_issues_start_date
-       * installation_issues_fit_team
-       */
       const dealSelect = [
         "id",
         "customer_name",
@@ -130,23 +107,15 @@ function FitSheet({ setSelected }) {
         "pipedrive_stage",
       ].join(",")
 
-      /*
-       * We deliberately fetch the full week by checking every relevant
-       * date field separately. This means a job can appear in the row
-       * for its fit team, roofer, electrician or remedial team.
-       */
-      const [
-        normalResult,
-        issueResult,
-      ] = await Promise.all([
+      const [normalResult, issueResult] = await Promise.all([
         supabase
           .from("deals")
           .select(dealSelect)
           .or(
             `and(installation_start_date.gte.${weekStart},installation_start_date.lte.${weekEnd}),` +
-            `and(installation_roof_start_date.gte.${weekStart},installation_roof_start_date.lte.${weekEnd}),` +
-            `and(installation_electrics_start_date.gte.${weekStart},installation_electrics_start_date.lte.${weekEnd}),` +
-            `and(remedial_start_date.gte.${weekStart},remedial_start_date.lte.${weekEnd})`
+              `and(installation_roof_start_date.gte.${weekStart},installation_roof_start_date.lte.${weekEnd}),` +
+              `and(installation_electrics_start_date.gte.${weekStart},installation_electrics_start_date.lte.${weekEnd}),` +
+              `and(remedial_start_date.gte.${weekStart},remedial_start_date.lte.${weekEnd})`
           ),
 
         supabase
@@ -211,16 +180,14 @@ function FitSheet({ setSelected }) {
     : []
 
   /*
-   * Build a list of all teams that have something happening during
-   * this week.
+   * One row per team.
    *
-   * A single job may therefore contribute several teams:
-   *
-   * Fit Team
-   * Roofer
-   * Electrician
-   * Remedial
-   * Issue Fit Team
+   * A team can appear because it is:
+   * - a normal fit team
+   * - a roofer
+   * - an electrician
+   * - a remedial team
+   * - an installation issue team
    */
   const fitTeams = useMemo(() => {
     const teams = new Set()
@@ -236,7 +203,9 @@ function FitSheet({ setSelected }) {
       values.forEach((team) => {
         const value = String(team || "").trim()
 
-        if (value) teams.add(value)
+        if (value) {
+          teams.add(value)
+        }
       })
     })
 
@@ -245,7 +214,9 @@ function FitSheet({ setSelected }) {
         deal?.installation_issues_fit_team || ""
       ).trim()
 
-      if (team) teams.add(team)
+      if (team) {
+        teams.add(team)
+      }
     })
 
     return [...teams].sort((a, b) =>
@@ -257,48 +228,41 @@ function FitSheet({ setSelected }) {
     ? fitTeams
     : []
 
-  const freshFitsCount = safeWeekDeals.filter(
+  const freshFits = safeWeekDeals.filter(
     (deal) => deal?.installation_start_date
-  ).length
+  )
 
-  const freshFitsValue = safeWeekDeals
-    .filter((deal) => deal?.installation_start_date)
-    .reduce(
-      (total, deal) =>
-        total + (Number(deal?.deal_value) || 0),
-      0
-    )
+  const freshFitsCount = freshFits.length
 
-  const freshFitsBalance = safeWeekDeals
-    .filter((deal) => deal?.installation_start_date)
-    .reduce(
-      (total, deal) =>
-        total + (Number(deal?.balance_outstanding) || 0),
-      0
-    )
+  const freshFitsValue = freshFits.reduce(
+    (total, deal) =>
+      total + (Number(deal?.deal_value) || 0),
+    0
+  )
+
+  const freshFitsBalance = freshFits.reduce(
+    (total, deal) =>
+      total + (Number(deal?.balance_outstanding) || 0),
+    0
+  )
 
   const issueFitsCount = safeWeekIssues.length
 
   /*
-   * Returns every job that belongs in a particular team's row
-   * and particular day's column.
-   *
-   * IMPORTANT:
-   * A job can appear more than once in the week if it has different
-   * installation stages on different dates.
+   * Returns all jobs for a team on a specific date.
    */
   function getJobs(team, date) {
     const dateString = formatDate(date)
     const jobs = []
 
     safeWeekDeals.forEach((deal) => {
-      /*
-       * Standard fit
-       */
       if (
-        String(deal?.installation_start_date || "").slice(0, 10) ===
-          dateString &&
-        String(deal?.fit_team_1 || "").trim() === team
+        String(
+          deal?.installation_start_date || ""
+        ).slice(0, 10) === dateString &&
+        String(
+          deal?.fit_team_1 || ""
+        ).trim() === team
       ) {
         jobs.push({
           deal,
@@ -307,14 +271,13 @@ function FitSheet({ setSelected }) {
         })
       }
 
-      /*
-       * Roofer
-       */
       if (
         String(
           deal?.installation_roof_start_date || ""
         ).slice(0, 10) === dateString &&
-        String(deal?.installation_roof_team || "").trim() === team
+        String(
+          deal?.installation_roof_team || ""
+        ).trim() === team
       ) {
         jobs.push({
           deal,
@@ -323,9 +286,6 @@ function FitSheet({ setSelected }) {
         })
       }
 
-      /*
-       * Electrics
-       */
       if (
         String(
           deal?.installation_electrics_start_date || ""
@@ -341,9 +301,6 @@ function FitSheet({ setSelected }) {
         })
       }
 
-      /*
-       * Remedial
-       */
       if (
         String(
           deal?.remedial_start_date || ""
@@ -360,9 +317,6 @@ function FitSheet({ setSelected }) {
       }
     })
 
-    /*
-     * Installation issues
-     */
     safeWeekIssues.forEach((deal) => {
       if (
         String(
@@ -393,7 +347,7 @@ function FitSheet({ setSelected }) {
 
   function cardHoverIn(event) {
     event.currentTarget.style.boxShadow =
-      "0 2px 7px rgba(0,0,0,0.10)"
+      "0 2px 7px rgba(0,0,0,0.12)"
 
     event.currentTarget.style.transform =
       "translateY(-1px)"
@@ -406,37 +360,85 @@ function FitSheet({ setSelected }) {
   }
 
   /*
-   * Display name for the type of work.
+   * Colour scheme.
+   *
+   * These are intentionally soft backgrounds with stronger
+   * borders/text so the sheet remains easy to read.
    */
+  const JOB_STYLES = {
+    fit: {
+      background: "#e8f4e2",
+      border: "#cbd8c5",
+      text: "#263522",
+      label: "#40523a",
+      secondary: "#596455",
+      balance: "#8a4a4a",
+    },
+
+    roofer: {
+      background: "#fff1df",
+      border: "#f0c58a",
+      text: "#5c3a16",
+      label: "#a15c00",
+      secondary: "#7d5b32",
+      balance: "#8a4a4a",
+    },
+
+    electrics: {
+      background: "#e4f1fb",
+      border: "#a9cce8",
+      text: "#183b56",
+      label: "#1769a8",
+      secondary: "#496d87",
+      balance: "#8a4a4a",
+    },
+
+    remedial: {
+      background: "#eee7f8",
+      border: "#cdb9e6",
+      text: "#38264f",
+      label: "#7045a3",
+      secondary: "#665579",
+      balance: "#8a4a4a",
+    },
+
+    issue: {
+      background: "#fde8e8",
+      border: "#f0b8b8",
+      text: "#5f2020",
+      label: "#b42318",
+      secondary: "#7f4a4a",
+      balance: "#8a4a4a",
+    },
+  }
+
   function getJobTypeLabel(type) {
     switch (type) {
       case "fit":
-        return "Fit"
+        return "FIT"
 
       case "roofer":
-        return "Roofer"
+        return "ROOFER"
 
       case "electrics":
-        return "Electrics"
+        return "ELECTRICS"
 
       case "remedial":
-        return "Remedial"
+        return "REMEDIAL"
 
       case "issue":
-        return "Issue"
+        return "ISSUE"
 
       default:
-        return "Job"
+        return "JOB"
     }
   }
 
-  /*
-   * Fresh / normal job card.
-   *
-   * All of these remain GREEN, as requested.
-   */
   function renderJobCard(job) {
     const deal = job.deal
+    const style =
+      JOB_STYLES[job.type] ||
+      JOB_STYLES.fit
 
     return (
       <button
@@ -448,9 +450,9 @@ function FitSheet({ setSelected }) {
         style={{
           width: "100%",
           textAlign: "left",
-          border: "1px solid #cbd8c5",
+          border: `1px solid ${style.border}`,
           borderRadius: "5px",
-          background: "#e8f4e2",
+          background: style.background,
           padding: "8px",
           marginBottom: "5px",
           cursor: "pointer",
@@ -463,9 +465,9 @@ function FitSheet({ setSelected }) {
           style={{
             fontSize: "8px",
             fontWeight: 800,
-            color: "#40523a",
+            color: style.label,
             textTransform: "uppercase",
-            letterSpacing: "0.5px",
+            letterSpacing: "0.6px",
             marginBottom: "3px",
           }}
         >
@@ -476,11 +478,12 @@ function FitSheet({ setSelected }) {
           style={{
             fontSize: "10px",
             fontWeight: 700,
-            color: "#263522",
+            color: style.text,
             lineHeight: "1.3",
           }}
         >
-          {deal.customer_name || "Unnamed customer"}
+          {deal.customer_name ||
+            "Unnamed customer"}
         </div>
 
         {deal.pipedrive_stage && (
@@ -489,7 +492,7 @@ function FitSheet({ setSelected }) {
               marginTop: "3px",
               fontSize: "8px",
               fontWeight: 700,
-              color: "#40523a",
+              color: style.label,
             }}
           >
             {deal.pipedrive_stage}
@@ -501,7 +504,7 @@ function FitSheet({ setSelected }) {
             style={{
               marginTop: "3px",
               fontSize: "9px",
-              color: "#596455",
+              color: style.secondary,
             }}
           >
             {deal.postcode}
@@ -513,7 +516,7 @@ function FitSheet({ setSelected }) {
             style={{
               marginTop: "3px",
               fontSize: "9px",
-              color: "#596455",
+              color: style.secondary,
             }}
           >
             {deal.contract_number}
@@ -527,7 +530,7 @@ function FitSheet({ setSelected }) {
               marginTop: "5px",
               fontSize: "9px",
               fontWeight: 700,
-              color: "#263522",
+              color: style.text,
             }}
           >
             {money(deal.deal_value || 0)}
@@ -544,102 +547,13 @@ function FitSheet({ setSelected }) {
 
             <span
               style={{
-                color: "#8a4a4a",
+                color: style.balance,
               }}
             >
-              {money(deal.balance_outstanding || 0)}
+              {money(
+                deal.balance_outstanding || 0
+              )}
             </span>
-          </div>
-        )}
-      </button>
-    )
-  }
-
-  /*
-   * Issue cards remain RED.
-   */
-  function renderIssueCard(job) {
-    const deal = job.deal
-
-    return (
-      <button
-        key={`issue-${deal.id}-${job.date}`}
-        type="button"
-        onClick={() => openDeal(deal)}
-        onMouseEnter={cardHoverIn}
-        onMouseLeave={cardHoverOut}
-        style={{
-          width: "100%",
-          textAlign: "left",
-          border: "1px solid #f0b8b8",
-          borderRadius: "5px",
-          background: "#fde8e8",
-          padding: "8px",
-          marginBottom: "5px",
-          cursor: "pointer",
-          fontFamily: "inherit",
-          transition:
-            "box-shadow 0.15s ease, transform 0.15s ease",
-        }}
-      >
-        <div
-          style={{
-            fontSize: "8px",
-            fontWeight: 800,
-            color: "#b42318",
-            textTransform: "uppercase",
-            letterSpacing: "0.5px",
-            marginBottom: "3px",
-          }}
-        >
-          Issue
-        </div>
-
-        <div
-          style={{
-            fontSize: "10px",
-            fontWeight: 700,
-            color: "#5f2020",
-            lineHeight: "1.3",
-          }}
-        >
-          {deal.customer_name || "Unnamed customer"}
-        </div>
-
-        {deal.pipedrive_stage && (
-          <div
-            style={{
-              marginTop: "3px",
-              fontSize: "8px",
-              fontWeight: 700,
-              color: "#8a4a4a",
-            }}
-          >
-            {deal.pipedrive_stage}
-          </div>
-        )}
-
-        {deal.postcode && (
-          <div
-            style={{
-              marginTop: "3px",
-              fontSize: "9px",
-              color: "#7f4a4a",
-            }}
-          >
-            {deal.postcode}
-          </div>
-        )}
-
-        {deal.contract_number && (
-          <div
-            style={{
-              marginTop: "3px",
-              fontSize: "9px",
-              color: "#7f4a4a",
-            }}
-          >
-            {deal.contract_number}
           </div>
         )}
       </button>
@@ -688,6 +602,7 @@ function FitSheet({ setSelected }) {
 
   return (
     <section>
+      {/* STATS */}
       <div
         style={{
           display: "flex",
@@ -719,6 +634,7 @@ function FitSheet({ setSelected }) {
         )}
       </div>
 
+      {/* TITLE / NAVIGATION */}
       <div
         className="card"
         style={{
@@ -840,6 +756,7 @@ function FitSheet({ setSelected }) {
         </div>
       </div>
 
+      {/* FIT SHEET */}
       <div
         className="card"
         style={{
@@ -979,15 +896,14 @@ function FitSheet({ setSelected }) {
                 fontSize: "12px",
               }}
             >
-              No fits or issues found for this week.
+              No fits or issues found for
+              this week.
             </div>
           ) : (
             safeFitTeams.map((team) => (
               /*
-               * ONE AND ONLY ONE ROW PER TEAM.
-               *
-               * Every job belonging to that team is rendered
-               * inside the appropriate day cell.
+               * IMPORTANT:
+               * There is exactly ONE row for each team.
                */
               <div
                 key={team}
@@ -1000,7 +916,7 @@ function FitSheet({ setSelected }) {
                     "1px solid #d9dadd",
                 }}
               >
-                {/* TEAM NAME */}
+                {/* TEAM */}
                 <div
                   style={{
                     padding: "14px 12px",
@@ -1035,14 +951,10 @@ function FitSheet({ setSelected }) {
                           "1px solid #d9dadd",
                         background: "#fff",
                         minHeight: "160px",
-                        verticalAlign:
-                          "top",
                       }}
                     >
                       {jobs.map((job) =>
-                        job.type === "issue"
-                          ? renderIssueCard(job)
-                          : renderJobCard(job)
+                        renderJobCard(job)
                       )}
                     </div>
                   )
@@ -1051,6 +963,56 @@ function FitSheet({ setSelected }) {
             ))
           )}
         </div>
+      </div>
+
+      {/* COLOUR LEGEND */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "14px",
+          flexWrap: "wrap",
+          marginTop: "12px",
+          padding: "8px 4px",
+        }}
+      >
+        {[
+          ["fit", "Fit"],
+          ["roofer", "Roofer"],
+          ["electrics", "Electrics"],
+          ["remedial", "Remedial"],
+          ["issue", "Issue"],
+        ].map(([type, label]) => {
+          const style = JOB_STYLES[type]
+
+          return (
+            <div
+              key={type}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "5px",
+                fontSize: "9px",
+                fontWeight: 600,
+                color: "#666",
+              }}
+            >
+              <span
+                style={{
+                  width: "10px",
+                  height: "10px",
+                  borderRadius: "3px",
+                  background:
+                    style.background,
+                  border: `1px solid ${style.border}`,
+                  display: "inline-block",
+                }}
+              />
+
+              {label}
+            </div>
+          )
+        })}
       </div>
     </section>
   )
