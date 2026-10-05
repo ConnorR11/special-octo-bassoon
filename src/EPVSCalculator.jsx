@@ -2725,9 +2725,7 @@ function Results({
       "Monthly finance",
       data.paymentMethod ===
       "Finance"
-        ? money(
-            results.monthlyPayment
-          )
+        ? `£${Number(results.monthlyPayment || 0).toFixed(2)}`
         : "Cash",
     ],
 
