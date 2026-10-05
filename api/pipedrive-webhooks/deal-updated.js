@@ -26,20 +26,12 @@ async function readBody(req) {
 function validBasicAuth(req, username, password) {
   if (!username || !password) return true
 
-  const header = String(
-    getHeader(req, "authorization") || ""
-  )
+  const header = String(getHeader(req, "authorization") || "")
 
-  if (!header.toLowerCase().startsWith("basic ")) {
-    return false
-  }
+  if (!header.toLowerCase().startsWith("basic ")) return false
 
   try {
-    const decoded = Buffer.from(
-      header.slice(6),
-      "base64"
-    ).toString("utf8")
-
+    const decoded = Buffer.from(header.slice(6), "base64").toString("utf8")
     const separator = decoded.indexOf(":")
 
     if (separator < 0) return false
@@ -53,13 +45,9 @@ function validBasicAuth(req, username, password) {
   }
 }
 
-async function logEvent(
-  supabaseUrl,
-  serviceRoleKey,
-  values
-) {
+async function logEvent(supabaseUrl, serviceRoleKey, values) {
   try {
-    await fetch(
+    const response = await fetch(
       `${supabaseUrl}/rest/v1/integration_event_logs`,
       {
         method: "POST",
@@ -73,39 +61,36 @@ async function logEvent(
           provider: "pipedrive",
           integration_name: "Pipedrive Webhooks",
           direction: "inbound",
-          event_name:
-            values.eventName || "deal.updated",
-          event_type:
-            values.eventType || "webhook",
-          external_id:
-            values.externalId || null,
-          status:
-            values.status || "received",
-          http_status:
-            values.httpStatus || null,
-          error_message:
-            values.errorMessage || null,
-          payload:
-            values.payload || null,
-          result:
-            values.result || null,
-          processed_at:
-            values.processedAt || null,
+          event_name: values.eventName || "deal.updated",
+          event_type: values.eventType || "webhook",
+          external_id: values.externalId || null,
+          status: values.status || "received",
+          http_status: values.httpStatus || null,
+          error_message: values.errorMessage || null,
+          payload: values.payload || null,
+          result: values.result || null,
+          processed_at: values.processedAt || null,
         }),
       }
     )
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "")
+      console.error(
+        "Pipedrive integration log failed:",
+        response.status,
+        text
+      )
+    }
   } catch (error) {
-    console.error(
-      "Pipedrive integration log failed:",
-      error
-    )
+    console.error("Pipedrive integration log failed:", error)
   }
 }
 
 
 /*
 |--------------------------------------------------------------------------
-| PIPEDRIVE FIELD DEFINITIONS
+| PIPEDRIVE FIELDS
 |--------------------------------------------------------------------------
 */
 
@@ -220,7 +205,7 @@ const PIPEDRIVE_FIELDS = {
 
 /*
 |--------------------------------------------------------------------------
-| FIELD / USER CACHES
+| CACHES
 |--------------------------------------------------------------------------
 */
 
@@ -236,12 +221,10 @@ const userNameCache = new Map()
 |--------------------------------------------------------------------------
 */
 
-async function resolveMissingFieldCodes(
-  pipedriveToken
-) {
-  const missing = Object.values(
-    PIPEDRIVE_FIELDS
-  ).filter((field) => !field.key)
+async function resolveMissingFieldCodes(pipedriveToken) {
+  const missing = Object.values(PIPEDRIVE_FIELDS).filter(
+    (field) => !field.key
+  )
 
   if (!missing.length) {
     return PIPEDRIVE_FIELDS
@@ -260,8 +243,7 @@ async function resolveMissingFieldCodes(
         }
       )
 
-      const json =
-        await response.json().catch(() => ({}))
+      const json = await response.json().catch(() => ({}))
 
       if (!response.ok || !json?.success) {
         throw new Error(
@@ -270,29 +252,21 @@ async function resolveMissingFieldCodes(
         )
       }
 
-      const fields = Array.isArray(json.data)
-        ? json.data
-        : []
+      const fields = Array.isArray(json.data) ? json.data : []
 
       for (const target of missing) {
         const match = fields.find((field) => {
           const name = String(
-            field?.field_name ||
-              field?.name ||
-              ""
+            field?.field_name || field?.name || ""
           )
             .trim()
             .toLowerCase()
 
-          return (
-            name === target.name.toLowerCase()
-          )
+          return name === target.name.toLowerCase()
         })
 
         const key = String(
-          match?.field_code ||
-            match?.key ||
-            ""
+          match?.field_code || match?.key || ""
         ).trim()
 
         if (key) {
@@ -313,26 +287,20 @@ async function resolveMissingFieldCodes(
 
 /*
 |--------------------------------------------------------------------------
-| CUSTOM FIELD HELPERS
+| PIPEDRIVE VALUE HELPERS
 |--------------------------------------------------------------------------
 */
 
-function getCustomFieldValue(
-  deal,
-  key
-) {
+function getCustomFieldValue(deal, key) {
   if (!key) return null
 
-  const customFields =
-    deal?.custom_fields
+  const customFields = deal?.custom_fields
 
   if (
     customFields &&
     typeof customFields === "object"
   ) {
-    return (
-      customFields[key] ?? null
-    )
+    return customFields[key] ?? null
   }
 
   return deal?.[key] ?? null
@@ -342,10 +310,7 @@ function unwrapValue(value) {
   let current = value
 
   for (let i = 0; i < 5; i += 1) {
-    if (
-      current === null ||
-      current === undefined
-    ) {
+    if (current === null || current === undefined) {
       return null
     }
 
@@ -393,8 +358,7 @@ function unwrapValue(value) {
 }
 
 function normaliseDate(value) {
-  const unwrapped =
-    unwrapValue(value)
+  const unwrapped = unwrapValue(value)
 
   if (
     unwrapped === null ||
@@ -404,60 +368,38 @@ function normaliseDate(value) {
     return null
   }
 
-  const text =
-    String(unwrapped).trim()
+  const text = String(unwrapped).trim()
 
   if (!text) return null
 
-  const isoMatch =
-    text.match(
-      /^(\d{4}-\d{2}-\d{2})/
-    )
+  const isoMatch = text.match(/^(\d{4}-\d{2}-\d{2})/)
 
   if (isoMatch) {
     return isoMatch[1]
   }
 
-  /*
-   * Supports:
-   * DD/MM/YYYY
-   * DD-MM-YYYY
-   */
-
-  const ukMatch =
-    text.match(
-      /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/
-    )
+  const ukMatch = text.match(
+    /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/
+  )
 
   if (ukMatch) {
     return `${ukMatch[3]}-${ukMatch[2].padStart(
       2,
       "0"
-    )}-${ukMatch[1].padStart(
-      2,
-      "0"
-    )}`
+    )}-${ukMatch[1].padStart(2, "0")}`
   }
 
-  const parsed =
-    new Date(text)
+  const parsed = new Date(text)
 
-  if (
-    Number.isNaN(
-      parsed.getTime()
-    )
-  ) {
+  if (Number.isNaN(parsed.getTime())) {
     return null
   }
 
-  return parsed
-    .toISOString()
-    .slice(0, 10)
+  return parsed.toISOString().slice(0, 10)
 }
 
 function normaliseNumber(value) {
-  const unwrapped =
-    unwrapValue(value)
+  const unwrapped = unwrapValue(value)
 
   if (
     unwrapped === null ||
@@ -468,20 +410,14 @@ function normaliseNumber(value) {
   }
 
   const number = Number(
-    String(unwrapped).replace(
-      /[^0-9.-]/g,
-      ""
-    )
+    String(unwrapped).replace(/[^0-9.-]/g, "")
   )
 
-  return Number.isFinite(number)
-    ? number
-    : null
+  return Number.isFinite(number) ? number : null
 }
 
 function normaliseText(value) {
-  const unwrapped =
-    unwrapValue(value)
+  const unwrapped = unwrapValue(value)
 
   if (
     unwrapped === null ||
@@ -491,9 +427,7 @@ function normaliseText(value) {
     return null
   }
 
-  if (
-    typeof unwrapped === "object"
-  ) {
+  if (typeof unwrapped === "object") {
     return (
       String(
         unwrapped.label ??
@@ -504,10 +438,7 @@ function normaliseText(value) {
     )
   }
 
-  return (
-    String(unwrapped).trim() ||
-    null
-  )
+  return String(unwrapped).trim() || null
 }
 
 function normaliseFitTeam(value) {
@@ -517,7 +448,7 @@ function normaliseFitTeam(value) {
 
 /*
 |--------------------------------------------------------------------------
-| PIPEDRIVE LOOKUPS
+| PIPEDRIVE API LOOKUPS
 |--------------------------------------------------------------------------
 */
 
@@ -540,20 +471,15 @@ async function getStageName(
     }
   )
 
-  const json =
-    await response.json().catch(() => ({}))
+  const json = await response.json().catch(() => ({}))
 
-  if (
-    !response.ok ||
-    !json?.success
-  ) {
+  if (!response.ok || !json?.success) {
     return null
   }
 
   return (
-    String(
-      json?.data?.name || ""
-    ).trim() || null
+    String(json?.data?.name || "").trim() ||
+    null
   )
 }
 
@@ -576,20 +502,15 @@ async function getPersonName(
     }
   )
 
-  const json =
-    await response.json().catch(() => ({}))
+  const json = await response.json().catch(() => ({}))
 
-  if (
-    !response.ok ||
-    !json?.success
-  ) {
+  if (!response.ok || !json?.success) {
     return null
   }
 
   return (
-    String(
-      json?.data?.name || ""
-    ).trim() || null
+    String(json?.data?.name || "").trim() ||
+    null
   )
 }
 
@@ -597,54 +518,41 @@ async function getUserName(
   pipedriveToken,
   userId
 ) {
-  const id =
-    String(userId ?? "").trim()
+  const id = String(userId ?? "").trim()
 
   if (!id) return null
 
-  if (
-    userNameCache.has(id)
-  ) {
+  if (userNameCache.has(id)) {
     return userNameCache.get(id)
   }
 
   try {
-    const directResponse =
-      await fetch(
-        `https://api.pipedrive.com/api/v1/users/${encodeURIComponent(
-          id
-        )}?api_token=${encodeURIComponent(
-          pipedriveToken
-        )}`,
-        {
-          headers: {
-            Accept:
-              "application/json",
-          },
-        }
-      )
+    const directResponse = await fetch(
+      `https://api.pipedrive.com/api/v1/users/${encodeURIComponent(
+        id
+      )}?api_token=${encodeURIComponent(
+        pipedriveToken
+      )}`,
+      {
+        headers: {
+          Accept: "application/json",
+        },
+      }
+    )
 
     const directJson =
-      await directResponse
-        .json()
-        .catch(() => ({}))
+      await directResponse.json().catch(() => ({}))
 
-    const directName =
-      String(
-        directJson?.data?.name ||
-          ""
-      ).trim()
+    const directName = String(
+      directJson?.data?.name || ""
+    ).trim()
 
     if (
       directResponse.ok &&
       directJson?.success &&
       directName
     ) {
-      userNameCache.set(
-        id,
-        directName
-      )
-
+      userNameCache.set(id, directName)
       return directName
     }
   } catch {
@@ -652,80 +560,56 @@ async function getUserName(
   }
 
   if (!usersResolutionPromise) {
-    usersResolutionPromise =
-      (async () => {
-        const response =
-          await fetch(
-            `https://api.pipedrive.com/api/v1/users?limit=500&api_token=${encodeURIComponent(
-              pipedriveToken
-            )}`,
-            {
-              headers: {
-                Accept:
-                  "application/json",
-              },
-            }
-          )
-
-        const json =
-          await response
-            .json()
-            .catch(() => ({}))
-
-        if (
-          !response.ok ||
-          !json?.success
-        ) {
-          throw new Error(
-            json?.error ||
-              `Pipedrive users lookup failed with HTTP ${response.status}.`
-          )
+    usersResolutionPromise = (async () => {
+      const response = await fetch(
+        `https://api.pipedrive.com/api/v1/users?limit=500&api_token=${encodeURIComponent(
+          pipedriveToken
+        )}`,
+        {
+          headers: {
+            Accept: "application/json",
+          },
         }
+      )
 
-        const users =
-          Array.isArray(json.data)
-            ? json.data
-            : []
+      const json =
+        await response.json().catch(() => ({}))
 
-        for (
-          const user of users
-        ) {
-          const userId =
-            String(
-              user?.id ?? ""
-            ).trim()
+      if (!response.ok || !json?.success) {
+        throw new Error(
+          json?.error ||
+            `Pipedrive users lookup failed with HTTP ${response.status}.`
+        )
+      }
 
-          const name =
-            String(
-              user?.name || ""
-            ).trim()
+      const users = Array.isArray(json.data)
+        ? json.data
+        : []
 
-          if (
-            userId &&
-            name
-          ) {
-            userNameCache.set(
-              userId,
-              name
-            )
-          }
+      for (const user of users) {
+        const userId = String(
+          user?.id ?? ""
+        ).trim()
+
+        const name = String(
+          user?.name || ""
+        ).trim()
+
+        if (userId && name) {
+          userNameCache.set(userId, name)
         }
+      }
 
-        return users
-      })().catch((error) => {
-        usersResolutionPromise =
-          null
-
-        throw error
-      })
+      return users
+    })().catch((error) => {
+      usersResolutionPromise = null
+      throw error
+    })
   }
 
   await usersResolutionPromise
 
-  return (
-    userNameCache.get(id) ||
-    null
-  )
+  return userNameCache.get(id) || null
 }
 
 async function getSalespersonName(
@@ -737,20 +621,16 @@ async function getSalespersonName(
     typeof value === "object" &&
     !Array.isArray(value)
   ) {
-    const directName =
-      String(
-        value.name ||
-          value.label ||
-          ""
-      ).trim()
+    const directName = String(
+      value.name || value.label || ""
+    ).trim()
 
     if (directName) {
       return directName
     }
   }
 
-  const unwrapped =
-    unwrapValue(value)
+  const unwrapped = unwrapValue(value)
 
   if (
     unwrapped === null ||
@@ -769,8 +649,7 @@ async function getSalespersonName(
         )
       : unwrapped
 
-  const text =
-    String(userId ?? "").trim()
+  const text = String(userId ?? "").trim()
 
   if (!text) return null
 
@@ -791,10 +670,7 @@ async function getSalespersonName(
 |--------------------------------------------------------------------------
 */
 
-export default async function handler(
-  req,
-  res
-) {
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     return send(res, 405, {
       success: false,
@@ -802,40 +678,89 @@ export default async function handler(
     })
   }
 
-  const supabaseUrl =
-    String(
-      process.env.SUPABASE_URL ||
-        process.env.VITE_SUPABASE_URL ||
-        ""
-    ).trim()
+  const supabaseUrl = String(
+    process.env.SUPABASE_URL ||
+      process.env.VITE_SUPABASE_URL ||
+      ""
+  ).trim()
 
-  const serviceRoleKey =
-    String(
-      process.env
-        .SUPABASE_SERVICE_ROLE_KEY ||
-        ""
-    ).trim()
+  const serviceRoleKey = String(
+    process.env.SUPABASE_SERVICE_ROLE_KEY || ""
+  ).trim()
 
-  const pipedriveToken =
-    String(
-      process.env
-        .PIPEDRIVE_API_TOKEN ||
-        ""
-    ).trim()
+  const pipedriveToken = String(
+    process.env.PIPEDRIVE_API_TOKEN || ""
+  ).trim()
 
-  const webhookUsername =
-    String(
-      process.env
-        .PIPEDRIVE_WEBHOOK_USERNAME ||
-        ""
-    ).trim()
+  const webhookUsername = String(
+    process.env.PIPEDRIVE_WEBHOOK_USERNAME || ""
+  ).trim()
 
-  const webhookPassword =
-    String(
-      process.env
-        .PIPEDRIVE_WEBHOOK_PASSWORD ||
-        ""
-    ).trim()
+  const webhookPassword = String(
+    process.env.PIPEDRIVE_WEBHOOK_PASSWORD || ""
+  ).trim()
+
+  /*
+  |--------------------------------------------------------------------------
+  | READ WEBHOOK
+  |--------------------------------------------------------------------------
+  */
+
+  const body = await readBody(req)
+
+  const event =
+    body?.event ||
+    body?.meta?.event ||
+    "deal.updated"
+
+  const dealId = String(
+    body?.data?.item?.id ??
+      body?.data?.item?.deal_id ??
+      body?.data?.id ??
+      body?.item?.id ??
+      ""
+  ).trim()
+
+  const receivedAt = new Date().toISOString()
+
+  const baseLog = {
+    eventName: event,
+    eventType: "deal",
+    externalId: dealId || null,
+    payload: body,
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | VERY EARLY LOG
+  |
+  | This confirms that the webhook has actually reached Vercel.
+  |--------------------------------------------------------------------------
+  */
+
+  if (supabaseUrl && serviceRoleKey) {
+    await logEvent(
+      supabaseUrl,
+      serviceRoleKey,
+      {
+        ...baseLog,
+        status: "received",
+        httpStatus: 200,
+        result: {
+          message:
+            "Pipedrive webhook received.",
+          dealId: dealId || null,
+        },
+        processedAt: receivedAt,
+      }
+    )
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | ENVIRONMENT CHECK
+  |--------------------------------------------------------------------------
+  */
 
   if (
     !supabaseUrl ||
@@ -849,6 +774,12 @@ export default async function handler(
     })
   }
 
+  /*
+  |--------------------------------------------------------------------------
+  | AUTH
+  |--------------------------------------------------------------------------
+  */
+
   if (
     !validBasicAuth(
       req,
@@ -861,39 +792,30 @@ export default async function handler(
       'Basic realm="Pipedrive Webhook"'
     )
 
+    await logEvent(
+      supabaseUrl,
+      serviceRoleKey,
+      {
+        ...baseLog,
+        status: "failed",
+        httpStatus: 401,
+        errorMessage:
+          "Invalid webhook credentials.",
+        processedAt: new Date().toISOString(),
+      }
+    )
+
     return send(res, 401, {
       success: false,
-      error:
-        "Invalid webhook credentials.",
+      error: "Invalid webhook credentials.",
     })
   }
 
-  const body =
-    await readBody(req)
-
-  const event =
-    body?.event ||
-    body?.meta?.event ||
-    "deal.updated"
-
-  const dealId =
-    String(
-      body?.data?.item?.id ??
-        body?.data?.item?.deal_id ??
-        body?.data?.id ??
-        body?.item?.id ??
-        ""
-    ).trim()
-
-  const receivedAt =
-    new Date().toISOString()
-
-  const baseLog = {
-    eventName: event,
-    eventType: "deal",
-    externalId: dealId,
-    payload: body,
-  }
+  /*
+  |--------------------------------------------------------------------------
+  | NO DEAL ID
+  |--------------------------------------------------------------------------
+  */
 
   if (!dealId) {
     await logEvent(
@@ -907,8 +829,7 @@ export default async function handler(
           reason:
             "No deal ID in webhook payload",
         },
-        processedAt:
-          new Date().toISOString(),
+        processedAt: new Date().toISOString(),
       }
     )
 
@@ -920,43 +841,45 @@ export default async function handler(
     })
   }
 
-  try {
-    /*
-    |--------------------------------------------------------------------------
-    | Resolve all Pipedrive field codes
-    |--------------------------------------------------------------------------
-    */
+  /*
+  |--------------------------------------------------------------------------
+  | PROCESS DEAL
+  |--------------------------------------------------------------------------
+  */
 
+  try {
     const fields =
       await resolveMissingFieldCodes(
         pipedriveToken
       )
 
-    const customFieldKeys =
-      Object.values(fields)
-        .map(
-          (field) => field.key
-        )
-        .filter(Boolean)
-
     /*
     |--------------------------------------------------------------------------
-    | Pipedrive allows a maximum of 15 custom fields
-    | per request.
+    | IMPORTANT:
     |
-    | Split them into batches of 15.
+    | Pipedrive only allows 15 custom_fields in
+    | the deal lookup.
+    |
+    | We now split the requests into batches of
+    | 15 rather than sending everything at once.
     |--------------------------------------------------------------------------
     */
 
-    const customFieldBatches = []
+    const customFieldEntries = Object.entries(
+      fields
+    ).filter(
+      ([, field]) => Boolean(field.key)
+    )
+
+    const fieldBatches = []
 
     for (
       let i = 0;
-      i < customFieldKeys.length;
+      i < customFieldEntries.length;
       i += 15
     ) {
-      customFieldBatches.push(
-        customFieldKeys.slice(
+      fieldBatches.push(
+        customFieldEntries.slice(
           i,
           i + 15
         )
@@ -967,19 +890,28 @@ export default async function handler(
 
     /*
     |--------------------------------------------------------------------------
-    | Fetch every batch and merge the custom fields
+    | Fetch deal.
+    |
+    | We make the first request with the first 15
+    | fields and then, if necessary, fetch additional
+    | fields separately.
     |--------------------------------------------------------------------------
     */
 
     for (
-      const batch of customFieldBatches
+      let batchIndex = 0;
+      batchIndex < fieldBatches.length;
+      batchIndex += 1
     ) {
-      const dealUrl =
-        new URL(
-          `https://api.pipedrive.com/api/v2/deals/${encodeURIComponent(
-            dealId
-          )}`
-        )
+      const batch = fieldBatches[
+        batchIndex
+      ]
+
+      const dealUrl = new URL(
+        `https://api.pipedrive.com/api/v2/deals/${encodeURIComponent(
+          dealId
+        )}`
+      )
 
       dealUrl.searchParams.set(
         "api_token",
@@ -988,7 +920,9 @@ export default async function handler(
 
       dealUrl.searchParams.set(
         "custom_fields",
-        batch.join(",")
+        batch
+          .map(([, field]) => field.key)
+          .join(",")
       )
 
       dealUrl.searchParams.set(
@@ -996,16 +930,14 @@ export default async function handler(
         "true"
       )
 
-      const dealResponse =
-        await fetch(
-          dealUrl.toString(),
-          {
-            headers: {
-              Accept:
-                "application/json",
-            },
-          }
-        )
+      const dealResponse = await fetch(
+        dealUrl.toString(),
+        {
+          headers: {
+            Accept: "application/json",
+          },
+        }
+      )
 
       const dealJson =
         await dealResponse
@@ -1028,12 +960,14 @@ export default async function handler(
             status: "failed",
             httpStatus:
               dealResponse.status,
-            errorMessage:
-              message,
+            errorMessage: message,
             result: {
               dealId,
-              customFieldBatch:
-                batch,
+              batchIndex,
+              fieldsRequested:
+                batch.map(
+                  ([key]) => key
+                ),
             },
             processedAt:
               new Date().toISOString(),
@@ -1052,24 +986,17 @@ export default async function handler(
       if (!deal) {
         deal = batchDeal
       } else {
+        /*
+        |--------------------------------------------------------------------------
+        | Merge custom fields returned from
+        | subsequent batches.
+        |--------------------------------------------------------------------------
+        */
+
         deal.custom_fields = {
-          ...(deal.custom_fields ||
-            {}),
+          ...(deal.custom_fields || {}),
           ...(batchDeal.custom_fields ||
             {}),
-        }
-
-        for (
-          const [key, value] of Object.entries(
-            batchDeal
-          )
-        ) {
-          if (
-            key !==
-            "custom_fields"
-          ) {
-            deal[key] = value
-          }
         }
       }
     }
@@ -1078,7 +1005,7 @@ export default async function handler(
 
     /*
     |--------------------------------------------------------------------------
-    | Extract existing fields
+    | EXTRACT FIELDS
     |--------------------------------------------------------------------------
     */
 
@@ -1086,9 +1013,7 @@ export default async function handler(
       normaliseDate(
         getCustomFieldValue(
           deal,
-          fields
-            .installationStartDate
-            .key
+          fields.installationStartDate.key
         )
       )
 
@@ -1104,8 +1029,7 @@ export default async function handler(
       normaliseFitTeam(
         getCustomFieldValue(
           deal,
-          fields
-            .installationIssuesFitTeam
+          fields.installationIssuesFitTeam
             .key
         )
       )
@@ -1114,8 +1038,7 @@ export default async function handler(
       normaliseDate(
         getCustomFieldValue(
           deal,
-          fields
-            .installationIssuesStartDate
+          fields.installationIssuesStartDate
             .key
         )
       )
@@ -1132,9 +1055,7 @@ export default async function handler(
       normaliseDate(
         getCustomFieldValue(
           deal,
-          fields
-            .commissionPaidDate
-            .key
+          fields.commissionPaidDate.key
         )
       )
 
@@ -1142,9 +1063,7 @@ export default async function handler(
       normaliseNumber(
         getCustomFieldValue(
           deal,
-          fields
-            .estimatedCommissionDue
-            .key
+          fields.estimatedCommissionDue.key
         )
       )
 
@@ -1152,9 +1071,7 @@ export default async function handler(
       normaliseNumber(
         getCustomFieldValue(
           deal,
-          fields
-            .adminFeeAmount
-            .key
+          fields.adminFeeAmount.key
         )
       )
 
@@ -1162,9 +1079,7 @@ export default async function handler(
       normaliseDate(
         getCustomFieldValue(
           deal,
-          fields
-            .adminFeeExpectedDate
-            .key
+          fields.adminFeeExpectedDate.key
         )
       )
 
@@ -1172,9 +1087,7 @@ export default async function handler(
       normaliseText(
         getCustomFieldValue(
           deal,
-          fields
-            .adminFeeMethod
-            .key
+          fields.adminFeeMethod.key
         )
       )
 
@@ -1182,9 +1095,7 @@ export default async function handler(
       normaliseDate(
         getCustomFieldValue(
           deal,
-          fields
-            .adminFeePaidOutDate
-            .key
+          fields.adminFeePaidOutDate.key
         )
       )
 
@@ -1192,9 +1103,7 @@ export default async function handler(
       normaliseDate(
         getCustomFieldValue(
           deal,
-          fields
-            .adminFeeReceivedDate
-            .key
+          fields.adminFeeReceivedDate.key
         )
       )
 
@@ -1202,9 +1111,7 @@ export default async function handler(
       normaliseNumber(
         getCustomFieldValue(
           deal,
-          fields
-            .balanceOutstanding
-            .key
+          fields.balanceOutstanding.key
         )
       )
 
@@ -1218,19 +1125,16 @@ export default async function handler(
       normaliseDate(
         getCustomFieldValue(
           deal,
-          fields
-            .installationRoofStartDate
+          fields.installationRoofStartDate
             .key
         )
       )
 
     const installationRoofTeam =
-      normaliseText(
+      normaliseFitTeam(
         getCustomFieldValue(
           deal,
-          fields
-            .installationRoofTeam
-            .key
+          fields.installationRoofTeam.key
         )
       )
 
@@ -1238,18 +1142,16 @@ export default async function handler(
       normaliseDate(
         getCustomFieldValue(
           deal,
-          fields
-            .installationElectricsStartDate
+          fields.installationElectricsStartDate
             .key
         )
       )
 
     const installationElectricsTeam =
-      normaliseText(
+      normaliseFitTeam(
         getCustomFieldValue(
           deal,
-          fields
-            .installationElectricsTeam
+          fields.installationElectricsTeam
             .key
         )
       )
@@ -1258,25 +1160,21 @@ export default async function handler(
       normaliseDate(
         getCustomFieldValue(
           deal,
-          fields
-            .remedialStartDate
-            .key
+          fields.remedialStartDate.key
         )
       )
 
     const remedialFitTeam =
-      normaliseText(
+      normaliseFitTeam(
         getCustomFieldValue(
           deal,
-          fields
-            .remedialFitTeam
-            .key
+          fields.remedialFitTeam.key
         )
       )
 
     /*
     |--------------------------------------------------------------------------
-    | SALES REP
+    | SALESPERSON
     |--------------------------------------------------------------------------
     */
 
@@ -1287,9 +1185,7 @@ export default async function handler(
       )
 
     const salespersonValue =
-      unwrapValue(
-        salespersonRaw
-      )
+      unwrapValue(salespersonRaw)
 
     const salesperson =
       salespersonValue &&
@@ -1348,13 +1244,12 @@ export default async function handler(
 
     /*
     |--------------------------------------------------------------------------
-    | FRIENDLY LOG FIELDS
+    | FRIENDLY LOG DATA
     |--------------------------------------------------------------------------
     */
 
     const friendlyFields = {
-      Customer:
-        customerName,
+      Customer: customerName,
 
       "Installation: Start Date":
         installationStartDate,
@@ -1398,12 +1293,6 @@ export default async function handler(
       "Balance: Outstanding Amount":
         balanceOutstanding,
 
-      /*
-      |--------------------------------------------------------------------------
-      | NEW FIELDS
-      |--------------------------------------------------------------------------
-      */
-
       "Installation: Roof Start Date":
         installationRoofStartDate,
 
@@ -1422,8 +1311,7 @@ export default async function handler(
       "Remedial: Fit Team":
         remedialFitTeam,
 
-      Stage:
-        pipedriveStage,
+      Stage: pipedriveStage,
     }
 
     const fieldCodes =
@@ -1444,37 +1332,21 @@ export default async function handler(
 
     const sanitizedBody =
       JSON.parse(
-        JSON.stringify(
-          body || {}
-        )
+        JSON.stringify(body || {})
       )
 
     if (
       sanitizedBody?.data?.item
-        ?.custom_fields &&
-      fields.salesperson.key
+        ?.custom_fields
     ) {
-      delete sanitizedBody
-        .data
-        .item
-        .custom_fields[
-          fields.salesperson.key
-        ]
-    }
-
-    if (
-      fields.salesperson.key &&
-      Object.prototype.hasOwnProperty.call(
-        sanitizedBody?.data?.item ||
-          {},
-        fields.salesperson.key
-      )
-    ) {
-      delete sanitizedBody
-        .data
-        .item[
-          fields.salesperson.key
-        ]
+      for (const field of Object.values(
+        fields
+      )) {
+        if (field.key) {
+          delete sanitizedBody.data.item
+            .custom_fields[field.key]
+        }
+      }
     }
 
     const payloadForLog = {
@@ -1487,18 +1359,42 @@ export default async function handler(
 
     const logBase = {
       ...baseLog,
-      payload:
-        payloadForLog,
+      payload: payloadForLog,
     }
 
     /*
     |--------------------------------------------------------------------------
-    | FIND EXISTING CRM DEAL
+    | FIND CRM DEAL
     |--------------------------------------------------------------------------
     */
 
     const select =
-      "id,pipedrive_deal_id,customer_name,installation_start_date,fit_team_1,installation_issues_fit_team,installations_issues_start_date,survey_costing,commission_paid_date,estimated_commission_due,admin_fee_amount,admin_fee_expected_date,admin_fee_method,admin_fee_paid_out_date,admin_fee_received_date,balance_outstanding,pipedrive_stage,salesperson,installation_roof_start_date,installation_roof_team,installation_electrics_start_date,installation_electrics_team,remedial_start_date,remedial_fit_team"
+      [
+        "id",
+        "pipedrive_deal_id",
+        "customer_name",
+        "installation_start_date",
+        "fit_team_1",
+        "installation_issues_fit_team",
+        "installations_issues_start_date",
+        "survey_costing",
+        "commission_paid_date",
+        "estimated_commission_due",
+        "admin_fee_amount",
+        "admin_fee_expected_date",
+        "admin_fee_method",
+        "admin_fee_paid_out_date",
+        "admin_fee_received_date",
+        "balance_outstanding",
+        "pipedrive_stage",
+        "salesperson",
+        "installation_roof_start_date",
+        "installation_roof_team",
+        "installation_electrics_start_date",
+        "installation_electrics_team",
+        "remedial_start_date",
+        "remedial_fit_team",
+      ].join(",")
 
     const lookup =
       await fetch(
@@ -1507,10 +1403,8 @@ export default async function handler(
         )}&select=${select}`,
         {
           headers: {
-            apikey:
-              serviceRoleKey,
-            Authorization:
-              `Bearer ${serviceRoleKey}`,
+            apikey: serviceRoleKey,
+            Authorization: `Bearer ${serviceRoleKey}`,
             Accept:
               "application/json",
           },
@@ -1524,9 +1418,7 @@ export default async function handler(
 
     if (!lookup.ok) {
       const message =
-        Array.isArray(
-          existingDeals
-        )
+        Array.isArray(existingDeals)
           ? "CRM deal lookup failed."
           : String(
               existingDeals?.message ||
@@ -1540,10 +1432,8 @@ export default async function handler(
         {
           ...logBase,
           status: "failed",
-          httpStatus:
-            lookup.status,
-          errorMessage:
-            message,
+          httpStatus: lookup.status,
+          errorMessage: message,
           result: {
             dealId,
           },
@@ -1560,16 +1450,41 @@ export default async function handler(
 
     /*
     |--------------------------------------------------------------------------
-    | NO MATCHING DEAL
+    | NO MATCH
     |--------------------------------------------------------------------------
     */
 
     if (
-      !Array.isArray(
-        existingDeals
-      ) ||
+      !Array.isArray(existingDeals) ||
       existingDeals.length !== 1
     ) {
+      const result = {
+        reason:
+          "No matching CRM deal by Pipedrive deal ID",
+        dealId,
+        customerName,
+        installationStartDate,
+        fitTeam1,
+        installationIssuesFitTeam,
+        installationsIssuesStartDate,
+        surveyCosting,
+        commissionPaidDate,
+        estimatedCommissionDue,
+        adminFeeAmount,
+        adminFeeExpectedDate,
+        adminFeeMethod,
+        adminFeePaidOutDate,
+        adminFeeReceivedDate,
+        balanceOutstanding,
+        installationRoofStartDate,
+        installationRoofTeam,
+        installationElectricsStartDate,
+        installationElectricsTeam,
+        remedialStartDate,
+        remedialFitTeam,
+        pipedriveStage,
+      }
+
       await logEvent(
         supabaseUrl,
         serviceRoleKey,
@@ -1577,58 +1492,7 @@ export default async function handler(
           ...logBase,
           status: "ignored",
           httpStatus: 200,
-
-          result: {
-            reason:
-              "No matching CRM deal by Pipedrive deal ID",
-
-            dealId,
-
-            customerName,
-
-            salesperson,
-
-            installationStartDate,
-
-            fitTeam1,
-
-            installationIssuesFitTeam,
-
-            installationsIssuesStartDate,
-
-            surveyCosting,
-
-            commissionPaidDate,
-
-            estimatedCommissionDue,
-
-            adminFeeAmount,
-
-            adminFeeExpectedDate,
-
-            adminFeeMethod,
-
-            adminFeePaidOutDate,
-
-            adminFeeReceivedDate,
-
-            balanceOutstanding,
-
-            pipedriveStage,
-
-            installationRoofStartDate,
-
-            installationRoofTeam,
-
-            installationElectricsStartDate,
-
-            installationElectricsTeam,
-
-            remedialStartDate,
-
-            remedialFitTeam,
-          },
-
+          result,
           processedAt:
             new Date().toISOString(),
         }
@@ -1637,20 +1501,18 @@ export default async function handler(
       return send(res, 200, {
         success: true,
         updated: false,
-        reason:
-          "No matching CRM deal by Pipedrive deal ID",
-        dealId,
+        ...result,
       })
     }
 
-    const matchedDeal =
-      existingDeals[0]
-
     /*
     |--------------------------------------------------------------------------
-    | SUPABASE UPDATE
+    | UPDATE CRM DEAL
     |--------------------------------------------------------------------------
     */
+
+    const matchedDeal =
+      existingDeals[0]
 
     const updatePayload = {
       pipedrive_deal_id:
@@ -1659,8 +1521,7 @@ export default async function handler(
       customer_name:
         customerName,
 
-      salesperson:
-        salesperson,
+      salesperson,
 
       installation_start_date:
         installationStartDate,
@@ -1727,6 +1588,9 @@ export default async function handler(
 
       remedial_fit_team:
         remedialFitTeam,
+
+      updated_at:
+        new Date().toISOString(),
     }
 
     const updateResponse =
@@ -1736,21 +1600,14 @@ export default async function handler(
         )}`,
         {
           method: "PATCH",
-
           headers: {
-            apikey:
-              serviceRoleKey,
-
-            Authorization:
-              `Bearer ${serviceRoleKey}`,
-
+            apikey: serviceRoleKey,
+            Authorization: `Bearer ${serviceRoleKey}`,
             "Content-Type":
               "application/json",
-
             Prefer:
               "return=representation",
           },
-
           body: JSON.stringify(
             updatePayload
           ),
@@ -1780,21 +1637,15 @@ export default async function handler(
           status: "failed",
           httpStatus:
             updateResponse.status,
-          errorMessage:
-            message,
-
+          errorMessage: message,
           result: {
             dealId,
-
             matchedBy:
               "pipedrive_deal_id",
-
             crmDealId:
               matchedDeal.id,
-
             updatePayload,
           },
-
           processedAt:
             new Date().toISOString(),
         }
@@ -1851,8 +1702,6 @@ export default async function handler(
 
       balanceOutstanding,
 
-      pipedriveStage,
-
       /*
       |--------------------------------------------------------------------------
       | NEW FIELDS
@@ -1870,6 +1719,8 @@ export default async function handler(
       remedialStartDate,
 
       remedialFitTeam,
+
+      pipedriveStage,
 
       updatedRows:
         Array.isArray(updated)
@@ -1902,19 +1753,31 @@ export default async function handler(
         ? error.message
         : "Unexpected Pipedrive webhook error."
 
-    await logEvent(
-      supabaseUrl,
-      serviceRoleKey,
-      {
-        ...baseLog,
-        status: "failed",
-        httpStatus: 500,
-        errorMessage:
-          message,
-        processedAt:
-          new Date().toISOString(),
-      }
+    console.error(
+      "Pipedrive webhook error:",
+      error
     )
+
+    if (
+      supabaseUrl &&
+      serviceRoleKey
+    ) {
+      await logEvent(
+        supabaseUrl,
+        serviceRoleKey,
+        {
+          ...baseLog,
+          status: "failed",
+          httpStatus: 500,
+          errorMessage: message,
+          result: {
+            dealId,
+          },
+          processedAt:
+            new Date().toISOString(),
+        }
+      )
+    }
 
     return send(res, 500, {
       success: false,
