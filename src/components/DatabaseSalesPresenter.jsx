@@ -38,12 +38,47 @@ export default function DatabaseSalesPresenter({ appointment, onClose, templateI
   const [template, setTemplate] = useState(null)
   const [pages, setPages] = useState([])
   const [index, setIndex] = useState(0)
+  const [direction, setDirection] = useState("next")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const type = isSolar(appointment) ? "solar" : "windows"
-  useEffect(() => { let mounted = true; async function load() { setLoading(true); setError(""); let templateQuery = supabase.from("templates").select("id,name,template_type,description"); if (templateId) templateQuery = templateQuery.eq("id", templateId).maybeSingle(); else templateQuery = templateQuery.eq("template_type", "presenter").eq("active", true).order("created_at", { ascending: true }).limit(1).maybeSingle(); const { data: templateData, error: templateError } = await templateQuery; if (templateError) { if (mounted) { setError(templateError.message); setLoading(false) }; return }; if (!templateData) { if (mounted) { setError("No active presenter template could be found."); setLoading(false) }; return }; const { data: pageData, error: pageError } = await supabase.from("template_pages").select("id,slide_order,title,subtitle,body,settings").eq("presentation_id", templateData.id).order("slide_order", { ascending: true }); if (pageError) { if (mounted) { setError(pageError.message); setLoading(false) }; return }; if (mounted) { setTemplate(templateData); setPages(pageData || []); setIndex(0); setLoading(false) } } load(); return () => { mounted = false } }, [type, templateId])
-  useEffect(() => { const onKeyDown = (event) => { if (event.key === "Escape") onClose?.(); if (event.key === "ArrowRight") setIndex(v => Math.min(v + 1, Math.max(pages.length - 1, 0))); if (event.key === "ArrowLeft") setIndex(v => Math.max(v - 1, 0)) }; window.addEventListener("keydown", onKeyDown); return () => window.removeEventListener("keydown", onKeyDown) }, [onClose, pages.length])
+
+  useEffect(() => { let mounted = true; async function load() { setLoading(true); setError(""); let templateQuery = supabase.from("templates").select("id,name,template_type,description"); if (templateId) templateQuery = templateQuery.eq("id", templateId).maybeSingle(); else templateQuery = templateQuery.eq("template_type", "presenter").eq("active", true).order("created_at", { ascending: true }).limit(1).maybeSingle(); const { data: templateData, error: templateError } = await templateQuery; if (templateError) { if (mounted) { setError(templateError.message); setLoading(false) }; return }; if (!templateData) { if (mounted) { setError("No active presenter template could be found."); setLoading(false) }; return }; const { data: pageData, error: pageError } = await supabase.from("template_pages").select("id,slide_order,title,subtitle,body,settings").eq("presentation_id", templateData.id).order("slide_order", { ascending: true }); if (pageError) { if (mounted) { setError(pageError.message); setLoading(false) }; return }; if (mounted) { setTemplate(templateData); setPages(pageData || []); setIndex(0); setDirection("next"); setLoading(false) } } load(); return () => { mounted = false } }, [type, templateId])
+
+  useEffect(() => { const onKeyDown = (event) => { if (event.key === "Escape") onClose?.(); if (event.key === "ArrowRight") goToPage(1); if (event.key === "ArrowLeft") goToPage(-1) }; window.addEventListener("keydown", onKeyDown); return () => window.removeEventListener("keydown", onKeyDown) }, [onClose, pages.length])
+
+  function goToPage(change) {
+    setIndex((current) => {
+      const next = Math.max(0, Math.min(current + change, Math.max(pages.length - 1, 0)))
+      if (next !== current) setDirection(next > current ? "next" : "previous")
+      return next
+    })
+  }
+
   const page = pages[index]
   const isSlideOne = index === 0 && Boolean(page?.settings?.visual || page?.settings?.cover)
-  return <div style={{ position: "fixed", inset: 0, zIndex: 3000, background: "#07111c", color: "#fff", display: "flex", flexDirection: "column" }}><div style={{ height: 58, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 22px", borderBottom: "1px solid rgba(255,255,255,.12)", flex: "0 0 auto" }}><div><div style={{ fontSize: 14, fontWeight: 800 }}>{template?.name || (type === "solar" ? "Solar Presentation" : "Windows & Doors Presentation")}</div><div style={{ fontSize: 10, opacity: .65, marginTop: 3 }}>{appointment?.name || appointment?.customer_name || "Customer"}</div></div><button type="button" onClick={onClose} style={{ border: 0, background: "rgba(255,255,255,.08)", color: "#fff", width: 36, height: 36, borderRadius: 8, cursor: "pointer" }} aria-label="Close presenter"><X size={18} /></button></div><div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: isSlideOne ? 0 : 28 }}>{loading ? <div style={{ fontSize: 14, opacity: .7 }}>Loading presentation...</div> : error ? <div style={{ maxWidth: 520, textAlign: "center" }}><div style={{ fontSize: 18, fontWeight: 800, marginBottom: 10 }}>Presenter unavailable</div><div style={{ fontSize: 12, opacity: .7 }}>{error}</div></div> : page ? (isSlideOne ? <SlideOne slide={page} appointment={appointment} /> : <StandardSlide slide={page} appointment={appointment} />) : <div style={{ fontSize: 14, opacity: .7 }}>This template has no pages yet.</div>}</div><div style={{ height: 68, display: "flex", alignItems: "center", justifyContent: "center", gap: 18, flex: "0 0 auto" }}><button type="button" disabled={index === 0 || !pages.length} onClick={() => setIndex(v => Math.max(v - 1, 0))} style={{ width: 42, height: 42, border: 0, borderRadius: 21, background: index === 0 ? "rgba(255,255,255,.06)" : "rgba(255,255,255,.12)", color: "#fff" }}><ChevronLeft size={20} /></button><div style={{ minWidth: 80, textAlign: "center", fontSize: 11, opacity: .7 }}>{pages.length ? `${index + 1} / ${pages.length}` : "0 / 0"}</div><button type="button" disabled={index >= pages.length - 1 || !pages.length} onClick={() => setIndex(v => Math.min(v + 1, pages.length - 1))} style={{ width: 42, height: 42, border: 0, borderRadius: 21, background: index >= pages.length - 1 ? "rgba(255,255,255,.06)" : "rgba(255,255,255,.12)", color: "#fff" }}><ChevronRight size={20} /></button></div></div>
+  const transitionKey = page?.id || index
+
+  return <div style={{ position: "fixed", inset: 0, zIndex: 3000, background: "#07111c", color: "#fff", display: "flex", flexDirection: "column" }}>
+    <style>{`
+      @keyframes presenterSlideNext {
+        from { opacity: 0; transform: translate3d(48px, 0, 0) scale(.985); }
+        to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+      }
+      @keyframes presenterSlidePrevious {
+        from { opacity: 0; transform: translate3d(-48px, 0, 0) scale(.985); }
+        to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+      }
+      .presenter-page-transition-next { animation: presenterSlideNext .38s cubic-bezier(.22,.61,.36,1) both; }
+      .presenter-page-transition-previous { animation: presenterSlidePrevious .38s cubic-bezier(.22,.61,.36,1) both; }
+      @media (prefers-reduced-motion: reduce) {
+        .presenter-page-transition-next, .presenter-page-transition-previous { animation: none; }
+      }
+    `}</style>
+    <div style={{ height: 58, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 22px", borderBottom: "1px solid rgba(255,255,255,.12)", flex: "0 0 auto" }}><div><div style={{ fontSize: 14, fontWeight: 800 }}>{template?.name || (type === "solar" ? "Solar Presentation" : "Windows & Doors Presentation")}</div><div style={{ fontSize: 10, opacity: .65, marginTop: 3 }}>{appointment?.name || appointment?.customer_name || "Customer"}</div></div><button type="button" onClick={onClose} style={{ border: 0, background: "rgba(255,255,255,.08)", color: "#fff", width: 36, height: 36, borderRadius: 8, cursor: "pointer" }} aria-label="Close presenter"><X size={18} /></button></div>
+    <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: isSlideOne ? 0 : 28, overflow: "hidden" }}>
+      {loading ? <div style={{ fontSize: 14, opacity: .7 }}>Loading presentation...</div> : error ? <div style={{ maxWidth: 520, textAlign: "center" }}><div style={{ fontSize: 18, fontWeight: 800, marginBottom: 10 }}>Presenter unavailable</div><div style={{ fontSize: 12, opacity: .7 }}>{error}</div></div> : page ? <div key={transitionKey} className={`presenter-page-transition-${direction}`} style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>{isSlideOne ? <SlideOne slide={page} appointment={appointment} /> : <StandardSlide slide={page} appointment={appointment} />}</div> : <div style={{ fontSize: 14, opacity: .7 }}>This template has no pages yet.</div>}
+    </div>
+    <div style={{ height: 68, display: "flex", alignItems: "center", justifyContent: "center", gap: 18, flex: "0 0 auto" }}><button type="button" disabled={index === 0 || !pages.length} onClick={() => goToPage(-1)} style={{ width: 42, height: 42, border: 0, borderRadius: 21, background: index === 0 ? "rgba(255,255,255,.06)" : "rgba(255,255,255,.12)", color: "#fff" }}><ChevronLeft size={20} /></button><div style={{ minWidth: 80, textAlign: "center", fontSize: 11, opacity: .7 }}>{pages.length ? `${index + 1} / ${pages.length}` : "0 / 0"}</div><button type="button" disabled={index >= pages.length - 1 || !pages.length} onClick={() => goToPage(1)} style={{ width: 42, height: 42, border: 0, borderRadius: 21, background: index >= pages.length - 1 ? "rgba(255,255,255,.06)" : "rgba(255,255,255,.12)", color: "#fff" }}><ChevronRight size={20} /></button></div>
+  </div>
 }
