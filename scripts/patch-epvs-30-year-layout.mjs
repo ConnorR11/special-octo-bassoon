@@ -110,6 +110,9 @@ const epvsBranch = String.raw`  } else if (kind === "epvs") {
 
     // EPVS certification panel from the supplied reference, rebuilt in the
     // existing contract style so it remains sharp/selectable in the PDF.
+    // The page title/underline sits immediately above this card, so keep the
+    // card close to the heading rather than leaving the default page gap.
+    y -= 6
     const introCardY = y - 3
     const introCardH = 37
     pdf.setFillColor(245, 248, 250)
@@ -152,7 +155,8 @@ const epvsBranch = String.raw`  } else if (kind === "epvs") {
     const explanation = "The figures below are based on the inputs used to calculate the generation of your new system. The calculation used to determine the generation for each roof/array is System Size × Irradiance × Shade Factor."
     const explanationLines = pdf.splitTextToSize(explanation, width)
     pdf.text(explanationLines, ctx.padding, y)
-    y += explanationLines.length * 3.8 + 7
+    // Keep the summary table close to the explanatory statement.
+    y += explanationLines.length * 3.8 + 3.5
 
     // Four-column system summary.
     const summaryHeaders = ["NUMBER OF PANELS", "PANEL SIZE", "TOTAL SYSTEM SIZE", "POSTCODE REGION"]
@@ -286,7 +290,7 @@ const epvsBranch = String.raw`  } else if (kind === "epvs") {
 
     y = rowY + rowHeight + 4
 `
-const marker = /  \} else if \(kind === "epvs"\) \{[\s\S]*?\n  \} else if \(kind === "datasheets"\) \{/
+const marker = /  \} else if \(kind === "epvs"\) \{[\s\S]*?\n  \} else if \(kind === "datasheets"\) \{/ 
 if (!marker.test(source)) {
   throw new Error("Could not locate the existing EPVS page renderer")
 }
