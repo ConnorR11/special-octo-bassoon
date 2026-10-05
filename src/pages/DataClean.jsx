@@ -41,7 +41,7 @@ export default function DataClean({ onOpenAppointment }) {
       while (true) {
         const { data, error: queryError } = await supabase
           .from("appointments")
-          .select("appointment_row_id,name,phone_number_1,email_address,postcode,address,appointment_date,product,job_type,branch,rep_allocated,result,status")
+          .select("appointment_row_id,name,phone_number_1,email_address,postcode,address,appointment_date,product,job_type,branch,rep_allocated,result")
           .order("appointment_date", { ascending: false, nullsFirst: false })
           .range(from, from + pageSize - 1)
 
