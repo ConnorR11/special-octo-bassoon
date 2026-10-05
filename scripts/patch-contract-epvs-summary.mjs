@@ -67,6 +67,7 @@ function drawEpvsContractSummary(pdf, ctx, data, results, startY) {
       pdf.setFontSize(5.8)
       pdf.setTextColor(95, 95, 95)
       pdf.text("(per kWh)", x + firstWidth - 3, rowY + 4.1, { align: "right" })
+      pdf.setTextColor(255, 255, 255)
       sub.forEach((header, index) => {
         const sx = x + firstWidth + index * subWidth
         pdf.rect(sx, rowY, subWidth, rowHeight, "FD")
@@ -154,6 +155,13 @@ function drawEpvsContractSummary(pdf, ctx, data, results, startY) {
   if (!source.includes(marker)) throw new Error("Could not locate renderPage in GenerateSolarContract.js")
   source = source.replace(marker, helper + "\n" + marker)
 }
+
+// Ensure the column headings in the rate tables have sufficient contrast.
+// Keep the '(per kWh)' label grey, but make the actual column headings white.
+source = source.replace(
+  'pdf.text("(per kWh)", x + firstWidth - 3, rowY + 4.1, { align: "right" })\n      sub.forEach',
+  'pdf.text("(per kWh)", x + firstWidth - 3, rowY + 4.1, { align: "right" })\n      pdf.setTextColor(255, 255, 255)\n      sub.forEach'
+)
 
 const datasheetsMarker = '  } else if (kind === "datasheets") {'
 const summaryCall = '    y = drawEpvsContractSummary(pdf, ctx, data, results, y + 8)\n'
