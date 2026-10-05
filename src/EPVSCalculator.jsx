@@ -85,7 +85,7 @@ const initial = {
   paymentMethod: "Finance",
 
   systemCost: "",
-  deposit: 0,
+  deposit: "",
 
   financeTerm: "",
   financeRate: "",
