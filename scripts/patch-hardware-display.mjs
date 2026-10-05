@@ -15,6 +15,8 @@ if (
   process.exit(0)
 }
 
+// Allow the card to have additional attributes such as className while still
+// targeting only the existing Battery & Inverter card.
 const batteryCardRegex = /\n\s*<Card\s+title="Battery & Inverter"[\s\S]*?\n\s*<\/Card>/
 
 const replacement = `
