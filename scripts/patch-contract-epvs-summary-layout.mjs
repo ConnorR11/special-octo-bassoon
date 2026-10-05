@@ -23,6 +23,12 @@ if (source.includes("function drawEpvsContractSummary(pdf, ctx, data, results, s
     '  rightY += 8\n  rightY = drawSection(rightX, rightY, "NEW FLUX RATES"',
     '  rightY += 5\n  rightY = drawSection(rightX, rightY, "NEW FLUX RATES"'
   )
+
+  // Reduce the gap between the inflation disclaimer and the first summary tables.
+  source = source.replace(
+    'drawEpvsContractSummary(pdf, ctx, data, results, y + 8)',
+    'drawEpvsContractSummary(pdf, ctx, data, results, y + 3)'
+  )
 }
 
 fs.writeFileSync(file, source)
