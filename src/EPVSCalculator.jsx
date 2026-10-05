@@ -84,11 +84,11 @@ const initial = {
 
   paymentMethod: "Finance",
 
-  systemCost: 12000,
+  systemCost: "",
   deposit: 0,
 
-  financeTerm: 10,
-  financeRate: 7.9,
+  financeTerm: "",
+  financeRate: "",
 }
 
 function OctopusLogo() {
