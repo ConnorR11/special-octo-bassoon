@@ -70,6 +70,7 @@ function drawEpvsContractSummary(pdf, ctx, data, results, startY) {
       pdf.setTextColor(255, 255, 255)
       sub.forEach((header, index) => {
         const sx = x + firstWidth + index * subWidth
+        pdf.setFillColor(...headerFill)
         pdf.rect(sx, rowY, subWidth, rowHeight, "FD")
         pdf.text(header, sx + subWidth / 2, rowY + 4.1, { align: "center" })
       })
@@ -156,11 +157,15 @@ function drawEpvsContractSummary(pdf, ctx, data, results, startY) {
   source = source.replace(marker, helper + "\n" + marker)
 }
 
-// Ensure the column headings in the rate tables have sufficient contrast.
-// Keep the '(per kWh)' label grey, but make the actual column headings white.
+// Ensure both rate-table column headings use the dark header fill with white text.
+// Keep the '(per kWh)' label in the light grey cell.
 source = source.replace(
   'pdf.text("(per kWh)", x + firstWidth - 3, rowY + 4.1, { align: "right" })\n      sub.forEach',
   'pdf.text("(per kWh)", x + firstWidth - 3, rowY + 4.1, { align: "right" })\n      pdf.setTextColor(255, 255, 255)\n      sub.forEach'
+)
+source = source.replace(
+  'const sx = x + firstWidth + index * subWidth\n        pdf.rect(sx, rowY, subWidth, rowHeight, "FD")',
+  'const sx = x + firstWidth + index * subWidth\n        pdf.setFillColor(...headerFill)\n        pdf.rect(sx, rowY, subWidth, rowHeight, "FD")'
 )
 
 const datasheetsMarker = '  } else if (kind === "datasheets") {'
@@ -170,9 +175,6 @@ if (!source.includes(datasheetsMarker)) {
   throw new Error("Could not locate the datasheets branch in GenerateSolarContract.js")
 }
 
-// Insert the summary immediately before the datasheets branch. This is deliberately
-// anchored to the next branch rather than the internal ending of the EPVS branch,
-// because the EPVS branch has changed shape across earlier contract patches.
 if (!source.includes("drawEpvsContractSummary(pdf, ctx, data, results, y + 8)")) {
   source = source.replace(datasheetsMarker, summaryCall + datasheetsMarker)
 }
