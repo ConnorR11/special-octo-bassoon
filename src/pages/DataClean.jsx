@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import { AlertTriangle, CheckCircle2, ChevronRight, ClipboardList, RefreshCw, Search } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
@@ -26,11 +26,15 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [search, setSearch] = useState("")
+  const requestIdRef = useRef(0)
 
   const selectedReport = REPORTS.find(report => report.id === activeReport) || REPORTS[0]
 
   async function loadReport(reportId = activeReport) {
+    const requestId = ++requestIdRef.current
+
     if (!supabase) {
+      if (requestId !== requestIdRef.current) return
       setError("Supabase is not configured.")
       setLoading(false)
       return
@@ -78,17 +82,23 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
         from += pageSize
       }
 
+      // A report can be switched while the previous report is still loading.
+      // Only the latest request is allowed to update the component state.
+      if (requestId !== requestIdRef.current) return
       setRows(allRows)
     } catch (err) {
+      if (requestId !== requestIdRef.current) return
       console.error("Data Clean load error:", err)
       setError(err?.message || "Unable to load this report.")
       setRows([])
     } finally {
-      setLoading(false)
+      if (requestId === requestIdRef.current) setLoading(false)
     }
   }
 
-  useEffect(() => { loadReport(activeReport) }, [activeReport])
+  useEffect(() => {
+    loadReport(activeReport)
+  }, [activeReport])
 
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase()
