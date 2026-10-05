@@ -1,3 +1,4 @@
+```jsx
 import React, { useEffect, useMemo, useState } from "react"
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react"
 import { supabase } from "./lib/supabase"
@@ -9,7 +10,7 @@ function FitSheet({ setSelected }) {
   const [weekIssues, setWeekIssues] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState("")
-  const [jobTypeFilter, setJobTypeFilter] = useState("all")
+  const [productFilter, setProductFilter] = useState("all")
 
   function getMonday(date) {
     const d = new Date(date)
@@ -115,10 +116,10 @@ function FitSheet({ setSelected }) {
       setLoadError("")
 
       const dealSelect =
-        "id,customer_name,postcode,contract_number,deal_value,balance_outstanding,job_type,installation_start_date,fit_team_1,installation_roof_start_date,installation_roof_team,installation_electrics_start_date,installation_electrics_team,remedial_start_date,remedial_fit_team,pipedrive_stage"
+        "id,customer_name,postcode,contract_number,deal_value,balance_outstanding,product,installation_start_date,fit_team_1,installation_roof_start_date,installation_roof_team,installation_electrics_start_date,installation_electrics_team,remedial_start_date,remedial_fit_team,pipedrive_stage"
 
       const issueSelect =
-        "id,customer_name,postcode,contract_number,deal_value,balance_outstanding,job_type,installations_issues_start_date,installation_issues_fit_team,pipedrive_stage"
+        "id,customer_name,postcode,contract_number,deal_value,balance_outstanding,product,installations_issues_start_date,installation_issues_fit_team,pipedrive_stage"
 
       const [
         normalResult,
@@ -322,8 +323,8 @@ function FitSheet({ setSelected }) {
             team: String(
               deal.fit_team_1
             ).trim(),
-            jobType: String(
-              deal.job_type || ""
+            product: String(
+              deal.product || ""
             ).trim(),
           })
         }
@@ -352,8 +353,8 @@ function FitSheet({ setSelected }) {
             team: String(
               deal.installation_roof_team
             ).trim(),
-            jobType: String(
-              deal.job_type || ""
+            product: String(
+              deal.product || ""
             ).trim(),
           })
         }
@@ -382,8 +383,8 @@ function FitSheet({ setSelected }) {
             team: String(
               deal.installation_electrics_team
             ).trim(),
-            jobType: String(
-              deal.job_type || ""
+            product: String(
+              deal.product || ""
             ).trim(),
           })
         }
@@ -412,8 +413,8 @@ function FitSheet({ setSelected }) {
             team: String(
               deal.remedial_fit_team
             ).trim(),
-            jobType: String(
-              deal.job_type || ""
+            product: String(
+              deal.product || ""
             ).trim(),
           })
         }
@@ -444,8 +445,8 @@ function FitSheet({ setSelected }) {
             team: String(
               deal.installation_issues_fit_team
             ).trim(),
-            jobType: String(
-              deal.job_type || ""
+            product: String(
+              deal.product || ""
             ).trim(),
           })
         }
@@ -462,73 +463,74 @@ function FitSheet({ setSelected }) {
 
   /*
    * ------------------------------------------------------------
-   * JOB TYPE FILTER
+   * PRODUCT FILTER
    *
-   * This is now based on the Supabase `job_type` field.
-   * For example:
-   * Windows
-   * Solar
-   * etc.
+   * This uses the `product` column in deals.
    * ------------------------------------------------------------
    */
 
-  const availableJobTypes = useMemo(() => {
-    const values = jobs
+  const availableProducts = useMemo(() => {
+    const products = jobs
       .map((job) =>
         String(
-          job.jobType || ""
+          job.product || ""
         ).trim()
       )
       .filter(Boolean)
 
-    return [...new Set(values)].sort(
-      (a, b) =>
-        a.localeCompare(
-          b,
-          undefined,
-          {
-            sensitivity: "base",
-          }
-        )
+    return [
+      ...new Set(products),
+    ].sort((a, b) =>
+      a.localeCompare(
+        b,
+        undefined,
+        {
+          sensitivity:
+            "base",
+        }
+      )
     )
   }, [jobs])
 
   /*
-   * If the currently selected job type no longer exists
-   * in the selected week, reset the filter.
+   * If the selected product doesn't exist
+   * in the new week, reset to All.
    */
+
   useEffect(() => {
     if (
-      jobTypeFilter !== "all" &&
-      !availableJobTypes.includes(
-        jobTypeFilter
+      productFilter !== "all" &&
+      !availableProducts.includes(
+        productFilter
       )
     ) {
-      setJobTypeFilter("all")
+      setProductFilter("all")
     }
   }, [
-    availableJobTypes,
-    jobTypeFilter,
+    availableProducts,
+    productFilter,
   ])
 
-  const filteredJobs = useMemo(() => {
-    if (
-      jobTypeFilter === "all"
-    ) {
-      return jobs
-    }
+  const filteredJobs =
+    useMemo(() => {
+      if (
+        productFilter ===
+        "all"
+      ) {
+        return jobs
+      }
 
-    return jobs.filter(
-      (job) =>
-        String(
-          job.jobType || ""
-        ).trim() ===
-        jobTypeFilter
-    )
-  }, [
-    jobs,
-    jobTypeFilter,
-  ])
+      return jobs.filter(
+        (job) =>
+          String(
+            job.product || ""
+          ).trim() ===
+          productFilter
+      )
+    }, [
+      jobs,
+      productFilter,
+    ])
 
   /*
    * ------------------------------------------------------------
@@ -536,21 +538,25 @@ function FitSheet({ setSelected }) {
    * ------------------------------------------------------------
    */
 
-  const fitTeams = useMemo(() => {
-    const teams = filteredJobs
-      .map((job) =>
-        String(
-          job.team || ""
-        ).trim()
-      )
-      .filter(Boolean)
+  const fitTeams =
+    useMemo(() => {
+      const teams =
+        filteredJobs
+          .map((job) =>
+            String(
+              job.team || ""
+            ).trim()
+          )
+          .filter(Boolean)
 
-    return [
-      ...new Set(teams),
-    ].sort((a, b) =>
-      a.localeCompare(b)
-    )
-  }, [filteredJobs])
+      return [
+        ...new Set(teams),
+      ].sort((a, b) =>
+        a.localeCompare(b)
+      )
+    }, [
+      filteredJobs,
+    ])
 
   /*
    * ------------------------------------------------------------
@@ -558,15 +564,19 @@ function FitSheet({ setSelected }) {
    * ------------------------------------------------------------
    */
 
-  const freshFits = jobs.filter(
-    (job) =>
-      job.type === "fit"
-  )
+  const freshFits =
+    jobs.filter(
+      (job) =>
+        job.type ===
+        "fit"
+    )
 
-  const issueFits = jobs.filter(
-    (job) =>
-      job.type === "issue"
-  )
+  const issueFits =
+    jobs.filter(
+      (job) =>
+        job.type ===
+        "issue"
+    )
 
   const freshFitsCount =
     freshFits.length
@@ -586,7 +596,8 @@ function FitSheet({ setSelected }) {
       (total, job) =>
         total +
         (Number(
-          job.deal?.balance_outstanding
+          job.deal
+            ?.balance_outstanding
         ) || 0),
       0
     )
@@ -610,7 +621,8 @@ function FitSheet({ setSelected }) {
     return filteredJobs.filter(
       (job) =>
         job.team === team &&
-        job.date === dateString
+        job.date ===
+          dateString
     )
   }
 
@@ -632,7 +644,9 @@ function FitSheet({ setSelected }) {
    * ------------------------------------------------------------
    */
 
-  function renderJobCard(job) {
+  function renderJobCard(
+    job
+  ) {
     const colours =
       jobTypes[job.type]
 
@@ -648,15 +662,20 @@ function FitSheet({ setSelected }) {
         }
         style={{
           width: "100%",
-          textAlign: "left",
+          textAlign:
+            "left",
           border: `1px solid ${colours.border}`,
-          borderRadius: "5px",
+          borderRadius:
+            "5px",
           background:
             colours.background,
           padding: "8px",
-          marginBottom: "5px",
-          cursor: "pointer",
-          fontFamily: "inherit",
+          marginBottom:
+            "5px",
+          cursor:
+            "pointer",
+          fontFamily:
+            "inherit",
           transition:
             "box-shadow 0.15s ease, transform 0.15s ease",
         }}
@@ -681,7 +700,8 @@ function FitSheet({ setSelected }) {
       >
         <div
           style={{
-            display: "flex",
+            display:
+              "flex",
             alignItems:
               "center",
             justifyContent:
@@ -693,7 +713,8 @@ function FitSheet({ setSelected }) {
         >
           <div
             style={{
-              fontSize: "8px",
+              fontSize:
+                "8px",
               fontWeight: 800,
               color:
                 colours.text,
@@ -703,15 +724,19 @@ function FitSheet({ setSelected }) {
                 "0.5px",
             }}
           >
-            {colours.label}
+            {
+              colours.label
+            }
           </div>
 
           {job.type ===
             "issue" && (
             <div
               style={{
-                fontSize: "8px",
-                fontWeight: 800,
+                fontSize:
+                  "8px",
+                fontWeight:
+                  800,
                 color:
                   "#b42318",
               }}
@@ -723,11 +748,14 @@ function FitSheet({ setSelected }) {
 
         <div
           style={{
-            fontSize: "10px",
-            fontWeight: 700,
+            fontSize:
+              "10px",
+            fontWeight:
+              700,
             color:
               colours.text,
-            lineHeight: "1.3",
+            lineHeight:
+              "1.3",
           }}
         >
           {deal.customer_name ||
@@ -737,73 +765,99 @@ function FitSheet({ setSelected }) {
         {deal.pipedrive_stage && (
           <div
             style={{
-              marginTop: "3px",
-              fontSize: "8px",
-              fontWeight: 700,
+              marginTop:
+                "3px",
+              fontSize:
+                "8px",
+              fontWeight:
+                700,
               color:
                 colours.text,
-              opacity: 0.85,
+              opacity:
+                0.85,
             }}
           >
-            {deal.pipedrive_stage}
+            {
+              deal.pipedrive_stage
+            }
           </div>
         )}
 
         {deal.postcode && (
           <div
             style={{
-              marginTop: "3px",
-              fontSize: "9px",
+              marginTop:
+                "3px",
+              fontSize:
+                "9px",
               color:
                 colours.text,
-              opacity: 0.8,
+              opacity:
+                0.8,
             }}
           >
-            {deal.postcode}
+            {
+              deal.postcode
+            }
           </div>
         )}
 
         {deal.contract_number && (
           <div
             style={{
-              marginTop: "3px",
-              fontSize: "9px",
+              marginTop:
+                "3px",
+              fontSize:
+                "9px",
               color:
                 colours.text,
-              opacity: 0.8,
+              opacity:
+                0.8,
             }}
           >
-            {deal.contract_number}
+            {
+              deal.contract_number
+            }
           </div>
         )}
 
-        {deal.job_type && (
+        {deal.product && (
           <div
             style={{
-              marginTop: "4px",
-              fontSize: "8px",
-              fontWeight: 700,
+              marginTop:
+                "4px",
+              fontSize:
+                "8px",
+              fontWeight:
+                700,
               color:
                 colours.text,
-              opacity: 0.75,
+              opacity:
+                0.75,
             }}
           >
-            {deal.job_type}
+            {
+              deal.product
+            }
           </div>
         )}
 
         {job.type ===
           "fit" &&
           (
-            deal.deal_value != null ||
+            deal.deal_value !=
+              null ||
             deal.balance_outstanding !=
               null
           ) && (
             <div
               style={{
-                marginTop: "5px",
-                fontSize: "9px",
-                fontWeight: 700,
+                marginTop:
+                  "5px",
+                fontSize:
+                  "9px",
+                fontWeight:
+                  700,
                 color:
                   colours.text,
               }}
@@ -815,8 +869,10 @@ function FitSheet({ setSelected }) {
 
               <span
                 style={{
-                  color: "#777",
-                  fontWeight: 600,
+                  color:
+                    "#777",
+                  fontWeight:
+                    600,
                   margin:
                     "0 3px",
                 }}
@@ -843,56 +899,6 @@ function FitSheet({ setSelected }) {
 
   /*
    * ------------------------------------------------------------
-   * STAT CARD
-   * ------------------------------------------------------------
-   */
-
-  const statCard = (
-    label,
-    value,
-    valueColor = "#172554"
-  ) => (
-    <div
-      className="card"
-      style={{
-        flex: 1,
-        minWidth: "180px",
-        padding:
-          "18px 20px",
-        margin: 0,
-      }}
-    >
-      <div
-        style={{
-          fontSize: "10px",
-          fontWeight: 700,
-          color: "#777",
-          textTransform:
-            "uppercase",
-          letterSpacing:
-            "0.5px",
-        }}
-      >
-        {label}
-      </div>
-
-      <div
-        style={{
-          marginTop: "7px",
-          fontSize: "28px",
-          lineHeight: 1.1,
-          fontWeight: 800,
-          color:
-            valueColor,
-        }}
-      >
-        {value}
-      </div>
-    </div>
-  )
-
-  /*
-   * ------------------------------------------------------------
    * RENDER
    * ------------------------------------------------------------
    */
@@ -911,7 +917,8 @@ function FitSheet({ setSelected }) {
       >
         <div
           style={{
-            display: "flex",
+            display:
+              "flex",
             alignItems:
               "center",
             justifyContent:
@@ -925,7 +932,8 @@ function FitSheet({ setSelected }) {
         >
           <div
             style={{
-              display: "flex",
+              display:
+                "flex",
               alignItems:
                 "center",
               gap: "10px",
@@ -942,7 +950,8 @@ function FitSheet({ setSelected }) {
                   margin: 0,
                   fontSize:
                     "20px",
-                  lineHeight: 1.2,
+                  lineHeight:
+                    1.2,
                 }}
               >
                 FitSheet
@@ -958,14 +967,17 @@ function FitSheet({ setSelected }) {
                     "#888",
                 }}
               >
-                {weekTitle}
+                {
+                  weekTitle
+                }
               </p>
             </div>
           </div>
 
           <div
             style={{
-              display: "flex",
+              display:
+                "flex",
               alignItems:
                 "center",
               gap: "8px",
@@ -973,21 +985,22 @@ function FitSheet({ setSelected }) {
                 "wrap",
             }}
           >
-            {/* JOB TYPE FILTER */}
+            {/* PRODUCT FILTER */}
             <select
               value={
-                jobTypeFilter
+                productFilter
               }
               onChange={(
                 event
               ) =>
-                setJobTypeFilter(
+                setProductFilter(
                   event.target
                     .value
                 )
               }
               style={{
-                height: "34px",
+                height:
+                  "34px",
                 padding:
                   "0 10px",
                 border:
@@ -1000,22 +1013,29 @@ function FitSheet({ setSelected }) {
                   "pointer",
                 fontSize:
                   "11px",
-                fontWeight: 600,
+                fontWeight:
+                  600,
                 color:
                   "#333",
               }}
             >
               <option value="all">
-                All job types
+                All products
               </option>
 
-              {availableJobTypes.map(
-                (type) => (
+              {availableProducts.map(
+                (product) => (
                   <option
-                    key={type}
-                    value={type}
+                    key={
+                      product
+                    }
+                    value={
+                      product
+                    }
                   >
-                    {type}
+                    {
+                      product
+                    }
                   </option>
                 )
               )}
@@ -1024,7 +1044,8 @@ function FitSheet({ setSelected }) {
             {/* LEGEND */}
             <div
               style={{
-                display: "flex",
+                display:
+                  "flex",
                 alignItems:
                   "center",
                 gap: "5px",
@@ -1087,8 +1108,10 @@ function FitSheet({ setSelected }) {
                 )
               }
               style={{
-                width: "34px",
-                height: "34px",
+                width:
+                  "34px",
+                height:
+                  "34px",
                 border:
                   "1px solid #dddfe3",
                 borderRadius:
@@ -1119,7 +1142,8 @@ function FitSheet({ setSelected }) {
                 )
               }
               style={{
-                height: "34px",
+                height:
+                  "34px",
                 padding:
                   "0 12px",
                 border:
@@ -1132,7 +1156,8 @@ function FitSheet({ setSelected }) {
                   "pointer",
                 fontSize:
                   "11px",
-                fontWeight: 600,
+                fontWeight:
+                  600,
               }}
             >
               This week
@@ -1148,8 +1173,10 @@ function FitSheet({ setSelected }) {
                 )
               }
               style={{
-                width: "34px",
-                height: "34px",
+                width:
+                  "34px",
+                height:
+                  "34px",
                 border:
                   "1px solid #dddfe3",
                 borderRadius:
@@ -1179,7 +1206,8 @@ function FitSheet({ setSelected }) {
         className="card"
         style={{
           padding: 0,
-          overflow: "auto",
+          overflow:
+            "auto",
           maxHeight:
             "calc(100vh - 220px)",
         }}
@@ -1193,7 +1221,8 @@ function FitSheet({ setSelected }) {
           {/* STICKY HEADER */}
           <div
             style={{
-              display: "grid",
+              display:
+                "grid",
               gridTemplateColumns:
                 "190px repeat(7, minmax(150px, 1fr))",
               borderBottom:
@@ -1218,7 +1247,8 @@ function FitSheet({ setSelected }) {
                   "1px solid #d9dadd",
                 fontSize:
                   "10px",
-                fontWeight: 700,
+                fontWeight:
+                  700,
                 color:
                   "#555",
                 textTransform:
@@ -1265,7 +1295,8 @@ function FitSheet({ setSelected }) {
                       style={{
                         fontSize:
                           "10px",
-                        fontWeight: 700,
+                        fontWeight:
+                          700,
                         color:
                           isToday
                             ? "#172554"
@@ -1289,7 +1320,8 @@ function FitSheet({ setSelected }) {
                           "3px",
                         fontSize:
                           "12px",
-                        fontWeight: 600,
+                        fontWeight:
+                          600,
                         color:
                           isToday
                             ? "#172554"
@@ -1328,10 +1360,12 @@ function FitSheet({ setSelected }) {
                   "1px solid #f0b8b8",
               }}
             >
-              Unable to load
-              Fit Sheet
-              data:{" "}
-              {loadError}
+              Unable to
+              load Fit
+              Sheet data:{" "}
+              {
+                loadError
+              }
             </div>
           )}
 
@@ -1348,8 +1382,9 @@ function FitSheet({ setSelected }) {
                   "12px",
               }}
             >
-              Loading this
-              week's fits...
+              Loading
+              this week's
+              fits...
             </div>
           ) : fitTeams.length ===
             0 ? (
@@ -1374,7 +1409,9 @@ function FitSheet({ setSelected }) {
             fitTeams.map(
               (team) => (
                 <div
-                  key={team}
+                  key={
+                    team
+                  }
                   style={{
                     display:
                       "grid",
@@ -1397,7 +1434,8 @@ function FitSheet({ setSelected }) {
                         "1px solid #d9dadd",
                       fontSize:
                         "11px",
-                      fontWeight: 600,
+                      fontWeight:
+                        600,
                       color:
                         "#333",
                       display:
@@ -1410,7 +1448,9 @@ function FitSheet({ setSelected }) {
                       zIndex: 5,
                     }}
                   >
-                    {team}
+                    {
+                      team
+                    }
                   </div>
 
                   {/* DAYS */}
@@ -1456,3 +1496,4 @@ function FitSheet({ setSelected }) {
 }
 
 export default FitSheet
+```
