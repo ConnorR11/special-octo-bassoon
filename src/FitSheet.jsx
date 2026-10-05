@@ -15,14 +15,20 @@ function FitSheet({ setSelected }) {
     const d = new Date(date)
     const day = d.getDay()
     const difference = day === 0 ? -6 : 1 - day
+
     d.setDate(d.getDate() + difference)
     d.setHours(0, 0, 0, 0)
+
     return d
   }
 
   const currentWeek = useMemo(() => {
     const monday = getMonday(new Date())
-    monday.setDate(monday.getDate() + weekOffset * 7)
+
+    monday.setDate(
+      monday.getDate() + weekOffset * 7
+    )
+
     return monday
   }, [weekOffset])
 
@@ -30,24 +36,42 @@ function FitSheet({ setSelected }) {
     () =>
       Array.from({ length: 7 }, (_, index) => {
         const date = new Date(currentWeek)
-        date.setDate(currentWeek.getDate() + index)
+
+        date.setDate(
+          currentWeek.getDate() + index
+        )
+
         return date
       }),
     [currentWeek]
   )
 
   function formatDate(date) {
-    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return ""
+    if (
+      !(date instanceof Date) ||
+      Number.isNaN(date.getTime())
+    ) {
+      return ""
+    }
 
     const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, "0")
-    const day = String(date.getDate()).padStart(2, "0")
+    const month = String(
+      date.getMonth() + 1
+    ).padStart(2, "0")
+    const day = String(
+      date.getDate()
+    ).padStart(2, "0")
 
     return `${year}-${month}-${day}`
   }
 
-  const weekStart = formatDate(weekDays[0])
-  const weekEnd = formatDate(weekDays[6])
+  const weekStart = formatDate(
+    weekDays[0]
+  )
+
+  const weekEnd = formatDate(
+    weekDays[6]
+  )
 
   const weekTitle = useMemo(() => {
     const start = weekDays[0]
@@ -55,13 +79,19 @@ function FitSheet({ setSelected }) {
 
     if (!start || !end) return ""
 
-    return `${start.toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "short",
-    })} – ${end.toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "short",
-    })}`
+    return `${start.toLocaleDateString(
+      "en-GB",
+      {
+        day: "numeric",
+        month: "short",
+      }
+    )} – ${end.toLocaleDateString(
+      "en-GB",
+      {
+        day: "numeric",
+        month: "short",
+      }
+    )}`
   }, [weekDays])
 
   /*
@@ -85,10 +115,10 @@ function FitSheet({ setSelected }) {
       setLoadError("")
 
       const dealSelect =
-        "id,customer_name,postcode,contract_number,deal_value,balance_outstanding,installation_start_date,fit_team_1,installation_roof_start_date,installation_roof_team,installation_electrics_start_date,installation_electrics_team,remedial_start_date,remedial_fit_team,pipedrive_stage"
+        "id,customer_name,postcode,contract_number,deal_value,balance_outstanding,job_type,installation_start_date,fit_team_1,installation_roof_start_date,installation_roof_team,installation_electrics_start_date,installation_electrics_team,remedial_start_date,remedial_fit_team,pipedrive_stage"
 
       const issueSelect =
-        "id,customer_name,postcode,contract_number,deal_value,balance_outstanding,installations_issues_start_date,installation_issues_fit_team,pipedrive_stage"
+        "id,customer_name,postcode,contract_number,deal_value,balance_outstanding,job_type,installations_issues_start_date,installation_issues_fit_team,pipedrive_stage"
 
       const [
         normalResult,
@@ -100,25 +130,38 @@ function FitSheet({ setSelected }) {
           .or(
             `installation_start_date.gte.${weekStart},installation_roof_start_date.gte.${weekStart},installation_electrics_start_date.gte.${weekStart},remedial_start_date.gte.${weekStart}`
           )
-          .order("installation_start_date", { ascending: true }),
+          .order(
+            "installation_start_date",
+            {
+              ascending: true,
+            }
+          ),
 
         supabase
           .from("deals")
           .select(issueSelect)
-          .gte("installations_issues_start_date", weekStart)
-          .lte("installations_issues_start_date", weekEnd)
-          .order("installations_issues_start_date", {
-            ascending: true,
-          }),
+          .gte(
+            "installations_issues_start_date",
+            weekStart
+          )
+          .lte(
+            "installations_issues_start_date",
+            weekEnd
+          )
+          .order(
+            "installations_issues_start_date",
+            {
+              ascending: true,
+            }
+          ),
       ])
 
       if (!mounted) return
 
-      /*
-       * Supabase OR above deliberately gets the potentially relevant
-       * records. We then perform the exact week filtering locally.
-       */
-      if (normalResult.error || issueResult.error) {
+      if (
+        normalResult.error ||
+        issueResult.error
+      ) {
         const message =
           normalResult.error?.message ||
           issueResult.error?.message ||
@@ -126,34 +169,45 @@ function FitSheet({ setSelected }) {
 
         console.error(
           "Error loading Fit Sheet week:",
-          normalResult.error || issueResult.error
+          normalResult.error ||
+            issueResult.error
         )
 
         setLoadError(message)
       }
 
-      const rawDeals = Array.isArray(normalResult.data)
-        ? normalResult.data
-        : []
+      const rawDeals =
+        Array.isArray(normalResult.data)
+          ? normalResult.data
+          : []
 
-      const filteredDeals = rawDeals.filter((deal) => {
-        const dates = [
-          deal?.installation_start_date,
-          deal?.installation_roof_start_date,
-          deal?.installation_electrics_start_date,
-          deal?.remedial_start_date,
-        ]
+      const filteredDeals =
+        rawDeals.filter((deal) => {
+          const dates = [
+            deal?.installation_start_date,
+            deal?.installation_roof_start_date,
+            deal?.installation_electrics_start_date,
+            deal?.remedial_start_date,
+          ]
 
-        return dates.some((value) => {
-          const date = String(value || "").slice(0, 10)
-          return date >= weekStart && date <= weekEnd
+          return dates.some((value) => {
+            const date = String(
+              value || ""
+            ).slice(0, 10)
+
+            return (
+              date >= weekStart &&
+              date <= weekEnd
+            )
+          })
         })
-      })
 
       setWeekDeals(filteredDeals)
 
       setWeekIssues(
-        Array.isArray(issueResult.data) ? issueResult.data : []
+        Array.isArray(issueResult.data)
+          ? issueResult.data
+          : []
       )
 
       setLoading(false)
@@ -162,10 +216,14 @@ function FitSheet({ setSelected }) {
     loadWeek().catch((err) => {
       if (!mounted) return
 
-      console.error("Unexpected error loading Fit Sheet week:", err)
+      console.error(
+        "Unexpected error loading Fit Sheet week:",
+        err
+      )
 
       setLoadError(
-        err?.message || "Unable to load Fit Sheet data."
+        err?.message ||
+          "Unable to load Fit Sheet data."
       )
 
       setWeekDeals([])
@@ -178,17 +236,19 @@ function FitSheet({ setSelected }) {
     }
   }, [weekStart, weekEnd])
 
-  const safeWeekDeals = Array.isArray(weekDeals)
-    ? weekDeals
-    : []
+  const safeWeekDeals =
+    Array.isArray(weekDeals)
+      ? weekDeals
+      : []
 
-  const safeWeekIssues = Array.isArray(weekIssues)
-    ? weekIssues
-    : []
+  const safeWeekIssues =
+    Array.isArray(weekIssues)
+      ? weekIssues
+      : []
 
   /*
    * ------------------------------------------------------------
-   * JOB TYPES
+   * JOB COLOURS
    * ------------------------------------------------------------
    */
 
@@ -250,13 +310,21 @@ function FitSheet({ setSelected }) {
           deal.installation_start_date
         ).slice(0, 10)
 
-        if (date >= weekStart && date <= weekEnd) {
+        if (
+          date >= weekStart &&
+          date <= weekEnd
+        ) {
           result.push({
             id: `fit-${deal.id}`,
             deal,
             type: "fit",
             date,
-            team: String(deal.fit_team_1).trim(),
+            team: String(
+              deal.fit_team_1
+            ).trim(),
+            jobType: String(
+              deal.job_type || ""
+            ).trim(),
           })
         }
       }
@@ -272,7 +340,10 @@ function FitSheet({ setSelected }) {
           deal.installation_roof_start_date
         ).slice(0, 10)
 
-        if (date >= weekStart && date <= weekEnd) {
+        if (
+          date >= weekStart &&
+          date <= weekEnd
+        ) {
           result.push({
             id: `roofer-${deal.id}`,
             deal,
@@ -280,6 +351,9 @@ function FitSheet({ setSelected }) {
             date,
             team: String(
               deal.installation_roof_team
+            ).trim(),
+            jobType: String(
+              deal.job_type || ""
             ).trim(),
           })
         }
@@ -296,7 +370,10 @@ function FitSheet({ setSelected }) {
           deal.installation_electrics_start_date
         ).slice(0, 10)
 
-        if (date >= weekStart && date <= weekEnd) {
+        if (
+          date >= weekStart &&
+          date <= weekEnd
+        ) {
           result.push({
             id: `electrics-${deal.id}`,
             deal,
@@ -304,6 +381,9 @@ function FitSheet({ setSelected }) {
             date,
             team: String(
               deal.installation_electrics_team
+            ).trim(),
+            jobType: String(
+              deal.job_type || ""
             ).trim(),
           })
         }
@@ -320,7 +400,10 @@ function FitSheet({ setSelected }) {
           deal.remedial_start_date
         ).slice(0, 10)
 
-        if (date >= weekStart && date <= weekEnd) {
+        if (
+          date >= weekStart &&
+          date <= weekEnd
+        ) {
           result.push({
             id: `remedial-${deal.id}`,
             deal,
@@ -328,6 +411,9 @@ function FitSheet({ setSelected }) {
             date,
             team: String(
               deal.remedial_fit_team
+            ).trim(),
+            jobType: String(
+              deal.job_type || ""
             ).trim(),
           })
         }
@@ -346,7 +432,10 @@ function FitSheet({ setSelected }) {
           deal.installations_issues_start_date
         ).slice(0, 10)
 
-        if (date >= weekStart && date <= weekEnd) {
+        if (
+          date >= weekStart &&
+          date <= weekEnd
+        ) {
           result.push({
             id: `issue-${deal.id}`,
             deal,
@@ -354,6 +443,9 @@ function FitSheet({ setSelected }) {
             date,
             team: String(
               deal.installation_issues_fit_team
+            ).trim(),
+            jobType: String(
+              deal.job_type || ""
             ).trim(),
           })
         }
@@ -370,17 +462,73 @@ function FitSheet({ setSelected }) {
 
   /*
    * ------------------------------------------------------------
-   * FILTER
+   * JOB TYPE FILTER
+   *
+   * This is now based on the Supabase `job_type` field.
+   * For example:
+   * Windows
+   * Solar
+   * etc.
    * ------------------------------------------------------------
    */
 
+  const availableJobTypes = useMemo(() => {
+    const values = jobs
+      .map((job) =>
+        String(
+          job.jobType || ""
+        ).trim()
+      )
+      .filter(Boolean)
+
+    return [...new Set(values)].sort(
+      (a, b) =>
+        a.localeCompare(
+          b,
+          undefined,
+          {
+            sensitivity: "base",
+          }
+        )
+    )
+  }, [jobs])
+
+  /*
+   * If the currently selected job type no longer exists
+   * in the selected week, reset the filter.
+   */
+  useEffect(() => {
+    if (
+      jobTypeFilter !== "all" &&
+      !availableJobTypes.includes(
+        jobTypeFilter
+      )
+    ) {
+      setJobTypeFilter("all")
+    }
+  }, [
+    availableJobTypes,
+    jobTypeFilter,
+  ])
+
   const filteredJobs = useMemo(() => {
-    if (jobTypeFilter === "all") return jobs
+    if (
+      jobTypeFilter === "all"
+    ) {
+      return jobs
+    }
 
     return jobs.filter(
-      (job) => job.type === jobTypeFilter
+      (job) =>
+        String(
+          job.jobType || ""
+        ).trim() ===
+        jobTypeFilter
     )
-  }, [jobs, jobTypeFilter])
+  }, [
+    jobs,
+    jobTypeFilter,
+  ])
 
   /*
    * ------------------------------------------------------------
@@ -390,10 +538,16 @@ function FitSheet({ setSelected }) {
 
   const fitTeams = useMemo(() => {
     const teams = filteredJobs
-      .map((job) => String(job.team || "").trim())
+      .map((job) =>
+        String(
+          job.team || ""
+        ).trim()
+      )
       .filter(Boolean)
 
-    return [...new Set(teams)].sort((a, b) =>
+    return [
+      ...new Set(teams),
+    ].sort((a, b) =>
       a.localeCompare(b)
     )
   }, [filteredJobs])
@@ -405,29 +559,40 @@ function FitSheet({ setSelected }) {
    */
 
   const freshFits = jobs.filter(
-    (job) => job.type === "fit"
+    (job) =>
+      job.type === "fit"
   )
 
   const issueFits = jobs.filter(
-    (job) => job.type === "issue"
+    (job) =>
+      job.type === "issue"
   )
 
-  const freshFitsCount = freshFits.length
+  const freshFitsCount =
+    freshFits.length
 
-  const freshFitsValue = freshFits.reduce(
-    (total, job) =>
-      total + (Number(job.deal?.deal_value) || 0),
-    0
-  )
+  const freshFitsValue =
+    freshFits.reduce(
+      (total, job) =>
+        total +
+        (Number(
+          job.deal?.deal_value
+        ) || 0),
+      0
+    )
 
-  const freshFitsBalance = freshFits.reduce(
-    (total, job) =>
-      total +
-      (Number(job.deal?.balance_outstanding) || 0),
-    0
-  )
+  const freshFitsBalance =
+    freshFits.reduce(
+      (total, job) =>
+        total +
+        (Number(
+          job.deal?.balance_outstanding
+        ) || 0),
+      0
+    )
 
-  const issueFitsCount = issueFits.length
+  const issueFitsCount =
+    issueFits.length
 
   /*
    * ------------------------------------------------------------
@@ -435,8 +600,12 @@ function FitSheet({ setSelected }) {
    * ------------------------------------------------------------
    */
 
-  function getJobs(team, date) {
-    const dateString = formatDate(date)
+  function getJobs(
+    team,
+    date
+  ) {
+    const dateString =
+      formatDate(date)
 
     return filteredJobs.filter(
       (job) =>
@@ -445,10 +614,14 @@ function FitSheet({ setSelected }) {
     )
   }
 
-  const todayString = formatDate(new Date())
+  const todayString =
+    formatDate(new Date())
 
   function openDeal(deal) {
-    if (typeof setSelected === "function") {
+    if (
+      typeof setSelected ===
+      "function"
+    ) {
       setSelected(deal)
     }
   }
@@ -460,21 +633,26 @@ function FitSheet({ setSelected }) {
    */
 
   function renderJobCard(job) {
-    const colours = jobTypes[job.type]
+    const colours =
+      jobTypes[job.type]
 
-    const deal = job.deal
+    const deal =
+      job.deal
 
     return (
       <button
         key={job.id}
         type="button"
-        onClick={() => openDeal(deal)}
+        onClick={() =>
+          openDeal(deal)
+        }
         style={{
           width: "100%",
           textAlign: "left",
           border: `1px solid ${colours.border}`,
           borderRadius: "5px",
-          background: colours.background,
+          background:
+            colours.background,
           padding: "8px",
           marginBottom: "5px",
           cursor: "pointer",
@@ -482,14 +660,21 @@ function FitSheet({ setSelected }) {
           transition:
             "box-shadow 0.15s ease, transform 0.15s ease",
         }}
-        onMouseEnter={(event) => {
+        onMouseEnter={(
+          event
+        ) => {
           event.currentTarget.style.boxShadow =
             "0 2px 7px rgba(0,0,0,0.10)"
+
           event.currentTarget.style.transform =
             "translateY(-1px)"
         }}
-        onMouseLeave={(event) => {
-          event.currentTarget.style.boxShadow = "none"
+        onMouseLeave={(
+          event
+        ) => {
+          event.currentTarget.style.boxShadow =
+            "none"
+
           event.currentTarget.style.transform =
             "translateY(0)"
         }}
@@ -497,30 +682,38 @@ function FitSheet({ setSelected }) {
         <div
           style={{
             display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
+            alignItems:
+              "center",
+            justifyContent:
+              "space-between",
             gap: "5px",
-            marginBottom: "4px",
+            marginBottom:
+              "4px",
           }}
         >
           <div
             style={{
               fontSize: "8px",
               fontWeight: 800,
-              color: colours.text,
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
+              color:
+                colours.text,
+              textTransform:
+                "uppercase",
+              letterSpacing:
+                "0.5px",
             }}
           >
             {colours.label}
           </div>
 
-          {job.type === "issue" && (
+          {job.type ===
+            "issue" && (
             <div
               style={{
                 fontSize: "8px",
                 fontWeight: 800,
-                color: "#b42318",
+                color:
+                  "#b42318",
               }}
             >
               !
@@ -532,7 +725,8 @@ function FitSheet({ setSelected }) {
           style={{
             fontSize: "10px",
             fontWeight: 700,
-            color: colours.text,
+            color:
+              colours.text,
             lineHeight: "1.3",
           }}
         >
@@ -546,7 +740,8 @@ function FitSheet({ setSelected }) {
               marginTop: "3px",
               fontSize: "8px",
               fontWeight: 700,
-              color: colours.text,
+              color:
+                colours.text,
               opacity: 0.85,
             }}
           >
@@ -559,7 +754,8 @@ function FitSheet({ setSelected }) {
             style={{
               marginTop: "3px",
               fontSize: "9px",
-              color: colours.text,
+              color:
+                colours.text,
               opacity: 0.8,
             }}
           >
@@ -572,7 +768,8 @@ function FitSheet({ setSelected }) {
             style={{
               marginTop: "3px",
               fontSize: "9px",
-              color: colours.text,
+              color:
+                colours.text,
               opacity: 0.8,
             }}
           >
@@ -580,32 +777,62 @@ function FitSheet({ setSelected }) {
           </div>
         )}
 
-        {job.type === "fit" &&
-          (deal.deal_value != null ||
-            deal.balance_outstanding != null) && (
+        {deal.job_type && (
+          <div
+            style={{
+              marginTop: "4px",
+              fontSize: "8px",
+              fontWeight: 700,
+              color:
+                colours.text,
+              opacity: 0.75,
+            }}
+          >
+            {deal.job_type}
+          </div>
+        )}
+
+        {job.type ===
+          "fit" &&
+          (
+            deal.deal_value != null ||
+            deal.balance_outstanding !=
+              null
+          ) && (
             <div
               style={{
                 marginTop: "5px",
                 fontSize: "9px",
                 fontWeight: 700,
-                color: colours.text,
+                color:
+                  colours.text,
               }}
             >
-              {money(deal.deal_value || 0)}
+              {money(
+                deal.deal_value ||
+                  0
+              )}
 
               <span
                 style={{
                   color: "#777",
                   fontWeight: 600,
-                  margin: "0 3px",
+                  margin:
+                    "0 3px",
                 }}
               >
                 |
               </span>
 
-              <span style={{ color: "#8a4a4a" }}>
+              <span
+                style={{
+                  color:
+                    "#8a4a4a",
+                }}
+              >
                 {money(
-                  deal.balance_outstanding || 0
+                  deal.balance_outstanding ||
+                    0
                 )}
               </span>
             </div>
@@ -630,7 +857,8 @@ function FitSheet({ setSelected }) {
       style={{
         flex: 1,
         minWidth: "180px",
-        padding: "18px 20px",
+        padding:
+          "18px 20px",
         margin: 0,
       }}
     >
@@ -639,8 +867,10 @@ function FitSheet({ setSelected }) {
           fontSize: "10px",
           fontWeight: 700,
           color: "#777",
-          textTransform: "uppercase",
-          letterSpacing: "0.5px",
+          textTransform:
+            "uppercase",
+          letterSpacing:
+            "0.5px",
         }}
       >
         {label}
@@ -652,7 +882,8 @@ function FitSheet({ setSelected }) {
           fontSize: "28px",
           lineHeight: 1.1,
           fontWeight: 800,
-          color: valueColor,
+          color:
+            valueColor,
         }}
       >
         {value}
@@ -668,60 +899,35 @@ function FitSheet({ setSelected }) {
 
   return (
     <section>
-      {/* STATS */}
-      <div
-        style={{
-          display: "flex",
-          gap: "12px",
-          flexWrap: "wrap",
-          marginBottom: "18px",
-        }}
-      >
-        {statCard(
-          "Fresh fits",
-          freshFitsCount
-        )}
-
-        {statCard(
-          "Fresh fit value",
-          money(freshFitsValue)
-        )}
-
-        {statCard(
-          "Fresh fit balance",
-          money(freshFitsBalance),
-          "#8a4a4a"
-        )}
-
-        {statCard(
-          "Issue fits",
-          issueFitsCount,
-          "#b42318"
-        )}
-      </div>
-
       {/* HEADER */}
       <div
         className="card"
         style={{
-          marginBottom: "18px",
-          overflow: "hidden",
+          marginBottom:
+            "18px",
+          overflow:
+            "hidden",
         }}
       >
         <div
           style={{
             display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "18px 20px",
+            alignItems:
+              "center",
+            justifyContent:
+              "space-between",
+            padding:
+              "18px 20px",
             gap: "15px",
-            flexWrap: "wrap",
+            flexWrap:
+              "wrap",
           }}
         >
           <div
             style={{
               display: "flex",
-              alignItems: "center",
+              alignItems:
+                "center",
               gap: "10px",
             }}
           >
@@ -734,7 +940,8 @@ function FitSheet({ setSelected }) {
               <h1
                 style={{
                   margin: 0,
-                  fontSize: "20px",
+                  fontSize:
+                    "20px",
                   lineHeight: 1.2,
                 }}
               >
@@ -743,9 +950,12 @@ function FitSheet({ setSelected }) {
 
               <p
                 style={{
-                  margin: "4px 0 0",
-                  fontSize: "11px",
-                  color: "#888",
+                  margin:
+                    "4px 0 0",
+                  fontSize:
+                    "11px",
+                  color:
+                    "#888",
                 }}
               >
                 {weekTitle}
@@ -756,147 +966,209 @@ function FitSheet({ setSelected }) {
           <div
             style={{
               display: "flex",
-              alignItems: "center",
+              alignItems:
+                "center",
               gap: "8px",
-              flexWrap: "wrap",
+              flexWrap:
+                "wrap",
             }}
           >
             {/* JOB TYPE FILTER */}
             <select
-              value={jobTypeFilter}
-              onChange={(event) =>
-                setJobTypeFilter(event.target.value)
+              value={
+                jobTypeFilter
+              }
+              onChange={(
+                event
+              ) =>
+                setJobTypeFilter(
+                  event.target
+                    .value
+                )
               }
               style={{
                 height: "34px",
-                padding: "0 10px",
-                border: "1px solid #dddfe3",
-                borderRadius: "7px",
-                background: "#fff",
-                cursor: "pointer",
-                fontSize: "11px",
+                padding:
+                  "0 10px",
+                border:
+                  "1px solid #dddfe3",
+                borderRadius:
+                  "7px",
+                background:
+                  "#fff",
+                cursor:
+                  "pointer",
+                fontSize:
+                  "11px",
                 fontWeight: 600,
-                color: "#333",
+                color:
+                  "#333",
               }}
             >
               <option value="all">
                 All job types
               </option>
-              <option value="fit">
-                Fit
-              </option>
-              <option value="roofer">
-                Roofer
-              </option>
-              <option value="electrics">
-                Electrics
-              </option>
-              <option value="remedial">
-                Remedial
-              </option>
-              <option value="issue">
-                Issue
-              </option>
+
+              {availableJobTypes.map(
+                (type) => (
+                  <option
+                    key={type}
+                    value={type}
+                  >
+                    {type}
+                  </option>
+                )
+              )}
             </select>
 
             {/* LEGEND */}
             <div
               style={{
                 display: "flex",
-                alignItems: "center",
+                alignItems:
+                  "center",
                 gap: "5px",
-                flexWrap: "wrap",
-                marginRight: "5px",
+                flexWrap:
+                  "wrap",
+                marginRight:
+                  "5px",
               }}
             >
-              {Object.entries(jobTypes).map(
-                ([key, type]) => (
+              {Object.entries(
+                jobTypes
+              ).map(
+                ([
+                  key,
+                  type,
+                ]) => (
                   <div
                     key={key}
                     style={{
-                      display: "flex",
-                      alignItems: "center",
+                      display:
+                        "flex",
+                      alignItems:
+                        "center",
                       gap: "3px",
-                      fontSize: "9px",
-                      color: "#555",
+                      fontSize:
+                        "9px",
+                      color:
+                        "#555",
                     }}
                   >
                     <span
                       style={{
-                        width: "9px",
-                        height: "9px",
-                        borderRadius: "2px",
+                        width:
+                          "9px",
+                        height:
+                          "9px",
+                        borderRadius:
+                          "2px",
                         background:
                           type.background,
                         border: `1px solid ${type.border}`,
                       }}
                     />
 
-                    {type.label}
+                    {
+                      type.label
+                    }
                   </div>
                 )
               )}
             </div>
 
+            {/* PREVIOUS WEEK */}
             <button
               type="button"
               onClick={() =>
                 setWeekOffset(
-                  (value) => value - 1
+                  (value) =>
+                    value - 1
                 )
               }
               style={{
                 width: "34px",
                 height: "34px",
-                border: "1px solid #dddfe3",
-                borderRadius: "7px",
-                background: "#fff",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                border:
+                  "1px solid #dddfe3",
+                borderRadius:
+                  "7px",
+                background:
+                  "#fff",
+                cursor:
+                  "pointer",
+                display:
+                  "flex",
+                alignItems:
+                  "center",
+                justifyContent:
+                  "center",
               }}
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft
+                size={16}
+              />
             </button>
 
+            {/* THIS WEEK */}
             <button
               type="button"
-              onClick={() => setWeekOffset(0)}
+              onClick={() =>
+                setWeekOffset(
+                  0
+                )
+              }
               style={{
                 height: "34px",
-                padding: "0 12px",
-                border: "1px solid #dddfe3",
-                borderRadius: "7px",
-                background: "#fff",
-                cursor: "pointer",
-                fontSize: "11px",
+                padding:
+                  "0 12px",
+                border:
+                  "1px solid #dddfe3",
+                borderRadius:
+                  "7px",
+                background:
+                  "#fff",
+                cursor:
+                  "pointer",
+                fontSize:
+                  "11px",
                 fontWeight: 600,
               }}
             >
               This week
             </button>
 
+            {/* NEXT WEEK */}
             <button
               type="button"
               onClick={() =>
                 setWeekOffset(
-                  (value) => value + 1
+                  (value) =>
+                    value + 1
                 )
               }
               style={{
                 width: "34px",
                 height: "34px",
-                border: "1px solid #dddfe3",
-                borderRadius: "7px",
-                background: "#fff",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                border:
+                  "1px solid #dddfe3",
+                borderRadius:
+                  "7px",
+                background:
+                  "#fff",
+                cursor:
+                  "pointer",
+                display:
+                  "flex",
+                alignItems:
+                  "center",
+                justifyContent:
+                  "center",
               }}
             >
-              <ChevronRight size={16} />
+              <ChevronRight
+                size={16}
+              />
             </button>
           </div>
         </div>
@@ -908,12 +1180,14 @@ function FitSheet({ setSelected }) {
         style={{
           padding: 0,
           overflow: "auto",
-          maxHeight: "calc(100vh - 300px)",
+          maxHeight:
+            "calc(100vh - 220px)",
         }}
       >
         <div
           style={{
-            minWidth: "1250px",
+            minWidth:
+              "1250px",
           }}
         >
           {/* STICKY HEADER */}
@@ -924,25 +1198,33 @@ function FitSheet({ setSelected }) {
                 "190px repeat(7, minmax(150px, 1fr))",
               borderBottom:
                 "2px solid #172554",
-              position: "sticky",
+              position:
+                "sticky",
               top: 0,
               zIndex: 20,
-              background: "#fff",
+              background:
+                "#fff",
               boxShadow:
                 "0 2px 5px rgba(0,0,0,0.06)",
             }}
           >
             <div
               style={{
-                padding: "10px 12px",
-                background: "#f2f3f5",
+                padding:
+                  "10px 12px",
+                background:
+                  "#f2f3f5",
                 borderRight:
                   "1px solid #d9dadd",
-                fontSize: "10px",
+                fontSize:
+                  "10px",
                 fontWeight: 700,
-                color: "#555",
-                textTransform: "uppercase",
-                position: "sticky",
+                color:
+                  "#555",
+                textTransform:
+                  "uppercase",
+                position:
+                  "sticky",
                 left: 0,
                 zIndex: 21,
               }}
@@ -950,80 +1232,105 @@ function FitSheet({ setSelected }) {
               Fit Team
             </div>
 
-            {weekDays.map((date) => {
-              const dateString =
-                formatDate(date)
+            {weekDays.map(
+              (date) => {
+                const dateString =
+                  formatDate(
+                    date
+                  )
 
-              const isToday =
-                dateString === todayString
+                const isToday =
+                  dateString ===
+                  todayString
 
-              return (
-                <div
-                  key={dateString}
-                  style={{
-                    padding: "8px 10px",
-                    textAlign: "center",
-                    background: isToday
-                      ? "#eef2ff"
-                      : "#f2f3f5",
-                    borderRight:
-                      "1px solid #d9dadd",
-                  }}
-                >
+                return (
                   <div
+                    key={
+                      dateString
+                    }
                     style={{
-                      fontSize: "10px",
-                      fontWeight: 700,
-                      color: isToday
-                        ? "#172554"
-                        : "#555",
-                      textTransform:
-                        "uppercase",
+                      padding:
+                        "8px 10px",
+                      textAlign:
+                        "center",
+                      background:
+                        isToday
+                          ? "#eef2ff"
+                          : "#f2f3f5",
+                      borderRight:
+                        "1px solid #d9dadd",
                     }}
                   >
-                    {date.toLocaleDateString(
-                      "en-GB",
-                      {
-                        weekday: "short",
-                      }
-                    )}
-                  </div>
+                    <div
+                      style={{
+                        fontSize:
+                          "10px",
+                        fontWeight: 700,
+                        color:
+                          isToday
+                            ? "#172554"
+                            : "#555",
+                        textTransform:
+                          "uppercase",
+                      }}
+                    >
+                      {date.toLocaleDateString(
+                        "en-GB",
+                        {
+                          weekday:
+                            "short",
+                        }
+                      )}
+                    </div>
 
-                  <div
-                    style={{
-                      marginTop: "3px",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      color: isToday
-                        ? "#172554"
-                        : "#333",
-                    }}
-                  >
-                    {date.getDate()}{" "}
-                    {date.toLocaleDateString(
-                      "en-GB",
+                    <div
+                      style={{
+                        marginTop:
+                          "3px",
+                        fontSize:
+                          "12px",
+                        fontWeight: 600,
+                        color:
+                          isToday
+                            ? "#172554"
+                            : "#333",
+                      }}
+                    >
                       {
-                        month: "short",
-                      }
-                    )}
+                        date.getDate()
+                      }{" "}
+                      {date.toLocaleDateString(
+                        "en-GB",
+                        {
+                          month:
+                            "short",
+                        }
+                      )}
+                    </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              }
+            )}
           </div>
 
           {loadError && (
             <div
               style={{
-                padding: "8px 12px",
-                background: "#fff4f4",
-                color: "#b42318",
-                fontSize: "10px",
+                padding:
+                  "8px 12px",
+                background:
+                  "#fff4f4",
+                color:
+                  "#b42318",
+                fontSize:
+                  "10px",
                 borderBottom:
                   "1px solid #f0b8b8",
               }}
             >
-              Unable to load Fit Sheet data:{" "}
+              Unable to load
+              Fit Sheet
+              data:{" "}
               {loadError}
             </div>
           )}
@@ -1031,86 +1338,116 @@ function FitSheet({ setSelected }) {
           {loading ? (
             <div
               style={{
-                padding: "60px 20px",
-                textAlign: "center",
-                color: "#999",
-                fontSize: "12px",
+                padding:
+                  "60px 20px",
+                textAlign:
+                  "center",
+                color:
+                  "#999",
+                fontSize:
+                  "12px",
               }}
             >
-              Loading this week's fits...
+              Loading this
+              week's fits...
             </div>
-          ) : fitTeams.length === 0 ? (
+          ) : fitTeams.length ===
+            0 ? (
             <div
               style={{
-                padding: "60px 20px",
-                textAlign: "center",
-                color: "#999",
-                fontSize: "12px",
+                padding:
+                  "60px 20px",
+                textAlign:
+                  "center",
+                color:
+                  "#999",
+                fontSize:
+                  "12px",
               }}
             >
-              No jobs found for the selected
+              No jobs
+              found for
+              the selected
               week/filter.
             </div>
           ) : (
-            fitTeams.map((team) => (
-              <div
-                key={team}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns:
-                    "190px repeat(7, minmax(150px, 1fr))",
-                  minHeight: "160px",
-                  borderBottom:
-                    "1px solid #d9dadd",
-                }}
-              >
-                {/* TEAM NAME */}
+            fitTeams.map(
+              (team) => (
                 <div
+                  key={team}
                   style={{
-                    padding: "14px 12px",
-                    background: "#f7f7f8",
-                    borderRight:
+                    display:
+                      "grid",
+                    gridTemplateColumns:
+                      "190px repeat(7, minmax(150px, 1fr))",
+                    minHeight:
+                      "160px",
+                    borderBottom:
                       "1px solid #d9dadd",
-                    fontSize: "11px",
-                    fontWeight: 600,
-                    color: "#333",
-                    display: "flex",
-                    alignItems:
-                      "flex-start",
-                    position: "sticky",
-                    left: 0,
-                    zIndex: 5,
                   }}
                 >
-                  {team}
+                  {/* TEAM NAME */}
+                  <div
+                    style={{
+                      padding:
+                        "14px 12px",
+                      background:
+                        "#f7f7f8",
+                      borderRight:
+                        "1px solid #d9dadd",
+                      fontSize:
+                        "11px",
+                      fontWeight: 600,
+                      color:
+                        "#333",
+                      display:
+                        "flex",
+                      alignItems:
+                        "flex-start",
+                      position:
+                        "sticky",
+                      left: 0,
+                      zIndex: 5,
+                    }}
+                  >
+                    {team}
+                  </div>
+
+                  {/* DAYS */}
+                  {weekDays.map(
+                    (date) => {
+                      const dayJobs =
+                        getJobs(
+                          team,
+                          date
+                        )
+
+                      return (
+                        <div
+                          key={`${team}-${formatDate(
+                            date
+                          )}`}
+                          style={{
+                            padding:
+                              "6px",
+                            borderRight:
+                              "1px solid #d9dadd",
+                            background:
+                              "#fff",
+                            minHeight:
+                              "160px",
+                          }}
+                        >
+                          {dayJobs.map(
+                            renderJobCard
+                          )}
+                        </div>
+                      )
+                    }
+                  )}
                 </div>
-
-                {/* DAYS */}
-                {weekDays.map((date) => {
-                  const dayJobs =
-                    getJobs(team, date)
-
-                  return (
-                    <div
-                      key={`${team}-${formatDate(
-                        date
-                      )}`}
-                      style={{
-                        padding: "6px",
-                        borderRight:
-                          "1px solid #d9dadd",
-                        background: "#fff",
-                        minHeight: "160px",
-                      }}
-                    >
-                      {dayJobs.map(
-                        renderJobCard
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            ))
+              )
+            )
           )}
         </div>
       </div>
