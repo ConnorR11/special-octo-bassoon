@@ -410,9 +410,28 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
       ]
     })
 
-    const columnWidths = [25, 18, 24, 20, 19, 16, 16, 18, 13, 19, 18, 17, 17, 18, 17, 18, 18, 18, 21, 15, 21, 21]
-    const scale = usableWidth / columnWidths.reduce((sum, width) => sum + width, 0)
-    const widths = columnWidths.map((width) => width * scale)
+    // Size each column from the content it actually needs. This keeps the
+    // exported table as narrow as possible while keeping every value on one line.
+    const fontSize = 5.4
+    const horizontalPadding = 2.2
+    const minColumnWidths = [17, 15, 18, 15, 14, 12, 12, 13, 10, 14, 14, 13, 13, 14, 13, 14, 14, 14, 16, 12, 16, 16]
+
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(fontSize)
+
+    const naturalWidths = headers.map((header, index) => {
+      let maxWidth = doc.getTextWidth(header)
+      rows.forEach((row) => {
+        const value = String(row[index] ?? "")
+        doc.setFont("helvetica", index === 0 || index === 3 ? "bold" : "normal")
+        maxWidth = Math.max(maxWidth, doc.getTextWidth(value))
+      })
+      return Math.max(maxWidth + horizontalPadding, minColumnWidths[index])
+    })
+
+    const naturalTotal = naturalWidths.reduce((sum, width) => sum + width, 0)
+    const scale = naturalTotal > usableWidth ? usableWidth / naturalTotal : 1
+    const widths = naturalWidths.map((width) => width * scale)
 
     const rowHeight = 6.2
     const groupHeight = 7
@@ -520,7 +539,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
 
         doc.setTextColor(51, 65, 85)
         doc.setFont("helvetica", index === 0 || index === 3 ? "bold" : "normal")
-        doc.setFontSize(5.4)
+        doc.setFontSize(fontSize)
         doc.text(String(value), x + 1.1, y + 4.1, { maxWidth: widths[index] - 2.2 })
 
         x += widths[index]
