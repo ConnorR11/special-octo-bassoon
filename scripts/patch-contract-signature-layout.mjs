@@ -206,19 +206,22 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
   // Build the customer-facing rows from the actual hardware record, not the
   // template's saved product names/quantities. Hardware can exist on the
   // current EPVS data, the OpenSolar data, or directly on the appointment.
+  // Prefer the hardware stored in the current EPVS calculation. The
+  // appointment can contain an older/stale hardware snapshot (for example
+  // 18 panels) and must not override the current OpenSolar/EPVS hardware.
   const hardwareCandidates = [
-    appointment?.hardware,
-    appointment?.openSolar?.hardware,
-    appointment?.open_solar?.hardware,
-    appointment?.openSolarData?.hardware,
-    appointment?.open_solar_data?.hardware,
-    appointment?.opensolar?.hardware,
     data?.hardware,
     data?.openSolar?.hardware,
     data?.open_solar?.hardware,
     appointment?.epvs_calculation?.data?.hardware,
     appointment?.epvs_calculation?.data?.openSolar?.hardware,
     appointment?.epvs_calculation?.openSolar?.hardware,
+    appointment?.hardware,
+    appointment?.openSolar?.hardware,
+    appointment?.open_solar?.hardware,
+    appointment?.openSolarData?.hardware,
+    appointment?.open_solar_data?.hardware,
+    appointment?.opensolar?.hardware,
   ].filter((candidate) => candidate && typeof candidate === "object")
 
   const getBestHardwareItem = (type, fallback) => {
