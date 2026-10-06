@@ -499,7 +499,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                         <td>{formatElectricityValue(epvsData.standingCharge, "p")}</td>
                         <td>{systemDesign.panelCount || "—"}</td>
                         <td>{systemDesign.generation ? Math.round(systemDesign.generation) + " kWh" : "—"}</td>
-                        <td>{systemDesign.batteryCapacity ? String(systemDesign.batteryCapacity) + " kWh" : "—"}</td>
+                        <td>{systemDesign.batteryCapacity ? Number(systemDesign.batteryCapacity).toFixed(2) + " kWh" : "—"}</td>
                         <td>{systemDesign.inverterCapacity ? String(systemDesign.inverterCapacity) + " kW" : "—"}</td>
                         <td>{formatElectricityValue(epvsData.fluxDayExport, "p")}</td>
                         <td>{formatElectricityValue(epvsData.fluxExport, "p")}</td>
