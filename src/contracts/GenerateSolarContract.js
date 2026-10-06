@@ -763,21 +763,21 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
   const settings = page.settings || {}
   const configured = Array.isArray(settings.included_items) ? settings.included_items : []
 
-  // Itemised hardware comes directly from the saved appointment calculation.
-  // This is the single source of truth for manufacturer, model and quantity.
-  const hardware = appointment?.epvs_calculation?.data?.openSolar?.hardware || {}
-  const panels = Array.isArray(hardware?.panels) ? hardware.panels : []
-  const inverters = Array.isArray(hardware?.inverters) ? hardware.inverters : []
-  const batteries = Array.isArray(hardware?.batteries) ? hardware.batteries : []
+  // appointments.epvs_calculation is the single source of truth for
+  // manufacturer, model and quantity on the contract.
+  const hardware = epvs?.data?.openSolar?.hardware || {}
+  const panels = Array.isArray(hardware.panels) ? hardware.panels : []
+  const inverters = Array.isArray(hardware.inverters) ? hardware.inverters : []
+  const batteries = Array.isArray(hardware.batteries) ? hardware.batteries : []
 
   const resolveHardware = (name) => {
     const normalized = String(name || "").trim().toLowerCase()
 
-    const resolve = (items, label) => {
+    const findItem = (items, label) => {
       const item = items.find((candidate) => {
         const model = String(candidate?.model || candidate?.name || "").trim().toLowerCase()
         return normalized === label.toLowerCase() ||
-          (label === "Panels" && /\bpanels$/i.test(normalized)) ||
+          (label === "Panels" && /\\bpanels$/i.test(normalized)) ||
           normalized === model
       })
 
@@ -785,6 +785,7 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
 
       const manufacturer = String(item?.manufacturer || "").trim()
       const model = String(item?.model || item?.name || "").trim()
+
       return {
         name: [manufacturer, model, label].filter(Boolean).join(" "),
         quantity: item?.quantity,
@@ -792,9 +793,9 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
     }
 
     return (
-      resolve(panels, "Panels") ||
-      resolve(inverters, "Inverter") ||
-      resolve(batteries, "Battery")
+      findItem(panels, "Panels") ||
+      findItem(inverters, "Inverter") ||
+      findItem(batteries, "Battery")
     )
   }
 
