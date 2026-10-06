@@ -63,34 +63,34 @@ async function drawContractTotalAndSignature(pdf, ctx, data, results, appointmen
   }
 
   const priceX = ctx.padding + width - 8
+  const labelX = priceX - 36
   const systemCost = Number(price || 0)
   const deposit = Number(data?.deposit || appointment?.deposit || 0)
   const adminFee = 399
   const totalCost = systemCost + adminFee
 
-  pdf.setTextColor(255, 255, 255)
-  pdf.setFont("helvetica", "normal")
-  pdf.setFontSize(6.5)
-
   const paymentRows = [
-    ["SYSTEM COST", systemCost],
-    ["DEPOSIT", deposit],
-    ["ADMIN FEE", adminFee],
-    ["TOTAL COST", totalCost],
+    ["System cost", systemCost],
+    ["Deposit", deposit],
+    ["Admin Fee", adminFee],
+    ["Total Cost", totalCost],
   ]
 
-  let paymentY = y + 7
+  let paymentY = y + 9
   paymentRows.forEach(([label, value], index) => {
-    pdf.setFont("helvetica", index === paymentRows.length - 1 ? "bold" : "normal")
-    pdf.setFontSize(index === paymentRows.length - 1 ? 7.2 : 6.5)
-    pdf.text(label, priceX, paymentY, { align: "right" })
+    const isTotal = index === paymentRows.length - 1
+
+    pdf.setTextColor(255, 255, 255)
+    pdf.setFont("helvetica", isTotal ? "bold" : "normal")
+    pdf.setFontSize(isTotal ? 7.2 : 6.5)
+    pdf.text(label, labelX, paymentY, { align: "right" })
 
     pdf.setFont("helvetica", "bold")
-    pdf.setFontSize(index === paymentRows.length - 1 ? 10.5 : 8)
-    pdf.text(money(value), priceX, paymentY + 3.8, { align: "right" })
+    pdf.setFontSize(isTotal ? 9.5 : 7.5)
+    pdf.text(money(value), priceX, paymentY, { align: "right" })
 
-    paymentY += index === paymentRows.length - 1 ? 7 : 6.2
-  })
+    paymentY += isTotal ? 7 : 6
+  )
   return y + cardHeight
 }
 
@@ -263,7 +263,11 @@ if (!overviewPattern.test(source)) {
       : "    y = body(pdf, page.body, ctx.padding, y + 8, width, ctx.text) + 6"
     return match.replace(/    body\(pdf, page\.body[^\n]+/, bodyCall).replace(
       "  } else if (kind === \"itemised_breakdown\") {",
-      "    const signatureCardY = Math.max(ctx.padding + 20, y - 8)\n    await drawContractTotalAndSignature(pdf, ctx, data, results, appointment, signatureCardY)\n  } else if (kind === \"itemised_breakdown\") {"
+    const signatureCardHeight = 38
+    const footerClearance = 7
+    const footerY = pdf.internal.pageSize.getHeight() - 13
+    const signatureCardY = footerY - footerClearance - signatureCardHeight
+    await drawContractTotalAndSignature(pdf, ctx, data, results, appointment, signatureCardY)
     )
   })
 }
