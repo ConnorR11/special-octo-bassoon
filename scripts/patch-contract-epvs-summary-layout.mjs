@@ -3,7 +3,7 @@ import fs from "fs"
 const file = "src/contracts/GenerateSolarContract.js"
 let source = fs.readFileSync(file, "utf8")
 
-if (source.includes("function drawEpvsContractSummary(pdf, ctx, data, results, startY) {")) {
+if (source.includes("function drawEpvsContractSummary(pdf, ctx, data, results, epvs, startY) {")) {
   source = source.replace(
     'const headerHeight = options.headerHeight || 7\n    const rowHeight = options.rowHeight || 6.1',
     'const headerHeight = options.headerHeight || 6.5\n    const rowHeight = options.rowHeight || 5.4'
@@ -33,8 +33,8 @@ if (source.includes("function drawEpvsContractSummary(pdf, ctx, data, results, s
 
   // Reduce the gap between the inflation disclaimer and the first summary tables.
   source = source.replace(
-    'drawEpvsContractSummary(pdf, ctx, data, results, y + 8)',
-    'drawEpvsContractSummary(pdf, ctx, data, results, y + 3)'
+    'drawEpvsContractSummary(pdf, ctx, data, results, epvs, y + 8)',
+    'drawEpvsContractSummary(pdf, ctx, data, results, epvs, y + 3)'
   )
 }
 
