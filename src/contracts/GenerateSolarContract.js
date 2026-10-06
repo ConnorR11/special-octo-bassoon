@@ -667,18 +667,45 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs) {
     pdf.setFont("helvetica", "bold")
     pdf.setFontSize(27)
     pdf.text("Solar Contract", ctx.padding, 76)
+
     pdf.setFont("helvetica", "normal")
     pdf.setFontSize(11)
     pdf.text("Prepared for", ctx.padding, 89)
+
     pdf.setFont("helvetica", "bold")
     pdf.setFontSize(17)
     pdf.text(textValue(appointment?.name || data.customerName, "Customer"), ctx.padding, 102)
+
     const address = [appointment?.address, appointment?.postcode].filter(Boolean).join(", ")
     if (address) {
       pdf.setFont("helvetica", "normal")
       pdf.setFontSize(8)
       pdf.text(address, ctx.padding, 112)
     }
+
+    const coverDetails = [
+      ["Sales Rep", appointment?.salesperson || appointment?.rep_allocated || "—"],
+      ["Date", date(appointment?.appointment_date)],
+      ["Contract Number", appointment?.digital_solar_contract_number || "—"],
+    ]
+
+    const detailX = ctx.padding
+    let detailY = 133
+
+    coverDetails.forEach(([label, value]) => {
+      pdf.setFont("helvetica", "bold")
+      pdf.setFontSize(7)
+      pdf.setTextColor(210, 220, 228)
+      pdf.text(label.toUpperCase(), detailX, detailY)
+
+      pdf.setFont("helvetica", "normal")
+      pdf.setFontSize(11)
+      pdf.setTextColor(255, 255, 255)
+      pdf.text(String(value), detailX, detailY + 6)
+
+      detailY += 18
+    })
+
     return
   }
 
@@ -877,6 +904,15 @@ function footer(pdf, index, count, settings, appointment) {
 export async function GenerateSolarContract({ appointment, epvsCalculation }) {
   if (!appointment) return
 
+  const { data: contractNumber, error: contractNumberError } = await supabase
+    .rpc("next_digital_solar_contract_number")
+  if (contractNumberError) throw contractNumberError
+
+  const contractAppointment = {
+    ...appointment,
+    digital_solar_contract_number: contractNumber,
+  }
+
   const { data: template, error: templateError } = await supabase
     .from("templates")
     .select("id,name,template_type,active")
@@ -908,7 +944,7 @@ export async function GenerateSolarContract({ appointment, epvsCalculation }) {
   for (let index = 0; index < pages.length; index += 1) {
     if (index > 0) pdf.addPage(pageSize.toLowerCase(), orientation)
     const page = pages[index]
-    await renderPage(pdf, page, index, pages.length, appointment, epvs)
+    await renderPage(pdf, page, index, pages.length, contractAppointment, epvs)
     footer(pdf, index, pages.length, page.settings || {}, appointment)
   }
 
