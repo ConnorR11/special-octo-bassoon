@@ -96,6 +96,25 @@ function hasAllocatedRep(appointment) {
   return String(appointment?.rep_allocated ?? "").trim() !== ""
 }
 
+function getEpvsData(appointment) {
+  let calculation = appointment?.epvs_calculation || null
+
+  if (typeof calculation === "string") {
+    try {
+      calculation = JSON.parse(calculation)
+    } catch {
+      calculation = null
+    }
+  }
+
+  return calculation?.data || {}
+}
+
+function formatElectricityValue(value, suffix = "") {
+  if (value === null || value === undefined || value === "") return "—"
+  return String(value) + suffix
+}
+
 export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
   const initial = periodDates("this-week")
   const [period, setPeriod] = useState("this-week")
@@ -239,6 +258,9 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
         .solar-analysis-table-wrap{overflow-x:auto}
         .solar-analysis-table{width:100%;border-collapse:collapse;font-size:12px}
         .solar-analysis-table th{background:#575757;color:#fff;padding:10px 12px;text-align:left;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+        .solar-analysis-table th.solar-analysis-group{background:#f8fafc;color:#0f172a;border-bottom:1px solid #dbe3ec;font-size:11px;text-transform:none;letter-spacing:0}
+        .solar-analysis-table th.solar-analysis-group-empty{background:#f8fafc;border-bottom:1px solid #dbe3ec}
+        .solar-analysis-table th.solar-analysis-electricity-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
         .solar-analysis-table td{padding:11px 12px;border-top:1px solid #e8edf2;color:#334155;white-space:nowrap}
         .solar-analysis-table tbody tr{cursor:pointer}
         .solar-analysis-table tbody tr:hover{background:#f8fafc}
@@ -323,21 +345,30 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
             <table className="solar-analysis-table">
               <thead>
                 <tr>
+                  <th colSpan="4" className="solar-analysis-group-empty"></th>
+                  <th colSpan="4" className="solar-analysis-group">Current Electricity</th>
+                </tr>
+                <tr>
                   <th>Appointment</th>
                   <th>Date</th>
                   <th>Sales Rep</th>
                   <th>Result</th>
+                  <th className="solar-analysis-electricity-field">Annual electricity consumption (kWh)</th>
+                  <th className="solar-analysis-electricity-field">Import rate (p/kWh)</th>
+                  <th className="solar-analysis-electricity-field">Export rate (p/kWh)</th>
+                  <th className="solar-analysis-electricity-field">Standing charge (p/day)</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan="4" className="solar-analysis-empty">Loading solar appointments...</td></tr>
+                  <tr><td colSpan="8" className="solar-analysis-empty">Loading solar appointments...</td></tr>
                 ) : filteredAppointments.length === 0 ? (
-                  <tr><td colSpan="4" className="solar-analysis-empty">No solar appointments found for this period.</td></tr>
+                  <tr><td colSpan="8" className="solar-analysis-empty">No solar appointments found for this period.</td></tr>
                 ) : (
                   filteredAppointments.map((appointment) => {
                     const rep = repNameByEmail[normalise(appointment.rep_allocated)] || appointment.rep_allocated || "—"
                     const result = appointment.result || "—"
+                    const epvsData = getEpvsData(appointment)
 
                     return (
                       <tr key={appointment.appointment_row_id} onClick={() => onSelectAppointment?.(appointment)}>
@@ -345,6 +376,10 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                         <td>{formatDate(appointment.appointment_date)}</td>
                         <td>{rep}</td>
                         <td className="solar-analysis-result">{result}</td>
+                        <td>{formatElectricityValue(epvsData.annualConsumption)}</td>
+                        <td>{formatElectricityValue(epvsData.importRate, "p")}</td>
+                        <td>{formatElectricityValue(epvsData.exportRate, "p")}</td>
+                        <td>{formatElectricityValue(epvsData.standingCharge, "p")}</td>
                       </tr>
                     )
                   })
