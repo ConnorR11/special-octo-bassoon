@@ -5,19 +5,13 @@ import { supabase } from "../lib/supabase"
 const STATUS_OPTIONS = [["todo", "To do"], ["in_progress", "In progress"], ["done", "Done"]]
 const PRIORITY_OPTIONS = [["low", "Low"], ["medium", "Medium"], ["high", "High"]]
 const CATEGORY_OPTIONS = [["development", "Development"], ["general", "General"]]
-const DEPARTMENT_OPTIONS = ["Marketing", "Sales", "Development", "Operations", "Accounts", "Management", "Other"]
 
 function personName(profile) {
   return profile?.display_name || profile?.full_name || profile?.email || "Unassigned"
 }
 
-function departmentName(value) {
-  const text = String(value || "").trim()
-  return text || "Unassigned"
-}
-
 function emptyForm() {
-  return { title: "", description: "", status: "todo", priority: "medium", category: "development", department: "", assigned_to: "", due_date: "" }
+  return { title: "", description: "", status: "todo", priority: "medium", category: "development", assigned_to: "", due_date: "" }
 }
 
 export default function Tasks() {
@@ -29,7 +23,6 @@ export default function Tasks() {
   const [error, setError] = useState("")
   const [filter, setFilter] = useState("all")
   const [categoryFilter, setCategoryFilter] = useState("all")
-  const [departmentFilter, setDepartmentFilter] = useState("all")
   const [search, setSearch] = useState("")
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -59,28 +52,17 @@ export default function Tasks() {
 
   const profileMap = useMemo(() => new Map(profiles.map((profile) => [profile.id, profile])), [profiles])
 
-  const departments = useMemo(() => {
-    const values = new Set(tasks.map((task) => departmentName(task.department)))
-    DEPARTMENT_OPTIONS.forEach((department) => values.add(department))
-    return Array.from(values).sort((a, b) => {
-      if (a === "Unassigned") return -1
-      if (b === "Unassigned") return 1
-      return a.localeCompare(b)
-    })
-  }, [tasks])
-
   const filteredTasks = useMemo(() => {
     const term = search.trim().toLowerCase()
     return tasks.filter((task) => {
       if (filter !== "all" && task.status !== filter) return false
       if (categoryFilter !== "all" && task.category !== categoryFilter) return false
-      if (departmentFilter !== "all" && departmentName(task.department) !== departmentFilter) return false
       if (!term) return true
       const assignee = profileMap.get(task.assigned_to)
-      return [task.title, task.description, task.category, task.department, task.status, assignee?.full_name, assignee?.display_name, assignee?.email]
+      return [task.title, task.description, task.category, task.status, assignee?.full_name, assignee?.display_name, assignee?.email]
         .filter(Boolean).join(" ").toLowerCase().includes(term)
     })
-  }, [tasks, filter, categoryFilter, departmentFilter, search, profileMap])
+  }, [tasks, filter, categoryFilter, search, profileMap])
 
   const counts = useMemo(() => ({
     all: tasks.length,
@@ -89,27 +71,13 @@ export default function Tasks() {
     done: tasks.filter((task) => task.status === "done").length,
   }), [tasks])
 
-  const departmentBreakdown = useMemo(() => {
-    const map = new Map()
-    tasks.forEach((task) => {
-      const department = departmentName(task.department)
-      if (!map.has(department)) map.set(department, { total: 0, todo: 0, in_progress: 0, done: 0 })
-      const item = map.get(department)
-      item.total += 1
-      if (task.status === "todo") item.todo += 1
-      if (task.status === "in_progress") item.in_progress += 1
-      if (task.status === "done") item.done += 1
-    })
-    return Array.from(map.entries()).map(([department, values]) => ({ department, ...values })).sort((a, b) => b.total - a.total || a.department.localeCompare(b.department))
-  }, [tasks])
-
   function startNewTask() {
     setEditingId(null); setForm(emptyForm()); setError(""); setShowForm(true)
   }
 
   function startEdit(task) {
     setEditingId(task.id)
-    setForm({ title: task.title || "", description: task.description || "", status: task.status || "todo", priority: task.priority || "medium", category: task.category || "development", department: task.department || "", assigned_to: task.assigned_to || "", due_date: task.due_date || "" })
+    setForm({ title: task.title || "", description: task.description || "", status: task.status || "todo", priority: task.priority || "medium", category: task.category || "development", assigned_to: task.assigned_to || "", due_date: task.due_date || "" })
     setError(""); setShowForm(true)
   }
 
@@ -129,7 +97,7 @@ export default function Tasks() {
       if (userError) throw userError
       const { data: creator, error: creatorError } = await supabase.from("profiles").select("id").eq("auth_user_id", userData?.user?.id).maybeSingle()
       if (creatorError) throw creatorError
-      const payload = { title: form.title.trim(), description: form.description.trim() || null, status: form.status, priority: form.priority, category: form.category, department: form.department.trim() || null, assigned_to: form.assigned_to || null, due_date: form.due_date || null }
+      const payload = { title: form.title.trim(), description: form.description.trim() || null, status: form.status, priority: form.priority, category: form.category, assigned_to: form.assigned_to || null, due_date: form.due_date || null }
       if (editingId) {
         const { data, error: updateError } = await supabase.from("tasks").update(payload).eq("id", editingId).select("*").single()
         if (updateError) throw updateError
@@ -178,7 +146,7 @@ export default function Tasks() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 20, marginBottom: 22 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 38, height: 38, borderRadius: 9, background: "#172554", color: "#fff", display: "grid", placeItems: "center" }}><ClipboardList size={19} /></div>
-            <div><h1 style={{ margin: 0, color: "#172033", fontSize: 22 }}>Tasks</h1><p style={{ margin: "4px 0 0", color: "#7b8794", fontSize: 12 }}>Tasks broken down by department.</p></div>
+            <div><h1 style={{ margin: 0, color: "#172033", fontSize: 22 }}>Tasks</h1><p style={{ margin: "4px 0 0", color: "#7b8794", fontSize: 12 }}>Create and track work from one place.</p></div>
           </div>
           <button type="button" onClick={startNewTask} style={primaryButton}><CirclePlus size={16} />New task</button>
         </div>
@@ -192,20 +160,8 @@ export default function Tasks() {
           <SummaryCard label="Completed" value={counts.done} active={filter === "done"} onClick={() => setFilter("done")} />
         </div>
 
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, marginBottom: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}><div><div style={{ fontSize: 12, fontWeight: 800, color: "#172033" }}>Department breakdown</div><div style={{ fontSize: 10, color: "#8a94a3", marginTop: 2 }}>Click a department to filter the task list.</div></div></div>
-          {departmentBreakdown.length === 0 ? <div style={{ color: "#8a94a3", fontSize: 11 }}>No departments have tasks yet.</div> : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(175px,1fr))", gap: 8 }}>
-            {departmentBreakdown.map((item) => <button key={item.department} type="button" onClick={() => setDepartmentFilter(departmentFilter === item.department ? "all" : item.department)} style={{ textAlign: "left", border: `1px solid ${departmentFilter === item.department ? "#b9d7f0" : "#e2e8f0"}`, background: departmentFilter === item.department ? "#f0f8ff" : "#fff", borderRadius: 8, padding: "10px 11px", cursor: "pointer" }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#172033" }}>{item.department}</div>
-              <div style={{ display: "flex", gap: 10, alignItems: "baseline", marginTop: 5 }}><strong style={{ fontSize: 20, color: "#172033" }}>{item.total}</strong><span style={{ fontSize: 9, color: "#7b8794" }}>total</span></div>
-              <div style={{ marginTop: 5, display: "flex", gap: 7, fontSize: 9, color: "#64748b" }}><span>To do {item.todo}</span><span>In progress {item.in_progress}</span><span>Done {item.done}</span></div>
-            </button>)}
-          </div>}
-        </div>
-
         <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, marginBottom: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search tasks..." style={{ ...inputStyle, flex: "1 1 260px" }} />
-          <select value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)} style={{ ...selectStyle, width: 170, marginTop: 0 }}><option value="all">All departments</option>{departments.map((department) => <option key={department} value={department}>{department}</option>)}</select>
           <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} style={{ ...selectStyle, width: 160, marginTop: 0 }}><option value="all">All categories</option>{CATEGORY_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
         </div>
 
@@ -222,7 +178,6 @@ export default function Tasks() {
                 return <tr key={task.id} style={{ borderTop: "1px solid #eef2f6" }}>
                   <td style={{ ...tdStyle, width: 44 }}><button type="button" onClick={() => toggleDone(task)} disabled={Boolean(updatingId)} title={isDone ? "Reopen task" : "Complete task"} style={{ ...checkboxButton, borderColor: isDone ? "#16a34a" : "#cbd5e1", background: isDone ? "#16a34a" : "#fff", opacity: isUpdating ? 0.55 : 1 }}>{isDone && <Check size={13} strokeWidth={3} />}</button></td>
                   <td style={tdStyle}><div style={{ fontWeight: 700, color: isDone ? "#94a3b8" : "#172033", textDecoration: isDone ? "line-through" : "none" }}>{task.title}</div>{task.description && <div style={{ marginTop: 3, color: "#7b8794", fontSize: 11, maxWidth: 460 }}>{task.description}</div>}</td>
-                  <td style={tdStyle}><Badge text={departmentName(task.department)} tone="blue" /></td>
                   <td style={tdStyle}><Badge text={task.category === "development" ? "Development" : "General"} tone="blue" /></td>
                   <td style={tdStyle}><Badge text={task.priority} tone={task.priority === "high" ? "red" : task.priority === "low" ? "gray" : "amber"} /></td>
                   <td style={tdStyle}>{personName(assignee)}</td>
@@ -247,7 +202,6 @@ export default function Tasks() {
           <label style={labelStyle}>Task title<input required value={form.title} onChange={(event) => setField("title", event.target.value)} style={inputStyle} placeholder="e.g. Fix appointment visibility" /></label>
           <label style={labelStyle}>Description<textarea value={form.description} onChange={(event) => setField("description", event.target.value)} style={{ ...inputStyle, height: 90, paddingTop: 10, resize: "vertical" }} placeholder="Add notes or acceptance criteria..." /></label>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 12 }}>
-            <label style={labelStyle}>Department<select value={form.department} onChange={(event) => setField("department", event.target.value)} style={selectStyle}><option value="">Unassigned</option>{DEPARTMENT_OPTIONS.map((department) => <option key={department} value={department}>{department}</option>)}</select></label>
             <label style={labelStyle}>Status<select value={form.status} onChange={(event) => setField("status", event.target.value)} style={selectStyle}>{STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
             <label style={labelStyle}>Priority<select value={form.priority} onChange={(event) => setField("priority", event.target.value)} style={selectStyle}>{PRIORITY_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
             <label style={labelStyle}>Category<select value={form.category} onChange={(event) => setField("category", event.target.value)} style={selectStyle}>{CATEGORY_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
