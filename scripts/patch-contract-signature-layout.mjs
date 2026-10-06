@@ -203,13 +203,30 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
   const width = ctx.width - ctx.padding * 2
   const settings = page.settings || {}
   const configured = Array.isArray(settings.included_items) ? settings.included_items : []
-  const panelHardware = getPanelHardware(data)
-  const inverterHardware = getHardwareItem(data, "inverters") || data?.inverter
+  // Use the saved hardware object for the customer-facing itemised breakdown.
+  // This is the source containing the manufacturer/model/quantity values selected for the contract.
+  const itemisedHardware =
+    data?.hardware ||
+    data?.openSolar?.hardware ||
+    {}
+
+  const panelHardware =
+    Array.isArray(itemisedHardware?.panels) && itemisedHardware.panels.length
+      ? itemisedHardware.panels[0]
+      : getPanelHardware(data)
+
+  const inverterHardware =
+    Array.isArray(itemisedHardware?.inverters) && itemisedHardware.inverters.length
+      ? itemisedHardware.inverters[0]
+      : getHardwareItem(data, "inverters") || data?.inverter
+
   const batteryHardware =
-    getHardwareItem(data, "batteries") ||
-    getHardwareItem(data, "storage") ||
-    data?.battery ||
-    data?.storage
+    Array.isArray(itemisedHardware?.batteries) && itemisedHardware.batteries.length
+      ? itemisedHardware.batteries[0]
+      : getHardwareItem(data, "batteries") ||
+        getHardwareItem(data, "storage") ||
+        data?.battery ||
+        data?.storage
 
   const getHardwareItemName = (item, label) => {
     if (!item) return null
@@ -227,7 +244,8 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
     const isPanel =
       normalizedName === "panels" ||
       /\bpanels$/i.test(normalizedName) ||
-      normalizedName === String(panelHardware?.model || "").trim().toLowerCase()
+      normalizedName === String(panelHardware?.model || "").trim().toLowerCase() ||
+      normalizedName === String(panelHardware?.name || "").trim().toLowerCase()
 
     const isInverter =
       normalizedName === "inverter" ||
