@@ -133,8 +133,8 @@ function getContractItemName(name, data) {
 
 
 function getPanelHardware(data) {
-  const hardware = data?.hardware || {}
-  const panels = Array.isArray(hardware.panels) ? hardware.panels : []
+  const hardware = getOpenSolarHardware(data)
+  const panels = Array.isArray(hardware?.panels) ? hardware.panels : []
   return panels[0] || null
 }
 
