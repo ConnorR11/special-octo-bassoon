@@ -28,7 +28,7 @@ const EXPRESS_FIT_DISCLAIMER = "By signing and returning this document you are p
 async function drawContractTotalAndSignature(pdf, ctx, data, results, appointment, y) {
   const width = ctx.width - ctx.padding * 2
   const price = results?.systemCost ?? data?.systemCost ?? appointment?.system_cost ?? appointment?.contract_value ?? appointment?.sale_value ?? appointment?.price
-  const cardHeight = 32
+  const cardHeight = 38
 
   pdf.setFillColor(...ctx.accent)
   pdf.roundedRect(ctx.padding, y, width, cardHeight, 3, 3, "F")
@@ -63,13 +63,34 @@ async function drawContractTotalAndSignature(pdf, ctx, data, results, appointmen
   }
 
   const priceX = ctx.padding + width - 8
+  const systemCost = Number(price || 0)
+  const deposit = Number(data?.deposit || appointment?.deposit || 0)
+  const adminFee = 399
+  const totalCost = systemCost + adminFee
+
   pdf.setTextColor(255, 255, 255)
   pdf.setFont("helvetica", "normal")
-  pdf.setFontSize(7)
-  pdf.text("TOTAL SYSTEM PRICE", priceX, y + 10, { align: "right" })
-  pdf.setFont("helvetica", "bold")
-  pdf.setFontSize(18)
-  pdf.text(money(price), priceX, y + 22, { align: "right" })
+  pdf.setFontSize(6.5)
+
+  const paymentRows = [
+    ["SYSTEM COST", systemCost],
+    ["DEPOSIT", deposit],
+    ["ADMIN FEE", adminFee],
+    ["TOTAL COST", totalCost],
+  ]
+
+  let paymentY = y + 7
+  paymentRows.forEach(([label, value], index) => {
+    pdf.setFont("helvetica", index === paymentRows.length - 1 ? "bold" : "normal")
+    pdf.setFontSize(index === paymentRows.length - 1 ? 7.2 : 6.5)
+    pdf.text(label, priceX, paymentY, { align: "right" })
+
+    pdf.setFont("helvetica", "bold")
+    pdf.setFontSize(index === paymentRows.length - 1 ? 10.5 : 8)
+    pdf.text(money(value), priceX, paymentY + 3.8, { align: "right" })
+
+    paymentY += index === paymentRows.length - 1 ? 7 : 6.2
+  })
   return y + cardHeight
 }
 
