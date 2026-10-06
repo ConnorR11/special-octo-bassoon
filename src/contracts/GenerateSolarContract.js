@@ -1200,7 +1200,7 @@ function footer(pdf, index, count, settings, appointment) {
   pdf.text(`Page ${index + 1} of ${count}`, width - padding, height - 8, { align: "right" })
 }
 
-export async function GenerateSolarContract({ appointment, epvsCalculation }) {
+export async function GenerateSolarContract({ appointment }) {
   if (!appointment) return
 
   let contractNumber = String(appointment?.contract_number || "").trim()
@@ -1263,7 +1263,7 @@ export async function GenerateSolarContract({ appointment, epvsCalculation }) {
   if (pagesError) throw pagesError
   if (!pages?.length) throw new Error("The Digital Solar Contract template has no pages configured.")
 
-  let epvs = epvsCalculation || appointment?.epvs_calculation || null
+  // The contract must always use the EPVS calculation saved on the appointment.\n  // Do not accept a separate/stale EPVS calculation passed by the caller.\n  let epvs = appointment?.epvs_calculation || null
   if (typeof epvs === "string") {
     try {
       epvs = JSON.parse(epvs)
