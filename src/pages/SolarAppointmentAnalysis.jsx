@@ -158,55 +158,14 @@ function getThirtyYearEpvs(appointment) {
     }
   }
 
-  const results = calculation?.results || {}
-  const projection = calculation?.thirtyYearProjection || []
-  const lastYear = Array.isArray(projection) && projection.length
-    ? projection[projection.length - 1]
-    : null
-
-  const totalCost = Number(results?.totalContractValue || 0)
-  const thirtyYearSavings = Number(
-    lastYear?.cumulativeSavings ??
-    lastYear?.cumulativeSaving ??
-    lastYear?.netPosition ??
-    0
-  )
+  const scenarios = calculation?.thirtyYearProjection?.scenarios || {}
+  const scenario = scenarios?.midpointInflation || scenarios?.noInflation || null
+  const lastYear = scenario?.rows?.[scenario.rows.length - 1] || null
 
   return {
-    paybackPeriod: results?.simplePayback,
-    netPosition: lastYear?.netPosition ?? (
-      thirtyYearSavings || totalCost
-        ? thirtyYearSavings - totalCost
-        : null
-    ),
+    paybackPeriod: scenario?.paybackPeriod,
+    netPosition: scenario?.finalNetPosition,
     billPreInstall: lastYear?.billPreInstall,
-  }
-}
-
-function getSystemDesign(appointment) {
-  let calculation = appointment?.epvs_calculation || null
-
-  if (typeof calculation === "string") {
-    try {
-      calculation = JSON.parse(calculation)
-    } catch {
-      calculation = null
-    }
-  }
-
-  const data = calculation?.data || {}
-  const results = calculation?.results || {}
-  const arrays = Array.isArray(data.arrays) ? data.arrays : []
-  const panelCount = arrays.reduce(
-    (total, array) => total + Math.max(0, Number(array?.panelCount || 0)),
-    0
-  )
-
-  return {
-    panelCount,
-    generation: Number(results?.generation || 0),
-    batteryCapacity: Number(data?.batteryCapacity || 0),
-    inverterCapacity: Number(data?.inverterCapacity || 0),
   }
 }
 
