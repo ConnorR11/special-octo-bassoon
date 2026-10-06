@@ -4,7 +4,6 @@ import { supabase } from "../lib/supabase"
 
 const STATUS_OPTIONS = [["todo", "To do"], ["in_progress", "In progress"], ["done", "Done"]]
 const PRIORITY_OPTIONS = [["low", "Low"], ["medium", "Medium"], ["high", "High"]]
-const CATEGORY_OPTIONS = [["development", "Development"], ["general", "General"]]
 
 function personName(profile) {
   return profile?.display_name || profile?.full_name || profile?.email || "Unassigned"
@@ -51,6 +50,18 @@ export default function Tasks() {
   useEffect(() => { loadData() }, [])
 
   const profileMap = useMemo(() => new Map(profiles.map((profile) => [profile.id, profile])), [profiles])
+
+  const categoryOptions = useMemo(() => {
+    const categories = Array.from(
+      new Set(
+        tasks
+          .map((task) => String(task.category || "").trim())
+          .filter(Boolean)
+      )
+    )
+
+    return categories.sort((a, b) => a.localeCompare(b))
+  }, [tasks])
 
   const filteredTasks = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -162,7 +173,7 @@ export default function Tasks() {
 
         <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, marginBottom: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search tasks..." style={{ ...inputStyle, flex: "1 1 260px" }} />
-          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} style={{ ...selectStyle, width: 160, marginTop: 0 }}><option value="all">All categories</option>{CATEGORY_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} style={{ ...selectStyle, width: 160, marginTop: 0 }}><option value="all">All categories</option>{categoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}</select>
         </div>
 
         <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden" }}>
@@ -178,7 +189,7 @@ export default function Tasks() {
                 return <tr key={task.id} style={{ borderTop: "1px solid #eef2f6" }}>
                   <td style={{ ...tdStyle, width: 44 }}><button type="button" onClick={() => toggleDone(task)} disabled={Boolean(updatingId)} title={isDone ? "Reopen task" : "Complete task"} style={{ ...checkboxButton, borderColor: isDone ? "#16a34a" : "#cbd5e1", background: isDone ? "#16a34a" : "#fff", opacity: isUpdating ? 0.55 : 1 }}>{isDone && <Check size={13} strokeWidth={3} />}</button></td>
                   <td style={tdStyle}><div style={{ fontWeight: 700, color: isDone ? "#94a3b8" : "#172033", textDecoration: isDone ? "line-through" : "none" }}>{task.title}</div>{task.description && <div style={{ marginTop: 3, color: "#7b8794", fontSize: 11, maxWidth: 460 }}>{task.description}</div>}</td>
-                  <td style={tdStyle}><Badge text={task.category === "development" ? "Development" : "General"} tone="blue" /></td>
+                  <td style={tdStyle}><Badge text={task.category || "Uncategorised"} tone="blue" /></td>
                   <td style={tdStyle}><Badge text={task.priority} tone={task.priority === "high" ? "red" : task.priority === "low" ? "gray" : "amber"} /></td>
                   <td style={tdStyle}>{personName(assignee)}</td>
                   <td style={tdStyle}>{task.due_date ? new Date(`${task.due_date}T00:00:00`).toLocaleDateString("en-GB") : "—"}</td>
