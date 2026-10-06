@@ -686,7 +686,7 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs) {
     const coverDetails = [
       ["Sales Rep", appointment?.salesperson || appointment?.rep_allocated || "—"],
       ["Date", date(appointment?.appointment_date)],
-      ["Contract Number", appointment?.digital_solar_contract_number || "—"],
+      ["Contract Number", appointment?.contract_number || "—"],
     ]
 
     const detailX = ctx.padding
@@ -904,13 +904,27 @@ function footer(pdf, index, count, settings, appointment) {
 export async function GenerateSolarContract({ appointment, epvsCalculation }) {
   if (!appointment) return
 
-  const { data: contractNumber, error: contractNumberError } = await supabase
-    .rpc("next_digital_solar_contract_number")
-  if (contractNumberError) throw contractNumberError
+  let contractNumber = String(appointment?.contract_number || "").trim()
+
+  if (!contractNumber) {
+    const { data: generatedContractNumber, error: contractNumberError } = await supabase
+      .rpc("next_digital_solar_contract_number")
+    if (contractNumberError) throw contractNumberError
+
+    contractNumber = String(generatedContractNumber || "").trim()
+    if (!contractNumber) throw new Error("Unable to generate a digital solar contract number.")
+
+    const { error: contractUpdateError } = await supabase
+      .from("appointments")
+      .update({ contract_number: contractNumber })
+      .eq("appointment_row_id", appointment.appointment_row_id)
+
+    if (contractUpdateError) throw contractUpdateError
+  }
 
   const contractAppointment = {
     ...appointment,
-    digital_solar_contract_number: contractNumber,
+    contract_number: contractNumber,
   }
 
   const { data: template, error: templateError } = await supabase
