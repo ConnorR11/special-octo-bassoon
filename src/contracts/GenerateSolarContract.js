@@ -777,9 +777,10 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
       const item = items.find((candidate) => {
         const model = String(candidate?.model || candidate?.name || "").trim().toLowerCase()
         return normalized === label.toLowerCase() ||
-          (label === "Panels" && /\bpanels$/i.test(normalized)) ||
           normalized === model ||
-          normalized.startsWith(model + " ")
+          normalized.startsWith(model + " ") ||
+          normalized.endsWith(" " + label.toLowerCase()) ||
+          (label === "Panels" && /\bpanels$/i.test(normalized))
       })
 
       if (!item) return null
