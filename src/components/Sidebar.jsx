@@ -34,7 +34,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
       "marketing-dashboard": 3,
       "canvasser-kpi": 3,
       mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4,
-      templates: 4, "integration-logs": 4, "data-dashboard": 4, "data-clean": 4,
+      templates: 4, "integration-logs": 4, "data-dashboard": 4, "data-clean": 4, "solar-appointment-analysis": 4,
     }[route]
     return !requiredPermission || numericPermissionLevel >= requiredPermission
   }
@@ -136,6 +136,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
           {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}>
             <NavItem icon={BarChart3} label="Data Dashboard" active={isActive("data-dashboard")} onClick={() => navigate("data-dashboard")}/>
             <NavItem icon={Database} label="Data Clean" active={isActive("data-clean")} onClick={() => navigate("data-clean")}/>
+            <NavItem icon={CalendarDays} label="Solar Appointment Analysis" active={isActive("solar-appointment-analysis")} onClick={() => navigate("solar-appointment-analysis")}/>
             <NavItem icon={UserCog} label="Users" active={isActive("users")} onClick={() => navigate("users")}/>
             <NavItem icon={ClipboardList} label="Tasks" active={isActive("tasks")} onClick={() => navigate("tasks")}/>
             <NavItem icon={Presentation} label="Templates" active={isActive("templates")} onClick={() => navigate("templates")}/>
