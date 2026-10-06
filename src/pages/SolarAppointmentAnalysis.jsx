@@ -611,6 +611,10 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
               <h2>Appointments</h2>
               <span>Only appointments with an allocated sales rep are included.</span>
             </div>
+            <button type="button" className="solar-analysis-export" onClick={exportPdf} disabled={!filteredAppointments.length || loading}>
+              <Download size={14}/>
+              Export PDF
+            </button>
           </div>
 
           <div className="solar-analysis-table-wrap">
