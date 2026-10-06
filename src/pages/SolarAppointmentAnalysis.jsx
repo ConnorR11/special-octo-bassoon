@@ -341,12 +341,23 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
         .solar-analysis-table th{background:#575757;color:#fff;padding:10px 12px;text-align:left;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
         .solar-analysis-table th.solar-analysis-group{background:#f8fafc;color:#0f172a;border-bottom:1px solid #dbe3ec;font-size:11px;text-transform:none;letter-spacing:0}
         .solar-analysis-table th.solar-analysis-group-empty{background:#f8fafc;border-bottom:1px solid #dbe3ec}
+        .solar-analysis-table th.solar-analysis-group:not(:first-of-type){border-left:4px solid #000}
+        .solar-analysis-table th.solar-analysis-electricity-field:first-of-type{border-left:4px solid #000}
+        .solar-analysis-table th.solar-analysis-design-field:first-of-type{border-left:4px solid #000}
+        .solar-analysis-table th.solar-analysis-octopus-field:first-of-type{border-left:4px solid #000}
+        .solar-analysis-table th.solar-analysis-pricing-field:first-of-type{border-left:4px solid #000}
+        .solar-analysis-table th.solar-analysis-epvs-field:first-of-type{border-left:4px solid #000}
         .solar-analysis-table th.solar-analysis-electricity-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
         .solar-analysis-table th.solar-analysis-design-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
         .solar-analysis-table th.solar-analysis-octopus-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
         .solar-analysis-table th.solar-analysis-pricing-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
         .solar-analysis-table th.solar-analysis-epvs-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
         .solar-analysis-table td{padding:11px 12px;border-top:1px solid #e8edf2;color:#334155;white-space:nowrap}
+        .solar-analysis-table td:nth-child(5),
+        .solar-analysis-table td:nth-child(9),
+        .solar-analysis-table td:nth-child(13),
+        .solar-analysis-table td:nth-child(16),
+        .solar-analysis-table td:nth-child(20){border-left:4px solid #000}
         .solar-analysis-table tbody tr{cursor:pointer}
         .solar-analysis-table tbody tr:hover{background:#f8fafc}
         .solar-analysis-name{font-weight:750;color:#0f172a}
