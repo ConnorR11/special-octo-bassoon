@@ -644,6 +644,14 @@ export default function EPVSCalculator({
       ...saved,
       arrays: sixArrays,
 
+      // Older saved calculations may contain 0 for this newly introduced
+      // field. EPVS Year 1 degradation is 1.00%, so migrate those records
+      // to the current assumption when they are loaded.
+      solarDegradationYear1:
+        Number(saved.solarDegradationYear1) > 0
+          ? Number(saved.solarDegradationYear1)
+          : initial.solarDegradationYear1,
+
       customerName:
         saved.customerName ||
         appointment?.name ||
@@ -991,7 +999,11 @@ export default function EPVSCalculator({
     // Years 2+ use the ongoing annual degradation figure.
     const panelDegradationYear1 = Math.max(
       0,
-      Number(data.solarDegradationYear1 ?? 0) / 100
+      Number(
+        Number(data.solarDegradationYear1) > 0
+          ? data.solarDegradationYear1
+          : initial.solarDegradationYear1
+      ) / 100
     )
     const panelDegradationYears2Plus = Math.max(
       0,
