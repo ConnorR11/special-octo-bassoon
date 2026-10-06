@@ -89,7 +89,6 @@ function isSolarAppointment(appointment) {
   return [
     appointment.product,
     appointment.job_type,
-    appointment.product_type,
     appointment.service,
   ].some((value) => normalise(value).includes("solar"))
 }
@@ -126,7 +125,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
     try {
       let request = supabase
         .from("appointments")
-        .select("appointment_row_id,name,appointment_date,rep_allocated,result,product,job_type,product_type,service,epvs_calculation")
+        .select("appointment_row_id,name,appointment_date,rep_allocated,result,product,job_type,service,epvs_calculation")
         .not("rep_allocated", "is", null)
         .neq("rep_allocated", "")
         .order("appointment_date", { ascending: false })
