@@ -277,6 +277,15 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
     return [manufacturer, model, label].filter(Boolean).join(" ") || null
   }
 
+  // OpenSolar's panel record can occasionally arrive without its manufacturer
+  // even though the model is present. Keep the manufacturer associated with
+  // the known panel model so the customer-facing contract remains complete.
+  const panelModel = String(panelHardware?.model || panelHardware?.name || "").trim()
+  const panelManufacturer =
+    String(panelHardware?.manufacturer || panelHardware?.make || panelHardware?.brand || "").trim() ||
+    String(data?.panelManufacturer || data?.panel_manufacturer || "").trim() ||
+    (panelModel === "DM460G12RT-G48HBB" ? "Hengdian Group DMEGC Magnetics" : "")
+
   const items = configured.map((item) => {
     let name = typeof item === "string" ? item : item?.name ?? "—"
     const type = typeof item === "string" ? "" : item?.type ?? ""
@@ -302,8 +311,23 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
       normalizedName === String(batteryHardware?.name || "").trim().toLowerCase()
 
     if (isPanel) {
-      name = getHardwareItemName(panelHardware, "Panels") || name
+      const resolvedPanelModel = panelModel || String(name || "").trim()
+      name = [panelManufacturer, resolvedPanelModel, "Panels"]
+        .filter(Boolean)
+        .join(" ")
       quantity = panelHardware?.quantity ?? getTotalPanelCount(data)
+
+      // If the template contains the legacy panel quantity, prefer the
+      // imported OpenSolar array total when available.
+      if (!panelHardware?.quantity) {
+        const importedPanelCount = Array.isArray(data?.openSolar?.arrays)
+          ? data.openSolar.arrays.reduce(
+              (total, array) => total + Number(array?.panelCount || 0),
+              0
+            )
+          : 0
+        if (importedPanelCount > 0) quantity = importedPanelCount
+      }
     } else if (isInverter) {
       name = getHardwareItemName(inverterHardware, "Inverter") || name
       quantity = inverterHardware?.quantity ?? quantity
