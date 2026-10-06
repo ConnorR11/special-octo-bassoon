@@ -115,6 +115,33 @@ function formatElectricityValue(value, suffix = "") {
   return String(value) + suffix
 }
 
+function getSystemDesign(appointment) {
+  let calculation = appointment?.epvs_calculation || null
+
+  if (typeof calculation === "string") {
+    try {
+      calculation = JSON.parse(calculation)
+    } catch {
+      calculation = null
+    }
+  }
+
+  const data = calculation?.data || {}
+  const results = calculation?.results || {}
+  const arrays = Array.isArray(data.arrays) ? data.arrays : []
+  const panelCount = arrays.reduce(
+    (total, array) => total + Math.max(0, Number(array?.panelCount || 0)),
+    0
+  )
+
+  return {
+    panelCount,
+    generation: Number(results?.generation || 0),
+    batteryCapacity: Number(data?.batteryCapacity || 0),
+    inverterCapacity: Number(data?.inverterCapacity || 0),
+  }
+}
+
 export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
   const initial = periodDates("this-week")
   const [period, setPeriod] = useState("this-week")
@@ -261,6 +288,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
         .solar-analysis-table th.solar-analysis-group{background:#f8fafc;color:#0f172a;border-bottom:1px solid #dbe3ec;font-size:11px;text-transform:none;letter-spacing:0}
         .solar-analysis-table th.solar-analysis-group-empty{background:#f8fafc;border-bottom:1px solid #dbe3ec}
         .solar-analysis-table th.solar-analysis-electricity-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
+        .solar-analysis-table th.solar-analysis-design-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
         .solar-analysis-table td{padding:11px 12px;border-top:1px solid #e8edf2;color:#334155;white-space:nowrap}
         .solar-analysis-table tbody tr{cursor:pointer}
         .solar-analysis-table tbody tr:hover{background:#f8fafc}
@@ -347,6 +375,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                 <tr>
                   <th colSpan="4" className="solar-analysis-group-empty"></th>
                   <th colSpan="4" className="solar-analysis-group">Current Electricity</th>
+                  <th colSpan="4" className="solar-analysis-group">System Design</th>
                 </tr>
                 <tr>
                   <th>Appointment</th>
@@ -357,18 +386,23 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                   <th className="solar-analysis-electricity-field">Import rate (p/kWh)</th>
                   <th className="solar-analysis-electricity-field">Export rate (p/kWh)</th>
                   <th className="solar-analysis-electricity-field">Standing charge (p/day)</th>
+                  <th className="solar-analysis-design-field">Number of panels</th>
+                  <th className="solar-analysis-design-field">Generation</th>
+                  <th className="solar-analysis-design-field">Total battery capacity</th>
+                  <th className="solar-analysis-design-field">Inverter</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan="8" className="solar-analysis-empty">Loading solar appointments...</td></tr>
+                  <tr><td colSpan="12" className="solar-analysis-empty">Loading solar appointments...</td></tr>
                 ) : filteredAppointments.length === 0 ? (
-                  <tr><td colSpan="8" className="solar-analysis-empty">No solar appointments found for this period.</td></tr>
+                  <tr><td colSpan="12" className="solar-analysis-empty">No solar appointments found for this period.</td></tr>
                 ) : (
                   filteredAppointments.map((appointment) => {
                     const rep = repNameByEmail[normalise(appointment.rep_allocated)] || appointment.rep_allocated || "—"
                     const result = appointment.result || "—"
                     const epvsData = getEpvsData(appointment)
+                    const systemDesign = getSystemDesign(appointment)
 
                     return (
                       <tr key={appointment.appointment_row_id} onClick={() => onSelectAppointment?.(appointment)}>
@@ -380,6 +414,10 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                         <td>{formatElectricityValue(epvsData.importRate, "p")}</td>
                         <td>{formatElectricityValue(epvsData.exportRate, "p")}</td>
                         <td>{formatElectricityValue(epvsData.standingCharge, "p")}</td>
+                        <td>{systemDesign.panelCount || "—"}</td>
+                        <td>{systemDesign.generation ? String(systemDesign.generation) + " kWh" : "—"}</td>
+                        <td>{systemDesign.batteryCapacity ? String(systemDesign.batteryCapacity) + " kWh" : "—"}</td>
+                        <td>{systemDesign.inverterCapacity ? String(systemDesign.inverterCapacity) + " kW" : "—"}</td>
                       </tr>
                     )
                   })
