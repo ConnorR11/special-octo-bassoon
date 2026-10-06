@@ -1024,12 +1024,17 @@ export default function EPVSCalculator({
       let cumulativePosition = 0
 
       for (let year = 1; year <= 30 && year <= panelWarrantyYears; year++) {
+        // Year 1 is the undegraded/base generation.
+        // The first-year degradation is applied between Years 1 and 2.
+        // Years 2+ then use the ongoing annual degradation rate.
         const solarFactor =
-          (1 - panelDegradationYear1) *
-          Math.pow(
-            1 - panelDegradationYears2Plus,
-            year - 1
-          )
+          year === 1
+            ? 1
+            : (1 - panelDegradationYear1) *
+              Math.pow(
+                1 - panelDegradationYears2Plus,
+                year - 2
+              )
         const generation = Number(results.generation || 0) * solarFactor
 
         const existingGeneration = data.existingSolar
