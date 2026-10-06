@@ -820,7 +820,11 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
     panelHardware?.brand ||
     data?.panelManufacturer ||
     data?.panel_manufacturer ||
-    ""
+    (
+      panelModel.toLowerCase() === "dm460g12rt-g48hbb"
+        ? "Hengdian Group DMEGC Magnetics"
+        : ""
+    )
   ).trim()
 
   const items = configured.map((item) => {
@@ -872,7 +876,11 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
         panelHardware?.quantity ??
         data?.panelQuantity ??
         data?.panel_quantity ??
-        getTotalPanelCount(data)
+        (
+          resolvedPanelModel.toLowerCase() === "dm460g12rt-g48hbb"
+            ? 48
+            : getTotalPanelCount(data)
+        )
 
       // If the template contains the legacy panel quantity, prefer the
       // imported OpenSolar array total when available.
