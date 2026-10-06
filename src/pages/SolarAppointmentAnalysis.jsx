@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
-import { CalendarDays, RefreshCw, Search } from "lucide-react"
+import { CalendarDays, Download, RefreshCw, Search } from "lucide-react"
+import jsPDF from "jspdf"
 import { supabase } from "../lib/supabase"
 
 function londonDate(date = new Date()) {
@@ -349,6 +350,140 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
       ? `${formatDate(startDate)} – ${formatDate(endDate)}`
       : "Custom range"
 
+  function exportPdf() {
+    if (!filteredAppointments.length) return
+
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
+    const margin = 7
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+    const usableWidth = pageWidth - margin * 2
+    const headers = [
+      "Appointment", "Date", "Sales Rep", "Result",
+      "Consumption", "Import", "Export", "Standing",
+      "Panels", "Generation", "Battery", "Inverter",
+      "Day Export", "Flux Export", "Peak Export",
+      "Method", "Cost", "Payment", "Total cost",
+      "Payback", "Net Position", "Pre Install"
+    ]
+    const groups = [
+      { label: "", span: 4 },
+      { label: "Current Electricity", span: 4 },
+      { label: "System Design", span: 4 },
+      { label: "Octopus Rates", span: 3 },
+      { label: "Pricing", span: 4 },
+      { label: "30 year EPVS", span: 3 },
+    ]
+    const rows = filteredAppointments.map((appointment) => {
+      const rep = repNameByEmail[normalise(appointment.rep_allocated)] || appointment.rep_allocated || "—"
+      const epvsData = getEpvsData(appointment)
+      const systemDesign = getSystemDesign(appointment)
+      const pricing = getPricing(appointment)
+      const thirtyYearEpvs = getThirtyYearEpvs(appointment)
+      return [
+        appointment.name || "—", formatDate(appointment.appointment_date), rep, appointment.result || "—",
+        formatElectricityValue(epvsData.annualConsumption),
+        formatElectricityValue(epvsData.importRate, "p"),
+        formatElectricityValue(epvsData.exportRate, "p"),
+        formatElectricityValue(epvsData.standingCharge, "p"),
+        systemDesign.panelCount || "—",
+        systemDesign.generation ? Math.round(systemDesign.generation) + " kWh" : "—",
+        systemDesign.batteryCapacity ? Number(systemDesign.batteryCapacity).toFixed(2) + " kWh" : "—",
+        systemDesign.inverterCapacity ? String(systemDesign.inverterCapacity) + " kW" : "—",
+        formatElectricityValue(epvsData.fluxDayExport, "p"),
+        formatElectricityValue(epvsData.fluxExport, "p"),
+        formatElectricityValue(epvsData.fluxPeakExport, "p"),
+        pricing.method,
+        pricing.cost != null ? "£" + Math.round(Number(pricing.cost)).toLocaleString("en-GB") : "—",
+        formatMoney(pricing.monthlyPayment),
+        pricing.totalCost != null ? "£" + Math.round(Number(pricing.totalCost)).toLocaleString("en-GB") : "—",
+        thirtyYearEpvs.paybackPeriod != null ? Math.round(Number(thirtyYearEpvs.paybackPeriod)) + "y" : "—",
+        formatMoney(thirtyYearEpvs.netPosition),
+        formatMoney(thirtyYearEpvs.billPreInstall),
+      ]
+    })
+
+    const columnWidths = [25, 18, 24, 20, 19, 16, 16, 18, 13, 19, 18, 17, 17, 18, 17, 18, 18, 18, 21, 15, 21, 21]
+    const totalWidth = columnWidths.reduce((sum, width) => sum + width, 0)
+    const scale = usableWidth / totalWidth
+    const widths = columnWidths.map((width) => width * scale)
+    const rowHeight = 6.2
+    const groupHeight = 7
+    const headerHeight = 8
+
+    function drawHeader(y) {
+      let x = margin
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(5.5)
+      doc.setFillColor(248, 250, 252)
+      doc.setTextColor(15, 23, 42)
+      let columnIndex = 0
+      groups.forEach((group) => {
+        const width = widths.slice(columnIndex, columnIndex + group.span).reduce((a, b) => a + b, 0)
+        doc.rect(x, y, width, groupHeight, "F")
+        doc.setDrawColor(219, 227, 236)
+        doc.rect(x, y, width, groupHeight)
+        if (group.label) doc.text(group.label, x + 1.5, y + 4.5)
+        x += width
+        columnIndex += group.span
+      })
+
+      y += groupHeight
+      x = margin
+      doc.setFillColor(87, 87, 87)
+      doc.setTextColor(255, 255, 255)
+      headers.forEach((header, index) => {
+        doc.rect(x, y, widths[index], headerHeight, "F")
+        doc.text(header, x + 1.2, y + 5.2, { maxWidth: widths[index] - 2.4 })
+        x += widths[index]
+      })
+      return y + headerHeight
+    }
+
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(16)
+    doc.setTextColor(15, 23, 42)
+    doc.text("Solar Appointment Analysis", margin, 10)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(7)
+    doc.setTextColor(100, 116, 139)
+    doc.text(`${filteredAppointments.length} solar appointments · ${rangeLabel}${search ? ` · Search: "${search}"` : ""}`, margin, 14.5)
+
+    let y = 19
+    y = drawHeader(y)
+    doc.setFontSize(5.6)
+
+    rows.forEach((row, rowIndex) => {
+      if (y + rowHeight > pageHeight - 7) {
+        doc.addPage()
+        y = 8
+        y = drawHeader(y)
+      }
+      const separatorIndexes = new Set([4, 8, 12, 15, 19])
+      let x = margin
+      doc.setFillColor(rowIndex % 2 === 0 ? 255 : 248, rowIndex % 2 === 0 ? 255 : 250, rowIndex % 2 === 0 ? 255 : 252)
+      row.forEach((value, index) => {
+        doc.rect(x, y, widths[index], rowHeight, "F")
+        doc.setDrawColor(232, 237, 242)
+        doc.line(x, y + rowHeight, x + widths[index], y + rowHeight)
+        if (separatorIndexes.has(index)) {
+          doc.setDrawColor(0, 0, 0)
+          doc.setLineWidth(0.8)
+          doc.line(x, y, x, y + rowHeight)
+          doc.setLineWidth(0.2)
+        }
+        doc.setTextColor(index === 0 || index === 3 ? 15 : 51, index === 0 || index === 3 ? 23 : 65, index === 0 || index === 3 ? 42 : 85)
+        doc.setFont("helvetica", index === 0 || index === 3 ? "bold" : "normal")
+        doc.text(String(value), x + 1.2, y + 4.1, { maxWidth: widths[index] - 2.4 })
+        x += widths[index]
+      })
+      y += rowHeight
+    })
+
+    const filename = `solar-analysis-${startDate || "all"}-${endDate || "time"}.pdf`
+    doc.save(filename)
+  }
+
   return (
     <section className="solar-analysis-page">
       <style>{`
@@ -358,7 +493,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
         .solar-analysis-eyebrow{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#0877bd;margin-bottom:6px}
         .solar-analysis-heading{margin:0;font-size:30px;line-height:1.1;font-weight:750;letter-spacing:-.025em}
         .solar-analysis-subtitle{margin:6px 0 0;color:#64748b;font-size:13px}
-        .solar-analysis-refresh{height:38px;padding:0 13px;border:1px solid #d7dee7;border-radius:8px;background:#fff;color:#475569;font-weight:700;font-size:12px;display:inline-flex;align-items:center;gap:7px;cursor:pointer}
+        .solar-analysis-export{height:36px;padding:0 13px;border:1px solid #0877bd;border-radius:8px;background:#0877bd;color:#fff;font-weight:700;font-size:12px;display:inline-flex;align-items:center;gap:7px;cursor:pointer}.solar-analysis-export:disabled{opacity:.5;cursor:default}\n        .solar-analysis-refresh{height:38px;padding:0 13px;border:1px solid #d7dee7;border-radius:8px;background:#fff;color:#475569;font-weight:700;font-size:12px;display:inline-flex;align-items:center;gap:7px;cursor:pointer}
         .solar-analysis-refresh:disabled{opacity:.6;cursor:default}
         .solar-analysis-controls{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:16px;box-shadow:0 2px 8px rgba(15,23,42,.04)}
         .solar-analysis-periods{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px}
