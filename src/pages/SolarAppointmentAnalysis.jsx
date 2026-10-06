@@ -466,7 +466,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                   <th className="solar-analysis-octopus-field">Peak Export</th>
                   <th className="solar-analysis-pricing-field">Method</th>
                   <th className="solar-analysis-pricing-field">Cost</th>
-                  <th className="solar-analysis-pricing-field">Monthly payment</th>
+                  <th className="solar-analysis-pricing-field">Payment</th>
                   <th className="solar-analysis-pricing-field">Total cost</th>
                   <th className="solar-analysis-epvs-field">Payback period</th>
                   <th className="solar-analysis-epvs-field">Net position after 30 years</th>
@@ -505,9 +505,9 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                         <td>{formatElectricityValue(epvsData.fluxExport, "p")}</td>
                         <td>{formatElectricityValue(epvsData.fluxPeakExport, "p")}</td>
                         <td>{pricing.method}</td>
-                        <td>{formatMoney(pricing.cost)}</td>
+                        <td>{pricing.cost != null ? "£" + Math.round(Number(pricing.cost)).toLocaleString("en-GB") : "—"}</td>
                         <td>{formatMoney(pricing.monthlyPayment)}</td>
-                        <td>{formatMoney(pricing.totalCost)}</td>
+                        <td>{pricing.totalCost != null ? "£" + Math.round(Number(pricing.totalCost)).toLocaleString("en-GB") : "—"}</td>
                         <td>{thirtyYearEpvs.paybackPeriod != null ? String(Number(thirtyYearEpvs.paybackPeriod).toFixed(2)) + " years" : "—"}</td>
                         <td>{formatMoney(thirtyYearEpvs.netPosition)}</td>
                         <td>{formatMoney(thirtyYearEpvs.billPreInstall)}</td>
