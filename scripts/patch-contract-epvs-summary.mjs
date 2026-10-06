@@ -14,7 +14,15 @@ function drawEpvsContractSummary(pdf, ctx, data, results, startY) {
   const generation = Number(results?.generation || 0)
   const solarSelfConsumption = Number(results?.solarSelfConsumption || 0)
   const batterySelfConsumption = Number(results?.batteryContribution || 0)
-  const exportKwh = Number(results?.exportKwh || 0)
+  // The generation breakdown must allocate the new system's generation
+  // only between solar self-consumption, battery self-consumption and
+  // residual solar export. results.exportKwh also includes force-charge
+  // export, which can exceed the new system's generation and is therefore
+  // not appropriate for this percentage breakdown.
+  const exportKwh = Math.max(
+    0,
+    generation - solarSelfConsumption - batterySelfConsumption
+  )
   const percentageOfGeneration = (value) => generation > 0 ? value / generation * 100 : null
   const existingSolar = data?.existingSolar === true
   const existingGeneration = existingSolar ? Number(data?.existingGeneration || 0) : null
