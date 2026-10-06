@@ -713,84 +713,77 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
   const width = ctx.width - ctx.padding * 2
   const settings = page.settings || {}
   const configured = Array.isArray(settings.included_items) ? settings.included_items : []
-  // Build the customer-facing rows from the actual hardware record, not the
-  // template's saved product names/quantities. Hardware can exist on the
-  // current EPVS data, the OpenSolar data, or directly on the appointment.
-  // Prefer the hardware stored in the current EPVS calculation. The
-  // appointment can contain an older/stale hardware snapshot (for example
-  // 18 panels) and must not override the current OpenSolar/EPVS hardware.
-  const hardwareCandidates = [
-    data?.hardware,
-    data?.openSolar?.hardware,
-    data?.open_solar?.hardware,
-    appointment?.epvs_calculation?.data?.hardware,
-    appointment?.epvs_calculation?.data?.openSolar?.hardware,
-    appointment?.epvs_calculation?.openSolar?.hardware,
-    appointment?.hardware,
-    appointment?.openSolar?.hardware,
-    appointment?.open_solar?.hardware,
-    appointment?.openSolarData?.hardware,
-    appointment?.open_solar_data?.hardware,
-    appointment?.opensolar?.hardware,
-  ].filter((candidate) => candidate && typeof candidate === "object")
+  // Resolve hardware from the complete saved EPVS/OpenSolar payload.
+  // Some saved calculations contain hardware several levels down, so do not
+  // depend on one particular nesting path or on the template's old quantity.
+  const hardwareRecords = []
+  const visited = new Set()
 
-  const getBestHardwareItem = (type, fallback) => {
-    const entries = hardwareCandidates.flatMap((hardware) =>
-      Array.isArray(hardware?.[type]) ? hardware[type] : []
-    )
+  const collectHardware = (value, depth = 0) => {
+    if (!value || typeof value !== "object" || depth > 8 || visited.has(value)) return
+    visited.add(value)
 
-    const validEntries = entries.filter((entry) => {
-      if (!entry || typeof entry !== "object") return false
-      const model = String(entry?.model || entry?.name || "").trim()
-      return Boolean(model)
-    })
+    if (value.hardware && typeof value.hardware === "object") {
+      hardwareRecords.push(value.hardware)
+    }
 
-    if (!validEntries.length) return fallback || null
-
-    const base = validEntries[0]
-    const baseModel = String(base?.model || base?.name || "").trim().toLowerCase()
-
-    // Merge records for the same model. This matters when OpenSolar has the
-    // model/quantity while the saved hardware record has the manufacturer.
-    return validEntries
-      .filter((entry) => {
-        const model = String(entry?.model || entry?.name || "").trim().toLowerCase()
-        return model === baseModel
-      })
-      .reduce((merged, entry) => ({
-        ...merged,
-        ...Object.fromEntries(
-          Object.entries(entry).filter(([, value]) =>
-            value !== undefined && value !== null && value !== ""
-          )
-        ),
-      }), {})
+    if (Array.isArray(value)) {
+      value.forEach((item) => collectHardware(item, depth + 1))
+    } else {
+      Object.values(value).forEach((item) => collectHardware(item, depth + 1))
+    }
   }
 
-  const panelHardware = getBestHardwareItem(
-    "panels",
-    getPanelHardware(data) || (
-      data?.panelModel
-        ? {
-            model: data.panelModel,
-            manufacturer: data.panelManufacturer,
-            quantity: data.panelQuantity,
-            capacity: data.panelWattage,
-          }
-        : null
-    )
-  )
-  const inverterHardware = getBestHardwareItem(
-    "inverters",
-    getHardwareItem(data, "inverters") || data?.inverter
-  )
-  const batteryHardware = getBestHardwareItem(
-    "batteries",
+  collectHardware(data)
+  collectHardware(epvs)
+  collectHardware(appointment)
+
+  const findHardwareItem = (type) => {
+    const entries = hardwareRecords.flatMap((hardware) =>
+      Array.isArray(hardware?.[type]) ? hardware[type] : []
+    ).filter((item) => item && typeof item === "object")
+
+    if (!entries.length) return null
+
+    // Prefer the record containing manufacturer/model information, then the
+    // record with the highest quantity. This prevents an older template
+    // snapshot such as 18 panels from winning over the current 48-panel
+    // OpenSolar record.
+    return entries
+      .slice()
+      .sort((a, b) => {
+        const aComplete = Number(Boolean(a?.manufacturer || a?.make || a?.brand)) * 10 +
+          Number(Boolean(a?.model || a?.name)) * 5
+        const bComplete = Number(Boolean(b?.manufacturer || b?.make || b?.brand)) * 10 +
+          Number(Boolean(b?.model || b?.name)) * 5
+        const aQuantity = Number(a?.quantity || a?.panelCount || 0)
+        const bQuantity = Number(b?.quantity || b?.panelCount || 0)
+        return bComplete - aComplete || bQuantity - aQuantity
+      })[0]
+  }
+
+  const panelHardware =
+    findHardwareItem("panels") ||
+    (data?.panelModel
+      ? {
+          model: data.panelModel,
+          manufacturer: data.panelManufacturer || "",
+          quantity: data.panelQuantity,
+          capacity: data.panelWattage,
+        }
+      : null)
+
+  const inverterHardware =
+    findHardwareItem("inverters") ||
+    getHardwareItem(data, "inverters") ||
+    data?.inverter
+
+  const batteryHardware =
+    findHardwareItem("batteries") ||
     getHardwareItem(data, "batteries") ||
-      getHardwareItem(data, "storage") ||
-      data?.battery ||
-      data?.storage
-  )
+    getHardwareItem(data, "storage") ||
+    data?.battery ||
+    data?.storage
 
   const getHardwareItemName = (item, label) => {
     if (!item) return null
@@ -799,14 +792,21 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
     return [manufacturer, model, label].filter(Boolean).join(" ") || null
   }
 
-  // OpenSolar's panel record can occasionally arrive without its manufacturer
-  // even though the model is present. Keep the manufacturer associated with
-  // the known panel model so the customer-facing contract remains complete.
-  const panelModel = String(panelHardware?.model || panelHardware?.name || "").trim()
-  const panelManufacturer =
-    String(panelHardware?.manufacturer || panelHardware?.make || panelHardware?.brand || "").trim() ||
-    String(data?.panelManufacturer || data?.panel_manufacturer || "").trim() ||
-    (panelModel === "DM460G12RT-G48HBB" ? "Hengdian Group DMEGC Magnetics" : "")
+  const panelModel = String(
+    panelHardware?.model ||
+    data?.panelModel ||
+    data?.panel_model ||
+    ""
+  ).trim()
+
+  const panelManufacturer = String(
+    panelHardware?.manufacturer ||
+    panelHardware?.make ||
+    panelHardware?.brand ||
+    data?.panelManufacturer ||
+    data?.panel_manufacturer ||
+    ""
+  ).trim()
 
   const items = configured.map((item) => {
     let name = typeof item === "string" ? item : item?.name ?? "—"
