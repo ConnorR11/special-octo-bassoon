@@ -777,8 +777,9 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
       const item = items.find((candidate) => {
         const model = String(candidate?.model || candidate?.name || "").trim().toLowerCase()
         return normalized === label.toLowerCase() ||
-          (label === "Panels" && /\\bpanels$/i.test(normalized)) ||
-          normalized === model
+          (label === "Panels" && /\bpanels$/i.test(normalized)) ||
+          normalized === model ||
+          normalized === (model + " " + label).trim()
       })
 
       if (!item) return null
@@ -800,9 +801,10 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
   }
 
   const items = configured.map((item) => {
-    let name = typeof item === "string" ? item : item?.name ?? "—"
+    const rawName = typeof item === "string" ? item : item?.name ?? "—"
     const type = typeof item === "string" ? "" : item?.type ?? ""
     let quantity = typeof item === "string" ? 1 : item?.quantity ?? 1
+    let name = interpolate(String(rawName), appointment, epvs)
 
     const hardwareItem = resolveHardware(name)
     if (hardwareItem) {
