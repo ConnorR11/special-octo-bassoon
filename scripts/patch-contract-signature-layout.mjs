@@ -90,7 +90,7 @@ async function drawContractTotalAndSignature(pdf, ctx, data, results, appointmen
     pdf.text(money(value), priceX, paymentY, { align: "right" })
 
     paymentY += isTotal ? 7 : 6
-  )
+  })
   return y + cardHeight
 }
 
@@ -261,18 +261,9 @@ if (!overviewPattern.test(source)) {
     const bodyCall = match.includes("body(pdf, page.body, ctx.padding, y + 8, width, ctx.text, appointment, epvs)")
       ? "    y = body(pdf, page.body, ctx.padding, y + 8, width, ctx.text, appointment, epvs) + 6"
       : "    y = body(pdf, page.body, ctx.padding, y + 8, width, ctx.text) + 6"
-    const signatureBlock = [
-      "    const signatureCardHeight = 38",
-      "    const footerClearance = 7",
-      "    const footerY = pdf.internal.pageSize.getHeight() - 13",
-      "    const signatureCardY = footerY - footerClearance - signatureCardHeight",
-      "    await drawContractTotalAndSignature(pdf, ctx, data, results, appointment, signatureCardY)",
-      "  } else if (kind === \"itemised_breakdown\") {",
-    ].join("\\n")
-
     return match.replace(/    body\(pdf, page\.body[^\n]+/, bodyCall).replace(
       "  } else if (kind === \"itemised_breakdown\") {",
-      signatureBlock
+      "    const signatureCardHeight = 38\n    const footerClearance = 7\n    const footerY = pdf.internal.pageSize.getHeight() - 13\n    const signatureCardY = footerY - footerClearance - signatureCardHeight\n    await drawContractTotalAndSignature(pdf, ctx, data, results, appointment, signatureCardY)\n  } else if (kind === \"itemised_breakdown\") {"
     )
   })
 }
