@@ -738,18 +738,25 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
   collectHardware(epvs)
   collectHardware(appointment)
 
-  const findHardwareItem = (type) => {
+  const findHardwareItem = (type, modelHint = "") => {
     const entries = hardwareRecords.flatMap((hardware) =>
       Array.isArray(hardware?.[type]) ? hardware[type] : []
     ).filter((item) => item && typeof item === "object")
 
     if (!entries.length) return null
 
-    // Prefer the record containing manufacturer/model information, then the
-    // record with the highest quantity. This prevents an older template
-    // snapshot such as 18 panels from winning over the current 48-panel
-    // OpenSolar record.
-    return entries
+    const hint = String(modelHint || "").trim().toLowerCase()
+    const matchingEntries = hint
+      ? entries.filter((entry) =>
+          String(entry?.model || entry?.name || "").trim().toLowerCase() === hint
+        )
+      : entries
+
+    const candidates = matchingEntries.length ? matchingEntries : entries
+
+    // Prefer the most complete current hardware record. If there are stale
+    // snapshots, the record with manufacturer information wins.
+    return candidates
       .slice()
       .sort((a, b) => {
         const aComplete = Number(Boolean(a?.manufacturer || a?.make || a?.brand)) * 10 +
@@ -762,8 +769,16 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
       })[0]
   }
 
+  const configuredPanelName = configured
+    .map((item) => typeof item === "string" ? item : item?.name)
+    .map((name) => String(name || "").trim())
+    .find((name) =>
+      name.toLowerCase() === "panels" ||
+      name.toLowerCase() === "dm460g12rt-g48hbb"
+    ) || ""
+
   const panelHardware =
-    findHardwareItem("panels") ||
+    findHardwareItem("panels", configuredPanelName) ||
     (data?.panelModel
       ? {
           model: data.panelModel,
