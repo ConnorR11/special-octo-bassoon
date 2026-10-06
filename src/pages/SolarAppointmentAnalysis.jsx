@@ -457,9 +457,9 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                   <th className="solar-analysis-electricity-field">Import</th>
                   <th className="solar-analysis-electricity-field">Export</th>
                   <th className="solar-analysis-electricity-field">Standing</th>
-                  <th className="solar-analysis-design-field">Number of panels</th>
+                  <th className="solar-analysis-design-field">Panels</th>
                   <th className="solar-analysis-design-field">Generation</th>
-                  <th className="solar-analysis-design-field">Total battery capacity</th>
+                  <th className="solar-analysis-design-field">Battery</th>
                   <th className="solar-analysis-design-field">Inverter</th>
                   <th className="solar-analysis-octopus-field">Day Export</th>
                   <th className="solar-analysis-octopus-field">Flux Export</th>
@@ -498,7 +498,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                         <td>{formatElectricityValue(epvsData.exportRate, "p")}</td>
                         <td>{formatElectricityValue(epvsData.standingCharge, "p")}</td>
                         <td>{systemDesign.panelCount || "—"}</td>
-                        <td>{systemDesign.generation ? String(systemDesign.generation) + " kWh" : "—"}</td>
+                        <td>{systemDesign.generation ? Math.round(systemDesign.generation) + " kWh" : "—"}</td>
                         <td>{systemDesign.batteryCapacity ? String(systemDesign.batteryCapacity) + " kWh" : "—"}</td>
                         <td>{systemDesign.inverterCapacity ? String(systemDesign.inverterCapacity) + " kW" : "—"}</td>
                         <td>{formatElectricityValue(epvsData.fluxDayExport, "p")}</td>
