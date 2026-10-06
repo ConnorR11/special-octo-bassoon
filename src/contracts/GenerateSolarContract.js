@@ -94,7 +94,9 @@ function getContractItemName(name, data) {
   if (
     normalized === "panels" ||
     /\bpanels$/i.test(normalized) ||
-    matchesItem(panelItem, normalized)
+    matchesItem(panelItem, normalized) ||
+    normalized === String(data?.panelModel || data?.panel_model || "").trim().toLowerCase() ||
+    normalized === "dm460g12rt-g48hbb"
   ) {
     item = panelItem
     hardwareLabel = "Panels"
@@ -133,7 +135,18 @@ function getContractItemName(name, data) {
 function getPanelHardware(data) {
   const hardware = getOpenSolarHardware(data)
   const panels = Array.isArray(hardware?.panels) ? hardware.panels : []
-  return panels[0] || null
+  if (panels[0]) return panels[0]
+
+  if (data?.panelModel) {
+    return {
+      model: data.panelModel,
+      manufacturer: data.panelManufacturer || "",
+      quantity: data.panelQuantity,
+      capacity: data.panelWattage,
+    }
+  }
+
+  return null
 }
 
 function getTotalPanelCount(data) {
@@ -179,7 +192,11 @@ function interpolate(bodyText, appointment, epvs) {
   const batteryCapacity = Number(data.batteryCapacity || data.battery_capacity || 0)
   const panelHardware = getPanelHardware(data)
   const panelModel = panelHardware?.model || data.panelType || data.panel_type || data.panelModel || data.panel_model || data.panelName || data.panel_name || "Panels"
-  const panelQuantity = panelHardware?.quantity ?? getTotalPanelCount(data)
+  const panelQuantity =
+    panelHardware?.quantity ??
+    data.panelQuantity ??
+    data.panel_quantity ??
+    getTotalPanelCount(data)
 
   const values = {
     customer_name: appointment?.name || data.customerName,
@@ -512,11 +529,41 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
     let quantity = typeof item === "string" ? 1 : item?.quantity ?? 1
     const normalizedName = String(name).trim().toLowerCase()
 
-    if (normalizedName === "panels") {
-      quantity = panelHardware?.quantity ?? getTotalPanelCount(data)
-    }
+    const panelModel = String(
+      panelHardware?.model ||
+      data?.panelModel ||
+      data?.panel_model ||
+      ""
+    ).trim()
 
-    name = getContractItemName(normalizedName, data)
+    const isPanel =
+      normalizedName === "panels" ||
+      /\bpanels$/i.test(normalizedName) ||
+      (panelModel && normalizedName === panelModel.toLowerCase()) ||
+      normalizedName === "dm460g12rt-g48hbb"
+
+    if (isPanel) {
+      const manufacturer = String(
+        panelHardware?.manufacturer ||
+        panelHardware?.make ||
+        panelHardware?.brand ||
+        data?.panelManufacturer ||
+        data?.panel_manufacturer ||
+        ""
+      ).trim()
+
+      name = [manufacturer, panelModel || name, "Panels"]
+        .filter(Boolean)
+        .join(" ")
+
+      quantity =
+        panelHardware?.quantity ??
+        data?.panelQuantity ??
+        data?.panel_quantity ??
+        getTotalPanelCount(data)
+    } else {
+      name = getContractItemName(normalizedName, data)
+    }
 
     if (normalizedName === "roof hooks" || normalizedName === "rail fix kit") quantity = "-"
     if (normalizedName === "panel installation") quantity = 1
