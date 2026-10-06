@@ -110,26 +110,6 @@ function getContractItemName(name, data) {
     .join(" ")
 }
 
-  if (normalized === "panels" || /\bpanels$/i.test(normalized) || matchesItem(panelItem, normalized)) {
-    item = panelItem
-    hardwareLabel = "Panels"
-  } else if (normalized === "inverter" || /\binverter$/i.test(normalized) || matchesItem(inverterItem, normalized)) {
-    item = inverterItem
-    hardwareLabel = "Inverter"
-  } else if (normalized === "battery" || /\bbattery$/i.test(normalized) || matchesItem(batteryItem, normalized)) {
-    item = batteryItem
-    hardwareLabel = "Battery"
-  }
-
-  if (!item) return name
-
-  const manufacturer = String(item?.manufacturer || item?.make || item?.brand || "").trim()
-  const model = String(item?.model || item?.name || "").trim()
-
-  return [manufacturer, model, hardwareLabel]
-    .filter(Boolean)
-    .join(" ")
-}
 
 function getPanelHardware(data) {
   const hardware = getOpenSolarHardware(data)
