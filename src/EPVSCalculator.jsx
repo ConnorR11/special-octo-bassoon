@@ -676,6 +676,48 @@ export default function EPVSCalculator({
     setData(appointmentInitial)
   }, [appointmentInitial])
 
+  // Persist the current EPVS degradation assumptions when an older saved
+  // calculation does not yet contain the Year 1 value. This keeps the saved
+  // calculation, contract export and 30-year projection on the same source.
+  useEffect(() => {
+    const appointmentRowId = appointment?.appointment_row_id
+    const savedYear1 = Number(appointment?.epvs_calculation?.data?.solarDegradationYear1 || 0)
+
+    if (!appointmentRowId || !supabase || savedYear1 > 0 || !data?.solarDegradationYear1) return
+
+    let cancelled = false
+
+    const migrateSavedDegradation = async () => {
+      try {
+        const payload = {
+          ...(appointment?.epvs_calculation || {}),
+          version: 1,
+          savedAt: new Date().toISOString(),
+          data,
+          results,
+          thirtyYearProjection,
+        }
+
+        const { error } = await supabase
+          .from("appointments")
+          .update({ epvs_calculation: payload })
+          .eq("appointment_row_id", appointmentRowId)
+
+        if (error) throw error
+      } catch (error) {
+        console.error("Unable to migrate saved EPVS degradation:", error)
+      }
+
+      if (cancelled) return
+    }
+
+    migrateSavedDegradation()
+
+    return () => {
+      cancelled = true
+    }
+  }, [appointment?.appointment_row_id, appointment?.epvs_calculation, data, results, thirtyYearProjection])
+
   const update = (key, value) => {
     setData((current) => ({
       ...current,
