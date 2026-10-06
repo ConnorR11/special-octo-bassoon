@@ -3,11 +3,11 @@ import fs from "fs"
 const file = "src/contracts/GenerateSolarContract.js"
 let source = fs.readFileSync(file, "utf8")
 
-const helperMarker = "function drawEpvsContractSummary(pdf, ctx, data, results, startY) {"
+const helperMarker = "function drawEpvsContractSummary(pdf, ctx, data, results, epvs, startY) {"
 
 if (!source.includes(helperMarker)) {
   const helper = String.raw`
-function drawEpvsContractSummary(pdf, ctx, data, results, startY) {
+function drawEpvsContractSummary(pdf, ctx, data, results, epvs, startY) {
   const width = ctx.width - ctx.padding * 2
   const gap = 10
   const columnWidth = (width - gap) / 2
@@ -28,8 +28,9 @@ function drawEpvsContractSummary(pdf, ctx, data, results, startY) {
   const existingGeneration = existingSolar ? Number(data?.existingGeneration || 0) : null
   const existingSolarSelfConsumption = existingSolar ? Number(data?.existingSolarSelfConsumption || 0) : null
   const existingExport = existingSolar && existingSolarSelfConsumption != null ? Math.max(0, 100 - existingSolarSelfConsumption) : null
-  const panelDegradation = Number(data?.solarDegradation || 0)
-  const panelDegradationYear1 = Number(data?.solarDegradationYear1 ?? data?.panelDegradationYear1 ?? panelDegradation)
+  const epvsData = epvs?.data || data || {}
+  const panelDegradation = Number(epvsData?.solarDegradation || 0)
+  const panelDegradationYear1 = Number(epvsData?.solarDegradationYear1 || 0)
   const finance = data?.paymentMethod === "Finance"
   const financeTerm = Number(data?.financeTerm || 0)
   const financeRate = Number(data?.financeRate || 0)
@@ -124,7 +125,7 @@ function drawEpvsContractSummary(pdf, ctx, data, results, startY) {
     ["Export", pct(percentageOfGeneration(exportKwh))],
     ["Panel Degradation (Year 1)", num(panelDegradationYear1, 3) + "%"],
     ["Panel Degradation (Years 2+)", num(panelDegradation, 3) + "%"],
-    ["Annual Battery Degradation", num(Number(data?.batteryDegradation || 0), 3) + "%"],
+    ["Annual Battery Degradation", num(Number(epvsData?.batteryDegradation || 0), 3) + "%"],
   ])
   leftY += 8
   leftY = drawSection(leftX, leftY, "SYSTEM COSTS/REPAYMENTS", [
@@ -177,7 +178,7 @@ source = source.replace(
 )
 
 const datasheetsMarker = '  } else if (kind === "datasheets") {'
-const summaryCall = '    y = drawEpvsContractSummary(pdf, ctx, data, results, y + 8)\n'
+const summaryCall = '    y = drawEpvsContractSummary(pdf, ctx, data, results, epvs, y + 8)\n'
 
 if (!source.includes(datasheetsMarker)) {
   throw new Error("Could not locate the datasheets branch in GenerateSolarContract.js")
