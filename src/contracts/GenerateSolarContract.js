@@ -61,12 +61,54 @@ function getContractItemName(name, data) {
 
   const matchesItem = (candidate, value) => {
     if (!candidate || !value) return false
+
     const candidateValues = [
       candidate?.model,
       candidate?.name
-    ].map(value => String(value || "").trim().toLowerCase()).filter(Boolean)
+    ]
+      .map(value => String(value || "").trim().toLowerCase())
+      .filter(Boolean)
+
     return candidateValues.includes(value)
   }
+
+  if (
+    normalized === "panels" ||
+    /\bpanels$/i.test(normalized) ||
+    matchesItem(panelItem, normalized)
+  ) {
+    item = panelItem
+    hardwareLabel = "Panels"
+  } else if (
+    normalized === "inverter" ||
+    /\binverter$/i.test(normalized) ||
+    matchesItem(inverterItem, normalized)
+  ) {
+    item = inverterItem
+    hardwareLabel = "Inverter"
+  } else if (
+    normalized === "battery" ||
+    /\bbattery$/i.test(normalized) ||
+    matchesItem(batteryItem, normalized)
+  ) {
+    item = batteryItem
+    hardwareLabel = "Battery"
+  }
+
+  if (!item) return name
+
+  const manufacturer = String(
+    item?.manufacturer || item?.make || item?.brand || ""
+  ).trim()
+
+  const model = String(
+    item?.model || item?.name || ""
+  ).trim()
+
+  return [manufacturer, model, hardwareLabel]
+    .filter(Boolean)
+    .join(" ")
+}
 
   if (normalized === "panels" || /\bpanels$/i.test(normalized) || matchesItem(panelItem, normalized)) {
     item = panelItem
