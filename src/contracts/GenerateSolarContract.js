@@ -39,17 +39,21 @@ function getHardwareItem(data, type) {
 function getContractItemName(name, data) {
   const normalized = String(name || "").trim().toLowerCase()
   let item = null
+  let hardwareLabel = name
 
-  if (normalized === "panels") {
+  if (normalized === "panels" || /\bpanels$/i.test(normalized)) {
     item = getPanelHardware(data) || getHardwareItem(data, "panels")
-  } else if (normalized === "inverter") {
+    hardwareLabel = "Panels"
+  } else if (normalized === "inverter" || /\binverter$/i.test(normalized)) {
     item = getHardwareItem(data, "inverters") || data?.inverter
-  } else if (normalized === "battery") {
+    hardwareLabel = "Inverter"
+  } else if (normalized === "battery" || /\bbattery$/i.test(normalized)) {
     item =
       getHardwareItem(data, "batteries") ||
       getHardwareItem(data, "storage") ||
       data?.battery ||
       data?.storage
+    hardwareLabel = "Battery"
   }
 
   if (!item) return name
@@ -57,7 +61,7 @@ function getContractItemName(name, data) {
   const manufacturer = String(item?.manufacturer || item?.make || item?.brand || "").trim()
   const model = String(item?.model || item?.name || "").trim()
 
-  return [manufacturer, model, name]
+  return [manufacturer, model, hardwareLabel]
     .filter(Boolean)
     .join(" ")
 }
