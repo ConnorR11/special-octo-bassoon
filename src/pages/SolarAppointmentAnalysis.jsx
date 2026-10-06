@@ -125,6 +125,33 @@ function formatMoney(value) {
   })
 }
 
+function getSystemDesign(appointment) {
+  let calculation = appointment?.epvs_calculation || null
+
+  if (typeof calculation === "string") {
+    try {
+      calculation = JSON.parse(calculation)
+    } catch {
+      calculation = null
+    }
+  }
+
+  const data = calculation?.data || {}
+  const results = calculation?.results || {}
+  const arrays = Array.isArray(data.arrays) ? data.arrays : []
+  const panelCount = arrays.reduce(
+    (total, array) => total + Math.max(0, Number(array?.panelCount || 0)),
+    0
+  )
+
+  return {
+    panelCount,
+    generation: Number(results?.generation || 0),
+    batteryCapacity: Number(data?.batteryCapacity || 0),
+    inverterCapacity: Number(data?.inverterCapacity || 0),
+  }
+}
+
 function getPricing(appointment) {
   let calculation = appointment?.epvs_calculation || null
 
