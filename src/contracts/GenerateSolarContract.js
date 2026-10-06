@@ -1297,7 +1297,9 @@ export async function GenerateSolarContract({ appointment }) {
   if (pagesError) throw pagesError
   if (!pages?.length) throw new Error("The Digital Solar Contract template has no pages configured.")
 
-  // The contract must always use the EPVS calculation saved on the appointment.\n  // Do not accept a separate/stale EPVS calculation passed by the caller.\n  let epvs = appointment?.epvs_calculation || null
+  // The contract must always use the EPVS calculation saved on the appointment.
+  // Do not accept a separate/stale EPVS calculation passed by the caller.
+  let epvs = appointment?.epvs_calculation || null
   if (typeof epvs === "string") {
     try {
       epvs = JSON.parse(epvs)
