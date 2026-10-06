@@ -152,7 +152,7 @@ function drawEpvsContractSummary(pdf, ctx, data, results, startY) {
 }
 `
 
-  const marker = "async function renderPage(pdf, page, index, pageCount, appointment, epvs) {"
+  const marker = "async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesRepName) {"
   if (!source.includes(marker)) throw new Error("Could not locate renderPage in GenerateSolarContract.js")
   source = source.replace(marker, helper + "\n" + marker)
 }
