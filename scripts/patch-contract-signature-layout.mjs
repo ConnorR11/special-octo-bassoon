@@ -65,7 +65,12 @@ async function drawContractTotalAndSignature(pdf, ctx, data, results, appointmen
   const priceX = ctx.padding + width - 8
   const labelX = priceX - 36
   const systemCost = Number(price || 0)
-  const deposit = Number(data?.deposit || appointment?.deposit || 0)
+  const explicitDeposit = Number(data?.deposit || appointment?.deposit || 0)
+  const financeMonths = Number(data?.financeTerm || 0) * 12
+  const inferredDeposit = data?.paymentMethod === "Finance" && financeMonths > 0
+    ? Number(results?.totalContractValue || 0) - Number(results?.monthlyPayment || 0) * financeMonths
+    : 0
+  const deposit = explicitDeposit > 0 ? explicitDeposit : Math.max(0, inferredDeposit)
   const adminFee = 399
   const totalCost = systemCost + adminFee
 
