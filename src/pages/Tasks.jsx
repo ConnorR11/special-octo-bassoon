@@ -215,7 +215,7 @@ export default function Tasks() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 12 }}>
             <label style={labelStyle}>Status<select value={form.status} onChange={(event) => setField("status", event.target.value)} style={selectStyle}>{STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
             <label style={labelStyle}>Priority<select value={form.priority} onChange={(event) => setField("priority", event.target.value)} style={selectStyle}>{PRIORITY_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-            <label style={labelStyle}>Category<select value={form.category} onChange={(event) => setField("category", event.target.value)} style={selectStyle}>{CATEGORY_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+            <label style={labelStyle}>Category<select value={form.category} onChange={(event) => setField("category", event.target.value)} style={selectStyle}>{categoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
             <label style={labelStyle}>Assigned to<select value={form.assigned_to} onChange={(event) => setField("assigned_to", event.target.value)} style={selectStyle}><option value="">Unassigned</option>{profiles.map((profile) => <option key={profile.id} value={profile.id}>{personName(profile)}</option>)}</select></label>
             <label style={{ ...labelStyle, gridColumn: "1/-1" }}>Due date<input type="date" value={form.due_date} onChange={(event) => setField("due_date", event.target.value)} style={inputStyle} /></label>
           </div>
