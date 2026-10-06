@@ -24,7 +24,17 @@ function getOpenSolarImageUrl(appointment) {
 }
 
 function getOpenSolarHardware(data) {
-  return data?.hardware || data?.openSolar?.hardware || null
+  const direct = data?.hardware
+  const openSolar = data?.openSolar?.hardware
+
+  const hasHardware = value =>
+    value && (
+      (Array.isArray(value.panels) && value.panels.length) ||
+      (Array.isArray(value.inverters) && value.inverters.length) ||
+      (Array.isArray(value.batteries) && value.batteries.length)
+    )
+
+  return hasHardware(openSolar) ? openSolar : hasHardware(direct) ? direct : openSolar || direct || null
 }
 
 function getHardwareItem(data, type) {
@@ -38,21 +48,34 @@ function getHardwareItem(data, type) {
 
 function getContractItemName(name, data) {
   const normalized = String(name || "").trim().toLowerCase()
+  const panelItem = getPanelHardware(data) || getHardwareItem(data, "panels")
+  const inverterItem = getHardwareItem(data, "inverters") || data?.inverter
+  const batteryItem =
+    getHardwareItem(data, "batteries") ||
+    getHardwareItem(data, "storage") ||
+    data?.battery ||
+    data?.storage
+
   let item = null
   let hardwareLabel = name
 
-  if (normalized === "panels" || /\bpanels$/i.test(normalized)) {
-    item = getPanelHardware(data) || getHardwareItem(data, "panels")
+  const matchesItem = (candidate, value) => {
+    if (!candidate || !value) return false
+    const candidateValues = [
+      candidate?.model,
+      candidate?.name
+    ].map(value => String(value || "").trim().toLowerCase()).filter(Boolean)
+    return candidateValues.includes(value)
+  }
+
+  if (normalized === "panels" || /\bpanels$/i.test(normalized) || matchesItem(panelItem, normalized)) {
+    item = panelItem
     hardwareLabel = "Panels"
-  } else if (normalized === "inverter" || /\binverter$/i.test(normalized)) {
-    item = getHardwareItem(data, "inverters") || data?.inverter
+  } else if (normalized === "inverter" || /\binverter$/i.test(normalized) || matchesItem(inverterItem, normalized)) {
+    item = inverterItem
     hardwareLabel = "Inverter"
-  } else if (normalized === "battery" || /\bbattery$/i.test(normalized)) {
-    item =
-      getHardwareItem(data, "batteries") ||
-      getHardwareItem(data, "storage") ||
-      data?.battery ||
-      data?.storage
+  } else if (normalized === "battery" || /\bbattery$/i.test(normalized) || matchesItem(batteryItem, normalized)) {
+    item = batteryItem
     hardwareLabel = "Battery"
   }
 
