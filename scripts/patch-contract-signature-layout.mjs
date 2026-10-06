@@ -203,27 +203,54 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
   const width = ctx.width - ctx.padding * 2
   const settings = page.settings || {}
   const configured = Array.isArray(settings.included_items) ? settings.included_items : []
-  // Use the saved hardware object for the customer-facing itemised breakdown.
-  // This is the source containing the manufacturer/model/quantity values selected for the contract.
-  const itemisedHardware = getOpenSolarHardware(data) || {}
+  // Build the customer-facing rows from the actual hardware record, not the
+  // template's saved product names/quantities. Hardware can exist on the
+  // current EPVS data, the OpenSolar data, or directly on the appointment.
+  const hardwareCandidates = [
+    appointment?.hardware,
+    appointment?.openSolar?.hardware,
+    appointment?.open_solar?.hardware,
+    appointment?.openSolarData?.hardware,
+    appointment?.open_solar_data?.hardware,
+    appointment?.opensolar?.hardware,
+    data?.hardware,
+    data?.openSolar?.hardware,
+    data?.open_solar?.hardware,
+    appointment?.epvs_calculation?.data?.hardware,
+    appointment?.epvs_calculation?.data?.openSolar?.hardware,
+    appointment?.epvs_calculation?.openSolar?.hardware,
+  ].filter((candidate) => candidate && typeof candidate === "object")
 
-  const panelHardware =
-    Array.isArray(itemisedHardware?.panels) && itemisedHardware.panels.length
-      ? itemisedHardware.panels[0]
-      : getPanelHardware(data)
+  const getBestHardwareItem = (type, fallback) => {
+    for (const hardware of hardwareCandidates) {
+      const entries = Array.isArray(hardware?.[type]) ? hardware[type] : []
+      const item = entries.find((entry) => {
+        if (!entry || typeof entry !== "object") return false
+        const model = String(entry?.model || entry?.name || "").trim()
+        const manufacturer = String(entry?.manufacturer || entry?.make || entry?.brand || "").trim()
+        const quantity = Number(entry?.quantity ?? entry?.count ?? 0)
+        return Boolean(model && (manufacturer || quantity > 0))
+      })
+      if (item) return item
+    }
+    return fallback || null
+  }
 
-  const inverterHardware =
-    Array.isArray(itemisedHardware?.inverters) && itemisedHardware.inverters.length
-      ? itemisedHardware.inverters[0]
-      : getHardwareItem(data, "inverters") || data?.inverter
-
-  const batteryHardware =
-    Array.isArray(itemisedHardware?.batteries) && itemisedHardware.batteries.length
-      ? itemisedHardware.batteries[0]
-      : getHardwareItem(data, "batteries") ||
-        getHardwareItem(data, "storage") ||
-        data?.battery ||
-        data?.storage
+  const panelHardware = getBestHardwareItem(
+    "panels",
+    getPanelHardware(data)
+  )
+  const inverterHardware = getBestHardwareItem(
+    "inverters",
+    getHardwareItem(data, "inverters") || data?.inverter
+  )
+  const batteryHardware = getBestHardwareItem(
+    "batteries",
+    getHardwareItem(data, "batteries") ||
+      getHardwareItem(data, "storage") ||
+      data?.battery ||
+      data?.storage
+  )
 
   const getHardwareItemName = (item, label) => {
     if (!item) return null
@@ -246,11 +273,15 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
 
     const isInverter =
       normalizedName === "inverter" ||
-      /\binverter$/i.test(normalizedName)
+      /\binverter$/i.test(normalizedName) ||
+      normalizedName === String(inverterHardware?.model || "").trim().toLowerCase() ||
+      normalizedName === String(inverterHardware?.name || "").trim().toLowerCase()
 
     const isBattery =
       normalizedName === "battery" ||
-      /\bbattery$/i.test(normalizedName)
+      /\bbattery$/i.test(normalizedName) ||
+      normalizedName === String(batteryHardware?.model || "").trim().toLowerCase() ||
+      normalizedName === String(batteryHardware?.name || "").trim().toLowerCase()
 
     if (isPanel) {
       name = getHardwareItemName(panelHardware, "Panels") || name
