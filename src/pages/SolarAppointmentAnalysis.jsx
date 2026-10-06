@@ -289,6 +289,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
         .solar-analysis-table th.solar-analysis-group-empty{background:#f8fafc;border-bottom:1px solid #dbe3ec}
         .solar-analysis-table th.solar-analysis-electricity-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
         .solar-analysis-table th.solar-analysis-design-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
+        .solar-analysis-table th.solar-analysis-octopus-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
         .solar-analysis-table td{padding:11px 12px;border-top:1px solid #e8edf2;color:#334155;white-space:nowrap}
         .solar-analysis-table tbody tr{cursor:pointer}
         .solar-analysis-table tbody tr:hover{background:#f8fafc}
@@ -376,6 +377,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                   <th colSpan="4" className="solar-analysis-group-empty"></th>
                   <th colSpan="4" className="solar-analysis-group">Current Electricity</th>
                   <th colSpan="4" className="solar-analysis-group">System Design</th>
+                  <th colSpan="3" className="solar-analysis-group">Octopus Rates</th>
                 </tr>
                 <tr>
                   <th>Appointment</th>
@@ -390,13 +392,16 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                   <th className="solar-analysis-design-field">Generation</th>
                   <th className="solar-analysis-design-field">Total battery capacity</th>
                   <th className="solar-analysis-design-field">Inverter</th>
+                  <th className="solar-analysis-octopus-field">Day Export</th>
+                  <th className="solar-analysis-octopus-field">Flux Export</th>
+                  <th className="solar-analysis-octopus-field">Peak Export</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan="12" className="solar-analysis-empty">Loading solar appointments...</td></tr>
+                  <tr><td colSpan="15" className="solar-analysis-empty">Loading solar appointments...</td></tr>
                 ) : filteredAppointments.length === 0 ? (
-                  <tr><td colSpan="12" className="solar-analysis-empty">No solar appointments found for this period.</td></tr>
+                  <tr><td colSpan="15" className="solar-analysis-empty">No solar appointments found for this period.</td></tr>
                 ) : (
                   filteredAppointments.map((appointment) => {
                     const rep = repNameByEmail[normalise(appointment.rep_allocated)] || appointment.rep_allocated || "—"
@@ -418,6 +423,9 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                         <td>{systemDesign.generation ? String(systemDesign.generation) + " kWh" : "—"}</td>
                         <td>{systemDesign.batteryCapacity ? String(systemDesign.batteryCapacity) + " kWh" : "—"}</td>
                         <td>{systemDesign.inverterCapacity ? String(systemDesign.inverterCapacity) + " kW" : "—"}</td>
+                        <td>{formatElectricityValue(epvsData.fluxDayExport, "p")}</td>
+                        <td>{formatElectricityValue(epvsData.fluxExport, "p")}</td>
+                        <td>{formatElectricityValue(epvsData.fluxPeakExport, "p")}</td>
                       </tr>
                     )
                   })
