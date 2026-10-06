@@ -683,27 +683,42 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs) {
       pdf.text(address, ctx.padding, 112)
     }
 
+    // Cover identification block — deliberately large and high-contrast so these
+    // details are always visible on the customer-facing cover.
     const coverDetails = [
-      ["Sales Rep", appointment?.salesperson || appointment?.rep_allocated || "—"],
-      ["Date", date(appointment?.appointment_date)],
-      ["Contract Number", appointment?.contract_number || "—"],
+      ["SALES REP", appointment?.salesperson || appointment?.rep_allocated || "—"],
+      ["DATE", date(appointment?.appointment_date)],
+      ["CONTRACT NUMBER", appointment?.contract_number || "—"],
     ]
 
     const detailX = ctx.padding
-    let detailY = 133
+    const detailY = 133
+    const detailWidth = ctx.width - ctx.padding * 2
+    const detailHeight = 58
 
-    coverDetails.forEach(([label, value]) => {
+    pdf.setFillColor(255, 255, 255)
+    pdf.roundedRect(detailX, detailY, detailWidth, detailHeight, 3, 3, "F")
+
+    const rowHeight = detailHeight / coverDetails.length
+
+    coverDetails.forEach(([label, value], index) => {
+      const rowY = detailY + index * rowHeight
+
+      if (index > 0) {
+        pdf.setDrawColor(220, 228, 234)
+        pdf.setLineWidth(0.3)
+        pdf.line(detailX + 5, rowY, detailX + detailWidth - 5, rowY)
+      }
+
+      pdf.setTextColor(85, 102, 114)
       pdf.setFont("helvetica", "bold")
       pdf.setFontSize(7)
-      pdf.setTextColor(210, 220, 228)
-      pdf.text(label.toUpperCase(), detailX, detailY)
+      pdf.text(label, detailX + 7, rowY + 7)
 
-      pdf.setFont("helvetica", "normal")
-      pdf.setFontSize(11)
-      pdf.setTextColor(255, 255, 255)
-      pdf.text(String(value), detailX, detailY + 6)
-
-      detailY += 18
+      pdf.setTextColor(5, 47, 79)
+      pdf.setFont("helvetica", "bold")
+      pdf.setFontSize(index === 2 ? 16 : 11)
+      pdf.text(String(value), detailX + 7, rowY + 14)
     })
 
     return
