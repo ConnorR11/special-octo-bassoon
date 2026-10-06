@@ -932,7 +932,7 @@ export async function GenerateSolarContract({ appointment, epvsCalculation }) {
       .maybeSingle()
 
     salesRepName =
-      String(repProfile?.display_name || repProfile?.full_name || "").trim() ||
+      String(repProfile?.full_name || repProfile?.display_name || "").trim() ||
       salesRepName
   }
 
