@@ -238,8 +238,8 @@ function getThirtyYearEpvs(appointment) {
 }
 
 export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
-  const initial = periodDates("this-week")
-  const [period, setPeriod] = useState("this-week")
+  const initial = periodDates("today")
+  const [period, setPeriod] = useState("today")
   const [startDate, setStartDate] = useState(initial.start)
   const [endDate, setEndDate] = useState(initial.end)
   const [appointments, setAppointments] = useState([])
