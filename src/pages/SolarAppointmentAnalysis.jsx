@@ -430,8 +430,8 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
         const width = widths.slice(columnIndex, columnIndex + group.span).reduce((a, b) => a + b, 0)
 
         doc.setFillColor(248, 250, 252)
-        doc.setDrawColor(219, 227, 236)
-        doc.setLineWidth(0.2)
+        doc.setDrawColor(203, 213, 225)
+        doc.setLineWidth(0.35)
         doc.rect(x, y, width, groupHeight, "FD")
 
         if (group.label) {
@@ -441,6 +441,13 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
 
         x += width
         columnIndex += group.span
+
+        // Keep the same strong section separators through the group header.
+        if (columnIndex < headers.length) {
+          doc.setDrawColor(0, 0, 0)
+          doc.setLineWidth(0.8)
+          doc.line(x, y, x, y + groupHeight)
+        }
       })
 
       y += groupHeight
@@ -448,7 +455,8 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
 
       headers.forEach((header, index) => {
         doc.setFillColor(87, 87, 87)
-        doc.setDrawColor(87, 87, 87)
+        doc.setDrawColor(203, 213, 225)
+        doc.setLineWidth(0.35)
         doc.rect(x, y, widths[index], headerHeight, "FD")
 
         doc.setTextColor(255, 255, 255)
@@ -457,6 +465,13 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
         doc.text(header, x + 1.1, y + 5.2, { maxWidth: widths[index] - 2.2 })
 
         x += widths[index]
+
+        // Continue section separators through the column-header row.
+        if (separatorIndexes.has(index + 1)) {
+          doc.setDrawColor(0, 0, 0)
+          doc.setLineWidth(0.8)
+          doc.line(x, y, x, y + headerHeight)
+        }
       })
 
       return y + headerHeight
@@ -492,8 +507,8 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
         // Explicitly reset the fill for every cell so jsPDF cannot carry
         // the header/group fill state into the body.
         doc.setFillColor(255, 255, 255)
-        doc.setDrawColor(232, 237, 242)
-        doc.setLineWidth(0.2)
+        doc.setDrawColor(203, 213, 225)
+        doc.setLineWidth(0.35)
         doc.rect(x, y, widths[index], rowHeight, "FD")
 
         if (separatorIndexes.has(index)) {
