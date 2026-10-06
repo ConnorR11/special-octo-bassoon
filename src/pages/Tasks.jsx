@@ -82,6 +82,24 @@ export default function Tasks() {
     done: tasks.filter((task) => task.status === "done").length,
   }), [tasks])
 
+  const categoryBreakdown = useMemo(() => {
+    const grouped = new Map()
+
+    tasks.forEach((task) => {
+      const category = String(task.category || "Uncategorised").trim() || "Uncategorised"
+      const current = grouped.get(category) || { total: 0, toComplete: 0 }
+
+      current.total += 1
+      if (task.status !== "done") current.toComplete += 1
+
+      grouped.set(category, current)
+    })
+
+    return Array.from(grouped.entries())
+      .map(([category, values]) => ({ category, ...values }))
+      .sort((a, b) => a.category.localeCompare(b.category))
+  }, [tasks])
+
   function startNewTask() {
     setEditingId(null); setForm(emptyForm()); setError(""); setShowForm(true)
   }
@@ -171,6 +189,35 @@ export default function Tasks() {
           <SummaryCard label="Completed" value={counts.done} active={filter === "done"} onClick={() => setFilter("done")} />
         </div>
 
+        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden", marginBottom: 12 }}>
+          <div style={{ padding: "12px 14px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, fontSize: 12, color: "#172033" }}>
+            Tasks by category
+          </div>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "#f8fafc" }}>
+                <th style={{ ...thStyle, textAlign: "left" }}>Category</th>
+                <th style={{ ...thStyle, textAlign: "center" }}>Total</th>
+                <th style={{ ...thStyle, textAlign: "center" }}>To complete</th>
+              </tr>
+            </thead>
+            <tbody>
+              {categoryBreakdown.map((item) => (
+                <tr key={item.category} style={{ borderTop: "1px solid #eef2f6" }}>
+                  <td style={{ ...tdStyle, fontWeight: 600, color: "#172033" }}>{item.category}</td>
+                  <td style={{ ...tdStyle, textAlign: "center" }}>{item.total}</td>
+                  <td style={{ ...tdStyle, textAlign: "center" }}>{item.toComplete}</td>
+                </tr>
+              ))}
+              {categoryBreakdown.length === 0 && (
+                <tr>
+                  <td colSpan={3} style={{ ...tdStyle, textAlign: "center", color: "#7b8794" }}>No categories found.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
         <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, marginBottom: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search tasks..." style={{ ...inputStyle, flex: "1 1 260px" }} />
           <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} style={{ ...selectStyle, width: 160, marginTop: 0 }}><option value="all">All categories</option>{categoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}</select>
@@ -181,7 +228,7 @@ export default function Tasks() {
             <div style={emptyState}><ClipboardList size={30} color="#aab4c0" /><strong>No tasks found</strong><span>Adjust your filters or create a new task.</span></div>
           ) : (
             <div style={{ overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1100 }}>
-              <thead><tr style={{ background: "#f8fafc" }}>{["", "Task", "Department", "Category", "Priority", "Assigned to", "Due", "Status", "Actions"].map((heading, index) => <th key={`${heading}-${index}`} style={thStyle}>{heading}</th>)}</tr></thead>
+              <thead><tr style={{ background: "#f8fafc" }}>{["", "Task", "Category", "Priority", "Assigned to", "Due", "Status", "Actions"].map((heading, index) => <th key={`${heading}-${index}`} style={thStyle}>{heading}</th>)}</tr></thead>
               <tbody>{filteredTasks.map((task) => {
                 const assignee = profileMap.get(task.assigned_to)
                 const isUpdating = updatingId === task.id
