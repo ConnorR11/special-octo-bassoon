@@ -1,0 +1,363 @@
+import React, { useEffect, useMemo, useState } from "react"
+import { CalendarDays, RefreshCw, Search } from "lucide-react"
+import { supabase } from "../lib/supabase"
+
+function londonDate(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date)
+
+  const values = Object.fromEntries(
+    parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value])
+  )
+
+  return `${values.year}-${values.month}-${values.day}`
+}
+
+function shiftDays(value, amount) {
+  const date = new Date(`${value}T12:00:00`)
+  date.setDate(date.getDate() + amount)
+  return londonDate(date)
+}
+
+function periodDates(period) {
+  const today = londonDate()
+  const current = new Date(`${today}T12:00:00`)
+  const day = current.getDay()
+  const mondayOffset = day === 0 ? -6 : 1 - day
+  const monday = new Date(current)
+  monday.setDate(monday.getDate() + mondayOffset)
+
+  if (period === "today") return { start: today, end: today }
+
+  if (period === "this-week") {
+    return { start: londonDate(monday), end: today }
+  }
+
+  if (period === "last-week") {
+    const start = new Date(monday)
+    start.setDate(start.getDate() - 7)
+    const end = new Date(monday)
+    end.setDate(end.getDate() - 1)
+    return { start: londonDate(start), end: londonDate(end) }
+  }
+
+  if (period === "this-month") {
+    return {
+      start: `${today.slice(0, 7)}-01`,
+      end: today,
+    }
+  }
+
+  if (period === "last-month") {
+    const start = new Date(current.getFullYear(), current.getMonth() - 1, 1, 12)
+    const end = new Date(current.getFullYear(), current.getMonth(), 0, 12)
+    return { start: londonDate(start), end: londonDate(end) }
+  }
+
+  if (period === "year-to-date") {
+    return { start: `${today.slice(0, 4)}-01-01`, end: today }
+  }
+
+  return { start: "", end: "" }
+}
+
+function formatDate(value) {
+  if (!value) return "—"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value)
+
+  return date.toLocaleDateString("en-GB", {
+    timeZone: "Europe/London",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  })
+}
+
+function normalise(value) {
+  return String(value ?? "").trim().toLowerCase()
+}
+
+function isSolarAppointment(appointment) {
+  if (!appointment) return false
+  if (appointment.epvs_calculation) return true
+
+  return [
+    appointment.product,
+    appointment.type,
+    appointment.appointment_type,
+    appointment.job_type,
+    appointment.product_type,
+    appointment.service,
+  ].some((value) => normalise(value).includes("solar"))
+}
+
+function hasAllocatedRep(appointment) {
+  return String(appointment?.rep_allocated ?? "").trim() !== ""
+}
+
+export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
+  const initial = periodDates("this-week")
+  const [period, setPeriod] = useState("this-week")
+  const [startDate, setStartDate] = useState(initial.start)
+  const [endDate, setEndDate] = useState(initial.end)
+  const [appointments, setAppointments] = useState([])
+  const [profiles, setProfiles] = useState([])
+  const [search, setSearch] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+
+  async function loadAppointments(range = { start: startDate, end: endDate }) {
+    if (!supabase) {
+      setError("Supabase is not configured.")
+      return
+    }
+
+    if ((range.start && !range.end) || (!range.start && range.end) || (range.start && range.end && range.start > range.end)) {
+      setError("Please enter a valid date range.")
+      return
+    }
+
+    setLoading(true)
+    setError("")
+
+    try {
+      let request = supabase
+        .from("appointments")
+        .select("appointment_row_id,name,appointment_date,rep_allocated,result,status,product,type,appointment_type,job_type,product_type,service,epvs_calculation")
+        .not("rep_allocated", "is", null)
+        .neq("rep_allocated", "")
+        .order("appointment_date", { ascending: false })
+
+      if (range.start) {
+        request = request.gte("appointment_date", `${range.start}T00:00:00`)
+      }
+
+      if (range.end) {
+        const endExclusive = new Date(`${range.end}T12:00:00`)
+        endExclusive.setDate(endExclusive.getDate() + 1)
+        const endExclusiveString = `${endExclusive.getFullYear()}-${String(endExclusive.getMonth() + 1).padStart(2, "0")}-${String(endExclusive.getDate()).padStart(2, "0")}T00:00:00`
+        request = request.lt("appointment_date", endExclusiveString)
+      }
+
+      const [appointmentsResult, profilesResult] = await Promise.all([
+        request,
+        supabase.from("profiles").select("email,full_name,display_name").order("full_name", { ascending: true }),
+      ])
+
+      if (appointmentsResult.error) throw appointmentsResult.error
+      if (profilesResult.error) throw profilesResult.error
+
+      setAppointments((appointmentsResult.data || []).filter(isSolarAppointment))
+      setProfiles(profilesResult.data || [])
+    } catch (err) {
+      console.error("Error loading solar appointment analysis:", err)
+      setError(err?.message || "Unable to load solar appointments.")
+      setAppointments([])
+      setProfiles([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadAppointments(initial)
+  }, [])
+
+  const repNameByEmail = useMemo(() => {
+    return profiles.reduce((map, profile) => {
+      const email = normalise(profile.email)
+      const name = String(profile.full_name || profile.display_name || "").trim()
+      if (email && name) map[email] = name
+      return map
+    }, {})
+  }, [profiles])
+
+  const filteredAppointments = useMemo(() => {
+    const query = normalise(search)
+    if (!query) return appointments
+
+    return appointments.filter((appointment) => {
+      const rep = repNameByEmail[normalise(appointment.rep_allocated)] || appointment.rep_allocated || ""
+      return [appointment.name, rep, appointment.result, appointment.status]
+        .some((value) => normalise(value).includes(query))
+    })
+  }, [appointments, repNameByEmail, search])
+
+  function selectPeriod(value) {
+    const dates = periodDates(value)
+    setPeriod(value)
+    setStartDate(dates.start)
+    setEndDate(dates.end)
+    loadAppointments(dates)
+  }
+
+  function setCustomStart(value) {
+    setPeriod("custom")
+    setStartDate(value)
+  }
+
+  function setCustomEnd(value) {
+    setPeriod("custom")
+    setEndDate(value)
+  }
+
+  const rangeLabel = period === "all"
+    ? "All time"
+    : startDate && endDate
+      ? `${formatDate(startDate)} – ${formatDate(endDate)}`
+      : "Custom range"
+
+  return (
+    <section className="solar-analysis-page">
+      <style>{`
+        .solar-analysis-page{min-height:100%;padding:28px 32px 40px;background:#f5f7fa;color:#0f172a;box-sizing:border-box}
+        .solar-analysis-container{max-width:1500px;margin:0 auto}
+        .solar-analysis-header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:18px}
+        .solar-analysis-eyebrow{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#0877bd;margin-bottom:6px}
+        .solar-analysis-heading{margin:0;font-size:30px;line-height:1.1;font-weight:750;letter-spacing:-.025em}
+        .solar-analysis-subtitle{margin:6px 0 0;color:#64748b;font-size:13px}
+        .solar-analysis-refresh{height:38px;padding:0 13px;border:1px solid #d7dee7;border-radius:8px;background:#fff;color:#475569;font-weight:700;font-size:12px;display:inline-flex;align-items:center;gap:7px;cursor:pointer}
+        .solar-analysis-refresh:disabled{opacity:.6;cursor:default}
+        .solar-analysis-controls{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:16px;box-shadow:0 2px 8px rgba(15,23,42,.04)}
+        .solar-analysis-periods{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px}
+        .solar-analysis-period{height:36px;padding:0 13px;border:1px solid #d7dee7;border-radius:8px;background:#fff;color:#475569;font-weight:700;font-size:12px;cursor:pointer}
+        .solar-analysis-period.active{background:#0877bd;border-color:#0877bd;color:#fff}
+        .solar-analysis-custom{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+        .solar-analysis-field{display:flex;flex-direction:column;gap:5px}
+        .solar-analysis-field span{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.06em}
+        .solar-analysis-input{height:36px;padding:0 9px;border:1px solid #d7dee7;border-radius:8px;background:#fff;color:#0f172a;font:inherit;font-size:12px;box-sizing:border-box}
+        .solar-analysis-search{display:flex;align-items:center;gap:7px;height:36px;padding:0 10px;border:1px solid #d7dee7;border-radius:8px;background:#fff;min-width:240px}
+        .solar-analysis-search svg{color:#64748b;flex:0 0 auto}
+        .solar-analysis-search input{border:0;outline:0;background:transparent;width:100%;font:inherit;font-size:12px;color:#0f172a}
+        .solar-analysis-summary{display:flex;align-items:center;gap:8px;margin:0 0 12px;color:#64748b;font-size:12px;font-weight:600}
+        .solar-analysis-summary strong{color:#0f172a}
+        .solar-analysis-panel{background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 2px 10px rgba(15,23,42,.05);overflow:hidden}
+        .solar-analysis-panel-header{padding:16px 20px;border-bottom:1px solid #e8edf2;display:flex;justify-content:space-between;align-items:center;gap:20px}
+        .solar-analysis-panel-header h2{margin:0;font-size:17px;font-weight:750}
+        .solar-analysis-panel-header span{font-size:11px;color:#64748b}
+        .solar-analysis-table-wrap{overflow-x:auto}
+        .solar-analysis-table{width:100%;border-collapse:collapse;font-size:12px}
+        .solar-analysis-table th{background:#575757;color:#fff;padding:10px 12px;text-align:left;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+        .solar-analysis-table td{padding:11px 12px;border-top:1px solid #e8edf2;color:#334155;white-space:nowrap}
+        .solar-analysis-table tbody tr{cursor:pointer}
+        .solar-analysis-table tbody tr:hover{background:#f8fafc}
+        .solar-analysis-name{font-weight:750;color:#0f172a}
+        .solar-analysis-result{font-weight:700}
+        .solar-analysis-empty{text-align:center;padding:42px 20px;color:#64748b}
+        .solar-analysis-error{margin-bottom:12px;padding:11px 13px;border-radius:8px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;font-size:12px}
+        .solar-analysis-spin{animation:solar-analysis-spin 1s linear infinite}
+        @keyframes solar-analysis-spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+        @media(max-width:800px){.solar-analysis-page{padding:20px 14px}.solar-analysis-header{flex-direction:column}.solar-analysis-search{min-width:200px}}
+      `}</style>
+
+      <div className="solar-analysis-container">
+        <div className="solar-analysis-header">
+          <div>
+            <div className="solar-analysis-eyebrow">Administration</div>
+            <h1 className="solar-analysis-heading">Solar Appointment Analysis</h1>
+            <p className="solar-analysis-subtitle">Analyse solar appointments with an allocated sales rep.</p>
+          </div>
+          <button type="button" className="solar-analysis-refresh" onClick={() => loadAppointments()} disabled={loading}>
+            <RefreshCw size={14} className={loading ? "solar-analysis-spin" : ""}/>
+            {loading ? "Loading..." : "Refresh"}
+          </button>
+        </div>
+
+        <div className="solar-analysis-controls">
+          <div className="solar-analysis-periods">
+            {[
+              ["today", "Today"],
+              ["this-week", "This week"],
+              ["last-week", "Last week"],
+              ["this-month", "This month"],
+              ["last-month", "Last month"],
+              ["year-to-date", "Year to date"],
+              ["all", "All time"],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={`solar-analysis-period ${period === value ? "active" : ""}`}
+                onClick={() => selectPeriod(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="solar-analysis-custom">
+            <label className="solar-analysis-field">
+              <span>From</span>
+              <input className="solar-analysis-input" type="date" value={startDate} onChange={(event) => setCustomStart(event.target.value)}/>
+            </label>
+            <label className="solar-analysis-field">
+              <span>To</span>
+              <input className="solar-analysis-input" type="date" value={endDate} onChange={(event) => setCustomEnd(event.target.value)}/>
+            </label>
+            <div className="solar-analysis-search">
+              <Search size={14}/>
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search appointment, rep or result"/>
+            </div>
+          </div>
+        </div>
+
+        {error && <div className="solar-analysis-error">{error}</div>}
+
+        <div className="solar-analysis-summary">
+          <strong>{filteredAppointments.length}</strong>
+          <span>solar appointments</span>
+          <span>·</span>
+          <span>{rangeLabel}</span>
+        </div>
+
+        <div className="solar-analysis-panel">
+          <div className="solar-analysis-panel-header">
+            <div>
+              <h2>Appointments</h2>
+              <span>Only appointments with an allocated sales rep are included.</span>
+            </div>
+          </div>
+
+          <div className="solar-analysis-table-wrap">
+            <table className="solar-analysis-table">
+              <thead>
+                <tr>
+                  <th>Appointment</th>
+                  <th>Date</th>
+                  <th>Sales Rep</th>
+                  <th>Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan="4" className="solar-analysis-empty">Loading solar appointments...</td></tr>
+                ) : filteredAppointments.length === 0 ? (
+                  <tr><td colSpan="4" className="solar-analysis-empty">No solar appointments found for this period.</td></tr>
+                ) : (
+                  filteredAppointments.map((appointment) => {
+                    const rep = repNameByEmail[normalise(appointment.rep_allocated)] || appointment.rep_allocated || "—"
+                    const result = appointment.result || appointment.status || "—"
+
+                    return (
+                      <tr key={appointment.appointment_row_id} onClick={() => onSelectAppointment?.(appointment)}>
+                        <td className="solar-analysis-name">{appointment.name || "—"}</td>
+                        <td>{formatDate(appointment.appointment_date)}</td>
+                        <td>{rep}</td>
+                        <td className="solar-analysis-result">{result}</td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
