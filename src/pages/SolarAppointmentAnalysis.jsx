@@ -192,7 +192,7 @@ function getThirtyYearEpvs(appointment) {
   return {
     paybackPeriod: scenario?.paybackPeriod,
     netPosition: scenario?.finalNetPosition,
-    billPreInstall: lastYear?.billPreInstall,
+    billPreInstall: scenario?.totals?.billPreInstall ?? lastYear?.billPreInstall,
   }
 }
 
@@ -468,9 +468,9 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                   <th className="solar-analysis-pricing-field">Cost</th>
                   <th className="solar-analysis-pricing-field">Payment</th>
                   <th className="solar-analysis-pricing-field">Total cost</th>
-                  <th className="solar-analysis-epvs-field">Payback period</th>
-                  <th className="solar-analysis-epvs-field">Net position after 30 years</th>
-                  <th className="solar-analysis-epvs-field">Bill pre install after 30 years</th>
+                  <th className="solar-analysis-epvs-field">Payback</th>
+                  <th className="solar-analysis-epvs-field">Net Position</th>
+                  <th className="solar-analysis-epvs-field">Pre Install</th>
                 </tr>
               </thead>
               <tbody>
@@ -508,7 +508,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                         <td>{pricing.cost != null ? "£" + Math.round(Number(pricing.cost)).toLocaleString("en-GB") : "—"}</td>
                         <td>{formatMoney(pricing.monthlyPayment)}</td>
                         <td>{pricing.totalCost != null ? "£" + Math.round(Number(pricing.totalCost)).toLocaleString("en-GB") : "—"}</td>
-                        <td>{thirtyYearEpvs.paybackPeriod != null ? String(Number(thirtyYearEpvs.paybackPeriod).toFixed(2)) + " years" : "—"}</td>
+                        <td>{thirtyYearEpvs.paybackPeriod != null ? Math.round(Number(thirtyYearEpvs.paybackPeriod)) + "y" : "—"}</td>
                         <td>{formatMoney(thirtyYearEpvs.netPosition)}</td>
                         <td>{formatMoney(thirtyYearEpvs.billPreInstall)}</td>
                       </tr>
