@@ -222,18 +222,36 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
   ].filter((candidate) => candidate && typeof candidate === "object")
 
   const getBestHardwareItem = (type, fallback) => {
-    for (const hardware of hardwareCandidates) {
-      const entries = Array.isArray(hardware?.[type]) ? hardware[type] : []
-      const item = entries.find((entry) => {
-        if (!entry || typeof entry !== "object") return false
-        const model = String(entry?.model || entry?.name || "").trim()
-        const manufacturer = String(entry?.manufacturer || entry?.make || entry?.brand || "").trim()
-        const quantity = Number(entry?.quantity ?? entry?.count ?? 0)
-        return Boolean(model && (manufacturer || quantity > 0))
+    const entries = hardwareCandidates.flatMap((hardware) =>
+      Array.isArray(hardware?.[type]) ? hardware[type] : []
+    )
+
+    const validEntries = entries.filter((entry) => {
+      if (!entry || typeof entry !== "object") return false
+      const model = String(entry?.model || entry?.name || "").trim()
+      return Boolean(model)
+    })
+
+    if (!validEntries.length) return fallback || null
+
+    const base = validEntries[0]
+    const baseModel = String(base?.model || base?.name || "").trim().toLowerCase()
+
+    // Merge records for the same model. This matters when OpenSolar has the
+    // model/quantity while the saved hardware record has the manufacturer.
+    return validEntries
+      .filter((entry) => {
+        const model = String(entry?.model || entry?.name || "").trim().toLowerCase()
+        return model === baseModel
       })
-      if (item) return item
-    }
-    return fallback || null
+      .reduce((merged, entry) => ({
+        ...merged,
+        ...Object.fromEntries(
+          Object.entries(entry).filter(([, value]) =>
+            value !== undefined && value !== null && value !== ""
+          )
+        ),
+      }), {})
   }
 
   const panelHardware = getBestHardwareItem(
