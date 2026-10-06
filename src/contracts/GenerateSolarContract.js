@@ -1068,6 +1068,12 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
     ]
     y = rows(pdf, rowsData, ctx.padding, y + 2, width, ctx.text)
     body(pdf, page.body, ctx.padding, y + 8, width, ctx.text, appointment, epvs)
+
+    const signatureCardHeight = 38
+    const footerClearance = 7
+    const footerY = pdf.internal.pageSize.getHeight() - 13
+    const signatureCardY = footerY - footerClearance - signatureCardHeight
+    await drawContractTotalAndSignature(pdf, ctx, data, results, appointment, signatureCardY)
   } else if (kind === "itemised_breakdown") {
     await drawItemisedBreakdown(pdf, page, ctx, data, results, appointment, epvs)
   } else if (kind === "terms_conditions") {
