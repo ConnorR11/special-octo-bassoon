@@ -62,8 +62,13 @@ async function drawContractTotalAndSignature(pdf, ctx, data, results, appointmen
     }
   }
 
-  const priceX = ctx.padding + width - 8
-  const labelX = priceX - 36
+  const tableLeft = ctx.padding + width * 0.61
+  const tableRight = ctx.padding + width - 7
+  const tableTop = y + 5
+  const tableBottom = y + cardHeight - 5
+  const tableMid = tableLeft + (tableRight - tableLeft) * 0.58
+  const rowHeight = (tableBottom - tableTop) / 4
+
   const systemCost = Number(price || 0)
   const explicitDeposit = Number(data?.deposit || appointment?.deposit || 0)
   const financeMonths = Number(data?.financeTerm || 0) * 12
@@ -81,20 +86,27 @@ async function drawContractTotalAndSignature(pdf, ctx, data, results, appointmen
     ["Total Cost", totalCost],
   ]
 
-  let paymentY = y + 9
+  pdf.setDrawColor(255, 255, 255)
+  pdf.setLineWidth(0.2)
+  pdf.line(tableMid, tableTop, tableMid, tableBottom)
+
   paymentRows.forEach(([label, value], index) => {
+    const rowTop = tableTop + index * rowHeight
+    const rowBottom = rowTop + rowHeight
     const isTotal = index === paymentRows.length - 1
+
+    if (index > 0) {
+      pdf.line(tableLeft, rowTop, tableRight, rowTop)
+    }
 
     pdf.setTextColor(255, 255, 255)
     pdf.setFont("helvetica", isTotal ? "bold" : "normal")
-    pdf.setFontSize(isTotal ? 7.2 : 6.5)
-    pdf.text(label, labelX, paymentY, { align: "right" })
+    pdf.setFontSize(isTotal ? 6.6 : 6.2)
+    pdf.text(label, tableLeft + 2, rowTop + rowHeight * 0.68)
 
     pdf.setFont("helvetica", "bold")
-    pdf.setFontSize(isTotal ? 9.5 : 7.5)
-    pdf.text(money(value), priceX, paymentY, { align: "right" })
-
-    paymentY += isTotal ? 7 : 6
+    pdf.setFontSize(isTotal ? 8.2 : 7)
+    pdf.text(money(value), tableRight - 2, rowTop + rowHeight * 0.68, { align: "right" })
   })
   return y + cardHeight
 }
