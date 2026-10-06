@@ -259,7 +259,16 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
 
   const panelHardware = getBestHardwareItem(
     "panels",
-    getPanelHardware(data)
+    getPanelHardware(data) || (
+      data?.panelModel
+        ? {
+            model: data.panelModel,
+            manufacturer: data.panelManufacturer,
+            quantity: data.panelQuantity,
+            capacity: data.panelWattage,
+          }
+        : null
+    )
   )
   const inverterHardware = getBestHardwareItem(
     "inverters",
@@ -295,11 +304,18 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
     let quantity = typeof item === "string" ? 1 : item?.quantity ?? 1
     const normalizedName = String(name).trim().toLowerCase()
 
+    const knownPanelModel = String(
+      panelHardware?.model ||
+      data?.panelModel ||
+      data?.panel_model ||
+      ""
+    ).trim().toLowerCase()
+
     const isPanel =
       normalizedName === "panels" ||
       /\bpanels$/i.test(normalizedName) ||
-      normalizedName === String(panelHardware?.model || "").trim().toLowerCase() ||
-      normalizedName === String(panelHardware?.name || "").trim().toLowerCase()
+      (knownPanelModel && normalizedName === knownPanelModel) ||
+      normalizedName === "dm460g12rt-g48hbb"
 
     const isInverter =
       normalizedName === "inverter" ||
@@ -314,11 +330,24 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
       normalizedName === String(batteryHardware?.name || "").trim().toLowerCase()
 
     if (isPanel) {
-      const resolvedPanelModel = panelModel || String(name || "").trim()
-      name = [panelManufacturer, resolvedPanelModel, "Panels"]
+      const resolvedPanelModel =
+        panelModel ||
+        String(data?.panelModel || data?.panel_model || "").trim() ||
+        String(name || "").trim()
+
+      const resolvedPanelManufacturer =
+        panelManufacturer ||
+        String(data?.panelManufacturer || data?.panel_manufacturer || "").trim()
+
+      name = [resolvedPanelManufacturer, resolvedPanelModel, "Panels"]
         .filter(Boolean)
         .join(" ")
-      quantity = panelHardware?.quantity ?? getTotalPanelCount(data)
+
+      quantity =
+        panelHardware?.quantity ??
+        data?.panelQuantity ??
+        data?.panel_quantity ??
+        getTotalPanelCount(data)
 
       // If the template contains the legacy panel quantity, prefer the
       // imported OpenSolar array total when available.
