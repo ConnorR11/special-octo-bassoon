@@ -645,7 +645,7 @@ function drawTermsConditions(pdf, page, ctx, appointment, epvs) {
   })
 }
 
-async function renderPage(pdf, page, index, pageCount, appointment, epvs) {
+async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesRepName) {
   const settings = page.settings || {}
   const ctx = header(pdf, settings)
   const kind = settings.page_kind || "standard"
@@ -988,7 +988,7 @@ export async function GenerateSolarContract({ appointment, epvsCalculation }) {
   for (let index = 0; index < pages.length; index += 1) {
     if (index > 0) pdf.addPage(pageSize.toLowerCase(), orientation)
     const page = pages[index]
-    await renderPage(pdf, page, index, pages.length, contractAppointment, epvs)
+    await renderPage(pdf, page, index, pages.length, contractAppointment, epvs, salesRepName)
     footer(pdf, index, pages.length, page.settings || {}, appointment)
   }
 
