@@ -147,6 +147,42 @@ function getPricing(appointment) {
   }
 }
 
+function getThirtyYearEpvs(appointment) {
+  let calculation = appointment?.epvs_calculation || null
+
+  if (typeof calculation === "string") {
+    try {
+      calculation = JSON.parse(calculation)
+    } catch {
+      calculation = null
+    }
+  }
+
+  const results = calculation?.results || {}
+  const projection = calculation?.thirtyYearProjection || []
+  const lastYear = Array.isArray(projection) && projection.length
+    ? projection[projection.length - 1]
+    : null
+
+  const totalCost = Number(results?.totalContractValue || 0)
+  const thirtyYearSavings = Number(
+    lastYear?.cumulativeSavings ??
+    lastYear?.cumulativeSaving ??
+    lastYear?.netPosition ??
+    0
+  )
+
+  return {
+    paybackPeriod: results?.simplePayback,
+    netPosition: lastYear?.netPosition ?? (
+      thirtyYearSavings || totalCost
+        ? thirtyYearSavings - totalCost
+        : null
+    ),
+    billPreInstall: lastYear?.billPreInstall,
+  }
+}
+
 function getSystemDesign(appointment) {
   let calculation = appointment?.epvs_calculation || null
 
@@ -323,6 +359,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
         .solar-analysis-table th.solar-analysis-design-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
         .solar-analysis-table th.solar-analysis-octopus-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
         .solar-analysis-table th.solar-analysis-pricing-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
+        .solar-analysis-table th.solar-analysis-epvs-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
         .solar-analysis-table td{padding:11px 12px;border-top:1px solid #e8edf2;color:#334155;white-space:nowrap}
         .solar-analysis-table tbody tr{cursor:pointer}
         .solar-analysis-table tbody tr:hover{background:#f8fafc}
@@ -412,6 +449,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                   <th colSpan="4" className="solar-analysis-group">System Design</th>
                   <th colSpan="3" className="solar-analysis-group">Octopus Rates</th>
                   <th colSpan="4" className="solar-analysis-group">Pricing</th>
+                  <th colSpan="3" className="solar-analysis-group">30 year EPVS</th>
                 </tr>
                 <tr>
                   <th>Appointment</th>
@@ -433,13 +471,16 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                   <th className="solar-analysis-pricing-field">Cost</th>
                   <th className="solar-analysis-pricing-field">Monthly payment</th>
                   <th className="solar-analysis-pricing-field">Total cost</th>
+                  <th className="solar-analysis-epvs-field">Payback period</th>
+                  <th className="solar-analysis-epvs-field">Net position after 30 years</th>
+                  <th className="solar-analysis-epvs-field">Bill pre install after 30 years</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan="19" className="solar-analysis-empty">Loading solar appointments...</td></tr>
+                  <tr><td colSpan="22" className="solar-analysis-empty">Loading solar appointments...</td></tr>
                 ) : filteredAppointments.length === 0 ? (
-                  <tr><td colSpan="19" className="solar-analysis-empty">No solar appointments found for this period.</td></tr>
+                  <tr><td colSpan="22" className="solar-analysis-empty">No solar appointments found for this period.</td></tr>
                 ) : (
                   filteredAppointments.map((appointment) => {
                     const rep = repNameByEmail[normalise(appointment.rep_allocated)] || appointment.rep_allocated || "—"
@@ -447,6 +488,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                     const epvsData = getEpvsData(appointment)
                     const systemDesign = getSystemDesign(appointment)
                     const pricing = getPricing(appointment)
+                    const thirtyYearEpvs = getThirtyYearEpvs(appointment)
 
                     return (
                       <tr key={appointment.appointment_row_id} onClick={() => onSelectAppointment?.(appointment)}>
@@ -469,6 +511,9 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                         <td>{formatMoney(pricing.cost)}</td>
                         <td>{formatMoney(pricing.monthlyPayment)}</td>
                         <td>{formatMoney(pricing.totalCost)}</td>
+                        <td>{thirtyYearEpvs.paybackPeriod != null ? String(Number(thirtyYearEpvs.paybackPeriod).toFixed(2)) + " years" : "—"}</td>
+                        <td>{formatMoney(thirtyYearEpvs.netPosition)}</td>
+                        <td>{formatMoney(thirtyYearEpvs.billPreInstall)}</td>
                       </tr>
                     )
                   })
