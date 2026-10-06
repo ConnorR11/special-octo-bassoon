@@ -185,14 +185,19 @@ function getThirtyYearEpvs(appointment) {
     }
   }
 
-  const scenarios = calculation?.thirtyYearProjection?.scenarios || {}
+  const projection = calculation?.thirtyYearProjection || {}
+  const scenarios = projection?.scenarios || {}
   const scenario = scenarios?.averageInflation || scenarios?.midpointInflation || scenarios?.noInflation || null
-  const lastYear = scenario?.rows?.[scenario.rows.length - 1] || null
+  const rows = Array.isArray(scenario?.rows) ? scenario.rows : []
+  const lastYear = rows.length ? rows[rows.length - 1] : null
 
   return {
     paybackPeriod: scenario?.paybackPeriod,
-    netPosition: scenario?.finalNetPosition,
-    billPreInstall: scenario?.totals?.billPreInstall ?? lastYear?.billPreInstall,
+    netPosition: scenario?.finalNetPosition ?? lastYear?.cumulativePosition,
+    billPreInstall: scenario?.totals?.billPreInstall ?? rows.reduce(
+      (total, row) => total + Number(row?.billPreInstall || 0),
+      0
+    ),
   }
 }
 
