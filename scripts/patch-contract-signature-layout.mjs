@@ -423,7 +423,9 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
 
 `
 
-source = source.slice(0, start) + replacement + source.slice(end)
+// The itemised breakdown is maintained in GenerateSolarContract.js itself.
+// Do not overwrite it here; this build patch only handles the separate
+// signature/Express Fit layout changes below.
 
 const overviewPattern = /    y = rows\(pdf, rowsData, ctx\.padding, y \+ 2, width, ctx\.text(?:, appointment, epvs)?\)\n    body\(pdf, page\.body, ctx\.padding, y \+ 8, width, ctx\.text(?:, appointment, epvs)?\)\n  \} else if \(kind === "itemised_breakdown"\) \{/m
 
