@@ -175,6 +175,10 @@ function getPricing(appointment) {
   }
 }
 
+function isEmptyDisplayValue(value) {
+  return value === null || value === undefined || value === "" || value === "—"
+}
+
 function getThirtyYearEpvs(appointment) {
   let calculation = appointment?.epvs_calculation || null
 
@@ -525,7 +529,11 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
       row.forEach((value, index) => {
         // Explicitly reset the fill for every cell so jsPDF cannot carry
         // the header/group fill state into the body.
-        doc.setFillColor(255, 255, 255)
+        if (isEmptyDisplayValue(String(value))) {
+          doc.setFillColor(254, 242, 242)
+        } else {
+          doc.setFillColor(255, 255, 255)
+        }
         doc.setDrawColor(203, 213, 225)
         doc.setLineWidth(0.35)
         doc.rect(x, y, widths[index], rowHeight, "FD")
@@ -596,7 +604,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
         .solar-analysis-table th.solar-analysis-octopus-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
         .solar-analysis-table th.solar-analysis-pricing-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
         .solar-analysis-table th.solar-analysis-epvs-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
-        .solar-analysis-table td{padding:11px 12px;border-top:1px solid #e8edf2;color:#334155;white-space:nowrap}
+        .solar-analysis-table td{padding:11px 12px;border-top:1px solid #e8edf2;color:#334155;white-space:nowrap}.solar-analysis-table td.solar-analysis-empty-field{background:#fef2f2;color:#991b1b}
         .solar-analysis-table td:nth-child(5),
         .solar-analysis-table td:nth-child(9),
         .solar-analysis-table td:nth-child(13),
@@ -741,24 +749,24 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                         <td>{formatDate(appointment.appointment_date)}</td>
                         <td>{rep}</td>
                         <td className="solar-analysis-result">{result}</td>
-                        <td>{formatElectricityValue(epvsData.annualConsumption)}</td>
-                        <td>{formatElectricityValue(epvsData.importRate, "p")}</td>
-                        <td>{formatElectricityValue(epvsData.exportRate, "p")}</td>
-                        <td>{formatElectricityValue(epvsData.standingCharge, "p")}</td>
-                        <td>{systemDesign.panelCount || "—"}</td>
-                        <td>{systemDesign.generation ? Math.round(systemDesign.generation) + " kWh" : "—"}</td>
-                        <td>{systemDesign.batteryCapacity ? Number(systemDesign.batteryCapacity).toFixed(2) + " kWh" : "—"}</td>
-                        <td>{systemDesign.inverterCapacity ? String(systemDesign.inverterCapacity) + " kW" : "—"}</td>
-                        <td>{formatElectricityValue(epvsData.fluxDayExport, "p")}</td>
-                        <td>{formatElectricityValue(epvsData.fluxExport, "p")}</td>
-                        <td>{formatElectricityValue(epvsData.fluxPeakExport, "p")}</td>
-                        <td>{pricing.method}</td>
-                        <td>{pricing.cost != null ? "£" + Math.round(Number(pricing.cost)).toLocaleString("en-GB") : "—"}</td>
-                        <td>{formatMoney(pricing.monthlyPayment)}</td>
-                        <td>{pricing.totalCost != null ? "£" + Math.round(Number(pricing.totalCost)).toLocaleString("en-GB") : "—"}</td>
-                        <td>{thirtyYearEpvs.paybackPeriod != null ? Math.round(Number(thirtyYearEpvs.paybackPeriod)) + "y" : "—"}</td>
-                        <td>{formatMoney(thirtyYearEpvs.netPosition)}</td>
-                        <td>{formatMoney(thirtyYearEpvs.billPreInstall)}</td>
+                        <td className={isEmptyDisplayValue(formatElectricityValue(epvsData.annualConsumption)) ? "solar-analysis-empty-field" : ""}>{formatElectricityValue(epvsData.annualConsumption)}</td>
+                        <td className={isEmptyDisplayValue(formatElectricityValue(epvsData.importRate, "p")) ? "solar-analysis-empty-field" : ""}>{formatElectricityValue(epvsData.importRate, "p")}</td>
+                        <td className={isEmptyDisplayValue(formatElectricityValue(epvsData.exportRate, "p")) ? "solar-analysis-empty-field" : ""}>{formatElectricityValue(epvsData.exportRate, "p")}</td>
+                        <td className={isEmptyDisplayValue(formatElectricityValue(epvsData.standingCharge, "p")) ? "solar-analysis-empty-field" : ""}>{formatElectricityValue(epvsData.standingCharge, "p")}</td>
+                        <td className={isEmptyDisplayValue(systemDesign.panelCount || "—") ? "solar-analysis-empty-field" : ""}>{systemDesign.panelCount || "—"}</td>
+                        <td className={isEmptyDisplayValue(systemDesign.generation ? Math.round(systemDesign.generation) + " kWh" : "—") ? "solar-analysis-empty-field" : ""}>{systemDesign.generation ? Math.round(systemDesign.generation) + " kWh" : "—"}</td>
+                        <td className={isEmptyDisplayValue(systemDesign.batteryCapacity ? Number(systemDesign.batteryCapacity).toFixed(2) + " kWh" : "—") ? "solar-analysis-empty-field" : ""}>{systemDesign.batteryCapacity ? Number(systemDesign.batteryCapacity).toFixed(2) + " kWh" : "—"}</td>
+                        <td className={isEmptyDisplayValue(systemDesign.inverterCapacity ? String(systemDesign.inverterCapacity) + " kW" : "—") ? "solar-analysis-empty-field" : ""}>{systemDesign.inverterCapacity ? String(systemDesign.inverterCapacity) + " kW" : "—"}</td>
+                        <td className={isEmptyDisplayValue(formatElectricityValue(epvsData.fluxDayExport, "p")) ? "solar-analysis-empty-field" : ""}>{formatElectricityValue(epvsData.fluxDayExport, "p")}</td>
+                        <td className={isEmptyDisplayValue(formatElectricityValue(epvsData.fluxExport, "p")) ? "solar-analysis-empty-field" : ""}>{formatElectricityValue(epvsData.fluxExport, "p")}</td>
+                        <td className={isEmptyDisplayValue(formatElectricityValue(epvsData.fluxPeakExport, "p")) ? "solar-analysis-empty-field" : ""}>{formatElectricityValue(epvsData.fluxPeakExport, "p")}</td>
+                        <td className={isEmptyDisplayValue(pricing.method) ? "solar-analysis-empty-field" : ""}>{pricing.method}</td>
+                        <td className={isEmptyDisplayValue(pricing.cost != null ? "£" + Math.round(Number(pricing.cost)).toLocaleString("en-GB") : "—") ? "solar-analysis-empty-field" : ""}>{pricing.cost != null ? "£" + Math.round(Number(pricing.cost)).toLocaleString("en-GB") : "—"}</td>
+                        <td className={isEmptyDisplayValue(formatMoney(pricing.monthlyPayment)) ? "solar-analysis-empty-field" : ""}>{formatMoney(pricing.monthlyPayment)}</td>
+                        <td className={isEmptyDisplayValue(pricing.totalCost != null ? "£" + Math.round(Number(pricing.totalCost)).toLocaleString("en-GB") : "—") ? "solar-analysis-empty-field" : ""}>{pricing.totalCost != null ? "£" + Math.round(Number(pricing.totalCost)).toLocaleString("en-GB") : "—"}</td>
+                        <td className={isEmptyDisplayValue(thirtyYearEpvs.paybackPeriod != null ? Math.round(Number(thirtyYearEpvs.paybackPeriod)) + "y" : "—") ? "solar-analysis-empty-field" : ""}>{thirtyYearEpvs.paybackPeriod != null ? Math.round(Number(thirtyYearEpvs.paybackPeriod)) + "y" : "—"}</td>
+                        <td className={isEmptyDisplayValue(formatMoney(thirtyYearEpvs.netPosition)) ? "solar-analysis-empty-field" : ""}>{formatMoney(thirtyYearEpvs.netPosition)}</td>
+                        <td className={isEmptyDisplayValue(formatMoney(thirtyYearEpvs.billPreInstall)) ? "solar-analysis-empty-field" : ""}>{formatMoney(thirtyYearEpvs.billPreInstall)}</td>
                       </tr>
                     )
                   })
