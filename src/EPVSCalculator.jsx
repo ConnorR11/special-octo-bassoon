@@ -78,6 +78,7 @@ const initial = {
   batteryRTE: 94,
   batteryDegradation: 2.5,
   batteryWarrantyYears: 10,
+  solarDegradationYear1: 1.0,
   solarDegradation: 0.4,
   solarWarrantyYears: 30,
   existingSolarSelfConsumption: 50,
@@ -985,7 +986,17 @@ export default function EPVSCalculator({
   const thirtyYearProjection = useMemo(() => {
     const systemCost = Number(data.systemCost || 0)
     const deposit = Number(data.deposit || 0)
-    const panelDegradation = Math.max(0, Number(data.solarDegradation || 0) / 100)
+    // EPVS panel degradation:
+    // Year 1 uses the first-year manufacturer degradation figure.
+    // Years 2+ use the ongoing annual degradation figure.
+    const panelDegradationYear1 = Math.max(
+      0,
+      Number(data.solarDegradationYear1 ?? 0) / 100
+    )
+    const panelDegradationYears2Plus = Math.max(
+      0,
+      Number(data.solarDegradation || 0) / 100
+    )
     const panelWarrantyYears = Math.max(1, Number(data.solarWarrantyYears || 30))
     const batteryDegradation = Math.max(0, Number(data.batteryDegradation || 0) / 100)
     const batteryWarrantyYears = Math.max(1, Number(data.batteryWarrantyYears || 10))
@@ -1001,7 +1012,12 @@ export default function EPVSCalculator({
       let cumulativePosition = 0
 
       for (let year = 1; year <= 30 && year <= panelWarrantyYears; year++) {
-        const solarFactor = Math.pow(1 - panelDegradation, year - 1)
+        const solarFactor =
+          (1 - panelDegradationYear1) *
+          Math.pow(
+            1 - panelDegradationYears2Plus,
+            year - 1
+          )
         const generation = Number(results.generation || 0) * solarFactor
 
         const existingGeneration = data.existingSolar
