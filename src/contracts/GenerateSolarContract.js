@@ -254,7 +254,7 @@ function interpolate(bodyText, appointment, epvs) {
     phone: appointment?.phone || appointment?.phone_number_1,
     email: appointment?.email || appointment?.email_address,
     appointment_date: date(appointment?.appointment_date),
-    salesperson: contractAppointmentSource?.salesperson || contractAppointmentSource?.rep_allocated,
+    salesperson: appointment?.salesperson || appointment?.rep_allocated,
     open_solar_image: getOpenSolarImageUrl(appointment),
     system_size: results.systemSize ? `${num(results.systemSize, 2)} kWp` : "—",
     panel_type: panelModel,
@@ -1239,7 +1239,6 @@ export async function GenerateSolarContract({ appointment }) {
 
   // Always refresh the appointment from Supabase so the contract uses the
   // authoritative appointments.epvs_calculation saved in the database.
-  let contractAppointmentSource = appointment
   if (appointment?.appointment_row_id && supabase) {
     const { data: savedAppointment, error: savedAppointmentError } = await supabase
       .from("appointments")
@@ -1249,15 +1248,15 @@ export async function GenerateSolarContract({ appointment }) {
 
     if (savedAppointmentError) throw savedAppointmentError
     if (savedAppointment) {
-      contractAppointmentSource = savedAppointment
+      appointment = savedAppointment
     }
   }
 
-  let contractNumber = String(contractAppointmentSource?.contract_number || "").trim()
+  let contractNumber = String(appointment?.contract_number || "").trim()
   let shouldPersistContractNumber = false
   let salesRepName = String(
-    contractAppointmentSource?.salesperson ||
-    contractAppointmentSource?.rep_allocated ||
+    appointment?.salesperson ||
+    appointment?.rep_allocated ||
     ""
   ).trim()
 
@@ -1292,7 +1291,7 @@ export async function GenerateSolarContract({ appointment }) {
   }
 
   const contractAppointment = {
-    ...contractAppointmentSource,
+    ...appointment,
     contract_number: contractNumber,
   }
 
@@ -1315,7 +1314,7 @@ export async function GenerateSolarContract({ appointment }) {
 
   // The contract must always use the EPVS calculation saved on the appointment.
   // Do not accept a separate/stale EPVS calculation passed by the caller.
-  let epvs = contractAppointmentSource?.epvs_calculation || null
+  let epvs = appointment?.epvs_calculation || null
   if (typeof epvs === "string") {
     try {
       epvs = JSON.parse(epvs)
@@ -1333,10 +1332,10 @@ export async function GenerateSolarContract({ appointment }) {
     footer(pdf, index, pages.length, page.settings || {}, appointment)
   }
 
-  const safeName = textValue(contractAppointmentSource?.name, "Customer")
+  const safeName = textValue(appointment?.name, "Customer")
     .replace(/[^a-z0-9]+/gi, "-")
     .replace(/^-+|-+$/g, "") || "Customer"
-  const bytes = await appendProductDatasheets(pdf, contractAppointmentSource, epvs, pages)
+  const bytes = await appendProductDatasheets(pdf, appointment, epvs, pages)
 
   // Only persist the contract number after the complete contract has
   // successfully rendered, including its datasheets.
