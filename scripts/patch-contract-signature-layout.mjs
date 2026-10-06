@@ -205,10 +205,7 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
   const configured = Array.isArray(settings.included_items) ? settings.included_items : []
   // Use the saved hardware object for the customer-facing itemised breakdown.
   // This is the source containing the manufacturer/model/quantity values selected for the contract.
-  const itemisedHardware =
-    data?.hardware ||
-    data?.openSolar?.hardware ||
-    {}
+  const itemisedHardware = getOpenSolarHardware(data) || {}
 
   const panelHardware =
     Array.isArray(itemisedHardware?.panels) && itemisedHardware.panels.length
