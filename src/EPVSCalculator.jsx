@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import { supabase } from "./lib/supabase"
 
 import {
@@ -671,6 +671,7 @@ export default function EPVSCalculator({
 
   const [data, setData] =
     useState(appointmentInitial)
+  const migratedAppointmentRef = useRef("")
 
   useEffect(() => {
     setData(appointmentInitial)
@@ -683,8 +684,17 @@ export default function EPVSCalculator({
     const appointmentRowId = appointment?.appointment_row_id
     const savedYear1 = Number(appointment?.epvs_calculation?.data?.solarDegradationYear1 || 0)
 
-    if (!appointmentRowId || !supabase || savedYear1 > 0 || !data?.solarDegradationYear1) return
+    if (
+      !appointmentRowId ||
+      !supabase ||
+      savedYear1 > 0 ||
+      !data?.solarDegradationYear1 ||
+      migratedAppointmentRef.current === appointmentRowId
+    ) {
+      return
+    }
 
+    migratedAppointmentRef.current = appointmentRowId
     let cancelled = false
 
     const migrateSavedDegradation = async () => {
@@ -706,6 +716,7 @@ export default function EPVSCalculator({
         if (error) throw error
       } catch (error) {
         console.error("Unable to migrate saved EPVS degradation:", error)
+        migratedAppointmentRef.current = ""
       }
 
       if (cancelled) return
