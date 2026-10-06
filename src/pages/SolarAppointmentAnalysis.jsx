@@ -128,7 +128,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
     try {
       let request = supabase
         .from("appointments")
-        .select("appointment_row_id,name,appointment_date,rep_allocated,result,status,product,type,appointment_type,job_type,product_type,service,epvs_calculation")
+        .select("appointment_row_id,name,appointment_date,rep_allocated,result,product,type,appointment_type,job_type,product_type,service,epvs_calculation")
         .not("rep_allocated", "is", null)
         .neq("rep_allocated", "")
         .order("appointment_date", { ascending: false })
@@ -183,7 +183,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
 
     return appointments.filter((appointment) => {
       const rep = repNameByEmail[normalise(appointment.rep_allocated)] || appointment.rep_allocated || ""
-      return [appointment.name, rep, appointment.result, appointment.status]
+      return [appointment.name, rep, appointment.result]
         .some((value) => normalise(value).includes(query))
     })
   }, [appointments, repNameByEmail, search])
@@ -341,7 +341,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                 ) : (
                   filteredAppointments.map((appointment) => {
                     const rep = repNameByEmail[normalise(appointment.rep_allocated)] || appointment.rep_allocated || "—"
-                    const result = appointment.result || appointment.status || "—"
+                    const result = appointment.result || "—"
 
                     return (
                       <tr key={appointment.appointment_row_id} onClick={() => onSelectAppointment?.(appointment)}>
