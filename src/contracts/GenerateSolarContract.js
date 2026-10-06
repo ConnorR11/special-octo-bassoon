@@ -67,46 +67,104 @@ function getHardwareItem(data, type) {
 
 function getContractHardwareItem(name, data) {
   const normalized = String(name || "").trim().toLowerCase()
-  const panelItem = getPanelHardware(data) || getHardwareItem(data, "panels")
-  const inverterItem = getHardwareItem(data, "inverters") || data?.inverter
-  const batteryItem =
-    getHardwareItem(data, "batteries") ||
-    getHardwareItem(data, "storage") ||
-    data?.battery ||
-    data?.storage
 
-  const matchesItem = (candidate, value) => {
-    if (!candidate || !value) return false
+  const hardwareSources = [
+    data?.hardware,
+    data?.openSolar?.hardware,
+    data?.open_solar?.hardware,
+  ].filter((source) => source && typeof source === "object")
 
-    return [candidate?.model, candidate?.name]
-      .map(value => String(value || "").trim().toLowerCase())
-      .filter(Boolean)
-      .includes(value)
+  const getCandidates = (type) => hardwareSources
+    .flatMap((source) => Array.isArray(source?.[type]) ? source[type] : [])
+    .filter((item) => item && typeof item === "object")
+
+  const resolve = (type, label, legacy) => {
+    const candidates = getCandidates(type)
+    const allCandidates = candidates.length ? candidates : (legacy ? [legacy] : [])
+
+    const matchesItem = (candidate) => {
+      if (!candidate) return false
+      return [candidate?.model, candidate?.name]
+        .map(value => String(value || "").trim().toLowerCase())
+        .filter(Boolean)
+        .includes(normalized)
+    }
+
+    const selected = normalized === type.slice(0, -1) ||
+      normalized === label.toLowerCase() ||
+      (type === "panels" && /\bpanels$/i.test(normalized))
+      ? allCandidates[0]
+      : allCandidates.find(matchesItem)
+
+    if (!selected) return null
+
+    const selectedModel = String(selected?.model || selected?.name || "").trim().toLowerCase()
+    const matching = allCandidates.filter((candidate) => {
+      const model = String(candidate?.model || candidate?.name || "").trim().toLowerCase()
+      return model && model === selectedModel
+    })
+
+    const item = matching.reduce((merged, candidate) => ({
+      ...merged,
+      ...Object.fromEntries(
+        Object.entries(candidate).filter(([, value]) =>
+          value !== undefined && value !== null && value !== ""
+        )
+      ),
+    }), {})
+
+    return { item, label }
   }
 
+  const panel = resolve(
+    "panels",
+    "Panels",
+    data?.panelModel
+      ? {
+          model: data.panelModel,
+          manufacturer: data.panelManufacturer,
+          quantity: data.panelQuantity,
+          capacity: data.panelWattage,
+        }
+      : null
+  )
   if (
-    normalized === "panels" ||
-    /\bpanels$/i.test(normalized) ||
-    matchesItem(panelItem, normalized) ||
-    normalized === String(data?.panelModel || data?.panel_model || "").trim().toLowerCase()
+    panel &&
+    (
+      normalized === "panels" ||
+      /\bpanels$/i.test(normalized) ||
+      String(panel.item?.model || panel.item?.name || "").trim().toLowerCase() === normalized
+    )
   ) {
-    return { item: panelItem, label: "Panels" }
+    return panel
   }
 
+  const inverter = resolve("inverters", "Inverter", data?.inverter)
   if (
-    normalized === "inverter" ||
-    /\binverter$/i.test(normalized) ||
-    matchesItem(inverterItem, normalized)
+    inverter &&
+    (
+      normalized === "inverter" ||
+      /\binverter$/i.test(normalized) ||
+      String(inverter.item?.model || inverter.item?.name || "").trim().toLowerCase() === normalized
+    )
   ) {
-    return { item: inverterItem, label: "Inverter" }
+    return inverter
   }
 
+  const battery = resolve(
+    "batteries",
+    "Battery",
+    data?.battery || data?.storage
+  )
   if (
-    normalized === "battery" ||
-    /\bbattery$/i.test(normalized) ||
-    matchesItem(batteryItem, normalized)
+    battery &&
+    (
+      normalized === "battery" ||
+      /\bbattery$/i.test(normalized) ||
+      String(battery.item?.model || battery.item?.name || "").trim().toLowerCase() === normalized
+    )
   ) {
-    return { item: batteryItem, label: "Battery" }
+    return battery
   }
 
   return { item: null, label: name }
