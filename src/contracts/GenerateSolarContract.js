@@ -920,6 +920,7 @@ export async function GenerateSolarContract({ appointment, epvsCalculation }) {
   if (!appointment) return
 
   let contractNumber = String(appointment?.contract_number || "").trim()
+  let shouldPersistContractNumber = false
 
   if (!contractNumber) {
     const { data: generatedContractNumber, error: contractNumberError } = await supabase
@@ -929,12 +930,10 @@ export async function GenerateSolarContract({ appointment, epvsCalculation }) {
     contractNumber = String(generatedContractNumber || "").trim()
     if (!contractNumber) throw new Error("Unable to generate a digital solar contract number.")
 
-    const { error: contractUpdateError } = await supabase
-      .from("appointments")
-      .update({ contract_number: contractNumber })
-      .eq("appointment_row_id", appointment.appointment_row_id)
-
-    if (contractUpdateError) throw contractUpdateError
+    // Keep the number in memory while the contract is being built.
+    // It is only written to the appointment after the PDF has been
+    // successfully generated.
+    shouldPersistContractNumber = true
   }
 
   const contractAppointment = {
@@ -981,6 +980,18 @@ export async function GenerateSolarContract({ appointment, epvsCalculation }) {
     .replace(/[^a-z0-9]+/gi, "-")
     .replace(/^-+|-+$/g, "") || "Customer"
   const bytes = await appendProductDatasheets(pdf, appointment, epvs, pages)
+
+  // Only persist the contract number after the complete contract has
+  // successfully rendered, including its datasheets.
+  if (shouldPersistContractNumber) {
+    const { error: contractUpdateError } = await supabase
+      .from("appointments")
+      .update({ contract_number: contractNumber })
+      .eq("appointment_row_id", appointment.appointment_row_id)
+
+    if (contractUpdateError) throw contractUpdateError
+  }
+
   const blob = new Blob([bytes], { type: "application/pdf" })
   const url = URL.createObjectURL(blob)
   const link = document.createElement("a")
