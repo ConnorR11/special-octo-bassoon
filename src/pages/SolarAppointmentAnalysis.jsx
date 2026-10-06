@@ -187,13 +187,49 @@ function getThirtyYearEpvs(appointment) {
 
   const projection = calculation?.thirtyYearProjection || {}
   const scenarios = projection?.scenarios || {}
-  const scenario = scenarios?.averageInflation || scenarios?.midpointInflation || scenarios?.noInflation || null
+  const scenario =
+    scenarios?.averageInflation ||
+    scenarios?.midpointInflation ||
+    scenarios?.noInflation ||
+    null
+
   const rows = Array.isArray(scenario?.rows) ? scenario.rows : []
-  const lastYear = rows.length ? rows[rows.length - 1] : null
+
+  // Match the 30 Year EPVS breakdown exactly:
+  // cumulative benefit is the sum of the four benefit components,
+  // while yearly payments are added separately.
+  let cumulativeBenefit = 0
+  let totalPayments = 0
+  let paybackPeriod = null
+
+  rows.forEach((row) => {
+    const annualBenefit =
+      Number(row?.solarBenefit ?? row?.solar ?? 0) +
+      Number(row?.batterySelfConsumptionBenefit ?? 0) +
+      Number(row?.forceChargeBenefit ?? 0) +
+      Number(row?.exportBenefit ?? 0)
+
+    const yearlyPayment = Number(
+      row?.yearlyPayment ?? row?.payment ?? 0
+    )
+
+    cumulativeBenefit += annualBenefit
+    totalPayments += yearlyPayment
+
+    const displayNetPosition = totalPayments + cumulativeBenefit
+
+    if (paybackPeriod == null && displayNetPosition >= 0) {
+      paybackPeriod = Number(row?.year || 0)
+    }
+  })
+
+  const finalNetPosition = rows.length
+    ? cumulativeBenefit + totalPayments
+    : null
 
   return {
-    paybackPeriod: scenario?.paybackPeriod,
-    netPosition: scenario?.finalNetPosition ?? lastYear?.cumulativePosition,
+    paybackPeriod,
+    netPosition: finalNetPosition,
     billPreInstall: scenario?.totals?.billPreInstall ?? rows.reduce(
       (total, row) => total + Number(row?.billPreInstall || 0),
       0
