@@ -24,17 +24,26 @@ function getOpenSolarImageUrl(appointment) {
 }
 
 function getOpenSolarHardware(data) {
-  const direct = data?.hardware
-  const openSolar = data?.openSolar?.hardware
+  const direct = data?.hardware || {}
+  const openSolar = data?.openSolar?.hardware || {}
 
-  const hasHardware = value =>
-    value && (
-      (Array.isArray(value.panels) && value.panels.length) ||
-      (Array.isArray(value.inverters) && value.inverters.length) ||
-      (Array.isArray(value.batteries) && value.batteries.length)
-    )
+  const panels = Array.isArray(openSolar.panels) && openSolar.panels.length
+    ? openSolar.panels
+    : Array.isArray(direct.panels) ? direct.panels : []
 
-  return hasHardware(openSolar) ? openSolar : hasHardware(direct) ? direct : openSolar || direct || null
+  const inverters = Array.isArray(openSolar.inverters) && openSolar.inverters.length
+    ? openSolar.inverters
+    : Array.isArray(direct.inverters) ? direct.inverters : []
+
+  const batteries = Array.isArray(openSolar.batteries) && openSolar.batteries.length
+    ? openSolar.batteries
+    : Array.isArray(direct.batteries) ? direct.batteries : []
+
+  if (panels.length || inverters.length || batteries.length) {
+    return { panels, inverters, batteries }
+  }
+
+  return null
 }
 
 function getHardwareItem(data, type) {
