@@ -27,42 +27,39 @@ function getOpenSolarHardware(data) {
   return data?.hardware || data?.openSolar?.hardware || null
 }
 
-function getHardwareManufacturer(data, type) {
+function getHardwareItem(data, type) {
   const source = data || {}
   const hardware = getOpenSolarHardware(source)
   const collection = Array.isArray(hardware?.[type]) ? hardware[type] : []
   const legacyCollection = Array.isArray(source?.[type]) ? source[type] : []
   const entries = collection.length ? collection : legacyCollection
-
-  const item = entries.find(entry =>
-    entry && (entry.manufacturer || entry.make || entry.brand)
-  ) || entries[0]
-
-  return String(
-    item?.manufacturer ||
-    item?.make ||
-    item?.brand ||
-    ""
-  ).trim()
+  return entries.find(Boolean) || null
 }
 
 function getContractItemName(name, data) {
   const normalized = String(name || "").trim().toLowerCase()
-  let manufacturer = ""
+  let item = null
 
   if (normalized === "panels") {
-    manufacturer =
-      String(getPanelHardware(data)?.manufacturer || "").trim() ||
-      getHardwareManufacturer(data, "panels")
+    item = getPanelHardware(data) || getHardwareItem(data, "panels")
   } else if (normalized === "inverter") {
-    manufacturer = getHardwareManufacturer(data, "inverters")
+    item = getHardwareItem(data, "inverters") || data?.inverter
   } else if (normalized === "battery") {
-    manufacturer =
-      getHardwareManufacturer(data, "batteries") ||
-      getHardwareManufacturer(data, "storage")
+    item =
+      getHardwareItem(data, "batteries") ||
+      getHardwareItem(data, "storage") ||
+      data?.battery ||
+      data?.storage
   }
 
-  return manufacturer ? [manufacturer, name].join(" ") : name
+  if (!item) return name
+
+  const manufacturer = String(item?.manufacturer || item?.make || item?.brand || "").trim()
+  const model = String(item?.model || item?.name || "").trim()
+
+  return [manufacturer, model, name]
+    .filter(Boolean)
+    .join(" ")
 }
 
 function getPanelHardware(data) {
@@ -448,11 +445,10 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
     const normalizedName = String(name).trim().toLowerCase()
 
     if (normalizedName === "panels") {
-      name = panelHardware?.model || name
       quantity = panelHardware?.quantity ?? getTotalPanelCount(data)
     }
 
-    name = getContractItemName(name, data)
+    name = getContractItemName(normalizedName, data)
 
     if (normalizedName === "roof hooks" || normalizedName === "rail fix kit") quantity = "-"
     if (normalizedName === "panel installation") quantity = 1
