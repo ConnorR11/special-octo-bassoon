@@ -133,20 +133,9 @@ function getContractItemName(name, data) {
 
 
 function getPanelHardware(data) {
-  const hardware = getOpenSolarHardware(data)
-  const panels = Array.isArray(hardware?.panels) ? hardware.panels : []
-  if (panels[0]) return panels[0]
-
-  if (data?.panelModel) {
-    return {
-      model: data.panelModel,
-      manufacturer: data.panelManufacturer || "",
-      quantity: data.panelQuantity,
-      capacity: data.panelWattage,
-    }
-  }
-
-  return null
+  const hardware = data?.hardware || {}
+  const panels = Array.isArray(hardware.panels) ? hardware.panels : []
+  return panels[0] || null
 }
 
 function getTotalPanelCount(data) {
@@ -713,88 +702,11 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
   const width = ctx.width - ctx.padding * 2
   const settings = page.settings || {}
   const configured = Array.isArray(settings.included_items) ? settings.included_items : []
-  // Resolve hardware from the complete saved EPVS/OpenSolar payload.
-  // Some saved calculations contain hardware several levels down, so do not
-  // depend on one particular nesting path or on the template's old quantity.
-  const hardwareRecords = []
-  const visited = new Set()
-
-  const collectHardware = (value, depth = 0) => {
-    if (!value || typeof value !== "object" || depth > 8 || visited.has(value)) return
-    visited.add(value)
-
-    if (value.hardware && typeof value.hardware === "object") {
-      hardwareRecords.push(value.hardware)
-    }
-
-    if (Array.isArray(value)) {
-      value.forEach((item) => collectHardware(item, depth + 1))
-    } else {
-      Object.values(value).forEach((item) => collectHardware(item, depth + 1))
-    }
-  }
-
-  collectHardware(data)
-  collectHardware(epvs)
-  collectHardware(appointment)
-
-  const findHardwareItem = (type, modelHint = "") => {
-    const entries = hardwareRecords.flatMap((hardware) =>
-      Array.isArray(hardware?.[type]) ? hardware[type] : []
-    ).filter((item) => item && typeof item === "object")
-
-    if (!entries.length) return null
-
-    const hint = String(modelHint || "").trim().toLowerCase()
-    const matchingEntries = hint
-      ? entries.filter((entry) =>
-          String(entry?.model || entry?.name || "").trim().toLowerCase() === hint
-        )
-      : entries
-
-    const candidates = matchingEntries.length ? matchingEntries : entries
-
-    // Prefer the most complete current hardware record. If there are stale
-    // snapshots, the record with manufacturer information wins.
-    return candidates
-      .slice()
-      .sort((a, b) => {
-        const aComplete = Number(Boolean(a?.manufacturer || a?.make || a?.brand)) * 10 +
-          Number(Boolean(a?.model || a?.name)) * 5
-        const bComplete = Number(Boolean(b?.manufacturer || b?.make || b?.brand)) * 10 +
-          Number(Boolean(b?.model || b?.name)) * 5
-        const aQuantity = Number(a?.quantity || a?.panelCount || 0)
-        const bQuantity = Number(b?.quantity || b?.panelCount || 0)
-        return bComplete - aComplete || bQuantity - aQuantity
-      })[0]
-  }
-
-  const configuredPanelName = configured
-    .map((item) => typeof item === "string" ? item : item?.name)
-    .map((name) => String(name || "").trim())
-    .find((name) =>
-      name.toLowerCase() === "panels" ||
-      name.toLowerCase() === "dm460g12rt-g48hbb"
-    ) || ""
-
-  const panelHardware =
-    findHardwareItem("panels", configuredPanelName) ||
-    (data?.panelModel
-      ? {
-          model: data.panelModel,
-          manufacturer: data.panelManufacturer || "",
-          quantity: data.panelQuantity,
-          capacity: data.panelWattage,
-        }
-      : null)
-
-  const inverterHardware =
-    findHardwareItem("inverters") ||
-    getHardwareItem(data, "inverters") ||
-    data?.inverter
-
+  // The contract output is driven directly by the saved EPVS hardware.
+  // There is no template, appointment or hardcoded hardware fallback.
+  const panelHardware = getPanelHardware(data)
+  const inverterHardware = getHardwareItem(data, "inverters") || data?.inverter
   const batteryHardware =
-    findHardwareItem("batteries") ||
     getHardwareItem(data, "batteries") ||
     getHardwareItem(data, "storage") ||
     data?.battery ||
@@ -807,24 +719,12 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
     return [manufacturer, model, label].filter(Boolean).join(" ") || null
   }
 
-  const panelModel = String(
-    panelHardware?.model ||
-    data?.panelModel ||
-    data?.panel_model ||
-    ""
-  ).trim()
-
+  const panelModel = String(panelHardware?.model || panelHardware?.name || "").trim()
   const panelManufacturer = String(
     panelHardware?.manufacturer ||
     panelHardware?.make ||
     panelHardware?.brand ||
-    data?.panelManufacturer ||
-    data?.panel_manufacturer ||
-    (
-      panelModel.toLowerCase() === "dm460g12rt-g48hbb"
-        ? "Hengdian Group DMEGC Magnetics"
-        : ""
-    )
+    ""
   ).trim()
 
   const items = configured.map((item) => {
@@ -843,8 +743,7 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
     const isPanel =
       normalizedName === "panels" ||
       /\bpanels$/i.test(normalizedName) ||
-      (knownPanelModel && normalizedName === knownPanelModel) ||
-      normalizedName === "dm460g12rt-g48hbb"
+      (knownPanelModel && normalizedName === knownPanelModel)
 
     const isInverter =
       normalizedName === "inverter" ||
@@ -859,40 +758,14 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
       normalizedName === String(batteryHardware?.name || "").trim().toLowerCase()
 
     if (isPanel) {
-      const resolvedPanelModel =
-        panelModel ||
-        String(data?.panelModel || data?.panel_model || "").trim() ||
-        String(name || "").trim()
-
-      const resolvedPanelManufacturer =
-        panelManufacturer ||
-        String(data?.panelManufacturer || data?.panel_manufacturer || "").trim()
+      const resolvedPanelModel = panelModel
+      const resolvedPanelManufacturer = panelManufacturer
 
       name = [resolvedPanelManufacturer, resolvedPanelModel, "Panels"]
         .filter(Boolean)
         .join(" ")
 
-      quantity =
-        panelHardware?.quantity ??
-        data?.panelQuantity ??
-        data?.panel_quantity ??
-        (
-          resolvedPanelModel.toLowerCase() === "dm460g12rt-g48hbb"
-            ? 48
-            : getTotalPanelCount(data)
-        )
-
-      // If the template contains the legacy panel quantity, prefer the
-      // imported OpenSolar array total when available.
-      if (!panelHardware?.quantity) {
-        const importedPanelCount = Array.isArray(data?.openSolar?.arrays)
-          ? data.openSolar.arrays.reduce(
-              (total, array) => total + Number(array?.panelCount || 0),
-              0
-            )
-          : 0
-        if (importedPanelCount > 0) quantity = importedPanelCount
-      }
+      quantity = panelHardware?.quantity
     } else if (isInverter) {
       name = getHardwareItemName(inverterHardware, "Inverter") || name
       quantity = inverterHardware?.quantity ?? quantity
