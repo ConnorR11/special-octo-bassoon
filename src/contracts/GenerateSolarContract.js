@@ -779,7 +779,7 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
         return normalized === label.toLowerCase() ||
           (label === "Panels" && /\bpanels$/i.test(normalized)) ||
           normalized === model ||
-          normalized === (model + " " + label).trim()
+          normalized.startsWith(model + " ")
       })
 
       if (!item) return null
