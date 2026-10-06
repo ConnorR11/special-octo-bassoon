@@ -683,42 +683,37 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs) {
       pdf.text(address, ctx.padding, 112)
     }
 
-    // Cover identification block — deliberately large and high-contrast so these
-    // details are always visible on the customer-facing cover.
+    // Cover identification block — keep the same blue background and
+    // white typography as the rest of the customer-facing cover.
     const coverDetails = [
-      ["SALES REP", appointment?.salesperson || appointment?.rep_allocated || "—"],
-      ["DATE", date(appointment?.appointment_date)],
-      ["CONTRACT NUMBER", appointment?.contract_number || "—"],
+      ["SALES REP", salesRepName],
+      ["DATE", date(new Date())],
+      ["CONTRACT NUMBER", contractAppointment?.contract_number || "—"],
     ]
 
     const detailX = ctx.padding
-    const detailY = 133
+    const detailY = 136
     const detailWidth = ctx.width - ctx.padding * 2
-    const detailHeight = 58
-
-    pdf.setFillColor(255, 255, 255)
-    pdf.roundedRect(detailX, detailY, detailWidth, detailHeight, 3, 3, "F")
-
-    const rowHeight = detailHeight / coverDetails.length
+    const columnWidth = detailWidth / coverDetails.length
 
     coverDetails.forEach(([label, value], index) => {
-      const rowY = detailY + index * rowHeight
+      const x = detailX + index * columnWidth
 
       if (index > 0) {
-        pdf.setDrawColor(220, 228, 234)
-        pdf.setLineWidth(0.3)
-        pdf.line(detailX + 5, rowY, detailX + detailWidth - 5, rowY)
+        pdf.setDrawColor(77, 181, 255)
+        pdf.setLineWidth(0.25)
+        pdf.line(x - 6, detailY - 2, x - 6, detailY + 23)
       }
 
-      pdf.setTextColor(85, 102, 114)
+      pdf.setTextColor(185, 220, 242)
       pdf.setFont("helvetica", "bold")
       pdf.setFontSize(7)
-      pdf.text(label, detailX + 7, rowY + 7)
+      pdf.text(label, x, detailY + 3)
 
-      pdf.setTextColor(5, 47, 79)
+      pdf.setTextColor(255, 255, 255)
       pdf.setFont("helvetica", "bold")
-      pdf.setFontSize(index === 2 ? 16 : 11)
-      pdf.text(String(value), detailX + 7, rowY + 14)
+      pdf.setFontSize(index === 2 ? 13 : 10.5)
+      pdf.text(String(value), x, detailY + 12)
     })
 
     return
@@ -921,6 +916,27 @@ export async function GenerateSolarContract({ appointment, epvsCalculation }) {
 
   let contractNumber = String(appointment?.contract_number || "").trim()
   let shouldPersistContractNumber = false
+  let salesRepName = String(
+    appointment?.salesperson ||
+    appointment?.rep_allocated ||
+    ""
+  ).trim()
+
+  // Appointment rep fields are often stored as the rep's email address.
+  // Resolve that to the rep's display name for the customer-facing contract.
+  if (salesRepName.includes("@") && supabase) {
+    const { data: repProfile } = await supabase
+      .from("profiles")
+      .select("full_name, display_name, email")
+      .ilike("email", salesRepName)
+      .maybeSingle()
+
+    salesRepName =
+      String(repProfile?.display_name || repProfile?.full_name || "").trim() ||
+      salesRepName
+  }
+
+  if (!salesRepName) salesRepName = "—"
 
   if (!contractNumber) {
     const { data: generatedContractNumber, error: contractNumberError } = await supabase
