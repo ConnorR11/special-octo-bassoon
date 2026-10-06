@@ -186,7 +186,7 @@ function getThirtyYearEpvs(appointment) {
   }
 
   const scenarios = calculation?.thirtyYearProjection?.scenarios || {}
-  const scenario = scenarios?.midpointInflation || scenarios?.noInflation || null
+  const scenario = scenarios?.averageInflation || scenarios?.midpointInflation || scenarios?.noInflation || null
   const lastYear = scenario?.rows?.[scenario.rows.length - 1] || null
 
   return {
