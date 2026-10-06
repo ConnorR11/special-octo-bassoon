@@ -261,14 +261,18 @@ if (!overviewPattern.test(source)) {
     const bodyCall = match.includes("body(pdf, page.body, ctx.padding, y + 8, width, ctx.text, appointment, epvs)")
       ? "    y = body(pdf, page.body, ctx.padding, y + 8, width, ctx.text, appointment, epvs) + 6"
       : "    y = body(pdf, page.body, ctx.padding, y + 8, width, ctx.text) + 6"
+    const signatureBlock = [
+      "    const signatureCardHeight = 38",
+      "    const footerClearance = 7",
+      "    const footerY = pdf.internal.pageSize.getHeight() - 13",
+      "    const signatureCardY = footerY - footerClearance - signatureCardHeight",
+      "    await drawContractTotalAndSignature(pdf, ctx, data, results, appointment, signatureCardY)",
+      "  } else if (kind === \"itemised_breakdown\") {",
+    ].join("\\n")
+
     return match.replace(/    body\(pdf, page\.body[^\n]+/, bodyCall).replace(
       "  } else if (kind === \"itemised_breakdown\") {",
-      `    const signatureCardHeight = 38
-    const footerClearance = 7
-    const footerY = pdf.internal.pageSize.getHeight() - 13
-    const signatureCardY = footerY - footerClearance - signatureCardHeight
-    await drawContractTotalAndSignature(pdf, ctx, data, results, appointment, signatureCardY)
-  } else if (kind === "itemised_breakdown") {`
+      signatureBlock
     )
   })
 }
