@@ -204,17 +204,53 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
   const settings = page.settings || {}
   const configured = Array.isArray(settings.included_items) ? settings.included_items : []
   const panelHardware = getPanelHardware(data)
+  const inverterHardware = getHardwareItem(data, "inverters") || data?.inverter
+  const batteryHardware =
+    getHardwareItem(data, "batteries") ||
+    getHardwareItem(data, "storage") ||
+    data?.battery ||
+    data?.storage
+
+  const getHardwareItemName = (item, label) => {
+    if (!item) return null
+    const manufacturer = String(item?.manufacturer || item?.make || item?.brand || "").trim()
+    const model = String(item?.model || item?.name || "").trim()
+    return [manufacturer, model, label].filter(Boolean).join(" ") || null
+  }
+
   const items = configured.map((item) => {
     let name = typeof item === "string" ? item : item?.name ?? "—"
     const type = typeof item === "string" ? "" : item?.type ?? ""
     let quantity = typeof item === "string" ? 1 : item?.quantity ?? 1
     const normalizedName = String(name).trim().toLowerCase()
-    if (normalizedName === "panels") {
-      name = panelHardware?.model || name
+
+    const isPanel =
+      normalizedName === "panels" ||
+      /\bpanels$/i.test(normalizedName) ||
+      normalizedName === String(panelHardware?.model || "").trim().toLowerCase()
+
+    const isInverter =
+      normalizedName === "inverter" ||
+      /\binverter$/i.test(normalizedName)
+
+    const isBattery =
+      normalizedName === "battery" ||
+      /\bbattery$/i.test(normalizedName)
+
+    if (isPanel) {
+      name = getHardwareItemName(panelHardware, "Panels") || name
       quantity = panelHardware?.quantity ?? getTotalPanelCount(data)
+    } else if (isInverter) {
+      name = getHardwareItemName(inverterHardware, "Inverter") || name
+      quantity = inverterHardware?.quantity ?? quantity
+    } else if (isBattery) {
+      name = getHardwareItemName(batteryHardware, "Battery") || name
+      quantity = batteryHardware?.quantity ?? quantity
     }
+
     if (normalizedName === "roof hooks" || normalizedName === "rail fix kit") quantity = "-"
     if (normalizedName === "panel installation") quantity = 1
+
     return { name, type, quantity }
   })
 
