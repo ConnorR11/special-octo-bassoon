@@ -791,6 +791,7 @@ export default function EPVSCalculator({
       arrays: imported,
     }
 
+    const importedPanel = payload?.hardware?.panels?.[0]
     const importedBattery = payload?.hardware?.batteries?.[0]
     const importedInverter = payload?.hardware?.inverters?.[0]
     const importedEvCharger = payload?.hardware?.evChargers?.[0]
@@ -803,6 +804,14 @@ export default function EPVSCalculator({
 
       // OpenSolar is the source of truth for proposed hardware.
       // Feed its capacities directly into the EPVS calculation inputs.
+      ...(importedPanel
+        ? {
+            panelModel: importedPanel.model || "",
+            panelManufacturer: importedPanel.manufacturer || "",
+            panelQuantity: Number(importedPanel.quantity || 1),
+            panelWattage: Number(importedPanel.capacity || 0),
+          }
+        : {}),
       ...(importedBattery
         ? {
             batteryCapacity:
