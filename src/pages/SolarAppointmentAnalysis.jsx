@@ -358,6 +358,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
     const usableWidth = pageWidth - margin * 2
+
     const headers = [
       "Appointment", "Date", "Sales Rep", "Result",
       "Consumption", "Import", "Export", "Standing",
@@ -366,6 +367,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
       "Method", "Cost", "Payment", "Total cost",
       "Payback", "Net Position", "Pre Install"
     ]
+
     const groups = [
       { label: "", span: 4 },
       { label: "Current Electricity", span: 4 },
@@ -374,14 +376,19 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
       { label: "Pricing", span: 4 },
       { label: "30 year EPVS", span: 3 },
     ]
+
     const rows = filteredAppointments.map((appointment) => {
       const rep = repNameByEmail[normalise(appointment.rep_allocated)] || appointment.rep_allocated || "—"
       const epvsData = getEpvsData(appointment)
       const systemDesign = getSystemDesign(appointment)
       const pricing = getPricing(appointment)
       const thirtyYearEpvs = getThirtyYearEpvs(appointment)
+
       return [
-        appointment.name || "—", formatDate(appointment.appointment_date), rep, appointment.result || "—",
+        appointment.name || "—",
+        formatDate(appointment.appointment_date),
+        rep,
+        appointment.result || "—",
         formatElectricityValue(epvsData.annualConsumption),
         formatElectricityValue(epvsData.importRate, "p"),
         formatElectricityValue(epvsData.exportRate, "p"),
@@ -404,54 +411,73 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
     })
 
     const columnWidths = [25, 18, 24, 20, 19, 16, 16, 18, 13, 19, 18, 17, 17, 18, 17, 18, 18, 18, 21, 15, 21, 21]
-    const totalWidth = columnWidths.reduce((sum, width) => sum + width, 0)
-    const scale = usableWidth / totalWidth
+    const scale = usableWidth / columnWidths.reduce((sum, width) => sum + width, 0)
     const widths = columnWidths.map((width) => width * scale)
+
     const rowHeight = 6.2
     const groupHeight = 7
     const headerHeight = 8
+    const separatorIndexes = new Set([4, 8, 12, 15, 19])
 
     function drawHeader(y) {
       let x = margin
+      let columnIndex = 0
+
       doc.setFont("helvetica", "bold")
       doc.setFontSize(5.5)
-      doc.setFillColor(248, 250, 252)
-      doc.setTextColor(15, 23, 42)
-      let columnIndex = 0
+
       groups.forEach((group) => {
         const width = widths.slice(columnIndex, columnIndex + group.span).reduce((a, b) => a + b, 0)
-        doc.rect(x, y, width, groupHeight, "F")
+
+        doc.setFillColor(248, 250, 252)
         doc.setDrawColor(219, 227, 236)
-        doc.rect(x, y, width, groupHeight)
-        if (group.label) doc.text(group.label, x + 1.5, y + 4.5)
+        doc.setLineWidth(0.2)
+        doc.rect(x, y, width, groupHeight, "FD")
+
+        if (group.label) {
+          doc.setTextColor(23, 54, 109)
+          doc.text(group.label, x + 1.5, y + 4.5, { maxWidth: width - 3 })
+        }
+
         x += width
         columnIndex += group.span
       })
 
       y += groupHeight
       x = margin
-      doc.setFillColor(87, 87, 87)
-      doc.setTextColor(255, 255, 255)
+
       headers.forEach((header, index) => {
-        doc.rect(x, y, widths[index], headerHeight, "F")
-        doc.text(header, x + 1.2, y + 5.2, { maxWidth: widths[index] - 2.4 })
+        doc.setFillColor(87, 87, 87)
+        doc.setDrawColor(87, 87, 87)
+        doc.rect(x, y, widths[index], headerHeight, "FD")
+
+        doc.setTextColor(255, 255, 255)
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(4.8)
+        doc.text(header, x + 1.1, y + 5.2, { maxWidth: widths[index] - 2.2 })
+
         x += widths[index]
       })
+
       return y + headerHeight
     }
 
+    doc.setTextColor(15, 23, 42)
     doc.setFont("helvetica", "bold")
     doc.setFontSize(16)
-    doc.setTextColor(15, 23, 42)
     doc.text("Solar Appointment Analysis", margin, 10)
+
     doc.setFont("helvetica", "normal")
     doc.setFontSize(7)
     doc.setTextColor(100, 116, 139)
-    doc.text(`${filteredAppointments.length} solar appointments · ${rangeLabel}${search ? ` · Search: "${search}"` : ""}`, margin, 14.5)
+    doc.text(
+      `${filteredAppointments.length} solar appointments · ${rangeLabel}${search ? ` · Search: "${search}"` : ""}`,
+      margin,
+      14.5
+    )
 
     let y = 19
     y = drawHeader(y)
-    doc.setFontSize(5.6)
 
     rows.forEach((row, rowIndex) => {
       if (y + rowHeight > pageHeight - 7) {
@@ -459,24 +485,32 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
         y = 8
         y = drawHeader(y)
       }
-      const separatorIndexes = new Set([4, 8, 12, 15, 19])
+
       let x = margin
-      doc.setFillColor(rowIndex % 2 === 0 ? 255 : 248, rowIndex % 2 === 0 ? 255 : 250, rowIndex % 2 === 0 ? 255 : 252)
+
       row.forEach((value, index) => {
-        doc.rect(x, y, widths[index], rowHeight, "F")
+        // Explicitly reset the fill for every cell so jsPDF cannot carry
+        // the header/group fill state into the body.
+        doc.setFillColor(255, 255, 255)
         doc.setDrawColor(232, 237, 242)
-        doc.line(x, y + rowHeight, x + widths[index], y + rowHeight)
+        doc.setLineWidth(0.2)
+        doc.rect(x, y, widths[index], rowHeight, "FD")
+
         if (separatorIndexes.has(index)) {
           doc.setDrawColor(0, 0, 0)
           doc.setLineWidth(0.8)
           doc.line(x, y, x, y + rowHeight)
           doc.setLineWidth(0.2)
         }
-        doc.setTextColor(index === 0 || index === 3 ? 15 : 51, index === 0 || index === 3 ? 23 : 65, index === 0 || index === 3 ? 42 : 85)
+
+        doc.setTextColor(51, 65, 85)
         doc.setFont("helvetica", index === 0 || index === 3 ? "bold" : "normal")
-        doc.text(String(value), x + 1.2, y + 4.1, { maxWidth: widths[index] - 2.4 })
+        doc.setFontSize(5.4)
+        doc.text(String(value), x + 1.1, y + 4.1, { maxWidth: widths[index] - 2.2 })
+
         x += widths[index]
       })
+
       y += rowHeight
     })
 
