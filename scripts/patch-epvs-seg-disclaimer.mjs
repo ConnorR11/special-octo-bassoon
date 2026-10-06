@@ -83,7 +83,7 @@ async function drawSegDisclaimer(pdf, ctx, appointment) {
 }
 `
 
-const renderMarker = "async function renderPage(pdf, page, index, pageCount, appointment, epvs) {"
+const renderMarker = "async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesRepName) {"
 if (!source.includes(renderMarker)) throw new Error("Could not locate renderPage in GenerateSolarContract.js")
 source = source.replace(renderMarker, helper + "\n" + renderMarker)
 
