@@ -65,7 +65,7 @@ function getHardwareItem(data, type) {
   return entries.find(Boolean) || null
 }
 
-function getContractItemName(name, data) {
+function getContractHardwareItem(name, data) {
   const normalized = String(name || "").trim().toLowerCase()
   const panelItem = getPanelHardware(data) || getHardwareItem(data, "panels")
   const inverterItem = getHardwareItem(data, "inverters") || data?.inverter
@@ -75,62 +75,64 @@ function getContractItemName(name, data) {
     data?.battery ||
     data?.storage
 
-  let item = null
-  let hardwareLabel = name
-
   const matchesItem = (candidate, value) => {
     if (!candidate || !value) return false
 
-    const candidateValues = [
-      candidate?.model,
-      candidate?.name
-    ]
+    return [candidate?.model, candidate?.name]
       .map(value => String(value || "").trim().toLowerCase())
       .filter(Boolean)
-
-    return candidateValues.includes(value)
+      .includes(value)
   }
 
   if (
     normalized === "panels" ||
     /\bpanels$/i.test(normalized) ||
     matchesItem(panelItem, normalized) ||
-    normalized === String(data?.panelModel || data?.panel_model || "").trim().toLowerCase() ||
-    normalized === "dm460g12rt-g48hbb"
+    normalized === String(data?.panelModel || data?.panel_model || "").trim().toLowerCase()
   ) {
-    item = panelItem
-    hardwareLabel = "Panels"
-  } else if (
+    return { item: panelItem, label: "Panels" }
+  }
+
+  if (
     normalized === "inverter" ||
     /\binverter$/i.test(normalized) ||
     matchesItem(inverterItem, normalized)
   ) {
-    item = inverterItem
-    hardwareLabel = "Inverter"
-  } else if (
+    return { item: inverterItem, label: "Inverter" }
+  }
+
+  if (
     normalized === "battery" ||
     /\bbattery$/i.test(normalized) ||
     matchesItem(batteryItem, normalized)
   ) {
-    item = batteryItem
-    hardwareLabel = "Battery"
+    return { item: batteryItem, label: "Battery" }
   }
 
-  if (!item) return name
+  return { item: null, label: name }
+}
+
+function getContractItemName(name, data) {
+  const resolved = getContractHardwareItem(name, data)
+  if (!resolved.item) return name
 
   const manufacturer = String(
-    item?.manufacturer || item?.make || item?.brand || ""
+    resolved.item?.manufacturer ||
+    resolved.item?.make ||
+    resolved.item?.brand ||
+    ""
   ).trim()
 
   const model = String(
-    item?.model || item?.name || ""
+    resolved.item?.model ||
+    resolved.item?.name ||
+    ""
   ).trim()
 
-  return [manufacturer, model, hardwareLabel]
+  return [manufacturer, model, resolved.label]
     .filter(Boolean)
     .join(" ")
 }
-
 
 function getPanelHardware(data) {
   const hardware = getOpenSolarHardware(data)
@@ -702,80 +704,22 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
   const width = ctx.width - ctx.padding * 2
   const settings = page.settings || {}
   const configured = Array.isArray(settings.included_items) ? settings.included_items : []
-  // The contract output is driven directly by the saved EPVS hardware.
-  // There is no template, appointment or hardcoded hardware fallback.
-  const panelHardware = getPanelHardware(data)
-  const inverterHardware = getHardwareItem(data, "inverters") || data?.inverter
-  const batteryHardware =
-    getHardwareItem(data, "batteries") ||
-    getHardwareItem(data, "storage") ||
-    data?.battery ||
-    data?.storage
-
-  const getHardwareItemName = (item, label) => {
-    if (!item) return null
-    const manufacturer = String(item?.manufacturer || item?.make || item?.brand || "").trim()
-    const model = String(item?.model || item?.name || "").trim()
-    return [manufacturer, model, label].filter(Boolean).join(" ") || null
-  }
-
-  const panelModel = String(panelHardware?.model || panelHardware?.name || "").trim()
-  const panelManufacturer = String(
-    panelHardware?.manufacturer ||
-    panelHardware?.make ||
-    panelHardware?.brand ||
-    ""
-  ).trim()
 
   const items = configured.map((item) => {
     let name = typeof item === "string" ? item : item?.name ?? "—"
     const type = typeof item === "string" ? "" : item?.type ?? ""
     let quantity = typeof item === "string" ? 1 : item?.quantity ?? 1
-    const normalizedName = String(name).trim().toLowerCase()
 
-    const knownPanelModel = String(
-      panelHardware?.model ||
-      data?.panelModel ||
-      data?.panel_model ||
-      ""
-    ).trim().toLowerCase()
-
-    const isPanel =
-      normalizedName === "panels" ||
-      /\bpanels$/i.test(normalizedName) ||
-      (knownPanelModel && normalizedName === knownPanelModel)
-
-    const isInverter =
-      normalizedName === "inverter" ||
-      /\binverter$/i.test(normalizedName) ||
-      normalizedName === String(inverterHardware?.model || "").trim().toLowerCase() ||
-      normalizedName === String(inverterHardware?.name || "").trim().toLowerCase()
-
-    const isBattery =
-      normalizedName === "battery" ||
-      /\bbattery$/i.test(normalizedName) ||
-      normalizedName === String(batteryHardware?.model || "").trim().toLowerCase() ||
-      normalizedName === String(batteryHardware?.name || "").trim().toLowerCase()
-
-    if (isPanel) {
-      const resolvedPanelModel = panelModel
-      const resolvedPanelManufacturer = panelManufacturer
-
-      name = [resolvedPanelManufacturer, resolvedPanelModel, "Panels"]
-        .filter(Boolean)
-        .join(" ")
-
-      quantity = panelHardware?.quantity
-    } else if (isInverter) {
-      name = getHardwareItemName(inverterHardware, "Inverter") || name
-      quantity = inverterHardware?.quantity ?? quantity
-    } else if (isBattery) {
-      name = getHardwareItemName(batteryHardware, "Battery") || name
-      quantity = batteryHardware?.quantity ?? quantity
+    const resolved = getContractHardwareItem(name, data)
+    if (resolved.item) {
+      name = getContractItemName(name, data)
+      quantity = resolved.item?.quantity ?? quantity
     }
 
-    if (normalizedName === "roof hooks" || normalizedName === "rail fix kit") quantity = "-"
-    if (normalizedName === "panel installation") quantity = 1
+    if (String(name).trim().toLowerCase() === "roof hooks" || String(name).trim().toLowerCase() === "rail fix kit") {
+      quantity = "-"
+    }
+    if (String(name).trim().toLowerCase() === "panel installation") quantity = 1
 
     return { name, type, quantity }
   })
@@ -826,7 +770,6 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
   y += 3
   await drawExpressFitSection(pdf, ctx, appointment, y)
 }
-
 
 
 function parseTermsSections(raw) {
