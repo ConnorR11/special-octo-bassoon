@@ -453,10 +453,10 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                   <th>Date</th>
                   <th>Sales Rep</th>
                   <th>Result</th>
-                  <th className="solar-analysis-electricity-field">Annual electricity consumption (kWh)</th>
-                  <th className="solar-analysis-electricity-field">Import rate (p/kWh)</th>
-                  <th className="solar-analysis-electricity-field">Export rate (p/kWh)</th>
-                  <th className="solar-analysis-electricity-field">Standing charge (p/day)</th>
+                  <th className="solar-analysis-electricity-field">Consumption</th>
+                  <th className="solar-analysis-electricity-field">Import</th>
+                  <th className="solar-analysis-electricity-field">Export</th>
+                  <th className="solar-analysis-electricity-field">Standing</th>
                   <th className="solar-analysis-design-field">Number of panels</th>
                   <th className="solar-analysis-design-field">Generation</th>
                   <th className="solar-analysis-design-field">Total battery capacity</th>
