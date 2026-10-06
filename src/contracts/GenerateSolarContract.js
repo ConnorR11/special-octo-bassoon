@@ -763,21 +763,55 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
   const settings = page.settings || {}
   const configured = Array.isArray(settings.included_items) ? settings.included_items : []
 
+  // Itemised hardware comes directly from the saved appointment calculation.
+  // This is the single source of truth for manufacturer, model and quantity.
+  const hardware = appointment?.epvs_calculation?.data?.openSolar?.hardware || {}
+  const panels = Array.isArray(hardware?.panels) ? hardware.panels : []
+  const inverters = Array.isArray(hardware?.inverters) ? hardware.inverters : []
+  const batteries = Array.isArray(hardware?.batteries) ? hardware.batteries : []
+
+  const resolveHardware = (name) => {
+    const normalized = String(name || "").trim().toLowerCase()
+
+    const resolve = (items, label) => {
+      const item = items.find((candidate) => {
+        const model = String(candidate?.model || candidate?.name || "").trim().toLowerCase()
+        return normalized === label.toLowerCase() ||
+          (label === "Panels" && /\bpanels$/i.test(normalized)) ||
+          normalized === model
+      })
+
+      if (!item) return null
+
+      const manufacturer = String(item?.manufacturer || "").trim()
+      const model = String(item?.model || item?.name || "").trim()
+      return {
+        name: [manufacturer, model, label].filter(Boolean).join(" "),
+        quantity: item?.quantity,
+      }
+    }
+
+    return (
+      resolve(panels, "Panels") ||
+      resolve(inverters, "Inverter") ||
+      resolve(batteries, "Battery")
+    )
+  }
+
   const items = configured.map((item) => {
     let name = typeof item === "string" ? item : item?.name ?? "—"
     const type = typeof item === "string" ? "" : item?.type ?? ""
     let quantity = typeof item === "string" ? 1 : item?.quantity ?? 1
 
-    const resolved = getContractHardwareItem(name, data)
-    if (resolved.item) {
-      name = getContractItemName(name, data)
-      quantity = resolved.item?.quantity ?? quantity
+    const hardwareItem = resolveHardware(name)
+    if (hardwareItem) {
+      name = hardwareItem.name
+      quantity = hardwareItem.quantity
     }
 
-    if (String(name).trim().toLowerCase() === "roof hooks" || String(name).trim().toLowerCase() === "rail fix kit") {
-      quantity = "-"
-    }
-    if (String(name).trim().toLowerCase() === "panel installation") quantity = 1
+    const normalizedName = String(name).trim().toLowerCase()
+    if (normalizedName === "roof hooks" || normalizedName === "rail fix kit") quantity = "-"
+    if (normalizedName === "panel installation") quantity = 1
 
     return { name, type, quantity }
   })
