@@ -27,17 +27,27 @@ function getOpenSolarHardware(data) {
   const direct = data?.hardware || {}
   const openSolar = data?.openSolar?.hardware || {}
 
-  const panels = Array.isArray(openSolar.panels) && openSolar.panels.length
-    ? openSolar.panels
-    : Array.isArray(direct.panels) ? direct.panels : []
+  const mergeHardware = (type) => {
+    const directItems = Array.isArray(direct?.[type]) ? direct[type] : []
+    const openSolarItems = Array.isArray(openSolar?.[type]) ? openSolar[type] : []
 
-  const inverters = Array.isArray(openSolar.inverters) && openSolar.inverters.length
-    ? openSolar.inverters
-    : Array.isArray(direct.inverters) ? direct.inverters : []
+    if (!directItems.length) return openSolarItems
+    if (!openSolarItems.length) return directItems
 
-  const batteries = Array.isArray(openSolar.batteries) && openSolar.batteries.length
-    ? openSolar.batteries
-    : Array.isArray(direct.batteries) ? direct.batteries : []
+    // OpenSolar can contain the current model/quantity while the flattened
+    // hardware record contains manufacturer details. Merge the first matching
+    // hardware item so no manufacturer/model/quantity information is lost.
+    return openSolarItems.map((item, index) => ({
+      ...(directItems[index] || {}),
+      ...(item || {}),
+    })).concat(
+      directItems.slice(openSolarItems.length)
+    )
+  }
+
+  const panels = mergeHardware("panels")
+  const inverters = mergeHardware("inverters")
+  const batteries = mergeHardware("batteries")
 
   if (panels.length || inverters.length || batteries.length) {
     return { panels, inverters, batteries }
