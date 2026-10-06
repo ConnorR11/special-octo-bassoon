@@ -688,7 +688,7 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
     const coverDetails = [
       ["SALES REP", salesRepName],
       ["DATE", date(new Date())],
-      ["CONTRACT NUMBER", contractAppointment?.contract_number || "—"],
+      ["CONTRACT NUMBER", appointment?.contract_number || "—"],
     ]
 
     const detailX = ctx.padding
