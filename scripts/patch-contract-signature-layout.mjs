@@ -203,171 +203,19 @@ async function drawItemisedBreakdown(pdf, page, ctx, data, results, appointment,
   const width = ctx.width - ctx.padding * 2
   const settings = page.settings || {}
   const configured = Array.isArray(settings.included_items) ? settings.included_items : []
-  // Build the customer-facing rows from the actual hardware record, not the
-  // template's saved product names/quantities. Hardware can exist on the
-  // current EPVS data, the OpenSolar data, or directly on the appointment.
-  // Prefer the hardware stored in the current EPVS calculation. The
-  // appointment can contain an older/stale hardware snapshot (for example
-  // 18 panels) and must not override the current OpenSolar/EPVS hardware.
-  const hardwareCandidates = [
-    data?.hardware,
-    data?.openSolar?.hardware,
-    data?.open_solar?.hardware,
-    appointment?.epvs_calculation?.data?.hardware,
-    appointment?.epvs_calculation?.data?.openSolar?.hardware,
-    appointment?.epvs_calculation?.openSolar?.hardware,
-    appointment?.hardware,
-    appointment?.openSolar?.hardware,
-    appointment?.open_solar?.hardware,
-    appointment?.openSolarData?.hardware,
-    appointment?.open_solar_data?.hardware,
-    appointment?.opensolar?.hardware,
-  ].filter((candidate) => candidate && typeof candidate === "object")
-
-  const getBestHardwareItem = (type, fallback) => {
-    const entries = hardwareCandidates.flatMap((hardware) =>
-      Array.isArray(hardware?.[type]) ? hardware[type] : []
-    )
-
-    const validEntries = entries.filter((entry) => {
-      if (!entry || typeof entry !== "object") return false
-      const model = String(entry?.model || entry?.name || "").trim()
-      return Boolean(model)
-    })
-
-    if (!validEntries.length) return fallback || null
-
-    const base = validEntries[0]
-    const baseModel = String(base?.model || base?.name || "").trim().toLowerCase()
-
-    // Merge records for the same model. This matters when OpenSolar has the
-    // model/quantity while the saved hardware record has the manufacturer.
-    return validEntries
-      .filter((entry) => {
-        const model = String(entry?.model || entry?.name || "").trim().toLowerCase()
-        return model === baseModel
-      })
-      .reduce((merged, entry) => ({
-        ...merged,
-        ...Object.fromEntries(
-          Object.entries(entry).filter(([, value]) =>
-            value !== undefined && value !== null && value !== ""
-          )
-        ),
-      }), {})
-  }
-
-  const panelHardware = getBestHardwareItem(
-    "panels",
-    getPanelHardware(data) || (
-      data?.panelModel
-        ? {
-            model: data.panelModel,
-            manufacturer: data.panelManufacturer,
-            quantity: data.panelQuantity,
-            capacity: data.panelWattage,
-          }
-        : null
-    )
-  )
-  const inverterHardware = getBestHardwareItem(
-    "inverters",
-    getHardwareItem(data, "inverters") || data?.inverter
-  )
-  const batteryHardware = getBestHardwareItem(
-    "batteries",
-    getHardwareItem(data, "batteries") ||
-      getHardwareItem(data, "storage") ||
-      data?.battery ||
-      data?.storage
-  )
-
-  const getHardwareItemName = (item, label) => {
-    if (!item) return null
-    const manufacturer = String(item?.manufacturer || item?.make || item?.brand || "").trim()
-    const model = String(item?.model || item?.name || "").trim()
-    return [manufacturer, model, label].filter(Boolean).join(" ") || null
-  }
-
-  // OpenSolar's panel record can occasionally arrive without its manufacturer
-  // even though the model is present. Keep the manufacturer associated with
-  // the known panel model so the customer-facing contract remains complete.
-  const panelModel = String(panelHardware?.model || panelHardware?.name || "").trim()
-  const panelManufacturer =
-    String(panelHardware?.manufacturer || panelHardware?.make || panelHardware?.brand || "").trim() ||
-    String(data?.panelManufacturer || data?.panel_manufacturer || "").trim() ||
-    (panelModel === "DM460G12RT-G48HBB" ? "Hengdian Group DMEGC Magnetics" : "")
 
   const items = configured.map((item) => {
     let name = typeof item === "string" ? item : item?.name ?? "—"
     const type = typeof item === "string" ? "" : item?.type ?? ""
     let quantity = typeof item === "string" ? 1 : item?.quantity ?? 1
-    const normalizedName = String(name).trim().toLowerCase()
 
-    const knownPanelModel = String(
-      panelHardware?.model ||
-      data?.panelModel ||
-      data?.panel_model ||
-      ""
-    ).trim().toLowerCase()
-
-    const isPanel =
-      normalizedName === "panels" ||
-      /\bpanels$/i.test(normalizedName) ||
-      (knownPanelModel && normalizedName === knownPanelModel) ||
-      normalizedName === "dm460g12rt-g48hbb"
-
-    const isInverter =
-      normalizedName === "inverter" ||
-      /\binverter$/i.test(normalizedName) ||
-      normalizedName === String(inverterHardware?.model || "").trim().toLowerCase() ||
-      normalizedName === String(inverterHardware?.name || "").trim().toLowerCase()
-
-    const isBattery =
-      normalizedName === "battery" ||
-      /\bbattery$/i.test(normalizedName) ||
-      normalizedName === String(batteryHardware?.model || "").trim().toLowerCase() ||
-      normalizedName === String(batteryHardware?.name || "").trim().toLowerCase()
-
-    if (isPanel) {
-      const resolvedPanelModel =
-        panelModel ||
-        String(data?.panelModel || data?.panel_model || "").trim() ||
-        String(name || "").trim()
-
-      const resolvedPanelManufacturer =
-        panelManufacturer ||
-        String(data?.panelManufacturer || data?.panel_manufacturer || "").trim()
-
-      name = [resolvedPanelManufacturer, resolvedPanelModel, "Panels"]
-        .filter(Boolean)
-        .join(" ")
-
-      quantity =
-        panelHardware?.quantity ??
-        data?.panelQuantity ??
-        data?.panel_quantity ??
-        getTotalPanelCount(data)
-
-      // If the template contains the legacy panel quantity, prefer the
-      // imported OpenSolar array total when available.
-      if (!panelHardware?.quantity) {
-        const importedPanelCount = Array.isArray(data?.openSolar?.arrays)
-          ? data.openSolar.arrays.reduce(
-              (total, array) => total + Number(array?.panelCount || 0),
-              0
-            )
-          : 0
-        if (importedPanelCount > 0) quantity = importedPanelCount
-      }
-    } else if (isInverter) {
-      name = getHardwareItemName(inverterHardware, "Inverter") || name
-      quantity = inverterHardware?.quantity ?? quantity
-    } else if (isBattery) {
-      name = getHardwareItemName(batteryHardware, "Battery") || name
-      quantity = batteryHardware?.quantity ?? quantity
+    const resolved = getContractHardwareItem(name, data)
+    if (resolved.item) {
+      name = getContractItemName(name, data)
+      quantity = resolved.item?.quantity ?? quantity
     }
 
+    const normalizedName = String(name).trim().toLowerCase()
     if (normalizedName === "roof hooks" || normalizedName === "rail fix kit") quantity = "-"
     if (normalizedName === "panel installation") quantity = 1
 
