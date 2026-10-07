@@ -8,11 +8,22 @@ const money = (value) =>
 const formatDate = (value) => {
   if (!value) return "—"
 
+  const text = String(value).trim()
+  if (!text) return "—"
+
+  // Support both date-only values and Supabase timestamps safely.
+  const dateText = /^\\d{4}-\\d{2}-\\d{2}$/.test(text)
+    ? text + "T12:00:00"
+    : text
+
+  const date = new Date(dateText)
+  if (Number.isNaN(date.getTime())) return "—"
+
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
-  }).format(new Date(`${value}T00:00:00`))
+  }).format(date)
 }
 
 /*
