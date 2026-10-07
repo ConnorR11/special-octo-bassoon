@@ -633,7 +633,11 @@ export default function EPVSCalculator({
 }, [])
   
   const appointmentInitial = useMemo(() => {
-    const saved = appointment?.epvs_calculation?.data || {}
+    const rawSaved = appointment?.epvs_calculation?.data || {}
+    // Older versions stored a separate data.openSolar object. Do not carry
+    // that legacy object forward; OpenSolar now saves into the normal EPVS
+    // calculator fields.
+    const { openSolar: _legacyOpenSolar, ...saved } = rawSaved
     const savedArrays = Array.isArray(saved.arrays)
       ? saved.arrays
       : initial.arrays
@@ -936,7 +940,6 @@ export default function EPVSCalculator({
       ...current,
       arrays: importedArrays,
       numberOfArrays: imported.length,
-      openSolar: openSolarRecord,
 
       // OpenSolar is the source of truth for proposed hardware.
       // Feed its capacities directly into the EPVS calculation inputs.
