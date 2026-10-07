@@ -225,30 +225,6 @@ export default function Reviews({ setMobile }) {
     return `${index === 0 ? "M" : "L"} ${trendX(originalIndex).toFixed(1)} ${trendYAverage(point.average).toFixed(1)}`
   }).join(" ")
 
-  const trendline = (key) => {
-    const points = reviewTrend.filter((point) => point.date < new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1))
-    if (points.length < 2) return null
-
-    const n = points.length
-    const sumX = points.reduce((sum, _, index) => sum + index, 0)
-    const sumY = points.reduce((sum, point) => sum + point[key], 0)
-    const sumXY = points.reduce((sum, point, index) => sum + index * point[key], 0)
-    const sumXX = points.reduce((sum, _, index) => sum + index * index, 0)
-    const denominator = n * sumXX - sumX * sumX
-    const slope = denominator ? (n * sumXY - sumX * sumY) / denominator : 0
-    const intercept = (sumY - slope * sumX) / n
-    const start = intercept
-    const end = intercept + slope * (reviewTrend.length - 1)
-
-    return {
-      start: Math.max(0, start),
-      end: Math.max(0, end),
-    }
-  }
-
-  const trustpilotTrendline = trendline("trustpilot")
-  const googleTrendline = trendline("google")
-
 
   return (
     <div className="reviews-page">
@@ -277,7 +253,7 @@ export default function Reviews({ setMobile }) {
             <div className="reviews-trend-legend">
               <span className="reviews-trend-legend-item"><span className="reviews-trend-legend-dot reviews-trend-trustpilot-dot" />Trustpilot</span>
               <span className="reviews-trend-legend-item"><span className="reviews-trend-legend-dot reviews-trend-google-dot" />Google</span>
-              <span className="reviews-trend-legend-item"><span className="reviews-trend-legend-dot reviews-trend-average-dot" />Running average</span><span className="reviews-trend-legend-item"><span className="reviews-trend-legend-dot reviews-trend-trustpilot-dot" />Trustpilot trend</span><span className="reviews-trend-legend-item"><span className="reviews-trend-legend-dot reviews-trend-google-dot" />Google trend</span>
+              <span className="reviews-trend-legend-item"><span className="reviews-trend-legend-dot reviews-trend-average-dot" />Running average</span>
             </div>
           </div>
 
@@ -302,24 +278,6 @@ export default function Reviews({ setMobile }) {
                 <text className="reviews-trend-axis" x={trendLeft} y={trendHeight - 10}>Reviews / quarter</text>
                 <text className="reviews-trend-axis" x={trendWidth - trendRight} y={trendHeight - 10} textAnchor="end">Average score</text>
 
-                {trustpilotTrendline && (
-                  <line
-                    className="reviews-trend-trustpilot-trend"
-                    x1={trendX(0)}
-                    y1={trendYCount(trustpilotTrendline.start)}
-                    x2={trendX(reviewTrend.length - 1)}
-                    y2={trendYCount(trustpilotTrendline.end)}
-                  />
-                )}
-                {googleTrendline && (
-                  <line
-                    className="reviews-trend-google-trend"
-                    x1={trendX(0)}
-                    y1={trendYCount(googleTrendline.start)}
-                    x2={trendX(reviewTrend.length - 1)}
-                    y2={trendYCount(googleTrendline.end)}
-                  />
-                )}
 
                 {reviewTrend.map((point, index) => {
                   const x = trendX(index)
@@ -374,7 +332,7 @@ export default function Reviews({ setMobile }) {
             </div>
           )}
 
-          <div className="reviews-trend-note">Bars show quarterly review volume, split between Trustpilot and Google. The yellow line shows the running average score. Dotted lines show Trustpilot and Google trends, excluding the current quarter.</div>
+          <div className="reviews-trend-note">Bars show quarterly review volume, split between Trustpilot and Google. The yellow line shows the running average score.</div>
         </section>
 
         <div className="reviews-top-grid">
