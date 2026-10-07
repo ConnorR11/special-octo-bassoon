@@ -161,24 +161,32 @@ export default function Reviews({ setMobile }) {
 
   const reviewTrend = React.useMemo(() => {
     const monthly = new Map()
+
     for (const review of reviews) {
       if (review.is_deleted) continue
       const date = new Date(review.review_date || review.created_at || 0)
       if (Number.isNaN(date.getTime())) continue
+
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
       const current = monthly.get(key) || {
         key,
         date: new Date(date.getFullYear(), date.getMonth(), 1),
-        count: 0,
+        trustpilot: 0,
+        google: 0,
         ratingTotal: 0,
         ratedCount: 0,
       }
-      current.count += 1
+
+      const source = String(review.source || "").toLowerCase()
+      if (source === "google") current.google += 1
+      else current.trustpilot += 1
+
       const rating = Number(review.rating)
       if (rating > 0) {
         current.ratingTotal += rating
         current.ratedCount += 1
       }
+
       monthly.set(key, current)
     }
 
@@ -186,17 +194,18 @@ export default function Reviews({ setMobile }) {
       .sort((a, b) => a.date - b.date)
       .map((row) => ({
         ...row,
+        count: row.trustpilot + row.google,
         average: row.ratedCount ? row.ratingTotal / row.ratedCount : null,
         label: row.date.toLocaleDateString("en-GB", { month: "short", year: "numeric" }),
       }))
   }, [reviews])
 
-  const trendWidth = 900
-  const trendHeight = 250
-  const trendLeft = 48
-  const trendRight = 48
-  const trendTop = 18
-  const trendBottom = 34
+  const trendWidth = 1100
+  const trendHeight = 390
+  const trendLeft = 52
+  const trendRight = 52
+  const trendTop = 22
+  const trendBottom = 42
   const trendPlotWidth = trendWidth - trendLeft - trendRight
   const trendPlotHeight = trendHeight - trendTop - trendBottom
   const maxTrendCount = Math.max(1, ...reviewTrend.map((point) => point.count))
@@ -205,15 +214,17 @@ export default function Reviews({ setMobile }) {
     : trendLeft + (index / (reviewTrend.length - 1)) * trendPlotWidth
   const trendYCount = (value) => trendTop + trendPlotHeight - (value / maxTrendCount) * trendPlotHeight
   const trendYAverage = (value) => trendTop + trendPlotHeight - ((value - 1) / 4) * trendPlotHeight
-  const trendCountPath = reviewTrend.map((point, index) => `${index === 0 ? "M" : "L"} ${trendX(index).toFixed(1)} ${trendYCount(point.count).toFixed(1)}`).join(" ")
-  const trendAveragePath = reviewTrend.filter((point) => point.average !== null).map((point, index) => `${index === 0 ? "M" : "L"} ${trendX(reviewTrend.indexOf(point)).toFixed(1)} ${trendYAverage(point.average).toFixed(1)}`).join(" ")
+  const trendAveragePath = reviewTrend.filter((point) => point.average !== null).map((point, index) => {
+    const originalIndex = reviewTrend.indexOf(point)
+    return `${index === 0 ? "M" : "L"} ${trendX(originalIndex).toFixed(1)} ${trendYAverage(point.average).toFixed(1)}`
+  }).join(" ")
 
 
   return (
     <div className="reviews-page">
       <style>{`
         .reviews-page{box-sizing:border-box;width:100%;min-height:100vh;padding:28px;background:#f5f7fa}.reviews-container{width:100%;max-width:1500px;margin:0 auto}.reviews-mobile-menu{display:none;position:fixed;top:12px;left:12px;z-index:1100;width:44px;height:44px;border:1px solid #d0d5dd;border-radius:9px;background:#fff;color:#344054;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.12);cursor:pointer}.reviews-header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:18px}.reviews-title{margin:0;font-size:28px;line-height:1.2}.reviews-subtitle{margin:6px 0 0;color:#667085;font-size:14px}.reviews-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;flex-shrink:0}.reviews-button{min-height:42px;padding:10px 15px;border-radius:8px;cursor:pointer;font-weight:600;white-space:nowrap;box-sizing:border-box}.reviews-button-secondary{border:1px solid #d0d5dd;background:#fff;color:#101828}.reviews-button-primary{border:1px solid #111827;background:#111827;color:#fff}.reviews-button-primary:disabled{background:#d1d5db;border-color:#d1d5db;color:#667085;cursor:default}.reviews-message{margin-top:14px;padding:11px 14px;border-radius:8px;background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;font-size:14px;overflow-wrap:anywhere}.reviews-location{margin-top:14px;padding:14px;border-radius:8px;background:#fff;border:1px solid #d0d5dd;font-size:13px}.reviews-location-row{display:flex;gap:20px;flex-wrap:wrap;margin-top:8px}.reviews-location-value{font-family:monospace;word-break:break-all}
-        .reviews-top-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(360px,.85fr);gap:18px;align-items:start;margin:0 0 24px}.trustpilot-dashboard{margin:0}.reviews-google-column{display:flex;flex-direction:column;gap:14px;min-width:0}.google-review-card{box-sizing:border-box;background:#fff;border:1px solid #dadce0;border-radius:14px;padding:22px;min-width:0;box-shadow:0 1px 2px rgba(60,64,67,.08);align-self:start}.google-review-header{display:flex;align-items:center;justify-content:space-between;gap:12px}.google-review-brand{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:600;color:#202124}.google-logo{font-size:24px;font-weight:700;font-family:Arial,sans-serif;background:linear-gradient(90deg,#4285f4 0 25%,#34a853 25% 50%,#fbbc05 50% 75%,#ea4335 75%);-webkit-background-clip:text;background-clip:text;color:transparent}.google-review-label{font-size:12px;color:#5f6368}.google-review-rating-row{display:flex;align-items:center;gap:10px;margin-top:18px}.google-review-rating{font-size:32px;line-height:1;font-weight:500;color:#202124}.google-review-stars{display:flex;gap:2px;color:#fbbc04;font-size:21px;line-height:1}.google-review-count{margin-top:7px;font-size:12px;color:#5f6368}.google-review-divider{height:1px;background:#e8eaed;margin:17px 0 15px}.google-review-summary{display:flex;align-items:center;gap:14px}.google-review-summary-rating{font-size:34px;line-height:1;font-weight:500;color:#202124}.google-review-summary-details{display:flex;flex-direction:column;gap:6px}.google-review-summary-stars{display:flex;gap:2px;color:#fbbc04;font-size:22px;line-height:1}.google-review-summary-count{font-size:12px;color:#5f6368}.google-review-footer{margin-top:16px;font-size:11px;color:#5f6368}.google-review-footer strong{color:#202124}.trustpilot-dashboard-title{margin:0 0 10px;font-size:16px;font-weight:600;color:#101828}.trustpilot-dashboard-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(210px,.7fr) minmax(210px,.7fr);gap:14px}.trustpilot-card{box-sizing:border-box;background:#fff;border:1px solid #ddd9d4;border-radius:14px;padding:22px;min-height:128px}.trustpilot-score-card{position:relative}.trustpilot-card-title{font-size:13px;color:#344054;display:flex;align-items:center;gap:6px}.trustpilot-info{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;background:#667085;color:#fff;font-size:9px;font-weight:700}.trustpilot-score-row{display:flex;align-items:center;gap:9px;margin-top:7px}.trustpilot-score{font-size:28px;line-height:1;font-weight:700;color:#101828}.trustpilot-stars{display:flex;gap:2px}.trustpilot-star-box{display:flex;align-items:center;justify-content:center;width:22px;height:22px;background:#00b67a;color:#fff;font-size:15px;line-height:1}.trustpilot-card-subtitle{margin-top:9px;font-size:12px;color:#475467}.trustpilot-new-value{margin-top:8px;font-size:25px;line-height:1;font-weight:700;color:#101828}.trustpilot-new-date{margin-top:9px;font-size:11px;color:#667085}.trustpilot-new-date:before{content:"▣";margin-right:7px;color:#98a2b3}.trustpilot-awaiting{margin-top:9px;font-size:13px;color:#475467;line-height:1.45}.trustpilot-awaiting strong{color:#101828}.trustpilot-breakdown{margin-top:14px}.trustpilot-breakdown-card{padding:18px 22px}.google-breakdown-card{box-sizing:border-box;background:#fff;border:1px solid #dadce0;border-radius:14px;padding:18px 22px}.google-breakdown-title{font-size:13px;color:#3c4043;margin-bottom:16px}.google-breakdown-row{display:grid;grid-template-columns:60px minmax(80px,1fr) 45px;align-items:center;gap:10px;margin:10px 0}.google-breakdown-label{font-size:13px;color:#202124}.google-bar-track{height:9px;background:#e8eaed;border-radius:4px;overflow:hidden}.google-bar-fill{height:100%;background:#4285f4;border-radius:4px;min-width:0}.google-breakdown-percent{text-align:right;font-size:13px;color:#202124}.google-dashboard-note{margin-top:8px;font-size:11px;color:#5f6368}.reviews-trend-card{box-sizing:border-box;width:100%;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:22px 24px;margin:0 0 20px}.reviews-trend-header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:18px}.reviews-trend-title{margin:0;font-size:17px;line-height:1.3;color:#101828}.reviews-trend-subtitle{margin:5px 0 0;font-size:12px;color:#667085}.reviews-trend-legend{display:flex;gap:18px;flex-wrap:wrap;justify-content:flex-end;font-size:12px;color:#475467;padding-top:2px}.reviews-trend-chart{width:100%;overflow:hidden}.reviews-trend-svg{display:block;width:100%;height:360px}.reviews-trend-empty{height:320px;display:flex;align-items:center;justify-content:center;color:#667085;font-size:13px}.reviews-trend-legend-item{display:flex;align-items:center;gap:6px}.reviews-trend-legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block}.reviews-trend-axis{font-size:10px;fill:#667085}.reviews-trend-gridline{stroke:#eef0f2;stroke-width:1}.reviews-trend-count-line{fill:none;stroke:#4285f4;stroke-width:2.5}.reviews-trend-average-line{fill:none;stroke:#00b67a;stroke-width:2.5}.reviews-trend-count-point{fill:#4285f4}.reviews-trend-average-point{fill:#00b67a}.reviews-trend-tooltip{font-size:10px;fill:#101828;font-weight:600}.reviews-trend-note{margin-top:8px;font-size:11px;color:#667085}.trustpilot-breakdown-title{font-size:13px;color:#344054;margin-bottom:16px}.trustpilot-breakdown-row{display:grid;grid-template-columns:60px minmax(80px,1fr) 45px;align-items:center;gap:10px;margin:10px 0}.trustpilot-breakdown-label{font-size:13px;color:#101828}.trustpilot-bar-track{height:9px;background:#eeeae6;border-radius:4px;overflow:hidden}.trustpilot-bar-fill{height:100%;background:#00b67a;border-radius:4px;min-width:0}.trustpilot-breakdown-percent{text-align:right;font-size:13px;color:#101828}.trustpilot-dashboard-note{margin-top:8px;font-size:11px;color:#667085}
+        .reviews-top-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(360px,.85fr);gap:18px;align-items:start;margin:0 0 24px}.trustpilot-dashboard{margin:0}.reviews-google-column{display:flex;flex-direction:column;gap:14px;min-width:0}.google-review-card{box-sizing:border-box;background:#fff;border:1px solid #dadce0;border-radius:14px;padding:22px;min-width:0;box-shadow:0 1px 2px rgba(60,64,67,.08);align-self:start}.google-review-header{display:flex;align-items:center;justify-content:space-between;gap:12px}.google-review-brand{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:600;color:#202124}.google-logo{font-size:24px;font-weight:700;font-family:Arial,sans-serif;background:linear-gradient(90deg,#4285f4 0 25%,#34a853 25% 50%,#fbbc05 50% 75%,#ea4335 75%);-webkit-background-clip:text;background-clip:text;color:transparent}.google-review-label{font-size:12px;color:#5f6368}.google-review-rating-row{display:flex;align-items:center;gap:10px;margin-top:18px}.google-review-rating{font-size:32px;line-height:1;font-weight:500;color:#202124}.google-review-stars{display:flex;gap:2px;color:#fbbc04;font-size:21px;line-height:1}.google-review-count{margin-top:7px;font-size:12px;color:#5f6368}.google-review-divider{height:1px;background:#e8eaed;margin:17px 0 15px}.google-review-summary{display:flex;align-items:center;gap:14px}.google-review-summary-rating{font-size:34px;line-height:1;font-weight:500;color:#202124}.google-review-summary-details{display:flex;flex-direction:column;gap:6px}.google-review-summary-stars{display:flex;gap:2px;color:#fbbc04;font-size:22px;line-height:1}.google-review-summary-count{font-size:12px;color:#5f6368}.google-review-footer{margin-top:16px;font-size:11px;color:#5f6368}.google-review-footer strong{color:#202124}.trustpilot-dashboard-title{margin:0 0 10px;font-size:16px;font-weight:600;color:#101828}.trustpilot-dashboard-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(210px,.7fr) minmax(210px,.7fr);gap:14px}.trustpilot-card{box-sizing:border-box;background:#fff;border:1px solid #ddd9d4;border-radius:14px;padding:22px;min-height:128px}.trustpilot-score-card{position:relative}.trustpilot-card-title{font-size:13px;color:#344054;display:flex;align-items:center;gap:6px}.trustpilot-info{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;background:#667085;color:#fff;font-size:9px;font-weight:700}.trustpilot-score-row{display:flex;align-items:center;gap:9px;margin-top:7px}.trustpilot-score{font-size:28px;line-height:1;font-weight:700;color:#101828}.trustpilot-stars{display:flex;gap:2px}.trustpilot-star-box{display:flex;align-items:center;justify-content:center;width:22px;height:22px;background:#00b67a;color:#fff;font-size:15px;line-height:1}.trustpilot-card-subtitle{margin-top:9px;font-size:12px;color:#475467}.trustpilot-new-value{margin-top:8px;font-size:25px;line-height:1;font-weight:700;color:#101828}.trustpilot-new-date{margin-top:9px;font-size:11px;color:#667085}.trustpilot-new-date:before{content:"▣";margin-right:7px;color:#98a2b3}.trustpilot-awaiting{margin-top:9px;font-size:13px;color:#475467;line-height:1.45}.trustpilot-awaiting strong{color:#101828}.trustpilot-breakdown{margin-top:14px}.trustpilot-breakdown-card{padding:18px 22px}.google-breakdown-card{box-sizing:border-box;background:#fff;border:1px solid #dadce0;border-radius:14px;padding:18px 22px}.google-breakdown-title{font-size:13px;color:#3c4043;margin-bottom:16px}.google-breakdown-row{display:grid;grid-template-columns:60px minmax(80px,1fr) 45px;align-items:center;gap:10px;margin:10px 0}.google-breakdown-label{font-size:13px;color:#202124}.google-bar-track{height:9px;background:#e8eaed;border-radius:4px;overflow:hidden}.google-bar-fill{height:100%;background:#4285f4;border-radius:4px;min-width:0}.google-breakdown-percent{text-align:right;font-size:13px;color:#202124}.google-dashboard-note{margin-top:8px;font-size:11px;color:#5f6368}.reviews-trend-card{box-sizing:border-box;width:100%;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:22px 24px;margin:0 0 20px}.reviews-trend-header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:18px}.reviews-trend-title{margin:0;font-size:17px;line-height:1.3;color:#101828}.reviews-trend-subtitle{margin:5px 0 0;font-size:12px;color:#667085}.reviews-trend-legend{display:flex;gap:18px;flex-wrap:wrap;justify-content:flex-end;font-size:12px;color:#475467;padding-top:2px}.reviews-trend-chart{width:100%;overflow:hidden}.reviews-trend-svg{display:block;width:100%;height:360px}.reviews-trend-empty{height:320px;display:flex;align-items:center;justify-content:center;color:#667085;font-size:13px}.reviews-trend-legend-item{display:flex;align-items:center;gap:6px}.reviews-trend-legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block}.reviews-trend-trustpilot-dot{background:#00b67a}.reviews-trend-google-dot{background:#4285f4}.reviews-trend-average-dot{background:#fbbc04}.reviews-trend-trustpilot-bar{fill:#00b67a}.reviews-trend-google-bar{fill:#4285f4}.reviews-trend-axis{font-size:10px;fill:#667085}.reviews-trend-gridline{stroke:#eef0f2;stroke-width:1}.reviews-trend-count-line{fill:none;stroke:#4285f4;stroke-width:2.5}.reviews-trend-average-line{fill:none;stroke:#fbbc04;stroke-width:3}.reviews-trend-count-point{fill:#4285f4}.reviews-trend-average-point{fill:#00b67a}.reviews-trend-tooltip{font-size:10px;fill:#101828;font-weight:600}.reviews-trend-note{margin-top:8px;font-size:11px;color:#667085}.trustpilot-breakdown-title{font-size:13px;color:#344054;margin-bottom:16px}.trustpilot-breakdown-row{display:grid;grid-template-columns:60px minmax(80px,1fr) 45px;align-items:center;gap:10px;margin:10px 0}.trustpilot-breakdown-label{font-size:13px;color:#101828}.trustpilot-bar-track{height:9px;background:#eeeae6;border-radius:4px;overflow:hidden}.trustpilot-bar-fill{height:100%;background:#00b67a;border-radius:4px;min-width:0}.trustpilot-breakdown-percent{text-align:right;font-size:13px;color:#101828}.trustpilot-dashboard-note{margin-top:8px;font-size:11px;color:#667085}
         .reviews-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:0 0 22px}.reviews-stat{min-width:0;box-sizing:border-box;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px}.reviews-stat-title{font-size:13px;color:#667085}.reviews-stat-value{margin-top:6px;font-size:26px;line-height:1.2;font-weight:700}.reviews-stat-subtitle{margin-top:5px;font-size:12px;color:#667085}.reviews-stat-trustpilot{border-left:4px solid #00b67a}.reviews-stat-google{border-left:4px solid #4285f4}.reviews-stat-real{border-left:4px solid #667085}.reviews-panel{box-sizing:border-box;width:100%;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px}.reviews-panel-header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px}.reviews-panel-title{margin:0;font-size:18px}.reviews-panel-description{margin:4px 0 0;color:#667085;font-size:13px}.reviews-filter{flex:0 0 auto;box-sizing:border-box;min-height:38px;padding:8px 12px;border:1px solid #d0d5dd;border-radius:8px;background:#fff;color:#101828}.reviews-table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.reviews-table{width:100%;min-width:720px;border-collapse:collapse;table-layout:fixed}.reviews-table th{text-align:left;padding:11px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#667085;font-weight:600}.reviews-table td{padding:13px 10px;border-bottom:1px solid #f2f4f7;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}.reviews-source{font-weight:600;text-transform:capitalize}.reviews-rating{white-space:nowrap;letter-spacing:1px}.reviews-review{max-width:500px;line-height:1.45}.reviews-date,.reviews-status{white-space:nowrap}.reviews-empty{padding:50px 20px;text-align:center;color:#667085}
         @media(max-width:1100px){.reviews-top-grid{grid-template-columns:1fr}.trustpilot-dashboard-grid{grid-template-columns:1fr 1fr}.trustpilot-breakdown-card{grid-column:1/-1}}
         @media(max-width:900px){.reviews-page{padding:20px}.reviews-header{flex-direction:column;gap:16px}.reviews-actions{width:100%;justify-content:flex-start}.reviews-button{flex:1 1 220px}.reviews-mobile-menu{display:flex}.trustpilot-dashboard-grid{grid-template-columns:1fr 1fr}}
@@ -228,55 +239,94 @@ export default function Reviews({ setMobile }) {
         </div>
 
                     <section className="reviews-trend-card">
-              <div className="reviews-trend-header">
-                <div>
-                  <h2 className="reviews-trend-title">Review performance over time</h2>
-                  <p className="reviews-trend-subtitle">Monthly review volume and average rating across Trustpilot and Google.</p>
-                </div>
-                <div className="reviews-trend-legend">
-                  <span className="reviews-trend-legend-item"><span className="reviews-trend-legend-dot" style={{ background: "#4285f4" }} />Reviews</span>
-                  <span className="reviews-trend-legend-item"><span className="reviews-trend-legend-dot" style={{ background: "#00b67a" }} />Average score</span>
-                </div>
-              </div>
-              {reviewTrend.length === 0 ? (
-                <div className="reviews-trend-empty">No dated reviews are available to chart yet.</div>
-              ) : (
-                <div className="reviews-trend-chart">
-                  <svg className="reviews-trend-svg" viewBox={`0 0 ${trendWidth} ${trendHeight}`} preserveAspectRatio="none" role="img" aria-label="Monthly review volume and average score over time">
-                    {[0, 0.25, 0.5, 0.75, 1].map((step) => {
-                      const y = trendTop + trendPlotHeight - step * trendPlotHeight
-                      const countLabel = Math.round(step * maxTrendCount).toLocaleString("en-GB")
-                      const averageLabel = (1 + step * 4).toFixed(1)
-                      return (
-                        <g key={step}>
-                          <line className="reviews-trend-gridline" x1={trendLeft} x2={trendWidth - trendRight} y1={y} y2={y} />
-                          <text className="reviews-trend-axis" x={trendLeft - 8} y={y + 3} textAnchor="end">{countLabel}</text>
-                          <text className="reviews-trend-axis" x={trendWidth - trendRight + 8} y={y + 3}>{averageLabel}</text>
-                        </g>
-                      )
-                    })}
-                    <text className="reviews-trend-axis" x={trendLeft} y={trendHeight - 8}>Reviews</text>
-                    <text className="reviews-trend-axis" x={trendWidth - trendRight} y={trendHeight - 8} textAnchor="end">Score</text>
-                    {reviewTrend.length > 1 && <path className="reviews-trend-count-line" d={trendCountPath} />}
-                    {reviewTrend.length > 1 && trendAveragePath && <path className="reviews-trend-average-line" d={trendAveragePath} />}
-                    {reviewTrend.map((point, index) => (
-                      <g key={point.key}>
-                        <circle className="reviews-trend-count-point" cx={trendX(index)} cy={trendYCount(point.count)} r="3.5">
-                          <title>{point.label}: {point.count.toLocaleString("en-GB")} reviews</title>
+          <div className="reviews-trend-header">
+            <div>
+              <h2 className="reviews-trend-title">Review performance over time</h2>
+              <p className="reviews-trend-subtitle">Monthly review volume by source and combined average rating.</p>
+            </div>
+            <div className="reviews-trend-legend">
+              <span className="reviews-trend-legend-item"><span className="reviews-trend-legend-dot reviews-trend-trustpilot-dot" />Trustpilot</span>
+              <span className="reviews-trend-legend-item"><span className="reviews-trend-legend-dot reviews-trend-google-dot" />Google</span>
+              <span className="reviews-trend-legend-item"><span className="reviews-trend-legend-dot reviews-trend-average-dot" />Average score</span>
+            </div>
+          </div>
+
+          {reviewTrend.length === 0 ? (
+            <div className="reviews-trend-empty">No dated reviews are available to chart yet.</div>
+          ) : (
+            <div className="reviews-trend-chart">
+              <svg className="reviews-trend-svg" viewBox={`0 0 ${trendWidth} ${trendHeight}`} preserveAspectRatio="none" role="img" aria-label="Monthly Trustpilot and Google review volume with combined average score">
+                {[0, 0.25, 0.5, 0.75, 1].map((step) => {
+                  const y = trendTop + trendPlotHeight - step * trendPlotHeight
+                  const countLabel = Math.round(step * maxTrendCount).toLocaleString("en-GB")
+                  const averageLabel = (1 + step * 4).toFixed(1)
+                  return (
+                    <g key={step}>
+                      <line className="reviews-trend-gridline" x1={trendLeft} x2={trendWidth - trendRight} y1={y} y2={y} />
+                      <text className="reviews-trend-axis" x={trendLeft - 9} y={y + 4} textAnchor="end">{countLabel}</text>
+                      <text className="reviews-trend-axis" x={trendWidth - trendRight + 9} y={y + 4}>{averageLabel}</text>
+                    </g>
+                  )
+                })}
+
+                <text className="reviews-trend-axis" x={trendLeft} y={trendHeight - 10}>Reviews / month</text>
+                <text className="reviews-trend-axis" x={trendWidth - trendRight} y={trendHeight - 10} textAnchor="end">Average score</text>
+
+                {reviewTrend.map((point, index) => {
+                  const x = trendX(index)
+                  const barWidth = Math.max(5, Math.min(18, trendPlotWidth / Math.max(reviewTrend.length * 1.8, 1)))
+                  const trustpilotHeight = trendPlotHeight * (point.trustpilot / maxTrendCount)
+                  const googleHeight = trendPlotHeight * (point.google / maxTrendCount)
+                  const totalHeight = trustpilotHeight + googleHeight
+                  const barBottom = trendTop + trendPlotHeight
+
+                  return (
+                    <g key={point.key}>
+                      {point.trustpilot > 0 && (
+                        <rect
+                          className="reviews-trend-trustpilot-bar"
+                          x={x - barWidth / 2}
+                          y={barBottom - trustpilotHeight}
+                          width={barWidth}
+                          height={trustpilotHeight}
+                          rx="2"
+                        >
+                          <title>{point.label}: {point.trustpilot} Trustpilot reviews</title>
+                        </rect>
+                      )}
+                      {point.google > 0 && (
+                        <rect
+                          className="reviews-trend-google-bar"
+                          x={x - barWidth / 2}
+                          y={barBottom - totalHeight}
+                          width={barWidth}
+                          height={googleHeight}
+                          rx="2"
+                        >
+                          <title>{point.label}: {point.google} Google reviews</title>
+                        </rect>
+                      )}
+                      {point.average !== null && (
+                        <circle className="reviews-trend-average-point" cx={x} cy={trendYAverage(point.average)} r="4">
+                          <title>{point.label}: {point.average.toFixed(2)} combined average</title>
                         </circle>
-                        {point.average !== null && <circle className="reviews-trend-average-point" cx={trendX(index)} cy={trendYAverage(point.average)} r="3.5">
-                          <title>{point.label}: {point.average.toFixed(2)} average</title>
-                        </circle>}
-                        {(index === 0 || index === reviewTrend.length - 1 || index % Math.max(1, Math.ceil(reviewTrend.length / 8)) === 0) && (
-                          <text className="reviews-trend-axis" x={trendX(index)} y={trendHeight - 16} textAnchor="middle">{point.label}</text>
-                        )}
-                      </g>
-                    ))}
-                  </svg>
-                </div>
-              )}
-              <div className="reviews-trend-note">The blue line shows reviews received that month. The green line shows the average score for that month.</div>
-            </section>
+                      )}
+                      {(index === 0 || index === reviewTrend.length - 1 || index % Math.max(1, Math.ceil(reviewTrend.length / 8)) === 0) && (
+                        <text className="reviews-trend-axis" x={x} y={trendHeight - 18} textAnchor="middle">{point.label}</text>
+                      )}
+                    </g>
+                  )
+                })}
+
+                {reviewTrend.length > 1 && trendAveragePath && (
+                  <path className="reviews-trend-average-line" d={trendAveragePath} />
+                )}
+              </svg>
+            </div>
+          )}
+
+          <div className="reviews-trend-note">Bars show monthly review volume, split between Trustpilot and Google. The yellow line shows the combined average score for that month.</div>
+        </section>
 
         <div className="reviews-top-grid">
           <section className="trustpilot-dashboard">
