@@ -747,6 +747,7 @@ function DataDashboard() {
         )}
       </div>
 
+        </>
       ) : (
         <>
           {prontoError && (
