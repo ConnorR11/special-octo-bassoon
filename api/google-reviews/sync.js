@@ -8,7 +8,7 @@ import {
 } from "./_google-reviews.js"
 
 const CONFIG_EVENT_NAME = "google-reviews-location-config"
-const REVIEW_IMPORT_SIZE = 10
+const REVIEW_IMPORT_SIZE = 50
 const GOOGLE_PAGE_SIZE = 50
 const KNOWN_LOCATION_ID = "9930514822053454607"
 
@@ -345,7 +345,7 @@ export default async function handler(req, res) {
     }
 
     // Google returns reviews in pages. Keep walking forward until we have
-    // 10 reviews that are not already stored in the CRM.
+    // 50 reviews that are not already stored in the CRM.
     while (reviewsToImport.length < REVIEW_IMPORT_SIZE) {
       pageCount += 1
 
