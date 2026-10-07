@@ -277,6 +277,7 @@ export default function Reviews({ setMobile }) {
                   const barWidth = Math.max(5, Math.min(18, trendPlotWidth / Math.max(reviewTrend.length * 1.8, 1)))
                   const trustpilotHeight = trendPlotHeight * (point.trustpilot / maxTrendCount)
                   const googleHeight = trendPlotHeight * (point.google / maxTrendCount)
+                  const totalHeight = trustpilotHeight + googleHeight
                   const barBottom = trendTop + trendPlotHeight
 
                   return (
