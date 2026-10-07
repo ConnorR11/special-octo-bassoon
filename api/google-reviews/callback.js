@@ -1,4 +1,4 @@
-import { verifyState } from "./_google-reviews.js"
+import { verifyState, saveRefreshToken } from "./_google-reviews.js"
 
 export default async function handler(req, res) {
   const { code, state, error } = req.query || {}
@@ -40,6 +40,8 @@ export default async function handler(req, res) {
       console.error("Google Reviews token exchange failed:", tokens)
       return res.status(502).send("Google Reviews authorisation could not be completed. Check the OAuth client, scope and redirect URI.")
     }
+
+    await saveRefreshToken(tokens.refresh_token)
 
     const requestHost = String(req.headers.host || "").split(":")[0].toLowerCase()
     const domainAttribute = requestHost === "crm.homeshield.ltd" || requestHost.endsWith(".homeshield.ltd")
