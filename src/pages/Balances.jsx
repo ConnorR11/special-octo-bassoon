@@ -31,49 +31,62 @@ export default function Balances({ onSelect }) {
       setError("")
 
       try {
-        const results = []
-        let from = 0
+        async function loadQuery(query) {
+          const results = []
+          let from = 0
 
-        while (true) {
-          const { data, error: supabaseError } = await supabase
-            .from("deals")
-            .select("*")
-            .or("balance_outstanding.gt.0,and(admin_fee_amount.gt.0,admin_fee_received_date.is.null)")
-            .range(from, from + PAGE_SIZE - 1)
+          while (true) {
+            const { data, error: supabaseError } = await query
+              .range(from, from + PAGE_SIZE - 1)
 
-          if (supabaseError) throw supabaseError
+            if (supabaseError) throw supabaseError
 
-          const batch = data || []
-          results.push(...batch)
+            const batch = data || []
+            results.push(...batch)
 
-          if (batch.length < PAGE_SIZE) break
-          from += PAGE_SIZE
+            if (batch.length < PAGE_SIZE) break
+            from += PAGE_SIZE
+          }
+
+          return results
         }
 
-        const obligations = results.flatMap((deal) => {
-          const rows = []
+        const balanceQuery = supabase
+          .from("deals")
+          .select("*")
+          .gt("balance_outstanding", 0)
+          .not("pipedrive_stage", "in", "(Customer Cancelled,Decline)")
+          .order("estimated_payment_date", { ascending: true, nullsFirst: false })
 
-          const balance = toNumber(deal?.balance_outstanding)
-          if (balance > 0) {
-            rows.push({
-              ...deal,
-              balanceType: "Balance",
-              displayBalance: balance,
-              paymentDate: deal?.estimated_payment_date || null,
-            })
+        const adminQuery = supabase
+          .from("deals")
+          .select("*")
+          .gt("admin_fee_amount", 0)
+          .is("admin_fee_received_date", null)
+          .not("pipedrive_stage", "in", "(Customer Cancelled,Decline)")
+          .order("admin_fee_expected_date", { ascending: true, nullsFirst: false })
+
+        const [balanceResults, adminResults] = await Promise.all([
+          loadQuery(balanceQuery),
+          loadQuery(adminQuery),
+        ])
+
+        const results = [
+          ...balanceResults.map((deal) => ({ ...deal, balanceType: "Balance" })),
+          ...adminResults.map((deal) => ({ ...deal, balanceType: "Admin Fee" })),
+        ]
+
+        const obligations = results.map((deal) => {
+          const isAdminFee = deal?.balanceType === "Admin Fee"
+          return {
+            ...deal,
+            displayBalance: isAdminFee
+              ? toNumber(deal?.admin_fee_amount)
+              : toNumber(deal?.balance_outstanding),
+            paymentDate: isAdminFee
+              ? deal?.admin_fee_expected_date || null
+              : deal?.estimated_payment_date || null,
           }
-
-          const adminFee = toNumber(deal?.admin_fee_amount)
-          if (adminFee > 0 && !deal?.admin_fee_received_date) {
-            rows.push({
-              ...deal,
-              balanceType: "Admin Fee",
-              displayBalance: adminFee,
-              paymentDate: deal?.admin_fee_expected_date || null,
-            })
-          }
-
-          return rows
         })
 
         obligations.sort((a, b) => {
@@ -124,6 +137,14 @@ export default function Balances({ onSelect }) {
     (total, deal) => total + toNumber(deal?.displayBalance),
     0
   )
+
+  const totalBalance = filteredDeals
+    .filter((deal) => deal?.balanceType === "Balance")
+    .reduce((total, deal) => total + toNumber(deal?.displayBalance), 0)
+
+  const totalAdminFees = filteredDeals
+    .filter((deal) => deal?.balanceType === "Admin Fee")
+    .reduce((total, deal) => total + toNumber(deal?.displayBalance), 0)
 
   const paymentChartData = useMemo(() => {
     const today = new Date()
@@ -225,15 +246,23 @@ export default function Balances({ onSelect }) {
             >
               Outstanding balances
             </div>
-            <div
-              style={{
-                marginTop: 4,
-                fontSize: 22,
-                fontWeight: 800,
-                color: "#263645",
-              }}
-            >
-              {money(totalOutstanding)}
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 28, marginTop: 4, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, color: "#7b8790", textTransform: "uppercase", letterSpacing: ".04em" }}>
+                  Job balances
+                </div>
+                <div style={{ marginTop: 2, fontSize: 22, fontWeight: 800, color: "#263645" }}>
+                  {money(totalBalance)}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, color: "#b45309", textTransform: "uppercase", letterSpacing: ".04em" }}>
+                  Admin fees
+                </div>
+                <div style={{ marginTop: 2, fontSize: 22, fontWeight: 800, color: "#b45309" }}>
+                  {money(totalAdminFees)}
+                </div>
+              </div>
             </div>
             <div
               style={{
@@ -242,7 +271,7 @@ export default function Balances({ onSelect }) {
                 color: "#8a959d",
               }}
             >
-              {filteredDeals.length} {filteredDeals.length === 1 ? "item" : "items"} outstanding
+              {filteredDeals.length} {filteredDeals.length === 1 ? "item" : "items"} outstanding · {money(totalOutstanding)} total
             </div>
           </div>
 
