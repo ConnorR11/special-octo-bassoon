@@ -1,6 +1,7 @@
 import { createIntegrationLog, updateIntegrationLog } from "../_integration-log.js"
 import {
   getAccessToken,
+  getStoredRefreshToken,
   googleBusinessRequest,
   normaliseGoogleReview,
   parseCookies,
@@ -312,7 +313,8 @@ export default async function handler(req, res) {
       console.error("Unable to create Google Reviews integration event log:", error)
     }
 
-    const refreshToken = parseCookies(req.headers.cookie).google_reviews_refresh_token
+    const cookies = parseCookies(req.headers.cookie)
+    const refreshToken = cookies.google_reviews_refresh_token || await getStoredRefreshToken()
     if (!refreshToken) {
       const error = new Error("Google Reviews is not connected. Open /api/google-reviews/auth first.")
       error.status = 401
