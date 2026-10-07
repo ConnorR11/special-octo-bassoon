@@ -84,7 +84,7 @@ function formatDateTime(value) {
 
   // Appointment times in the CRM are stored as the local appointment clock time.
   // Do not convert the value through UTC/BST, otherwise UK summer time adds an hour.
-  const match = String(value).match(/^(\\d{4})-(\\d{2})-(\\d{2})[T ](\\d{2}):(\\d{2})/)
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/)
   if (match) {
     const [, year, month, day, hour, minute] = match
     const date = new Date(Number(year), Number(month) - 1, Number(day))
