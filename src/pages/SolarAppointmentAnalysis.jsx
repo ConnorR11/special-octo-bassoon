@@ -748,11 +748,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
         .solar-analysis-table th.solar-analysis-pricing-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
         .solar-analysis-table th.solar-analysis-epvs-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
         .solar-analysis-table td{padding:11px 12px;border-top:1px solid #e8edf2;color:#334155;white-space:nowrap}.solar-analysis-table td.solar-analysis-empty-field{background:#fef2f2;color:#991b1b}
-        .solar-analysis-table td.solar-analysis-electricity-field:first-of-type,
-        .solar-analysis-table td.solar-analysis-design-field:first-of-type,
-        .solar-analysis-table td.solar-analysis-octopus-field:first-of-type,
-        .solar-analysis-table td.solar-analysis-pricing-field:first-of-type,
-        .solar-analysis-table td.solar-analysis-epvs-field:first-of-type{border-left:4px solid #000}
+        .solar-analysis-table td.solar-analysis-group-start{border-left:4px solid #000}
         .solar-analysis-table tbody tr{cursor:pointer}
         .solar-analysis-table tbody tr:hover{background:#f8fafc}
         .solar-analysis-name{font-weight:750;color:#0f172a}
@@ -956,6 +952,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
                               key={group.key + "-" + index}
                               className={[
                                 "solar-analysis-" + group.key + "-field",
+                                index === 0 ? "solar-analysis-group-start" : "",
                                 isEmptyDisplayValue(value) ? "solar-analysis-empty-field" : "",
                               ].filter(Boolean).join(" ")}
                             >
