@@ -995,22 +995,19 @@ export default function EPVSCalculator({
 
   const [openSolarSavePending, setOpenSolarSavePending] = useState(false)
 
-  const [openSolarImageUrl, setOpenSolarImageUrl] = useState(() => {
-    const saved = appointment?.epvs_calculation?.data?.openSolar
-    return String(saved?.systemImageUrl || saved?.imageUrl || "").trim()
-  })
-
-  useEffect(() => {
-    const saved = appointment?.epvs_calculation?.data?.openSolar
-    setOpenSolarImageUrl(
-      String(saved?.systemImageUrl || saved?.imageUrl || "").trim()
-    )
-  }, [appointment])
+  // The OpenSolar system image is persisted inside the same EPVS JSON
+  // structure as the rest of the OpenSolar response. Read it directly from
+  // the appointment rather than maintaining a separate image state.
+  const openSolarImageUrl = String(
+    appointment?.epvs_calculation?.data?.openSolar?.systemImageUrl ||
+    appointment?.epvs_calculation?.data?.openSolar?.imageUrl ||
+    data?.openSolar?.systemImageUrl ||
+    data?.openSolar?.imageUrl ||
+    ""
+  ).trim()
 
   const handleOpenSolarDesignLoaded = (payload) => {
     const imported = Array.isArray(payload?.arrays) ? payload.arrays : []
-    setOpenSolarImageUrl(String(payload?.systemImageUrl || payload?.imageUrl || ""))
-
     if (!imported.length) {
       setFluxRateError("OpenSolar did not return any array/module groups for this project.")
       return
