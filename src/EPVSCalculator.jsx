@@ -726,23 +726,56 @@ export default function EPVSCalculator({
         throw new Error(payload?.error || "Unable to retrieve Octopus Flux rates.")
       }
 
-      setData((current) => ({
-        ...current,
+      const retrievedAt = payload.retrievedAt || new Date().toISOString()
+
+      const rates = {
         tariff: "Standard Flux",
         // The API returns dayImport/offPeakImport/peakImport,
         // while the calculator stores them as fluxDayImport/fluxImport/fluxPeakImport.
-        fluxDayImport: Number(payload.rates?.dayImport ?? current.fluxDayImport),
-        fluxDayExport: Number(payload.rates?.dayExport ?? current.fluxDayExport),
-        fluxImport: Number(payload.rates?.offPeakImport ?? current.fluxImport),
-        fluxExport: Number(payload.rates?.offPeakExport ?? current.fluxExport),
-        fluxPeakImport: Number(payload.rates?.peakImport ?? current.fluxPeakImport),
-        fluxPeakExport: Number(payload.rates?.peakExport ?? current.fluxPeakExport),
-        fluxStandingCharge: Number(payload.rates?.standingCharge ?? current.fluxStandingCharge),
-        fluxRatesRetrievedAt: payload.retrievedAt || new Date().toISOString(),
-        fluxGsp: payload.gspGroupId || current.fluxGsp || "",
-        fluxImportTariffCode: payload.tariff?.import || current.fluxImportTariffCode || "",
-        fluxExportTariffCode: payload.tariff?.export || current.fluxExportTariffCode || "",
+        fluxDayImport: Number(payload.rates?.dayImport ?? 0),
+        fluxDayExport: Number(payload.rates?.dayExport ?? 0),
+        fluxImport: Number(payload.rates?.offPeakImport ?? 0),
+        fluxExport: Number(payload.rates?.offPeakExport ?? 0),
+        fluxPeakImport: Number(payload.rates?.peakImport ?? 0),
+        fluxPeakExport: Number(payload.rates?.peakExport ?? 0),
+        fluxStandingCharge: Number(payload.rates?.standingCharge ?? 0),
+        fluxRatesRetrievedAt: retrievedAt,
+        fluxGsp: payload.gspGroupId || "",
+        fluxImportTariffCode: payload.tariff?.import || "",
+        fluxExportTariffCode: payload.tariff?.export || "",
+      }
+
+      setData((current) => ({
+        ...current,
+        ...rates,
       }))
+
+      // Persist the retrieved Octopus rates immediately. This is separate
+      // from "Save payment & calculation", so Get current rates always
+      // records the retrieved rates against this appointment.
+      const appointmentRowId = appointment?.appointment_row_id
+
+      if (appointmentRowId && supabase) {
+        const existingCalculation = appointment?.epvs_calculation || {}
+        const existingData = existingCalculation?.data || {}
+
+        const savedPayload = {
+          ...existingCalculation,
+          version: existingCalculation?.version || 1,
+          savedAt: new Date().toISOString(),
+          data: {
+            ...existingData,
+            ...rates,
+          },
+        }
+
+        const { error: saveError } = await supabase
+          .from("appointments")
+          .update({ epvs_calculation: savedPayload })
+          .eq("appointment_row_id", appointmentRowId)
+
+        if (saveError) throw saveError
+      }
     } catch (error) {
       console.error("Flux rate lookup failed", error)
       setFluxRateError(error?.message || "Unable to retrieve Octopus Flux rates.")
