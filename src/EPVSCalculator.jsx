@@ -752,9 +752,19 @@ export default function EPVSCalculator({
     // Realtime is the preferred path, but keep a lightweight polling fallback.
     // This also handles appointments/projects where Postgres Realtime is not
     // enabled for the appointments table.
-    let lastImportedAt = String(
-      appointment?.epvs_calculation?.data?.openSolar?.importedAt || ""
-    )
+    // Apply the current OpenSolar snapshot immediately. The webhook stores
+    // the imported design under data.openSolar, while the calculator inputs
+    // (arrays/hardware) are separate fields, so the snapshot must be mapped
+    // into local calculator state even on the initial render.
+    let lastImportedAt = ""
+    const initialOpenSolar = appointment?.epvs_calculation?.data?.openSolar
+    if (initialOpenSolar && typeof initialOpenSolar === "object") {
+      const initialImportedAt = String(initialOpenSolar.importedAt || "")
+      if (initialImportedAt) {
+        lastImportedAt = initialImportedAt
+        applyOpenSolarUpdate(appointment.epvs_calculation)
+      }
+    }
 
     const refreshFromDatabase = async () => {
       const { data: latest, error } = await supabase
