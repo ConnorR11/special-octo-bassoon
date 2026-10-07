@@ -286,7 +286,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
     try {
       let request = supabase
         .from("appointments")
-        .select("appointment_row_id,name,appointment_date,rep_allocated,result,product,job_type,epvs_calculation,open_solar_id")
+        .select("*")
         .not("rep_allocated", "is", null)
         .neq("rep_allocated", "")
         .eq("cps_c", true)
