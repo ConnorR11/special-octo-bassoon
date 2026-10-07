@@ -166,7 +166,13 @@ export default function Reviews({ setMobile }) {
       const date = new Date(review.review_date || review.created_at || 0)
       if (Number.isNaN(date.getTime())) continue
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
-      const current = monthly.get(key) || { key, date: new Date(date.getFullYear(), date.getMonth(), 1), count: 0, ratingTotal: 0, ratedCount: 0 }
+      const current = monthly.get(key) || {
+        key,
+        date: new Date(date.getFullYear(), date.getMonth(), 1),
+        count: 0,
+        ratingTotal: 0,
+        ratedCount: 0,
+      }
       current.count += 1
       const rating = Number(review.rating)
       if (rating > 0) {
@@ -175,21 +181,14 @@ export default function Reviews({ setMobile }) {
       }
       monthly.set(key, current)
     }
-    const rows = Array.from(monthly.values()).sort((a, b) => a.date - b.date)
-    let cumulative = 0
-    let cumulativeRating = 0
-    let cumulativeRated = 0
-    return rows.map((row) => {
-      cumulative += row.count
-      cumulativeRating += row.ratingTotal
-      cumulativeRated += row.ratedCount
-      return {
+
+    return Array.from(monthly.values())
+      .sort((a, b) => a.date - b.date)
+      .map((row) => ({
         ...row,
-        cumulative,
-        average: cumulativeRated ? cumulativeRating / cumulativeRated : null,
+        average: row.ratedCount ? row.ratingTotal / row.ratedCount : null,
         label: row.date.toLocaleDateString("en-GB", { month: "short", year: "numeric" }),
-      }
-    })
+      }))
   }, [reviews])
 
   const trendWidth = 900
@@ -200,23 +199,21 @@ export default function Reviews({ setMobile }) {
   const trendBottom = 34
   const trendPlotWidth = trendWidth - trendLeft - trendRight
   const trendPlotHeight = trendHeight - trendTop - trendBottom
-  const maxTrendCount = Math.max(1, ...reviewTrend.map((point) => point.cumulative))
+  const maxTrendCount = Math.max(1, ...reviewTrend.map((point) => point.count))
   const trendX = (index) => reviewTrend.length <= 1
     ? trendLeft + trendPlotWidth / 2
     : trendLeft + (index / (reviewTrend.length - 1)) * trendPlotWidth
   const trendYCount = (value) => trendTop + trendPlotHeight - (value / maxTrendCount) * trendPlotHeight
   const trendYAverage = (value) => trendTop + trendPlotHeight - ((value - 1) / 4) * trendPlotHeight
-  const trendCountPath = reviewTrend.map((point, index) => `${index === 0 ? "M" : "L"} ${trendX(index).toFixed(1)} ${trendYCount(point.cumulative).toFixed(1)}`).join(" ")
-  const trendAveragePath = reviewTrend.filter((point) => point.average !== null).map((point) => {
-    const index = reviewTrend.indexOf(point)
-    return `${index === 0 ? "M" : "L"} ${trendX(index).toFixed(1)} ${trendYAverage(point.average).toFixed(1)}`
-  }).join(" ")
+  const trendCountPath = reviewTrend.map((point, index) => `${index === 0 ? "M" : "L"} ${trendX(index).toFixed(1)} ${trendYCount(point.count).toFixed(1)}`).join(" ")
+  const trendAveragePath = reviewTrend.filter((point) => point.average !== null).map((point, index) => `${index === 0 ? "M" : "L"} ${trendX(reviewTrend.indexOf(point)).toFixed(1)} ${trendYAverage(point.average).toFixed(1)}`).join(" ")
+
 
   return (
     <div className="reviews-page">
       <style>{`
         .reviews-page{box-sizing:border-box;width:100%;min-height:100vh;padding:28px;background:#f5f7fa}.reviews-container{width:100%;max-width:1500px;margin:0 auto}.reviews-mobile-menu{display:none;position:fixed;top:12px;left:12px;z-index:1100;width:44px;height:44px;border:1px solid #d0d5dd;border-radius:9px;background:#fff;color:#344054;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.12);cursor:pointer}.reviews-header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:18px}.reviews-title{margin:0;font-size:28px;line-height:1.2}.reviews-subtitle{margin:6px 0 0;color:#667085;font-size:14px}.reviews-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;flex-shrink:0}.reviews-button{min-height:42px;padding:10px 15px;border-radius:8px;cursor:pointer;font-weight:600;white-space:nowrap;box-sizing:border-box}.reviews-button-secondary{border:1px solid #d0d5dd;background:#fff;color:#101828}.reviews-button-primary{border:1px solid #111827;background:#111827;color:#fff}.reviews-button-primary:disabled{background:#d1d5db;border-color:#d1d5db;color:#667085;cursor:default}.reviews-message{margin-top:14px;padding:11px 14px;border-radius:8px;background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;font-size:14px;overflow-wrap:anywhere}.reviews-location{margin-top:14px;padding:14px;border-radius:8px;background:#fff;border:1px solid #d0d5dd;font-size:13px}.reviews-location-row{display:flex;gap:20px;flex-wrap:wrap;margin-top:8px}.reviews-location-value{font-family:monospace;word-break:break-all}
-        .reviews-top-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(360px,.85fr);gap:18px;align-items:start;margin:0 0 24px}.trustpilot-dashboard{margin:0}.google-review-card{box-sizing:border-box;background:#fff;border:1px solid #dadce0;border-radius:14px;padding:22px;min-width:0;box-shadow:0 1px 2px rgba(60,64,67,.08);align-self:start}.google-review-header{display:flex;align-items:center;justify-content:space-between;gap:12px}.google-review-brand{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:600;color:#202124}.google-logo{font-size:24px;font-weight:700;font-family:Arial,sans-serif;background:linear-gradient(90deg,#4285f4 0 25%,#34a853 25% 50%,#fbbc05 50% 75%,#ea4335 75%);-webkit-background-clip:text;background-clip:text;color:transparent}.google-review-label{font-size:12px;color:#5f6368}.google-review-rating-row{display:flex;align-items:center;gap:10px;margin-top:18px}.google-review-rating{font-size:32px;line-height:1;font-weight:500;color:#202124}.google-review-stars{display:flex;gap:2px;color:#fbbc04;font-size:21px;line-height:1}.google-review-count{margin-top:7px;font-size:12px;color:#5f6368}.google-review-divider{height:1px;background:#e8eaed;margin:17px 0 15px}.google-review-summary{display:flex;align-items:center;gap:14px}.google-review-summary-rating{font-size:34px;line-height:1;font-weight:500;color:#202124}.google-review-summary-details{display:flex;flex-direction:column;gap:6px}.google-review-summary-stars{display:flex;gap:2px;color:#fbbc04;font-size:22px;line-height:1}.google-review-summary-count{font-size:12px;color:#5f6368}.google-review-footer{margin-top:16px;font-size:11px;color:#5f6368}.google-review-footer strong{color:#202124}.trustpilot-dashboard-title{margin:0 0 10px;font-size:16px;font-weight:600;color:#101828}.trustpilot-dashboard-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(210px,.7fr) minmax(210px,.7fr);gap:14px}.trustpilot-card{box-sizing:border-box;background:#fff;border:1px solid #ddd9d4;border-radius:14px;padding:22px;min-height:128px}.trustpilot-score-card{position:relative}.trustpilot-card-title{font-size:13px;color:#344054;display:flex;align-items:center;gap:6px}.trustpilot-info{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;background:#667085;color:#fff;font-size:9px;font-weight:700}.trustpilot-score-row{display:flex;align-items:center;gap:9px;margin-top:7px}.trustpilot-score{font-size:28px;line-height:1;font-weight:700;color:#101828}.trustpilot-stars{display:flex;gap:2px}.trustpilot-star-box{display:flex;align-items:center;justify-content:center;width:22px;height:22px;background:#00b67a;color:#fff;font-size:15px;line-height:1}.trustpilot-card-subtitle{margin-top:9px;font-size:12px;color:#475467}.trustpilot-new-value{margin-top:8px;font-size:25px;line-height:1;font-weight:700;color:#101828}.trustpilot-new-date{margin-top:9px;font-size:11px;color:#667085}.trustpilot-new-date:before{content:"▣";margin-right:7px;color:#98a2b3}.trustpilot-awaiting{margin-top:9px;font-size:13px;color:#475467;line-height:1.45}.trustpilot-awaiting strong{color:#101828}.trustpilot-breakdown{margin-top:14px}.trustpilot-breakdown-card{padding:18px 22px}.google-breakdown-card{box-sizing:border-box;background:#fff;border:1px solid #dadce0;border-radius:14px;padding:18px 22px;margin-top:14px}.google-breakdown-title{font-size:13px;color:#3c4043;margin-bottom:16px}.google-breakdown-row{display:grid;grid-template-columns:60px minmax(80px,1fr) 45px;align-items:center;gap:10px;margin:10px 0}.google-breakdown-label{font-size:13px;color:#202124}.google-bar-track{height:9px;background:#e8eaed;border-radius:4px;overflow:hidden}.google-bar-fill{height:100%;background:#4285f4;border-radius:4px;min-width:0}.google-breakdown-percent{text-align:right;font-size:13px;color:#202124}.google-dashboard-note{margin-top:8px;font-size:11px;color:#5f6368}.reviews-trend-card{box-sizing:border-box;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:20px 22px;margin:18px 0 24px}.reviews-trend-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:14px}.reviews-trend-title{margin:0;font-size:15px;color:#101828}.reviews-trend-subtitle{margin:4px 0 0;font-size:12px;color:#667085}.reviews-trend-legend{display:flex;gap:16px;flex-wrap:wrap;justify-content:flex-end;font-size:11px;color:#475467}.reviews-trend-legend-item{display:flex;align-items:center;gap:6px}.reviews-trend-legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block}.reviews-trend-chart{width:100%;overflow:hidden}.reviews-trend-svg{display:block;width:100%;height:250px}.reviews-trend-axis{font-size:10px;fill:#667085}.reviews-trend-gridline{stroke:#eef0f2;stroke-width:1}.reviews-trend-count-line{fill:none;stroke:#4285f4;stroke-width:2.5}.reviews-trend-average-line{fill:none;stroke:#00b67a;stroke-width:2.5}.reviews-trend-count-point{fill:#4285f4}.reviews-trend-average-point{fill:#00b67a}.reviews-trend-empty{height:220px;display:flex;align-items:center;justify-content:center;color:#667085;font-size:13px}.reviews-trend-tooltip{font-size:10px;fill:#101828;font-weight:600}.reviews-trend-note{margin-top:8px;font-size:11px;color:#667085}.trustpilot-breakdown-title{font-size:13px;color:#344054;margin-bottom:16px}.trustpilot-breakdown-row{display:grid;grid-template-columns:60px minmax(80px,1fr) 45px;align-items:center;gap:10px;margin:10px 0}.trustpilot-breakdown-label{font-size:13px;color:#101828}.trustpilot-bar-track{height:9px;background:#eeeae6;border-radius:4px;overflow:hidden}.trustpilot-bar-fill{height:100%;background:#00b67a;border-radius:4px;min-width:0}.trustpilot-breakdown-percent{text-align:right;font-size:13px;color:#101828}.trustpilot-dashboard-note{margin-top:8px;font-size:11px;color:#667085}
+        .reviews-top-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(360px,.85fr);gap:18px;align-items:start;margin:0 0 24px}.trustpilot-dashboard{margin:0}.reviews-google-column{display:flex;flex-direction:column;gap:14px;min-width:0}.google-review-card{box-sizing:border-box;background:#fff;border:1px solid #dadce0;border-radius:14px;padding:22px;min-width:0;box-shadow:0 1px 2px rgba(60,64,67,.08);align-self:start}.google-review-header{display:flex;align-items:center;justify-content:space-between;gap:12px}.google-review-brand{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:600;color:#202124}.google-logo{font-size:24px;font-weight:700;font-family:Arial,sans-serif;background:linear-gradient(90deg,#4285f4 0 25%,#34a853 25% 50%,#fbbc05 50% 75%,#ea4335 75%);-webkit-background-clip:text;background-clip:text;color:transparent}.google-review-label{font-size:12px;color:#5f6368}.google-review-rating-row{display:flex;align-items:center;gap:10px;margin-top:18px}.google-review-rating{font-size:32px;line-height:1;font-weight:500;color:#202124}.google-review-stars{display:flex;gap:2px;color:#fbbc04;font-size:21px;line-height:1}.google-review-count{margin-top:7px;font-size:12px;color:#5f6368}.google-review-divider{height:1px;background:#e8eaed;margin:17px 0 15px}.google-review-summary{display:flex;align-items:center;gap:14px}.google-review-summary-rating{font-size:34px;line-height:1;font-weight:500;color:#202124}.google-review-summary-details{display:flex;flex-direction:column;gap:6px}.google-review-summary-stars{display:flex;gap:2px;color:#fbbc04;font-size:22px;line-height:1}.google-review-summary-count{font-size:12px;color:#5f6368}.google-review-footer{margin-top:16px;font-size:11px;color:#5f6368}.google-review-footer strong{color:#202124}.trustpilot-dashboard-title{margin:0 0 10px;font-size:16px;font-weight:600;color:#101828}.trustpilot-dashboard-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(210px,.7fr) minmax(210px,.7fr);gap:14px}.trustpilot-card{box-sizing:border-box;background:#fff;border:1px solid #ddd9d4;border-radius:14px;padding:22px;min-height:128px}.trustpilot-score-card{position:relative}.trustpilot-card-title{font-size:13px;color:#344054;display:flex;align-items:center;gap:6px}.trustpilot-info{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;background:#667085;color:#fff;font-size:9px;font-weight:700}.trustpilot-score-row{display:flex;align-items:center;gap:9px;margin-top:7px}.trustpilot-score{font-size:28px;line-height:1;font-weight:700;color:#101828}.trustpilot-stars{display:flex;gap:2px}.trustpilot-star-box{display:flex;align-items:center;justify-content:center;width:22px;height:22px;background:#00b67a;color:#fff;font-size:15px;line-height:1}.trustpilot-card-subtitle{margin-top:9px;font-size:12px;color:#475467}.trustpilot-new-value{margin-top:8px;font-size:25px;line-height:1;font-weight:700;color:#101828}.trustpilot-new-date{margin-top:9px;font-size:11px;color:#667085}.trustpilot-new-date:before{content:"▣";margin-right:7px;color:#98a2b3}.trustpilot-awaiting{margin-top:9px;font-size:13px;color:#475467;line-height:1.45}.trustpilot-awaiting strong{color:#101828}.trustpilot-breakdown{margin-top:14px}.trustpilot-breakdown-card{padding:18px 22px}.google-breakdown-card{box-sizing:border-box;background:#fff;border:1px solid #dadce0;border-radius:14px;padding:18px 22px}.google-breakdown-title{font-size:13px;color:#3c4043;margin-bottom:16px}.google-breakdown-row{display:grid;grid-template-columns:60px minmax(80px,1fr) 45px;align-items:center;gap:10px;margin:10px 0}.google-breakdown-label{font-size:13px;color:#202124}.google-bar-track{height:9px;background:#e8eaed;border-radius:4px;overflow:hidden}.google-bar-fill{height:100%;background:#4285f4;border-radius:4px;min-width:0}.google-breakdown-percent{text-align:right;font-size:13px;color:#202124}.google-dashboard-note{margin-top:8px;font-size:11px;color:#5f6368}.reviews-trend-card{box-sizing:border-box;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:18px;margin:0}.reviews-trend-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:14px}.reviews-trend-title{margin:0;font-size:15px;color:#101828}.reviews-trend-subtitle{margin:4px 0 0;font-size:12px;color:#667085}.reviews-trend-legend{display:flex;gap:16px;flex-wrap:wrap;justify-content:flex-end;font-size:11px;color:#475467}.reviews-trend-legend-item{display:flex;align-items:center;gap:6px}.reviews-trend-legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block}.reviews-trend-chart{width:100%;overflow:hidden}.reviews-trend-svg{display:block;width:100%;height:250px}.reviews-trend-axis{font-size:10px;fill:#667085}.reviews-trend-gridline{stroke:#eef0f2;stroke-width:1}.reviews-trend-count-line{fill:none;stroke:#4285f4;stroke-width:2.5}.reviews-trend-average-line{fill:none;stroke:#00b67a;stroke-width:2.5}.reviews-trend-count-point{fill:#4285f4}.reviews-trend-average-point{fill:#00b67a}.reviews-trend-empty{height:220px;display:flex;align-items:center;justify-content:center;color:#667085;font-size:13px}.reviews-trend-tooltip{font-size:10px;fill:#101828;font-weight:600}.reviews-trend-note{margin-top:8px;font-size:11px;color:#667085}.trustpilot-breakdown-title{font-size:13px;color:#344054;margin-bottom:16px}.trustpilot-breakdown-row{display:grid;grid-template-columns:60px minmax(80px,1fr) 45px;align-items:center;gap:10px;margin:10px 0}.trustpilot-breakdown-label{font-size:13px;color:#101828}.trustpilot-bar-track{height:9px;background:#eeeae6;border-radius:4px;overflow:hidden}.trustpilot-bar-fill{height:100%;background:#00b67a;border-radius:4px;min-width:0}.trustpilot-breakdown-percent{text-align:right;font-size:13px;color:#101828}.trustpilot-dashboard-note{margin-top:8px;font-size:11px;color:#667085}
         .reviews-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:0 0 22px}.reviews-stat{min-width:0;box-sizing:border-box;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px}.reviews-stat-title{font-size:13px;color:#667085}.reviews-stat-value{margin-top:6px;font-size:26px;line-height:1.2;font-weight:700}.reviews-stat-subtitle{margin-top:5px;font-size:12px;color:#667085}.reviews-stat-trustpilot{border-left:4px solid #00b67a}.reviews-stat-google{border-left:4px solid #4285f4}.reviews-stat-real{border-left:4px solid #667085}.reviews-panel{box-sizing:border-box;width:100%;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px}.reviews-panel-header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px}.reviews-panel-title{margin:0;font-size:18px}.reviews-panel-description{margin:4px 0 0;color:#667085;font-size:13px}.reviews-filter{flex:0 0 auto;box-sizing:border-box;min-height:38px;padding:8px 12px;border:1px solid #d0d5dd;border-radius:8px;background:#fff;color:#101828}.reviews-table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.reviews-table{width:100%;min-width:720px;border-collapse:collapse;table-layout:fixed}.reviews-table th{text-align:left;padding:11px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#667085;font-weight:600}.reviews-table td{padding:13px 10px;border-bottom:1px solid #f2f4f7;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}.reviews-source{font-weight:600;text-transform:capitalize}.reviews-rating{white-space:nowrap;letter-spacing:1px}.reviews-review{max-width:500px;line-height:1.45}.reviews-date,.reviews-status{white-space:nowrap}.reviews-empty{padding:50px 20px;text-align:center;color:#667085}
         @media(max-width:1100px){.reviews-top-grid{grid-template-columns:1fr}.trustpilot-dashboard-grid{grid-template-columns:1fr 1fr}.trustpilot-breakdown-card{grid-column:1/-1}}
         @media(max-width:900px){.reviews-page{padding:20px}.reviews-header{flex-direction:column;gap:16px}.reviews-actions{width:100%;justify-content:flex-start}.reviews-button{flex:1 1 220px}.reviews-mobile-menu{display:flex}.trustpilot-dashboard-grid{grid-template-columns:1fr 1fr}}
@@ -232,96 +229,101 @@ export default function Reviews({ setMobile }) {
 
         <div className="reviews-top-grid">
           <section className="trustpilot-dashboard">
-          <h2 className="trustpilot-dashboard-title">Service reviews</h2>
-          <div className="trustpilot-dashboard-grid">
-            <div className="trustpilot-card trustpilot-score-card">
-              <div className="trustpilot-card-title">Current TrustScore <span className="trustpilot-info">i</span></div>
-              <div className="trustpilot-score-row"><div className="trustpilot-score">{trustpilotStyleScore}</div><div className="trustpilot-stars" aria-label={`${trustpilotStyleScore} out of 5`}>{[1,2,3,4,5].map((star) => <span key={star} className="trustpilot-star-box">★</span>)}</div></div>
-              <div className="trustpilot-card-subtitle">Based on {trustpilotCount.toLocaleString("en-GB")} Trustpilot reviews stored in the CRM</div>
-            </div>
-            
-            <div className="trustpilot-card"><div className="trustpilot-card-title">Awaiting reply <span className="trustpilot-info">i</span></div><div className="trustpilot-new-value">{awaitingReply.toLocaleString("en-GB")}</div><div className="trustpilot-awaiting">{awaitingReply === 0 ? "All service reviews have a CRM response." : <><strong>{awaitingReply}</strong> service reviews currently have no response in the CRM.</>}</div></div>
-            <div className="trustpilot-card trustpilot-breakdown-card">
-              <div className="trustpilot-breakdown-title">Distribution of stars <span className="trustpilot-info">i</span></div>
-              {TRUSTPILOT_BREAKDOWN.map(({ rating, label }) => <div className="trustpilot-breakdown-row" key={rating}><div className="trustpilot-breakdown-label">{label}</div><div className="trustpilot-bar-track"><div className="trustpilot-bar-fill" style={{ width: `${starPercent(rating)}%` }} /></div><div className="trustpilot-breakdown-percent">{starPercent(rating).toFixed(0)}%</div></div>)}
-              <div className="trustpilot-dashboard-note">Distribution is calculated from the active Trustpilot reviews currently stored in the CRM.</div>
-            </div>
-
-          </div>
-        </section>
-
-          <aside className="google-review-card">
-            <div className="google-review-header">
-              <div className="google-review-brand"><span className="google-logo">G</span><span>Google</span></div>
-              <span className="google-review-label">Reviews</span>
-            </div>
-            <div className="google-review-summary">
-              <div className="google-review-summary-rating">{googleRating}</div>
-              <div className="google-review-summary-details">
-                <div className="google-review-summary-stars" aria-label="Google rating">{[1,2,3,4,5].map((star) => <span key={star}>★</span>)}</div>
-                <div className="google-review-summary-count">{googleCount.toLocaleString("en-GB")} reviews</div>
+            <h2 className="trustpilot-dashboard-title">Service reviews</h2>
+            <div className="trustpilot-dashboard-grid">
+              <div className="trustpilot-card trustpilot-score-card">
+                <div className="trustpilot-card-title">Current TrustScore <span className="trustpilot-info">i</span></div>
+                <div className="trustpilot-score-row"><div className="trustpilot-score">{trustpilotStyleScore}</div><div className="trustpilot-stars" aria-label={`${trustpilotStyleScore} out of 5`}>{[1,2,3,4,5].map((star) => <span key={star} className="trustpilot-star-box">★</span>)}</div></div>
+                <div className="trustpilot-card-subtitle">Based on {trustpilotCount.toLocaleString("en-GB")} Trustpilot reviews stored in the CRM</div>
+              </div>
+              <div className="trustpilot-card">
+                <div className="trustpilot-card-title">Awaiting reply <span className="trustpilot-info">i</span></div>
+                <div className="trustpilot-new-value">{awaitingReply.toLocaleString("en-GB")}</div>
+                <div className="trustpilot-awaiting">{awaitingReply === 0 ? "All service reviews have a CRM response." : <><strong>{awaitingReply}</strong> service reviews currently have no response in the CRM.</>}</div>
+              </div>
+              <div className="trustpilot-card trustpilot-breakdown-card">
+                <div className="trustpilot-breakdown-title">Distribution of stars <span className="trustpilot-info">i</span></div>
+                {TRUSTPILOT_BREAKDOWN.map(({ rating, label }) => <div className="trustpilot-breakdown-row" key={rating}><div className="trustpilot-breakdown-label">{label}</div><div className="trustpilot-bar-track"><div className="trustpilot-bar-fill" style={{ width: `${starPercent(rating)}%` }} /></div><div className="trustpilot-breakdown-percent">{starPercent(rating).toFixed(0)}%</div></div>)}
+                <div className="trustpilot-dashboard-note">Distribution is calculated from the active Trustpilot reviews currently stored in the CRM.</div>
               </div>
             </div>
-            <div className="google-review-divider" />
-            <div className="google-review-footer">Based on <strong>{googleCount.toLocaleString("en-GB")}</strong> Google reviews stored in the CRM.</div>
-          </aside>
-                      <div className="google-breakdown-card">
-                        <div className="google-breakdown-title">Google star distribution <span className="trustpilot-info">i</span></div>
-                        {TRUSTPILOT_BREAKDOWN.map(({ rating, label }) => <div className="google-breakdown-row" key={rating}><div className="google-breakdown-label">{label}</div><div className="google-bar-track"><div className="google-bar-fill" style={{ width: `${googleStarPercent(rating)}%` }} /></div><div className="google-breakdown-percent">{googleStarPercent(rating).toFixed(0)}%</div></div>)}
-                        <div className="google-dashboard-note">Distribution is calculated from the active Google reviews currently stored in the CRM.</div>
-                      </div>
-        </div>
+          </section>
 
-        <section className="reviews-trend-card">
-          <div className="reviews-trend-header">
-            <div>
-              <h2 className="reviews-trend-title">Review performance over time</h2>
-              <p className="reviews-trend-subtitle">Cumulative reviews received and average rating across Trustpilot and Google.</p>
+          <div className="reviews-google-column">
+            <aside className="google-review-card">
+              <div className="google-review-header">
+                <div className="google-review-brand"><span className="google-logo">G</span><span>Google</span></div>
+                <span className="google-review-label">Reviews</span>
+              </div>
+              <div className="google-review-summary">
+                <div className="google-review-summary-rating">{googleRating}</div>
+                <div className="google-review-summary-details">
+                  <div className="google-review-summary-stars" aria-label="Google rating">{[1,2,3,4,5].map((star) => <span key={star}>★</span>)}</div>
+                  <div className="google-review-summary-count">{googleCount.toLocaleString("en-GB")} reviews</div>
+                </div>
+              </div>
+              <div className="google-review-divider" />
+              <div className="google-review-footer">Based on <strong>{googleCount.toLocaleString("en-GB")}</strong> Google reviews stored in the CRM.</div>
+            </aside>
+
+            <div className="google-breakdown-card">
+              <div className="google-breakdown-title">Google star distribution <span className="trustpilot-info">i</span></div>
+              {TRUSTPILOT_BREAKDOWN.map(({ rating, label }) => <div className="google-breakdown-row" key={rating}><div className="google-breakdown-label">{label}</div><div className="google-bar-track"><div className="google-bar-fill" style={{ width: `${googleStarPercent(rating)}%` }} /></div><div className="google-breakdown-percent">{googleStarPercent(rating).toFixed(0)}%</div></div>)}
+              <div className="google-dashboard-note">Distribution is calculated from the active Google reviews currently stored in the CRM.</div>
             </div>
-            <div className="reviews-trend-legend">
-              <span className="reviews-trend-legend-item"><span className="reviews-trend-legend-dot" style={{ background: "#4285f4" }} />Reviews received</span>
-              <span className="reviews-trend-legend-item"><span className="reviews-trend-legend-dot" style={{ background: "#00b67a" }} />Average score</span>
-            </div>
+
+            <section className="reviews-trend-card">
+              <div className="reviews-trend-header">
+                <div>
+                  <h2 className="reviews-trend-title">Review performance over time</h2>
+                  <p className="reviews-trend-subtitle">Monthly review volume and average rating across Trustpilot and Google.</p>
+                </div>
+                <div className="reviews-trend-legend">
+                  <span className="reviews-trend-legend-item"><span className="reviews-trend-legend-dot" style={{ background: "#4285f4" }} />Reviews</span>
+                  <span className="reviews-trend-legend-item"><span className="reviews-trend-legend-dot" style={{ background: "#00b67a" }} />Average score</span>
+                </div>
+              </div>
+              {reviewTrend.length === 0 ? (
+                <div className="reviews-trend-empty">No dated reviews are available to chart yet.</div>
+              ) : (
+                <div className="reviews-trend-chart">
+                  <svg className="reviews-trend-svg" viewBox={`0 0 ${trendWidth} ${trendHeight}`} preserveAspectRatio="none" role="img" aria-label="Monthly review volume and average score over time">
+                    {[0, 0.25, 0.5, 0.75, 1].map((step) => {
+                      const y = trendTop + trendPlotHeight - step * trendPlotHeight
+                      const countLabel = Math.round(step * maxTrendCount).toLocaleString("en-GB")
+                      const averageLabel = (1 + step * 4).toFixed(1)
+                      return (
+                        <g key={step}>
+                          <line className="reviews-trend-gridline" x1={trendLeft} x2={trendWidth - trendRight} y1={y} y2={y} />
+                          <text className="reviews-trend-axis" x={trendLeft - 8} y={y + 3} textAnchor="end">{countLabel}</text>
+                          <text className="reviews-trend-axis" x={trendWidth - trendRight + 8} y={y + 3}>{averageLabel}</text>
+                        </g>
+                      )
+                    })}
+                    <text className="reviews-trend-axis" x={trendLeft} y={trendHeight - 8}>Reviews</text>
+                    <text className="reviews-trend-axis" x={trendWidth - trendRight} y={trendHeight - 8} textAnchor="end">Score</text>
+                    {reviewTrend.length > 1 && <path className="reviews-trend-count-line" d={trendCountPath} />}
+                    {reviewTrend.length > 1 && trendAveragePath && <path className="reviews-trend-average-line" d={trendAveragePath} />}
+                    {reviewTrend.map((point, index) => (
+                      <g key={point.key}>
+                        <circle className="reviews-trend-count-point" cx={trendX(index)} cy={trendYCount(point.count)} r="3.5">
+                          <title>{point.label}: {point.count.toLocaleString("en-GB")} reviews</title>
+                        </circle>
+                        {point.average !== null && <circle className="reviews-trend-average-point" cx={trendX(index)} cy={trendYAverage(point.average)} r="3.5">
+                          <title>{point.label}: {point.average.toFixed(2)} average</title>
+                        </circle>}
+                        {(index === 0 || index === reviewTrend.length - 1 || index % Math.max(1, Math.ceil(reviewTrend.length / 8)) === 0) && (
+                          <text className="reviews-trend-axis" x={trendX(index)} y={trendHeight - 16} textAnchor="middle">{point.label}</text>
+                        )}
+                      </g>
+                    ))}
+                  </svg>
+                </div>
+              )}
+              <div className="reviews-trend-note">The blue line shows reviews received that month. The green line shows the average score for that month.</div>
+            </section>
           </div>
-          {reviewTrend.length === 0 ? (
-            <div className="reviews-trend-empty">No dated reviews are available to chart yet.</div>
-          ) : (
-            <div className="reviews-trend-chart">
-              <svg className="reviews-trend-svg" viewBox={`0 0 ${trendWidth} ${trendHeight}`} preserveAspectRatio="none" role="img" aria-label="Review count and average score over time">
-                {[0, 0.25, 0.5, 0.75, 1].map((step) => {
-                  const y = trendTop + trendPlotHeight - step * trendPlotHeight
-                  const countLabel = Math.round(step * maxTrendCount).toLocaleString("en-GB")
-                  const averageLabel = (1 + step * 4).toFixed(1)
-                  return (
-                    <g key={step}>
-                      <line className="reviews-trend-gridline" x1={trendLeft} x2={trendWidth - trendRight} y1={y} y2={y} />
-                      <text className="reviews-trend-axis" x={trendLeft - 8} y={y + 3} textAnchor="end">{countLabel}</text>
-                      <text className="reviews-trend-axis" x={trendWidth - trendRight + 8} y={y + 3}>{averageLabel}</text>
-                    </g>
-                  )
-                })}
-                <text className="reviews-trend-axis" x={trendLeft} y={trendHeight - 8}>Reviews</text>
-                <text className="reviews-trend-axis" x={trendWidth - trendRight} y={trendHeight - 8} textAnchor="end">Score</text>
-                {reviewTrend.length > 1 && <path className="reviews-trend-count-line" d={trendCountPath} />}
-                {reviewTrend.length > 1 && trendAveragePath && <path className="reviews-trend-average-line" d={trendAveragePath} />}
-                {reviewTrend.map((point, index) => (
-                  <g key={point.key}>
-                    <circle className="reviews-trend-count-point" cx={trendX(index)} cy={trendYCount(point.cumulative)} r="3.5">
-                      <title>{point.label}: {point.cumulative.toLocaleString("en-GB")} reviews</title>
-                    </circle>
-                    {point.average !== null && <circle className="reviews-trend-average-point" cx={trendX(index)} cy={trendYAverage(point.average)} r="3.5">
-                      <title>{point.label}: {point.average.toFixed(2)} average</title>
-                    </circle>}
-                    {(index === 0 || index === reviewTrend.length - 1 || index % Math.max(1, Math.ceil(reviewTrend.length / 8)) === 0) && (
-                      <text className="reviews-trend-axis" x={trendX(index)} y={trendHeight - 16} textAnchor="middle">{point.label}</text>
-                    )}
-                  </g>
-                ))}
-              </svg>
-            </div>
-          )}
-          <div className="reviews-trend-note">The blue line shows the cumulative number of reviews received. The green line shows the cumulative average rating.</div>
-        </section>
+        </div>
 
         {googleSyncMessage && <div className="reviews-message">{googleSyncMessage}</div>}
         {googleLocation && <div className="reviews-location"><strong>{googleLocation.businessName || "Google Business Profile"}</strong><div className="reviews-location-row"><div>Account ID: <span className="reviews-location-value">{googleLocation.accountId}</span></div><div>Location ID: <span className="reviews-location-value">{googleLocation.locationId}</span></div></div></div>}
