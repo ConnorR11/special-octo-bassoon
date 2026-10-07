@@ -20,6 +20,7 @@ function Header({ page, setMobile }) {
   const pageTitle = {
     "sales-performance": "Sales Performance",
     contracts: "Deals",
+    balances: "Balances",
     "rts-list": "RTS List",
     epvs: "EPVS Calculator",
   }[page]
@@ -27,6 +28,7 @@ function Header({ page, setMobile }) {
   const pageSubtitle = {
     "sales-performance": "Overview of your sales performance and activity",
     contracts: "Search and manage deals",
+    balances: "Jobs with an outstanding balance",
     "rts-list": "Deals currently in the RTS sales stages",
     epvs: "Build and review an EPVS calculation",
   }[page]

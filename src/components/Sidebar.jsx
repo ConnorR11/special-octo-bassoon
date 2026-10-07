@@ -113,6 +113,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
 
           <Folder title="Accounts" icon={PoundSterling} open={openFolders.finance} onClick={() => toggleFolder("finance")}>
             <NavItem icon={PoundSterling} label="Revenue" disabled/>
+            <NavItem icon={CreditCard} label="Balances" active={isActive("balances")} onClick={() => navigate("balances")}/>
             <NavItem icon={CreditCard} label="Payments" disabled/>
             <NavItem icon={Receipt} label="Invoices" disabled/>
           </Folder>

@@ -13,6 +13,7 @@ import MarketingTV from "./pages/MarketingTV"
 import MarketingDashboard from "./pages/MarketingDashboard"
 import Leads from "./pages/Leads"
 import Contracts from "./pages/Contracts"
+import Balances from "./pages/Balances"
 import RTSList from "./pages/RTSList"
 import SalesCommission from "./pages/SalesCommission"
 import CustomerDetail from "./pages/CustomerDetail"
@@ -53,6 +54,7 @@ function App() {
   const [query, setQuery] = useState("")
   const [status, setStatus] = useState("all")
   const [selected, setSelected] = useState(null)
+  const [selectedSourcePage, setSelectedSourcePage] = useState("contracts")
   const [selectedAppointment, setSelectedAppointment] = useState(null)
   const [pickupAppointment, setPickupAppointment] = useState(null)
   const [contractsPage, setContractsPage] = useState(0)
@@ -160,7 +162,7 @@ function App() {
   function handlePageChange(newPage) {
     const requiredPermission={"sales-performance":2,"marketing-dashboard":3,"canvasser-kpi":3,mi:4,seo:4,reviews:4,users:4,tasks:4,templates:4,"integration-logs":4,"data-dashboard":4,"data-clean":4 ,"solar-backend":4}[newPage]
     if(requiredPermission&&effectivePermissionLevel<requiredPermission)return
-    setSelected(null);setSelectedAppointment(null);setPickupAppointment(null);setPage(newPage)
+    setSelected(null);setSelectedSourcePage("contracts");setSelectedAppointment(null);setPickupAppointment(null);setPage(newPage)
     if(newPage==="contracts"){setQuery("");setStatus("all");loadContracts(0,"","all")}
     window.history.pushState({},"",newPage==="dashboard"?"/":`/${newPage}`)
   }
