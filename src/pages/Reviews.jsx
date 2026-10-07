@@ -350,6 +350,22 @@ export default function Reviews({ setMobile }) {
                 {reviewTrend.length > 1 && trendAveragePath && (
                   <path className="reviews-trend-average-line" d={trendAveragePath} />
                 )}
+                {trendYearGroups.slice(0, -1).map((group, index) => {
+                  const nextGroup = trendYearGroups[index + 1]
+                  const boundaryIndex = (group.lastIndex + nextGroup.firstIndex) / 2
+
+                  return (
+                    <line
+                      key={`year-boundary-${group.year}`}
+                      className="reviews-trend-gridline"
+                      x1={trendX(boundaryIndex)}
+                      x2={trendX(boundaryIndex)}
+                      y1={trendTop}
+                      y2={trendTop + trendPlotHeight}
+                    />
+                  )
+                })}
+
                 {trendYearGroups.map((group) => {
                   const centerIndex = (group.firstIndex + group.lastIndex) / 2
                   return (
