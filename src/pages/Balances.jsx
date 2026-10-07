@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react"
-import { AlertCircle, CalendarDays, ChevronRight, FileText, MapPin, PoundSterling, Search, UserRound } from "lucide-react"
+import { AlertCircle, CalendarDays, ChevronRight, FileText, MapPin, PoundSterling, Search } from "lucide-react"
 import { supabase } from "../lib/supabase"
 import { formatDate, getInitials, money } from "../utils/formatters"
 
@@ -244,7 +244,7 @@ export default function Balances({ onSelect }) {
             <div>Customer</div>
             <div>Contract</div>
             <div>Product</div>
-            <div>Sales Rep</div>
+            <div>Stage</div>
             <div>Sale Date</div>
             <div style={{ textAlign: "right" }}>Outstanding</div>
             <div />
@@ -328,11 +328,8 @@ export default function Balances({ onSelect }) {
                 {deal?.product || "—"}
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#53616b", fontSize: 10, minWidth: 0 }}>
-                <UserRound size={13} />
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {deal?.salesperson || deal?.sales_rep || deal?.rep_name || "—"}
-                </span>
+              <div style={{ fontSize: 10, color: "#53616b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {deal?.pipedrive_stage || "—"}
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#53616b", fontSize: 10 }}>
