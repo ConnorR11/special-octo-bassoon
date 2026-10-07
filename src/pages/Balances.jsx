@@ -98,7 +98,7 @@ export default function Balances({ onSelect }) {
 
     deals.forEach((deal) => {
       const rawDate = String(deal?.estimated_payment_date || "").trim()
-      const match = rawDate.match(/^(\\d{4})-(\\d{2})/)
+      const match = rawDate.match(/^(\d{4})-(\d{2})/)
       if (!match) return
 
       const key = `${match[1]}-${match[2]}`
