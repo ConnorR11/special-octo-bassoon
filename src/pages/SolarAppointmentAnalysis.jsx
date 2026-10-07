@@ -24,6 +24,50 @@ function shiftDays(value, amount) {
   return londonDate(date)
 }
 
+const SOLAR_ANALYSIS_SELECTION_KEY = "solar-appointment-analysis-selection"
+
+function getSavedSelection() {
+  const fallback = periodDates("today")
+
+  if (typeof window === "undefined") {
+    return { period: "today", ...fallback }
+  }
+
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(SOLAR_ANALYSIS_SELECTION_KEY) || "null")
+
+    if (
+      saved &&
+      typeof saved.period === "string" &&
+      typeof saved.startDate === "string" &&
+      typeof saved.endDate === "string"
+    ) {
+      return {
+        period: saved.period,
+        startDate: saved.startDate,
+        endDate: saved.endDate,
+      }
+    }
+  } catch {
+    // Fall back to today if saved state cannot be read.
+  }
+
+  return { period: "today", ...fallback }
+}
+
+function saveSelection(period, startDate, endDate) {
+  if (typeof window === "undefined") return
+
+  try {
+    window.localStorage.setItem(
+      SOLAR_ANALYSIS_SELECTION_KEY,
+      JSON.stringify({ period, startDate, endDate })
+    )
+  } catch {
+    // Ignore storage failures; the page still works normally.
+  }
+}
+
 function periodDates(period) {
   const today = londonDate()
   const current = new Date(`${today}T12:00:00`)
@@ -288,10 +332,10 @@ function getThirtyYearEpvs(appointment) {
 }
 
 export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded = false }) {
-  const initial = periodDates("today")
-  const [period, setPeriod] = useState("today")
-  const [startDate, setStartDate] = useState(initial.start)
-  const [endDate, setEndDate] = useState(initial.end)
+  const initial = getSavedSelection()
+  const [period, setPeriod] = useState(initial.period)
+  const [startDate, setStartDate] = useState(initial.startDate)
+  const [endDate, setEndDate] = useState(initial.endDate)
   const [appointments, setAppointments] = useState([])
   const [profiles, setProfiles] = useState([])
   const [search, setSearch] = useState("")
@@ -384,6 +428,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
     setPeriod(value)
     setStartDate(dates.start)
     setEndDate(dates.end)
+    saveSelection(value, dates.start, dates.end)
     loadAppointments(dates)
   }
 
@@ -398,6 +443,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
   }
 
   function applyCustomDates() {
+    saveSelection("custom", startDate, endDate)
     loadAppointments({ start: startDate, end: endDate })
   }
 
@@ -691,7 +737,9 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
         <div className="solar-analysis-controls">
           <div className="solar-analysis-periods">
             {[
+              ["yesterday", "Yesterday"],
               ["today", "Today"],
+              ["tomorrow", "Tomorrow"],
               ["this-week", "This week"],
               ["last-week", "Last week"],
               ["this-month", "This month"],
