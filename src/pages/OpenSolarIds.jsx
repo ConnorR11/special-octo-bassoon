@@ -34,17 +34,25 @@ export default function OpenSolarIds() {
     try {
       const from = targetPage * PAGE_SIZE
       const to = from + PAGE_SIZE
-      const { data, error: queryError } = await supabase
+
+      let query = supabase
         .from("appointments")
         .select("appointment_row_id,name,postcode,appointment_date,product,job_type,open_solar_id,epvs_calculation")
         .gte("appointment_date", "2026-01-01T00:00:00")
+        .or("product.ilike.%solar%,job_type.ilike.%solar%,epvs_calculation.not.is.null")
         .order("appointment_date", { ascending: true })
         .range(from, to)
 
+      const searchTerm = normalise(search).replace(/[(),]/g, "")
+      if (searchTerm) {
+        query = query.or("name.ilike.%" + searchTerm + "%,postcode.ilike.%" + searchTerm + "%,open_solar_id.ilike.%" + searchTerm + "%,product.ilike.%" + searchTerm + "%,job_type.ilike.%" + searchTerm + "%")
+      }
+
+      const { data, error: queryError } = await query
       if (queryError) throw queryError
 
       const rows = data || []
-      const solar = rows.filter(isSolarAppointment)
+      const solar = rows.slice(0, PAGE_SIZE)
       setAppointments(solar)
       setHasNextPage(rows.length > PAGE_SIZE)
       setPage(targetPage)
@@ -55,7 +63,10 @@ export default function OpenSolarIds() {
 
   useEffect(() => { loadAppointments(0) }, [])
 
-  useEffect(() => { setPage(0); loadAppointments(0) }, [search])
+  useEffect(() => {
+    const timer = window.setTimeout(() => loadAppointments(0), 250)
+    return () => window.clearTimeout(timer)
+  }, [search])
 
   async function saveOpenSolarId(appointment) {
     const id = appointment.appointment_row_id
@@ -74,11 +85,7 @@ export default function OpenSolarIds() {
 
   function resetDraft(a) { setDrafts((current) => ({ ...current, [a.appointment_row_id]: a.open_solar_id ?? "" })) }
 
-  const filteredAppointments = useMemo(() => {
-    const query = normalise(search)
-    if (!query) return appointments
-    return appointments.filter((a) => [a.name, a.postcode, a.open_solar_id, a.product, a.job_type].some((v) => normalise(v).includes(query)))
-  }, [appointments, search])
+  const filteredAppointments = useMemo(() => appointments, [appointments])
 
   return (
     <section className="open-solar-page">
