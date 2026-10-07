@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { AlertCircle, CalendarDays, ChevronRight, FileText, MapPin, PoundSterling, Search } from "lucide-react"
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { supabase } from "../lib/supabase"
 import { formatDate, getInitials, money } from "../utils/formatters"
 
@@ -303,7 +303,7 @@ export default function Balances({ onSelect }) {
                 color: "#8a959d",
               }}
             >
-              Outstanding balance grouped by estimated payment month
+              Overdue balances and unpaid admin fees, with future payments by day
             </div>
           </div>
 
@@ -326,6 +326,10 @@ export default function Balances({ onSelect }) {
                   tickLine={false}
                   tickFormatter={(value) => `£${Math.round(value / 1000)}k`}
                   width={48}
+                />
+                <Legend
+                  wrapperStyle={{ fontSize: 10, color: "#687782" }}
+                  formatter={(value) => value === "Admin fees" ? "Admin fees" : "Job balances"}
                 />
                 <Tooltip
                   formatter={(value, name) => [
