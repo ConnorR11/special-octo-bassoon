@@ -153,17 +153,48 @@ function getSystemDesign(appointment) {
 
   const data = calculation?.data || {}
   const results = calculation?.results || {}
+  const openSolar = data?.openSolar || {}
+  const openSolarArrays = Array.isArray(openSolar?.arrays) ? openSolar.arrays : []
   const arrays = Array.isArray(data.arrays) ? data.arrays : []
-  const panelCount = arrays.reduce(
+  const designArrays = openSolarArrays.length ? openSolarArrays : arrays
+
+  const panelCount = designArrays.reduce(
     (total, array) => total + Math.max(0, Number(array?.panelCount || 0)),
+    0
+  )
+
+  const openSolarGeneration = openSolarArrays.reduce((total, array) => {
+    const panelWattage = Number(array?.panelWattage || 0)
+    const count = Number(array?.panelCount || 0)
+    const irradiance = Number(array?.irradiance || 0)
+    const shading = Number(array?.shading ?? 1)
+    const systemSize = (panelWattage * count) / 1000
+    return total + systemSize * irradiance * shading
+  }, 0)
+
+  const hardware = openSolar?.hardware || {}
+  const batteries = Array.isArray(hardware?.batteries) ? hardware.batteries : []
+  const inverters = Array.isArray(hardware?.inverters) ? hardware.inverters : []
+
+  const openSolarBatteryCapacity = batteries.reduce(
+    (total, item) =>
+      total +
+      Number(item?.capacity || 0) * Math.max(1, Number(item?.quantity || 1)),
+    0
+  )
+
+  const openSolarInverterCapacity = inverters.reduce(
+    (total, item) =>
+      total +
+      Number(item?.capacity || 0) * Math.max(1, Number(item?.quantity || 1)),
     0
   )
 
   return {
     panelCount,
-    generation: Number(results?.generation || 0),
-    batteryCapacity: Number(data?.batteryCapacity || 0),
-    inverterCapacity: Number(data?.inverterCapacity || 0),
+    generation: openSolarArrays.length ? openSolarGeneration : Number(results?.generation || 0),
+    batteryCapacity: openSolarArrays.length ? openSolarBatteryCapacity : Number(data?.batteryCapacity || 0),
+    inverterCapacity: openSolarArrays.length ? openSolarInverterCapacity : Number(data?.inverterCapacity || 0),
   }
 }
 
