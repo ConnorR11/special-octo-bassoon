@@ -677,6 +677,99 @@ export default function EPVSCalculator({
     setData(appointmentInitial)
   }, [appointmentInitial])
 
+  // Keep the EPVS display in sync when OpenSolar saves a design and the
+  // webhook updates this appointment in Supabase. Only the OpenSolar-backed
+  // fields are refreshed so unsaved manual EPVS inputs are not overwritten.
+  useEffect(() => {
+    const appointmentRowId = String(appointment?.appointment_row_id || "").trim()
+    if (!appointmentRowId || !supabase) return
+
+    let channel
+
+    const applyOpenSolarUpdate = (epvsCalculation) => {
+      const saved = epvsCalculation?.data || {}
+      const openSolar = saved?.openSolar
+      if (!openSolar || typeof openSolar !== "object") return
+
+      const imported = Array.isArray(openSolar.arrays) ? openSolar.arrays : []
+      const importedArrays = [0, 1, 2, 3, 4, 5].map((index) => {
+        const importedArray = imported[index]
+        if (!importedArray) return createArray()
+        return {
+          ...createArray(),
+          panelCount: Number(importedArray.panelCount || 0),
+          panelWattage: Number(importedArray.panelWattage || 0),
+          orientation: Number(importedArray.orientation || 0),
+          pitch: Number(importedArray.pitch || 0),
+          irradiance: Number(importedArray.irradiance || 0),
+          shading: Number(importedArray.shading ?? 1),
+        }
+      })
+
+      const importedPanel = openSolar?.hardware?.panels?.[0]
+      const importedBattery = openSolar?.hardware?.batteries?.[0]
+      const importedInverter = openSolar?.hardware?.inverters?.[0]
+      const importedEvCharger = openSolar?.hardware?.evChargers?.[0]
+
+      setOpenSolarImageUrl(
+        String(openSolar?.systemImageUrl || openSolar?.imageUrl || "").trim()
+      )
+
+      setData((current) => ({
+        ...current,
+        arrays: imported.length ? importedArrays : current.arrays,
+        numberOfArrays: imported.length || current.numberOfArrays,
+        openSolar,
+        ...(importedPanel ? {
+          panelModel: importedPanel.model || "",
+          panelManufacturer: importedPanel.manufacturer || "",
+          panelQuantity: Number(importedPanel.quantity || 1),
+          panelWattage: Number(importedPanel.capacity || 0),
+        } : {}),
+        ...(importedBattery ? {
+          batteryCapacity:
+            Number(importedBattery.capacity || 0) *
+            Math.max(1, Number(importedBattery.quantity || 1)),
+          batteryModel: importedBattery.model || "",
+          batteryManufacturer: importedBattery.manufacturer || "",
+          batteryQuantity: Number(importedBattery.quantity || 1),
+        } : {}),
+        ...(importedInverter ? {
+          inverterCapacity: Number(importedInverter.capacity || 0),
+          inverterModel: importedInverter.model || "",
+          inverterManufacturer: importedInverter.manufacturer || "",
+          inverterQuantity: Number(importedInverter.quantity || 1),
+        } : {}),
+        ...(importedEvCharger ? {
+          evChargerModel: importedEvCharger.model || "",
+          evChargerManufacturer: importedEvCharger.manufacturer || "",
+          evChargerQuantity: Number(importedEvCharger.quantity || 1),
+          evChargerPowerKw: Number(importedEvCharger.capacity || 0),
+        } : {}),
+      }))
+    }
+
+    channel = supabase
+      .channel(`epvs-open-solar-${appointmentRowId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "appointments",
+          filter: `appointment_row_id=eq.${appointmentRowId}`,
+        },
+        (payload) => {
+          applyOpenSolarUpdate(payload?.new?.epvs_calculation)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      if (channel) supabase.removeChannel(channel)
+    }
+  }, [appointment?.appointment_row_id])
+
   const update = (key, value) => {
     setData((current) => ({
       ...current,
