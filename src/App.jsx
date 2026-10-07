@@ -31,6 +31,7 @@ import Reviews from "./pages/Reviews"
 import IntegrationLogs from "./pages/IntegrationLogs"
 import Templates from "./pages/Templates"
 import SolarAppointmentAnalysis from "./pages/SolarAppointmentAnalysis"
+import OpenSolarIds from "./pages/OpenSolarIds"
 import AdminUserPreview from "./components/AdminUserPreview"
 
 const DEALS_PAGE_SIZE = 50
@@ -99,7 +100,7 @@ function App() {
   const effectiveUserEmail = previewUser?.email ?? session?.user?.email ?? ""
 
   useEffect(() => {
-    const restrictedPages = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, templates: 4, "integration-logs": 4, "data-dashboard": 4, "data-clean": 4, "solar-appointment-analysis": 4 }
+    const restrictedPages = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, templates: 4, "integration-logs": 4, "data-dashboard": 4, "data-clean": 4, "solar-appointment-analysis": 4, "open-solar-ids": 4 }
     const requiredPermission = restrictedPages[page]
     if (requiredPermission && effectivePermissionLevel < requiredPermission) {
       setPage("dashboard")
@@ -158,7 +159,7 @@ function App() {
   function handleDealUpdated(updatedDeal){const excludedCommissionStages=new Set(["decline","customer cancelled","returned to sales","awaiting funds","on hold","pending cancellation"]);const stage=String(updatedDeal?.pipedrive_stage??"").trim().replace(/\s+/g," ").toLowerCase();const shouldRemoveFromCommissions=excludedCommissionStages.has(stage);setContracts(current=>current.map(contract=>contract.id===updatedDeal.id?updatedDeal:contract));setAllDeals(current=>current.map(contract=>contract.id===updatedDeal.id?updatedDeal:contract));setCommissionDeals(current=>shouldRemoveFromCommissions?current.filter(contract=>contract.id!==updatedDeal.id):current.map(contract=>contract.id===updatedDeal.id?updatedDeal:contract));setSelected(updatedDeal)}
 
   function handlePageChange(newPage) {
-    const requiredPermission={"sales-performance":2,"marketing-dashboard":3,"canvasser-kpi":3,mi:4,seo:4,reviews:4,users:4,tasks:4,templates:4,"integration-logs":4,"data-dashboard":4,"data-clean":4,"solar-appointment-analysis":4}[newPage]
+    const requiredPermission={"sales-performance":2,"marketing-dashboard":3,"canvasser-kpi":3,mi:4,seo:4,reviews:4,users:4,tasks:4,templates:4,"integration-logs":4,"data-dashboard":4,"data-clean":4,"solar-appointment-analysis":4,"open-solar-ids":4}[newPage]
     if(requiredPermission&&effectivePermissionLevel<requiredPermission)return
     setSelected(null);setSelectedAppointment(null);setPickupAppointment(null);setPage(newPage)
     if(newPage==="contracts"){setQuery("");setStatus("all");loadContracts(0,"","all")}
@@ -226,6 +227,8 @@ function App() {
     pageContent = <DataClean onOpenAppointment={handleAppointmentSelect}/>
   } else if (page === "solar-appointment-analysis") {
     pageContent = <SolarAppointmentAnalysis onSelectAppointment={handleAppointmentSelect}/>
+  } else if (page === "open-solar-ids") {
+    pageContent = <OpenSolarIds/>
   } else if (page === "sales-performance") {
     pageContent = <SalesPerformance contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setSelected={setSelected}/>
   } else if (page === "epvs") {
