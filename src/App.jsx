@@ -30,8 +30,7 @@ import MI from "./pages/MI"
 import Reviews from "./pages/Reviews"
 import IntegrationLogs from "./pages/IntegrationLogs"
 import Templates from "./pages/Templates"
-import SolarAppointmentAnalysis from "./pages/SolarAppointmentAnalysis"
-import OpenSolarIds from "./pages/OpenSolarIds"
+import SolarBackend from "./pages/SolarBackend"
 import AdminUserPreview from "./components/AdminUserPreview"
 
 const DEALS_PAGE_SIZE = 50
@@ -100,7 +99,7 @@ function App() {
   const effectiveUserEmail = previewUser?.email ?? session?.user?.email ?? ""
 
   useEffect(() => {
-    const restrictedPages = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, templates: 4, "integration-logs": 4, "data-dashboard": 4, "data-clean": 4, "solar-appointment-analysis": 4, "open-solar-ids": 4 }
+    const restrictedPages = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, templates: 4, "integration-logs": 4, "data-dashboard": 4, "data-clean": 4, "solar-backend": 4 }
     const requiredPermission = restrictedPages[page]
     if (requiredPermission && effectivePermissionLevel < requiredPermission) {
       setPage("dashboard")
@@ -225,10 +224,8 @@ function App() {
     pageContent = <DataDashboard/>
   } else if (page === "data-clean") {
     pageContent = <DataClean onOpenAppointment={handleAppointmentSelect}/>
-  } else if (page === "solar-appointment-analysis") {
-    pageContent = <SolarAppointmentAnalysis onSelectAppointment={handleAppointmentSelect}/>
-  } else if (page === "open-solar-ids") {
-    pageContent = <OpenSolarIds/>
+  } else if (page === "solar-backend") {
+    pageContent = <SolarBackend onSelectAppointment={handleAppointmentSelect}/>
   } else if (page === "sales-performance") {
     pageContent = <SalesPerformance contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setSelected={setSelected}/>
   } else if (page === "epvs") {
