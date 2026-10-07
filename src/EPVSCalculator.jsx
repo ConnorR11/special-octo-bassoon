@@ -761,6 +761,7 @@ export default function EPVSCalculator({
         inverterModel: saved.inverterModel || "",
         inverterManufacturer: saved.inverterManufacturer || "",
         inverterQuantity: saved.inverterQuantity || 0,
+        openSolar: saved.openSolar || null,
       })
     }
 
