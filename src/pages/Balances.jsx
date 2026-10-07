@@ -94,32 +94,60 @@ export default function Balances({ onSelect }) {
   )
 
   const paymentChartData = useMemo(() => {
-    const byMonth = new Map()
+    const today = new Date()
+    const todayKey = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, "0"),
+      String(today.getDate()).padStart(2, "0"),
+    ].join("-")
+
+    let outstanding = 0
+    const futureByDay = new Map()
 
     deals.forEach((deal) => {
       const rawDate = String(deal?.estimated_payment_date || "").trim()
-      const match = rawDate.match(/^(\d{4})-(\d{2})/)
+      const match = rawDate.match(/^(\d{4})-(\d{2})-(\d{2})/)
+      const amount = toNumber(deal?.balance_outstanding)
+
       if (!match) return
 
-      const key = `${match[1]}-${match[2]}`
-      const amount = toNumber(deal?.balance_outstanding)
-      byMonth.set(key, (byMonth.get(key) || 0) + amount)
+      const dateKey = `${match[1]}-${match[2]}-${match[3]}`
+
+      if (dateKey < todayKey) {
+        outstanding += amount
+        return
+      }
+
+      futureByDay.set(dateKey, (futureByDay.get(dateKey) || 0) + amount)
     })
 
-    return Array.from(byMonth.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, amount]) => {
-        const [year, month] = key.split("-")
-        const label = new Intl.DateTimeFormat("en-GB", {
-          month: "short",
-          year: "numeric",
-        }).format(new Date(Number(year), Number(month) - 1, 1))
+    const data = []
 
-        return {
-          month: label,
-          amount,
-        }
+    if (outstanding > 0) {
+      data.push({
+        dateKey: "outstanding",
+        date: "Outstanding",
+        amount: outstanding,
       })
+    }
+
+    Array.from(futureByDay.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .forEach(([dateKey, amount]) => {
+        const [year, month, day] = dateKey.split("-")
+        const date = new Date(Number(year), Number(month) - 1, Number(day))
+
+        data.push({
+          dateKey,
+          date: new Intl.DateTimeFormat("en-GB", {
+            day: "2-digit",
+            month: "short",
+          }).format(date),
+          amount,
+        })
+      })
+
+    return data
   }, [deals])
 
   return (
