@@ -117,10 +117,6 @@ function isSolarAppointment(appointment) {
   ].some((value) => normalise(value).includes("solar"))
 }
 
-function hasAllocatedRep(appointment) {
-  return String(appointment?.rep_allocated ?? "").trim() !== ""
-}
-
 function getEpvsData(appointment) {
   let calculation = appointment?.epvs_calculation || null
 
@@ -277,10 +273,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
-  async function loadAppointments(
-    range = { start: startDate, end: endDate },
-    allocatedOnlyOverride = allocatedOnly
-  ) {
+  async function loadAppointments(range = { start: startDate, end: endDate }) {
     if (!supabase) {
       setError("Supabase is not configured.")
       return
@@ -301,11 +294,6 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
         .gte("appointment_date", "2026-01-01T00:00:00")
         .order("appointment_date", { ascending: true })
 
-      if (allocatedOnlyOverride) {
-        request = request
-          .not("rep_allocated", "is", null)
-          .neq("rep_allocated", "")
-      }
 
       if (range.start) {
         request = request.gte("appointment_date", `${range.start}T00:00:00`)
