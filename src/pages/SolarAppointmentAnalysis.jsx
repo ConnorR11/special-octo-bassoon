@@ -221,6 +221,12 @@ function getSystemDesign(appointment) {
     0
   )
 
+  const systemSize = designArrays.reduce((total, array) => {
+    const panelWattage = Number(array?.panelWattage || array?.panel_wattage || 0)
+    const count = Number(array?.panelCount || 0)
+    return total + (panelWattage * count) / 1000
+  }, 0)
+
   const openSolarGeneration = openSolarArrays.reduce((total, array) => {
     const panelWattage = Number(array?.panelWattage || 0)
     const count = Number(array?.panelCount || 0)
@@ -250,6 +256,7 @@ function getSystemDesign(appointment) {
 
   return {
     panelCount,
+    systemSize: systemSize || Number(data?.systemSize || data?.system_size || 0),
     generation: openSolarArrays.length ? openSolarGeneration : Number(results?.generation || 0),
     batteryCapacity: openSolarArrays.length ? openSolarBatteryCapacity : Number(data?.batteryCapacity || 0),
     inverterCapacity: openSolarArrays.length ? openSolarInverterCapacity : Number(data?.inverterCapacity || 0),
@@ -355,6 +362,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [collapsedGroups, setCollapsedGroups] = useState({})
 
   async function loadAppointments(range = { start: startDate, end: endDate }) {
     if (!supabase) {
@@ -464,6 +472,18 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
       ? `${formatDate(startDate)} – ${formatDate(endDate)}`
       : "Custom range"
 
+  const analysisGroups = [
+    { key: "electricity", label: "Current Electricity", fields: ["Consumption", "Import", "Export", "Standing"] },
+    { key: "design", label: "System Design", fields: ["Panels", "System Size", "Generation", "Battery", "Inverter"] },
+    { key: "octopus", label: "Octopus Rates", fields: ["Day Export", "Flux Export", "Peak Export"] },
+    { key: "pricing", label: "Pricing", fields: ["Method", "Cost", "Payment", "Total cost"] },
+    { key: "epvs", label: "30 year EPVS", fields: ["Payback", "Net Position", "Pre Install"] },
+  ]
+
+  function toggleGroup(key) {
+    setCollapsedGroups((current) => ({ ...current, [key]: !current[key] }))
+  }
+
   function exportPdf() {
     if (!filteredAppointments.length) return
 
@@ -476,7 +496,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
     const headers = [
       "Appointment", "Date & time", "Sales Rep", "Result",
       "Consumption", "Import", "Export", "Standing",
-      "Panels", "Generation", "Battery", "Inverter",
+      "Panels", "System Size", "Generation", "Battery", "Inverter",
       "Day Export", "Flux Export", "Peak Export",
       "Method", "Cost", "Payment", "Total cost",
       "Payback", "Net Position", "Pre Install"
@@ -485,7 +505,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
     const groups = [
       { label: "", span: 4 },
       { label: "Current Electricity", span: 4 },
-      { label: "System Design", span: 4 },
+      { label: "System Design", span: 5 },
       { label: "Octopus Rates", span: 3 },
       { label: "Pricing", span: 4 },
       { label: "30 year EPVS", span: 3 },
@@ -508,6 +528,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
         formatElectricityValue(epvsData.exportRate, "p"),
         formatElectricityValue(epvsData.standingCharge, "p"),
         systemDesign.panelCount || "—",
+        systemDesign.systemSize ? Number(systemDesign.systemSize).toFixed(2) + " kW" : "—",
         systemDesign.generation ? Math.round(systemDesign.generation) + " kWh" : "—",
         systemDesign.batteryCapacity ? Number(systemDesign.batteryCapacity).toFixed(2) + " kWh" : "—",
         systemDesign.inverterCapacity ? String(systemDesign.inverterCapacity) + " kW" : "—",
@@ -528,7 +549,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
     // exported table as narrow as possible while keeping every value on one line.
     const fontSize = 5.4
     const horizontalPadding = 2.2
-    const minColumnWidths = [17, 15, 18, 15, 14, 12, 12, 13, 10, 14, 14, 13, 13, 14, 13, 14, 14, 14, 16, 12, 16, 16]
+    const minColumnWidths = [17, 15, 18, 15, 14, 12, 12, 13, 10, 13, 14, 14, 13, 13, 14, 13, 14, 14, 14, 16, 12, 16, 16]
 
     doc.setFont("helvetica", "normal")
     doc.setFontSize(fontSize)
@@ -550,7 +571,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
     const rowHeight = 6.2
     const groupHeight = 7
     const headerHeight = 8
-    const separatorIndexes = new Set([4, 8, 12, 15, 19])
+    const separatorIndexes = new Set([4, 9, 13, 16, 20])
 
     function drawHeader(y) {
       let x = margin
@@ -700,10 +721,21 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
         .solar-analysis-panel-header h2{margin:0;font-size:17px;font-weight:750}
         .solar-analysis-panel-header span{font-size:11px;color:#64748b}
         .solar-analysis-table-wrap{overflow-x:auto}
-        .solar-analysis-table{width:100%;border-collapse:collapse;font-size:12px}
+        .solar-analysis-table{width:max-content;min-width:100%;border-collapse:separate;border-spacing:0;font-size:12px}
+        .solar-analysis-table th,.solar-analysis-table td{box-sizing:border-box}
         .solar-analysis-table th{background:#575757;color:#fff;padding:10px 12px;text-align:left;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+        .solar-analysis-table th:first-child,.solar-analysis-table td:first-child{position:sticky;left:0;z-index:4;background:#fff;box-shadow:2px 0 5px rgba(15,23,42,.08)}
+        .solar-analysis-table thead th:first-child{background:#575757;z-index:7}
+        .solar-analysis-table thead tr:first-child th:first-child{background:#f8fafc}
+        .solar-analysis-table tbody tr:hover td:first-child{background:#f8fafc}
         .solar-analysis-table th.solar-analysis-group{background:#f8fafc;color:#0f172a;border-bottom:1px solid #dbe3ec;font-size:11px;text-transform:none;letter-spacing:0}
         .solar-analysis-table th.solar-analysis-group-empty{background:#f8fafc;border-bottom:1px solid #dbe3ec}
+        .solar-analysis-group-button{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:0;border:0;background:transparent;color:inherit;font:inherit;font-weight:750;cursor:pointer;text-align:left}
+        .solar-analysis-group-button svg{flex:0 0 auto}
+        .solar-analysis-group-collapsed{width:42px;min-width:42px;padding:0 7px}
+        .solar-analysis-group-collapsed .solar-analysis-group-button{justify-content:center}
+        .solar-analysis-group-collapsed .solar-analysis-group-label{display:none}
+        .solar-analysis-collapsed-cell{padding:0!important;width:42px;min-width:42px;max-width:42px;text-align:center;color:#94a3b8;background:#fff!important}
         .solar-analysis-table th.solar-analysis-group:not(:first-of-type){border-left:4px solid #000}
         .solar-analysis-table th.solar-analysis-electricity-field:first-of-type{border-left:4px solid #000}
         .solar-analysis-table th.solar-analysis-design-field:first-of-type{border-left:4px solid #000}
@@ -716,11 +748,11 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
         .solar-analysis-table th.solar-analysis-pricing-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
         .solar-analysis-table th.solar-analysis-epvs-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
         .solar-analysis-table td{padding:11px 12px;border-top:1px solid #e8edf2;color:#334155;white-space:nowrap}.solar-analysis-table td.solar-analysis-empty-field{background:#fef2f2;color:#991b1b}
-        .solar-analysis-table td:nth-child(5),
-        .solar-analysis-table td:nth-child(9),
-        .solar-analysis-table td:nth-child(13),
-        .solar-analysis-table td:nth-child(16),
-        .solar-analysis-table td:nth-child(20){border-left:4px solid #000}
+        .solar-analysis-table td.solar-analysis-electricity-field:first-of-type,
+        .solar-analysis-table td.solar-analysis-design-field:first-of-type,
+        .solar-analysis-table td.solar-analysis-octopus-field:first-of-type,
+        .solar-analysis-table td.solar-analysis-pricing-field:first-of-type,
+        .solar-analysis-table td.solar-analysis-epvs-field:first-of-type{border-left:4px solid #000}
         .solar-analysis-table tbody tr{cursor:pointer}
         .solar-analysis-table tbody tr:hover{background:#f8fafc}
         .solar-analysis-name{font-weight:750;color:#0f172a}
@@ -813,42 +845,47 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
               <thead>
                 <tr>
                   <th colSpan="4" className="solar-analysis-group-empty"></th>
-                  <th colSpan="4" className="solar-analysis-group">Current Electricity</th>
-                  <th colSpan="4" className="solar-analysis-group">System Design</th>
-                  <th colSpan="3" className="solar-analysis-group">Octopus Rates</th>
-                  <th colSpan="4" className="solar-analysis-group">Pricing</th>
-                  <th colSpan="3" className="solar-analysis-group">30 year EPVS</th>
+                  {analysisGroups.map((group) => {
+                    const collapsed = !!collapsedGroups[group.key]
+                    return (
+                      <th
+                        key={group.key}
+                        colSpan={collapsed ? 1 : group.fields.length}
+                        className={"solar-analysis-group " + (collapsed ? "solar-analysis-group-collapsed" : "")}
+                      >
+                        <button
+                          type="button"
+                          className="solar-analysis-group-button"
+                          onClick={() => toggleGroup(group.key)}
+                          title={(collapsed ? "Expand " : "Collapse ") + group.label}
+                        >
+                          <span className="solar-analysis-group-label">{group.label}</span>
+                          <span aria-hidden="true">{collapsed ? "›" : "‹"}</span>
+                        </button>
+                      </th>
+                    )
+                  })}
                 </tr>
                 <tr>
                   <th>Appointment</th>
                   <th>Date</th>
                   <th>Sales Rep</th>
                   <th>Result</th>
-                  <th className="solar-analysis-electricity-field">Consumption</th>
-                  <th className="solar-analysis-electricity-field">Import</th>
-                  <th className="solar-analysis-electricity-field">Export</th>
-                  <th className="solar-analysis-electricity-field">Standing</th>
-                  <th className="solar-analysis-design-field">Panels</th>
-                  <th className="solar-analysis-design-field">Generation</th>
-                  <th className="solar-analysis-design-field">Battery</th>
-                  <th className="solar-analysis-design-field">Inverter</th>
-                  <th className="solar-analysis-octopus-field">Day Export</th>
-                  <th className="solar-analysis-octopus-field">Flux Export</th>
-                  <th className="solar-analysis-octopus-field">Peak Export</th>
-                  <th className="solar-analysis-pricing-field">Method</th>
-                  <th className="solar-analysis-pricing-field">Cost</th>
-                  <th className="solar-analysis-pricing-field">Payment</th>
-                  <th className="solar-analysis-pricing-field">Total cost</th>
-                  <th className="solar-analysis-epvs-field">Payback</th>
-                  <th className="solar-analysis-epvs-field">Net Position</th>
-                  <th className="solar-analysis-epvs-field">Pre Install</th>
+                  {analysisGroups.flatMap((group) => {
+                    if (collapsedGroups[group.key]) {
+                      return [<th key={group.key} className="solar-analysis-group-collapsed" aria-label={group.label}></th>]
+                    }
+                    return group.fields.map((field) => (
+                      <th key={group.key + "-" + field} className={"solar-analysis-" + group.key + "-field"}>{field}</th>
+                    ))
+                  })}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan="22" className="solar-analysis-empty">Loading solar appointments...</td></tr>
+                  <tr><td colSpan="26" className="solar-analysis-empty">Loading solar appointments...</td></tr>
                 ) : filteredAppointments.length === 0 ? (
-                  <tr><td colSpan="22" className="solar-analysis-empty">No solar appointments found for this period.</td></tr>
+                  <tr><td colSpan="26" className="solar-analysis-empty">No solar appointments found for this period.</td></tr>
                 ) : (
                   filteredAppointments.map((appointment) => {
                     const rep = repNameByEmail[normalise(appointment.rep_allocated)] || appointment.rep_allocated || "—"
@@ -864,24 +901,68 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
                         <td>{formatDateTime(appointment.appointment_date)}</td>
                         <td>{rep}</td>
                         <td className="solar-analysis-result">{result}</td>
-                        <td className={isEmptyDisplayValue(formatElectricityValue(epvsData.annualConsumption)) ? "solar-analysis-empty-field" : ""}>{formatElectricityValue(epvsData.annualConsumption)}</td>
-                        <td className={isEmptyDisplayValue(formatElectricityValue(epvsData.importRate, "p")) ? "solar-analysis-empty-field" : ""}>{formatElectricityValue(epvsData.importRate, "p")}</td>
-                        <td className={isEmptyDisplayValue(formatElectricityValue(epvsData.exportRate, "p")) ? "solar-analysis-empty-field" : ""}>{formatElectricityValue(epvsData.exportRate, "p")}</td>
-                        <td className={isEmptyDisplayValue(formatElectricityValue(epvsData.standingCharge, "p")) ? "solar-analysis-empty-field" : ""}>{formatElectricityValue(epvsData.standingCharge, "p")}</td>
-                        <td className={isEmptyDisplayValue(systemDesign.panelCount || "—") ? "solar-analysis-empty-field" : ""}>{systemDesign.panelCount || "—"}</td>
-                        <td className={isEmptyDisplayValue(systemDesign.generation ? Math.round(systemDesign.generation) + " kWh" : "—") ? "solar-analysis-empty-field" : ""}>{systemDesign.generation ? Math.round(systemDesign.generation) + " kWh" : "—"}</td>
-                        <td className={isEmptyDisplayValue(systemDesign.batteryCapacity ? Number(systemDesign.batteryCapacity).toFixed(2) + " kWh" : "—") ? "solar-analysis-empty-field" : ""}>{systemDesign.batteryCapacity ? Number(systemDesign.batteryCapacity).toFixed(2) + " kWh" : "—"}</td>
-                        <td className={isEmptyDisplayValue(systemDesign.inverterCapacity ? String(systemDesign.inverterCapacity) + " kW" : "—") ? "solar-analysis-empty-field" : ""}>{systemDesign.inverterCapacity ? String(systemDesign.inverterCapacity) + " kW" : "—"}</td>
-                        <td className={isEmptyDisplayValue(formatElectricityValue(epvsData.fluxDayExport, "p")) ? "solar-analysis-empty-field" : ""}>{formatElectricityValue(epvsData.fluxDayExport, "p")}</td>
-                        <td className={isEmptyDisplayValue(formatElectricityValue(epvsData.fluxExport, "p")) ? "solar-analysis-empty-field" : ""}>{formatElectricityValue(epvsData.fluxExport, "p")}</td>
-                        <td className={isEmptyDisplayValue(formatElectricityValue(epvsData.fluxPeakExport, "p")) ? "solar-analysis-empty-field" : ""}>{formatElectricityValue(epvsData.fluxPeakExport, "p")}</td>
-                        <td className={isEmptyDisplayValue(pricing.method) ? "solar-analysis-empty-field" : ""}>{pricing.method}</td>
-                        <td className={isEmptyDisplayValue(pricing.cost != null ? "£" + Math.round(Number(pricing.cost)).toLocaleString("en-GB") : "—") ? "solar-analysis-empty-field" : ""}>{pricing.cost != null ? "£" + Math.round(Number(pricing.cost)).toLocaleString("en-GB") : "—"}</td>
-                        <td className={isEmptyDisplayValue(formatMoney(pricing.monthlyPayment)) ? "solar-analysis-empty-field" : ""}>{formatMoney(pricing.monthlyPayment)}</td>
-                        <td className={isEmptyDisplayValue(pricing.totalCost != null ? "£" + Math.round(Number(pricing.totalCost)).toLocaleString("en-GB") : "—") ? "solar-analysis-empty-field" : ""}>{pricing.totalCost != null ? "£" + Math.round(Number(pricing.totalCost)).toLocaleString("en-GB") : "—"}</td>
-                        <td className={isEmptyDisplayValue(thirtyYearEpvs.paybackPeriod != null ? Math.round(Number(thirtyYearEpvs.paybackPeriod)) + "y" : "—") ? "solar-analysis-empty-field" : ""}>{thirtyYearEpvs.paybackPeriod != null ? Math.round(Number(thirtyYearEpvs.paybackPeriod)) + "y" : "—"}</td>
-                        <td className={isEmptyDisplayValue(formatMoney(thirtyYearEpvs.netPosition)) ? "solar-analysis-empty-field" : ""}>{formatMoney(thirtyYearEpvs.netPosition)}</td>
-                        <td className={isEmptyDisplayValue(formatMoney(thirtyYearEpvs.billPreInstall)) ? "solar-analysis-empty-field" : ""}>{formatMoney(thirtyYearEpvs.billPreInstall)}</td>
+                        {[
+                          {
+                            key: "electricity",
+                            values: [
+                              formatElectricityValue(epvsData.annualConsumption),
+                              formatElectricityValue(epvsData.importRate, "p"),
+                              formatElectricityValue(epvsData.exportRate, "p"),
+                              formatElectricityValue(epvsData.standingCharge, "p"),
+                            ],
+                          },
+                          {
+                            key: "design",
+                            values: [
+                              systemDesign.panelCount || "—",
+                              systemDesign.systemSize ? Number(systemDesign.systemSize).toFixed(2) + " kW" : "—",
+                              systemDesign.generation ? Math.round(systemDesign.generation) + " kWh" : "—",
+                              systemDesign.batteryCapacity ? Number(systemDesign.batteryCapacity).toFixed(2) + " kWh" : "—",
+                              systemDesign.inverterCapacity ? String(systemDesign.inverterCapacity) + " kW" : "—",
+                            ],
+                          },
+                          {
+                            key: "octopus",
+                            values: [
+                              formatElectricityValue(epvsData.fluxDayExport, "p"),
+                              formatElectricityValue(epvsData.fluxExport, "p"),
+                              formatElectricityValue(epvsData.fluxPeakExport, "p"),
+                            ],
+                          },
+                          {
+                            key: "pricing",
+                            values: [
+                              pricing.method,
+                              pricing.cost != null ? "£" + Math.round(Number(pricing.cost)).toLocaleString("en-GB") : "—",
+                              formatMoney(pricing.monthlyPayment),
+                              pricing.totalCost != null ? "£" + Math.round(Number(pricing.totalCost)).toLocaleString("en-GB") : "—",
+                            ],
+                          },
+                          {
+                            key: "epvs",
+                            values: [
+                              thirtyYearEpvs.paybackPeriod != null ? Math.round(Number(thirtyYearEpvs.paybackPeriod)) + "y" : "—",
+                              formatMoney(thirtyYearEpvs.netPosition),
+                              formatMoney(thirtyYearEpvs.billPreInstall),
+                            ],
+                          },
+                        ].flatMap((group) => {
+                          if (collapsedGroups[group.key]) {
+                            return [<td key={group.key + "-collapsed"} className="solar-analysis-collapsed-cell">›</td>]
+                          }
+
+                          return group.values.map((value, index) => (
+                            <td
+                              key={group.key + "-" + index}
+                              className={[
+                                "solar-analysis-" + group.key + "-field",
+                                isEmptyDisplayValue(value) ? "solar-analysis-empty-field" : "",
+                              ].filter(Boolean).join(" ")}
+                            >
+                              {value}
+                            </td>
+                          ))
+                        })}
                       </tr>
                     )
                   })
