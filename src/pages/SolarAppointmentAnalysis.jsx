@@ -644,7 +644,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
       `}</style>
 
       <div className="solar-analysis-container">
-        <div className="solar-analysis-header">
+        {!embedded && <div className="solar-analysis-header">
           <div>
             <div className="solar-analysis-eyebrow">Administration</div>
             <h1 className="solar-analysis-heading">Solar Appointment Analysis</h1>
@@ -654,7 +654,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
             <RefreshCw size={14} className={loading ? "solar-analysis-spin" : ""}/>
             {loading ? "Loading..." : "Refresh"}
           </button>
-        </div>
+        </div>}
 
         <div className="solar-analysis-controls">
           <div className="solar-analysis-periods">
