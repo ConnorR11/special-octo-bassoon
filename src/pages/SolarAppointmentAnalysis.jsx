@@ -81,11 +81,19 @@ function formatDate(value) {
 
 function formatDateTime(value) {
   if (!value) return "—"
+
+  // Appointment times in the CRM are stored as the local appointment clock time.
+  // Do not convert the value through UTC/BST, otherwise UK summer time adds an hour.
+  const match = String(value).match(/^(\\d{4})-(\\d{2})-(\\d{2})[T ](\\d{2}):(\\d{2})/)
+  if (match) {
+    const [, year, month, day, hour, minute] = match
+    const date = new Date(Number(year), Number(month) - 1, Number(day))
+    return `${day} ${date.toLocaleString("en-GB", { month: "short" })} ${year}, ${hour}:${minute}`
+  }
+
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return String(value)
-
   return date.toLocaleString("en-GB", {
-    timeZone: "Europe/London",
     day: "2-digit",
     month: "short",
     year: "numeric",
