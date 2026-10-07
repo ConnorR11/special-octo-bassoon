@@ -633,43 +633,93 @@ export default function EPVSCalculator({
 }, [])
   
   const appointmentInitial = useMemo(() => {
-    const rawSaved = appointment?.epvs_calculation?.data || {}
-    // Older versions stored a separate data.openSolar object. Do not carry
-    // that legacy object forward; OpenSolar now saves into the normal EPVS
-    // calculator fields.
-    const { openSolar: _legacyOpenSolar, ...saved } = rawSaved
-    const savedArrays = Array.isArray(saved.arrays)
-      ? saved.arrays
-      : initial.arrays
+    const saved = appointment?.epvs_calculation?.data || {}
+    const openSolar = saved?.openSolar
+    const openSolarArrays =
+      openSolar && Array.isArray(openSolar.arrays)
+        ? openSolar.arrays
+        : []
 
-    const sixArrays = Array.from({ length: 6 }, (_, index) =>
-      savedArrays[index] || createArray()
-    )
+    const sourceArrays =
+      openSolarArrays.length > 0
+        ? openSolarArrays
+        : Array.isArray(saved.arrays)
+          ? saved.arrays
+          : initial.arrays
+
+    const sixArrays = Array.from({ length: 6 }, (_, index) => {
+      const savedArray = sourceArrays[index]
+      if (!savedArray) return createArray()
+
+      return {
+        ...createArray(),
+        panelWattage: Number(savedArray.panelWattage || 0),
+        panelCount: Number(savedArray.panelCount || 0),
+        orientation: Number(savedArray.orientation || 0),
+        pitch: Number(savedArray.pitch || 0),
+        irradiance: Number(savedArray.irradiance || 0),
+        shading: Number(savedArray.shading ?? 1),
+      }
+    })
+
+    const importedPanel = openSolar?.hardware?.panels?.[0]
+    const importedBattery = openSolar?.hardware?.batteries?.[0]
+    const importedInverter = openSolar?.hardware?.inverters?.[0]
+    const importedEvCharger = openSolar?.hardware?.evChargers?.[0]
 
     return {
       ...initial,
       ...saved,
       arrays: sixArrays,
-
+      ...(openSolarArrays.length > 0
+        ? {
+            openSolar,
+            numberOfArrays: openSolarArrays.length,
+          }
+        : {}),
+      ...(importedPanel
+        ? {
+            panelModel: importedPanel.model || "",
+            panelManufacturer: importedPanel.manufacturer || "",
+            panelQuantity: Number(importedPanel.quantity || 1),
+            panelWattage:
+              Number(importedPanel.capacity || 0) ||
+              Number(openSolarArrays[0]?.panelWattage || 0),
+          }
+        : {}),
+      ...(importedBattery
+        ? {
+            batteryCapacity:
+              Number(importedBattery.capacity || 0) *
+              Math.max(1, Number(importedBattery.quantity || 1)),
+            batteryModel: importedBattery.model || "",
+            batteryManufacturer: importedBattery.manufacturer || "",
+            batteryQuantity: Number(importedBattery.quantity || 1),
+          }
+        : {}),
+      ...(importedInverter
+        ? {
+            inverterCapacity: Number(importedInverter.capacity || 0),
+            inverterModel: importedInverter.model || "",
+            inverterManufacturer: importedInverter.manufacturer || "",
+            inverterQuantity: Number(importedInverter.quantity || 1),
+          }
+        : {}),
+      ...(importedEvCharger
+        ? {
+            evChargerModel: importedEvCharger.model || "",
+            evChargerManufacturer: importedEvCharger.manufacturer || "",
+            evChargerQuantity: Number(importedEvCharger.quantity || 1),
+            evChargerPowerKw: Number(importedEvCharger.capacity || 0),
+          }
+        : {}),
       solarDegradationYear1:
         Number(saved.solarDegradationYear1) > 0
           ? Number(saved.solarDegradationYear1)
           : initial.solarDegradationYear1,
-
-      customerName:
-        saved.customerName ||
-        appointment?.name ||
-        "",
-
-      address:
-        saved.address ||
-        appointment?.address ||
-        "",
-
-      postcode:
-        saved.postcode ||
-        appointment?.postcode ||
-        "",
+      customerName: saved.customerName || appointment?.name || "",
+      address: saved.address || appointment?.address || "",
+      postcode: saved.postcode || appointment?.postcode || "",
     }
   }, [appointment])
 
@@ -718,12 +768,74 @@ export default function EPVSCalculator({
       const saved = epvsCalculation?.data
       if (!saved || typeof saved !== "object") return
 
+      const openSolar = saved?.openSolar
+      const openSolarArrays =
+        openSolar && Array.isArray(openSolar.arrays)
+          ? openSolar.arrays
+          : []
+
+      const importedPanel = openSolar?.hardware?.panels?.[0]
+      const importedBattery = openSolar?.hardware?.batteries?.[0]
+      const importedInverter = openSolar?.hardware?.inverters?.[0]
+      const importedEvCharger = openSolar?.hardware?.evChargers?.[0]
+
       setData((current) => ({
         ...current,
         ...saved,
-        arrays: Array.from({ length: 6 }, (_, index) =>
-          saved.arrays?.[index] || createArray()
-        ),
+        arrays: Array.from({ length: 6 }, (_, index) => {
+          const savedArray =
+            openSolarArrays[index] || saved.arrays?.[index]
+          return savedArray
+            ? {
+                ...createArray(),
+                panelWattage: Number(savedArray.panelWattage || 0),
+                panelCount: Number(savedArray.panelCount || 0),
+                orientation: Number(savedArray.orientation || 0),
+                pitch: Number(savedArray.pitch || 0),
+                irradiance: Number(savedArray.irradiance || 0),
+                shading: Number(savedArray.shading ?? 1),
+              }
+            : createArray()
+        }),
+        ...(openSolarArrays.length > 0
+          ? { numberOfArrays: openSolarArrays.length }
+          : {}),
+        ...(importedPanel
+          ? {
+              panelModel: importedPanel.model || "",
+              panelManufacturer: importedPanel.manufacturer || "",
+              panelQuantity: Number(importedPanel.quantity || 1),
+              panelWattage:
+                Number(importedPanel.capacity || 0) ||
+                Number(openSolarArrays[0]?.panelWattage || 0),
+            }
+          : {}),
+        ...(importedBattery
+          ? {
+              batteryCapacity:
+                Number(importedBattery.capacity || 0) *
+                Math.max(1, Number(importedBattery.quantity || 1)),
+              batteryModel: importedBattery.model || "",
+              batteryManufacturer: importedBattery.manufacturer || "",
+              batteryQuantity: Number(importedBattery.quantity || 1),
+            }
+          : {}),
+        ...(importedInverter
+          ? {
+              inverterCapacity: Number(importedInverter.capacity || 0),
+              inverterModel: importedInverter.model || "",
+              inverterManufacturer: importedInverter.manufacturer || "",
+              inverterQuantity: Number(importedInverter.quantity || 1),
+            }
+          : {}),
+        ...(importedEvCharger
+          ? {
+              evChargerModel: importedEvCharger.model || "",
+              evChargerManufacturer: importedEvCharger.manufacturer || "",
+              evChargerQuantity: Number(importedEvCharger.quantity || 1),
+              evChargerPowerKw: Number(importedEvCharger.capacity || 0),
+            }
+          : {}),
       }))
     }
 
@@ -924,6 +1036,13 @@ export default function EPVSCalculator({
       }
     })
 
+    const openSolarRecord = {
+      ...payload,
+      importedAt: new Date().toISOString(),
+      imageUrl: String(payload?.systemImageUrl || payload?.imageUrl || ""),
+      arrays: imported,
+    }
+
     const importedPanel = payload?.hardware?.panels?.[0]
     const importedBattery = payload?.hardware?.batteries?.[0]
     const importedInverter = payload?.hardware?.inverters?.[0]
@@ -933,6 +1052,7 @@ export default function EPVSCalculator({
       ...current,
       arrays: importedArrays,
       numberOfArrays: imported.length,
+      openSolar: openSolarRecord,
 
       // OpenSolar is the source of truth for proposed hardware.
       // Feed its capacities directly into the EPVS calculation inputs.
@@ -1481,11 +1601,10 @@ export default function EPVSCalculator({
     setSaveError("")
 
     try {
-      const { openSolar: _legacyOpenSolar, ...epvsData } = data
       const payload = {
         version: 1,
         savedAt: new Date().toISOString(),
-        data: epvsData,
+        data,
         results,
         thirtyYearProjection,
       }
