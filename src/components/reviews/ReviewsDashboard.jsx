@@ -286,7 +286,6 @@ export default function Reviews({ setMobile, embedded = false }) {
         )}
         </div>
       </div>
-    </div>
   )
 }
 
