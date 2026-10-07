@@ -634,15 +634,93 @@ export default function EPVSCalculator({
   
   const appointmentInitial = useMemo(() => {
     const saved = appointment?.epvs_calculation?.data || {}
-    const savedArrays = Array.isArray(saved.arrays) ? saved.arrays : initial.arrays
-    const sixArrays = Array.from({ length: 6 }, (_, index) =>
-      savedArrays[index] || createArray()
-    )
+    const openSolar = saved?.openSolar
+    const openSolarArrays =
+      openSolar && Array.isArray(openSolar.arrays)
+        ? openSolar.arrays
+        : []
+
+    // OpenSolar data is stored separately under data.openSolar by the webhook.
+    // When the parent appointment object refreshes, make sure the calculator
+    // initial state is rebuilt from that latest OpenSolar snapshot rather than
+    // falling back to the older saved arrays.
+    const savedArrays =
+      openSolarArrays.length > 0
+        ? openSolarArrays
+        : Array.isArray(saved.arrays)
+          ? saved.arrays
+          : initial.arrays
+
+    const sixArrays = Array.from({ length: 6 }, (_, index) => {
+      const savedArray = savedArrays[index]
+      if (!savedArray) return createArray()
+
+      return {
+        ...createArray(),
+        panelWattage: Number(savedArray.panelWattage || 0),
+        panelCount: Number(savedArray.panelCount || 0),
+        orientation: Number(savedArray.orientation || 0),
+        pitch: Number(savedArray.pitch || 0),
+        irradiance: Number(savedArray.irradiance || 0),
+        shading: Number(savedArray.shading ?? 1),
+      }
+    })
+
+    const importedPanel = openSolar?.hardware?.panels?.[0]
+    const importedBattery = openSolar?.hardware?.batteries?.[0]
+    const importedInverter = openSolar?.hardware?.inverters?.[0]
+    const importedEvCharger = openSolar?.hardware?.evChargers?.[0]
+
+    // OpenSolar hardware can occasionally omit panel capacity, while the
+    // array data still contains the actual panel wattage.
+    const openSolarPanelWattage =
+      Number(importedPanel?.capacity || 0) ||
+      Number(openSolarArrays[0]?.panelWattage || 0)
 
     return {
       ...initial,
       ...saved,
       arrays: sixArrays,
+      ...(openSolarArrays.length > 0
+        ? {
+            openSolar,
+            numberOfArrays: openSolarArrays.length,
+          }
+        : {}),
+      ...(importedPanel
+        ? {
+            panelModel: importedPanel.model || "",
+            panelManufacturer: importedPanel.manufacturer || "",
+            panelQuantity: Number(importedPanel.quantity || 1),
+            panelWattage: openSolarPanelWattage,
+          }
+        : {}),
+      ...(importedBattery
+        ? {
+            batteryCapacity:
+              Number(importedBattery.capacity || 0) *
+              Math.max(1, Number(importedBattery.quantity || 1)),
+            batteryModel: importedBattery.model || "",
+            batteryManufacturer: importedBattery.manufacturer || "",
+            batteryQuantity: Number(importedBattery.quantity || 1),
+          }
+        : {}),
+      ...(importedInverter
+        ? {
+            inverterCapacity: Number(importedInverter.capacity || 0),
+            inverterModel: importedInverter.model || "",
+            inverterManufacturer: importedInverter.manufacturer || "",
+            inverterQuantity: Number(importedInverter.quantity || 1),
+          }
+        : {}),
+      ...(importedEvCharger
+        ? {
+            evChargerModel: importedEvCharger.model || "",
+            evChargerManufacturer: importedEvCharger.manufacturer || "",
+            evChargerQuantity: Number(importedEvCharger.quantity || 1),
+            evChargerPowerKw: Number(importedEvCharger.capacity || 0),
+          }
+        : {}),
 
       // Older saved calculations may contain 0 for this newly introduced
       // field. EPVS Year 1 degradation is 1.00%, so migrate those records
