@@ -211,7 +211,7 @@ export default function Reviews({ setMobile }) {
   const trendLeft = 52
   const trendRight = 52
   const trendTop = 22
-  const trendBottom = 42
+  const trendBottom = 70
   const trendPlotWidth = trendWidth - trendLeft - trendRight
   const trendPlotHeight = trendHeight - trendTop - trendBottom
   const maxTrendCount = Math.max(1, ...reviewTrend.map((point) => point.count))
@@ -224,6 +224,16 @@ export default function Reviews({ setMobile }) {
     const originalIndex = reviewTrend.indexOf(point)
     return `${index === 0 ? "M" : "L"} ${trendX(originalIndex).toFixed(1)} ${trendYAverage(point.average).toFixed(1)}`
   }).join(" ")
+
+  const trendYearGroups = Array.from(
+    reviewTrend.reduce((groups, point, index) => {
+      const year = point.date.getFullYear()
+      const group = groups.get(year) || { year, firstIndex: index, lastIndex: index }
+      group.lastIndex = index
+      groups.set(year, group)
+      return groups
+    }, new Map()).values()
+  )
 
 
   return (
@@ -264,20 +274,17 @@ export default function Reviews({ setMobile }) {
               <svg className="reviews-trend-svg" viewBox={`0 0 ${trendWidth} ${trendHeight}`} preserveAspectRatio="none" role="img" aria-label="Quarterly Trustpilot and Google review volume with combined average score">
                 {[0, 0.25, 0.5, 0.75, 1].map((step) => {
                   const y = trendTop + trendPlotHeight - step * trendPlotHeight
-                  const countLabel = Math.round(step * maxTrendCount).toLocaleString("en-GB")
-                  const averageLabel = (1 + step * 4).toFixed(1)
                   return (
-                    <g key={step}>
-                      <line className="reviews-trend-gridline" x1={trendLeft} x2={trendWidth - trendRight} y1={y} y2={y} />
-                      <text className="reviews-trend-axis" x={trendLeft - 9} y={y + 4} textAnchor="end">{countLabel}</text>
-                      <text className="reviews-trend-axis" x={trendWidth - trendRight + 9} y={y + 4}>{averageLabel}</text>
-                    </g>
+                    <line
+                      key={step}
+                      className="reviews-trend-gridline"
+                      x1={trendLeft}
+                      x2={trendWidth - trendRight}
+                      y1={y}
+                      y2={y}
+                    />
                   )
                 })}
-
-                <text className="reviews-trend-axis" x={trendLeft} y={trendHeight - 10}>Reviews / quarter</text>
-                <text className="reviews-trend-axis" x={trendWidth - trendRight} y={trendHeight - 10} textAnchor="end">Average score</text>
-
 
                 {reviewTrend.map((point, index) => {
                   const x = trendX(index)
@@ -318,9 +325,14 @@ export default function Reviews({ setMobile }) {
                           <title>{point.label}: {point.average.toFixed(2)} combined average</title>
                         </circle>
                       )}
-                      {(index === 0 || index === reviewTrend.length - 1 || index % Math.max(1, Math.ceil(reviewTrend.length / 8)) === 0) && (
-                        <text className="reviews-trend-axis" x={x} y={trendHeight - 18} textAnchor="middle">{point.label}</text>
-                      )}
+                      <text
+                        className="reviews-trend-axis"
+                        x={x}
+                        y={trendHeight - 39}
+                        textAnchor="middle"
+                      >
+                        {point.label.split(" ")[0]}
+                      </text>
                     </g>
                   )
                 })}
@@ -328,6 +340,21 @@ export default function Reviews({ setMobile }) {
                 {reviewTrend.length > 1 && trendAveragePath && (
                   <path className="reviews-trend-average-line" d={trendAveragePath} />
                 )}
+                {trendYearGroups.map((group) => {
+                  const centerIndex = (group.firstIndex + group.lastIndex) / 2
+                  return (
+                    <text
+                      key={group.year}
+                      className="reviews-trend-axis"
+                      x={trendX(centerIndex)}
+                      y={trendHeight - 12}
+                      textAnchor="middle"
+                      style={{ fontWeight: 700 }}
+                    >
+                      {group.year}
+                    </text>
+                  )
+                })}
               </svg>
             </div>
           )}
