@@ -924,13 +924,6 @@ export default function EPVSCalculator({
       }
     })
 
-    const openSolarRecord = {
-      ...payload,
-      importedAt: new Date().toISOString(),
-      imageUrl: String(payload?.systemImageUrl || payload?.imageUrl || ""),
-      arrays: imported,
-    }
-
     const importedPanel = payload?.hardware?.panels?.[0]
     const importedBattery = payload?.hardware?.batteries?.[0]
     const importedInverter = payload?.hardware?.inverters?.[0]
@@ -1488,10 +1481,11 @@ export default function EPVSCalculator({
     setSaveError("")
 
     try {
+      const { openSolar: _legacyOpenSolar, ...epvsData } = data
       const payload = {
         version: 1,
         savedAt: new Date().toISOString(),
-        data,
+        data: epvsData,
         results,
         thirtyYearProjection,
       }
