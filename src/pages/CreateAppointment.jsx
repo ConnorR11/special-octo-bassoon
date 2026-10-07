@@ -147,82 +147,6 @@ export default function CreateAppointment({ onBack, onCreated }) {
 
       if (appointmentError) throw appointmentError
 
-      let createdWithEpvs = created
-      const isSolarAppointment = String(created?.job_type || "").trim().toLowerCase() === "solar"
-
-      if (isSolarAppointment) {
-        try {
-          const postcode = String(created?.postcode || "").trim()
-
-          if (!postcode) {
-            throw new Error("Solar appointment has no postcode for Octopus lookup.")
-          }
-
-          const octopusResponse = await fetch("/api/octopus-flux", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ postcode }),
-          })
-
-          const octopusPayload = await octopusResponse.json().catch(() => ({}))
-
-          if (!octopusResponse.ok || !octopusPayload?.success) {
-            throw new Error(
-              octopusPayload?.error || "Unable to retrieve Octopus Flux rates."
-            )
-          }
-
-          const retrievedAt =
-            octopusPayload.retrievedAt || new Date().toISOString()
-
-          const octopusRates = {
-            tariff: "Standard Flux",
-            fluxDayImport: Number(octopusPayload.rates?.dayImport ?? 0),
-            fluxDayExport: Number(octopusPayload.rates?.dayExport ?? 0),
-            fluxImport: Number(octopusPayload.rates?.offPeakImport ?? 0),
-            fluxExport: Number(octopusPayload.rates?.offPeakExport ?? 0),
-            fluxPeakImport: Number(octopusPayload.rates?.peakImport ?? 0),
-            fluxPeakExport: Number(octopusPayload.rates?.peakExport ?? 0),
-            fluxStandingCharge: Number(octopusPayload.rates?.standingCharge ?? 0),
-            fluxRatesRetrievedAt: retrievedAt,
-            fluxGsp: octopusPayload.gspGroupId || "",
-            fluxImportTariffCode: octopusPayload.tariff?.import || "",
-            fluxExportTariffCode: octopusPayload.tariff?.export || "",
-          }
-
-          const existingCalculation = created?.epvs_calculation || {}
-          const existingData = existingCalculation?.data || {}
-
-          const epvsCalculation = {
-            ...existingCalculation,
-            version: existingCalculation?.version || 1,
-            savedAt: new Date().toISOString(),
-            data: {
-              ...existingData,
-              ...octopusRates,
-            },
-          }
-
-          const { data: updatedAppointment, error: epvsError } = await supabase
-            .from("appointments")
-            .update({ epvs_calculation: epvsCalculation })
-            .eq("appointment_row_id", created.appointment_row_id)
-            .select("*")
-            .single()
-
-          if (epvsError) throw epvsError
-
-          createdWithEpvs = updatedAppointment
-        } catch (octopusError) {
-          console.error(
-            "Automatic Octopus Flux lookup failed for solar appointment:",
-            octopusError
-          )
-        }
-      }
-
       const completedAt = new Date().toISOString()
       const { error: actionUpdateError } = await supabase
         .from("action_runs")
@@ -231,7 +155,7 @@ export default function CreateAppointment({ onBack, onCreated }) {
           completed_at: completedAt,
           entity_id: created.appointment_row_id,
           output_data: {
-            appointment_row_id: createdWithEpvs.appointment_row_id,
+            appointment_row_id: created.appointment_row_id,
             submitted_by: submittedBy,
           },
         })
@@ -241,7 +165,7 @@ export default function CreateAppointment({ onBack, onCreated }) {
 
       setForm(EMPTY_FORM)
       setSuccess("Appointment created successfully.")
-      if (typeof onCreated === "function") onCreated(createdWithEpvs)
+      if (typeof onCreated === "function") onCreated(created)
     } catch (err) {
       console.error("Create Appointment action failed:", err)
       setError(err?.message || "Unable to create appointment.")
