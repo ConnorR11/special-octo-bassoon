@@ -749,6 +749,36 @@ export default function EPVSCalculator({
       }))
     }
 
+    // Realtime is the preferred path, but keep a lightweight polling fallback.
+    // This also handles appointments/projects where Postgres Realtime is not
+    // enabled for the appointments table.
+    let lastImportedAt = String(
+      appointment?.epvs_calculation?.data?.openSolar?.importedAt || ""
+    )
+
+    const refreshFromDatabase = async () => {
+      const { data: latest, error } = await supabase
+        .from("appointments")
+        .select("epvs_calculation")
+        .eq("appointment_row_id", appointmentRowId)
+        .maybeSingle()
+
+      if (error || !latest?.epvs_calculation) return
+
+      const importedAt = String(
+        latest.epvs_calculation?.data?.openSolar?.importedAt || ""
+      )
+
+      if (importedAt && importedAt !== lastImportedAt) {
+        lastImportedAt = importedAt
+        applyOpenSolarUpdate(latest.epvs_calculation)
+      }
+    }
+
+    refreshFromDatabase()
+
+    const pollTimer = window.setInterval(refreshFromDatabase, 5000)
+
     channel = supabase
       .channel(`epvs-open-solar-${appointmentRowId}`)
       .on(
@@ -760,12 +790,19 @@ export default function EPVSCalculator({
           filter: `appointment_row_id=eq.${appointmentRowId}`,
         },
         (payload) => {
-          applyOpenSolarUpdate(payload?.new?.epvs_calculation)
+          const importedAt = String(
+            payload?.new?.epvs_calculation?.data?.openSolar?.importedAt || ""
+          )
+          if (importedAt && importedAt !== lastImportedAt) {
+            lastImportedAt = importedAt
+            applyOpenSolarUpdate(payload?.new?.epvs_calculation)
+          }
         }
       )
       .subscribe()
 
     return () => {
+      window.clearInterval(pollTimer)
       if (channel) supabase.removeChannel(channel)
     }
   }, [appointment?.appointment_row_id])
