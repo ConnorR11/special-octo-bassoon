@@ -1,5 +1,8 @@
 import React from "react"
 import { Menu } from "lucide-react"
+import ReviewsTrend from "./ReviewsTrend"
+import ReviewTotalCard from "./ReviewTotalCard"
+import ReviewDistribution from "./ReviewDistribution"
 import { supabase } from "../../lib/supabase"
 
 const TRUSTPILOT_BREAKDOWN = [
@@ -256,214 +259,16 @@ export default function Reviews({ setMobile, embedded = false }) {
           </div>
         )}
 
-        <section className="reviews-trend-card">
-
-
-          <div className="reviews-trend-header">
-            <div>
-              <h2 className="reviews-trend-title">Review performance over time</h2>
-              <p className="reviews-trend-subtitle">Quarterly review volume by source and combined average rating.</p>
-            </div>
-            <div className="reviews-trend-legend">
-              <span className="reviews-trend-legend-item"><span className="reviews-trend-legend-dot reviews-trend-trustpilot-dot" />Trustpilot</span>
-              <span className="reviews-trend-legend-item"><span className="reviews-trend-legend-dot reviews-trend-google-dot" />Google</span>
-              <span className="reviews-trend-legend-item"><span className="reviews-trend-legend-dot reviews-trend-average-dot" />Running average</span>
-            </div>
-          </div>
-
-          {reviewTrend.length === 0 ? (
-            <div className="reviews-trend-empty">No dated reviews are available to chart yet.</div>
-          ) : (
-            <div className="reviews-trend-chart">
-              <svg className="reviews-trend-svg" viewBox={`0 0 ${trendWidth} ${trendHeight}`} preserveAspectRatio="none" role="img" aria-label="Quarterly Trustpilot and Google review volume with combined average score">
-                {[0, 0.25, 0.5, 0.75, 1].map((step) => {
-                  const y = trendTop + trendPlotHeight - step * trendPlotHeight
-                  const countLabel = Math.round(step * maxTrendCount).toLocaleString("en-GB")
-                  const averageLabel = (1 + step * 4).toFixed(1)
-
-                  return (
-                    <g key={step}>
-                      <line
-                        className="reviews-trend-gridline"
-                        x1={trendLeft}
-                        x2={trendWidth - trendRight}
-                        y1={y}
-                        y2={y}
-                      />
-                      <text className="reviews-trend-axis" x={trendLeft - 9} y={y + 4} textAnchor="end">
-                        {countLabel}
-                      </text>
-                      <text className="reviews-trend-axis" x={trendWidth - trendRight + 9} y={y + 4}>
-                        {averageLabel}
-                      </text>
-                    </g>
-                  )
-                })}
-
-                {reviewTrend.map((point, index) => {
-                  const x = trendX(index)
-                  const barWidth = Math.max(5, Math.min(18, trendPlotWidth / Math.max(reviewTrend.length * 1.8, 1)))
-                  const trustpilotHeight = trendPlotHeight * (point.trustpilot / maxTrendCount)
-                  const googleHeight = trendPlotHeight * (point.google / maxTrendCount)
-                  const totalHeight = trustpilotHeight + googleHeight
-                  const barBottom = trendTop + trendPlotHeight
-
-                  return (
-                    <g key={point.key}>
-                      {point.trustpilot > 0 && (
-                        <rect
-                          className="reviews-trend-trustpilot-bar"
-                          x={x - barWidth / 2}
-                          y={barBottom - trustpilotHeight}
-                          width={barWidth}
-                          height={trustpilotHeight}
-                          rx="2"
-                        >
-                          <title>{point.label}: {point.trustpilot} Trustpilot reviews</title>
-                        </rect>
-                      )}
-                      {point.google > 0 && (
-                        <rect
-                          className="reviews-trend-google-bar"
-                          x={x - barWidth / 2}
-                          y={barBottom - totalHeight}
-                          width={barWidth}
-                          height={googleHeight}
-                          rx="2"
-                        >
-                          <title>{point.label}: {point.google} Google reviews</title>
-                        </rect>
-                      )}
-                      {point.average !== null && (
-                        <circle className="reviews-trend-average-point" cx={x} cy={trendYAverage(point.average)} r="4">
-                          <title>{point.label}: {point.average.toFixed(2)} combined average</title>
-                        </circle>
-                      )}
-                      <text
-                        className="reviews-trend-axis"
-                        x={x}
-                        y={trendHeight - 39}
-                        textAnchor="middle"
-                      >
-                        {point.label.split(" ")[0]}
-                      </text>
-                    </g>
-                  )
-                })}
-
-                {reviewTrend.length > 1 && trendAveragePath && (
-                  <path className="reviews-trend-average-line" d={trendAveragePath} />
-                )}
-                {trendYearGroups.slice(0, -1).map((group, index) => {
-                  const nextGroup = trendYearGroups[index + 1]
-                  const boundaryIndex = (group.lastIndex + nextGroup.firstIndex) / 2
-
-                  return (
-                    <line
-                      key={`year-boundary-${group.year}`}
-                      className="reviews-trend-gridline"
-                      x1={trendX(boundaryIndex)}
-                      x2={trendX(boundaryIndex)}
-                      y1={trendTop}
-                      y2={trendTop + trendPlotHeight}
-                    />
-                  )
-                })}
-
-                {trendYearGroups.map((group) => {
-                  const centerIndex = (group.firstIndex + group.lastIndex) / 2
-                  return (
-                    <text
-                      key={group.year}
-                      className="reviews-trend-axis"
-                      x={trendX(centerIndex)}
-                      y={trendHeight - 12}
-                      textAnchor="middle"
-                      style={{ fontWeight: 700 }}
-                    >
-                      {group.year}
-                    </text>
-                  )
-                })}
-              </svg>
-            </div>
-          )}
-
-        </section>
+        <ReviewsTrend reviewTrend={reviewTrend} />
 
         <div className="reviews-source-grid">
           <section className="reviews-source-column">
-            <div className="trustpilot-card trustpilot-score-card reviews-total-card">
-              <div className="trustpilot-card-title">Trustpilot reviews</div>
-              <div className="trustpilot-score-row">
-                <div className="trustpilot-score">{trustpilotStyleScore}</div>
-                <div className="trustpilot-stars" aria-label={`${trustpilotStyleScore} out of 5`}>
-                  {[1,2,3,4,5].map((star) => <span key={star} className="trustpilot-star-box">★</span>)}
-                </div>
-              </div>
-              <div className="trustpilot-card-subtitle">
-                {trustpilotCount.toLocaleString("en-GB")} reviews
-              </div>
-              <div className="google-review-footer">
-                Based on <strong>{trustpilotCount.toLocaleString("en-GB")}</strong> Trustpilot reviews stored in the CRM.
-              </div>
-            </div>
-
-            <div className="trustpilot-card trustpilot-breakdown-card">
-              <div className="trustpilot-breakdown-title">
-                Trustpilot star distribution <span className="trustpilot-info">i</span>
-              </div>
-              {TRUSTPILOT_BREAKDOWN.map(({ rating, label }) => (
-                <div className="trustpilot-breakdown-row" key={rating}>
-                  <div className="trustpilot-breakdown-label">{label}</div>
-                  <div className="trustpilot-bar-track">
-                    <div className="trustpilot-bar-fill" style={{ width: `${starPercent(rating)}%` }} />
-                  </div>
-                  <div className="trustpilot-breakdown-percent">{starPercent(rating).toFixed(0)}%</div>
-                </div>
-              ))}
-              <div className="trustpilot-dashboard-note">
-                Distribution is calculated from the active Trustpilot reviews currently stored in the CRM.
-              </div>
-            </div>
+            <ReviewTotalCard source="trustpilot" rating={trustpilotStyleScore} count={trustpilotCount} />
+            <ReviewDistribution source="trustpilot" count={trustpilotCount} starCounts={starCounts} />
           </section>
-
           <section className="reviews-source-column">
-            <div className="google-review-card reviews-total-card">
-              <div className="google-review-header">
-                <div className="google-review-brand"><span className="google-logo">G</span><span>Google reviews</span></div>
-              </div>
-              <div className="google-review-summary">
-                <div className="google-review-summary-rating">{googleRating}</div>
-                <div className="google-review-summary-details">
-                  <div className="google-review-summary-stars" aria-label="Google rating">
-                    {[1,2,3,4,5].map((star) => <span key={star}>★</span>)}
-                  </div>
-                  <div className="google-review-summary-count">{googleCount.toLocaleString("en-GB")} reviews</div>
-                </div>
-              </div>
-              <div className="google-review-footer">
-                Based on <strong>{googleCount.toLocaleString("en-GB")}</strong> Google reviews stored in the CRM.
-              </div>
-            </div>
-
-            <div className="google-breakdown-card">
-              <div className="google-breakdown-title">
-                Google star distribution <span className="trustpilot-info">i</span>
-              </div>
-              {TRUSTPILOT_BREAKDOWN.map(({ rating, label }) => (
-                <div className="google-breakdown-row" key={rating}>
-                  <div className="google-breakdown-label">{label}</div>
-                  <div className="google-bar-track">
-                    <div className="google-bar-fill" style={{ width: `${googleStarPercent(rating)}%` }} />
-                  </div>
-                  <div className="google-breakdown-percent">{googleStarPercent(rating).toFixed(0)}%</div>
-                </div>
-              ))}
-              <div className="google-dashboard-note">
-                Distribution is calculated from the active Google reviews currently stored in the CRM.
-              </div>
-            </div>
+            <ReviewTotalCard source="google" rating={googleRating} count={googleCount} />
+            <ReviewDistribution source="google" count={googleCount} starCounts={googleStarCounts} />
           </section>
         </div>
 
