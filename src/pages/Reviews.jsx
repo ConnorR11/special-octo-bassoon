@@ -172,11 +172,7 @@ export default function Reviews({ setMobile }) {
               {TRUSTPILOT_BREAKDOWN.map(({ rating, label }) => <div className="trustpilot-breakdown-row" key={rating}><div className="trustpilot-breakdown-label">{label}</div><div className="trustpilot-bar-track"><div className="trustpilot-bar-fill" style={{ width: `${starPercent(rating)}%` }} /></div><div className="trustpilot-breakdown-percent">{starPercent(rating).toFixed(0)}%</div></div>)}
               <div className="trustpilot-dashboard-note">Distribution is calculated from the active Trustpilot reviews currently stored in the CRM.</div>
             </div>
-            <div className="google-breakdown-card">
-              <div className="google-breakdown-title">Google star distribution <span className="trustpilot-info">i</span></div>
-              {TRUSTPILOT_BREAKDOWN.map(({ rating, label }) => <div className="google-breakdown-row" key={rating}><div className="google-breakdown-label">{label}</div><div className="google-bar-track"><div className="google-bar-fill" style={{ width: `${googleStarPercent(rating)}%` }} /></div><div className="google-breakdown-percent">{googleStarPercent(rating).toFixed(0)}%</div></div>)}
-              <div className="google-dashboard-note">Distribution is calculated from the active Google reviews currently stored in the CRM.</div>
-            </div>
+
           </div>
         </section>
 
@@ -195,6 +191,11 @@ export default function Reviews({ setMobile }) {
             <div className="google-review-divider" />
             <div className="google-review-footer">Based on <strong>{googleCount.toLocaleString("en-GB")}</strong> Google reviews stored in the CRM.</div>
           </aside>
+                      <div className="google-breakdown-card">
+                        <div className="google-breakdown-title">Google star distribution <span className="trustpilot-info">i</span></div>
+                        {TRUSTPILOT_BREAKDOWN.map(({ rating, label }) => <div className="google-breakdown-row" key={rating}><div className="google-breakdown-label">{label}</div><div className="google-bar-track"><div className="google-bar-fill" style={{ width: `${googleStarPercent(rating)}%` }} /></div><div className="google-breakdown-percent">{googleStarPercent(rating).toFixed(0)}%</div></div>)}
+                        <div className="google-dashboard-note">Distribution is calculated from the active Google reviews currently stored in the CRM.</div>
+                      </div>
         </div>
 
         {googleSyncMessage && <div className="reviews-message">{googleSyncMessage}</div>}
