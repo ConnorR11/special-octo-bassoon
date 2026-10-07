@@ -348,6 +348,9 @@ export default function Reviews({ setMobile }) {
               <div className="trustpilot-card-subtitle">
                 {trustpilotCount.toLocaleString("en-GB")} reviews
               </div>
+              <div className="google-review-footer">
+                Based on <strong>{trustpilotCount.toLocaleString("en-GB")}</strong> Trustpilot reviews stored in the CRM.
+              </div>
             </div>
 
             <div className="trustpilot-card trustpilot-breakdown-card">
