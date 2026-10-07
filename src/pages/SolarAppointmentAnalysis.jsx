@@ -79,6 +79,22 @@ function formatDate(value) {
   })
 }
 
+function formatDateTime(value) {
+  if (!value) return "—"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value)
+
+  return date.toLocaleString("en-GB", {
+    timeZone: "Europe/London",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+}
+
 function normalise(value) {
   return String(value ?? "").trim().toLowerCase()
 }
@@ -348,6 +364,10 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
     setEndDate(value)
   }
 
+  function applyCustomDates() {
+    loadAppointments({ start: startDate, end: endDate })
+  }
+
   const rangeLabel = period === "all"
     ? "All time"
     : startDate && endDate
@@ -364,7 +384,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
     const usableWidth = pageWidth - margin * 2
 
     const headers = [
-      "Appointment", "Date", "Sales Rep", "Result",
+      "Appointment", "Date & time", "Sales Rep", "Result",
       "Consumption", "Import", "Export", "Standing",
       "Panels", "Generation", "Battery", "Inverter",
       "Day Export", "Flux Export", "Peak Export",
@@ -390,7 +410,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
 
       return [
         appointment.name || "—",
-        formatDate(appointment.appointment_date),
+        formatDateTime(appointment.appointment_date),
         rep,
         appointment.result || "—",
         formatElectricityValue(epvsData.annualConsumption),
@@ -578,6 +598,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
         .solar-analysis-custom{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
         .solar-analysis-field{display:flex;flex-direction:column;gap:5px}
         .solar-analysis-field span{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.06em}
+        .solar-analysis-apply{height:36px;padding:0 13px;border:1px solid #0877bd;border-radius:8px;background:#fff;color:#0877bd;font-weight:700;font-size:12px;cursor:pointer}.solar-analysis-apply:disabled{opacity:.5;cursor:default}
         .solar-analysis-input{height:36px;padding:0 9px;border:1px solid #d7dee7;border-radius:8px;background:#fff;color:#0f172a;font:inherit;font-size:12px;box-sizing:border-box}
         .solar-analysis-search{display:flex;align-items:center;gap:7px;height:36px;padding:0 10px;border:1px solid #d7dee7;border-radius:8px;background:#fff;min-width:240px}
         .solar-analysis-search svg{color:#64748b;flex:0 0 auto}
@@ -665,6 +686,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
               <span>To</span>
               <input className="solar-analysis-input" type="date" value={endDate} onChange={(event) => setCustomEnd(event.target.value)}/>
             </label>
+            <button type="button" className="solar-analysis-apply" onClick={applyCustomDates} disabled={loading}>Apply dates</button>
             <div className="solar-analysis-search">
               <Search size={14}/>
               <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search appointment, rep or result"/>
@@ -746,7 +768,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
                     return (
                       <tr key={appointment.appointment_row_id} onClick={() => onSelectAppointment?.(appointment)}>
                         <td className="solar-analysis-name">{appointment.name || "—"}</td>
-                        <td>{formatDate(appointment.appointment_date)}</td>
+                        <td>{formatDateTime(appointment.appointment_date)}</td>
                         <td>{rep}</td>
                         <td className="solar-analysis-result">{result}</td>
                         <td className={isEmptyDisplayValue(formatElectricityValue(epvsData.annualConsumption)) ? "solar-analysis-empty-field" : ""}>{formatElectricityValue(epvsData.annualConsumption)}</td>
