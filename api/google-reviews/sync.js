@@ -322,6 +322,11 @@ export default async function handler(req, res) {
     const accessToken = await getAccessToken(refreshToken)
     location = await getLocation(accessToken)
 
+    const importedReviewIds = await getImportedGoogleReviewIds()
+    let reviewData = await listReviewBatch(accessToken, location.locationName)
+    const reviewsToImport = []
+    let pageCount = 0
+
     if (log?.id) {
       await updateIntegrationLog(log.id, {
         external_id: location.locationName,
@@ -331,18 +336,11 @@ export default async function handler(req, res) {
           locationName: location.locationName,
           locationSource: location.source,
           requestedReviewCount: REVIEW_IMPORT_SIZE,
-      googlePageSize: GOOGLE_PAGE_SIZE,
-      googlePagesChecked: pageCount,
-          expectedGoogleRequests: location.source === "cached" || location.source === "environment" ? 1 : 2,
+          googlePageSize: GOOGLE_PAGE_SIZE,
           status: "processing",
         },
       })
     }
-
-    const importedReviewIds = await getImportedGoogleReviewIds()
-    let reviewData = await listReviewBatch(accessToken, location.locationName)
-    const reviewsToImport = []
-    let pageCount = 0
 
     // Google returns reviews in pages. Keep walking forward until we have
     // 10 reviews that are not already stored in the CRM.
@@ -383,7 +381,7 @@ export default async function handler(req, res) {
       locationName: location.locationName,
       locationSource: location.source,
       googleApiRequests: location.source === "cached" || location.source === "environment" ? 1 : 2,
-      requestedReviewCount: REVIEW_BATCH_SIZE,
+      requestedReviewCount: REVIEW_IMPORT_SIZE,
       imported,
       failed,
       returnedByGoogle: reviewsToImport.length,
