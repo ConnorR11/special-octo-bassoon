@@ -258,7 +258,7 @@ function getThirtyYearEpvs(appointment) {
   }
 }
 
-export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
+export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded = false }) {
   const initial = periodDates("today")
   const [period, setPeriod] = useState("today")
   const [startDate, setStartDate] = useState(initial.start)
@@ -582,9 +582,9 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
   }
 
   return (
-    <section className="solar-analysis-page">
+    <section className={`solar-analysis-page ${embedded ? "solar-analysis-embedded" : ""}`}>
       <style>{`
-        .solar-analysis-page{min-height:100%;padding:28px 32px 40px;background:#f5f7fa;color:#0f172a;box-sizing:border-box}
+        .solar-analysis-page{min-height:100%;padding:28px 32px 40px;background:#f5f7fa;color:#0f172a;box-sizing:border-box}.solar-analysis-page.solar-analysis-embedded{padding:0;background:transparent;min-height:auto}.solar-analysis-page.solar-analysis-embedded .solar-analysis-container{max-width:none}
         .solar-analysis-container{max-width:1500px;margin:0 auto}
         .solar-analysis-header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:18px}
         .solar-analysis-eyebrow{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#0877bd;margin-bottom:6px}
