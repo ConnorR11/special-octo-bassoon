@@ -38,8 +38,7 @@ export default function Balances({ onSelect }) {
           const { data, error: supabaseError } = await supabase
             .from("deals")
             .select("*")
-            .gt("balance_outstanding", 0)
-            .order("estimated_payment_date", { ascending: true, nullsFirst: false })
+            .or("balance_outstanding.gt.0,and(admin_fee_amount.gt.0,admin_fee_received_date.is.null)")
             .range(from, from + PAGE_SIZE - 1)
 
           if (supabaseError) throw supabaseError
@@ -51,7 +50,39 @@ export default function Balances({ onSelect }) {
           from += PAGE_SIZE
         }
 
-        if (!cancelled) setDeals(results)
+        const obligations = results.flatMap((deal) => {
+          const rows = []
+
+          const balance = toNumber(deal?.balance_outstanding)
+          if (balance > 0) {
+            rows.push({
+              ...deal,
+              balanceType: "Balance",
+              displayBalance: balance,
+              paymentDate: deal?.estimated_payment_date || null,
+            })
+          }
+
+          const adminFee = toNumber(deal?.admin_fee_amount)
+          if (adminFee > 0 && !deal?.admin_fee_received_date) {
+            rows.push({
+              ...deal,
+              balanceType: "Admin Fee",
+              displayBalance: adminFee,
+              paymentDate: deal?.admin_fee_expected_date || null,
+            })
+          }
+
+          return rows
+        })
+
+        obligations.sort((a, b) => {
+          const aDate = a?.paymentDate ? new Date(a.paymentDate).getTime() : Number.POSITIVE_INFINITY
+          const bDate = b?.paymentDate ? new Date(b.paymentDate).getTime() : Number.POSITIVE_INFINITY
+          return aDate - bDate
+        })
+
+        if (!cancelled) setDeals(obligations)
       } catch (err) {
         console.error("Error loading outstanding balances:", err)
         if (!cancelled) {
@@ -80,6 +111,7 @@ export default function Balances({ onSelect }) {
         deal?.product,
         deal?.salesperson,
         deal?.pipedrive_stage,
+        deal?.balanceType,
       ]
         .filter(Boolean)
         .join(" ")
@@ -89,7 +121,7 @@ export default function Balances({ onSelect }) {
   }, [deals, search])
 
   const totalOutstanding = filteredDeals.reduce(
-    (total, deal) => total + toNumber(deal?.balance_outstanding),
+    (total, deal) => total + toNumber(deal?.displayBalance),
     0
   )
 
@@ -101,39 +133,51 @@ export default function Balances({ onSelect }) {
       String(today.getDate()).padStart(2, "0"),
     ].join("-")
 
-    let outstanding = 0
+    let outstandingBalance = 0
+    let outstandingAdminFee = 0
     const futureByDay = new Map()
 
     deals.forEach((deal) => {
-      const rawDate = String(deal?.estimated_payment_date || "").trim()
+      const rawDate = String(deal?.paymentDate || "").trim()
       const match = rawDate.match(/^(\d{4})-(\d{2})-(\d{2})/)
-      const amount = toNumber(deal?.balance_outstanding)
+      const amount = toNumber(deal?.displayBalance)
 
       if (!match) return
 
       const dateKey = `${match[1]}-${match[2]}-${match[3]}`
 
       if (dateKey < todayKey) {
-        outstanding += amount
+        if (deal?.balanceType === "Admin Fee") {
+          outstandingAdminFee += amount
+        } else {
+          outstandingBalance += amount
+        }
         return
       }
 
-      futureByDay.set(dateKey, (futureByDay.get(dateKey) || 0) + amount)
+      const existing = futureByDay.get(dateKey) || { balance: 0, adminFee: 0 }
+      if (deal?.balanceType === "Admin Fee") {
+        existing.adminFee += amount
+      } else {
+        existing.balance += amount
+      }
+      futureByDay.set(dateKey, existing)
     })
 
     const data = []
 
-    if (outstanding > 0) {
+    if (outstandingBalance > 0 || outstandingAdminFee > 0) {
       data.push({
         dateKey: "outstanding",
         date: "Outstanding",
-        amount: outstanding,
+        balance: outstandingBalance,
+        adminFee: outstandingAdminFee,
       })
     }
 
     Array.from(futureByDay.entries())
       .sort(([a], [b]) => a.localeCompare(b))
-      .forEach(([dateKey, amount]) => {
+      .forEach(([dateKey, amounts]) => {
         const [year, month, day] = dateKey.split("-")
         const date = new Date(Number(year), Number(month) - 1, Number(day))
 
@@ -143,7 +187,8 @@ export default function Balances({ onSelect }) {
             day: "2-digit",
             month: "short",
           }).format(date),
-          amount,
+          balance: amounts.balance,
+          adminFee: amounts.adminFee,
         })
       })
 
@@ -197,7 +242,7 @@ export default function Balances({ onSelect }) {
                 color: "#8a959d",
               }}
             >
-              {filteredDeals.length} {filteredDeals.length === 1 ? "job" : "jobs"} outstanding
+              {filteredDeals.length} {filteredDeals.length === 1 ? "item" : "items"} outstanding
             </div>
           </div>
 
@@ -283,7 +328,10 @@ export default function Balances({ onSelect }) {
                   width={48}
                 />
                 <Tooltip
-                  formatter={(value) => [money(value), "Outstanding"]}
+                  formatter={(value, name) => [
+                    money(value),
+                    name === "adminFee" ? "Admin fees" : "Job balances",
+                  ]}
                   contentStyle={{
                     border: "1px solid #dfe5ea",
                     borderRadius: 8,
@@ -296,9 +344,17 @@ export default function Balances({ onSelect }) {
                   }}
                 />
                 <Bar
-                  dataKey="amount"
-                  name="Outstanding"
+                  dataKey="balance"
+                  name="Job balances"
+                  stackId="payments"
                   fill="#7e22ce"
+                  maxBarSize={54}
+                />
+                <Bar
+                  dataKey="adminFee"
+                  name="Admin fees"
+                  stackId="payments"
+                  fill="#f59e0b"
                   radius={[4, 4, 0, 0]}
                   maxBarSize={54}
                 />
@@ -361,7 +417,7 @@ export default function Balances({ onSelect }) {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "2fr 1.15fr 1.2fr 1.1fr 1.1fr 1fr 30px",
+              gridTemplateColumns: "2fr 1.15fr 1.2fr .8fr 1.1fr 1.1fr 1fr 30px",
               gap: 12,
               alignItems: "center",
               padding: "10px 14px",
@@ -377,6 +433,7 @@ export default function Balances({ onSelect }) {
             <div>Customer</div>
             <div>Contract</div>
             <div>Product</div>
+            <div>Type</div>
             <div>Stage</div>
             <div>Estimated Payment Date</div>
             <div style={{ textAlign: "right" }}>Outstanding</div>
@@ -461,18 +518,22 @@ export default function Balances({ onSelect }) {
                 {deal?.product || "—"}
               </div>
 
+              <div style={{ fontSize: 10, fontWeight: 700, color: deal?.balanceType === "Admin Fee" ? "#b45309" : "#53616b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {deal?.balanceType || "Balance"}
+              </div>
+
               <div style={{ fontSize: 10, color: "#53616b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {deal?.pipedrive_stage || "—"}
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#53616b", fontSize: 10 }}>
                 <CalendarDays size={13} />
-                <span>{deal?.estimated_payment_date ? formatDate(deal.estimated_payment_date) : "—"}</span>
+                <span>{deal?.paymentDate ? formatDate(deal.paymentDate) : "—"}</span>
               </div>
 
               <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 5, color: "#9f1239", fontSize: 11 }}>
                 <PoundSterling size={13} />
-                <strong>{money(toNumber(deal?.balance_outstanding))}</strong>
+                <strong>{money(toNumber(deal?.displayBalance))}</strong>
               </div>
 
               <div style={{ display: "flex", justifyContent: "flex-end", color: "#9aa5ad" }}>
