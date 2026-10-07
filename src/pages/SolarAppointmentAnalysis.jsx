@@ -314,7 +314,11 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
       if (appointmentsResult.error) throw appointmentsResult.error
       if (profilesResult.error) throw profilesResult.error
 
-      setAppointments((appointmentsResult.data || []).filter(isSolarAppointment))
+      setAppointments(
+        (appointmentsResult.data || []).filter(
+          (appointment) => normalise(appointment?.job_type) === "solar"
+        )
+      )
       setProfiles(profilesResult.data || [])
     } catch (err) {
       console.error("Error loading solar appointment analysis:", err)
