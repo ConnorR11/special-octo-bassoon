@@ -15,6 +15,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
   const canAccessMarketingDashboard = numericPermissionLevel >= 3
   const canAccessCanvasserKPI = numericPermissionLevel >= 3
   const canAccessSalesPerformance = numericPermissionLevel >= 2
+  const canAccessBalances = numericPermissionLevel >= 4
 
   const [openFolders, setOpenFolders] = React.useState({
     sales: false, marketing: false, installation: false, finance: false,
@@ -33,6 +34,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
       "sales-performance": 2,
       "marketing-dashboard": 3,
       "canvasser-kpi": 3,
+      balances: 4,
       mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4,
       templates: 4, "integration-logs": 4, "data-dashboard": 4, "data-clean": 4, "solar-backend": 4,
     }[route]
@@ -113,7 +115,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
 
           <Folder title="Accounts" icon={PoundSterling} open={openFolders.finance} onClick={() => toggleFolder("finance")}>
             <NavItem icon={PoundSterling} label="Revenue" disabled/>
-            <NavItem icon={CreditCard} label="Balances" active={isActive("balances")} onClick={() => navigate("balances")}/>
+            <NavItem icon={CreditCard} label="Balances" active={isActive("balances")} onClick={() => navigate("balances")} disabled={!canAccessBalances} locked={!canAccessBalances}/>
             <NavItem icon={CreditCard} label="Payments" disabled/>
             <NavItem icon={Receipt} label="Invoices" disabled/>
           </Folder>
