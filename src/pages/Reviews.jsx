@@ -160,25 +160,25 @@ export default function Reviews({ setMobile }) {
   const starPercent = (rating) => trustpilotCount ? (starCounts[rating] / trustpilotCount) * 100 : 0
 
   const reviewTrend = React.useMemo(() => {
-    const monthly = new Map()
+    const quarterly = new Map()
 
     for (const review of reviews) {
       if (review.is_deleted) continue
       const date = new Date(review.review_date || review.created_at || 0)
       if (Number.isNaN(date.getTime())) continue
 
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
-      const current = monthly.get(key) || {
+      const quarter = Math.floor(date.getMonth() / 3)
+      const key = `${date.getFullYear()}-Q${quarter + 1}`
+      const current = quarterly.get(key) || {
         key,
-        date: new Date(date.getFullYear(), date.getMonth(), 1),
+        date: new Date(date.getFullYear(), quarter * 3, 1),
         trustpilot: 0,
         google: 0,
         ratingTotal: 0,
         ratedCount: 0,
       }
 
-      const source = String(review.source || "").toLowerCase()
-      if (source === "google") current.google += 1
+      if (String(review.source || "").toLowerCase() === "google") current.google += 1
       else current.trustpilot += 1
 
       const rating = Number(review.rating)
@@ -187,16 +187,16 @@ export default function Reviews({ setMobile }) {
         current.ratedCount += 1
       }
 
-      monthly.set(key, current)
+      quarterly.set(key, current)
     }
 
-    return Array.from(monthly.values())
+    return Array.from(quarterly.values())
       .sort((a, b) => a.date - b.date)
       .map((row) => ({
         ...row,
         count: row.trustpilot + row.google,
         average: row.ratedCount ? row.ratingTotal / row.ratedCount : null,
-        label: row.date.toLocaleDateString("en-GB", { month: "short", year: "numeric" }),
+        label: `Q${Math.floor(row.date.getMonth() / 3) + 1} ${row.date.getFullYear()}`,
       }))
   }, [reviews])
 
@@ -242,7 +242,7 @@ export default function Reviews({ setMobile }) {
           <div className="reviews-trend-header">
             <div>
               <h2 className="reviews-trend-title">Review performance over time</h2>
-              <p className="reviews-trend-subtitle">Monthly review volume by source and combined average rating.</p>
+              <p className="reviews-trend-subtitle">Quarterly review volume by source and combined average rating.</p>
             </div>
             <div className="reviews-trend-legend">
               <span className="reviews-trend-legend-item"><span className="reviews-trend-legend-dot reviews-trend-trustpilot-dot" />Trustpilot</span>
@@ -255,7 +255,7 @@ export default function Reviews({ setMobile }) {
             <div className="reviews-trend-empty">No dated reviews are available to chart yet.</div>
           ) : (
             <div className="reviews-trend-chart">
-              <svg className="reviews-trend-svg" viewBox={`0 0 ${trendWidth} ${trendHeight}`} preserveAspectRatio="none" role="img" aria-label="Monthly Trustpilot and Google review volume with combined average score">
+              <svg className="reviews-trend-svg" viewBox={`0 0 ${trendWidth} ${trendHeight}`} preserveAspectRatio="none" role="img" aria-label="Quarterly Trustpilot and Google review volume with combined average score">
                 {[0, 0.25, 0.5, 0.75, 1].map((step) => {
                   const y = trendTop + trendPlotHeight - step * trendPlotHeight
                   const countLabel = Math.round(step * maxTrendCount).toLocaleString("en-GB")
@@ -269,7 +269,7 @@ export default function Reviews({ setMobile }) {
                   )
                 })}
 
-                <text className="reviews-trend-axis" x={trendLeft} y={trendHeight - 10}>Reviews / month</text>
+                <text className="reviews-trend-axis" x={trendLeft} y={trendHeight - 10}>Reviews / quarter</text>
                 <text className="reviews-trend-axis" x={trendWidth - trendRight} y={trendHeight - 10} textAnchor="end">Average score</text>
 
                 {reviewTrend.map((point, index) => {
@@ -277,7 +277,6 @@ export default function Reviews({ setMobile }) {
                   const barWidth = Math.max(5, Math.min(18, trendPlotWidth / Math.max(reviewTrend.length * 1.8, 1)))
                   const trustpilotHeight = trendPlotHeight * (point.trustpilot / maxTrendCount)
                   const googleHeight = trendPlotHeight * (point.google / maxTrendCount)
-                  const totalHeight = trustpilotHeight + googleHeight
                   const barBottom = trendTop + trendPlotHeight
 
                   return (
@@ -325,7 +324,7 @@ export default function Reviews({ setMobile }) {
             </div>
           )}
 
-          <div className="reviews-trend-note">Bars show monthly review volume, split between Trustpilot and Google. The yellow line shows the combined average score for that month.</div>
+          <div className="reviews-trend-note">Bars show quarterly review volume, split between Trustpilot and Google. The yellow line shows the combined average score for that quarter.</div>
         </section>
 
         <div className="reviews-top-grid">
