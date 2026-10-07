@@ -38,7 +38,7 @@ export default function Balances({ onSelect }) {
             .from("deals")
             .select("*")
             .gt("balance_outstanding", 0)
-            .order("sale_date", { ascending: false, nullsFirst: false })
+            .order("estimated_payment_date", { ascending: true, nullsFirst: false })
             .range(from, from + PAGE_SIZE - 1)
 
           if (supabaseError) throw supabaseError
@@ -245,7 +245,7 @@ export default function Balances({ onSelect }) {
             <div>Contract</div>
             <div>Product</div>
             <div>Stage</div>
-            <div>Sale Date</div>
+            <div>Estimated Payment Date</div>
             <div style={{ textAlign: "right" }}>Outstanding</div>
             <div />
           </div>
@@ -334,7 +334,7 @@ export default function Balances({ onSelect }) {
 
               <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#53616b", fontSize: 10 }}>
                 <CalendarDays size={13} />
-                <span>{deal?.sale_date ? formatDate(deal.sale_date) : "—"}</span>
+                <span>{deal?.estimated_payment_date ? formatDate(deal.estimated_payment_date) : "—"}</span>
               </div>
 
               <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 5, color: "#9f1239", fontSize: 11 }}>
