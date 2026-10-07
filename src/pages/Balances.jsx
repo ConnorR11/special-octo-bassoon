@@ -270,7 +270,7 @@ export default function Balances({ onSelect }) {
               >
                 <CartesianGrid stroke="#eef1f3" vertical={false} />
                 <XAxis
-                  dataKey="month"
+                  dataKey="date"
                   tick={{ fontSize: 10, fill: "#7b8790" }}
                   axisLine={{ stroke: "#dfe5ea" }}
                   tickLine={false}
