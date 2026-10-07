@@ -108,13 +108,7 @@ function normalise(value) {
 }
 
 function isSolarAppointment(appointment) {
-  if (!appointment) return false
-  if (appointment.epvs_calculation) return true
-
-  return [
-    appointment.product,
-    appointment.job_type,
-  ].some((value) => normalise(value).includes("solar"))
+  return normalise(appointment?.job_type) === "solar"
 }
 
 function getEpvsData(appointment) {
