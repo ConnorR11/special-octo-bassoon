@@ -28,7 +28,7 @@ export default function OpenSolarIds() {
     if (!supabase) { setError("Supabase is not configured."); setLoading(false); return }
     setLoading(true); setError("")
     try {
-      const { data, error: queryError } = await supabase.from("appointments").select("appointment_row_id,name,appointment_date,product,job_type,open_solar_id,epvs_calculation").gte("appointment_date", "2026-01-01T00:00:00").order("appointment_date", { ascending: true })
+      const { data, error: queryError } = await supabase.from("appointments").select("appointment_row_id,name,postcode,appointment_date,product,job_type,open_solar_id,epvs_calculation").gte("appointment_date", "2026-01-01T00:00:00").order("appointment_date", { ascending: true })
       if (queryError) throw queryError
       const solar = (data || []).filter(isSolarAppointment)
       setAppointments(solar)
@@ -59,7 +59,7 @@ export default function OpenSolarIds() {
   const filteredAppointments = useMemo(() => {
     const query = normalise(search)
     if (!query) return appointments
-    return appointments.filter((a) => [a.name, a.open_solar_id, a.product, a.job_type].some((v) => normalise(v).includes(query)))
+    return appointments.filter((a) => [a.name, a.postcode, a.open_solar_id, a.product, a.job_type].some((v) => normalise(v).includes(query)))
   }, [appointments, search])
 
   return (
@@ -85,11 +85,11 @@ export default function OpenSolarIds() {
           <button type="button" className="open-solar-refresh" onClick={loadAppointments} disabled={loading}><RefreshCw size={14}/>{loading ? "Loading..." : "Refresh"}</button>
         </div>
         {error && <div className="open-solar-error">{error}</div>}
-        <div className="open-solar-controls"><div className="open-solar-count">{filteredAppointments.length} solar appointments</div><div className="open-solar-search"><Search size={14}/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search appointment or OpenSolar ID"/></div></div>
-        <div className="open-solar-panel"><div className="open-solar-table-wrap"><table className="open-solar-table"><thead><tr><th>Appointment</th><th>Appointment Date & Time</th><th>Job Type</th><th>OpenSolar ID</th><th>Action</th></tr></thead><tbody>
+        <div className="open-solar-controls"><div className="open-solar-count">{filteredAppointments.length} solar appointments</div><div className="open-solar-search"><Search size={14}/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search appointment, postcode or OpenSolar ID"/></div></div>
+        <div className="open-solar-panel"><div className="open-solar-table-wrap"><table className="open-solar-table"><thead><tr><th>Appointment</th><th>Appointment Date & Time</th><th>Postcode</th><th>OpenSolar ID</th><th>Action</th></tr></thead><tbody>
           {loading ? <tr><td colSpan="5" className="open-solar-empty">Loading solar appointments...</td></tr> : filteredAppointments.length === 0 ? <tr><td colSpan="5" className="open-solar-empty">No solar appointments found.</td></tr> : filteredAppointments.map((appointment) => {
             const id = appointment.appointment_row_id; const draft = String(drafts[id] ?? ""); const original = String(appointment.open_solar_id ?? ""); const changed = draft !== original; const saving = savingId === id; const saved = savedId === id
-            return <tr key={id}><td className="open-solar-name">{appointment.name || "—"}</td><td>{formatDateTime(appointment.appointment_date)}</td><td>{appointment.job_type || appointment.product || "Solar"}</td><td>
+            return <tr key={id}><td className="open-solar-name">{appointment.name || "—"}</td><td>{formatDateTime(appointment.appointment_date)}</td><td>{appointment.postcode || "—"}</td><td>
               <input className="open-solar-input" value={draft} onChange={(event) => setDrafts((current) => ({ ...current, [id]: event.target.value }))} placeholder="Enter OpenSolar ID" disabled={saving} onKeyDown={(event) => { if (event.key === "Enter" && changed) saveOpenSolarId(appointment); if (event.key === "Escape") resetDraft(appointment) }}/>
             </td><td><div className="open-solar-actions"><button type="button" className="open-solar-save" onClick={() => saveOpenSolarId(appointment)} disabled={!changed || saving}><Save size={13}/>{saving ? "Saving..." : "Save"}</button><button type="button" className="open-solar-cancel" onClick={() => resetDraft(appointment)} disabled={!changed || saving}><X size={13}/>Reset</button>{saved && <span className="open-solar-saved"><Check size={13}/>Saved</span>}</div></td></tr>
           })}
