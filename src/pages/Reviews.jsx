@@ -136,6 +136,27 @@ export default function Reviews({ setMobile }) {
     [trustpilotReviews],
   )
 
+  const googleStarCounts = React.useMemo(() => {
+    const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+    for (const review of googleReviews) {
+      const rating = Number(review.rating)
+      if (counts[rating] !== undefined) counts[rating] += 1
+    }
+    return counts
+  }, [googleReviews])
+
+  const googleStarPercent = (rating) => googleCount ? (googleStarCounts[rating] / googleCount) * 100 : 0
+
+  const newServiceReviews = React.useMemo(() => {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1)
+    return reviews.filter((review) => !review.is_deleted && new Date(review.review_date || review.created_at || 0) >= start)
+  }, [reviews, now])
+
+  const awaitingReply = React.useMemo(
+    () => reviews.filter((review) => !review.is_deleted && (!review.response_text || !String(review.response_text).trim())).length,
+    [reviews],
+  )
+
   const starPercent = (rating) => trustpilotCount ? (starCounts[rating] / trustpilotCount) * 100 : 0
 
   return (
