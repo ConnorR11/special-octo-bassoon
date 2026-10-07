@@ -7,7 +7,8 @@ import {
 } from "./_google-reviews.js"
 
 const CONFIG_EVENT_NAME = "google-reviews-location-config"
-const REVIEW_BATCH_SIZE = 10
+const REVIEW_IMPORT_SIZE = 10
+const GOOGLE_PAGE_SIZE = 50
 const KNOWN_LOCATION_ID = "9930514822053454607"
 
 function supabaseConfig() {
@@ -197,11 +198,12 @@ async function getLocation(accessToken) {
   return discovered
 }
 
-async function listReviewBatch(accessToken, locationName) {
+async function listReviewBatch(accessToken, locationName, pageToken = null) {
   const query = new URLSearchParams({
-    pageSize: String(REVIEW_BATCH_SIZE),
+    pageSize: String(GOOGLE_PAGE_SIZE),
     orderBy: "updateTime desc",
   })
+  if (pageToken) query.set("pageToken", pageToken)
 
   const data = await googleBusinessRequest(
     accessToken,
@@ -216,6 +218,33 @@ async function listReviewBatch(accessToken, locationName) {
     averageRating: data.averageRating ?? null,
     totalReviewCount: data.totalReviewCount ?? null,
   }
+}
+
+async function getImportedGoogleReviewIds() {
+  const { supabaseUrl, serviceRoleKey } = supabaseConfig()
+  const url = new URL(`${supabaseUrl}/rest/v1/reviews`)
+  url.searchParams.set("source", "eq.google")
+  url.searchParams.set("select", "external_review_id")
+  url.searchParams.set("limit", "10000")
+
+  const response = await fetch(url, {
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+    },
+    signal: AbortSignal.timeout(10000),
+  })
+
+  if (!response.ok) {
+    throw new Error(`Unable to read imported Google reviews from Supabase (${response.status})`)
+  }
+
+  const rows = await response.json()
+  return new Set(
+    (rows || [])
+      .map((row) => String(row?.external_review_id || "").trim())
+      .filter(Boolean),
+  )
 }
 
 async function upsertReview(review) {
@@ -276,7 +305,7 @@ export default async function handler(req, res) {
         payload: {
           action: "sync",
           status: "started",
-          requestedReviewCount: REVIEW_BATCH_SIZE,
+          requestedReviewCount: REVIEW_IMPORT_SIZE,
         },
       })
     } catch (error) {
@@ -301,19 +330,44 @@ export default async function handler(req, res) {
           accountName: location.accountName,
           locationName: location.locationName,
           locationSource: location.source,
-          requestedReviewCount: REVIEW_BATCH_SIZE,
+          requestedReviewCount: REVIEW_IMPORT_SIZE,
+      googlePageSize: GOOGLE_PAGE_SIZE,
+      googlePagesChecked: pageCount,
           expectedGoogleRequests: location.source === "cached" || location.source === "environment" ? 1 : 2,
           status: "processing",
         },
       })
     }
 
-    const reviewData = await listReviewBatch(accessToken, location.locationName)
+    const importedReviewIds = await getImportedGoogleReviewIds()
+    let reviewData = await listReviewBatch(accessToken, location.locationName)
+    const reviewsToImport = []
+    let pageCount = 0
+
+    // Google returns reviews in pages. Keep walking forward until we have
+    // 10 reviews that are not already stored in the CRM.
+    while (reviewsToImport.length < REVIEW_IMPORT_SIZE) {
+      pageCount += 1
+
+      for (const review of reviewData.reviews) {
+        const reviewId = String(review?.reviewId || review?.name?.split("/").pop() || "").trim()
+        if (!reviewId || importedReviewIds.has(reviewId)) continue
+
+        reviewsToImport.push(review)
+        importedReviewIds.add(reviewId)
+
+        if (reviewsToImport.length >= REVIEW_IMPORT_SIZE) break
+      }
+
+      if (reviewsToImport.length >= REVIEW_IMPORT_SIZE || !reviewData.nextPageToken) break
+      reviewData = await listReviewBatch(accessToken, location.locationName, reviewData.nextPageToken)
+    }
+
     let imported = 0
     let failed = 0
     const errors = []
 
-    for (const review of reviewData.reviews) {
+    for (const review of reviewsToImport) {
       try {
         await upsertReview(review)
         imported += 1
@@ -332,11 +386,11 @@ export default async function handler(req, res) {
       requestedReviewCount: REVIEW_BATCH_SIZE,
       imported,
       failed,
-      returnedByGoogle: reviewData.reviews.length,
+      returnedByGoogle: reviewsToImport.length,
       totalFromGoogle: reviewData.totalReviewCount,
       averageRating: reviewData.averageRating,
       nextPageToken: reviewData.nextPageToken,
-      hasMore: Boolean(reviewData.nextPageToken),
+      hasMore: Boolean(reviewData.nextPageToken) || reviewsToImport.length >= REVIEW_IMPORT_SIZE,
       errors,
     }
 
