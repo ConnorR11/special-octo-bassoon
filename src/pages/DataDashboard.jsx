@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react"
-import { BarChart3, RefreshCw, TrendingUp } from "lucide-react"
+import { BarChart3, RefreshCw, TrendingUp, Search } from "lucide-react"
 import {
   CartesianGrid,
   Line,
@@ -71,6 +71,43 @@ function DataDashboard() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [activeTab, setActiveTab] = useState("overview")
+  const [prontoRows, setProntoRows] = useState([])
+  const [prontoLoading, setProntoLoading] = useState(false)
+  const [prontoError, setProntoError] = useState("")
+  const [prontoSearch, setProntoSearch] = useState("")
+
+  async function loadProntoData() {
+    if (!supabase) {
+      setProntoError("Supabase is not configured.")
+      return
+    }
+
+    setProntoLoading(true)
+    setProntoError("")
+
+    try {
+      const { data, error: rpcError } = await supabase.rpc(
+        "get_pronto_c1_lead_counts",
+        { start_date: "2026-01-01T00:00:00+00:00" }
+      )
+
+      if (rpcError) throw rpcError
+
+      setProntoRows(
+        (data || []).map((row) => ({
+          pronto_c1: String(row.pronto_c1 || "?"),
+          lead_count: Number(row.lead_count || 0),
+        }))
+      )
+    } catch (err) {
+      console.error("Error loading Pronto data:", err)
+      setProntoError(err?.message || "Unable to load Pronto data.")
+      setProntoRows([])
+    } finally {
+      setProntoLoading(false)
+    }
+  }
 
   async function loadData() {
     if (!supabase) {
@@ -153,6 +190,25 @@ function DataDashboard() {
     loadData()
   }, [])
 
+  useEffect(() => {
+    if (activeTab === "pronto" && prontoRows.length === 0 && !prontoLoading) {
+      loadProntoData()
+    }
+  }, [activeTab])
+
+  const filteredProntoRows = useMemo(() => {
+    const search = prontoSearch.trim().toLowerCase()
+    if (!search) return prontoRows
+    return prontoRows.filter((row) =>
+      row.pronto_c1.toLowerCase().includes(search)
+    )
+  }, [prontoRows, prontoSearch])
+
+  const prontoTotal = useMemo(
+    () => prontoRows.reduce((total, row) => total + row.lead_count, 0),
+    [prontoRows]
+  )
+
   const totalLeads = useMemo(
     () =>
       rows.reduce(
@@ -190,6 +246,110 @@ function DataDashboard() {
   return (
     <section className="data-dashboard-page">
       <style>{`
+        .data-dashboard-tabs {
+          display: flex;
+          gap: 4px;
+          border-bottom: 1px solid #dfe5ec;
+          margin-bottom: 18px;
+        }
+
+        .data-dashboard-tab {
+          border: 0;
+          border-bottom: 2px solid transparent;
+          background: transparent;
+          color: #64748b;
+          padding: 10px 15px;
+          font: inherit;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          margin-bottom: -1px;
+        }
+
+        .data-dashboard-tab.active {
+          color: #0877bd;
+          border-bottom-color: #0877bd;
+        }
+
+        .pronto-toolbar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 15px;
+          margin-bottom: 14px;
+        }
+
+        .pronto-search {
+          width: 270px;
+          height: 36px;
+          border: 1px solid #d7dee7;
+          border-radius: 8px;
+          background: #fff;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 0 11px;
+          box-sizing: border-box;
+        }
+
+        .pronto-search input {
+          width: 100%;
+          border: 0;
+          outline: 0;
+          background: transparent;
+          font: inherit;
+          font-size: 12px;
+          color: #172033;
+        }
+
+        .pronto-table-card {
+          background: #fff;
+          border: 1px solid #dfe5ec;
+          border-radius: 12px;
+          overflow: hidden;
+        }
+
+        .pronto-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 12px;
+        }
+
+        .pronto-table th {
+          background: #f8fafc;
+          color: #64748b;
+          text-align: left;
+          font-weight: 700;
+          padding: 11px 13px;
+          border-bottom: 1px solid #dfe5ec;
+        }
+
+        .pronto-table th:last-child,
+        .pronto-table td:last-child {
+          text-align: right;
+        }
+
+        .pronto-table td {
+          padding: 10px 13px;
+          border-bottom: 1px solid #edf1f5;
+          color: #172033;
+        }
+
+        .pronto-table tbody tr:last-child td {
+          border-bottom: 0;
+        }
+
+        .pronto-table td:first-child {
+          font-weight: 600;
+        }
+
+        .pronto-empty {
+          padding: 45px 20px;
+          text-align: center;
+          color: #64748b;
+          font-size: 13px;
+        }
+
         .data-dashboard-page {
           min-height: calc(100vh - 90px);
           padding: 28px 32px 50px;
@@ -392,12 +552,30 @@ function DataDashboard() {
         </button>
       </div>
 
-      {error && (
+      <div className="data-dashboard-tabs">
+        <button
+          type="button"
+          className={`data-dashboard-tab ${activeTab === "overview" ? "active" : ""}`}
+          onClick={() => setActiveTab("overview")}
+        >
+          Overview
+        </button>
+        <button
+          type="button"
+          className={`data-dashboard-tab ${activeTab === "pronto" ? "active" : ""}`}
+          onClick={() => setActiveTab("pronto")}
+        >
+          Pronto
+        </button>
+      </div>
+
+      {error && activeTab === "overview" && (
         <div className="data-dashboard-error">
           {error}
         </div>
       )}
 
+      {activeTab === "overview" ? (
       <div className="data-dashboard-grid">
         <div className="data-dashboard-card">
           <div className="data-dashboard-card-label">
@@ -567,6 +745,60 @@ function DataDashboard() {
           </ResponsiveContainer>
         )}
       </div>
+
+      ) : (
+        <>
+          {prontoError && (
+            <div className="data-dashboard-error">
+              {prontoError}
+            </div>
+          )}
+
+          <div className="pronto-toolbar">
+            <div>
+              <div className="data-dashboard-chart-title">Pronto C1</div>
+              <div className="data-dashboard-chart-subtitle">
+                Unique Pronto C1 values for Pronto Windows leads received since 1 January 2026.
+              </div>
+            </div>
+
+            <div className="pronto-search">
+              <Search size={14} color="#64748b" />
+              <input
+                type="text"
+                value={prontoSearch}
+                onChange={(event) => setProntoSearch(event.target.value)}
+                placeholder="Search Pronto C1"
+              />
+            </div>
+          </div>
+
+          <div className="pronto-table-card">
+            {prontoLoading ? (
+              <div className="pronto-empty">Loading Pronto data…</div>
+            ) : filteredProntoRows.length === 0 ? (
+              <div className="pronto-empty">No Pronto C1 data found.</div>
+            ) : (
+              <table className="pronto-table">
+                <thead>
+                  <tr>
+                    <th>Pronto C1</th>
+                    <th>Leads</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredProntoRows.map((row) => (
+                    <tr key={row.pronto_c1}>
+                      <td>{row.pronto_c1}</td>
+                      <td>{formatNumber(row.lead_count)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
+      )}
     </section>
   )
 }
