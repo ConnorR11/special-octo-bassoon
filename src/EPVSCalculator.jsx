@@ -634,97 +634,19 @@ export default function EPVSCalculator({
   
   const appointmentInitial = useMemo(() => {
     const saved = appointment?.epvs_calculation?.data || {}
-    const openSolar = saved?.openSolar
-    const openSolarArrays =
-      openSolar && Array.isArray(openSolar.arrays)
-        ? openSolar.arrays
-        : []
+    const savedArrays = Array.isArray(saved.arrays)
+      ? saved.arrays
+      : initial.arrays
 
-    // OpenSolar data is stored separately under data.openSolar by the webhook.
-    // When the parent appointment object refreshes, make sure the calculator
-    // initial state is rebuilt from that latest OpenSolar snapshot rather than
-    // falling back to the older saved arrays.
-    const savedArrays =
-      openSolarArrays.length > 0
-        ? openSolarArrays
-        : Array.isArray(saved.arrays)
-          ? saved.arrays
-          : initial.arrays
-
-    const sixArrays = Array.from({ length: 6 }, (_, index) => {
-      const savedArray = savedArrays[index]
-      if (!savedArray) return createArray()
-
-      return {
-        ...createArray(),
-        panelWattage: Number(savedArray.panelWattage || 0),
-        panelCount: Number(savedArray.panelCount || 0),
-        orientation: Number(savedArray.orientation || 0),
-        pitch: Number(savedArray.pitch || 0),
-        irradiance: Number(savedArray.irradiance || 0),
-        shading: Number(savedArray.shading ?? 1),
-      }
-    })
-
-    const importedPanel = openSolar?.hardware?.panels?.[0]
-    const importedBattery = openSolar?.hardware?.batteries?.[0]
-    const importedInverter = openSolar?.hardware?.inverters?.[0]
-    const importedEvCharger = openSolar?.hardware?.evChargers?.[0]
-
-    // OpenSolar hardware can occasionally omit panel capacity, while the
-    // array data still contains the actual panel wattage.
-    const openSolarPanelWattage =
-      Number(importedPanel?.capacity || 0) ||
-      Number(openSolarArrays[0]?.panelWattage || 0)
+    const sixArrays = Array.from({ length: 6 }, (_, index) =>
+      savedArrays[index] || createArray()
+    )
 
     return {
       ...initial,
       ...saved,
       arrays: sixArrays,
-      ...(openSolarArrays.length > 0
-        ? {
-            openSolar,
-            numberOfArrays: openSolarArrays.length,
-          }
-        : {}),
-      ...(importedPanel
-        ? {
-            panelModel: importedPanel.model || "",
-            panelManufacturer: importedPanel.manufacturer || "",
-            panelQuantity: Number(importedPanel.quantity || 1),
-            panelWattage: openSolarPanelWattage,
-          }
-        : {}),
-      ...(importedBattery
-        ? {
-            batteryCapacity:
-              Number(importedBattery.capacity || 0) *
-              Math.max(1, Number(importedBattery.quantity || 1)),
-            batteryModel: importedBattery.model || "",
-            batteryManufacturer: importedBattery.manufacturer || "",
-            batteryQuantity: Number(importedBattery.quantity || 1),
-          }
-        : {}),
-      ...(importedInverter
-        ? {
-            inverterCapacity: Number(importedInverter.capacity || 0),
-            inverterModel: importedInverter.model || "",
-            inverterManufacturer: importedInverter.manufacturer || "",
-            inverterQuantity: Number(importedInverter.quantity || 1),
-          }
-        : {}),
-      ...(importedEvCharger
-        ? {
-            evChargerModel: importedEvCharger.model || "",
-            evChargerManufacturer: importedEvCharger.manufacturer || "",
-            evChargerQuantity: Number(importedEvCharger.quantity || 1),
-            evChargerPowerKw: Number(importedEvCharger.capacity || 0),
-          }
-        : {}),
 
-      // Older saved calculations may contain 0 for this newly introduced
-      // field. EPVS Year 1 degradation is 1.00%, so migrate those records
-      // to the current assumption when they are loaded.
       solarDegradationYear1:
         Number(saved.solarDegradationYear1) > 0
           ? Number(saved.solarDegradationYear1)
@@ -755,94 +677,53 @@ export default function EPVSCalculator({
     setData(appointmentInitial)
   }, [appointmentInitial])
 
-  // Keep the EPVS display in sync when OpenSolar saves a design and the
-  // webhook updates this appointment in Supabase. Only the OpenSolar-backed
-  // fields are refreshed so unsaved manual EPVS inputs are not overwritten.
+  // Keep the EPVS display in sync when OpenSolar saves a design.
+  // OpenSolar now writes directly into the existing EPVS calculator structure
+  // (arrays, panel/battery/inverter fields), so the refresh watches those
+  // fields rather than a separate data.openSolar object.
   useEffect(() => {
     const appointmentRowId = String(appointment?.appointment_row_id || "").trim()
     if (!appointmentRowId || !supabase) return
 
     let channel
+    let lastFingerprint = ""
 
-    const applyOpenSolarUpdate = (epvsCalculation) => {
-      const saved = epvsCalculation?.data || {}
-      const openSolar = saved?.openSolar
-      if (!openSolar || typeof openSolar !== "object") return
+    const fingerprint = (epvsCalculation) => {
+      const saved = epvsCalculation?.data
+      if (!saved || typeof saved !== "object") return ""
 
-      const imported = Array.isArray(openSolar.arrays) ? openSolar.arrays : []
-      const importedArrays = [0, 1, 2, 3, 4, 5].map((index) => {
-        const importedArray = imported[index]
-        if (!importedArray) return createArray()
-        return {
-          ...createArray(),
-          panelCount: Number(importedArray.panelCount || 0),
-          panelWattage: Number(importedArray.panelWattage || 0),
-          orientation: Number(importedArray.orientation || 0),
-          pitch: Number(importedArray.pitch || 0),
-          irradiance: Number(importedArray.irradiance || 0),
-          shading: Number(importedArray.shading ?? 1),
-        }
+      return JSON.stringify({
+        arrays: saved.arrays || [],
+        numberOfArrays: saved.numberOfArrays || 0,
+        panelModel: saved.panelModel || "",
+        panelManufacturer: saved.panelManufacturer || "",
+        panelQuantity: saved.panelQuantity || 0,
+        panelWattage: saved.panelWattage || 0,
+        batteryCapacity: saved.batteryCapacity || 0,
+        batteryModel: saved.batteryModel || "",
+        batteryManufacturer: saved.batteryManufacturer || "",
+        batteryQuantity: saved.batteryQuantity || 0,
+        inverterCapacity: saved.inverterCapacity || 0,
+        inverterModel: saved.inverterModel || "",
+        inverterManufacturer: saved.inverterManufacturer || "",
+        inverterQuantity: saved.inverterQuantity || 0,
       })
+    }
 
-      const importedPanel = openSolar?.hardware?.panels?.[0]
-      const importedBattery = openSolar?.hardware?.batteries?.[0]
-      const importedInverter = openSolar?.hardware?.inverters?.[0]
-      const importedEvCharger = openSolar?.hardware?.evChargers?.[0]
-
-      setOpenSolarImageUrl(
-        String(openSolar?.systemImageUrl || openSolar?.imageUrl || "").trim()
-      )
+    const applySavedCalculation = (epvsCalculation) => {
+      const saved = epvsCalculation?.data
+      if (!saved || typeof saved !== "object") return
 
       setData((current) => ({
         ...current,
-        arrays: imported.length ? importedArrays : current.arrays,
-        numberOfArrays: imported.length || current.numberOfArrays,
-        openSolar,
-        ...(importedPanel ? {
-          panelModel: importedPanel.model || "",
-          panelManufacturer: importedPanel.manufacturer || "",
-          panelQuantity: Number(importedPanel.quantity || 1),
-          panelWattage: Number(importedPanel.capacity || 0),
-        } : {}),
-        ...(importedBattery ? {
-          batteryCapacity:
-            Number(importedBattery.capacity || 0) *
-            Math.max(1, Number(importedBattery.quantity || 1)),
-          batteryModel: importedBattery.model || "",
-          batteryManufacturer: importedBattery.manufacturer || "",
-          batteryQuantity: Number(importedBattery.quantity || 1),
-        } : {}),
-        ...(importedInverter ? {
-          inverterCapacity: Number(importedInverter.capacity || 0),
-          inverterModel: importedInverter.model || "",
-          inverterManufacturer: importedInverter.manufacturer || "",
-          inverterQuantity: Number(importedInverter.quantity || 1),
-        } : {}),
-        ...(importedEvCharger ? {
-          evChargerModel: importedEvCharger.model || "",
-          evChargerManufacturer: importedEvCharger.manufacturer || "",
-          evChargerQuantity: Number(importedEvCharger.quantity || 1),
-          evChargerPowerKw: Number(importedEvCharger.capacity || 0),
-        } : {}),
+        ...saved,
+        arrays: Array.from({ length: 6 }, (_, index) =>
+          saved.arrays?.[index] || createArray()
+        ),
       }))
     }
 
-    // Realtime is the preferred path, but keep a lightweight polling fallback.
-    // This also handles appointments/projects where Postgres Realtime is not
-    // enabled for the appointments table.
-    // Apply the current OpenSolar snapshot immediately. The webhook stores
-    // the imported design under data.openSolar, while the calculator inputs
-    // (arrays/hardware) are separate fields, so the snapshot must be mapped
-    // into local calculator state even on the initial render.
-    let lastImportedAt = ""
-    const initialOpenSolar = appointment?.epvs_calculation?.data?.openSolar
-    if (initialOpenSolar && typeof initialOpenSolar === "object") {
-      const initialImportedAt = String(initialOpenSolar.importedAt || "")
-      if (initialImportedAt) {
-        lastImportedAt = initialImportedAt
-        applyOpenSolarUpdate(appointment.epvs_calculation)
-      }
-    }
+    lastFingerprint = fingerprint(appointment?.epvs_calculation)
 
     const refreshFromDatabase = async () => {
       const { data: latest, error } = await supabase
@@ -853,18 +734,14 @@ export default function EPVSCalculator({
 
       if (error || !latest?.epvs_calculation) return
 
-      const importedAt = String(
-        latest.epvs_calculation?.data?.openSolar?.importedAt || ""
-      )
-
-      if (importedAt && importedAt !== lastImportedAt) {
-        lastImportedAt = importedAt
-        applyOpenSolarUpdate(latest.epvs_calculation)
+      const nextFingerprint = fingerprint(latest.epvs_calculation)
+      if (nextFingerprint && nextFingerprint !== lastFingerprint) {
+        lastFingerprint = nextFingerprint
+        applySavedCalculation(latest.epvs_calculation)
       }
     }
 
     refreshFromDatabase()
-
     const pollTimer = window.setInterval(refreshFromDatabase, 5000)
 
     channel = supabase
@@ -878,12 +755,10 @@ export default function EPVSCalculator({
           filter: `appointment_row_id=eq.${appointmentRowId}`,
         },
         (payload) => {
-          const importedAt = String(
-            payload?.new?.epvs_calculation?.data?.openSolar?.importedAt || ""
-          )
-          if (importedAt && importedAt !== lastImportedAt) {
-            lastImportedAt = importedAt
-            applyOpenSolarUpdate(payload?.new?.epvs_calculation)
+          const nextFingerprint = fingerprint(payload?.new?.epvs_calculation)
+          if (nextFingerprint && nextFingerprint !== lastFingerprint) {
+            lastFingerprint = nextFingerprint
+            applySavedCalculation(payload?.new?.epvs_calculation)
           }
         }
       )
