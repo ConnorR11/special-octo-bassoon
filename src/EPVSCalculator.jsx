@@ -999,9 +999,7 @@ export default function EPVSCalculator({
   // structure as the rest of the OpenSolar response. Read it directly from
   // the appointment rather than maintaining a separate image state.
   const openSolarImageUrl = String(
-    appointment?.epvs_calculation?.data?.openSolar?.systemImageUrl ||
     appointment?.epvs_calculation?.data?.openSolar?.imageUrl ||
-    data?.openSolar?.systemImageUrl ||
     data?.openSolar?.imageUrl ||
     ""
   ).trim()
