@@ -28,7 +28,7 @@ export default function OpenSolarIds() {
     if (!supabase) { setError("Supabase is not configured."); setLoading(false); return }
     setLoading(true); setError("")
     try {
-      const { data, error: queryError } = await supabase.from("appointments").select("appointment_row_id,name,appointment_date,product,job_type,open_solar_id,epvs_calculation").order("appointment_date", { ascending: true })
+      const { data, error: queryError } = await supabase.from("appointments").select("appointment_row_id,name,appointment_date,product,job_type,open_solar_id,epvs_calculation").gte("appointment_date", "2026-01-01T00:00:00").order("appointment_date", { ascending: true })
       if (queryError) throw queryError
       const solar = (data || []).filter(isSolarAppointment)
       setAppointments(solar)
