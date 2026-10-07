@@ -1,6 +1,5 @@
-import React from "react"
-import Reviews from "../../pages/Reviews"
+import ReviewsDashboard from "../reviews/ReviewsDashboard"
 
 export default function ReviewsMI() {
-  return <Reviews embedded />
+  return <ReviewsDashboard embedded />
 }
