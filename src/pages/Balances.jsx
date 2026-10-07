@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { AlertCircle, CalendarDays, ChevronRight, FileText, MapPin, PoundSterling, Search } from "lucide-react"
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { supabase } from "../lib/supabase"
 import { formatDate, getInitials, money } from "../utils/formatters"
 
@@ -92,6 +93,35 @@ export default function Balances({ onSelect }) {
     0
   )
 
+  const paymentChartData = useMemo(() => {
+    const byMonth = new Map()
+
+    deals.forEach((deal) => {
+      const rawDate = String(deal?.estimated_payment_date || "").trim()
+      const match = rawDate.match(/^(\\d{4})-(\\d{2})/)
+      if (!match) return
+
+      const key = `${match[1]}-${match[2]}`
+      const amount = toNumber(deal?.balance_outstanding)
+      byMonth.set(key, (byMonth.get(key) || 0) + amount)
+    })
+
+    return Array.from(byMonth.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, amount]) => {
+        const [year, month] = key.split("-")
+        const label = new Intl.DateTimeFormat("en-GB", {
+          month: "short",
+          year: "numeric",
+        }).format(new Date(Number(year), Number(month) - 1, 1))
+
+        return {
+          month: label,
+          amount,
+        }
+      })
+  }, [deals])
+
   return (
     <section>
       <div
@@ -174,6 +204,81 @@ export default function Balances({ onSelect }) {
           </div>
         </div>
       </div>
+
+      {paymentChartData.length > 0 && (
+        <div
+          className="card"
+          style={{
+            marginBottom: 18,
+            padding: "18px 20px 14px",
+          }}
+        >
+          <div style={{ marginBottom: 10 }}>
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 800,
+                color: "#263645",
+              }}
+            >
+              Expected payments
+            </div>
+            <div
+              style={{
+                marginTop: 3,
+                fontSize: 10,
+                color: "#8a959d",
+              }}
+            >
+              Outstanding balance grouped by estimated payment month
+            </div>
+          </div>
+
+          <div style={{ width: "100%", height: 260 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={paymentChartData}
+                margin={{ top: 8, right: 12, left: 4, bottom: 4 }}
+              >
+                <CartesianGrid stroke="#eef1f3" vertical={false} />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 10, fill: "#7b8790" }}
+                  axisLine={{ stroke: "#dfe5ea" }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: "#7b8790" }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(value) => `£${Math.round(value / 1000)}k`}
+                  width={48}
+                />
+                <Tooltip
+                  formatter={(value) => [money(value), "Outstanding"]}
+                  contentStyle={{
+                    border: "1px solid #dfe5ea",
+                    borderRadius: 8,
+                    fontSize: 11,
+                    boxShadow: "0 4px 12px rgba(15,23,42,.08)",
+                  }}
+                  labelStyle={{
+                    color: "#263645",
+                    fontWeight: 700,
+                  }}
+                />
+                <Bar
+                  dataKey="amount"
+                  name="Outstanding"
+                  fill="#7e22ce"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={54}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {error ? (
         <div
