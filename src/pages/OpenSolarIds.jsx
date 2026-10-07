@@ -117,9 +117,9 @@ export default function OpenSolarIds({ embedded = false }) {
         @media(max-width:800px){.open-solar-page{padding:20px 14px}.open-solar-header,.open-solar-controls{flex-direction:column;align-items:stretch}.open-solar-control-right{flex-direction:column;align-items:stretch}.open-solar-search{min-width:0}}
       `}</style>
       <div className="open-solar-container">
-        <div className="open-solar-header"><div><div className="open-solar-eyebrow">Administration</div><h1 className="open-solar-heading">OpenSolar IDs</h1><p className="open-solar-subtitle">Update the OpenSolar project ID for solar appointments.</p></div>
+        {!embedded && <div className="open-solar-header"><div><div className="open-solar-eyebrow">Administration</div><h1 className="open-solar-heading">OpenSolar IDs</h1><p className="open-solar-subtitle">Update the OpenSolar project ID for solar appointments.</p></div>
           <button type="button" className="open-solar-refresh" onClick={() => loadAppointments(page)} disabled={loading}><RefreshCw size={14}/>{loading ? "Loading..." : "Refresh"}</button>
-        </div>
+        </div>}
         {error && <div className="open-solar-error">{error}</div>}
         <div className="open-solar-controls"><div className="open-solar-count">{filteredAppointments.length} solar appointments on this page</div><div className="open-solar-control-right"><label className="open-solar-toggle"><input type="checkbox" checked={hideWithOpenSolarId} onChange={(event) => setHideWithOpenSolarId(event.target.checked)}/><span>Hide jobs with OpenSolar ID</span></label><div className="open-solar-search"><Search size={14}/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search appointment, postcode or OpenSolar ID"/></div></div></div>
         <div className="open-solar-panel"><div className="open-solar-table-wrap"><table className="open-solar-table"><thead><tr><th>Appointment</th><th>Appointment Date & Time</th><th>Postcode</th><th>OpenSolar ID</th><th>Action</th></tr></thead><tbody>
