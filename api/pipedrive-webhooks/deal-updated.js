@@ -165,6 +165,11 @@ const PIPEDRIVE_FIELDS = {
     key: null,
   },
 
+  estimatedPaymentDate: {
+    name: "Installations: Estimated Payment Date",
+    key: null,
+  },
+
   /*
   |--------------------------------------------------------------------------
   | NEW FIELDS
@@ -1115,6 +1120,14 @@ export default async function handler(req, res) {
         )
       )
 
+    const estimatedPaymentDate =
+      normaliseDate(
+        getCustomFieldValue(
+          deal,
+          fields.estimatedPaymentDate.key
+        )
+      )
+
     /*
     |--------------------------------------------------------------------------
     | NEW INSTALLATION / REMEDIAL FIELDS
@@ -1293,6 +1306,9 @@ export default async function handler(req, res) {
       "Balance: Outstanding Amount":
         balanceOutstanding,
 
+      "Installations: Estimated Payment Date":
+        estimatedPaymentDate,
+
       "Installation: Roof Start Date":
         installationRoofStartDate,
 
@@ -1386,6 +1402,7 @@ export default async function handler(req, res) {
         "admin_fee_paid_out_date",
         "admin_fee_received_date",
         "balance_outstanding",
+        "estimated_payment_date",
         "pipedrive_stage",
         "salesperson",
         "installation_roof_start_date",
@@ -1476,6 +1493,7 @@ export default async function handler(req, res) {
         adminFeePaidOutDate,
         adminFeeReceivedDate,
         balanceOutstanding,
+        estimatedPaymentDate,
         installationRoofStartDate,
         installationRoofTeam,
         installationElectricsStartDate,
@@ -1561,6 +1579,9 @@ export default async function handler(req, res) {
 
       balance_outstanding:
         balanceOutstanding,
+
+      estimated_payment_date:
+        estimatedPaymentDate,
 
       pipedrive_stage:
         pipedriveStage,
@@ -1701,6 +1722,8 @@ export default async function handler(req, res) {
       adminFeeReceivedDate,
 
       balanceOutstanding,
+
+      estimatedPaymentDate,
 
       /*
       |--------------------------------------------------------------------------
