@@ -51,7 +51,7 @@ export default function OpenSolarIds() {
           "product.ilike.%" + searchTerm + "%",
           "job_type.ilike.%" + searchTerm + "%"
         ]
-        if (/^\\d+$/.test(searchTerm)) searchFilters.push("open_solar_id.eq." + searchTerm)
+        if (/^\d+$/.test(searchTerm)) searchFilters.push("open_solar_id.eq." + searchTerm)
         query = query.or(searchFilters.join(","))
       }
       if (hideWithOpenSolarId) query = query.is("open_solar_id", null)
