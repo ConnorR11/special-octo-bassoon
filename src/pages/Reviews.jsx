@@ -274,15 +274,25 @@ export default function Reviews({ setMobile }) {
               <svg className="reviews-trend-svg" viewBox={`0 0 ${trendWidth} ${trendHeight}`} preserveAspectRatio="none" role="img" aria-label="Quarterly Trustpilot and Google review volume with combined average score">
                 {[0, 0.25, 0.5, 0.75, 1].map((step) => {
                   const y = trendTop + trendPlotHeight - step * trendPlotHeight
+                  const countLabel = Math.round(step * maxTrendCount).toLocaleString("en-GB")
+                  const averageLabel = (1 + step * 4).toFixed(1)
+
                   return (
-                    <line
-                      key={step}
-                      className="reviews-trend-gridline"
-                      x1={trendLeft}
-                      x2={trendWidth - trendRight}
-                      y1={y}
-                      y2={y}
-                    />
+                    <g key={step}>
+                      <line
+                        className="reviews-trend-gridline"
+                        x1={trendLeft}
+                        x2={trendWidth - trendRight}
+                        y1={y}
+                        y2={y}
+                      />
+                      <text className="reviews-trend-axis" x={trendLeft - 9} y={y + 4} textAnchor="end">
+                        {countLabel}
+                      </text>
+                      <text className="reviews-trend-axis" x={trendWidth - trendRight + 9} y={y + 4}>
+                        {averageLabel}
+                      </text>
+                    </g>
                   )
                 })}
 
