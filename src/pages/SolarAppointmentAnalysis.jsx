@@ -289,7 +289,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment }) {
         .select("appointment_row_id,name,appointment_date,rep_allocated,result,product,job_type,epvs_calculation")
         .not("rep_allocated", "is", null)
         .neq("rep_allocated", "")
-        .order("appointment_date", { ascending: false })
+         .order("appointment_date", { ascending: true })
 
       if (range.start) {
         request = request.gte("appointment_date", `${range.start}T00:00:00`)
