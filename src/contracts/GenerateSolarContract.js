@@ -20,7 +20,11 @@ const date = (v) => {
 }
 
 function getOpenSolarImageUrl(appointment) {
-  return String(appointment?.open_solar_image || "").trim()
+  return String(
+    appointment?.epvs_calculation?.data?.openSolar?.imageUrl ||
+    appointment?.open_solar_image ||
+    ""
+  ).trim()
 }
 
 function getOpenSolarHardware(data) {
