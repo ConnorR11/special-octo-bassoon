@@ -576,6 +576,7 @@ function DataDashboard() {
       )}
 
       {activeTab === "overview" ? (
+        <>
       <div className="data-dashboard-grid">
         <div className="data-dashboard-card">
           <div className="data-dashboard-card-label">
