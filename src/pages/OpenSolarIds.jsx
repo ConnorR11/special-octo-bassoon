@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react"
-import { Search, RefreshCw, Save, Check, X } from "lucide-react"
+import { Search, RefreshCw, Save, Check, X, ChevronLeft, ChevronRight } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
 function normalise(value) { return String(value ?? "").trim().toLowerCase() }
@@ -15,29 +15,47 @@ function formatDateTime(value) {
   return date.toLocaleString("en-GB", { timeZone: "Europe/London", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })
 }
 
+const PAGE_SIZE = 50
+
 export default function OpenSolarIds() {
   const [appointments, setAppointments] = useState([])
   const [drafts, setDrafts] = useState({})
   const [search, setSearch] = useState("")
+  const [page, setPage] = useState(0)
+  const [hasNextPage, setHasNextPage] = useState(false)
   const [loading, setLoading] = useState(true)
   const [savingId, setSavingId] = useState(null)
   const [savedId, setSavedId] = useState(null)
   const [error, setError] = useState("")
 
-  async function loadAppointments() {
+  async function loadAppointments(targetPage = page) {
     if (!supabase) { setError("Supabase is not configured."); setLoading(false); return }
     setLoading(true); setError("")
     try {
-      const { data, error: queryError } = await supabase.from("appointments").select("appointment_row_id,name,postcode,appointment_date,product,job_type,open_solar_id,epvs_calculation").gte("appointment_date", "2026-01-01T00:00:00").order("appointment_date", { ascending: true })
+      const from = targetPage * PAGE_SIZE
+      const to = from + PAGE_SIZE
+      const { data, error: queryError } = await supabase
+        .from("appointments")
+        .select("appointment_row_id,name,postcode,appointment_date,product,job_type,open_solar_id,epvs_calculation")
+        .gte("appointment_date", "2026-01-01T00:00:00")
+        .order("appointment_date", { ascending: true })
+        .range(from, to)
+
       if (queryError) throw queryError
-      const solar = (data || []).filter(isSolarAppointment)
+
+      const rows = data || []
+      const solar = rows.filter(isSolarAppointment)
       setAppointments(solar)
+      setHasNextPage(rows.length > PAGE_SIZE)
+      setPage(targetPage)
       setDrafts(Object.fromEntries(solar.map((a) => [a.appointment_row_id, a.open_solar_id ?? ""])))
-    } catch (err) { setError(err?.message || "Unable to load solar appointments."); setAppointments([]); setDrafts({}) }
+    } catch (err) { setError(err?.message || "Unable to load solar appointments."); setAppointments([]); setDrafts({}); setHasNextPage(false) }
     finally { setLoading(false) }
   }
 
-  useEffect(() => { loadAppointments() }, [])
+  useEffect(() => { loadAppointments(0) }, [])
+
+  useEffect(() => { setPage(0); loadAppointments(0) }, [search])
 
   async function saveOpenSolarId(appointment) {
     const id = appointment.appointment_row_id
@@ -78,14 +96,15 @@ export default function OpenSolarIds() {
         .open-solar-actions{display:flex;align-items:center;gap:6px}.open-solar-save,.open-solar-cancel{height:32px;padding:0 10px;border-radius:7px;font-size:11px;font-weight:750;display:inline-flex;align-items:center;gap:5px;cursor:pointer}
         .open-solar-save{border:1px solid #0877bd;background:#0877bd;color:#fff}.open-solar-cancel{border:1px solid #d7dee7;background:#fff;color:#475569}.open-solar-saved{font-size:11px;color:#15803d;font-weight:700;display:inline-flex;align-items:center;gap:4px}
         .open-solar-empty{text-align:center;padding:42px 20px;color:#64748b}.open-solar-error{margin-bottom:12px;padding:11px 13px;border-radius:8px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;font-size:12px}
+        .open-solar-pagination{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;border-top:1px solid #e8edf2;background:#fff}.open-solar-page-btn{height:32px;padding:0 10px;border:1px solid #d7dee7;border-radius:7px;background:#fff;color:#475569;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:pointer}.open-solar-page-btn:disabled{opacity:.45;cursor:not-allowed}.open-solar-page-number{font-size:11px;color:#64748b;font-weight:700;min-width:70px;text-align:center}
         @media(max-width:800px){.open-solar-page{padding:20px 14px}.open-solar-header,.open-solar-controls{flex-direction:column;align-items:stretch}.open-solar-search{min-width:0}}
       `}</style>
       <div className="open-solar-container">
         <div className="open-solar-header"><div><div className="open-solar-eyebrow">Administration</div><h1 className="open-solar-heading">OpenSolar IDs</h1><p className="open-solar-subtitle">Update the OpenSolar project ID for solar appointments.</p></div>
-          <button type="button" className="open-solar-refresh" onClick={loadAppointments} disabled={loading}><RefreshCw size={14}/>{loading ? "Loading..." : "Refresh"}</button>
+          <button type="button" className="open-solar-refresh" onClick={() => loadAppointments(page)} disabled={loading}><RefreshCw size={14}/>{loading ? "Loading..." : "Refresh"}</button>
         </div>
         {error && <div className="open-solar-error">{error}</div>}
-        <div className="open-solar-controls"><div className="open-solar-count">{filteredAppointments.length} solar appointments</div><div className="open-solar-search"><Search size={14}/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search appointment, postcode or OpenSolar ID"/></div></div>
+        <div className="open-solar-controls"><div className="open-solar-count">{filteredAppointments.length} solar appointments on this page</div><div className="open-solar-search"><Search size={14}/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search appointment, postcode or OpenSolar ID"/></div></div>
         <div className="open-solar-panel"><div className="open-solar-table-wrap"><table className="open-solar-table"><thead><tr><th>Appointment</th><th>Appointment Date & Time</th><th>Postcode</th><th>OpenSolar ID</th><th>Action</th></tr></thead><tbody>
           {loading ? <tr><td colSpan="5" className="open-solar-empty">Loading solar appointments...</td></tr> : filteredAppointments.length === 0 ? <tr><td colSpan="5" className="open-solar-empty">No solar appointments found.</td></tr> : filteredAppointments.map((appointment) => {
             const id = appointment.appointment_row_id; const draft = String(drafts[id] ?? ""); const original = String(appointment.open_solar_id ?? ""); const changed = draft !== original; const saving = savingId === id; const saved = savedId === id
@@ -93,7 +112,9 @@ export default function OpenSolarIds() {
               <input className="open-solar-input" value={draft} onChange={(event) => setDrafts((current) => ({ ...current, [id]: event.target.value }))} placeholder="Enter OpenSolar ID" disabled={saving} onKeyDown={(event) => { if (event.key === "Enter" && changed) saveOpenSolarId(appointment); if (event.key === "Escape") resetDraft(appointment) }}/>
             </td><td><div className="open-solar-actions"><button type="button" className="open-solar-save" onClick={() => saveOpenSolarId(appointment)} disabled={!changed || saving}><Save size={13}/>{saving ? "Saving..." : "Save"}</button><button type="button" className="open-solar-cancel" onClick={() => resetDraft(appointment)} disabled={!changed || saving}><X size={13}/>Reset</button>{saved && <span className="open-solar-saved"><Check size={13}/>Saved</span>}</div></td></tr>
           })}
-        </tbody></table></div></div>
+        </tbody></table></div>
+        <div className="open-solar-pagination"><button type="button" className="open-solar-page-btn" onClick={() => loadAppointments(page - 1)} disabled={loading || page === 0}><ChevronLeft size={14}/>Previous</button><span className="open-solar-page-number">Page {page + 1}</span><button type="button" className="open-solar-page-btn" onClick={() => loadAppointments(page + 1)} disabled={loading || !hasNextPage}>Next<ChevronRight size={14}/></button></div>
+        </div>
       </div>
     </section>
   )
