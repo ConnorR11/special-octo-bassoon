@@ -373,7 +373,8 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
     try {
       let request = supabase
         .from("appointments")
-        .select("*")
+        .select("appointment_row_id,name,appointment_date,rep_allocated,result,job_type,epvs_calculation")
+        .eq("job_type", "Solar")
         .gte("appointment_date", "2026-01-01T00:00:00")
         .order("appointment_date", { ascending: true })
 
@@ -397,11 +398,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
       if (appointmentsResult.error) throw appointmentsResult.error
       if (profilesResult.error) throw profilesResult.error
 
-      setAppointments(
-        (appointmentsResult.data || []).filter(
-          (appointment) => normalise(appointment?.job_type) === "solar"
-        )
-      )
+      setAppointments(appointmentsResult.data || [])
       setProfiles(profilesResult.data || [])
     } catch (err) {
       console.error("Error loading solar appointment analysis:", err)
