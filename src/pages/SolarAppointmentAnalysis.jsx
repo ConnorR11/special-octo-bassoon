@@ -485,7 +485,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
 
   const analysisGroups = [
     { key: "electricity", label: "Current Electricity", fields: ["Consumption", "Import", "Export", "Standing"] },
-    { key: "design", label: "System Design", fields: ["Panels", "System Size", "Shading Factor", "Generation", "Battery", "Inverter"] },
+    { key: "design", label: "System Design", fields: ["Panels", "System Size", "Shading", "Generation", "Battery", "Inverter"] },
     { key: "octopus", label: "Octopus Rates", fields: ["Day Export", "Flux Export", "Peak Export"] },
     { key: "pricing", label: "Pricing", fields: ["Method", "Cost", "Payment", "Total cost"] },
     { key: "epvs", label: "30 year EPVS", fields: ["Payback", "Net Position", "Pre Install"] },
