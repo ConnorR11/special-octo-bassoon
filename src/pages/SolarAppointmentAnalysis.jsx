@@ -274,10 +274,14 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
   const [appointments, setAppointments] = useState([])
   const [profiles, setProfiles] = useState([])
   const [search, setSearch] = useState("")
+  const [allocatedOnly, setAllocatedOnly] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
-  async function loadAppointments(range = { start: startDate, end: endDate }) {
+  async function loadAppointments(
+    range = { start: startDate, end: endDate },
+    allocatedOnlyOverride = allocatedOnly
+  ) {
     if (!supabase) {
       setError("Supabase is not configured.")
       return
@@ -295,10 +299,14 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
       let request = supabase
         .from("appointments")
         .select("*")
-        .not("rep_allocated", "is", null)
-        .neq("rep_allocated", "")
         .eq("cps_c", true)
         .order("appointment_date", { ascending: true })
+
+      if (allocatedOnlyOverride) {
+        request = request
+          .not("rep_allocated", "is", null)
+          .neq("rep_allocated", "")
+      }
 
       if (range.start) {
         request = request.gte("appointment_date", `${range.start}T00:00:00`)
@@ -609,6 +617,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
         .solar-analysis-field span{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.06em}
         .solar-analysis-apply{height:36px;padding:0 13px;border:1px solid #0877bd;border-radius:8px;background:#fff;color:#0877bd;font-weight:700;font-size:12px;cursor:pointer}.solar-analysis-apply:disabled{opacity:.5;cursor:default}
         .solar-analysis-input{height:36px;padding:0 9px;border:1px solid #d7dee7;border-radius:8px;background:#fff;color:#0f172a;font:inherit;font-size:12px;box-sizing:border-box}
+        .solar-analysis-toggle{height:36px;padding:0 11px;border:1px solid #d7dee7;border-radius:8px;background:#fff;color:#475569;font-weight:700;font-size:12px;display:inline-flex;align-items:center;gap:7px;cursor:pointer}.solar-analysis-toggle.active{border-color:#0877bd;background:#eff8ff;color:#0877bd}.solar-analysis-toggle:disabled{opacity:.6;cursor:default}.solar-analysis-toggle-track{width:28px;height:16px;border-radius:999px;background:#cbd5e1;padding:2px;box-sizing:border-box;display:flex;align-items:center;transition:.15s}.solar-analysis-toggle.active .solar-analysis-toggle-track{background:#0877bd}.solar-analysis-toggle-knob{width:12px;height:12px;border-radius:50%;background:#fff;display:block;transition:.15s}.solar-analysis-toggle.active .solar-analysis-toggle-knob{transform:translateX(12px)}
         .solar-analysis-search{display:flex;align-items:center;gap:7px;height:36px;padding:0 10px;border:1px solid #d7dee7;border-radius:8px;background:#fff;min-width:240px}
         .solar-analysis-search svg{color:#64748b;flex:0 0 auto}
         .solar-analysis-search input{border:0;outline:0;background:transparent;width:100%;font:inherit;font-size:12px;color:#0f172a}
@@ -696,6 +705,21 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
               <input className="solar-analysis-input" type="date" value={endDate} onChange={(event) => setCustomEnd(event.target.value)}/>
             </label>
             <button type="button" className="solar-analysis-apply" onClick={applyCustomDates} disabled={loading}>Apply dates</button>
+            <button
+              type="button"
+              className={`solar-analysis-toggle ${allocatedOnly ? "active" : ""}`}
+              onClick={() => {
+                const nextValue = !allocatedOnly
+                setAllocatedOnly(nextValue)
+                loadAppointments({ start: startDate, end: endDate }, nextValue)
+              }}
+              disabled={loading}
+            >
+              <span className="solar-analysis-toggle-track">
+                <span className="solar-analysis-toggle-knob" />
+              </span>
+              Allocated reps only
+            </button>
             <div className="solar-analysis-search">
               <Search size={14}/>
               <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search appointment, rep or result"/>
@@ -716,7 +740,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
           <div className="solar-analysis-panel-header">
             <div>
               <h2>Appointments</h2>
-              <span>Only appointments with an allocated sales rep are included.</span>
+              <span>{allocatedOnly ? "Only appointments with an allocated sales rep are included." : "All solar appointments are included. Use the toggle above to show allocated reps only."}</span>
             </div>
             <button type="button" className="solar-analysis-export" onClick={exportPdf} disabled={!filteredAppointments.length || loading}>
               <Download size={14}/>
