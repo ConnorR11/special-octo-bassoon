@@ -91,15 +91,69 @@ export default async function handler(req, res) {
       throw error
     }
 
-    const match = String(selected.name).match(/^accounts\/([^/]+)\/locations\/([^/]+)$/)
-    if (!match) throw new Error(`Google returned an unexpected Business Profile location name: ${selected.name}`)
+    let accountId = null
+    let locationId = null
+    let locationName = String(selected.name || "")
+
+    const fullMatch = locationName.match(/^accounts\/([^/]+)\/locations\/([^/]+)$/)
+    const locationOnlyMatch = locationName.match(/^locations\/([^/]+)$/)
+
+    if (fullMatch) {
+      accountId = fullMatch[1]
+      locationId = fullMatch[2]
+    } else if (locationOnlyMatch) {
+      locationId = locationOnlyMatch[1]
+
+      // Google can return locations/{locationId} from the wildcard location
+      // listing. The Reviews API still requires the owning account ID.
+      const accountsData = await googleBusinessRequest(
+        accessToken,
+        "/v1/accounts",
+        {},
+        "accountManagement",
+      )
+
+      for (const account of accountsData.accounts || []) {
+        const candidateAccountId = String(account?.name || "").match(/^accounts\/([^/]+)$/)?.[1]
+        if (!candidateAccountId) continue
+
+        const accountQuery = new URLSearchParams({
+          pageSize: "100",
+          readMask: "name,title,storefrontAddress,websiteUri,metadata",
+        })
+
+        const accountLocations = await googleBusinessRequest(
+          accessToken,
+          `/v1/accounts/${encodeURIComponent(candidateAccountId)}/locations?${accountQuery.toString()}`,
+          {},
+          "businessInformation",
+        )
+
+        const matchingLocation = (accountLocations.locations || []).find((location) => {
+          const name = String(location?.name || "")
+          return name === locationName ||
+            name === `accounts/${candidateAccountId}/locations/${locationId}` ||
+            name.endsWith(`/locations/${locationId}`)
+        })
+
+        if (matchingLocation) {
+          accountId = candidateAccountId
+          locationName = String(matchingLocation.name || `accounts/${candidateAccountId}/locations/${locationId}`)
+          break
+        }
+      }
+    }
+
+    if (!accountId || !locationId) {
+      throw new Error(`Unable to resolve the Google Business Profile account for location ${locationName}`)
+    }
 
     const result = {
       status: "success",
-      accountId: match[1],
-      locationId: match[2],
-      accountName: `accounts/${match[1]}`,
-      locationName: selected.name,
+      accountId,
+      locationId,
+      accountName: `accounts/${accountId}`,
+      locationName: `accounts/${accountId}/locations/${locationId}`,
       businessName: selected.title || null,
       websiteUrl: selected.websiteUri || null,
       address: selected.storefrontAddress || null,
