@@ -264,11 +264,16 @@ function getSystemDesign(appointment) {
     0
   )
 
+  const resolvedSystemSize = systemSize || Number(data?.systemSize || data?.system_size || 0)
+  const resolvedGeneration = openSolarArrays.length ? openSolarGeneration : Number(results?.generation || 0)
+  const yieldPerKwp = resolvedSystemSize > 0 ? resolvedGeneration / resolvedSystemSize : 0
+
   return {
     panelCount,
-    systemSize: systemSize || Number(data?.systemSize || data?.system_size || 0),
+    systemSize: resolvedSystemSize,
     shadingFactor: shadingFactor || Number(data?.shadingFactor || data?.shading_factor || 0),
-    generation: openSolarArrays.length ? openSolarGeneration : Number(results?.generation || 0),
+    generation: resolvedGeneration,
+    yieldPerKwp,
     batteryCapacity: openSolarArrays.length ? openSolarBatteryCapacity : Number(data?.batteryCapacity || 0),
     inverterCapacity: openSolarArrays.length ? openSolarInverterCapacity : Number(data?.inverterCapacity || 0),
   }
@@ -485,7 +490,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
 
   const analysisGroups = [
     { key: "electricity", label: "Current Electricity", fields: ["Consumption", "Import", "Export", "Standing"] },
-    { key: "design", label: "System Design", fields: ["Panels", "System Size", "Shading", "Generation", "Battery", "Inverter"] },
+    { key: "design", label: "System Design", fields: ["Panels", "System Size", "Shading", "Generation", "Yield", "Battery", "Inverter"] },
     { key: "octopus", label: "Octopus Rates", fields: ["Day Export", "Flux Export", "Peak Export"] },
     { key: "pricing", label: "Pricing", fields: ["Method", "Cost", "Payment", "Total cost"] },
     { key: "epvs", label: "30 year EPVS", fields: ["Payback", "Net Position", "Pre Install"] },
@@ -507,7 +512,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
     const headers = [
       "Appointment", "Date & time", "Sales Rep", "Result",
       "Consumption", "Import", "Export", "Standing",
-      "Panels", "System Size", "Shading Factor", "Generation", "Battery", "Inverter",
+      "Panels", "System Size", "Shading", "Generation", "Yield", "Battery", "Inverter",
       "Day Export", "Flux Export", "Peak Export",
       "Method", "Cost", "Payment", "Total cost",
       "Payback", "Net Position", "Pre Install"
@@ -516,7 +521,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
     const groups = [
       { label: "", span: 4 },
       { label: "Current Electricity", span: 4 },
-      { label: "System Design", span: 6 },
+      { label: "System Design", span: 7 },
       { label: "Octopus Rates", span: 3 },
       { label: "Pricing", span: 4 },
       { label: "30 year EPVS", span: 3 },
@@ -542,6 +547,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
         systemDesign.systemSize ? Number(systemDesign.systemSize).toFixed(2) + " kW" : "—",
         systemDesign.shadingFactor ? Number(systemDesign.shadingFactor).toFixed(3) : "—",
         systemDesign.generation ? Math.round(systemDesign.generation) + " kWh" : "—",
+        systemDesign.yieldPerKwp ? Math.round(systemDesign.yieldPerKwp) + " kWh/kWp" : "—",
         systemDesign.batteryCapacity ? Number(systemDesign.batteryCapacity).toFixed(2) + " kWh" : "—",
         systemDesign.inverterCapacity ? String(systemDesign.inverterCapacity) + " kW" : "—",
         formatElectricityValue(epvsData.fluxDayExport, "p"),
@@ -561,7 +567,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
     // exported table as narrow as possible while keeping every value on one line.
     const fontSize = 5.4
     const horizontalPadding = 2.2
-    const minColumnWidths = [17, 15, 18, 15, 14, 12, 12, 13, 10, 13, 13, 14, 14, 13, 13, 14, 13, 14, 14, 14, 16, 12, 16, 16]
+    const minColumnWidths = [17, 15, 18, 15, 14, 12, 12, 13, 10, 13, 13, 13, 14, 14, 13, 13, 14, 13, 14, 14, 14, 16, 12, 16, 16]
 
     doc.setFont("helvetica", "normal")
     doc.setFontSize(fontSize)
@@ -759,7 +765,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
         .solar-analysis-table th.solar-analysis-octopus-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
         .solar-analysis-table th.solar-analysis-pricing-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
         .solar-analysis-table th.solar-analysis-epvs-field{background:#fff;color:#17366d;border-top:0;text-transform:none;font-size:11px;letter-spacing:0}
-        .solar-analysis-table td{padding:11px 12px;border-top:1px solid #e8edf2;color:#334155;white-space:nowrap}.solar-analysis-table td.solar-analysis-empty-field{background:#fef2f2;color:#991b1b}
+        .solar-analysis-table td{padding:11px 12px;border-top:1px solid #e8edf2;color:#334155;white-space:nowrap}.solar-analysis-table td.solar-analysis-empty-field{background:#fef2f2;color:#991b1b}.solar-analysis-table td.solar-analysis-yield-fail{color:#dc2626}
         .solar-analysis-table td.solar-analysis-group-start{border-left:4px solid #000}
         .solar-analysis-table tbody tr{cursor:pointer}
         .solar-analysis-table tbody tr:hover{background:#f8fafc}
@@ -891,9 +897,9 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan="26" className="solar-analysis-empty">Loading solar appointments...</td></tr>
+                  <tr><td colSpan="25" className="solar-analysis-empty">Loading solar appointments...</td></tr>
                 ) : filteredAppointments.length === 0 ? (
-                  <tr><td colSpan="26" className="solar-analysis-empty">No solar appointments found for this period.</td></tr>
+                  <tr><td colSpan="25" className="solar-analysis-empty">No solar appointments found for this period.</td></tr>
                 ) : (
                   filteredAppointments.map((appointment) => {
                     const rep = repNameByEmail[normalise(appointment.rep_allocated)] || appointment.rep_allocated || "—"
@@ -926,6 +932,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
                               systemDesign.systemSize ? Number(systemDesign.systemSize).toFixed(2) + " kW" : "—",
                               systemDesign.shadingFactor ? Number(systemDesign.shadingFactor).toFixed(3) : "—",
                               systemDesign.generation ? Math.round(systemDesign.generation) + " kWh" : "—",
+                              systemDesign.yieldPerKwp ? Math.round(systemDesign.yieldPerKwp) + " kWh/kWp" : "—",
                               systemDesign.batteryCapacity ? Number(systemDesign.batteryCapacity).toFixed(2) + " kWh" : "—",
                               systemDesign.inverterCapacity ? String(systemDesign.inverterCapacity) + " kW" : "—",
                             ],
@@ -966,6 +973,7 @@ export default function SolarAppointmentAnalysis({ onSelectAppointment, embedded
                               className={[
                                 "solar-analysis-" + group.key + "-field",
                                 index === 0 ? "solar-analysis-group-start" : "",
+                                group.key === "design" && index === 4 && Number(systemDesign.yieldPerKwp) < 700 ? "solar-analysis-yield-fail" : "",
                                 isEmptyDisplayValue(value) ? "solar-analysis-empty-field" : "",
                               ].filter(Boolean).join(" ")}
                             >
