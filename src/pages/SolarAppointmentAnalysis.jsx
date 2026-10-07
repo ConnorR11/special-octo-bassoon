@@ -76,7 +76,21 @@ function periodDates(period) {
   const monday = new Date(current)
   monday.setDate(monday.getDate() + mondayOffset)
 
+  if (period === "yesterday") {
+    const yesterday = new Date(current)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const value = londonDate(yesterday)
+    return { start: value, end: value }
+  }
+
   if (period === "today") return { start: today, end: today }
+
+  if (period === "tomorrow") {
+    const tomorrow = new Date(current)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const value = londonDate(tomorrow)
+    return { start: value, end: value }
+  }
 
   if (period === "this-week") {
     return { start: londonDate(monday), end: today }
