@@ -17,7 +17,7 @@ function formatDateTime(value) {
 
 const PAGE_SIZE = 50
 
-export default function OpenSolarIds() {
+export default function OpenSolarIds({ embedded = false }) {
   const [appointments, setAppointments] = useState([])
   const [drafts, setDrafts] = useState({})
   const [search, setSearch] = useState("")
@@ -98,9 +98,9 @@ export default function OpenSolarIds() {
   const filteredAppointments = useMemo(() => appointments, [appointments])
 
   return (
-    <section className="open-solar-page">
+    <section className={`open-solar-page ${embedded ? "open-solar-embedded" : ""}`}>
       <style>{`
-        .open-solar-page{min-height:100%;padding:28px 32px 40px;background:#f5f7fa;color:#0f172a;box-sizing:border-box}
+        .open-solar-page{min-height:100%;padding:28px 32px 40px;background:#f5f7fa;color:#0f172a;box-sizing:border-box}.open-solar-page.open-solar-embedded{padding:0;background:transparent;min-height:auto}.open-solar-page.open-solar-embedded .open-solar-container{max-width:none}
         .open-solar-container{max-width:1500px;margin:0 auto}.open-solar-header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:18px}
         .open-solar-eyebrow{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#0877bd;margin-bottom:6px}.open-solar-heading{margin:0;font-size:30px;line-height:1.1;font-weight:750}
         .open-solar-subtitle{margin:6px 0 0;color:#64748b;font-size:13px}.open-solar-refresh{height:38px;padding:0 13px;border:1px solid #d7dee7;border-radius:8px;background:#fff;color:#475569;font-weight:700;font-size:12px;display:inline-flex;align-items:center;gap:7px;cursor:pointer}
