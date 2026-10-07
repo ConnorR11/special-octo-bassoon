@@ -43,6 +43,77 @@ export function parseCookies(header = "") {
   )
 }
 
+function tokenEncryptionKey() {
+  const secret = process.env.GOOGLE_REVIEWS_TOKEN_ENCRYPTION_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || ""
+  if (!secret) throw new Error("Google Reviews token encryption key is not configured.")
+  return crypto.createHash("sha256").update(secret).digest()
+}
+
+export function encryptRefreshToken(refreshToken) {
+  const iv = crypto.randomBytes(12)
+  const cipher = crypto.createCipheriv("aes-256-gcm", tokenEncryptionKey(), iv)
+  const ciphertext = Buffer.concat([cipher.update(String(refreshToken), "utf8"), cipher.final()])
+  const tag = cipher.getAuthTag()
+  return "v1." + iv.toString("base64url") + "." + tag.toString("base64url") + "." + ciphertext.toString("base64url")
+}
+
+export function decryptRefreshToken(value) {
+  const parts = String(value || "").split(".")
+  if (parts.length !== 4 || parts[0] !== "v1") throw new Error("Stored Google Reviews token is invalid.")
+  const iv = Buffer.from(parts[1], "base64url")
+  const tag = Buffer.from(parts[2], "base64url")
+  const ciphertext = Buffer.from(parts[3], "base64url")
+  const decipher = crypto.createDecipheriv("aes-256-gcm", tokenEncryptionKey(), iv)
+  decipher.setAuthTag(tag)
+  return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8")
+}
+
+async function supabaseRequest(path, options = {}) {
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseUrl || !serviceRoleKey) throw new Error("Supabase server credentials are not configured.")
+  return fetch(supabaseUrl.replace(/\/$/, "") + path, {
+    ...options,
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: "Bearer " + serviceRoleKey,
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+    signal: options.signal || AbortSignal.timeout(15000),
+  })
+}
+
+export async function saveRefreshToken(refreshToken) {
+  const response = await supabaseRequest("/rest/v1/integration_event_logs", {
+    method: "POST",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({
+      provider: "google",
+      integration_name: "Google Reviews",
+      direction: "outbound",
+      event_name: "google-reviews-refresh-token",
+      event_type: "credential",
+      status: "success",
+      payload: { token: encryptRefreshToken(refreshToken) },
+    }),
+  })
+  if (!response.ok) throw new Error("Unable to securely store the Google Reviews refresh token.")
+}
+
+export async function getStoredRefreshToken() {
+  const url = new URL("/rest/v1/integration_event_logs", "https://placeholder.invalid")
+  url.searchParams.set("event_name", "eq.google-reviews-refresh-token")
+  url.searchParams.set("status", "eq.success")
+  url.searchParams.set("order", "created_at.desc")
+  url.searchParams.set("limit", "1")
+  url.searchParams.set("select", "payload")
+  const response = await supabaseRequest(url.pathname + url.search, {})
+  if (!response.ok) throw new Error("Unable to read the stored Google Reviews refresh token.")
+  const rows = await response.json()
+  const encrypted = rows?.[0]?.payload?.token
+  return encrypted ? decryptRefreshToken(encrypted) : null
+}
 export async function getAccessToken(refreshToken) {
   const body = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID || "",
