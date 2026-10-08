@@ -14,6 +14,8 @@ import AnnualBreakdown from "./components/EPVS/AnnualBreakdown"
 import ThirtyYearBreakdown from "./components/EPVS/ThirtyYearBreakdown"
 import OpenSolarDesignButton from "./components/EPVS/OpenSolarDesignButton"
 
+const IMPORT_RATE_CAP_PENCE = 26.11
+
 const money = (value) =>
   new Intl.NumberFormat("en-GB", {
     style: "currency",
@@ -670,6 +672,13 @@ export default function EPVSCalculator({
     return {
       ...initial,
       ...saved,
+      importRate:
+        saved.importRate === "" || saved.importRate == null
+          ? ""
+          : Math.min(
+              IMPORT_RATE_CAP_PENCE,
+              Math.max(0, Number(saved.importRate) || 0)
+            ),
       arrays: sixArrays,
       ...(openSolarArrays.length > 0
         ? {
@@ -1690,8 +1699,17 @@ export default function EPVSCalculator({
                     label="Current import rate (p/kWh)"
                     type="number"
                     value={data.importRate}
-                    onChange={(value) => update("importRate", value)}
+                    onChange={(value) =>
+                      update(
+                        "importRate",
+                        Math.min(
+                          IMPORT_RATE_CAP_PENCE,
+                          Math.max(0, Number(value) || 0)
+                        )
+                      )
+                    }
                     min={0}
+                    max={IMPORT_RATE_CAP_PENCE}
                     step={0.01}
                   />
                   <Input
