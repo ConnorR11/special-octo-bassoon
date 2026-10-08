@@ -1695,23 +1695,35 @@ export default function EPVSCalculator({
                     onChange={(value) => update("annualConsumption", value)}
                     min={0}
                   />
-                  <Input
-                    label="Current import rate (p/kWh)"
-                    type="number"
-                    value={data.importRate}
-                    onChange={(value) =>
-                      update(
-                        "importRate",
-                        Math.min(
-                          IMPORT_RATE_CAP_PENCE,
-                          Math.max(0, Number(value) || 0)
+                  <div>
+                    <div
+                      style={{
+                        marginBottom: 4,
+                        fontSize: 11,
+                        color: "#64748b",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Maximum value: 26.11p/kWh
+                    </div>
+                    <Input
+                      label="Current import rate (p/kWh)"
+                      type="number"
+                      value={data.importRate}
+                      onChange={(value) =>
+                        update(
+                          "importRate",
+                          Math.min(
+                            IMPORT_RATE_CAP_PENCE,
+                            Math.max(0, Number(value) || 0)
+                          )
                         )
-                      )
-                    }
-                    min={0}
-                    max={IMPORT_RATE_CAP_PENCE}
-                    step={0.01}
-                  />
+                      }
+                      min={0}
+                      max={IMPORT_RATE_CAP_PENCE}
+                      step={0.01}
+                    />
+                  </div>
                   <Input
                     label="Current export rate (p/kWh)"
                     type="number"
