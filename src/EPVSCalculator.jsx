@@ -744,7 +744,7 @@ export default function EPVSCalculator({
 
     const fingerprint = (epvsCalculation) => {
       const saved = epvsCalculation?.data
-      if (!saved || typeof saved !== "object") return ""
+      if (!saved || typeof saved !== "object") return "__empty__"
 
       return JSON.stringify({
         arrays: saved.arrays || [],
@@ -767,7 +767,19 @@ export default function EPVSCalculator({
 
     const applySavedCalculation = (epvsCalculation) => {
       const saved = epvsCalculation?.data
-      if (!saved || typeof saved !== "object") return
+
+      // A deleted/null EPVS calculation must clear the calculator state too.
+      // Previously the realtime/polling refresh ignored null values, leaving
+      // the last saved array design visible in the UI.
+      if (!saved || typeof saved !== "object") {
+        setData({
+          ...initial,
+          customerName: appointment?.name || "",
+          address: appointment?.address || "",
+          postcode: appointment?.postcode || "",
+        })
+        return
+      }
 
       const openSolar = saved?.openSolar
       const openSolarArrays =
@@ -849,12 +861,12 @@ export default function EPVSCalculator({
         .eq("appointment_row_id", appointmentRowId)
         .maybeSingle()
 
-      if (error || !latest?.epvs_calculation) return
+      if (error) return
 
-      const nextFingerprint = fingerprint(latest.epvs_calculation)
-      if (nextFingerprint && nextFingerprint !== lastFingerprint) {
+      const nextFingerprint = fingerprint(latest?.epvs_calculation)
+      if (nextFingerprint !== lastFingerprint) {
         lastFingerprint = nextFingerprint
-        applySavedCalculation(latest.epvs_calculation)
+        applySavedCalculation(latest?.epvs_calculation)
       }
     }
 
@@ -873,7 +885,7 @@ export default function EPVSCalculator({
         },
         (payload) => {
           const nextFingerprint = fingerprint(payload?.new?.epvs_calculation)
-          if (nextFingerprint && nextFingerprint !== lastFingerprint) {
+          if (nextFingerprint !== lastFingerprint) {
             lastFingerprint = nextFingerprint
             applySavedCalculation(payload?.new?.epvs_calculation)
           }
