@@ -37,23 +37,26 @@ async function upsertReview(review) {
   return row
 }
 
-async function deleteReview(reviewId) {
+async function markReviewDeleted(reviewId) {
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const url = new URL(supabaseUrl.replace(/\/$/, "") + "/rest/v1/reviews")
   url.searchParams.set("source", "eq.google")
   url.searchParams.set("external_review_id", "eq." + reviewId)
 
+  url.searchParams.set("is_deleted", "eq.false")
   const response = await fetch(url, {
-    method: "DELETE",
+    method: "PATCH",
     headers: {
       apikey: serviceRoleKey,
       Authorization: "Bearer " + serviceRoleKey,
+      "Content-Type": "application/json",
       Prefer: "return=minimal",
     },
+    body: JSON.stringify({ is_deleted: true, deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() }),
     signal: AbortSignal.timeout(15000),
   })
-  if (!response.ok) throw new Error("Supabase review delete failed: " + await response.text())
+  if (!response.ok) throw new Error("Supabase review soft-delete failed: " + await response.text())
 }
 
 export default async function handler(req, res) {
@@ -104,7 +107,7 @@ export default async function handler(req, res) {
     } catch (error) {
       if (error?.status === 404) {
         const reviewId = String(reviewName).split("/").pop()
-        await deleteReview(reviewId)
+        await markReviewDeleted(reviewId)
         if (log?.id) await updateIntegrationLog(log.id, {
           status: "success",
           http_status: 200,
