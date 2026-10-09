@@ -68,6 +68,7 @@ async function getStoredGoogleReviewIds() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const url = new URL(supabaseUrl.replace(/\/$/, "") + "/rest/v1/reviews")
   url.searchParams.set("source", "eq.google")
+  url.searchParams.set("is_deleted", "eq.false")
   url.searchParams.set("select", "external_review_id")
   url.searchParams.set("limit", "10000")
 
@@ -80,23 +81,26 @@ async function getStoredGoogleReviewIds() {
   return new Set((rows || []).map(row => String(row?.external_review_id || "").trim()).filter(Boolean))
 }
 
-async function deleteStoredReview(id) {
+async function markStoredReviewDeleted(id) {
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const url = new URL(supabaseUrl.replace(/\/$/, "") + "/rest/v1/reviews")
   url.searchParams.set("source", "eq.google")
   url.searchParams.set("external_review_id", "eq." + id)
 
+  url.searchParams.set("is_deleted", "eq.false")
   const response = await fetch(url, {
-    method: "DELETE",
+    method: "PATCH",
     headers: {
       apikey: serviceRoleKey,
       Authorization: "Bearer " + serviceRoleKey,
+      "Content-Type": "application/json",
       Prefer: "return=minimal",
     },
+    body: JSON.stringify({ is_deleted: true, deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() }),
     signal: AbortSignal.timeout(15000),
   })
-  if (!response.ok) throw new Error("Unable to delete Google review " + id + " from the CRM.")
+  if (!response.ok) throw new Error("Unable to mark Google review " + id + " as deleted in the CRM.")
 }
 
 export default async function handler(req, res) {
@@ -128,7 +132,7 @@ export default async function handler(req, res) {
     const deleted = []
     for (const id of stored) {
       if (!google.ids.has(id)) {
-        await deleteStoredReview(id)
+        await markStoredReviewDeleted(id)
         deleted.push(id)
       }
     }
