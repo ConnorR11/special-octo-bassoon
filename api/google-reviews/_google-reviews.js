@@ -220,5 +220,7 @@ export function normaliseGoogleReview(review) {
     responded_at: review?.reviewReply?.updateTime || null,
     reference: review?.name || null,
     updated_at: review?.updateTime || new Date().toISOString(),
+    is_deleted: false,
+    deleted_at: null,
   }
 }
