@@ -255,7 +255,7 @@ export default function Reviews({ setMobile, embedded = false }) {
         {!embedded && (
           <div className="reviews-header">
             <div><h1 className="reviews-title">Reviews</h1><p className="reviews-subtitle">Google and Trustpilot reviews linked to CRM customers.</p></div>
-            <div className="reviews-actions"><button type="button" onClick={connectGoogleReviews} className="reviews-button reviews-button-secondary">Connect Google Reviews</button><button type="button" onClick={findGoogleLocation} disabled={findingGoogleLocation} className="reviews-button reviews-button-secondary">{findingGoogleLocation ? "Finding Profile…" : "Find Google Business Profile ID"}</button><button type="button" onClick={syncGoogleReviews} disabled={syncingGoogle} className="reviews-button reviews-button-primary">{syncingGoogle ? "Importing…" : "Import Google Reviews"}</button></div>
+
           </div>
         )}
 
