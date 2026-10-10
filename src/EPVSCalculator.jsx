@@ -1846,12 +1846,14 @@ export default function EPVSCalculator({
     SOLAR PV
     ================================================= */}
 
+<style>{`@media (max-width: 640px) { .epvs-opensolar-panel { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; padding: 12px !important; } .epvs-arrays-table { min-width: 0 !important; width: 100% !important; table-layout: fixed !important; font-size: 11px !important; } .epvs-arrays-table th, .epvs-arrays-table td { padding: 7px 5px !important; white-space: normal !important; overflow-wrap: anywhere; } .epvs-arrays-table input, .epvs-arrays-table select { min-width: 0 !important; width: 100% !important; box-sizing: border-box !important; padding: 7px 5px !important; } .epvs-arrays-table th:first-child, .epvs-arrays-table td:first-child { width: 72px; } .epvs-arrays-table th:last-child, .epvs-arrays-table td:last-child { white-space: nowrap !important; } .epvs-design-actions { display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; width: 100% !important; gap: 8px !important; } .epvs-design-actions > * { min-width: 0 !important; width: 100% !important; box-sizing: border-box !important; padding-left: 8px !important; padding-right: 8px !important; font-size: 11px !important; } }`}</style>
 <Card
   title="Solar PV arrays"
   subtitle="Enter the EPVS information for each roof / array."
 >
 
   <div
+    className="epvs-opensolar-panel"
     style={{
       display: "flex",
       alignItems: "center",
@@ -1911,6 +1913,7 @@ export default function EPVSCalculator({
     }}
   >
     <table
+      className="epvs-arrays-table"
       style={{
         width: "100%",
         minWidth: 1050,
