@@ -84,7 +84,7 @@ export default function OpenSolarDesignButton({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", ...style }}>
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+      <div className="epvs-design-actions" style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
         <button
           type="button"
           onClick={getCurrentDesign}
