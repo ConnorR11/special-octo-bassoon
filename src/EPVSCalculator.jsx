@@ -2433,56 +2433,75 @@ export default function EPVSCalculator({
     ================================================= */}
 
 <Card
-  title="Battery & Inverter"
-  subtitle="Configure the proposed battery and inverter."
+  title="System Equipment"
+  subtitle="Equipment imported directly from the OpenSolar system design."
 >
-  <div style={styles.grid}>
-    <label style={styles.field}>
-      <span>Battery configuration</span>
-
-      <select
-        value={data.batteryCapacity}
-        onChange={(event) =>
-          update(
-            "batteryCapacity",
-            event.target.value === ""
-              ? ""
-              : Number(event.target.value)
-          )
-        }
+  <style>{`
+    .epvs-system-equipment-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      align-items: stretch;
+    }
+    @media (max-width: 640px) {
+      .epvs-system-equipment-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 10px;
+      }
+      .epvs-system-equipment-grid > div {
+        padding: 12px !important;
+      }
+      .epvs-system-equipment-grid > div > div:first-child {
+        margin-bottom: 8px !important;
+      }
+    }
+  `}</style>
+  <div className="epvs-system-equipment-grid">
+    {[
+      ["Battery configuration", data?.openSolar?.hardware?.batteries || [], "kWh"],
+      ["Inverter capacity (kW)", data?.openSolar?.hardware?.inverters || [], "kW"],
+      ["EV Charger", data?.openSolar?.hardware?.evChargers || [], "kW"],
+    ].map(([label, items, unit]) => (
+      <div
+        key={label}
+        style={{
+          minWidth: 0,
+          padding: 18,
+          border: "1px solid #dbe3ec",
+          borderRadius: 10,
+          background: "#f8fafc",
+          boxSizing: "border-box",
+        }}
       >
-        <option value="">Select battery</option>
-        <option value={0}>No battery</option>
-        <option value={5.12}>1 × 5.12 kWh</option>
-        <option value={10.24}>2 × 5.12 kWh</option>
-        <option value={15.36}>3 × 5.12 kWh</option>
-        <option value={9.4}>1 × 9.4 kWh</option>
-        <option value={18.8}>2 × 9.4 kWh</option>
-        <option value={28.2}>3 × 9.4 kWh</option>
-      </select>
-    </label>
-
-    <label style={styles.field}>
-      <span>Inverter capacity (kW)</span>
-
-      <select
-        value={data.inverterCapacity}
-        onChange={(event) =>
-          update(
-            "inverterCapacity",
-            event.target.value === ""
-              ? ""
-              : Number(event.target.value)
-          )
-        }
-      >
-        <option value="">Select inverter</option>
-        <option value={3.7}>3.7 kW</option>
-        <option value={6}>6 kW</option>
-        <option value={7}>7 kW</option>
-        <option value={10}>10 kW</option>
-      </select>
-    </label>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#172554", marginBottom: 14, overflowWrap: "anywhere" }}>
+          {label}
+        </div>
+        {items.length ? (
+          items.map((item, index) => (
+            <div key={index} style={{ minWidth: 0, color: "#334155" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.45, overflowWrap: "anywhere" }}>
+                {item.manufacturer || "Manufacturer not provided"}
+              </div>
+              <div style={{ fontSize: 14, lineHeight: 1.45, marginBottom: 14, overflowWrap: "anywhere" }}>
+                {item.model || "Model not provided"}
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 14, lineHeight: 1.45 }}>
+                <span>Capacity / power</span>
+                <strong>{Number(item.capacity) > 0 ? item.capacity + " " + unit : "—"}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 14, lineHeight: 1.45 }}>
+                <span>Quantity</span>
+                <strong>{Number(item.quantity || 1)}</strong>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div style={{ fontSize: 14, color: "#64748b", lineHeight: 1.5 }}>
+            No information returned by OpenSolar.
+          </div>
+        )}
+      </div>
+    ))}
   </div>
 </Card>
 
