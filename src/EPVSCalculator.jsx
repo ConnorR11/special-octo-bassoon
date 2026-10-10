@@ -3197,18 +3197,37 @@ function Results({
         </div>
       </div>
 
-      <div
-        style={
-          styles.resultGrid
+      <style>{`
+        @media (max-width: 640px) {
+          .epvs-results-grid {
+            grid-template-columns: minmax(0, 1fr) !important;
+            gap: 10px !important;
+          }
+          .epvs-results-grid .epvs-result-card {
+            padding: 12px !important;
+            gap: 5px !important;
+          }
+          .epvs-results-grid .epvs-result-card span {
+            font-size: 13px;
+            line-height: 1.35;
+          }
+          .epvs-results-grid .epvs-result-card strong {
+            font-size: 18px;
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+          }
         }
+      `}</style>
+      <div
+        className="epvs-results-grid"
+        style={styles.resultGrid}
       >
         {cards.map(
           ([label, value]) => (
             <div
               key={label}
-              style={
-                styles.resultCard
-              }
+              className="epvs-result-card"
+              style={styles.resultCard}
             >
               <span>
                 {label}
