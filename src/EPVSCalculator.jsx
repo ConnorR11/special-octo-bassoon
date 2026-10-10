@@ -1846,7 +1846,7 @@ export default function EPVSCalculator({
     SOLAR PV
     ================================================= */}
 
-<style>{`@media (max-width: 640px) { .epvs-opensolar-panel { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; padding: 12px !important; } .epvs-arrays-table { min-width: 0 !important; width: 100% !important; table-layout: fixed !important; font-size: 11px !important; } .epvs-arrays-table th, .epvs-arrays-table td { padding: 7px 5px !important; white-space: normal !important; overflow-wrap: anywhere; } .epvs-arrays-table input, .epvs-arrays-table select { min-width: 0 !important; width: 100% !important; box-sizing: border-box !important; padding: 7px 5px !important; } .epvs-arrays-table th:first-child, .epvs-arrays-table td:first-child { width: 72px; } .epvs-arrays-table th:last-child, .epvs-arrays-table td:last-child { white-space: nowrap !important; } .epvs-design-actions { display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; width: 100% !important; gap: 8px !important; } .epvs-design-actions > * { min-width: 0 !important; width: 100% !important; box-sizing: border-box !important; padding-left: 8px !important; padding-right: 8px !important; font-size: 11px !important; } }`}</style>
+<style>{`@media (max-width: 640px) { .epvs-opensolar-panel { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; padding: 12px !important; } .epvs-arrays-table-wrap { display: none !important; } .epvs-arrays-mobile { display: block !important; } .epvs-design-actions { display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; width: 100% !important; gap: 8px !important; } .epvs-design-actions > * { min-width: 0 !important; width: 100% !important; box-sizing: border-box !important; padding-left: 8px !important; padding-right: 8px !important; font-size: 11px !important; } }`}</style>
 <Card
   title="Solar PV arrays"
   subtitle="Enter the EPVS information for each roof / array."
@@ -1902,9 +1902,43 @@ export default function EPVSCalculator({
     />
   </div>
 
+  {/* Compact read-only array summary for mobile */}
+  <div className="epvs-arrays-mobile" style={{ display: "none", border: "1px solid #dbe3ec", borderRadius: 10, overflow: "hidden", marginBottom: 12 }}>
+    {data.arrays.slice(0, 6).map((array, index) => ({ array, index })).filter(({ array }) => Number(array.panelCount || 0) > 0).map(({ array, index }) => {
+      const calculated = results.arrays[index];
+      const detailStyle = { minWidth: 0 };
+      const labelStyle = { color: "#64748b", fontSize: 10, marginBottom: 2 };
+      const valueStyle = { color: "#334155", fontSize: 12, fontWeight: 600, overflowWrap: "anywhere" };
+      return (
+        <div key={index} style={{ padding: "10px 12px", borderBottom: "1px solid #e2e8f0", background: "#fff" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 9 }}>
+            <strong style={{ color: "#172554", fontSize: 13 }}>Array {index + 1} · {Number(array.panelCount || 0)} panels</strong>
+            <strong style={{ color: "#26783a", fontSize: 12, whiteSpace: "nowrap" }}>{Number(calculated?.systemSize || 0).toFixed(2)} kWp</strong>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "8px 10px" }}>
+            <div style={detailStyle}><div style={labelStyle}>Panel Wp</div><div style={valueStyle}>{Number(array.panelWattage || 0)}</div></div>
+            <div style={detailStyle}><div style={labelStyle}>Orientation</div><div style={valueStyle}>{array.orientation ?? 0}°</div></div>
+            <div style={detailStyle}><div style={labelStyle}>Pitch</div><div style={valueStyle}>{array.pitch ?? 0}°</div></div>
+            <div style={detailStyle}><div style={labelStyle}>Irradiance / Kk</div><div style={valueStyle}>{Number(array.irradiance || 0).toLocaleString("en-GB")}</div></div>
+            <div style={detailStyle}><div style={labelStyle}>Shade SF</div><div style={valueStyle}>{Number(array.shading || 0).toFixed(3)}</div></div>
+            <div style={detailStyle}><div style={labelStyle}>Generation</div><div style={{ ...valueStyle, color: "#26783a" }}>{Math.round(calculated?.generation || 0).toLocaleString("en-GB")} kWh</div></div>
+          </div>
+        </div>
+      );
+    })}
+    {(() => {
+      const populated = results.arrays.filter((array) => Number(array.panelCount || 0) > 0);
+      const panels = populated.reduce((sum, array) => sum + Number(array.panelCount || 0), 0);
+      const size = populated.reduce((sum, array) => sum + Number(array.systemSize || 0), 0);
+      const generation = populated.reduce((sum, array) => sum + Number(array.generation || 0), 0);
+      return <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "10px 12px", background: "#f0fdf4", color: "#26783a", fontSize: 12 }}><div><strong>Total</strong><div style={{ color: "#4d7047", fontSize: 10 }}>{results.numberOfArrays} arrays · {panels} panels</div></div><div style={{ textAlign: "right", fontWeight: 700 }}>{size.toFixed(2)} kWp<div>{Math.round(generation).toLocaleString("en-GB")} kWh</div></div></div>;
+    })()}
+  </div>
+
   {/* ARRAYS TABLE */}
 
   <div
+    className="epvs-arrays-table-wrap"
     style={{
       width: "100%",
       overflowX: "auto",
