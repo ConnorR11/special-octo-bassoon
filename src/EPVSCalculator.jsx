@@ -2882,7 +2882,6 @@ export default function EPVSCalculator({
           color: "#333",
         }}
       >
-        <option value="Cash">Cash</option>
         <option value="">
           {financeProductsLoading
             ? "Loading finance products..."
