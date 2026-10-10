@@ -2511,7 +2511,7 @@ export default function EPVSCalculator({
 
                   <Card
             title={
-              <span
+              <span className="octopus-flux-heading"
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -2560,6 +2560,19 @@ export default function EPVSCalculator({
                   background: #f1f5f9;
                   color: #334155;
                 }
+                .octopus-flux-card, .octopus-flux-card * { min-width: 0; }
+                @media (max-width: 640px) {
+                  .octopus-flux-heading { flex-direction: column; align-items: stretch !important; gap: 12px !important; }
+                  .octopus-flux-heading > button { width: 100%; justify-content: center; white-space: normal !important; }
+                  .octopus-flux-rates-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; }
+                  .octopus-flux-rates-grid > div:first-child { grid-column: 1 / -1; }
+                  .octopus-flux-rates-grid .octopus-flux-rate-label { grid-column: 1 / -1; padding: 10px 12px !important; background: #f8fafc; }
+                  .octopus-flux-rates-grid > div { overflow-wrap: anywhere; }
+                  .octopus-flux-rates-grid > div:nth-child(3n + 2), .octopus-flux-rates-grid > div:nth-child(3n + 3) { text-align: center; padding: 8px !important; }
+                  .octopus-flux-rates-grid input { font-size: 14px; padding: 8px 6px; text-align: center; }
+                  .octopus-flux-rates-grid > div:first-child > div { flex-direction: column; align-items: flex-start !important; gap: 4px !important; }
+                  .octopus-flux-rates-grid > div:first-child span:last-child { white-space: normal !important; overflow-wrap: anywhere; }
+                }
               `}</style>
 
             {fluxRateError && (
@@ -2578,13 +2591,14 @@ export default function EPVSCalculator({
               </div>
             )}
 
-            <div
+            <div className="octopus-flux-rates-grid"
               style={{
                 display: "grid",
                 gridTemplateColumns: "1.2fr 1fr 1fr",
                 border: "1px solid #dbe3ec",
                 borderRadius: 10,
                 overflow: "hidden",
+                minWidth: 0,
               }}
             >
               <div
@@ -2641,6 +2655,7 @@ export default function EPVSCalculator({
                   fontWeight: 600,
                   borderBottom: "1px solid #dbe3ec",
                 }}
+                className="octopus-flux-rate-label"
               >
                 Day Rate (p/kWh)
               </div>
@@ -2676,6 +2691,7 @@ export default function EPVSCalculator({
                   fontWeight: 600,
                   borderBottom: "1px solid #dbe3ec",
                 }}
+                className="octopus-flux-rate-label"
               >
                 Flux Rate (p/kWh)
               </div>
@@ -2711,6 +2727,7 @@ export default function EPVSCalculator({
                   fontWeight: 600,
                   borderBottom: "1px solid #dbe3ec",
                 }}
+                className="octopus-flux-rate-label"
               >
                 Peak Rate (p/kWh)
               </div>
@@ -2745,6 +2762,7 @@ export default function EPVSCalculator({
                   fontSize: 13,
                   fontWeight: 600,
                 }}
+                className="octopus-flux-rate-label"
               >
                 Standing Charge (p/day)
               </div>
