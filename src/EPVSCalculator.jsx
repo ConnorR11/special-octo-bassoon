@@ -2846,22 +2846,71 @@ export default function EPVSCalculator({
       min={0}
     />
 
-    {data.paymentMethod === "Cash" && (
-      <>
-        {(saveError || saveMessage) && (
-          <div
-            style={{
-              marginTop: 12,
-              fontSize: 11,
-              color: saveError ? "#b42318" : "#299d48",
-              fontWeight: 600,
-              textAlign: "right",
-            }}
-          >
-            {saveError || saveMessage}
-          </div>
-        )}
-      </>
+    <label style={styles.field}>
+      <span>Payment method</span>
+      <select
+        value={data.paymentMethod === "Cash" ? "Cash" : (data.financeProductId || "")}
+        onChange={(event) => {
+          const selectedValue = event.target.value
+          if (selectedValue === "Cash") {
+            update("paymentMethod", "Cash")
+            return
+          }
+          const productId = selectedValue
+          const product = financeProducts.find(
+            (item) => String(item.id) === String(productId)
+          )
+          update("paymentMethod", "Finance")
+          update("financeProductId", productId)
+          if (product) {
+            update("financeTerm", Number(product.term || 0) / 12)
+            update("financeRate", Number(product.apr || 0))
+            update("financeFactor", Number(product.factor || 0))
+          } else {
+            update("financeTerm", "")
+            update("financeRate", "")
+            update("financeFactor", "")
+          }
+        }}
+        style={{
+          width: "100%",
+          padding: "10px 12px",
+          border: "1px solid #d9dadd",
+          borderRadius: "7px",
+          background: "#fff",
+          fontSize: "13px",
+          color: "#333",
+        }}
+      >
+        <option value="Cash">Cash</option>
+        <option value="">
+          {financeProductsLoading
+            ? "Loading finance products..."
+            : eligibleFinanceProducts.length === 0
+              ? "Select payment method"
+              : "Select finance product"}
+        </option>
+        {eligibleFinanceProducts.map((product) => (
+          <option key={product.id} value={product.id}>
+            {product.lender || "Finance product"}
+            {product.term ? ` — ${product.term} months` : ""}
+            {product.apr != null ? ` @ ${product.apr}%` : ""}
+          </option>
+        ))}
+      </select>
+    </label>
+
+    {(saveError || saveMessage) && (
+      <div style={{
+        marginTop: 12,
+        fontSize: 11,
+        color: saveError ? "#b42318" : "#299d48",
+        fontWeight: 600,
+        textAlign: "right",
+        gridColumn: "1 / -1",
+      }}>
+        {saveError || saveMessage}
+      </div>
     )}
 
   </div>
