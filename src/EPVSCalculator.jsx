@@ -2887,7 +2887,7 @@ export default function EPVSCalculator({
             ? "Loading finance products..."
             : eligibleFinanceProducts.length === 0
               ? "Select payment method"
-              : "Select finance product"}
+              : "Select payment method"}
         </option>
         {eligibleFinanceProducts.map((product) => (
           <option key={product.id} value={product.id}>
