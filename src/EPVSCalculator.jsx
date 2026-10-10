@@ -2795,6 +2795,7 @@ export default function EPVSCalculator({
     ================================================= */}
 
 <Card
+  className="epvs-payment-card"
   title="Payment"
   subtitle="Choose how the customer is paying for the system."
   action={
@@ -2818,7 +2819,7 @@ export default function EPVSCalculator({
     </button>
   }
 >
-  <div style={styles.grid}>
+  <div className="epvs-payment-grid" style={styles.grid}>
 
     <Input
       label="System cost (£)"
@@ -2979,12 +2980,36 @@ function Card({
   children,
 }) {
   return (
-    <div
-      className="card"
-      style={{
-        marginBottom: 20,
-      }}
-    >
+    <>
+      <style>{`
+        @media (max-width: 640px) {
+          .card.epvs-payment-card .card-head {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+          }
+          .card.epvs-payment-card .card-head > div:last-child {
+            width: 100%;
+            margin-left: 0 !important;
+          }
+          .card.epvs-payment-card .card-head button {
+            width: 100%;
+            justify-content: center;
+            box-sizing: border-box;
+          }
+          .card.epvs-payment-card .epvs-payment-grid {
+            grid-template-columns: minmax(0, 1fr) !important;
+            gap: 14px;
+          }
+        }
+      `}</style>
+      <div
+        className={`card ${className || ""}`}
+        style={{
+          marginBottom: 20,
+        }}
+      >
       <div
         className="card-head"
       >
@@ -3000,7 +3025,8 @@ function Card({
       </div>
 
       {children}
-    </div>
+      </div>
+    </>
   )
 }
 
