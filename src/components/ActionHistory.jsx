@@ -229,8 +229,8 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
         .action-history-header{padding:14px 16px;border-bottom:1px solid #e8ebef;font-size:13px;font-weight:800;color:#172033}
         .action-history-empty{padding:18px 16px;color:#94a3b8;font-size:12px}
         .action-history-error{padding:12px 16px;color:#991b1b;background:#fef2f2;font-size:12px}
-        .action-history-list{display:flex;flex-direction:column}
-        .action-history-row{display:grid;grid-template-columns:32px minmax(150px,1fr) 110px 150px 145px;gap:12px;align-items:center;padding:11px 16px;border-bottom:1px solid #edf0f3;font-size:12px}
+        .action-history-list{display:flex;flex-direction:column;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+        .action-history-row{display:grid;grid-template-columns:32px minmax(150px,1fr) 110px 150px 145px;gap:12px;align-items:center;padding:11px 16px;border-bottom:1px solid #edf0f3;font-size:12px;min-width:650px;box-sizing:border-box}
         .action-history-row:last-child{border-bottom:0}
         .action-history-icon{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:#f3f5f7;color:#64748b}
         .action-history-action{font-weight:700;color:#172033;text-transform:capitalize}
@@ -245,7 +245,7 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
         .action-history-page-button:hover:not(:disabled){background:#f1f5f9}
         .action-history-page-button:disabled{opacity:.4;cursor:not-allowed}
         .action-history-page-number{font-size:11px;color:#475569;min-width:55px;text-align:center}
-        @media(max-width:800px){.action-history-row{grid-template-columns:32px minmax(130px,1fr) 100px;gap:8px}.action-history-user,.action-history-date{display:none}.action-history-pagination{padding:10px 12px}}
+        @media(max-width:800px){.action-history-row{grid-template-columns:32px minmax(150px,1fr) 110px 150px 145px;gap:8px;padding:11px 12px}.action-history-user,.action-history-date{display:block}.action-history-pagination{padding:10px 12px}}
       `}</style>
 
       <div className="action-history-header">Activity</div>
