@@ -3,7 +3,7 @@ import { createPortal } from "react-dom"
 import { X, ExternalLink, LoaderCircle } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
-const PRESENTER_PATH = "sales-presenter/Homeshield-Solar-Presenter-edited.pdf"
+const PRESENTER_PATH = "Homeshield-Solar-Presenter-edited.pdf"
 
 export default function DatabaseSalesPresenter({ appointment, onClose }) {
   const [url, setUrl] = useState("")
@@ -56,7 +56,7 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
         </div>
       </header>
       <div style={{ flex:1, minHeight:0, background:"#202833", border:"1px solid #3a4655", borderRadius:9, overflow:"hidden", display:"flex", alignItems:"center", justifyContent:"center" }}>
-        {loading ? <div style={{color:"#fff",display:"flex",alignItems:"center",gap:10}}><LoaderCircle size={20}/>Loading presenter…</div> : error ? <div style={{maxWidth:520,padding:24,textAlign:"center",color:"#fff"}}><div style={{fontWeight:700,marginBottom:8}}>Presenter unavailable</div><div style={{fontSize:13,lineHeight:1.6,color:"#d4dbe4"}}>{error}</div><div style={{fontSize:12,lineHeight:1.6,color:"#aeb9c8",marginTop:12}}>Upload the edited PDF to the private Supabase Storage bucket <b>signatures</b> at <code>{PRESENTER_PATH}</code>.</div></div> : <iframe title="Homeshield Solar Sales Presenter PDF" src={url} style={{width:"100%",height:"100%",border:0,background:"#fff"}} />}
+        {loading ? <div style={{color:"#fff",display:"flex",alignItems:"center",gap:10}}><LoaderCircle size={20}/>Loading presenter…</div> : error ? <div style={{maxWidth:520,padding:24,textAlign:"center",color:"#fff"}}><div style={{fontWeight:700,marginBottom:8}}>Presenter unavailable</div><div style={{fontSize:13,lineHeight:1.6,color:"#d4dbe4"}}>{error}</div><div style={{fontSize:12,lineHeight:1.6,color:"#aeb9c8",marginTop:12}}>Upload the edited PDF to the private Supabase Storage bucket <b>presenters</b> at <code>{PRESENTER_PATH}</code>.</div></div> : <iframe title="Homeshield Solar Sales Presenter PDF" src={url} style={{width:"100%",height:"100%",border:0,background:"#fff"}} />}
       </div>
     </div>,
     document.body
