@@ -27,6 +27,31 @@ export default async function handler(req) {
     auth: { persistSession: false, autoRefreshToken: false },
   })
 
+  let logId = null
+  const finishLog = async ({ status, httpStatus, errorMessage = null, result = {} }) => {
+    if (!logId) return
+    const { error } = await supabase
+      .from("integration_event_logs")
+      .update({
+        status,
+        http_status: httpStatus,
+        error_message: errorMessage,
+        result,
+        processed_at: new Date().toISOString(),
+      })
+      .eq("id", logId)
+    if (error) console.error("Unable to update contract email integration log:", error.message)
+  }
+  const fail = async (status, message, httpStatus = status) => {
+    await finishLog({
+      status: "failed",
+      httpStatus,
+      errorMessage: message,
+      result: { success: false, message },
+    })
+    return json(status, { error: message })
+  }
+
   try {
     const { data: userData, error: userError } = await supabase.auth.getUser(accessToken)
     if (userError || !userData?.user) return json(401, { error: "Your session has expired. Please sign in again." })
@@ -36,13 +61,42 @@ export default async function handler(req) {
     const customerEmail = String(body?.customer_email || "").trim()
     const fileName = String(body?.file_name || "Digital-Solar-Contract.pdf").replace(/[^a-zA-Z0-9._-]/g, "-")
     const pdfBase64 = String(body?.pdf_base64 || "").replace(/^data:application\/pdf;base64,/, "")
+
+    // Record the attempt before validation or Microsoft Graph calls. Never log the PDF or credentials.
+    const { data: logRow, error: logError } = await supabase
+      .from("integration_event_logs")
+      .insert({
+        provider: "microsoft_graph",
+        integration_name: "Microsoft 365 Contract Email",
+        direction: "outbound",
+        event_name: "contract_email_send",
+        event_type: "email_with_pdf_attachment",
+        external_id: appointmentRowId || null,
+        status: "received",
+        received_at: new Date().toISOString(),
+        payload: {
+          appointment_row_id: appointmentRowId || null,
+          recipient: customerEmail || null,
+          sender,
+          attachment_name: fileName,
+          attachment_type: "application/pdf",
+          triggered_by: userData.user.email || userData.user.id,
+        },
+      })
+      .select("id")
+      .single()
+    if (logError) console.error("Unable to create contract email integration log:", logError.message)
+    else logId = logRow?.id || null
+
     if (!appointmentRowId || !customerEmail || !pdfBase64) {
-      return json(400, { error: "Appointment, customer email and contract PDF are required." })
+      return await fail(400, "Appointment, customer email and contract PDF are required.")
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
-      return json(400, { error: "Please enter a valid customer email address." })
+      return await fail(400, "Please enter a valid customer email address.")
     }
-    if (pdfBase64.length > 12_000_000) return json(413, { error: "The contract PDF is too large to email." })
+    if (pdfBase64.length > 12_000_000) {
+      return await fail(413, "The contract PDF is too large to email.")
+    }
 
     const { data: appointment, error: appointmentError } = await supabase
       .from("appointments")
@@ -50,15 +104,15 @@ export default async function handler(req) {
       .eq("appointment_row_id", appointmentRowId)
       .maybeSingle()
     if (appointmentError) throw appointmentError
-    if (!appointment) return json(404, { error: "Appointment not found." })
+    if (!appointment) return await fail(404, "Appointment not found.")
     if (String(appointment.result || "").trim().toLowerCase() !== "sold") {
-      return json(409, { error: "Only appointments marked Sold can have a contract emailed." })
+      return await fail(409, "Only appointments marked Sold can have a contract emailed.")
     }
     if (!appointment.signature_path || !appointment.express_fit_signature_path || !appointment.seg_disclaimer_signature_path) {
-      return json(409, { error: "All three customer signatures must be saved before sending the contract." })
+      return await fail(409, "All three customer signatures must be saved before sending the contract.")
     }
     if (String(appointment.email_address || "").trim().toLowerCase() !== customerEmail.toLowerCase()) {
-      return json(409, { error: "The customer email does not match the saved appointment. Please go back and save the correct email first." })
+      return await fail(409, "The customer email does not match the saved appointment. Please go back and save the correct email first.")
     }
 
     const tokenResponse = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(tenantId)}/oauth2/v2.0/token`, {
@@ -74,9 +128,10 @@ export default async function handler(req) {
     const tokenData = await tokenResponse.json()
     if (!tokenResponse.ok || !tokenData.access_token) {
       console.error("Microsoft Graph token request failed:", tokenData.error || tokenResponse.status)
-      return json(502, { error: "Microsoft 365 authentication failed. Check the app credentials and Mail.Send admin consent." })
+      return await fail(502, "Microsoft 365 authentication failed. Check the app credentials and Mail.Send admin consent.", tokenResponse.status)
     }
 
+    const subject = `Your Homeshield contract${appointment.contract_number ? ` – ${appointment.contract_number}` : ""}`
     const sendResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(sender)}/sendMail`, {
       method: "POST",
       headers: {
@@ -85,7 +140,7 @@ export default async function handler(req) {
       },
       body: JSON.stringify({
         message: {
-          subject: `Your Homeshield contract${appointment.contract_number ? ` – ${appointment.contract_number}` : ""}`,
+          subject,
           body: {
             contentType: "Text",
             content: `Dear ${appointment.name || "Customer"},\n\nPlease find attached your Homeshield contract.\n\nKind regards,\nHomeshield Scotland Ltd`,
@@ -106,14 +161,35 @@ export default async function handler(req) {
       const details = await sendResponse.text()
       console.error("Microsoft Graph sendMail failed:", sendResponse.status, details.slice(0, 1500))
       if (sendResponse.status === 403) {
-        return json(502, { error: "Microsoft 365 refused to send the email. Check admin consent and confirm app@homeshield.ltd is an active mailbox." })
+        return await fail(502, "Microsoft 365 refused to send the email. Check admin consent and confirm app@homeshield.ltd is an active mailbox.", sendResponse.status)
       }
-      return json(502, { error: `Microsoft 365 could not send the contract (HTTP ${sendResponse.status}).` })
+      return await fail(502, `Microsoft 365 could not send the contract (HTTP ${sendResponse.status}).`, sendResponse.status)
     }
+
+    await finishLog({
+      status: "success",
+      httpStatus: 202,
+      result: {
+        success: true,
+        message: "Contract email accepted by Microsoft 365.",
+        recipient: customerEmail,
+        sender,
+        subject,
+        attachment_name: fileName,
+        appointment_row_id: appointmentRowId,
+        contract_number: appointment.contract_number || null,
+      },
+    })
 
     return json(200, { success: true, message: "Contract email accepted by Microsoft 365.", recipient: customerEmail })
   } catch (error) {
     console.error("Send contract endpoint failed:", error)
+    await finishLog({
+      status: "failed",
+      httpStatus: 500,
+      errorMessage: error?.message || "Unexpected server error",
+      result: { success: false, message: "Unexpected server error" },
+    })
     return json(500, { error: "An unexpected error occurred while sending the contract." })
   }
 }
