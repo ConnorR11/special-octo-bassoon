@@ -113,9 +113,9 @@ export default async function handler(req, res) {
     if (!contractPdfPath || !contractPdfPath.startsWith("contract-pdfs/" + appointmentRowId + "/") || contractPdfPath.includes("..")) {
       return await fail(409, "The generated contract PDF path was not provided or does not match this appointment.")
     }
-    // Store the permanent object path, not an expiring signed URL. The bucket remains private;
-    // this reference identifies the file without granting access to it.
-    const contractFileUrl = contractPdfPath
+    // Permanent CRM link. The PDF remains private; the CRM authenticates the user
+    // and creates a short-lived signed URL only when they open this link.
+    const contractFileUrl = `https://crm.homeshield.ltd/contract-file?path=${encodeURIComponent(contractPdfPath)}`
 
     const fieldsResponse = await pipedriveRequest("dealFields")
     const contractFileField = (Array.isArray(fieldsResponse) ? fieldsResponse : []).find(field =>
