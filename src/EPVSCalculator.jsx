@@ -135,6 +135,7 @@ function Input({
   max,
   disabled = false,
   readOnly = false,
+  inputStyle,
 }) {
   return (
     <label style={styles.field}>
@@ -148,6 +149,7 @@ function Input({
         max={max}
         disabled={disabled}
         readOnly={readOnly}
+        style={inputStyle}
         onChange={(event) => {
           const value =
             type === "number"
@@ -2827,10 +2829,11 @@ export default function EPVSCalculator({
     </button>
   }
 >
-  <div style={styles.grid}>
+  <div style={{ ...styles.grid, gridTemplateColumns: "repeat(3, minmax(0, 1fr))", alignItems: "end" }}>
 
     <Input
       label="System cost (£)"
+      inputStyle={styles.paymentInput}
       type="number"
       value={data.systemCost}
       onChange={(value) =>
@@ -2844,6 +2847,7 @@ export default function EPVSCalculator({
 
     <Input
       label="Deposit (£)"
+      inputStyle={styles.paymentInput}
       type="number"
       value={data.deposit}
       onChange={(value) =>
@@ -2881,15 +2885,7 @@ export default function EPVSCalculator({
             update("financeFactor", "")
           }
         }}
-        style={{
-          width: "100%",
-          padding: "10px 12px",
-          border: "1px solid #d9dadd",
-          borderRadius: "7px",
-          background: "#fff",
-          fontSize: "13px",
-          color: "#333",
-        }}
+        style={styles.paymentInput}
       >
         <option value="">Select payment method</option>
         <option value="Cash">Cash</option>
@@ -3216,6 +3212,20 @@ const styles = {
     flexDirection:
       "column",
     gap: 7,
+  },
+
+  paymentInput: {
+    width: "100%",
+    boxSizing: "border-box",
+    minHeight: 42,
+    padding: "10px 12px",
+    border: "1px solid #d9dadd",
+    borderRadius: 7,
+    background: "#fff",
+    fontSize: 13,
+    color: "#172554",
+    fontFamily: "inherit",
+    outlineOffset: 1,
   },
 
   toggleRow: {
