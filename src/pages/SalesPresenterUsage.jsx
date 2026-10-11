@@ -13,6 +13,7 @@ export default function SalesPresenterUsage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [days, setDays] = useState("30")
+  const [selectedUser, setSelectedUser] = useState("all")
 
   const load = useCallback(async () => {
     setLoading(true); setError("")
@@ -33,10 +34,13 @@ export default function SalesPresenterUsage() {
 
   useEffect(() => { load() }, [load])
 
+  const availableUsers = useMemo(() => [...new Set(events.map(event => event.triggered_by).filter(Boolean))].sort(), [events])
+
   const analytics = useMemo(() => {
     const sessions = []
     let active = null
-    const ordered = [...events].sort((a,b)=>new Date(a.started_at)-new Date(b.started_at))
+    const filteredEvents = selectedUser === "all" ? events : events.filter(event => event.triggered_by === selectedUser)
+    const ordered = [...filteredEvents].sort((a,b)=>new Date(a.started_at)-new Date(b.started_at))
     for (const event of ordered) {
       const detail = event.input_data || {}
       const output = event.output_data || {}
@@ -74,12 +78,12 @@ export default function SalesPresenterUsage() {
     const closedSessions = sessions.filter(s=>s.closed)
     const durations = closedSessions.map(s=>Object.values(s.pageSeconds).reduce((sum,n)=>sum+n,0))
     return { sessions, chart, totalSeconds, sessionCount:sessions.length, closedCount:closedSessions.length, averageSeconds:durations.length?durations.reduce((a,b)=>a+b,0)/durations.length:0, users:new Set(sessions.map(s=>s.user)).size }
-  }, [events])
+  }, [events, selectedUser])
 
   return <div style={{display:"grid",gap:18}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
       <div><h2 style={{margin:0,fontSize:20,color:"#0f172a"}}>Sales Presenter Usage</h2><p style={{margin:"5px 0 0",fontSize:12,color:"#64748b"}}>Page navigation and time spent, based on recorded presenter actions.</p></div>
-      <div style={{display:"flex",gap:8,alignItems:"center"}}><select value={days} onChange={e=>setDays(e.target.value)} style={control}><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="365">Last 12 months</option></select><button onClick={load} style={refresh}><RefreshCw size={14}/>Refresh</button></div>
+      <div style={{display:"flex",gap:8,alignItems:"center"}}><select aria-label="Filter by team member" value={selectedUser} onChange={e=>setSelectedUser(e.target.value)} style={control}><option value="all">All team members</option>{availableUsers.map(user=><option key={user} value={user}>{user}</option>)}</select><select value={days} onChange={e=>setDays(e.target.value)} style={control}><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="365">Last 12 months</option></select><button onClick={load} style={refresh}><RefreshCw size={14}/>Refresh</button></div>
     </div>
     {error&&<div style={{padding:12,borderRadius:8,background:"#fef2f2",color:"#b91c1c",fontSize:13}}>{error}</div>}
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:12}}>
