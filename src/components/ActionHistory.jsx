@@ -49,7 +49,8 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
   const [actions, setActions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  const [currentPage, setCurrentPage] = useState(1)\n  const [expandedActionId, setExpandedActionId] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [expandedActionId, setExpandedActionId] = useState(null)
 
   async function loadActions() {
     if (!supabase || !entityId) {
