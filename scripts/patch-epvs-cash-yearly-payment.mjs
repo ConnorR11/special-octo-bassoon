@@ -5,9 +5,13 @@ const source = fs.readFileSync(file, "utf8")
 
 // The calculator's cash branch must show the full system cost in Year 1,
 // then zero in every later year. Finance keeps its existing payment logic.
-const marker = "const yearlyPayment ="
-const start = source.indexOf(marker)
-if (start === -1) {
+const candidates = [
+  source.indexOf("const isCashPayment ="),
+  source.indexOf("const isFinancePayment ="),
+  source.indexOf("const yearlyPayment ="),
+].filter((index) => index >= 0)
+const start = Math.min(...candidates)
+if (!Number.isFinite(start)) {
   throw new Error("Could not locate yearlyPayment calculation in EPVSCalculator.jsx")
 }
 
