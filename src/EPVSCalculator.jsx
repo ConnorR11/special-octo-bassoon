@@ -1346,12 +1346,12 @@ export default function EPVSCalculator({
             ? monthlyPaymentForYear(data) * 12
             : 0
 
-        const isFinancePayment = String(data.paymentMethod || "").trim().toLowerCase() === "finance"
-        const yearlyPayment = isFinancePayment
-          ? financeAnnualPayment + (year === 1 ? deposit : 0)
-          : year === 1
+        const isCashPayment = String(data.paymentMethod || "").trim().toLowerCase() === "cash"
+        const yearlyPayment = isCashPayment
+          ? year === 1
             ? Math.max(0, systemCost)
             : 0
+          : financeAnnualPayment + (year === 1 ? deposit : 0)
 
         const netAnnualBenefit = yearModel.annualSaving - yearlyPayment
         cumulativePosition += netAnnualBenefit
