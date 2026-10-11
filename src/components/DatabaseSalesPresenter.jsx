@@ -206,7 +206,6 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
     <div id="solar-sales-presenter-viewer" role="dialog" aria-modal="true" aria-label="Sales Presenter" style={{ position:"fixed", inset:0, zIndex:10000, background:"#07111c", display:"flex", flexDirection:"column", boxSizing:"border-box", color:"#fff" }}>
       <header style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, padding:"10px 18px", background:"#0c1a29", borderBottom:"1px solid #23384a" }}>
         <div style={{minWidth:0}}>
-          <div style={{fontSize:17,fontWeight:750}}>Sales Presenter</div>
           <div style={{fontSize:12,opacity:.72,marginTop:3}}>{appointment?.name ? `Presenting to ${appointment.name}` : "Homeshield Solar Presenter"}</div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
