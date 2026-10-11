@@ -110,10 +110,17 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,permissi
    });
    const payload=await response.json().catch(()=>({}));
    if(!response.ok)throw new Error(payload.error||`Unable to send contract (HTTP ${response.status}).`);
-   await logContractAttempt({status:"success",http_status:200,error_message:null,result:{success:true,message:"Contract email accepted by API.",recipient:customerEmail.trim(),stage:"client_completed"}});
+   if(payload.deal_sync && !payload.deal_sync.success){
+    const syncMessage="The contract email was sent, but the Pipedrive/Supabase deal update failed. Do not send the email again. Error: "+(payload.deal_sync.error||"Unknown deal sync error");
+    await logContractAttempt({status:"failed",http_status:200,error_message:syncMessage,result:{success:true,email_sent:true,deal_sync:payload.deal_sync,stage:"deal_sync_failed"}});
+    setContractSent(true);
+    setError(syncMessage);
+    return;
+   }
+   await logContractAttempt({status:"success",http_status:200,error_message:null,result:{success:true,message:"Contract email and deal sync completed.",recipient:customerEmail.trim(),deal_sync:payload.deal_sync||null,stage:"client_completed"}});
    setContractSent(true);
    setError("");
-   setContractSuccessNotice("Contract successfully sent to "+customerEmail.trim());
+   setContractSuccessNotice("Contract successfully sent and deal updated for "+customerEmail.trim());
    setShowResult(false);
    if(contractPreviewUrl){URL.revokeObjectURL(contractPreviewUrl);setContractPreviewUrl("");}
    setSignature("");setExpressFitSignature("");setSegSignature("");
