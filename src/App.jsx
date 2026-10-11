@@ -33,6 +33,7 @@ import IntegrationLogs from "./pages/IntegrationLogs"
 import Templates from "./pages/Templates"
 import SolarBackend from "./pages/SolarBackend"
 import AdminUserPreview from "./components/AdminUserPreview"
+import ContractFile from "./pages/ContractFile"
 
 const DEALS_PAGE_SIZE = 50
 const REPORTING_PAGE_SIZE = 1000
@@ -177,6 +178,7 @@ function App() {
     if (!session) return
     function handlePopState(){
       const path=window.location.pathname.replace(/\/+$/,"/")||"/"
+      if (path === "/contract-file/") { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("contract-file"); return }
       const appointmentMatch=path.match(/^\/appointments\/([^/]+)$/)
       if(appointmentMatch){loadAppointmentFromUrl(decodeURIComponent(appointmentMatch[1]));return}
       setSelected(null);setSelectedAppointment(null);setPickupAppointment(null)
@@ -206,7 +208,9 @@ function App() {
   const homeContent=<section><div style={{marginBottom:18}}><h1 style={{margin:0,fontSize:22,color:"#222"}}>{greeting}, {displayName}</h1><p style={{margin:"5px 0 0",fontSize:11,color:"#888"}}>Welcome to the Homeshield Scotland CRM</p></div></section>
 
   let pageContent
-  if (pickupAppointment) {
+  if (page === "contract-file") {
+    pageContent = <ContractFile />
+  } else if (pickupAppointment) {
     pageContent = <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated}/>
   } else if (selectedAppointment) {
     pageContent = <div style={{position:"relative"}}>
