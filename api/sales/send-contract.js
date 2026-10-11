@@ -1,16 +1,17 @@
 import { createClient } from "@supabase/supabase-js"
 
-const json = (status, body) => new Response(JSON.stringify(body), {
-  status,
-  headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-})
+const json = (res, status, body) => {
+  res.setHeader("Content-Type", "application/json")
+  res.setHeader("Cache-Control", "no-store")
+  return res.status(status).json(body)
+}
 
-export default async function handler(req) {
-  if (req.method !== "POST") return json(405, { error: "Method not allowed." })
+export default async function handler(req, res) {
+  if (req.method !== "POST") return json(res, 405, { error: "Method not allowed." })
 
-  const authorization = req.headers.get("authorization") || ""
+  const authorization = req.headers?.authorization || req.headers?.Authorization || ""
   const accessToken = authorization.startsWith("Bearer ") ? authorization.slice(7) : ""
-  if (!accessToken) return json(401, { error: "Please sign in again before sending the contract." })
+  if (!accessToken) return json(res, 401, { error: "Please sign in again before sending the contract." })
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -21,7 +22,7 @@ export default async function handler(req) {
 
   if (![supabaseUrl, serviceKey].every(Boolean)) {
     console.error("Contract email attempt cannot be logged: Supabase server configuration is missing.")
-    return json(500, { error: "Contract email logging is not configured. Check the Supabase server environment variables." })
+    return json(res, 500, { error: "Contract email logging is not configured. Check the Supabase server environment variables." })
   }
 
   const supabase = createClient(supabaseUrl, serviceKey, {
@@ -50,14 +51,14 @@ export default async function handler(req) {
       errorMessage: message,
       result: { success: false, message },
     })
-    return json(status, { error: message })
+    return json(res, status, { error: message })
   }
 
   try {
     const { data: userData, error: userError } = await supabase.auth.getUser(accessToken)
-    if (userError || !userData?.user) return json(401, { error: "Your session has expired. Please sign in again." })
+    if (userError || !userData?.user) return json(res, 401, { error: "Your session has expired. Please sign in again." })
 
-    const body = await req.json()
+    const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {})
     const appointmentRowId = String(body?.appointment_row_id || "").trim()
     const customerEmail = String(body?.customer_email || "").trim()
     const fileName = String(body?.file_name || "Digital-Solar-Contract.pdf").replace(/[^a-zA-Z0-9._-]/g, "-")
@@ -195,7 +196,7 @@ export default async function handler(req) {
       },
     })
 
-    return json(200, { success: true, message: "Contract email accepted by Microsoft 365.", recipient: customerEmail })
+    return json(res, 200, { success: true, message: "Contract email accepted by Microsoft 365.", recipient: customerEmail })
   } catch (error) {
     console.error("Send contract endpoint failed:", error)
     await finishLog({
@@ -204,6 +205,6 @@ export default async function handler(req) {
       errorMessage: error?.message || "Unexpected server error",
       result: { success: false, message: "Unexpected server error" },
     })
-    return json(500, { error: "An unexpected error occurred while sending the contract." })
+    return json(res, 500, { error: "An unexpected error occurred while sending the contract." })
   }
 }
