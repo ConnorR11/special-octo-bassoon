@@ -109,6 +109,27 @@ export default async function handler(req, res) {
     const dealValue = Number.isFinite(systemCost) && systemCost > 0 ? systemCost : 0
     const contractTitle = `${appointment.contract_number} - ${appointment.name || "Customer"}`
 
+    const contractPdfPath = String(body?.pdf_path || "").trim()
+    if (!contractPdfPath || !contractPdfPath.startsWith("contract-pdfs/" + appointmentRowId + "/") || contractPdfPath.includes("..")) {
+      return await fail(409, "The generated contract PDF path was not provided or does not match this appointment.")
+    }
+    const { data: contractUrlData, error: contractUrlError } = await supabase.storage
+      .from("signatures")
+      .createSignedUrl(contractPdfPath, 31536000)
+    if (contractUrlError || !contractUrlData?.signedUrl) {
+      throw new Error("Unable to create a storage URL for the contract PDF.")
+    }
+    const contractFileUrl = contractUrlData.signedUrl
+
+    const fieldsResponse = await pipedriveRequest("dealFields")
+    const contractFileField = (Array.isArray(fieldsResponse) ? fieldsResponse : []).find(field =>
+      String(field?.name || field?.field_name || "").trim().toLowerCase() === "contract: file"
+    )
+    const contractFileFieldKey = String(contractFileField?.key || contractFileField?.field_code || "").trim()
+    if (!contractFileFieldKey) {
+      throw new Error('Pipedrive deal field "Contract: File" was not found.')
+    }
+
     const { data: existingSupabaseDeal, error: existingDealError } = await supabase
       .from("deals")
       .select("pipedrive_deal_id")
@@ -120,7 +141,7 @@ export default async function handler(req, res) {
     if (existingSupabaseDeal?.pipedrive_deal_id) {
       pipedriveDeal = await pipedriveRequest(`deals/${encodeURIComponent(existingSupabaseDeal.pipedrive_deal_id)}`, {
         method: "PUT",
-        body: JSON.stringify({ title: contractTitle, value: dealValue, currency: "GBP", status: "won" }),
+        body: JSON.stringify({ title: contractTitle, value: dealValue, currency: "GBP", status: "won", [contractFileFieldKey]: contractFileUrl }),
       })
     } else {
       // Recover a deal created by a previous attempt before creating another.
@@ -162,6 +183,7 @@ export default async function handler(req, res) {
             currency: "GBP",
             status: "won",
             person_id: personId || undefined,
+            [contractFileFieldKey]: contractFileUrl,
           }),
         })
       }
