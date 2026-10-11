@@ -105,12 +105,14 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
         // Remove the grey canvas around the slide. Keep a small safety margin to
         // avoid cutting off artwork, and resize the page bounds so PDF viewers fit it.
         const { width, height } = copiedPage.getSize()
-        const cropX = width * 0.035
+        const cropX = width * 0.05
         const cropY = height * 0.18
-        const cropWidth = width * 0.93
-        const cropHeight = height * 0.81
+        const cropWidth = width * 0.90
+        const cropHeight = height * 0.82
         copiedPage.setCropBox(cropX, cropY, cropWidth, cropHeight)
-        copiedPage.setMediaBox(cropX, cropY, cropWidth, cropHeight)
+        copiedPage.setMediaBox(0, 0, cropWidth, cropHeight)
+        copiedPage.setSize(cropWidth, cropHeight)
+
         const bytes = await single.save()
         const blob = new Blob([bytes], { type: "application/pdf" })
         objectUrl = URL.createObjectURL(blob)
@@ -163,11 +165,11 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
       </header>
       <main style={{flex:1,minHeight:0,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",padding:"4px 0",boxSizing:"border-box"}}>
         {loading ? <div style={{display:"flex",alignItems:"center",gap:10,color:"#fff"}}><LoaderCircle size={22}/>Loading presenter…</div> : error ? <div style={{maxWidth:520,padding:24,textAlign:"center"}}><div style={{fontWeight:700,marginBottom:8}}>Presenter unavailable</div><div style={{fontSize:13,lineHeight:1.6,color:"#d4dbe4"}}>{error}</div></div> : <>
-          <button type="button" aria-label="Previous page" disabled={page===0||renderingPage} onClick={()=>changePage(p=>p-1,"button")} style={{...navStyle,left:0,opacity:page===0?.35:1}}><ChevronLeft size={30}/></button>
-          <div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",minWidth:0,minHeight:0}}>
-            {renderingPage ? <LoaderCircle size={26}/> : pageUrl ? <iframe key={pageUrl} title={`Solar Presenter page ${page+1}`} src={pageUrl+"#toolbar=0&navpanes=0&view=Fit"} style={{width:"100%",height:"100%",maxWidth:"none",border:0,background:"#07111c"}} /> : null}
+          <button type="button" aria-label="Previous page" disabled={page===0||renderingPage} onClick={()=>changePage(p=>p-1,"button")} style={{...navStyle,left:8,opacity:page===0?.35:1}}><ChevronLeft size={30}/></button>
+          <div style={{position:"absolute",inset:0,width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",minWidth:0,minHeight:0,overflow:"hidden"}}>
+            {renderingPage ? <LoaderCircle size={26}/> : pageUrl ? <iframe key={pageUrl} title={`Solar Presenter page ${page+1}`} src={pageUrl+"#toolbar=0&navpanes=0&view=Fit"} style={{position:"absolute",inset:0,width:"100%",height:"100%",maxWidth:"none",border:0,background:"#07111c"}} /> : null}
           </div>
-          <button type="button" aria-label="Next page" disabled={page>=pageCount-1||renderingPage} onClick={()=>changePage(p=>p+1,"button")} style={{...navStyle,right:4,opacity:page>=pageCount-1?.35:1}}><ChevronRight size={30}/></button>
+          <button type="button" aria-label="Next page" disabled={page>=pageCount-1||renderingPage} onClick={()=>changePage(p=>p+1,"button")} style={{...navStyle,right:8,opacity:page>=pageCount-1?.35:1}}><ChevronRight size={30}/></button>
         </>}
       </main>
       <footer style={{display:"flex",alignItems:"center",justifyContent:"center",gap:18,padding:"12px 16px",background:"#0c1a29",borderTop:"1px solid #23384a"}}>
