@@ -113,13 +113,9 @@ export default async function handler(req, res) {
     if (!contractPdfPath || !contractPdfPath.startsWith("contract-pdfs/" + appointmentRowId + "/") || contractPdfPath.includes("..")) {
       return await fail(409, "The generated contract PDF path was not provided or does not match this appointment.")
     }
-    const { data: contractUrlData, error: contractUrlError } = await supabase.storage
-      .from("signatures")
-      .createSignedUrl(contractPdfPath, 31536000)
-    if (contractUrlError || !contractUrlData?.signedUrl) {
-      throw new Error("Unable to create a storage URL for the contract PDF.")
-    }
-    const contractFileUrl = contractUrlData.signedUrl
+    // Store the permanent object path, not an expiring signed URL. The bucket remains private;
+    // this reference identifies the file without granting access to it.
+    const contractFileUrl = contractPdfPath
 
     const fieldsResponse = await pipedriveRequest("dealFields")
     const contractFileField = (Array.isArray(fieldsResponse) ? fieldsResponse : []).find(field =>
@@ -141,7 +137,7 @@ export default async function handler(req, res) {
     if (existingSupabaseDeal?.pipedrive_deal_id) {
       pipedriveDeal = await pipedriveRequest(`deals/${encodeURIComponent(existingSupabaseDeal.pipedrive_deal_id)}`, {
         method: "PUT",
-        body: JSON.stringify({ title: contractTitle, value: dealValue, currency: "GBP", status: "won", [contractFileFieldKey]: contractFileUrl }),
+        body: JSON.stringify({ title: contractTitle, value: dealValue, currency: "GBP", status: "open", [contractFileFieldKey]: contractFileUrl }),
       })
     } else {
       // Recover a deal created by a previous attempt before creating another.
@@ -152,7 +148,7 @@ export default async function handler(req, res) {
       if (existingPipedriveDeal?.id) {
         pipedriveDeal = await pipedriveRequest(`deals/${encodeURIComponent(existingPipedriveDeal.id)}`, {
           method: "PUT",
-          body: JSON.stringify({ title: contractTitle, value: dealValue, currency: "GBP", status: "won" }),
+          body: JSON.stringify({ title: contractTitle, value: dealValue, currency: "GBP", status: "open", [contractFileFieldKey]: contractFileUrl }),
         })
       } else {
         const customerEmail = String(appointment.email_address || "").trim()
@@ -181,7 +177,7 @@ export default async function handler(req, res) {
             title: contractTitle,
             value: dealValue,
             currency: "GBP",
-            status: "won",
+            status: "open",
             person_id: personId || undefined,
             [contractFileFieldKey]: contractFileUrl,
           }),
