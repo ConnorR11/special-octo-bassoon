@@ -105,7 +105,7 @@ export default async function handler(req, res) {
     }
     const { data: appointment, error: appointmentError } = await supabase
       .from("appointments")
-      .select("appointment_row_id,name,result,email_address,contract_number,signature_path,express_fit_signature_path,seg_disclaimer_signature_path")
+      .select("appointment_row_id,name,result,email_address,phone_number_1,address,postcode,product,job_type,rep_allocated,branch,sales_notes,epvs_calculation,contract_number,signature_path,express_fit_signature_path,seg_disclaimer_signature_path")
       .eq("appointment_row_id", appointmentRowId)
       .maybeSingle()
     if (appointmentError) throw appointmentError
