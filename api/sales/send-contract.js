@@ -132,8 +132,17 @@ export default async function handler(req, res) {
     })
     const tokenData = await tokenResponse.json()
     if (!tokenResponse.ok || !tokenData.access_token) {
-      console.error("Microsoft Graph token request failed:", tokenData.error || tokenResponse.status)
-      return await fail(502, "Microsoft 365 authentication failed. Check the app credentials and Mail.Send admin consent.", tokenResponse.status)
+      console.error("Microsoft Graph token request failed:", {
+        status: tokenResponse.status,
+        error: tokenData.error || null,
+        error_description: tokenData.error_description || null,
+        error_codes: tokenData.error_codes || null,
+        trace_id: tokenData.trace_id || null,
+        correlation_id: tokenData.correlation_id || null,
+      })
+      const authCode = tokenData.error || "unknown_error"
+      const authDescription = String(tokenData.error_description || "").replace(/[\\r\\n]+/g, " ").slice(0, 500)
+      return await fail(502, `Microsoft 365 authentication failed (${authCode})${authDescription ? `: ${authDescription}` : ". Check the app credentials and Mail.Send admin consent."}`, tokenResponse.status)
     }
 
     const { data: pdfFile, error: pdfDownloadError } = await supabase.storage.from("signatures").download(pdfPath)
