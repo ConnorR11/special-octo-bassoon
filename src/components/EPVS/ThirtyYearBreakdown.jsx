@@ -430,5 +430,5 @@ const totalCell = {
   textAlign: "right",
   fontWeight: 700,
   whiteSpace: "nowrap",
-  fontSize: 8,
+  fontSize: 10,
 }
