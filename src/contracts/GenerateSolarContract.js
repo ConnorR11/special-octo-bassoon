@@ -1246,7 +1246,7 @@ function footer(pdf, index, count, settings, appointment) {
   pdf.text(`Page ${index + 1} of ${count}`, width - padding, height - 8, { align: "right" })
 }
 
-export async function GenerateSolarContract({ appointment }) {
+export async function GenerateSolarContract({ appointment, previewOnly = false }) {
   if (!appointment) return
 
   // Always refresh the appointment from Supabase so the contract uses the
@@ -1362,6 +1362,7 @@ export async function GenerateSolarContract({ appointment }) {
 
   const blob = new Blob([bytes], { type: "application/pdf" })
   const url = URL.createObjectURL(blob)
+  if (previewOnly) return { url, blob, fileName: safeName + "-Digital-Solar-Contract.pdf", contractNumber }
   const link = document.createElement("a")
   link.href = url
   link.download = safeName + "-Digital-Solar-Contract.pdf"
@@ -1369,4 +1370,5 @@ export async function GenerateSolarContract({ appointment }) {
   link.click()
   link.remove()
   URL.revokeObjectURL(url)
+  return { url: null, fileName: safeName + "-Digital-Solar-Contract.pdf", contractNumber }
 }
