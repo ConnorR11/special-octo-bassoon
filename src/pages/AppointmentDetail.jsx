@@ -115,7 +115,7 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,permissi
     const dealResponse=await fetch("/api/sales/upload-solar-deal",{
      method:"POST",
      headers:{"Content-Type":"application/json","Authorization":`Bearer ${accessToken}`},
-     body:JSON.stringify({appointment_row_id:appointment.appointment_row_id})
+     body:JSON.stringify({appointment_row_id:appointment.appointment_row_id,pdf_path:pdfPath})
     });
     dealSyncPayload=await dealResponse.json().catch(()=>({}));
     if(!dealResponse.ok)throw new Error(dealSyncPayload.error||`Unable to upload solar deal (HTTP ${dealResponse.status}).`);
