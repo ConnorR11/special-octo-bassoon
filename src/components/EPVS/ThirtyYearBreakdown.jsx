@@ -130,14 +130,10 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection, data = {} })
             row.batterySelfConsumptionBenefit +
             row.forceChargeBenefit +
             row.exportBenefit,
-          yearlyPayment: total.yearlyPayment + valueFrom(row, "yearlyPayment"),
+          yearlyPayment: total.yearlyPayment + row.yearlyPayment,
           netAnnualBenefit:
             total.netAnnualBenefit +
-            (row.solarBenefit +
-              row.batterySelfConsumptionBenefit +
-              row.forceChargeBenefit +
-              row.exportBenefit +
-              valueFrom(row, "yearlyPayment", "payment")),
+            row.netAnnualBenefit,
           billPreInstall:
             total.billPreInstall + valueFrom(row, "billPreInstall"),
           billPostInstall:
