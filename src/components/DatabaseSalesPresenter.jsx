@@ -131,6 +131,29 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
   }, [pdfBytes, page, pageCount, viewerSize])
 
   useEffect(() => {
+    const body = document.body
+    const html = document.documentElement
+    const previousBody = { overflow: body.style.overflow, width: body.style.width, height: body.style.height, margin: body.style.margin }
+    const previousHtml = { overflow: html.style.overflow, width: html.style.width, height: html.style.height }
+    body.style.overflow = "hidden"
+    body.style.width = "100%"
+    body.style.height = "100%"
+    body.style.margin = "0"
+    html.style.overflow = "hidden"
+    html.style.width = "100%"
+    html.style.height = "100%"
+    return () => {
+      body.style.overflow = previousBody.overflow
+      body.style.width = previousBody.width
+      body.style.height = previousBody.height
+      body.style.margin = previousBody.margin
+      html.style.overflow = previousHtml.overflow
+      html.style.width = previousHtml.width
+      html.style.height = previousHtml.height
+    }
+  }, [])
+
+  useEffect(() => {
     const resize = () => setViewerSize({ width: window.innerWidth, height: window.innerHeight })
     window.addEventListener("resize", resize)
     return () => window.removeEventListener("resize", resize)
