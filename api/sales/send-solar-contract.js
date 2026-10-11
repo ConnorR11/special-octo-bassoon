@@ -201,9 +201,17 @@ export default async function handler(req, res) {
 
     if (!sendResponse.ok) {
       const details = await sendResponse.text()
-      console.error("Microsoft Graph sendMail failed:", sendResponse.status, details.slice(0, 1500))
+      const graphRequestId = sendResponse.headers.get("request-id") || sendResponse.headers.get("client-request-id") || null
+      console.error("Microsoft Graph sendMail failed:", {
+        status: sendResponse.status,
+        requestId: graphRequestId,
+        details: details.slice(0, 1500),
+      })
       if (sendResponse.status === 403) {
         return await fail(502, "Microsoft 365 refused to send the email. Check admin consent and confirm app@homeshield.ltd is an active mailbox.", sendResponse.status)
+      }
+      if (sendResponse.status === 504 || sendResponse.status === 408) {
+        return await fail(504, "Microsoft 365 timed out while processing the contract. The email may still have been accepted; check Sent Items before retrying to avoid sending a duplicate.", sendResponse.status)
       }
       return await fail(502, `Microsoft 365 could not send the contract (HTTP ${sendResponse.status}).`, sendResponse.status)
     }
