@@ -2929,9 +2929,8 @@ export default function EPVSCalculator({
             />
 
             <ThirtyYearBreakdown
-              thirtyYearProjection={
-                thirtyYearProjection
-              }
+              thirtyYearProjection={thirtyYearProjection}
+              data={data}
             />
           </>
 
