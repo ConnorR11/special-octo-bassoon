@@ -60,7 +60,7 @@ export default async function handler(req) {
     const appointmentRowId = String(body?.appointment_row_id || "").trim()
     const customerEmail = String(body?.customer_email || "").trim()
     const fileName = String(body?.file_name || "Digital-Solar-Contract.pdf").replace(/[^a-zA-Z0-9._-]/g, "-")
-    const pdfBase64 = String(body?.pdf_base64 || "").replace(/^data:application\/pdf;base64,/, "")
+    const pdfPath = String(body?.pdf_path || "").trim()
 
     // Record the attempt before validation or Microsoft Graph calls. Never log the PDF or credentials.
     const { data: logRow, error: logError } = await supabase
@@ -80,6 +80,7 @@ export default async function handler(req) {
           sender,
           attachment_name: fileName,
           attachment_type: "application/pdf",
+          attachment_storage_path: pdfPath || null,
           triggered_by: userData.user.email || userData.user.id,
         },
       })
@@ -88,16 +89,15 @@ export default async function handler(req) {
     if (logError) console.error("Unable to create contract email integration log:", logError.message)
     else logId = logRow?.id || null
 
-    if (!appointmentRowId || !customerEmail || !pdfBase64) {
+    if (!appointmentRowId || !customerEmail || !pdfPath) {
       return await fail(400, "Appointment, customer email and contract PDF are required.")
+    }
+    if (!pdfPath.startsWith("contract-pdfs/") || pdfPath.includes("..")) {
+      return await fail(400, "Invalid contract PDF storage path.")
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
       return await fail(400, "Please enter a valid customer email address.")
     }
-    if (pdfBase64.length > 12_000_000) {
-      return await fail(413, "The contract PDF is too large to email.")
-    }
-
     const { data: appointment, error: appointmentError } = await supabase
       .from("appointments")
       .select("appointment_row_id,name,result,email_address,contract_number,signature_path,express_fit_signature_path,seg_disclaimer_signature_path")
@@ -130,6 +130,16 @@ export default async function handler(req) {
       console.error("Microsoft Graph token request failed:", tokenData.error || tokenResponse.status)
       return await fail(502, "Microsoft 365 authentication failed. Check the app credentials and Mail.Send admin consent.", tokenResponse.status)
     }
+
+    const { data: pdfFile, error: pdfDownloadError } = await supabase.storage.from("signatures").download(pdfPath)
+    if (pdfDownloadError || !pdfFile) {
+      console.error("Unable to download contract PDF from storage:", pdfDownloadError?.message)
+      return await fail(500, "Unable to retrieve the generated contract PDF from storage.")
+    }
+    if (pdfFile.size > 10 * 1024 * 1024) {
+      return await fail(413, "The contract PDF is over the 10 MB email attachment limit.")
+    }
+    const pdfBase64 = Buffer.from(await pdfFile.arrayBuffer()).toString("base64")
 
     const subject = `Your Homeshield contract${appointment.contract_number ? ` – ${appointment.contract_number}` : ""}`
     const sendResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(sender)}/sendMail`, {
