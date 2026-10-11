@@ -36,7 +36,7 @@ const valueFrom = (row, ...keys) => {
   return fallback
 }
 
-export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
+export default function ThirtyYearBreakdown({ thirtyYearProjection, data = {} }) {
   const scenarios = thirtyYearProjection?.scenarios || {}
 
   const scenarioList = useMemo(
@@ -74,7 +74,13 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection }) {
         batterySelfConsumptionBenefit +
         forceChargeBenefit +
         exportBenefit
-      const yearlyPayment = valueFrom(row, "yearlyPayment", "payment")
+      const calculatedPayment = valueFrom(row, "yearlyPayment", "payment")
+      const isCash = String(data.paymentMethod || "").trim().toLowerCase() === "cash"
+      const yearlyPayment = isCash
+        ? Number(row.year) === 1
+          ? -Math.max(0, Number(data.systemCost || 0))
+          : 0
+        : calculatedPayment
 
       return {
         ...row,
