@@ -22,6 +22,7 @@ function templateTypeLabel(type) {
   if (type === "windows") return "Windows & Doors"
   if (type === "paperwork") return "Paperwork"
   if (type === "sms") return "SMS"
+  if (type === "email") return "Email"
   return type || "Other"
 }
 
@@ -48,6 +49,8 @@ export default function Templates() {
   )
 
   const isSmsTemplate = selectedTemplate?.template_type === "sms"
+  const isEmailTemplate = selectedTemplate?.template_type === "email"
+  const isTextTemplate = isSmsTemplate || isEmailTemplate
 
   const templateGroups = useMemo(() => {
     const groups = new Map()
@@ -67,8 +70,9 @@ export default function Templates() {
         windows: 1,
         solar: 2,
         sms: 3,
-        paperwork: 4,
-        other: 5,
+        email: 4,
+        paperwork: 5,
+        other: 6,
       }
 
       return (order[a] || 99) - (order[b] || 99) || a.localeCompare(b)
@@ -183,11 +187,12 @@ export default function Templates() {
     setSaving(false)
   }
 
-  async function saveSmsTemplate() {
-    if (!selectedTemplate || !isSmsTemplate) return
+  async function saveTextTemplate() {
+    if (!selectedTemplate || !isTextTemplate) return
 
     await updateTemplate({
       template_body: selectedTemplate.template_body || "",
+      ...(isEmailTemplate ? { description: selectedTemplate.description || "" } : {}),
     })
   }
 
@@ -408,7 +413,7 @@ export default function Templates() {
 
   const canPreview =
     selectedTemplate?.template_type !== "paperwork" &&
-    !isSmsTemplate
+    !isTextTemplate
 
   return (
     <section>
@@ -736,7 +741,7 @@ export default function Templates() {
                   </label>
                 </div>
 
-                {isSmsTemplate ? (
+                {isTextTemplate ? (
                   <div style={smsPreviewStyle}>
                     <div
                       style={{
@@ -761,7 +766,7 @@ export default function Templates() {
                             color: "#344454",
                           }}
                         >
-                          SMS message
+                          {isEmailTemplate ? "Email message" : "SMS message"}
                         </div>
 
                         <div
@@ -771,8 +776,7 @@ export default function Templates() {
                             marginTop: 2,
                           }}
                         >
-                          Edit the message in
-                          the editor.
+                          Edit the {isEmailTemplate ? "subject and message" : "message"} in the editor.
                         </div>
                       </div>
                     </div>
@@ -784,8 +788,7 @@ export default function Templates() {
                             color: "#a0a8ae",
                           }}
                         >
-                          No SMS message has
-                          been entered yet.
+                          No {isEmailTemplate ? "email" : "SMS"} message has been entered yet.
                         </span>
                       )}
                     </div>
@@ -793,7 +796,7 @@ export default function Templates() {
                     <div
                       style={characterStyle}
                     >
-                      <span>SMS content</span>
+                      <span>{isEmailTemplate ? "Email content" : "SMS content"}</span>
 
                       <span>
                         {
@@ -916,11 +919,12 @@ export default function Templates() {
                 className="card"
                 style={{ padding: 14 }}
               >
-                {isSmsTemplate ? (
+                {isTextTemplate ? (
                   <>
                     <div style={panelTitle}>
-                      SMS Template
+                      {isEmailTemplate ? "Email Template" : "SMS Template"}
                     </div>
+                    {isEmailTemplate && <label style={{...labelStyle,marginTop:14}}>Email subject<input value={selectedTemplate.description || ""} onChange={e=>updateSelectedTemplate("description",e.target.value)} placeholder="Your Homeshield contract{{contract_number}}" style={fieldStyle}/></label>}
 
                     <label
                       style={{
@@ -928,7 +932,7 @@ export default function Templates() {
                         marginTop: 14,
                       }}
                     >
-                      Message
+                      {isEmailTemplate ? "Email body" : "Message"}
 
                       <textarea
                         value={
@@ -942,7 +946,7 @@ export default function Templates() {
                           )
                         }
                         rows={12}
-                        placeholder="Enter the SMS message..."
+                        placeholder={isEmailTemplate ? "Enter the email body..." : "Enter the SMS message..."}
                         style={{
                           ...fieldStyle,
                           resize: "vertical",
@@ -969,8 +973,7 @@ export default function Templates() {
                       </span>
 
                       <span>
-                        SMS templates do not
-                        require pages.
+                        {isEmailTemplate ? "Email templates do not require pages." : "SMS templates do not require pages."}
                       </span>
                     </div>
 
@@ -986,9 +989,7 @@ export default function Templates() {
                     >
                       <Save size={14} />
 
-                      {saving
-                        ? "Saving..."
-                        : "Save SMS template"}
+                      {saving ? "Saving..." : `Save ${isEmailTemplate ? "email" : "SMS"} template`}
                     </button>
                   </>
                 ) : selectedPage ? (
