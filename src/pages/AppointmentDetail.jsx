@@ -69,7 +69,27 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,permissi
   if(!customerEmail.trim()){setError("Please enter the customer's email address.");return}
   if(!contractPreviewUrl){setError("The contract preview is unavailable. Go back and regenerate it.");return}
   setSendingContract(true);setError("");
+  let contractLogId=null;
+  const logContractAttempt=async(values)=>{
+   if(!contractLogId)return;
+   const{error:logUpdateError}=await supabase.from("integration_event_logs").update({...values,processed_at:new Date().toISOString()}).eq("id",contractLogId);
+   if(logUpdateError)console.error("Unable to update contract email attempt log:",logUpdateError.message);
+  };
   try{
+   const{data:userInfo}=await supabase.auth.getUser();
+   const{data:attemptLog,error:attemptLogError}=await supabase.from("integration_event_logs").insert({
+    provider:"microsoft_graph",
+    integration_name:"Microsoft 365 Contract Email",
+    direction:"outbound",
+    event_name:"contract_email_send",
+    event_type:"email_with_pdf_attachment",
+    external_id:String(appointment.appointment_row_id),
+    status:"started",
+    received_at:new Date().toISOString(),
+    payload:{appointment_row_id:appointment.appointment_row_id,recipient:customerEmail.trim(),attachment_name:`${String(appointment.name||"Customer").replace(/[^a-z0-9]+/gi,"-")}-Digital-Solar-Contract.pdf`,stage:"client_started",triggered_by:userInfo?.user?.email||userInfo?.user?.id||"unknown"}
+   }).select("id").single();
+   if(attemptLogError)console.error("Unable to create contract email attempt log:",attemptLogError.message);
+   else contractLogId=attemptLog?.id||null;
    const{data:sessionData,error:sessionError}=await supabase.auth.getSession();
    if(sessionError)throw sessionError;
    const accessToken=sessionData?.session?.access_token;
@@ -89,9 +109,10 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,permissi
    });
    const payload=await response.json().catch(()=>({}));
    if(!response.ok)throw new Error(payload.error||`Unable to send contract (HTTP ${response.status}).`);
+   await logContractAttempt({status:"success",http_status:200,error_message:null,result:{success:true,message:"Contract email accepted by API.",recipient:customerEmail.trim(),stage:"client_completed"}});
    setContractSent(true);
    setError("Contract emailed successfully to "+customerEmail.trim()+".");
-  }catch(e){console.error("Unable to email contract:",e);setError(e?.message||"Unable to email the contract.");}
+  }catch(e){console.error("Unable to email contract:",e);await logContractAttempt({status:"failed",http_status:500,error_message:e?.message||"Unable to email the contract.",result:{success:false,message:e?.message||"Unable to email the contract.",stage:"client_failed"}});setError(e?.message||"Unable to email the contract.");}
   finally{setSendingContract(false)}
  }
  async function saveResult(){if(!result)return;if(!appointment?.appointment_row_id){setError("This appointment does not have an appointment_row_id.");return}if(isSold(result)&&(!signature||!expressFitSignature||!segSignature)){setError("All three customer signatures are required when marking the appointment as Sold.");return}setSaving(true);setError("");try{let signaturePath=null,expressFitSignaturePath=null,segSignaturePath=null;if(isSold(result)){signaturePath=await uploadSignature(signature,"contract");expressFitSignaturePath=await uploadSignature(expressFitSignature,"express-fit");segSignaturePath=await uploadSignature(segSignature,"seg-disclaimer")}const resultPayload={result,signature_path:signaturePath,express_fit_signature_path:signaturePath?expressFitSignaturePath:null,seg_disclaimer_signature_path:signaturePath?segSignaturePath:null};if(["sold","pm dnh","pm","single item"].includes(normalise(result))){resultPayload.rep_arrival_time=arrivalTime?combineAppointmentDateAndTime(appointment?.appointment_date,arrivalTime):null;resultPayload.sales_notes=salesNote||null;resultPayload.email_address=customerEmail.trim()||null;if(["pm dnh","pm","single item"].includes(normalise(result)))resultPayload.price_left=priceLeft===""?null:String(priceLeft)}else if(["bo","nci"].includes(normalise(result))){resultPayload.sales_notes=salesNote||null}if(normalise(result)==="reapp"){if(!newAppointmentDate)throw new Error("Please enter the new appointment date and time.");const newDateTime=new Date(newAppointmentDate);if(Number.isNaN(newDateTime.getTime()))throw new Error("Please enter a valid new appointment date and time.");const{data:originalUpdated,error:resultError}=await supabase.from("appointments").update({result}).eq("appointment_row_id",appointment.appointment_row_id).select("*").single();if(resultError)throw resultError;const newAppointment={appointment_row_id:globalThis.crypto?.randomUUID?.()||`reapp-${Date.now()}-${Math.random().toString(36).slice(2,10)}`,name:appointment.name||null,lead_source:appointment.lead_source||null,marketing_row_id:appointment.marketing_row_id||null,postcode:appointment.postcode||null,address:appointment.address||null,phone_number_1:appointment.phone_number_1||appointment.phone||null,appointment_date:newDateTime.toISOString(),canvasser:appointment.canvasser||null,marketing_notes:appointment.marketing_notes||null,product:appointment.product||null,job_type:appointment.job_type||null,email_address:customerEmail.trim()||appointment.email_address||appointment.email||null,salutations:appointment.salutations||null,cps_h:true,cps_c:false,cps_p:false,cps_s:false,is_pickup:false,branch:null,rep_allocated:null,result:null,sales_notes:null,price_left:null,rep_arrival_time:null,signature_path:null,express_fit_signature_path:null,seg_disclaimer_signature_path:null,customer_signature:null,customer_signature_name:null,customer_signed_at:null,open_solar_id:originalUpdated.open_solar_id??appointment.open_solar_id??null,epvs_calculation:null};const{data:newRows,error:insertError}=await supabase.from("appointments").insert(newAppointment).select("*");if(insertError)throw insertError;if(!newRows?.length)throw new Error("The original appointment was marked REAPP, but the new appointment could not be created.");setShowResult(false);setSignature("");setExpressFitSignature("");setSegSignature("");onUpdated?.(originalUpdated);return}const{data,error:updateError}=await supabase.from("appointments").update(resultPayload).eq("appointment_row_id",appointment.appointment_row_id).select("*");if(updateError)throw updateError;if(!data?.length)throw new Error("No appointment was updated. Check that appointment_row_id matches a row in the appointments table.");const updated=data[0];onUpdated?.(updated);if(isSold(result)&&solar({...appointment,...updated})){if(!epvs)throw new Error("The appointment was saved as Sold, but no EPVS calculation is available. Please complete the EPVS calculation before generating the solar contract.");try{await GenerateSolarContract({appointment:updated})}catch(e){console.error("Error generating solar contract:",e);setError(`Appointment was saved as Sold, but the solar contract could not be generated: ${e?.message||String(e||"Unknown error")}`);return}}setShowResult(false);setSignature("");setExpressFitSignature("");setSegSignature("")}catch(e){console.error("Error updating appointment:",e);setError(e?.message||"Unable to save result.")}finally{setSaving(false)}}
