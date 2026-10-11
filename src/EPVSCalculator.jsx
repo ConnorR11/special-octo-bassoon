@@ -1344,16 +1344,16 @@ export default function EPVSCalculator({
         const paymentMethod = String(data.paymentMethod || "").trim().toLowerCase()
         const systemCostValue = Math.max(0, Number(data.systemCost) || 0)
         const isCashPayment = paymentMethod === "cash"
-        const financeAnnualPayment =
-          !isCashPayment && year <= Number(data.financeTerm || 0)
-            ? monthlyPaymentForYear(data) * 12
-            : 0
-
-        // The saved projection must use the selected payment method and
-        // system cost: cash pays the full system cost in Year 1, then zero.
+        // Calculate finance payments inline so this projection cannot
+        // reference a missing block-scoped financeAnnualPayment variable.
+        // Cash pays the full system cost in Year 1, then zero.
         const yearlyPayment = isCashPayment
           ? (year === 1 ? systemCostValue : 0)
-          : financeAnnualPayment + (year === 1 ? deposit : 0)
+          : (
+              !isCashPayment && year <= Number(data.financeTerm || 0)
+                ? monthlyPaymentForYear(data) * 12
+                : 0
+            ) + (year === 1 ? deposit : 0)
 
         const netAnnualBenefit = yearModel.annualSaving - yearlyPayment
         cumulativePosition += netAnnualBenefit
