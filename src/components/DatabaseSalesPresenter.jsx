@@ -102,9 +102,8 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
         const single = await PDFDocument.create()
         const [copiedPage] = await single.copyPages(source, [page])
         single.addPage(copiedPage)
-        // Crop the unused grey canvas around the slide artwork so it fills the viewer.
-        const { width, height } = copiedPage.getSize()
-        copiedPage.setCropBox(width * 0.05, height * 0.22, width * 0.90, height * 0.76)
+        // Preserve the PDF page's original bounds. Fixed crop percentages were clipping
+        // artwork on some slides, so do not override the original crop box.
         const bytes = await single.save()
         const blob = new Blob([bytes], { type: "application/pdf" })
         objectUrl = URL.createObjectURL(blob)
