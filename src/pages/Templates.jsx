@@ -742,253 +742,56 @@ export default function Templates() {
                 </div>
 
                 {isTextTemplate ? (
-                  <div style={smsPreviewStyle}>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems:
-                          "center",
-                        gap: 8,
-                        marginBottom: 12,
-                      }}
-                    >
-                      <div style={smsIcon}>
-                        <MessageSquare
-                          size={16}
-                        />
-                      </div>
-
-                      <div>
-                        <div
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 800,
-                            color: "#344454",
-                          }}
-                        >
-                          {isEmailTemplate ? "Email message" : "SMS message"}
-                        </div>
-
-                        <div
-                          style={{
-                            fontSize: 9,
-                            color: "#8b949e",
-                            marginTop: 2,
-                          }}
-                        >
-                          Edit the {isEmailTemplate ? "subject and message" : "message"} in the editor.
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={smsDisplayStyle}>
-                      {selectedTemplate.template_body || (
-                        <span
-                          style={{
-                            color: "#a0a8ae",
-                          }}
-                        >
-                          No {isEmailTemplate ? "email" : "SMS"} message has been entered yet.
-                        </span>
-                      )}
-                    </div>
-
-                    <div
-                      style={characterStyle}
-                    >
-                      <span>{isEmailTemplate ? "Email content" : "SMS content"}</span>
-
-                      <span>
-                        {
-                          (
-                            selectedTemplate.template_body ||
-                            ""
-                          ).length
-                        }{" "}
-                        characters
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div
-                      style={{
-                        display: "grid",
-                        gap: 8,
-                      }}
-                    >
-                      {pages.map(
-                        (page, index) => (
-                          <button
-                            key={page.id}
-                            onClick={() =>
-                              setSelectedPageId(
-                                page.id
-                              )
-                            }
-                            style={{
-                              ...slideRow,
-                              background:
-                                page.id ===
-                                selectedPageId
-                                  ? "#f4f8fc"
-                                  : "#fff",
-                              borderColor:
-                                page.id ===
-                                selectedPageId
-                                  ? "#b8dcff"
-                                  : "#e5e9ed",
-                            }}
-                          >
-                            <GripVertical
-                              size={15}
-                              color="#aab2b9"
-                            />
-
-                            <span
-                              style={
-                                slideNumber
-                              }
-                            >
-                              {index + 1}
-                            </span>
-
-                            <span
-                              style={{
-                                flex: 1,
-                                minWidth: 0,
-                                textAlign:
-                                  "left",
-                              }}
-                            >
-                              <strong
-                                style={{
-                                  display:
-                                    "block",
-                                  overflow:
-                                    "hidden",
-                                  textOverflow:
-                                    "ellipsis",
-                                  whiteSpace:
-                                    "nowrap",
-                                }}
-                              >
-                                {page.title ||
-                                  `Untitled page ${
-                                    index + 1
-                                  }`}
-                              </strong>
-
-                              <small
-                                style={{
-                                  color:
-                                    "#8b949e",
-                                  display:
-                                    "block",
-                                  marginTop: 3,
-                                }}
-                              >
-                                Page{" "}
-                                {index + 1}
-                              </small>
-                            </span>
-                          </button>
-                        )
-                      )}
-                    </div>
-
-                    <button
-                      onClick={addPage}
-                      disabled={saving}
-                      style={{
-                        ...buttonStyle,
-                        marginTop: 12,
-                        width: "100%",
-                        justifyContent:
-                          "center",
-                      }}
-                    >
-                      <Plus size={14} />
-                      Add page
-                    </button>
-                  </>
-                )}
-              </div>
-
-              <div
-                className="card"
-                style={{ padding: 14 }}
-              >
-                {isTextTemplate ? (
                   <>
                     <div style={panelTitle}>
                       {isEmailTemplate ? "Email Template" : "SMS Template"}
                     </div>
-                    {isEmailTemplate && <label style={{...labelStyle,marginTop:14}}>Email subject<input value={selectedTemplate.description || ""} onChange={e=>updateSelectedTemplate("description",e.target.value)} placeholder="Your Homeshield contract{{contract_number}}" style={fieldStyle}/></label>}
 
-                    <label
-                      style={{
-                        ...labelStyle,
-                        marginTop: 14,
-                      }}
-                    >
+                    {isEmailTemplate && (
+                      <label style={{ ...labelStyle, marginTop: 14 }}>
+                        Email subject
+                        <input
+                          value={selectedTemplate.description || ""}
+                          onChange={e => updateSelectedTemplate("description", e.target.value)}
+                          placeholder="Your Homeshield contract – {{contract_number}}"
+                          style={fieldStyle}
+                        />
+                      </label>
+                    )}
+
+                    <label style={{ ...labelStyle, marginTop: 14 }}>
                       {isEmailTemplate ? "Email body" : "Message"}
-
                       <textarea
-                        value={
-                          selectedTemplate.template_body ||
-                          ""
-                        }
-                        onChange={e =>
-                          updateSelectedTemplate(
-                            "template_body",
-                            e.target.value
-                          )
-                        }
-                        rows={12}
+                        value={selectedTemplate.template_body || ""}
+                        onChange={e => updateSelectedTemplate("template_body", e.target.value)}
+                        rows={isEmailTemplate ? 12 : 12}
                         placeholder={isEmailTemplate ? "Enter the email body..." : "Enter the SMS message..."}
                         style={{
                           ...fieldStyle,
                           resize: "vertical",
-                          minHeight: 190,
+                          minHeight: isEmailTemplate ? 220 : 190,
                           lineHeight: 1.5,
                         }}
                       />
                     </label>
 
-                    <div
-                      style={{
-                        ...characterStyle,
-                        marginBottom: 12,
-                      }}
-                    >
-                      <span>
-                        Characters:{" "}
-                        {
-                          (
-                            selectedTemplate.template_body ||
-                            ""
-                          ).length
-                        }
-                      </span>
-
-                      <span>
-                        {isEmailTemplate ? "Email templates do not require pages." : "SMS templates do not require pages."}
-                      </span>
+                    <div style={{ ...characterStyle, marginBottom: 12 }}>
+                      <span>{isEmailTemplate ? "Email body" : "SMS content"}</span>
+                      <span>{(selectedTemplate.template_body || "").length} characters</span>
                     </div>
 
+                    {isEmailTemplate && (
+                      <div style={{ fontSize: 9, color: "#8b949e", lineHeight: 1.5, marginBottom: 12 }}>
+                        Available placeholders: {"{{customer_name}}"}, {"{{contract_number}}"}, {"{{recipient}}"}, {"{{sender}}"}
+                      </div>
+                    )}
+
                     <button
-                      onClick={saveSmsTemplate}
+                      onClick={saveTextTemplate}
                       disabled={saving}
-                      style={{
-                        ...buttonStyle,
-                        width: "100%",
-                        justifyContent:
-                          "center",
-                      }}
+                      style={{ ...buttonStyle, width: "100%", justifyContent: "center" }}
                     >
                       <Save size={14} />
-
                       {saving ? "Saving..." : `Save ${isEmailTemplate ? "email" : "SMS"} template`}
                     </button>
                   </>
