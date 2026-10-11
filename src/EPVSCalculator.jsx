@@ -1350,7 +1350,7 @@ export default function EPVSCalculator({
           data.paymentMethod === "Finance"
             ? financeAnnualPayment + (year === 1 ? deposit : 0)
             : year === 1
-              ? Math.max(0, systemCost - deposit)
+              ? systemCost
               : 0
 
         const netAnnualBenefit = yearModel.annualSaving - yearlyPayment
