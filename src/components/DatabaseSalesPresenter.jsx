@@ -110,7 +110,7 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
         const base = pdfPage.getViewport({ scale: 1 })
         // Size the PDF from the actual centre column, not the browser viewport.
         // This keeps the rendered page aligned with the space between the nav buttons.
-        const availableWidth = Math.max(1, containerSize.width - 8)
+        const availableWidth = Math.max(1, containerSize.width - 152)
         const availableHeight = Math.max(1, containerSize.height - 16)
         const scale = Math.min(availableWidth / base.width, availableHeight / base.height)
         const viewport = pdfPage.getViewport({ scale })
@@ -215,13 +215,13 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
           <button type="button" onClick={closePresenter} title="Close Sales Presenter" style={controlStyle}><X size={18}/><span className="presenter-control-label">Close</span></button>
         </div>
       </header>
-      <main style={{flex:1,minHeight:0,display:"grid",gridTemplateColumns:"64px minmax(0,1fr) 64px",alignItems:"center",position:"relative",padding:"0 12px",boxSizing:"border-box",overflow:"hidden"}}>
+      <main style={{flex:1,minHeight:0,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",padding:"0",boxSizing:"border-box",overflow:"hidden"}}>
         {loading ? <div style={{display:"flex",alignItems:"center",gap:10,color:"#fff"}}><LoaderCircle size={22}/>Loading presenter…</div> : error ? <div style={{maxWidth:520,padding:24,textAlign:"center"}}><div style={{fontWeight:700,marginBottom:8}}>Presenter unavailable</div><div style={{fontSize:13,lineHeight:1.6,color:"#d4dbe4"}}>{error}</div></div> : <>
-          <div style={{gridColumn:1,gridRow:1,display:"flex",justifyContent:"center",alignItems:"center",minWidth:0,zIndex:2}}><button type="button" aria-label="Previous page" disabled={page===0||renderingPage} onClick={()=>changePage(p=>p-1,"button")} style={{...navStyle,position:"relative",top:"auto",left:"auto",transform:"none",opacity:page===0?.35:1}}><ChevronLeft size={30}/></button></div>
-          <div ref={pdfContainerRef} style={{gridColumn:2,gridRow:1,display:"flex",alignItems:"center",justifyContent:"center",minWidth:0,minHeight:0,width:"100%",height:"100%",overflow:"hidden"}}>
+          <div style={{position:"absolute",left:12,top:0,bottom:0,width:48,display:"flex",justifyContent:"center",alignItems:"center",zIndex:2}}><button type="button" aria-label="Previous page" disabled={page===0||renderingPage} onClick={()=>changePage(p=>p-1,"button")} style={{...navStyle,position:"relative",top:"auto",left:"auto",transform:"none",opacity:page===0?.35:1}}><ChevronLeft size={30}/></button></div>
+          <div ref={pdfContainerRef} style={{display:"flex",alignItems:"center",justifyContent:"center",minWidth:0,minHeight:0,width:"100%",height:"100%",padding:"0 76px",boxSizing:"border-box",overflow:"hidden"}}>
             {renderingPage ? <LoaderCircle size={26}/> : renderedPage ? <canvas ref={node => { if (node && renderedPage.canvas && node !== renderedPage.canvas) { node.width = renderedPage.canvas.width; node.height = renderedPage.canvas.height; node.style.width = renderedPage.width + "px"; node.style.height = renderedPage.height + "px"; node.getContext("2d").drawImage(renderedPage.canvas,0,0) } }} style={{display:"block",maxWidth:"100%",maxHeight:"100%",objectFit:"contain",boxShadow:"0 4px 18px rgba(0,0,0,.35)"}} /> : null}
           </div>
-          <div style={{gridColumn:3,gridRow:1,display:"flex",justifyContent:"center",alignItems:"center",minWidth:0,zIndex:2}}><button type="button" aria-label="Next page" disabled={page>=pageCount-1||renderingPage} onClick={()=>changePage(p=>p+1,"button")} style={{...navStyle,position:"relative",top:"auto",right:"auto",transform:"none",opacity:page>=pageCount-1?.35:1}}><ChevronRight size={30}/></button></div>
+          <div style={{position:"absolute",right:12,top:0,bottom:0,width:48,display:"flex",justifyContent:"center",alignItems:"center",zIndex:2}}><button type="button" aria-label="Next page" disabled={page>=pageCount-1||renderingPage} onClick={()=>changePage(p=>p+1,"button")} style={{...navStyle,position:"relative",top:"auto",right:"auto",transform:"none",opacity:page>=pageCount-1?.35:1}}><ChevronRight size={30}/></button></div>
         </>}
       </main>
       <footer style={{display:"flex",alignItems:"center",justifyContent:"center",gap:18,padding:"12px 16px",background:"#0c1a29",borderTop:"1px solid #23384a"}}>
