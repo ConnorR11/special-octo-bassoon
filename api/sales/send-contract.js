@@ -171,7 +171,7 @@ export default async function handler(req, res) {
       recipient: customerEmail,
       sender,
     }
-    const renderTemplate = value => String(value || "").replace(/{{\\s*([a-zA-Z0-9_]+)\\s*}}/g, (_, key) => replacements[key] ?? "")
+    const renderTemplate = value => String(value || "").replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, key) => replacements[key] ?? "")
     const subject = renderTemplate(emailTemplate.description) || `Your Homeshield contract${appointment.contract_number ? ` – ${appointment.contract_number}` : ""}`
     const emailBody = renderTemplate(emailTemplate.template_body) || `Dear ${appointment.name || "Customer"},\\n\\nPlease find attached your Homeshield contract.\\n\\nKind regards,\\nHomeshield Scotland Ltd`
     const sendResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(sender)}/sendMail`, {
@@ -185,7 +185,7 @@ export default async function handler(req, res) {
           subject,
           body: {
             contentType: "Text",
-            content: `Dear ${appointment.name || "Customer"},\n\nPlease find attached your Homeshield contract.\n\nKind regards,\nHomeshield Scotland Ltd`,
+            content: emailBody,
           },
           toRecipients: [{ emailAddress: { address: customerEmail } }],
           attachments: [{
