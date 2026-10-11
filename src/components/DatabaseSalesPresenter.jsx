@@ -106,7 +106,7 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
         const pdf = await pdfjs.getDocument({ data: new Uint8Array(pdfBytes) }).promise
         const pdfPage = await pdf.getPage(page + 1)
         const base = pdfPage.getViewport({ scale: 1 })
-        const availableWidth = Math.max(320, window.innerWidth - 150)
+        const availableWidth = Math.max(320, window.innerWidth - 80)
         const availableHeight = Math.max(240, window.innerHeight - 135)
         const scale = Math.min(availableWidth / base.width, availableHeight / base.height)
         const viewport = pdfPage.getViewport({ scale })
@@ -172,7 +172,7 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
       <main style={{flex:1,minHeight:0,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",padding:"0",boxSizing:"border-box"}}>
         {loading ? <div style={{display:"flex",alignItems:"center",gap:10,color:"#fff"}}><LoaderCircle size={22}/>Loading presenter…</div> : error ? <div style={{maxWidth:520,padding:24,textAlign:"center"}}><div style={{fontWeight:700,marginBottom:8}}>Presenter unavailable</div><div style={{fontSize:13,lineHeight:1.6,color:"#d4dbe4"}}>{error}</div></div> : <>
           <button type="button" aria-label="Previous page" disabled={page===0||renderingPage} onClick={()=>changePage(p=>p-1,"button")} style={{...navStyle,left:8,opacity:page===0?.35:1}}><ChevronLeft size={30}/></button>
-          <div style={{position:"absolute",inset:0,width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",minWidth:0,minHeight:0,overflow:"hidden",padding:"8px 64px",boxSizing:"border-box"}}>
+          <div style={{position:"absolute",inset:0,width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",minWidth:0,minHeight:0,overflow:"hidden",padding:"8px 52px",boxSizing:"border-box"}}>
             {renderingPage ? <LoaderCircle size={26}/> : renderedPage ? <canvas ref={node => { if (node && renderedPage.canvas && node !== renderedPage.canvas) { node.width = renderedPage.canvas.width; node.height = renderedPage.canvas.height; node.style.width = renderedPage.width + "px"; node.style.height = renderedPage.height + "px"; node.getContext("2d").drawImage(renderedPage.canvas,0,0) } }} style={{display:"block",maxWidth:"100%",maxHeight:"100%",objectFit:"contain",boxShadow:"0 4px 18px rgba(0,0,0,.35)"}} /> : null}
           </div>
           <button type="button" aria-label="Next page" disabled={page>=pageCount-1||renderingPage} onClick={()=>changePage(p=>p+1,"button")} style={{...navStyle,right:8,opacity:page>=pageCount-1?.35:1}}><ChevronRight size={30}/></button>
