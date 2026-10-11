@@ -18,12 +18,12 @@ if (end === -1) {
 }
 
 const currentBlock = source.slice(start, end)
-const desiredBlock = `const isFinancePayment = String(data.paymentMethod || "").trim().toLowerCase() === "finance"
-        const yearlyPayment = isFinancePayment
-          ? financeAnnualPayment + (year === 1 ? deposit : 0)
-          : year === 1
+const desiredBlock = `const isCashPayment = String(data.paymentMethod || "").trim().toLowerCase() === "cash"
+        const yearlyPayment = isCashPayment
+          ? year === 1
             ? Math.max(0, systemCost)
-            : 0`
+            : 0
+          : financeAnnualPayment + (year === 1 ? deposit : 0)`
 
 if (currentBlock === desiredBlock) {
   console.log("EPVS yearly payments already use full system cost in cash Year 1 and zero thereafter.")
