@@ -128,11 +128,6 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,permissi
    }
    await logContractAttempt({status:"success",http_status:200,error_message:null,result:{success:true,message:"Contract email and solar deal upload completed.",recipient:customerEmail.trim(),deal_sync:dealSyncPayload,stage:"client_completed"}});
    setContractSent(true);
-    setError(syncMessage);
-    return;
-   }
-   await logContractAttempt({status:"success",http_status:200,error_message:null,result:{success:true,message:"Contract email and deal sync completed.",recipient:customerEmail.trim(),deal_sync:payload.deal_sync||null,stage:"client_completed"}});
-   setContractSent(true);
    setError("");
    setContractSuccessNotice("Contract sent and solar deal uploaded for "+customerEmail.trim());
    setShowResult(false);
