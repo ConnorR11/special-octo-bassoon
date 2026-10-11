@@ -11,6 +11,8 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
   const [pageUrl, setPageUrl] = useState("")
   const [renderedPage, setRenderedPage] = useState(null)
   const [viewerSize, setViewerSize] = useState({ width: window.innerWidth, height: window.innerHeight })
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
+  const pdfContainerRef = React.useRef(null)
   const [page, setPage] = useState(0)
   const [pageCount, setPageCount] = useState(0)
   const [pdfBytes, setPdfBytes] = useState(null)
@@ -106,8 +108,10 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
         const pdf = await pdfjs.getDocument({ data: new Uint8Array(pdfBytes).slice() }).promise
         const pdfPage = await pdf.getPage(page + 1)
         const base = pdfPage.getViewport({ scale: 1 })
-        const availableWidth = Math.max(320, window.innerWidth - 80)
-        const availableHeight = Math.max(240, window.innerHeight - 135)
+        // Size the PDF from the actual centre column, not the browser viewport.
+        // This keeps the rendered page aligned with the space between the nav buttons.
+        const availableWidth = Math.max(1, containerSize.width - 8)
+        const availableHeight = Math.max(1, containerSize.height - 16)
         const scale = Math.min(availableWidth / base.width, availableHeight / base.height)
         const viewport = pdfPage.getViewport({ scale })
         const canvas = document.createElement("canvas")
@@ -128,7 +132,7 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
     }
     renderPage()
     return () => { cancelled = true; try { renderTask?.cancel() } catch {} }
-  }, [pdfBytes, page, pageCount, viewerSize])
+  }, [pdfBytes, page, pageCount, viewerSize, containerSize])
 
   useEffect(() => {
     const body = document.body
@@ -152,6 +156,25 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
       html.style.height = previousHtml.height
     }
   }, [])
+
+  useEffect(() => {
+    const element = pdfContainerRef.current
+    if (!element) return
+    const measure = () => {
+      const rect = element.getBoundingClientRect()
+      setContainerSize(previous => previous.width === rect.width && previous.height === rect.height
+        ? previous
+        : { width: rect.width, height: rect.height })
+    }
+    measure()
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(measure)
+      observer.observe(element)
+      return () => observer.disconnect()
+    }
+    window.addEventListener("resize", measure)
+    return () => window.removeEventListener("resize", measure)
+  }, [loading, error])
 
   useEffect(() => {
     const resize = () => setViewerSize({ width: window.innerWidth, height: window.innerHeight })
@@ -192,10 +215,10 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
           <button type="button" onClick={closePresenter} title="Close Sales Presenter" style={controlStyle}><X size={18}/><span className="presenter-control-label">Close</span></button>
         </div>
       </header>
-      <main style={{flex:1,minHeight:0,display:"grid",gridTemplateColumns:"minmax(64px,1fr) minmax(0,auto) minmax(64px,1fr)",alignItems:"center",position:"relative",padding:"0 12px",boxSizing:"border-box",overflow:"hidden"}}>
+      <main style={{flex:1,minHeight:0,display:"grid",gridTemplateColumns:"64px minmax(0,1fr) 64px",alignItems:"center",position:"relative",padding:"0 12px",boxSizing:"border-box",overflow:"hidden"}}>
         {loading ? <div style={{display:"flex",alignItems:"center",gap:10,color:"#fff"}}><LoaderCircle size={22}/>Loading presenter…</div> : error ? <div style={{maxWidth:520,padding:24,textAlign:"center"}}><div style={{fontWeight:700,marginBottom:8}}>Presenter unavailable</div><div style={{fontSize:13,lineHeight:1.6,color:"#d4dbe4"}}>{error}</div></div> : <>
           <div style={{gridColumn:1,gridRow:1,display:"flex",justifyContent:"center",alignItems:"center",minWidth:0,zIndex:2}}><button type="button" aria-label="Previous page" disabled={page===0||renderingPage} onClick={()=>changePage(p=>p-1,"button")} style={{...navStyle,position:"relative",top:"auto",left:"auto",transform:"none",opacity:page===0?.35:1}}><ChevronLeft size={30}/></button></div>
-          <div style={{gridColumn:2,gridRow:1,display:"flex",alignItems:"center",justifyContent:"center",minWidth:0,minHeight:0,width:"100%",height:"100%",overflow:"hidden"}}>
+          <div ref={pdfContainerRef} style={{gridColumn:2,gridRow:1,display:"flex",alignItems:"center",justifyContent:"center",minWidth:0,minHeight:0,width:"100%",height:"100%",overflow:"hidden"}}>
             {renderingPage ? <LoaderCircle size={26}/> : renderedPage ? <canvas ref={node => { if (node && renderedPage.canvas && node !== renderedPage.canvas) { node.width = renderedPage.canvas.width; node.height = renderedPage.canvas.height; node.style.width = renderedPage.width + "px"; node.style.height = renderedPage.height + "px"; node.getContext("2d").drawImage(renderedPage.canvas,0,0) } }} style={{display:"block",maxWidth:"100%",maxHeight:"100%",objectFit:"contain",boxShadow:"0 4px 18px rgba(0,0,0,.35)"}} /> : null}
           </div>
           <div style={{gridColumn:3,gridRow:1,display:"flex",justifyContent:"center",alignItems:"center",minWidth:0,zIndex:2}}><button type="button" aria-label="Next page" disabled={page>=pageCount-1||renderingPage} onClick={()=>changePage(p=>p+1,"button")} style={{...navStyle,position:"relative",top:"auto",right:"auto",transform:"none",opacity:page>=pageCount-1?.35:1}}><ChevronRight size={30}/></button></div>
