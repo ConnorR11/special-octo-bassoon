@@ -1341,15 +1341,18 @@ export default function EPVSCalculator({
             : 0,
         })
 
+        const paymentMethod = String(data.paymentMethod || "").trim().toLowerCase()
+        const isCashPayment = paymentMethod === "cash"
         const financeAnnualPayment =
-          data.paymentMethod === "Finance" && year <= Number(data.financeTerm || 0)
+          !isCashPayment && year <= Number(data.financeTerm || 0)
             ? monthlyPaymentForYear(data) * 12
             : 0
 
-        const isCashPayment = String(data.paymentMethod || "").trim().toLowerCase() === "cash"
+        // Persist payment figures in the projection itself: cash is the full
+        // system cost in Year 1 and zero in all subsequent years.
         const yearlyPayment = isCashPayment
           ? year === 1
-            ? Math.max(0, systemCost)
+            ? Math.max(0, Number(data.systemCost) || 0)
             : 0
           : financeAnnualPayment + (year === 1 ? deposit : 0)
 
