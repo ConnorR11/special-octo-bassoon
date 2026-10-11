@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react"
-import { CheckCircle2, ChevronLeft, ChevronRight, Clock3, XCircle } from "lucide-react"
+import { CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, XCircle } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
 const PAGE_SIZE = 10
@@ -49,7 +49,7 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
   const [actions, setActions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  const [currentPage, setCurrentPage] = useState(1)
+  const [currentPage, setCurrentPage] = useState(1)\n  const [expandedActionId, setExpandedActionId] = useState(null)
 
   async function loadActions() {
     if (!supabase || !entityId) {
@@ -63,7 +63,7 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
 
     const { data, error: queryError } = await supabase
       .from("action_runs")
-      .select("id, action_type, status, triggered_by, started_at, completed_at, created_at")
+      .select("id, action_type, status, triggered_by, started_at, completed_at, created_at, entity_type, entity_id, input_data, output_data, error_message")
       .eq("entity_type", entityType)
       .eq("entity_id", entityId)
       .order("created_at", { ascending: false })
@@ -207,17 +207,51 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
       const label = display(action.action_type, "Action").replace(/_/g, " ")
       const date = action.completed_at || action.started_at || action.created_at
 
+      const expanded = expandedActionId === action.id
+      const detail = (value) => {
+        if (value === null || value === undefined || value === "") return "—"
+        if (typeof value === "string") {
+          try { return JSON.stringify(JSON.parse(value), null, 2) } catch { return value }
+        }
+        return JSON.stringify(value, null, 2)
+      }
+
       return (
-        <div className="action-history-row" key={action.id}>
-          <div className="action-history-icon">{statusIcon(status)}</div>
-          <div className="action-history-action">{label}</div>
-          <div className={`action-history-status ${status}`}>
-            {statusIcon(status)}
-            {statusLabel(status)}
-          </div>
-          <div className="action-history-user">{display(action.triggered_by)}</div>
-          <div className="action-history-date">{formatDate(date)}</div>
-        </div>
+        <React.Fragment key={action.id}>
+          <button
+            type="button"
+            className={`action-history-row action-history-row-button ${expanded ? "expanded" : ""}`}
+            onClick={() => setExpandedActionId(current => current === action.id ? null : action.id)}
+            aria-expanded={expanded}
+          >
+            <div className="action-history-icon">{statusIcon(status)}</div>
+            <div className="action-history-action">{label}</div>
+            <div className={`action-history-status ${status}`}>
+              {statusIcon(status)}
+              {statusLabel(status)}
+            </div>
+            <div className="action-history-user">{display(action.triggered_by)}</div>
+            <div className="action-history-date">{formatDate(date)}</div>
+            <ChevronDown className="action-history-expand-icon" size={15} />
+          </button>
+          {expanded && (
+            <div className="action-history-details">
+              <div className="action-history-detail-grid">
+                <div><span>Action ID</span><code>{display(action.id)}</code></div>
+                <div><span>Entity type</span><code>{display(action.entity_type, entityType)}</code></div>
+                <div><span>Entity ID</span><code>{display(action.entity_id, entityId)}</code></div>
+                <div><span>Started</span><strong>{formatDate(action.started_at || action.created_at)}</strong></div>
+                <div><span>Completed</span><strong>{formatDate(action.completed_at)}</strong></div>
+                <div><span>Triggered by</span><strong>{display(action.triggered_by)}</strong></div>
+              </div>
+              {action.error_message && <div className="action-history-error-detail"><strong>Error</strong><pre>{action.error_message}</pre></div>}
+              <div className="action-history-json-grid">
+                <div><h4>Input data</h4><pre>{detail(action.input_data)}</pre></div>
+                <div><h4>Output data</h4><pre>{detail(action.output_data)}</pre></div>
+              </div>
+            </div>
+          )}
+        </React.Fragment>
       )
     })
   }
@@ -230,7 +264,21 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
         .action-history-empty{padding:18px 16px;color:#94a3b8;font-size:12px}
         .action-history-error{padding:12px 16px;color:#991b1b;background:#fef2f2;font-size:12px}
         .action-history-list{display:flex;flex-direction:column;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
-        .action-history-row{display:grid;grid-template-columns:32px minmax(150px,1fr) 110px 150px 145px;gap:12px;align-items:center;padding:11px 16px;border-bottom:1px solid #edf0f3;font-size:12px;min-width:650px;box-sizing:border-box}
+        .action-history-row{display:grid;grid-template-columns:32px minmax(150px,1fr) 110px 150px 145px 18px;gap:12px;align-items:center;padding:11px 16px;border-bottom:1px solid #edf0f3;font-size:12px;min-width:670px;box-sizing:border-box}
+        .action-history-row-button{width:100%;text-align:left;background:#fff;border:0;font-family:inherit;cursor:pointer;color:inherit}
+        .action-history-row-button:hover,.action-history-row-button.expanded{background:#f8fafc}
+        .action-history-row-button .action-history-expand-icon{color:#94a3b8;transition:transform .15s}
+        .action-history-row-button.expanded .action-history-expand-icon{transform:rotate(180deg)}
+        .action-history-details{padding:14px 16px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0}
+        .action-history-detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
+        .action-history-detail-grid>div{min-width:0;display:flex;flex-direction:column;gap:4px}
+        .action-history-detail-grid span,.action-history-json-grid h4,.action-history-error-detail strong{font-size:10px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin:0}
+        .action-history-detail-grid strong,.action-history-detail-grid code{font-size:11px;color:#334155;overflow-wrap:anywhere}
+        .action-history-json-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+        .action-history-json-grid>div{min-width:0}
+        .action-history-json-grid pre,.action-history-error-detail pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow:auto;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:10px;margin:6px 0 0;font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;color:#334155}
+        .action-history-error-detail{margin-bottom:12px}
+        .action-history-error-detail pre{border-color:#fecaca;color:#991b1b;background:#fff7f7}
         .action-history-row:last-child{border-bottom:0}
         .action-history-icon{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:#f3f5f7;color:#64748b}
         .action-history-action{font-weight:700;color:#172033;text-transform:capitalize}
@@ -245,7 +293,7 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
         .action-history-page-button:hover:not(:disabled){background:#f1f5f9}
         .action-history-page-button:disabled{opacity:.4;cursor:not-allowed}
         .action-history-page-number{font-size:11px;color:#475569;min-width:55px;text-align:center}
-        @media(max-width:800px){.action-history-row{grid-template-columns:32px minmax(150px,1fr) 110px 150px 145px;gap:8px;padding:11px 12px}.action-history-user,.action-history-date{display:block}.action-history-pagination{padding:10px 12px}}
+        @media(max-width:800px){.action-history-row{grid-template-columns:28px minmax(125px,1fr) 95px 18px;gap:8px;padding:11px 12px;min-width:0}.action-history-row .action-history-user,.action-history-row .action-history-date{display:none}.action-history-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.action-history-json-grid{grid-template-columns:minmax(0,1fr)}.action-history-pagination{padding:10px 12px}}
       `}</style>
 
       <div className="action-history-header">Activity</div>
