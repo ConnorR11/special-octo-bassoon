@@ -14,7 +14,7 @@ const newBlock = `        const yearlyPayment =
           data.paymentMethod === "Finance"
             ? financeAnnualPayment + (year === 1 ? deposit : 0)
             : year === 1
-              ? systemCost
+              ? Math.max(0, systemCost)
               : 0`
 
 if (source.includes(newBlock)) {
