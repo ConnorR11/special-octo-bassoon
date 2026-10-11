@@ -77,13 +77,15 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,permissi
    const pdfResponse=await fetch(contractPreviewUrl);
    if(!pdfResponse.ok)throw new Error("Unable to read the generated contract PDF.");
    const pdfBlob=await pdfResponse.blob();
-   const reader=new FileReader();
-   const pdfBase64=await new Promise((resolve,reject)=>{reader.onload=()=>resolve(String(reader.result||"").split(",")[1]||"");reader.onerror=()=>reject(new Error("Unable to prepare the contract attachment."));reader.readAsDataURL(pdfBlob)});
-   if(!pdfBase64)throw new Error("The generated contract PDF was empty.");
+   if(!pdfBlob.size)throw new Error("The generated contract PDF was empty.");
+   const fileName=`${String(appointment.name||"Customer").replace(/[^a-z0-9]+/gi,"-")}-Digital-Solar-Contract.pdf`;
+   const pdfPath=`contract-pdfs/${appointment.appointment_row_id}/${Date.now()}-${fileName}`;
+   const{error:uploadError}=await supabase.storage.from("signatures").upload(pdfPath,pdfBlob,{contentType:"application/pdf",upsert:true});
+   if(uploadError)throw new Error(`Unable to upload contract PDF: ${uploadError.message}`);
    const response=await fetch("/api/sales/send-contract",{
     method:"POST",
     headers:{"Content-Type":"application/json","Authorization":`Bearer ${accessToken}`},
-    body:JSON.stringify({appointment_row_id:appointment.appointment_row_id,customer_email:customerEmail.trim(),file_name:`${String(appointment.name||"Customer").replace(/[^a-z0-9]+/gi,"-")}-Digital-Solar-Contract.pdf`,pdf_base64:pdfBase64})
+    body:JSON.stringify({appointment_row_id:appointment.appointment_row_id,customer_email:customerEmail.trim(),file_name:fileName,pdf_path:pdfPath})
    });
    const payload=await response.json().catch(()=>({}));
    if(!response.ok)throw new Error(payload.error||`Unable to send contract (HTTP ${response.status}).`);
