@@ -103,7 +103,7 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,permissi
    const pdfPath=`contract-pdfs/${appointment.appointment_row_id}/${Date.now()}-${fileName}`;
    const{error:uploadError}=await supabase.storage.from("signatures").upload(pdfPath,pdfBlob,{contentType:"application/pdf",upsert:true});
    if(uploadError)throw new Error(`Unable to upload contract PDF: ${uploadError.message}`);
-   const response=await fetch("/api/sales/send-contract",{
+   const response=await fetch("/api/sales/send-solar-contract",{
     method:"POST",
     headers:{"Content-Type":"application/json","Authorization":`Bearer ${accessToken}`},
     body:JSON.stringify({appointment_row_id:appointment.appointment_row_id,customer_email:customerEmail.trim(),file_name:fileName,pdf_path:pdfPath})
