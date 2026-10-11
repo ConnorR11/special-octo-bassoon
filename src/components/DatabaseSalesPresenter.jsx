@@ -165,9 +165,9 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
         </>}
       </main>
       <footer style={{display:"flex",alignItems:"center",justifyContent:"center",gap:18,padding:"12px 16px",background:"#0c1a29",borderTop:"1px solid #23384a"}}>
-        <button type="button" disabled={page===0||loading} onClick={()=>setPage(p=>Math.max(0,p-1))} style={bottomButtonStyle} ><ChevronLeft size={17}/>Previous</button>
+        <button type="button" disabled={page===0||loading} onClick={()=>changePage(p=>p-1,"button")} style={bottomButtonStyle} ><ChevronLeft size={17}/>Previous</button>
         <span style={{fontSize:12,color:"#a8b8c8"}}>Use the arrow keys or buttons to navigate</span>
-        <button type="button" disabled={!pageCount||page>=pageCount-1||loading} onClick={()=>setPage(p=>Math.min(pageCount-1,p+1))} style={bottomButtonStyle}>Next<ChevronRight size={17}/></button>
+        <button type="button" disabled={!pageCount||page>=pageCount-1||loading} onClick={()=>changePage(p=>p+1,"button")} style={bottomButtonStyle}>Next<ChevronRight size={17}/></button>
       </footer>
       <style>{`@media(max-width:600px){.presenter-control-label{display:none}} #solar-sales-presenter-viewer:fullscreen{background:#07111c}`}</style>
     </div>,
