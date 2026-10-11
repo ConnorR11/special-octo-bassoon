@@ -155,7 +155,25 @@ export default async function handler(req, res) {
     }
     const pdfBase64 = Buffer.from(await pdfFile.arrayBuffer()).toString("base64")
 
-    const subject = `Your Homeshield contract${appointment.contract_number ? ` – ${appointment.contract_number}` : ""}`
+    const { data: emailTemplate, error: templateError } = await supabase
+      .from("templates")
+      .select("name,description,template_body,active")
+      .eq("template_type", "email")
+      .eq("name", "Solar Contract Email")
+      .eq("active", true)
+      .maybeSingle()
+    if (templateError) throw templateError
+    if (!emailTemplate) return await fail(500, "The active Solar Contract Email template was not found. Open CRM Templates and activate it.")
+
+    const replacements = {
+      customer_name: appointment.name || "Customer",
+      contract_number: appointment.contract_number || "",
+      recipient: customerEmail,
+      sender,
+    }
+    const renderTemplate = value => String(value || "").replace(/{{\\s*([a-zA-Z0-9_]+)\\s*}}/g, (_, key) => replacements[key] ?? "")
+    const subject = renderTemplate(emailTemplate.description) || `Your Homeshield contract${appointment.contract_number ? ` – ${appointment.contract_number}` : ""}`
+    const emailBody = renderTemplate(emailTemplate.template_body) || `Dear ${appointment.name || "Customer"},\\n\\nPlease find attached your Homeshield contract.\\n\\nKind regards,\\nHomeshield Scotland Ltd`
     const sendResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(sender)}/sendMail`, {
       method: "POST",
       headers: {
