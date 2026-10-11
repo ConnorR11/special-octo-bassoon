@@ -110,7 +110,7 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection, data = {} })
         displayNetPosition: totalPayments + cumulativeBenefit,
       }
     })
-  }, [rows])
+  }, [rows, data.paymentMethod, data.systemCost])
 
   const totals = useMemo(
     () =>
