@@ -2,6 +2,7 @@ import React, { useState } from "react"
 import { Sun, BarChart3, Link2 } from "lucide-react"
 import SolarAppointmentAnalysis from "./SolarAppointmentAnalysis"
 import OpenSolarIds from "./OpenSolarIds"
+import SalesPresenterUsage from "./SalesPresenterUsage"
 
 export default function SolarBackend({ onSelectAppointment }) {
   const [activeTab, setActiveTab] = useState("analysis")
@@ -43,13 +44,18 @@ export default function SolarBackend({ onSelectAppointment }) {
           <button type="button" className={`solar-backend-tab ${activeTab === "opensolar" ? "active" : ""}`} onClick={() => setActiveTab("opensolar")}>
             <Link2 size={15}/>OpenSolar IDs
           </button>
+          <button type="button" className={`solar-backend-tab ${activeTab === "presenter" ? "active" : ""}`} onClick={() => setActiveTab("presenter")}>
+            <BarChart3 size={15}/>Sales Presenter Usage
+          </button>
         </div>
 
         <div className="solar-backend-content">
           {activeTab === "analysis" ? (
             <SolarAppointmentAnalysis embedded onSelectAppointment={onSelectAppointment}/>
-          ) : (
+          ) : activeTab === "opensolar" ? (
             <OpenSolarIds embedded/>
+          ) : (
+            <SalesPresenterUsage/>
           )}
         </div>
       </div>
