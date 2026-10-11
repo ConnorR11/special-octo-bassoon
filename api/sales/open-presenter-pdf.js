@@ -22,10 +22,10 @@ export default async function handler(req, res) {
     if (userError || !userData?.user) return json(res, 401, { error: "Your session has expired. Please sign in again." })
     const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {})
     const path = String(body.path || "")
-    if (path !== "sales-presenter/Homeshield-Solar-Presenter-edited.pdf") {
+    if (path !== "Homeshield-Solar-Presenter-edited.pdf") {
       return json(res, 400, { error: "Invalid presenter file reference." })
     }
-    const { data, error } = await supabase.storage.from("signatures").createSignedUrl(path, 1800)
+    const { data, error } = await supabase.storage.from("presenters").createSignedUrl(path, 1800)
     if (error || !data?.signedUrl) return json(res, 404, { error: "The presenter PDF has not been uploaded to private storage yet." })
     return json(res, 200, { url: data.signedUrl })
   } catch (error) {
