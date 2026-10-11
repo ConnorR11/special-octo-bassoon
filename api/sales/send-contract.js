@@ -19,8 +19,9 @@ export default async function handler(req) {
   const clientSecret = process.env.MICROSOFT_CLIENT_SECRET
   const sender = process.env.CONTRACT_SENDER_EMAIL
 
-  if (![supabaseUrl, serviceKey, tenantId, clientId, clientSecret, sender].every(Boolean)) {
-    return json(500, { error: "Email service is not fully configured. Check the server environment variables." })
+  if (![supabaseUrl, serviceKey].every(Boolean)) {
+    console.error("Contract email attempt cannot be logged: Supabase server configuration is missing.")
+    return json(500, { error: "Contract email logging is not configured. Check the Supabase server environment variables." })
   }
 
   const supabase = createClient(supabaseUrl, serviceKey, {
@@ -89,6 +90,9 @@ export default async function handler(req) {
     if (logError) console.error("Unable to create contract email integration log:", logError.message)
     else logId = logRow?.id || null
 
+    if (![tenantId, clientId, clientSecret, sender].every(Boolean)) {
+      return await fail(500, "Email service is not fully configured. Check the Microsoft 365 email environment variables.")
+    }
     if (!appointmentRowId || !customerEmail || !pdfPath) {
       return await fail(400, "Appointment, customer email and contract PDF are required.")
     }
