@@ -103,7 +103,7 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
         const pdfjsUrl = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs"
         const pdfjs = await import(/* @vite-ignore */ pdfjsUrl)
         pdfjs.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs"
-        const pdf = await pdfjs.getDocument({ data: new Uint8Array(pdfBytes) }).promise
+        const pdf = await pdfjs.getDocument({ data: new Uint8Array(pdfBytes).slice() }).promise
         const pdfPage = await pdf.getPage(page + 1)
         const base = pdfPage.getViewport({ scale: 1 })
         const availableWidth = Math.max(320, window.innerWidth - 80)
