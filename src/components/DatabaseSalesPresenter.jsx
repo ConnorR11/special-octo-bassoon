@@ -162,10 +162,10 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
           <button type="button" onClick={closePresenter} title="Close Sales Presenter" style={controlStyle}><X size={18}/><span className="presenter-control-label">Close</span></button>
         </div>
       </header>
-      <main style={{flex:1,minHeight:0,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",padding:"4px 0",boxSizing:"border-box"}}>
+      <main style={{flex:1,minHeight:0,display:"flex",alignItems:"flex-start",justifyContent:"flex-start",position:"relative",padding:"0",boxSizing:"border-box"}}>
         {loading ? <div style={{display:"flex",alignItems:"center",gap:10,color:"#fff"}}><LoaderCircle size={22}/>Loading presenter…</div> : error ? <div style={{maxWidth:520,padding:24,textAlign:"center"}}><div style={{fontWeight:700,marginBottom:8}}>Presenter unavailable</div><div style={{fontSize:13,lineHeight:1.6,color:"#d4dbe4"}}>{error}</div></div> : <>
           <button type="button" aria-label="Previous page" disabled={page===0||renderingPage} onClick={()=>changePage(p=>p-1,"button")} style={{...navStyle,left:8,opacity:page===0?.35:1}}><ChevronLeft size={30}/></button>
-          <div style={{position:"absolute",inset:0,width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",minWidth:0,minHeight:0,overflow:"hidden"}}>
+          <div style={{position:"absolute",inset:0,width:"100%",height:"100%",display:"flex",alignItems:"flex-start",justifyContent:"flex-start",minWidth:0,minHeight:0,overflow:"hidden"}}>
             {renderingPage ? <LoaderCircle size={26}/> : pageUrl ? <iframe key={pageUrl} title={`Solar Presenter page ${page+1}`} src={pageUrl+"#toolbar=0&navpanes=0&view=Fit"} style={{position:"absolute",inset:0,width:"100%",height:"100%",maxWidth:"none",border:0,background:"#07111c"}} /> : null}
           </div>
           <button type="button" aria-label="Next page" disabled={page>=pageCount-1||renderingPage} onClick={()=>changePage(p=>p+1,"button")} style={{...navStyle,right:8,opacity:page>=pageCount-1?.35:1}}><ChevronRight size={30}/></button>
