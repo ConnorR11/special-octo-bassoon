@@ -413,7 +413,7 @@ function BodyCell({ children, green = false, negative = false }) {
         padding: "5px 7px",
         textAlign: "right",
         whiteSpace: "nowrap",
-        fontSize: 8,
+        fontSize: 10,
         fontWeight: 600,
       }}
     >
