@@ -15,6 +15,47 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(true)
   const [renderingPage, setRenderingPage] = useState(false)
+  const [sessionUser, setSessionUser] = useState(null)
+  const [closeLogged, setCloseLogged] = useState(false)
+
+  async function logPresenterAction(action, details = {}) {
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser()
+      if (userError) throw userError
+      const user = userData?.user
+      const now = new Date().toISOString()
+      const { error } = await supabase.from("action_runs").insert({
+        action_type: "sales_presenter",
+        status: "completed",
+        entity_type: "appointment",
+        entity_id: appointment?.appointment_row_id || null,
+        triggered_by: user?.email || user?.id || "unknown",
+        started_at: now,
+        completed_at: now,
+        input_data: { event: action, appointment_row_id: appointment?.appointment_row_id || null, customer_name: appointment?.name || null, ...details },
+        output_data: { event: action, logged_at: now, ...details },
+      })
+      if (error) throw error
+    } catch (err) {
+      console.error("Sales Presenter usage logging failed:", err)
+    }
+  }
+
+  function changePage(nextPage, source = "button") {
+    setPage(current => {
+      const target = Math.max(0, Math.min(Math.max(0, pageCount - 1), typeof nextPage === "function" ? nextPage(current) : nextPage))
+      if (target !== current) logPresenterAction("page_changed", { from_page: current + 1, to_page: target + 1, navigation: source })
+      return target
+    })
+  }
+
+  function closePresenter() {
+    if (!closeLogged) {
+      setCloseLogged(true)
+      logPresenterAction("closed", { final_page: page + 1, page_count: pageCount })
+    }
+    onClose?.()
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -39,6 +80,7 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
         setSourceUrl(result.url)
         setPdfBytes(bytes)
         setPageCount(document.getPageCount())
+        logPresenterAction("opened", { page_count: document.getPageCount(), presenter: "solar_pdf" })
       } catch (e) {
         if (!cancelled) setError(e?.message || "Unable to load the Solar Presenter PDF.")
       } finally {
@@ -88,14 +130,14 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [onClose, pageCount])
+  }, [onClose, pageCount, page])
 
   useEffect(() => () => { if (pageUrl) URL.revokeObjectURL(pageUrl) }, [pageUrl])
 
   async function enterFullscreen() {
     try {
       const element = document.getElementById("solar-sales-presenter-viewer")
-      if (element?.requestFullscreen) await element.requestFullscreen()
+      if (element?.requestFullscreen) { await element.requestFullscreen(); logPresenterAction("fullscreen_entered", { page: page + 1 }) }
     } catch {}
   }
 
@@ -110,16 +152,16 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           {pageCount > 0 && <span style={{fontSize:13,fontWeight:700,minWidth:64,textAlign:"center"}}>{page + 1} / {pageCount}</span>}
           <button type="button" onClick={enterFullscreen} title="Full screen" style={controlStyle}><Maximize2 size={17}/><span className="presenter-control-label">Full screen</span></button>
-          <button type="button" onClick={onClose} title="Close Sales Presenter" style={controlStyle}><X size={18}/><span className="presenter-control-label">Close</span></button>
+          <button type="button" onClick={closePresenter} title="Close Sales Presenter" style={controlStyle}><X size={18}/><span className="presenter-control-label">Close</span></button>
         </div>
       </header>
       <main style={{flex:1,minHeight:0,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",padding:"4px 56px",boxSizing:"border-box"}}>
         {loading ? <div style={{display:"flex",alignItems:"center",gap:10,color:"#fff"}}><LoaderCircle size={22}/>Loading presenter…</div> : error ? <div style={{maxWidth:520,padding:24,textAlign:"center"}}><div style={{fontWeight:700,marginBottom:8}}>Presenter unavailable</div><div style={{fontSize:13,lineHeight:1.6,color:"#d4dbe4"}}>{error}</div></div> : <>
-          <button type="button" aria-label="Previous page" disabled={page===0||renderingPage} onClick={()=>setPage(p=>Math.max(0,p-1))} style={{...navStyle,left:16,opacity:page===0?.35:1}}><ChevronLeft size={30}/></button>
+          <button type="button" aria-label="Previous page" disabled={page===0||renderingPage} onClick={()=>changePage(p=>p-1,"button")} style={{...navStyle,left:16,opacity:page===0?.35:1}}><ChevronLeft size={30}/></button>
           <div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",minWidth:0,minHeight:0}}>
             {renderingPage ? <LoaderCircle size={26}/> : pageUrl ? <iframe key={pageUrl} title={`Solar Presenter page ${page+1}`} src={pageUrl+"#toolbar=0&navpanes=0&view=Fit"} style={{width:"100%",height:"100%",maxWidth:"none",border:0,background:"#07111c"}} /> : null}
           </div>
-          <button type="button" aria-label="Next page" disabled={page>=pageCount-1||renderingPage} onClick={()=>setPage(p=>Math.min(pageCount-1,p+1))} style={{...navStyle,right:16,opacity:page>=pageCount-1?.35:1}}><ChevronRight size={30}/></button>
+          <button type="button" aria-label="Next page" disabled={page>=pageCount-1||renderingPage} onClick={()=>changePage(p=>p+1,"button")} style={{...navStyle,right:16,opacity:page>=pageCount-1?.35:1}}><ChevronRight size={30}/></button>
         </>}
       </main>
       <footer style={{display:"flex",alignItems:"center",justifyContent:"center",gap:18,padding:"12px 16px",background:"#0c1a29",borderTop:"1px solid #23384a"}}>
