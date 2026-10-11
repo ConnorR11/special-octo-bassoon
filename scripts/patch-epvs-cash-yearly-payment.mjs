@@ -23,7 +23,6 @@ if (end === -1) {
 
 const currentBlock = source.slice(start, end)
 const desiredBlock = `const isCashPayment = String(data.paymentMethod || "").trim().toLowerCase() === "cash"
-        const systemCostValue = Math.max(0, Number(data.systemCost) || 0)
         const yearlyPayment = isCashPayment
           ? (year === 1 ? systemCostValue : 0)
           : (
