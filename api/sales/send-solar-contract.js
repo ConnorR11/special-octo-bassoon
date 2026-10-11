@@ -216,136 +216,6 @@ export default async function handler(req, res) {
       return await fail(502, `Microsoft 365 could not send the contract (HTTP ${sendResponse.status}).`, sendResponse.status)
     }
 
-    // Synchronise the signed solar contract into Pipedrive and the CRM deals table.
-    // Prefer existing Supabase/Pipedrive records so a retry does not create a duplicate deal.
-    let dealSync = { success: false }
-    try {
-      const pipedriveToken = process.env.PIPEDRIVE_API_TOKEN
-      if (!pipedriveToken) throw new Error("PIPEDRIVE_API_TOKEN is not configured.")
-
-      const pipedriveRequest = async (path, options = {}) => {
-        const separator = path.includes("?") ? "&" : "?"
-        const response = await fetch(`https://api.pipedrive.com/v1/${path}${separator}api_token=${encodeURIComponent(pipedriveToken)}`, {
-          ...options,
-          headers: {
-            "Content-Type": "application/json",
-            ...(options.headers || {}),
-          },
-        })
-        const payload = await response.json().catch(() => ({}))
-        if (!response.ok || payload.success === false) {
-          throw new Error(payload.error || payload.error_info || `Pipedrive request failed (HTTP ${response.status}).`)
-        }
-        return payload.data
-      }
-
-      const systemCost = Number(appointment?.epvs_calculation?.data?.systemCost || 0)
-      const dealValue = Number.isFinite(systemCost) && systemCost > 0 ? systemCost : 0
-      const contractTitle = `${appointment.contract_number || "Solar Contract"} - ${appointment.name || "Customer"}`
-      const { data: linkedDeal, error: linkedDealError } = await supabase
-        .from("deals")
-        .select("pipedrive_deal_id")
-        .eq("appointment_row_id", appointmentRowId)
-        .maybeSingle()
-      if (linkedDealError) throw linkedDealError
-
-      let pipedriveDeal = null
-      if (linkedDeal?.pipedrive_deal_id) {
-        pipedriveDeal = await pipedriveRequest(`deals/${encodeURIComponent(linkedDeal.pipedrive_deal_id)}`, {
-          method: "PUT",
-          body: JSON.stringify({
-            title: contractTitle,
-            value: dealValue,
-            currency: "GBP",
-            status: "won",
-          }),
-        })
-      } else {
-        // Recover a deal created by an earlier attempt if the Supabase write was interrupted.
-        const search = await pipedriveRequest(`deals/search?term=${encodeURIComponent(appointment.contract_number || contractTitle)}&fields=title&exact_match=true`)
-        const existing = (search?.items || []).map(item => item?.item).find(item =>
-          String(item?.title || "").includes(String(appointment.contract_number || contractTitle))
-        )
-        if (existing?.id) {
-          pipedriveDeal = await pipedriveRequest(`deals/${encodeURIComponent(existing.id)}`, {
-            method: "PUT",
-            body: JSON.stringify({
-              title: contractTitle,
-              value: dealValue,
-              currency: "GBP",
-              status: "won",
-            }),
-          })
-        } else {
-          let personId = null
-          if (customerEmail) {
-            const peopleSearch = await pipedriveRequest(`persons/search?term=${encodeURIComponent(customerEmail)}&fields=email&exact_match=true`)
-            const matchedPerson = (peopleSearch?.items || []).map(item => item?.item).find(person =>
-              (person?.emails || []).some(email => String(email?.value || "").toLowerCase() === customerEmail.toLowerCase())
-            )
-            if (matchedPerson?.id) personId = matchedPerson.id
-          }
-          if (!personId) {
-            const person = await pipedriveRequest("persons", {
-              method: "POST",
-              body: JSON.stringify({
-                name: appointment.name || customerEmail,
-                email: customerEmail ? [{ value: customerEmail, primary: true, label: "work" }] : [],
-                phone: appointment.phone_number_1 ? [{ value: appointment.phone_number_1, primary: true, label: "work" }] : [],
-              }),
-            })
-            personId = person?.id || null
-          }
-          pipedriveDeal = await pipedriveRequest("deals", {
-            method: "POST",
-            body: JSON.stringify({
-              title: contractTitle,
-              value: dealValue,
-              currency: "GBP",
-              status: "won",
-              person_id: personId || undefined,
-            }),
-          })
-        }
-      }
-
-      const pipedriveDealId = Number(pipedriveDeal?.id || pipedriveDeal?.deal?.id || linkedDeal?.pipedrive_deal_id)
-      if (!Number.isFinite(pipedriveDealId) || pipedriveDealId <= 0) {
-        throw new Error("Pipedrive did not return a valid deal ID.")
-      }
-
-      const dealRow = {
-        pipedrive_deal_id: pipedriveDealId,
-        contract_number: appointment.contract_number || null,
-        customer_name: appointment.name || null,
-        phone: appointment.phone_number_1 || null,
-        email: customerEmail || null,
-        address: appointment.address || null,
-        postcode: appointment.postcode || null,
-        product: appointment.product || appointment.job_type || "Solar",
-        deal_value: dealValue || null,
-        salesperson: appointment.rep_allocated || null,
-        salesperson_name: appointment.rep_allocated || null,
-        sale_date: new Date().toISOString().slice(0, 10),
-        status: "sold",
-        notes: appointment.sales_notes || null,
-        synced_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        pipedrive_data: pipedriveDeal,
-        appointment_row_id: appointmentRowId,
-        branch: appointment.branch || null,
-      }
-      const { error: dealUpsertError } = await supabase
-        .from("deals")
-        .upsert(dealRow, { onConflict: "pipedrive_deal_id" })
-      if (dealUpsertError) throw dealUpsertError
-
-      dealSync = { success: true, pipedrive_deal_id: pipedriveDealId }
-    } catch (syncError) {
-      console.error("Contract sent, but Pipedrive/Supabase deal sync failed:", syncError)
-      dealSync = { success: false, error: syncError?.message || "Deal sync failed" }
-    }
-
     await finishLog({
       status: "success",
       httpStatus: 202,
@@ -358,7 +228,6 @@ export default async function handler(req, res) {
         attachment_name: fileName,
         appointment_row_id: appointmentRowId,
         contract_number: appointment.contract_number || null,
-        deal_sync: dealSync,
       },
     })
 
@@ -366,7 +235,6 @@ export default async function handler(req, res) {
       success: true,
       message: "Contract email accepted by Microsoft 365.",
       recipient: customerEmail,
-      deal_sync: dealSync,
     })
   } catch (error) {
     console.error("Send contract endpoint failed:", error)
