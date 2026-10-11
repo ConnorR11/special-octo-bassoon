@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { RefreshCw, Clock3, Users, Presentation } from "lucide-react"
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Scatter, Tooltip, XAxis, YAxis } from "recharts"
 import { supabase } from "../lib/supabase"
 
 function secondsLabel(value) {
@@ -56,7 +56,7 @@ export default function SalesPresenterUsage() {
         if (kind === "page_changed") {
           active.currentPage = Number(detail.to_page || output.to_page || active.currentPage)
           active.pagesSeen.add(active.currentPage)
-        } else if (kind === "closed") { active.end = now; active.closed = true; sessions.push(active); active = null }
+        } else if (kind === "closed") { active.end = now; active.closed = true; active.closePage = active.currentPage; sessions.push(active); active = null }
       }
       if (active && !active.lastEventTime) active.lastEventTime = new Date(event.started_at).getTime()
     }
@@ -73,7 +73,7 @@ export default function SalesPresenterUsage() {
     let running = 0
     const chart = Object.values(byPage).sort((a,b)=>a.page-b.page).map(item => {
       running += item.total
-      return { page: `Page ${item.page}`, pageNumber: item.page, totalSeconds: Math.round(item.total), cumulativeSeconds: Math.round(running), averageSeconds: Math.round(item.total / Math.max(1,item.sessions)), sessions: item.sessions }
+      return { page: `Page ${item.page}`, pageNumber: item.page, totalSeconds: Math.round(item.total), cumulativeSeconds: Math.round(running), averageSeconds: Math.round(item.total / Math.max(1,item.sessions)), sessions: item.sessions, closeCount: sessions.filter(session => session.closed && session.closePage === item.page).length, closeMarker: sessions.some(session => session.closed && session.closePage === item.page) ? Math.round(running) : null }
     })
     const closedSessions = sessions.filter(s=>s.closed)
     const durations = closedSessions.map(s=>Object.values(s.pageSeconds).reduce((sum,n)=>sum+n,0))
@@ -92,7 +92,7 @@ export default function SalesPresenterUsage() {
       <Metric icon={<Clock3 size={17}/>} label="Average time per closed session" value={secondsLabel(analytics.averageSeconds)}/>
       <Metric icon={<Clock3 size={17}/>} label="Recorded page time" value={secondsLabel(analytics.totalSeconds)}/>
     </div>
-    <section style={panel}><h3 style={heading}>Running total of time by page</h3><p style={sub}>Cumulative seconds recorded across presenter sessions, in page order. Average page time is shown in the table below.</p>{loading?<p>Loading usage…</p>:analytics.chart.length?<div style={{width:"100%",height:330}}><ResponsiveContainer><LineChart data={analytics.chart} margin={{top:12,right:24,left:8,bottom:8}}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="page"/><YAxis tickFormatter={secondsLabel}/><Tooltip formatter={(value,name)=>[secondsLabel(value),name==="cumulativeSeconds"?"Running total":"Time on page"]}/><Line type="monotone" dataKey="cumulativeSeconds" name="Running total" stroke="#0284c7" strokeWidth={3} dot={{r:3}} activeDot={{r:5}}/></LineChart></ResponsiveContainer></div>:<p style={sub}>No page-time data recorded in this period yet. Time tracking starts with presenter events logged by the updated CRM.</p>}</section>
+    <section style={panel}><h3 style={heading}>Running total of time by page</h3><p style={sub}>Cumulative time by page. Red markers show where a rep closed the presenter, even if they stopped before the final page.</p>{loading?<p>Loading usage…</p>:analytics.chart.length?<div style={{width:"100%",height:330}}><ResponsiveContainer><LineChart data={analytics.chart} margin={{top:12,right:24,left:8,bottom:8}}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="page"/><YAxis tickFormatter={secondsLabel}/><Tooltip formatter={(value,name)=>[name==="closeMarker"? "Presenter closed here":secondsLabel(value),name==="cumulativeSeconds"?"Running total":name==="closeMarker"?"Close event":"Time on page"]}/><Line type="monotone" dataKey="cumulativeSeconds" name="Running total" stroke="#0284c7" strokeWidth={3} dot={{r:3}} activeDot={{r:5}}/><Scatter dataKey="closeMarker" name="Presenter closed" fill="#dc2626" shape={(props)=>props.payload.closeCount>0?<circle cx={props.cx} cy={props.cy} r={7} fill="#dc2626" stroke="#fff" strokeWidth={2}/>:null}/></LineChart></ResponsiveContainer></div>:<p style={sub}>No page-time data recorded in this period yet. Time tracking starts with presenter events logged by the updated CRM.</p>}</section>
     <section style={panel}><h3 style={heading}>Average time per page</h3><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr>{["Page","Total time","Average time","Recorded visits"].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead><tbody>{analytics.chart.map(row=><tr key={row.pageNumber}><td style={td}>{row.page}</td><td style={td}>{secondsLabel(row.totalSeconds)}</td><td style={td}>{secondsLabel(row.averageSeconds)}</td><td style={td}>{row.sessions}</td></tr>)}</tbody></table></div></section>
     <section style={panel}><h3 style={heading}>Recent sessions</h3><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr>{["Customer / appointment","Team member","Opened","Status","Pages visited","Time recorded"].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead><tbody>{analytics.sessions.slice().reverse().slice(0,100).map((s,i)=><tr key={i}><td style={td}>{s.customer||s.appointment||"Appointment"}</td><td style={td}>{s.user}</td><td style={td}>{new Date(s.start).toLocaleString("en-GB")}</td><td style={td}>{s.closed?"Closed":"Open / no close event"}</td><td style={td}>{s.pagesSeen.size}</td><td style={td}>{secondsLabel(Object.values(s.pageSeconds).reduce((a,b)=>a+b,0))}</td></tr>)}</tbody></table></div></section>
   </div>
