@@ -210,7 +210,7 @@ function App() {
     pageContent = <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated}/>
   } else if (selectedAppointment) {
     pageContent = <div style={{position:"relative"}}>
-      <style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}`}</style>
+      <style>{`.appointment-detail-host > section > div:first-child > div:nth-child(2) > div:nth-child(2){display:none!important}@media (min-width:801px){.app > .sidebar{display:flex!important;transform:translateX(0)!important}.app > main{margin-left:250px!important;width:calc(100% - 250px)!important;padding:34px 42px!important}}@media (max-width:800px){.app > main{margin-left:0!important;width:100%!important;padding:22px 16px!important}}`}</style>
       <div style={{display:"flex",justifyContent:"flex-end",padding:"10px 24px 0",background:"#fff"}}>
         <AppointmentActions appointment={selectedAppointment} onUpdated={handleAppointmentUpdated} onConfirm={handleLegacyConfirm} onResult={handleLegacyResult} onOpenPickup={handleOpenPickup}/>
       </div>
