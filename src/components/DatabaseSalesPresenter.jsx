@@ -102,15 +102,16 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
         const single = await PDFDocument.create()
         const [copiedPage] = await single.copyPages(source, [page])
         single.addPage(copiedPage)
-        // Remove the grey canvas around the slide. Keep a small safety margin to
-        // avoid cutting off artwork, and resize the page bounds so PDF viewers fit it.
+        // Crop the PDF canvas around the slide. pdf-lib expects x, y, width, height
+        // (not right/top coordinates); the previous values caused the white strip
+        // and clipped artwork visible in the viewer.
         const { width, height } = copiedPage.getSize()
         const cropX = width * 0.035
         const cropY = height * 0.18
         const cropWidth = width * 0.93
         const cropHeight = height * 0.82
-        copiedPage.setCropBox(cropX, cropY, cropX + cropWidth, cropY + cropHeight)
-        copiedPage.setMediaBox(cropX, cropY, cropX + cropWidth, cropY + cropHeight)
+        copiedPage.setCropBox(cropX, cropY, cropWidth, cropHeight)
+        copiedPage.setMediaBox(cropX, cropY, cropWidth, cropHeight)
 
         const bytes = await single.save()
         const blob = new Blob([bytes], { type: "application/pdf" })
