@@ -9,6 +9,8 @@ const PRESENTER_PATH = "Homeshield-Solar-Presenter-edited.pdf"
 export default function DatabaseSalesPresenter({ appointment, onClose }) {
   const [sourceUrl, setSourceUrl] = useState("")
   const [pageUrl, setPageUrl] = useState("")
+  const [renderedPage, setRenderedPage] = useState(null)
+  const [viewerSize, setViewerSize] = useState({ width: window.innerWidth, height: window.innerHeight })
   const [page, setPage] = useState(0)
   const [pageCount, setPageCount] = useState(0)
   const [pdfBytes, setPdfBytes] = useState(null)
@@ -94,41 +96,45 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
   useEffect(() => {
     if (!pdfBytes || !pageCount) return
     let cancelled = false
-    let objectUrl = ""
+    let renderTask
     async function renderPage() {
       setRenderingPage(true)
       try {
-        const source = await PDFDocument.load(pdfBytes)
-        const single = await PDFDocument.create()
-        const [copiedPage] = await single.copyPages(source, [page])
-        single.addPage(copiedPage)
-        // Crop the PDF canvas around the slide. pdf-lib expects x, y, width, height
-        // (not right/top coordinates); the previous values caused the white strip
-        // and clipped artwork visible in the viewer.
-        const { width, height } = copiedPage.getSize()
-        const cropX = width * 0.025
-        const cropY = height * 0.025
-        const cropWidth = width * 0.95
-        const cropHeight = height * 0.95
-        copiedPage.setCropBox(cropX, cropY, cropWidth, cropHeight)
-        copiedPage.setMediaBox(cropX, cropY, cropWidth, cropHeight)
-
-        const bytes = await single.save()
-        const blob = new Blob([bytes], { type: "application/pdf" })
-        objectUrl = URL.createObjectURL(blob)
-        if (!cancelled) setPageUrl(objectUrl)
-      } catch {
-        if (!cancelled) setError("Unable to display this page. Please try again.")
+        const pdfjsUrl = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs"
+        const pdfjs = await import(/* @vite-ignore */ pdfjsUrl)
+        pdfjs.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs"
+        const pdf = await pdfjs.getDocument({ data: new Uint8Array(pdfBytes) }).promise
+        const pdfPage = await pdf.getPage(page + 1)
+        const base = pdfPage.getViewport({ scale: 1 })
+        const availableWidth = Math.max(320, window.innerWidth - 150)
+        const availableHeight = Math.max(240, window.innerHeight - 135)
+        const scale = Math.min(availableWidth / base.width, availableHeight / base.height)
+        const viewport = pdfPage.getViewport({ scale })
+        const canvas = document.createElement("canvas")
+        const context = canvas.getContext("2d", { alpha: false })
+        const ratio = window.devicePixelRatio || 1
+        canvas.width = Math.floor(viewport.width * ratio)
+        canvas.height = Math.floor(viewport.height * ratio)
+        context.setTransform(ratio, 0, 0, ratio, 0, 0)
+        renderTask = pdfPage.render({ canvasContext: context, viewport })
+        await renderTask.promise
+        if (!cancelled) setRenderedPage({ canvas, width: viewport.width, height: viewport.height })
+      } catch (e) {
+        if (!cancelled) setError("Unable to render this slide. Please refresh and try again.")
+        console.error("Presenter canvas rendering failed:", e)
       } finally {
         if (!cancelled) setRenderingPage(false)
       }
     }
     renderPage()
-    return () => {
-      cancelled = true
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-    }
-  }, [pdfBytes, page, pageCount])
+    return () => { cancelled = true; try { renderTask?.cancel() } catch {} }
+  }, [pdfBytes, page, pageCount, viewerSize])
+
+  useEffect(() => {
+    const resize = () => setViewerSize({ width: window.innerWidth, height: window.innerHeight })
+    window.addEventListener("resize", resize)
+    return () => window.removeEventListener("resize", resize)
+  }, [])
 
   useEffect(() => {
     const onKey = event => {
@@ -166,8 +172,8 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
       <main style={{flex:1,minHeight:0,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",padding:"0",boxSizing:"border-box"}}>
         {loading ? <div style={{display:"flex",alignItems:"center",gap:10,color:"#fff"}}><LoaderCircle size={22}/>Loading presenter…</div> : error ? <div style={{maxWidth:520,padding:24,textAlign:"center"}}><div style={{fontWeight:700,marginBottom:8}}>Presenter unavailable</div><div style={{fontSize:13,lineHeight:1.6,color:"#d4dbe4"}}>{error}</div></div> : <>
           <button type="button" aria-label="Previous page" disabled={page===0||renderingPage} onClick={()=>changePage(p=>p-1,"button")} style={{...navStyle,left:8,opacity:page===0?.35:1}}><ChevronLeft size={30}/></button>
-          <div style={{position:"absolute",inset:0,width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",minWidth:0,minHeight:0,overflow:"hidden"}}>
-            {renderingPage ? <LoaderCircle size={26}/> : pageUrl ? <iframe key={pageUrl} title={`Solar Presenter page ${page+1}`} src={pageUrl+"#toolbar=0&navpanes=0&view=Fit"} style={{position:"absolute",inset:0,width:"100%",height:"100%",maxWidth:"none",border:0,background:"#07111c"}} /> : null}
+          <div style={{position:"absolute",inset:0,width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",minWidth:0,minHeight:0,overflow:"hidden",padding:"8px 64px",boxSizing:"border-box"}}>
+            {renderingPage ? <LoaderCircle size={26}/> : renderedPage ? <canvas ref={node => { if (node && renderedPage.canvas && node !== renderedPage.canvas) { node.width = renderedPage.canvas.width; node.height = renderedPage.canvas.height; node.style.width = renderedPage.width + "px"; node.style.height = renderedPage.height + "px"; node.getContext("2d").drawImage(renderedPage.canvas,0,0) } }} style={{display:"block",maxWidth:"100%",maxHeight:"100%",objectFit:"contain",boxShadow:"0 4px 18px rgba(0,0,0,.35)"}} /> : null}
           </div>
           <button type="button" aria-label="Next page" disabled={page>=pageCount-1||renderingPage} onClick={()=>changePage(p=>p+1,"button")} style={{...navStyle,right:8,opacity:page>=pageCount-1?.35:1}}><ChevronRight size={30}/></button>
         </>}
