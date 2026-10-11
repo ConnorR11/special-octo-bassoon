@@ -916,6 +916,13 @@ export default function EPVSCalculator({
   }
   
   const eligibleFinanceProducts = financeProducts.filter((financeProduct) => {
+  // Cash is a payment method, not a finance product. Some rows in the
+  // finance_products table are labelled Cash, so exclude them here to avoid
+  // rendering a second Cash option that is handled as Finance by its ID.
+  const lender = String(financeProduct.lender || "").trim().toLowerCase()
+  const method = String(financeProduct.method || "").trim().toLowerCase()
+  if (lender === "cash" || method === "cash") return false
+
   const jobType = String(appointment?.job_type || "")
     .trim()
     .toLowerCase()
