@@ -18,12 +18,25 @@ export default function SalesPresenterUsage() {
   const load = useCallback(async () => {
     setLoading(true); setError("")
     try {
-      const since = new Date()
-      since.setDate(since.getDate() - Number(days))
-      const { data, error: queryError } = await supabase.from("action_runs")
+      const now = new Date()
+      let since
+      let until = null
+      if (days === "today") {
+        since = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        until = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+      } else if (days === "yesterday") {
+        since = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+        until = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      } else {
+        since = new Date()
+        since.setDate(since.getDate() - Number(days))
+      }
+      let query = supabase.from("action_runs")
         .select("id,action_type,status,entity_type,entity_id,triggered_by,started_at,completed_at,input_data,output_data")
         .eq("action_type", "sales_presenter")
         .gte("started_at", since.toISOString())
+      if (until) query = query.lt("started_at", until.toISOString())
+      const { data, error: queryError } = await query
         .order("started_at", { ascending: true })
         .limit(10000)
       if (queryError) throw queryError
@@ -169,7 +182,7 @@ export default function SalesPresenterUsage() {
   return <div style={{display:"grid",gap:18}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
       <div><h2 style={{margin:0,fontSize:20,color:"#0f172a"}}>Sales Presenter Usage</h2><p style={{margin:"5px 0 0",fontSize:12,color:"#64748b"}}>Page navigation and time spent, based on recorded presenter actions.</p></div>
-      <div style={{display:"flex",gap:8,alignItems:"center"}}><select aria-label="Filter by team member" value={selectedUser} onChange={e=>setSelectedUser(e.target.value)} style={control}><option value="all">All team members</option>{availableUsers.map(user=><option key={user} value={user}>{user}</option>)}</select><select value={days} onChange={e=>setDays(e.target.value)} style={control}><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="365">Last 12 months</option></select><button onClick={load} style={refresh}><RefreshCw size={14}/>Refresh</button></div>
+      <div style={{display:"flex",gap:8,alignItems:"center"}}><select aria-label="Filter by team member" value={selectedUser} onChange={e=>setSelectedUser(e.target.value)} style={control}><option value="all">All team members</option>{availableUsers.map(user=><option key={user} value={user}>{user}</option>)}</select><select aria-label="Filter by date" value={days} onChange={e=>setDays(e.target.value)} style={control}><option value="today">Today</option><option value="yesterday">Yesterday</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="365">Last 12 months</option></select><button onClick={load} style={refresh}><RefreshCw size={14}/>Refresh</button></div>
     </div>
     {error&&<div style={{padding:12,borderRadius:8,background:"#fef2f2",color:"#b91c1c",fontSize:13}}>{error}</div>}
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:12}}>
