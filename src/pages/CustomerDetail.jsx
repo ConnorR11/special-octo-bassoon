@@ -539,15 +539,14 @@ function CustomerDetail({
           {documentError && <div role="alert" style={{ padding: "10px 12px", borderRadius: 7, background: "#fff0f0", color: "#a33b3b", fontSize: 11 }}>{documentError}</div>}
           {documentNotice && <div role="status" style={{ padding: "10px 12px", borderRadius: 7, background: "#e8f4ed", color: "#28734c", fontSize: 11 }}>{documentNotice}</div>}
             <>
-                    <div style={{ borderTop: "1px solid #e1e6eb", paddingTop: 16 }}>
-                      <div style={{ padding: "14px 12px 10px" }}><h2 style={{ margin: 0, fontSize: 15 }}>Survey Checklist</h2><p style={{ margin: "4px 0 0", color: "#75818b", fontSize: 11 }}>Complete each section in order, then generate the combined survey PDF.</p></div>
+                    <div style={{ borderTop: "1px solid #e1e6eb", paddingTop: 0 }}>
           {documentCategories.filter(category => category.key !== "survey_photos").map(category => {
             const categoryDocuments = documents.filter(document => document.category === category.key)
             const busy = uploadingCategory === category.key
             return <><div key={category.key} style={{ borderTop: "1px solid #e1e6eb", overflow: "hidden" }}>
               <div style={{ padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "#fff", borderBottom: "1px solid #edf0f2" }}>
                 {category.key === "survey_photos" && <select value={surveySection} onChange={e=>setSurveySection(e.target.value)} style={{maxWidth:220,padding:"7px 8px",border:"1px solid #d7dee8",borderRadius:6,background:"#fff",fontSize:10}}>{surveyPhotoSections.map(section=><option key={section} value={section}>{section}</option>)}</select>}
-                <div style={{ minWidth: 0 }}><div style={{ fontSize: 12, fontWeight: 700, color: "#263645" }}>{category.label}</div><div style={{ marginTop: 4, fontSize: 10, color: "#75818b" }}>{category.hint}</div></div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, flex: "0 0 auto", borderRadius: 8, background: "#e8eef4", color: "#17364b", fontSize: 12, fontWeight: 700 }}>{category.key === "survey_video" ? "1" : "2"}</span><div style={{ minWidth: 0 }}><div style={{ fontSize: 12, fontWeight: 700, color: "#263645" }}>{category.label.replace(/^\d+\.\s*/, "")}</div><div style={{ marginTop: 4, fontSize: 10, color: "#75818b" }}>{category.hint}</div></div></div>
                 <label style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 11px", borderRadius: 7, background: busy ? "#e2e8f0" : "#002d49", color: busy ? "#64748b" : "#fff", fontSize: 10, fontWeight: 700, cursor: busy ? "wait" : "pointer", opacity: busy ? .7 : 1 }}>
                   {busy ? <LoaderCircle size={14} /> : <FileUp size={14} />}{busy ? "Uploading…" : "Upload"}
                   <input type="file" accept={category.accept} multiple={category.multiple} disabled={Boolean(uploadingCategory)} onChange={event => { uploadDocuments(category.key, event.target.files); event.target.value = "" }} style={{ display: "none" }} />
@@ -605,7 +604,7 @@ function CustomerDetail({
                         <div style={{marginTop:16,border:"1px solid #e1e6eb",borderRadius:9,overflow:"hidden"}}>
                           <button type="button" onClick={()=>setSurveyPhotosExpanded(value=>!value)} aria-expanded={surveyPhotosExpanded} style={{display:"flex",alignItems:"center",gap:12,width:"100%",padding:14,border:0,background:surveyPhotosExpanded?"#f4f8fb":"#f8fafc",textAlign:"left",cursor:"pointer"}}>
                             <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:25,height:25,borderRadius:7,background:"#e8eef4",color:"#17364b",fontSize:10,fontWeight:700,flex:"0 0 auto"}}>7</span>
-                            <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:700,color:"#263645"}}>6. Photos</span><span style={{display:"block",marginTop:4,fontSize:10,color:"#75818b"}}>Add photos to each section. Photos are saved and included in the PDF when you generate the full survey PDF.</span></span>
+                            <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:700,color:"#263645"}}>Photos</span><span style={{display:"block",marginTop:4,fontSize:10,color:"#75818b"}}>Add photos to each section. Photos are saved and included in the PDF when you generate the full survey PDF.</span></span>
                             <span style={{fontSize:10,color:"#64748b",whiteSpace:"nowrap"}}>{documents.filter(d=>d.category==="survey_photos").length} saved · {pendingSurveyPhotos.length} new</span>
                             <span style={{fontSize:17,color:"#64748b"}}>{surveyPhotosExpanded?"−":"+"}</span>
                           </button>
