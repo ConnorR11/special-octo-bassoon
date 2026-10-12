@@ -69,9 +69,9 @@ function CustomerDetail({
   const surveyCompletion = Math.round((answeredSurveyCount / surveyQuestions.length) * 100)
   const surveyPhotoSections = ["Front of Property", "Rear of Property", "Side of Property", "Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Loft Access Point", "Loft Roof Truss", "Internet DC Route", "External DC Route", "Proposed Inverter Location", "Proposed Battery Location", "Proposed Canopy Location", "Proposed Panel Layout", "Alternative Roof Elevations", "Existing Solar Equipment", "Existing EV Charger", "High Electrical Usage Items", "Shading Issues"]
   const documentCategories = [
-    { key: "survey_video", label: "Survey Video", accept: "video/*", multiple: false, hint: "Common video formats. Maximum 250 MB per file." },
+    { key: "survey_video", label: "1. Survey Video", accept: "video/*", multiple: false, hint: "Common video formats. Maximum 250 MB per file." },
     { key: "survey_photos", label: "Survey Checklist & Photos", accept: "image/jpeg,image/png,image/webp", multiple: true, hint: "Complete the checklist below and upload labelled survey photos here. Generate the combined survey PDF when finished." },
-    { key: "electricity_bill_epvs_waiver", label: "Electricity Bill / EPVS Waiver", accept: "application/pdf,image/jpeg,image/png,image/webp", multiple: true, hint: "Upload a PDF or image. Bill and waiver can be attached separately." },
+    { key: "electricity_bill_epvs_waiver", label: "7. Electricity Bill / EPVS Waiver", accept: "application/pdf,image/jpeg,image/png,image/webp", multiple: true, hint: "Upload a PDF or image. Bill and waiver can be attached separately." },
   ]
 
   async function loadDocuments() {
@@ -562,7 +562,7 @@ function CustomerDetail({
             </div>
             {category.key === "survey_video" && (
                     <div className="card" style={{ marginBottom: 18 }}>
-                      <div className="card-head"><div><h2>Solar survey checklist</h2><p>Work through each section, then generate the combined checklist and photo PDF.</p></div></div>
+                      <div className="card-head"><div><h2>2. Solar survey checklist</h2><p>Work through each section, then generate the combined checklist and photo PDF.</p></div></div>
                       <div style={{padding:"0 20px 20px"}}>
                         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
                           <div style={{flex:1,height:7,background:"#e8edf2",borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width: `${surveyCompletion}%`,background:"#16845b",borderRadius:99,transition:"width .2s"}}/></div>
@@ -579,7 +579,7 @@ function CustomerDetail({
                             const isOpen = expandedSurveySection === group.title
                             return <div key={group.title} style={{border:"1px solid #e1e6eb",borderRadius:9,overflow:"hidden"}}>
                               <button type="button" onClick={() => setExpandedSurveySection(isOpen ? "" : group.title)} aria-expanded={isOpen} style={{display:"flex",alignItems:"center",gap:12,width:"100%",padding:"14px",border:0,background:isOpen?"#f4f8fb":"#fff",textAlign:"left",cursor:"pointer"}}>
-                                <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:30,height:30,borderRadius:8,background:"#e8eef4",color:"#17364b",fontSize:12,fontWeight:700}}>{index+1}</span>
+                                <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:30,height:30,borderRadius:8,background:"#e8eef4",color:"#17364b",fontSize:12,fontWeight:700}}>{index+2}</span>
                                 <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:700,color:"#263645"}}>{group.title}</span><span style={{display:"block",marginTop:3,fontSize:10,color:"#75818b"}}>{groupAnswered} of {groupQuestions.length} answered</span></span>
                                 <span style={{fontSize:10,color:"#64748b",marginRight:5}}>{groupAnswered===groupQuestions.length ? "Complete" : "In progress"}</span>
                                 <span style={{fontSize:17,color:"#64748b"}}>{isOpen ? "−" : "+"}</span>
@@ -600,7 +600,7 @@ function CustomerDetail({
                         </div>
                         <div style={{marginTop:16,border:"1px solid #e1e6eb",borderRadius:9,overflow:"hidden"}}>
                           <button type="button" onClick={()=>setSurveyPhotosExpanded(value=>!value)} aria-expanded={surveyPhotosExpanded} style={{display:"flex",alignItems:"center",gap:12,width:"100%",padding:14,border:0,background:surveyPhotosExpanded?"#f4f8fb":"#f8fafc",textAlign:"left",cursor:"pointer"}}>
-                            <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:25,height:25,borderRadius:7,background:"#e8eef4",color:"#17364b",fontSize:10,fontWeight:700,flex:"0 0 auto"}}>5</span>
+                            <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:25,height:25,borderRadius:7,background:"#e8eef4",color:"#17364b",fontSize:10,fontWeight:700,flex:"0 0 auto"}}>6</span>
                             <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:700,color:"#263645"}}>Survey photos</span><span style={{display:"block",marginTop:4,fontSize:10,color:"#75818b"}}>Add photos to each section. Photos are saved and included in the PDF when you generate the full survey PDF.</span></span>
                             <span style={{fontSize:10,color:"#64748b",whiteSpace:"nowrap"}}>{documents.filter(d=>d.category==="survey_photos").length} saved · {pendingSurveyPhotos.length} new</span>
                             <span style={{fontSize:17,color:"#64748b"}}>{surveyPhotosExpanded?"−":"+"}</span>
