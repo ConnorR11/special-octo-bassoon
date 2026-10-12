@@ -634,7 +634,7 @@ function CustomerDetail({
                           </div>
                           </>}
                         </div>
-                        <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:16}}
+                        <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:16}}>
                           <button type="button" onClick={saveSurveyAnswers} disabled={surveySaving} style={{border:0,borderRadius:7,padding:"10px 14px",background:"#e8eef4",color:"#172554",fontWeight:700,cursor:"pointer"}}>{surveySaving?"Saving checklist…":"Save checklist"}</button>
                           <button type="button" onClick={generateSurveyPdf} disabled={generatingSurvey} style={{border:0,borderRadius:7,padding:"10px 14px",background:"#002d49",color:"#fff",fontWeight:700,cursor:"pointer"}}>{generatingSurvey?"Generating PDF…":"Generate full survey PDF"}</button>
                         </div>
