@@ -22,7 +22,7 @@ export default function MapOfInstalls(){
    const areaLeadsResult=await supabase.rpc("map_lead_counts",{p_level:"area",p_parent:null,p_lead_source:selectedSource})
    const districtLeadsResult=await supabase.rpc("map_lead_counts",{p_level:"district",p_parent:null,p_lead_source:selectedSource})
    const typesResult=await supabase.rpc("map_installs_counts",{p_level:"job_types",p_parent:null,p_job_type:null,p_lead_source:selectedSource})
-   const [appointmentSources,leadSourcesResult]=await Promise.all([supabase.from("appointments").select("lead_source").not("lead_source","is",null),supabase.from("leads").select("lead_source").not("lead_source","is",null)])
+   const leadSourcesResult=await supabase.from("leads").select("lead_source").not("lead_source","is",null).gte("received_date_time","2026-01-01T00:00:00Z").lt("received_date_time","2027-01-01T00:00:00Z")
    if(areasResult.error)throw areasResult.error
    if(districtsResult.error)throw districtsResult.error
    if(areaLeadsResult.error)throw areaLeadsResult.error
@@ -38,7 +38,7 @@ export default function MapOfInstalls(){
    setAreaRows(areas)
    setDistrictRows(districts)
    setJobTypes((typesResult.data||[]).map(row=>row.postcode_key).filter(type=>type&&type!=="(blank)").sort((a,b)=>a.localeCompare(b)))
-   setLeadSources([...new Set([...(appointmentSources.data||[]),...(leadSourcesResult.data||[])].map(row=>String(row.lead_source||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b)))
+   setLeadSources([...new Set((leadSourcesResult.data||[]).map(row=>String(row.lead_source||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b)))
  }catch(e){setError(e.message||"Unable to load postcode summaries.");setAreaRows([]);setDistrictRows([]);setJobTypes([])}finally{setLoading(false)}},[jobType,leadSource])
  useEffect(()=>{load()},[load])
  useEffect(()=>{let active=true;async function run(){setDetailsLoading(true);setDetailsError("");try{let q=supabase.from("appointments").select("appointment_row_id,appointment_date,name,postcode,job_type,cps_h,cps_c,cps_p,cps_s,result,is_pickup").gte("appointment_date","2026-01-01").lt("appointment_date",new Date().toISOString().slice(0,10)).lt("appointment_date","2027-01-01").or("cps_h.eq.true,is_pickup.eq.true,cps_s.eq.true");if(jobType!=="all")q=q.eq("job_type",jobType);if(leadSource!=="all")q=q.eq("lead_source",leadSource);if(selectedDistrict)q=q.ilike("postcode",selectedDistrict+" %");else if(selectedArea)q=q.ilike("postcode",selectedArea+"%");if(search.trim())q=q.ilike("postcode","%"+search.trim()+"%");const res=await q.order("appointment_date",{ascending:true}).range(detailsPage*50,detailsPage*50+50);if(res.error)throw res.error;if(active){setAppointmentDetails((res.data||[]).slice(0,50));setDetailsHasMore((res.data||[]).length>50);setDetailsTotal(detailsPage*50+(res.data||[]).length);}}catch(e){if(active)setDetailsError(e.message||"Unable to load appointment records")}finally{if(active)setDetailsLoading(false)}}run();return()=>{active=false}},[jobType,leadSource,selectedArea,selectedDistrict,search,detailsPage])
