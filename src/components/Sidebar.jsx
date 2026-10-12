@@ -4,7 +4,7 @@ import {
   Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck,
   Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound,
   MessageCircle, UserCog, FileCheck, LogOut, ClipboardList, Lock, KanbanSquare,
-  Presentation, Clipboard, Calculator, ShoppingCart, Building2, Search, Database, Star, Sun,
+  Presentation, Clipboard, Calculator, ShoppingCart, Building2, Search, Database, Star, Sun, Map,
 } from "lucide-react"
 import CallLog from "../pages/CallLog"
 import PhoneDialer from "./PhoneDialer"
@@ -36,7 +36,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
       "canvasser-kpi": 3,
       balances: 4,
       mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4,
-      templates: 4, "integration-logs": 4, "data-dashboard": 4, "data-clean": 4, "solar-backend": 4,
+      templates: 4, "integration-logs": 4, "data-dashboard": 4, "data-clean": 4, "solar-backend": 4, "map-of-installs": 4,
     }[route]
     return !requiredPermission || numericPermissionLevel >= requiredPermission
   }
@@ -140,6 +140,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={BarChart3} label="Data Dashboard" active={isActive("data-dashboard")} onClick={() => navigate("data-dashboard")}/>
             <NavItem icon={Database} label="Data Clean" active={isActive("data-clean")} onClick={() => navigate("data-clean")}/>
             <NavItem icon={Sun} label="Solar Backend" active={isActive("solar-backend")} onClick={() => navigate("solar-backend")}/>
+            <NavItem icon={Map} label="Map of Installs" active={isActive("map-of-installs")} onClick={() => navigate("map-of-installs")}/>
             <NavItem icon={UserCog} label="Users" active={isActive("users")} onClick={() => navigate("users")}/>
             <NavItem icon={ClipboardList} label="Tasks" active={isActive("tasks")} onClick={() => navigate("tasks")}/>
             <NavItem icon={Presentation} label="Templates" active={isActive("templates")} onClick={() => navigate("templates")}/>
