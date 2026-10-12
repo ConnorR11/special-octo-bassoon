@@ -596,19 +596,35 @@ function CustomerDetail({
                         <div style={{marginTop:16,border:"1px solid #e1e6eb",borderRadius:9,overflow:"hidden"}}>
                           <div style={{padding:14,background:"#f8fafc",borderBottom:"1px solid #e1e6eb"}}>
                             <div style={{fontSize:12,fontWeight:700,color:"#263645"}}>Survey photos</div>
-                            <div style={{marginTop:4,fontSize:10,color:"#75818b"}}>Choose a section and select photos. They will be saved and included in the PDF when you select “Generate full survey PDF”.</div>
-                            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginTop:10}}>
-                              <select value={surveySection} onChange={e=>setSurveySection(e.target.value)} style={{flex:"1 1 220px",maxWidth:320,padding:"9px 10px",border:"1px solid #d7dee8",borderRadius:7,background:"#fff",fontSize:11}}>{surveyPhotoSections.map(section=><option key={section} value={section}>{section}</option>)}</select>
-                              <label style={{display:"inline-flex",alignItems:"center",gap:7,padding:"9px 12px",borderRadius:7,border:"1px solid #d7dee8",background:"#fff",color:"#263645",fontSize:11,fontWeight:700,cursor:"pointer"}}>
-                                <FileUp size={14}/>Select photos
-                                <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={generatingSurvey} onChange={event=>{const files=Array.from(event.target.files||[]);setPendingSurveyPhotos(current=>[...current,...files.map(file=>({file,section:surveySection}))]);event.target.value=""}} style={{display:"none"}}/>
-                              </label>
+                            <div style={{marginTop:4,fontSize:10,color:"#75818b"}}>Add photos to each section. Photos are saved and included in the PDF when you generate the full survey PDF.</div>
+                            <div style={{display:"flex",alignItems:"center",gap:12,marginTop:12}}>
+                              <div style={{flex:1,height:7,background:"#e8edf2",borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.round((surveyPhotoSections.filter(section=>documents.some(d=>d.category==="survey_photos"&&d.survey_section===section)||pendingSurveyPhotos.some(p=>p.section===section)).length/surveyPhotoSections.length)*100)}%`,background:"#16845b",borderRadius:99,transition:"width .2s"}}/></div>
+                              <div style={{fontSize:11,color:"#64748b",whiteSpace:"nowrap"}}>{surveyPhotoSections.filter(section=>documents.some(d=>d.category==="survey_photos"&&d.survey_section===section)||pendingSurveyPhotos.some(p=>p.section===section)).length} of {surveyPhotoSections.length} sections have photos</div>
                             </div>
+                            <div style={{fontSize:10,color:"#75818b",marginTop:5}}>{documents.filter(d=>d.category==="survey_photos").length} saved photos · {pendingSurveyPhotos.length} new photos waiting to be saved</div>
                           </div>
-                          <div style={{padding:14,display:"grid",gap:8}}>
-                            {pendingSurveyPhotos.map((item,index)=><div key={index} style={{display:"flex",alignItems:"center",gap:10,fontSize:11,color:"#263645"}}><FileUp size={14}/><div style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.file.name}<span style={{color:"#89939c"}}> · {item.section}</span></div><button type="button" onClick={()=>setPendingSurveyPhotos(current=>current.filter((_,i)=>i!==index))} disabled={generatingSurvey} style={{border:"1px solid #f0d4d4",borderRadius:6,padding:"5px 8px",background:"#fff",color:"#a33b3b",cursor:"pointer"}}>Remove</button></div>)}
-                            {!pendingSurveyPhotos.length&&<div style={{fontSize:10,color:"#89939c"}}>No new photos selected. Existing uploaded photos will still be included.</div>}
-                            {documents.filter(document=>document.category==="survey_photos").length>0&&<div style={{fontSize:10,color:"#64748b",marginTop:4}}>{documents.filter(document=>document.category==="survey_photos").length} previously saved photo(s) will also be included.</div>}
+                          <div style={{padding:12,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:10}}>
+                            {surveyPhotoSections.map((section,index)=>{
+                              const savedPhotos=documents.filter(d=>d.category==="survey_photos"&&d.survey_section===section)
+                              const pendingPhotos=pendingSurveyPhotos.map((item,pendingIndex)=>({...item,pendingIndex})).filter(item=>item.section===section)
+                              const hasPhotos=savedPhotos.length>0||pendingPhotos.length>0
+                              return <div key={section} style={{border:"1px solid #e1e6eb",borderRadius:9,overflow:"hidden",background:"#fff"}}>
+                                <div style={{display:"flex",alignItems:"center",gap:9,padding:"11px 12px",background:hasPhotos?"#f2f8f5":"#f8fafc",borderBottom:"1px solid #edf0f2"}}>
+                                  <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:25,height:25,borderRadius:7,background:hasPhotos?"#d9f0e4":"#e8eef4",color:hasPhotos?"#18734b":"#17364b",fontSize:10,fontWeight:700}}>{index+1}</span>
+                                  <span style={{flex:1,fontSize:11,fontWeight:700,color:"#263645"}}>{section}</span>
+                                  <span style={{fontSize:9,color:hasPhotos?"#18734b":"#89939c"}}>{hasPhotos?"Photos added":"No photos"}</span>
+                                </div>
+                                <div style={{padding:11,display:"grid",gap:8}}>
+                                  <label style={{display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,padding:"9px 10px",border:"1px dashed #b9c7d4",borderRadius:7,background:"#fff",color:"#263645",fontSize:10,fontWeight:700,cursor:generatingSurvey?"wait":"pointer",opacity:generatingSurvey?.6:1}}>
+                                    <FileUp size={14}/>Add photos to this section
+                                    <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={generatingSurvey} onChange={event=>{const files=Array.from(event.target.files||[]);setPendingSurveyPhotos(current=>[...current,...files.map(file=>({file,section}))]);event.target.value=""}} style={{display:"none"}}/>
+                                  </label>
+                                  {savedPhotos.map(document=><div key={document.id} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,color:"#475569"}}><FileUp size={13}/><span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={document.file_name}>{document.file_name}</span><button type="button" onClick={()=>openDocument(document)} disabled={openingDocument===document.id} style={{border:"1px solid #d7dee8",borderRadius:5,padding:"4px 6px",background:"#fff",color:"#334155",fontSize:9,cursor:"pointer"}}>Open</button><button type="button" onClick={()=>deleteDocument(document)} aria-label={`Delete ${document.file_name}`} style={{border:"1px solid #f0d4d4",borderRadius:5,padding:"4px 6px",background:"#fff",color:"#a33b3b",fontSize:9,cursor:"pointer"}}>×</button></div>)}
+                                  {pendingPhotos.map(item=><div key={item.pendingIndex} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,color:"#475569"}}><FileUp size={13}/><span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={item.file.name}>{item.file.name}</span><button type="button" onClick={()=>setPendingSurveyPhotos(current=>current.filter((_,i)=>i!==item.pendingIndex))} disabled={generatingSurvey} style={{border:"1px solid #f0d4d4",borderRadius:5,padding:"4px 6px",background:"#fff",color:"#a33b3b",fontSize:9,cursor:"pointer"}}>Remove</button></div>)}
+                                  {!hasPhotos&&<div style={{fontSize:10,color:"#89939c"}}>No photos added for this section yet.</div>}
+                                </div>
+                              </div>
+                            })}
                           </div>
                         </div>
                         <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:16}}>
