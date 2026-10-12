@@ -54,6 +54,7 @@ function CustomerDetail({
   const [surveySection, setSurveySection] = useState("Front of Property")
   const [pendingSurveyPhotos, setPendingSurveyPhotos] = useState([])
   const [expandedSurveySection, setExpandedSurveySection] = useState("Property & installation")
+  const [surveyPhotosExpanded, setSurveyPhotosExpanded] = useState(false)
   const [generatingSurvey, setGeneratingSurvey] = useState(false)
   const surveyQuestions = [
     ["Is this home in a listed building or in a conservation area?", "listed_conservation"], ["Is it a suspended or concrete floor?", "floor_type"], ["Where is the main fusebox located?", "fusebox_location"], ["How far is the fusebox from the intended fit location of the battery/inverter?", "fusebox_distance"], ["How long is the DC run?", "dc_run"], ["Where will the battery/inverter be located?", "inverter_location"], ["Is the battery/inverter being installed on the south facing wall?", "south_wall"], ["Is a canopy or a fireproof encasement being fitted?", "canopy_fireproof"], ["What type of external walls are there?", "external_walls"], ["Building Width", "building_width"], ["Building Height", "building_height"], ["Height of roof from loft-hatch", "roof_height_loft"], ["Roof Tile Type", "roof_tile_type"], ["Condition of Roof", "roof_condition"], ["Shading Issues", "shading_issues"], ["Roof Obstructions", "roof_obstructions"], ["Any Access Issues", "access_issues"], ["Can scaffolding be erected?", "scaffolding"], ["Does customer Wi-Fi reach the battery/inverter?", "wifi_reach"], ["What is the size of the cut out switch?", "cutout_size"], ["What is the customer’s MPAN number?", "mpan"], ["Are there any high energy appliances?", "high_energy_appliances"], ["Is there sufficient loft access?", "loft_access"], ["Does the customer consent to Copex/trunking around the building? (If loft access is insufficient)", "copex_consent"], ["Does the customer have an existing solar system?", "existing_solar"], ["How many panels? (And their output)", "existing_panels"], ["Type & Size of Inverter", "existing_inverter"]
@@ -594,8 +595,13 @@ function CustomerDetail({
                           })}
                         </div>
                         <div style={{marginTop:16,border:"1px solid #e1e6eb",borderRadius:9,overflow:"hidden"}}>
-                          <div style={{padding:14,background:"#f8fafc",borderBottom:"1px solid #e1e6eb"}}>
-                            <div style={{fontSize:12,fontWeight:700,color:"#263645"}}>Survey photos</div>
+                          <button type="button" onClick={()=>setSurveyPhotosExpanded(value=>!value)} aria-expanded={surveyPhotosExpanded} style={{display:"flex",alignItems:"center",gap:12,width:"100%",padding:14,border:0,background:surveyPhotosExpanded?"#f4f8fb":"#f8fafc",textAlign:"left",cursor:"pointer"}}>
+                            <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:700,color:"#263645"}}>Survey photos</span><span style={{display:"block",marginTop:4,fontSize:10,color:"#75818b"}}>Add photos to each section. Photos are saved and included in the PDF when you generate the full survey PDF.</span></span>
+                            <span style={{fontSize:10,color:"#64748b",whiteSpace:"nowrap"}}>{documents.filter(d=>d.category==="survey_photos").length} saved · {pendingSurveyPhotos.length} new</span>
+                            <span style={{fontSize:17,color:"#64748b"}}>{surveyPhotosExpanded?"−":"+"}</span>
+                          </button>
+                          {surveyPhotosExpanded && <>
+                          <div style={{padding:14,background:"#f8fafc",borderTop:"1px solid #e1e6eb",borderBottom:"1px solid #e1e6eb"}}>
                             <div style={{marginTop:4,fontSize:10,color:"#75818b"}}>Add photos to each section. Photos are saved and included in the PDF when you generate the full survey PDF.</div>
                             <div style={{display:"flex",alignItems:"center",gap:12,marginTop:12}}>
                               <div style={{flex:1,height:7,background:"#e8edf2",borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.round((surveyPhotoSections.filter(section=>documents.some(d=>d.category==="survey_photos"&&d.survey_section===section)||pendingSurveyPhotos.some(p=>p.section===section)).length/surveyPhotoSections.length)*100)}%`,background:"#16845b",borderRadius:99,transition:"width .2s"}}/></div>
@@ -626,8 +632,9 @@ function CustomerDetail({
                               </div>
                             })}
                           </div>
+                          </>}
                         </div>
-                        <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:16}}>
+                        <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:16}}
                           <button type="button" onClick={saveSurveyAnswers} disabled={surveySaving} style={{border:0,borderRadius:7,padding:"10px 14px",background:"#e8eef4",color:"#172554",fontWeight:700,cursor:"pointer"}}>{surveySaving?"Saving checklist…":"Save checklist"}</button>
                           <button type="button" onClick={generateSurveyPdf} disabled={generatingSurvey} style={{border:0,borderRadius:7,padding:"10px 14px",background:"#002d49",color:"#fff",fontWeight:700,cursor:"pointer"}}>{generatingSurvey?"Generating PDF…":"Generate full survey PDF"}</button>
                         </div>
