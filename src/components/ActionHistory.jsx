@@ -161,7 +161,7 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
 
     document.addEventListener("click", handleActionClick, true)
     return () => document.removeEventListener("click", handleActionClick, true)
-  }, [entityType, entityId]))
+  }, [entityType, entityId])
 
   const filteredActions = actions.filter((action) => {
     const isPresenter = action.action_type === "sales_presenter"
