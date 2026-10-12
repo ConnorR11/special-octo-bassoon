@@ -48,9 +48,18 @@ function CustomerDetail({
   const [documentError, setDocumentError] = useState("")
   const [documentNotice, setDocumentNotice] = useState("")
   const [openingDocument, setOpeningDocument] = useState("")
+  const [surveyAnswers, setSurveyAnswers] = useState({})
+  const [surveySaving, setSurveySaving] = useState(false)
+  const [surveySection, setSurveySection] = useState("Front of Property")
+  const [generatingSurvey, setGeneratingSurvey] = useState(false)
+  const surveyQuestions = [
+    ["Is this home in a listed building or in a conservation area?", "listed_conservation"], ["Is it a suspended or concrete floor?", "floor_type"], ["Where is the main fusebox located?", "fusebox_location"], ["How far is the fusebox from the intended fit location of the battery/inverter?", "fusebox_distance"], ["How long is the DC run?", "dc_run"], ["Where will the battery/inverter be located?", "inverter_location"], ["Is the battery/inverter being installed on the south facing wall?", "south_wall"], ["Is a canopy or a fireproof encasement being fitted?", "canopy_fireproof"], ["What type of external walls are there?", "external_walls"], ["Building Width", "building_width"], ["Building Height", "building_height"], ["Height of roof from loft-hatch", "roof_height_loft"], ["Roof Tile Type", "roof_tile_type"], ["Condition of Roof", "roof_condition"], ["Shading Issues", "shading_issues"], ["Roof Obstructions", "roof_obstructions"], ["Any Access Issues", "access_issues"], ["Can scaffolding be erected?", "scaffolding"], ["Does customer Wi-Fi reach the battery/inverter?", "wifi_reach"], ["What is the size of the cut out switch?", "cutout_size"], ["What is the customer’s MPAN number?", "mpan"], ["Are there any high energy appliances?", "high_energy_appliances"], ["Is there sufficient loft access?", "loft_access"], ["Does the customer consent to Copex/trunking around the building? (If loft access is insufficient)", "copex_consent"], ["Does the customer have an existing solar system?", "existing_solar"], ["How many panels? (And their output)", "existing_panels"], ["Type & Size of Inverter", "existing_inverter"]
+  ]
+  const surveyPhotoSections = ["Front of Property", "Rear of Property", "Side of Property", "Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Loft Access Point", "Loft Roof Truss", "Internet DC Route", "External DC Route", "Proposed Inverter Location", "Proposed Battery Location", "Proposed Canopy Location", "Proposed Panel Layout", "Alternative Roof Elevations", "Existing Solar Equipment", "Existing EV Charger", "High Electrical Usage Items", "Shading Issues"]
   const documentCategories = [
     { key: "survey_video", label: "Survey Video", accept: "video/*", multiple: false, hint: "Common video formats. Maximum 250 MB per file." },
-    { key: "survey_photos", label: "Survey Photos", accept: "image/jpeg,image/png,image/webp", multiple: true, hint: "Upload multiple JPG, PNG or WebP photos." },
+    { key: "survey_photos", label: "Survey Photos", accept: "image/jpeg,image/png,image/webp", multiple: true, hint: "Choose a section below, then upload multiple JPG, PNG or WebP photos." },
+    { key: "survey_pdf", label: "Generated Survey PDF", accept: "application/pdf", multiple: false, hint: "Automatically generated full survey checklist and labelled photos." },
     { key: "electricity_bill_epvs_waiver", label: "Electricity Bill / EPVS Waiver", accept: "application/pdf,image/jpeg,image/png,image/webp", multiple: true, hint: "Upload a PDF or image. Bill and waiver can be attached separately." },
   ]
 
@@ -62,6 +71,9 @@ function CustomerDetail({
       const { data, error } = await supabase.from("deal_documents").select("*").eq("deal_id", deal.id).order("created_at", { ascending: false })
       if (error) throw error
       setDocuments(data || [])
+      const { data: surveyData, error: surveyError } = await supabase.from("deal_survey_answers").select("answers").eq("deal_id", deal.id).maybeSingle()
+      if (surveyError) throw surveyError
+      setSurveyAnswers(surveyData?.answers || {})
     } catch (err) {
       console.error("Unable to load deal documents:", err)
       setDocumentError(err?.message || "Unable to load deal documents.")
@@ -90,7 +102,7 @@ function CustomerDetail({
         if (uploadError) throw uploadError
         const { data: userData } = await supabase.auth.getUser()
         const { error: metadataError } = await supabase.from("deal_documents").insert({
-          deal_id: deal.id, category, file_name: file.name, storage_path: path,
+          deal_id: deal.id, category, survey_section: category === "survey_photos" ? surveySection : null, file_name: file.name, storage_path: path,
           mime_type: file.type || null, file_size: file.size, uploaded_by: userData?.user?.id || null,
         })
         if (metadataError) {
@@ -108,6 +120,24 @@ function CustomerDetail({
     } finally { setUploadingCategory("") }
   }
 
+  async function saveSurveyAnswers() {
+    setSurveySaving(true); setDocumentError("");
+    try { const { data: u } = await supabase.auth.getUser(); const { error } = await supabase.from("deal_survey_answers").upsert({ deal_id: deal.id, answers: surveyAnswers, updated_by: u?.user?.id || null, updated_at: new Date().toISOString() }, { onConflict: "deal_id" }); if (error) throw error; setDocumentNotice("Survey checklist saved."); }
+    catch (e) { setDocumentError(e?.message || "Unable to save survey checklist."); } finally { setSurveySaving(false); }
+  }
+  async function generateSurveyPdf() {
+    setGeneratingSurvey(true); setDocumentError(""); setDocumentNotice("");
+    try {
+      const { jsPDF } = await import("jspdf"); const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" }); const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight(), m = 14;
+      const header = (title) => { pdf.setFillColor(0,45,73); pdf.rect(0,0,pw,18,"F"); pdf.setTextColor(255,255,255); pdf.setFont("helvetica","bold"); pdf.setFontSize(12); pdf.text(title,m,11.5); pdf.setTextColor(30,41,59); };
+      header("Homeshield Solar Survey Checklist & Photos"); pdf.setFontSize(9); pdf.setFont("helvetica","bold"); pdf.text("Customer: " + (deal.customer_name || "—"),m,27); pdf.setFont("helvetica","normal"); pdf.text("Contract: " + (deal.contract_number || "—"),m,33); pdf.text("Address: " + ([deal.address,deal.postcode].filter(Boolean).join(", ") || "—"),m,39,{maxWidth:pw-2*m});
+      const gap=8,cw=(pw-2*m-gap)/2,rows=Math.ceil(surveyQuestions.length/2),heights=surveyQuestions.map(([q,k])=>Math.max(13,pdf.splitTextToSize(q,cw-4).length*3.7+pdf.splitTextToSize(String(surveyAnswers[k]||"—"),cw-4).length*3.7+5));let y=49;
+      for(let i=0;i<rows;i++){const h=Math.max(heights[i]||13,heights[i+rows]||13);for(let col=0;col<2;col++){const idx=col===0?i:i+rows;if(idx>=surveyQuestions.length)continue;const [q,k]=surveyQuestions[idx],x=m+col*(cw+gap);if(y+h>ph-12){pdf.addPage();header("Homeshield Solar Survey Checklist (continued)");y=27;}pdf.setDrawColor(215,222,230);pdf.setFillColor(248,250,252);pdf.roundedRect(x,y,cw,h,1,1,"FD");pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);const ql=pdf.splitTextToSize(q,cw-4);pdf.text(ql,x+2,y+4);pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.text(pdf.splitTextToSize(String(surveyAnswers[k]||"—"),cw-4),x+2,y+4+ql.length*3.7);}y+=h+2;}
+      const photos=documents.filter(d=>d.category==="survey_photos");
+      for(const section of surveyPhotoSections){pdf.addPage();header(section);const files=photos.filter(d=>(d.survey_section||"Front of Property")===section);if(!files.length){pdf.setFontSize(10);pdf.setTextColor(120,130,140);pdf.text("No photos uploaded for this section.",m,30);continue;}let py=25;for(const doc of files){const {data,error}=await supabase.storage.from("deal-documents").download(doc.storage_path);if(error)throw error;const url=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(data)});const dim=await new Promise((res,rej)=>{const im=new Image();im.onload=()=>res({w:im.width,h:im.height});im.onerror=rej;im.src=url});const maxW=pw-2*m,maxH=ph-44,s=Math.min(maxW/dim.w,maxH/dim.h);if(py+dim.h*s+10>ph-12){pdf.addPage();header(section+" (continued)");py=25;}pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.text(doc.file_name,m,py+4,{maxWidth:maxW});py+=7;pdf.addImage(url,doc.mime_type==="image/png"?"PNG":"JPEG",m,py,dim.w*s,dim.h*s,undefined,"FAST");py+=dim.h*s+10;}}
+      const blob=pdf.output("blob"),path=deal.id+"/survey_pdf/"+Date.now()+"-survey-photos.pdf";const {error:upErr}=await supabase.storage.from("deal-documents").upload(path,blob,{contentType:"application/pdf",upsert:false});if(upErr)throw upErr;const {data:u}=await supabase.auth.getUser();const {error:metaErr}=await supabase.from("deal_documents").insert({deal_id:deal.id,category:"survey_pdf",file_name:"Survey Photos.pdf",storage_path:path,mime_type:"application/pdf",file_size:blob.size,uploaded_by:u?.user?.id||null});if(metaErr){await supabase.storage.from("deal-documents").remove([path]);throw metaErr;}await loadDocuments();setDocumentNotice("Survey PDF generated and saved to Deal documents.");
+    }catch(e){console.error("Survey PDF generation failed",e);setDocumentError(e?.message||"Unable to generate survey PDF.");}finally{setGeneratingSurvey(false);}
+  }
   async function openDocument(document) {
     setOpeningDocument(document.id)
     setDocumentError("")
@@ -474,6 +504,18 @@ function CustomerDetail({
       </div>
 
       <div className="card" style={{ marginBottom: 18 }}>
+        <div className="card-head"><div><h2>Solar survey checklist</h2><p>Complete the survey answers, then generate the combined checklist and photo PDF.</p></div></div>
+        <div style={{padding:"0 20px 20px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}}>
+            {surveyQuestions.map(([question,key]) => <label key={key} style={{display:"grid",gap:5,fontSize:11,color:"#475569"}}><span>{question}</span><input value={surveyAnswers[key] || ""} onChange={e=>setSurveyAnswers(current=>({...current,[key]:e.target.value}))} placeholder="Enter answer" style={{boxSizing:"border-box",width:"100%",minHeight:36,padding:"8px 10px",border:"1px solid #d9dadd",borderRadius:7,font:"inherit"}} /></label>)}
+          </div>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:16}}>
+            <button type="button" onClick={saveSurveyAnswers} disabled={surveySaving} style={{border:0,borderRadius:7,padding:"10px 14px",background:"#e8eef4",color:"#172554",fontWeight:700,cursor:"pointer"}}>{surveySaving?"Saving checklist…":"Save checklist"}</button>
+            <button type="button" onClick={generateSurveyPdf} disabled={generatingSurvey} style={{border:0,borderRadius:7,padding:"10px 14px",background:"#002d49",color:"#fff",fontWeight:700,cursor:"pointer"}}>{generatingSurvey?"Generating PDF…":"Generate full survey PDF"}</button>
+          </div>
+        </div>
+      </div>
+      <div className="card" style={{ marginBottom: 18 }}>
         <div className="card-head"><div><h2>Deal documents</h2><p>Upload and manage survey files securely in Supabase Storage</p></div></div>
         <div style={{ padding: "0 20px 20px", display: "grid", gap: 16 }}>
           {documentError && <div role="alert" style={{ padding: "10px 12px", borderRadius: 7, background: "#fff0f0", color: "#a33b3b", fontSize: 11 }}>{documentError}</div>}
@@ -483,6 +525,7 @@ function CustomerDetail({
             const busy = uploadingCategory === category.key
             return <div key={category.key} style={{ border: "1px solid #e1e6eb", borderRadius: 9, overflow: "hidden" }}>
               <div style={{ padding: "13px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "#f8fafc", borderBottom: "1px solid #e1e6eb" }}>
+                {category.key === "survey_photos" && <select value={surveySection} onChange={e=>setSurveySection(e.target.value)} style={{maxWidth:220,padding:"7px 8px",border:"1px solid #d7dee8",borderRadius:6,background:"#fff",fontSize:10}}>{surveyPhotoSections.map(section=><option key={section} value={section}>{section}</option>)}</select>}
                 <div style={{ minWidth: 0 }}><div style={{ fontSize: 12, fontWeight: 700, color: "#263645" }}>{category.label}</div><div style={{ marginTop: 4, fontSize: 10, color: "#75818b" }}>{category.hint}</div></div>
                 <label style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 11px", borderRadius: 7, background: busy ? "#e2e8f0" : "#002d49", color: busy ? "#64748b" : "#fff", fontSize: 10, fontWeight: 700, cursor: busy ? "wait" : "pointer", opacity: busy ? .7 : 1 }}>
                   {busy ? <LoaderCircle size={14} /> : <FileUp size={14} />}{busy ? "Uploading…" : "Upload"}
