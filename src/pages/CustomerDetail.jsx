@@ -71,7 +71,7 @@ function CustomerDetail({
   const documentCategories = [
     { key: "survey_video", label: "1. Survey Video", accept: "video/*", multiple: false, hint: "Common video formats. Maximum 250 MB per file." },
     { key: "survey_photos", label: "Survey Checklist & Photos", accept: "image/jpeg,image/png,image/webp", multiple: true, hint: "Complete the checklist below and upload labelled survey photos here. Generate the combined survey PDF when finished." },
-    { key: "electricity_bill_epvs_waiver", label: "8. Electricity Bill / EPVS Waiver", accept: "application/pdf,image/jpeg,image/png,image/webp", multiple: true, hint: "Upload a PDF or image. Bill and waiver can be attached separately." },
+    { key: "electricity_bill_epvs_waiver", label: "2. Electricity Bill / EPVS Waiver", accept: "application/pdf,image/jpeg,image/png,image/webp", multiple: true, hint: "Upload a PDF or image. Bill and waiver can be attached separately." },
   ]
 
   async function loadDocuments() {
@@ -562,7 +562,7 @@ function CustomerDetail({
             </div>
             {category.key === "survey_video" && (
                     <div style={{ borderTop: "1px solid #e1e6eb", paddingTop: 16 }}>
-                      <div style={{ padding: "14px 12px 10px" }}><h2 style={{ margin: 0, fontSize: 15 }}>2. Solar survey checklist</h2><p style={{ margin: "4px 0 0", color: "#75818b", fontSize: 11 }}>Work through each section, then generate the combined checklist and photo PDF.</p></div>
+                      <div style={{ padding: "14px 12px 10px" }}><h2 style={{ margin: 0, fontSize: 15 }}>Survey Checklist</h2><p style={{ margin: "4px 0 0", color: "#75818b", fontSize: 11 }}>Work through each section, then generate the combined checklist and photo PDF.</p></div>
                       <div style={{padding:"0 12px 14px"}}>
                         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
                           <div style={{flex:1,height:7,background:"#e8edf2",borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width: `${surveyCompletion}%`,background:"#16845b",borderRadius:99,transition:"width .2s"}}/></div>
