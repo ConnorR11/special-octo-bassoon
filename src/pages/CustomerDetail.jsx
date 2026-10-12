@@ -59,8 +59,7 @@ function CustomerDetail({
   const surveyPhotoSections = ["Front of Property", "Rear of Property", "Side of Property", "Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Loft Access Point", "Loft Roof Truss", "Internet DC Route", "External DC Route", "Proposed Inverter Location", "Proposed Battery Location", "Proposed Canopy Location", "Proposed Panel Layout", "Alternative Roof Elevations", "Existing Solar Equipment", "Existing EV Charger", "High Electrical Usage Items", "Shading Issues"]
   const documentCategories = [
     { key: "survey_video", label: "Survey Video", accept: "video/*", multiple: false, hint: "Common video formats. Maximum 250 MB per file." },
-    { key: "survey_photos", label: "Survey Photos", accept: "image/jpeg,image/png,image/webp", multiple: true, hint: "Choose a section below, then upload multiple JPG, PNG or WebP photos." },
-    { key: "survey_pdf", label: "Generated Survey PDF", accept: "application/pdf", multiple: false, hint: "Automatically generated full survey checklist and labelled photos." },
+    { key: "survey_photos", label: "Survey Checklist & Photos", accept: "image/jpeg,image/png,image/webp", multiple: true, hint: "Complete the checklist below and upload labelled survey photos here. Generate the combined survey PDF when finished." },
     { key: "electricity_bill_epvs_waiver", label: "Electricity Bill / EPVS Waiver", accept: "application/pdf,image/jpeg,image/png,image/webp", multiple: true, hint: "Upload a PDF or image. Bill and waiver can be attached separately." },
   ]
 
