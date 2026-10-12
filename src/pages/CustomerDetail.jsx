@@ -538,29 +538,7 @@ function CustomerDetail({
         <div style={{ padding: "0 20px 20px", display: "grid", gap: 16 }}>
           {documentError && <div role="alert" style={{ padding: "10px 12px", borderRadius: 7, background: "#fff0f0", color: "#a33b3b", fontSize: 11 }}>{documentError}</div>}
           {documentNotice && <div role="status" style={{ padding: "10px 12px", borderRadius: 7, background: "#e8f4ed", color: "#28734c", fontSize: 11 }}>{documentNotice}</div>}
-          {documentCategories.filter(category => category.key !== "survey_photos").map(category => {
-            const categoryDocuments = documents.filter(document => document.category === category.key)
-            const busy = uploadingCategory === category.key
-            return <><div key={category.key} style={{ borderTop: "1px solid #e1e6eb", overflow: "hidden" }}>
-              <div style={{ padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "#fff", borderBottom: "1px solid #edf0f2" }}>
-                {category.key === "survey_photos" && <select value={surveySection} onChange={e=>setSurveySection(e.target.value)} style={{maxWidth:220,padding:"7px 8px",border:"1px solid #d7dee8",borderRadius:6,background:"#fff",fontSize:10}}>{surveyPhotoSections.map(section=><option key={section} value={section}>{section}</option>)}</select>}
-                <div style={{ minWidth: 0 }}><div style={{ fontSize: 12, fontWeight: 700, color: "#263645" }}>{category.label}</div><div style={{ marginTop: 4, fontSize: 10, color: "#75818b" }}>{category.hint}</div></div>
-                <label style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 11px", borderRadius: 7, background: busy ? "#e2e8f0" : "#002d49", color: busy ? "#64748b" : "#fff", fontSize: 10, fontWeight: 700, cursor: busy ? "wait" : "pointer", opacity: busy ? .7 : 1 }}>
-                  {busy ? <LoaderCircle size={14} /> : <FileUp size={14} />}{busy ? "Uploading…" : "Upload"}
-                  <input type="file" accept={category.accept} multiple={category.multiple} disabled={Boolean(uploadingCategory)} onChange={event => { uploadDocuments(category.key, event.target.files); event.target.value = "" }} style={{ display: "none" }} />
-                </label>
-              </div>
-              <div style={{ padding: categoryDocuments.length ? "3px 12px" : "10px 12px", display: "grid", gap: 0 }}>
-                {categoryDocuments.map(document => <div key={document.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #edf0f2" }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 7, background: "#eaf3f8", color: "#1676b8", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto" }}><ExternalLink size={15} /></div>
-                  <div style={{ flex: 1, minWidth: 0 }}><div title={document.file_name} style={{ fontSize: 11, fontWeight: 600, color: "#263645", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{document.file_name}</div><div style={{ marginTop: 3, fontSize: 9, color: "#89939c" }}>{document.file_size ? (document.file_size >= 1048576 ? `${(document.file_size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(document.file_size / 1024))} KB`) : "Size unknown"} · {document.created_at ? new Date(document.created_at).toLocaleString("en-GB") : ""}</div></div>
-                  <button type="button" onClick={() => openDocument(document)} disabled={openingDocument === document.id} style={{ border: "1px solid #d7dee8", borderRadius: 6, padding: "7px 9px", background: "#fff", color: "#334155", fontSize: 10, cursor: "pointer" }}>{openingDocument === document.id ? "Opening…" : "Open"}</button>
-                  <button type="button" onClick={() => deleteDocument(document)} aria-label={`Delete ${document.file_name}`} style={{ border: "1px solid #f0d4d4", borderRadius: 6, padding: 7, background: "#fff", color: "#a33b3b", cursor: "pointer" }}><Trash2 size={14} /></button>
-                </div>)}
-                {!categoryDocuments.length && <div style={{ fontSize: 10, color: "#89939c" }}>{documentsLoading ? "Loading files…" : "No files uploaded yet."}</div>}
-              </div>
-            </div>
-            {category.key === "electricity_bill_epvs_waiver" && (
+            <>
                     <div style={{ borderTop: "1px solid #e1e6eb", paddingTop: 16 }}>
                       <div style={{ padding: "14px 12px 10px" }}><h2 style={{ margin: 0, fontSize: 15 }}>Survey Checklist</h2><p style={{ margin: "4px 0 0", color: "#75818b", fontSize: 11 }}>Work through each section, then generate the combined checklist and photo PDF.</p></div>
                       <div style={{padding:"0 12px 14px"}}>
@@ -642,7 +620,30 @@ function CustomerDetail({
                         </div>
                       </div>
                     </div>
-            )}
+            </>
+          {documentCategories.filter(category => category.key !== "survey_photos").map(category => {
+            const categoryDocuments = documents.filter(document => document.category === category.key)
+            const busy = uploadingCategory === category.key
+            return <><div key={category.key} style={{ borderTop: "1px solid #e1e6eb", overflow: "hidden" }}>
+              <div style={{ padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "#fff", borderBottom: "1px solid #edf0f2" }}>
+                {category.key === "survey_photos" && <select value={surveySection} onChange={e=>setSurveySection(e.target.value)} style={{maxWidth:220,padding:"7px 8px",border:"1px solid #d7dee8",borderRadius:6,background:"#fff",fontSize:10}}>{surveyPhotoSections.map(section=><option key={section} value={section}>{section}</option>)}</select>}
+                <div style={{ minWidth: 0 }}><div style={{ fontSize: 12, fontWeight: 700, color: "#263645" }}>{category.label}</div><div style={{ marginTop: 4, fontSize: 10, color: "#75818b" }}>{category.hint}</div></div>
+                <label style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 11px", borderRadius: 7, background: busy ? "#e2e8f0" : "#002d49", color: busy ? "#64748b" : "#fff", fontSize: 10, fontWeight: 700, cursor: busy ? "wait" : "pointer", opacity: busy ? .7 : 1 }}>
+                  {busy ? <LoaderCircle size={14} /> : <FileUp size={14} />}{busy ? "Uploading…" : "Upload"}
+                  <input type="file" accept={category.accept} multiple={category.multiple} disabled={Boolean(uploadingCategory)} onChange={event => { uploadDocuments(category.key, event.target.files); event.target.value = "" }} style={{ display: "none" }} />
+                </label>
+              </div>
+              <div style={{ padding: categoryDocuments.length ? "3px 12px" : "10px 12px", display: "grid", gap: 0 }}>
+                {categoryDocuments.map(document => <div key={document.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #edf0f2" }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 7, background: "#eaf3f8", color: "#1676b8", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto" }}><ExternalLink size={15} /></div>
+                  <div style={{ flex: 1, minWidth: 0 }}><div title={document.file_name} style={{ fontSize: 11, fontWeight: 600, color: "#263645", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{document.file_name}</div><div style={{ marginTop: 3, fontSize: 9, color: "#89939c" }}>{document.file_size ? (document.file_size >= 1048576 ? `${(document.file_size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(document.file_size / 1024))} KB`) : "Size unknown"} · {document.created_at ? new Date(document.created_at).toLocaleString("en-GB") : ""}</div></div>
+                  <button type="button" onClick={() => openDocument(document)} disabled={openingDocument === document.id} style={{ border: "1px solid #d7dee8", borderRadius: 6, padding: "7px 9px", background: "#fff", color: "#334155", fontSize: 10, cursor: "pointer" }}>{openingDocument === document.id ? "Opening…" : "Open"}</button>
+                  <button type="button" onClick={() => deleteDocument(document)} aria-label={`Delete ${document.file_name}`} style={{ border: "1px solid #f0d4d4", borderRadius: 6, padding: 7, background: "#fff", color: "#a33b3b", cursor: "pointer" }}><Trash2 size={14} /></button>
+                </div>)}
+                {!categoryDocuments.length && <div style={{ fontSize: 10, color: "#89939c" }}>{documentsLoading ? "Loading files…" : "No files uploaded yet."}</div>}
+              </div>
+            </div>
+
             </>
           })}
         </div>
