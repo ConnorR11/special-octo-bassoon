@@ -103,18 +103,35 @@ export default function SalesPresenterUsage() {
         if (session.customer) group.label = session.customer
       }
       let sessionRunning = 0
+      const sessionPageValues = {}
       for (const p of [...session.pagesSeen].sort((a,b)=>a-b)) {
         const sec = Number(session.pageSeconds[p] || 0)
         sessionRunning += sec
+        sessionPageValues[p] = Math.round(sessionRunning)
         byPage[p] ||= { page: `Page ${p}`, pageNumber: Number(p), total: 0, visits: 0, cumulativeTotal: 0, cumulativeVisits: 0, closeCount: 0 }
         byPage[p].total += sec
         byPage[p].visits++
         byPage[p].cumulativeTotal += sessionRunning
         byPage[p].cumulativeVisits++
-        group.pageValues[p] ||= { total: 0, visits: 0 }
-        group.pageValues[p].total += sessionRunning
-        group.pageValues[p].visits++
         totalSeconds += sec
+      }
+      // Keep one real journey per appointment, not an average across repeated sessions.
+      // Prefer the session that reached the most pages; on a tie, prefer the longer
+      // recorded journey so the line reflects the fullest available appointment visit.
+      const currentPageCount = Object.keys(group.pageValues).length
+      const newPageCount = Object.keys(sessionPageValues).length
+      const currentTotal = Number(group.selectedDuration || 0)
+      const newTotal = sessionRunning
+      if (
+        !group.selectedSession ||
+        newPageCount > currentPageCount ||
+        (newPageCount === currentPageCount && newTotal > currentTotal)
+      ) {
+        group.pageValues = Object.fromEntries(
+          Object.entries(sessionPageValues).map(([page, seconds]) => [page, { total: seconds, visits: 1 }])
+        )
+        group.selectedSession = session.key
+        group.selectedDuration = newTotal
       }
       if (session.closed && session.closePage) byPage[session.closePage] && byPage[session.closePage].closeCount++
     }
@@ -132,7 +149,7 @@ export default function SalesPresenterUsage() {
       }
       for (const appointment of appointments) {
         const value = appointment.pageValues[item.pageNumber]
-        row[appointment.dataKey] = value ? Math.round(value.total / Math.max(1,value.visits)) : null
+        row[appointment.dataKey] = value ? Math.round(value.total) : null
       }
       return row
     })
