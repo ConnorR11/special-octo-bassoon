@@ -80,11 +80,14 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
         if (!pdfResponse.ok) throw new Error("The presenter PDF could not be downloaded.")
         const bytes = await pdfResponse.arrayBuffer()
         const document = await PDFDocument.load(bytes)
+        // Hide page 29 in the temporary PDF presenter only. The stored source PDF remains unchanged.
+        if (document.getPageCount() >= 29) document.removePage(28)
+        const presenterBytes = await document.save()
         if (cancelled) return
         setSourceUrl(result.url)
-        setPdfBytes(bytes)
+        setPdfBytes(presenterBytes)
         setPageCount(document.getPageCount())
-        logPresenterAction("opened", { page_count: document.getPageCount(), presenter: "solar_pdf" })
+        logPresenterAction("opened", { page_count: document.getPageCount(), presenter: "solar_pdf", hidden_source_page: 29 })
       } catch (e) {
         if (!cancelled) setError(e?.message || "Unable to load the Solar Presenter PDF.")
       } finally {
