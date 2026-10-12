@@ -140,7 +140,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={BarChart3} label="Data Dashboard" active={isActive("data-dashboard")} onClick={() => navigate("data-dashboard")}/>
             <NavItem icon={Database} label="Data Clean" active={isActive("data-clean")} onClick={() => navigate("data-clean")}/>
             <NavItem icon={Sun} label="Solar Backend" active={isActive("solar-backend")} onClick={() => navigate("solar-backend")}/>
-            <NavItem icon={Map} label="Map of Installs" active={isActive("map-of-installs")} onClick={() => navigate("map-of-installs")}/>
+            <NavItem icon={Map} label="Map of Appointments" active={isActive("map-of-installs")} onClick={() => navigate("map-of-installs")}/>
             <NavItem icon={UserCog} label="Users" active={isActive("users")} onClick={() => navigate("users")}/>
             <NavItem icon={ClipboardList} label="Tasks" active={isActive("tasks")} onClick={() => navigate("tasks")}/>
             <NavItem icon={Presentation} label="Templates" active={isActive("templates")} onClick={() => navigate("templates")}/>
