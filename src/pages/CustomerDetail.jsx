@@ -48,6 +48,7 @@ function CustomerDetail({
   const [documentError, setDocumentError] = useState("")
   const [documentNotice, setDocumentNotice] = useState("")
   const [openingDocument, setOpeningDocument] = useState("")
+  const [activeTab, setActiveTab] = useState("details")
   const [surveyAnswers, setSurveyAnswers] = useState({})
   const [surveySaving, setSurveySaving] = useState(false)
   const [surveySection, setSurveySection] = useState("Front of Property")
@@ -503,6 +504,11 @@ function CustomerDetail({
         </div>
       </div>
 
+      <div role="tablist" aria-label="Deal details tabs" style={{display:"flex",gap:6,borderBottom:"1px solid #dfe5eb",marginBottom:18,overflowX:"auto"}}>
+        {[{key:"details",label:"Deal information"},{key:"survey",label:"Survey & Documents"}].map(tab => <button key={tab.key} type="button" role="tab" aria-selected={activeTab===tab.key} onClick={()=>setActiveTab(tab.key)} style={{flex:"0 0 auto",padding:"12px 16px",border:0,borderBottom:activeTab===tab.key?"3px solid #002d49":"3px solid transparent",marginBottom:-1,background:"transparent",color:activeTab===tab.key?"#002d49":"#64748b",fontSize:12,fontWeight:activeTab===tab.key?700:600,cursor:"pointer"}}>{tab.label}</button>)}
+      </div>
+
+      {activeTab === "survey" && <>
       <div className="card" style={{ marginBottom: 18 }}>
         <div className="card-head"><div><h2>Solar survey checklist</h2><p>Complete the survey answers, then generate the combined checklist and photo PDF.</p></div></div>
         <div style={{padding:"0 20px 20px"}}>
@@ -546,6 +552,9 @@ function CustomerDetail({
         </div>
       </div>
 
+      </>}
+
+      {activeTab === "details" && <>
       <div className="card">
         <div className="card-head">
           <div>
@@ -812,6 +821,7 @@ function CustomerDetail({
           )}
         </div>
       </div>
+      </>}
     </section>
   )
 }
