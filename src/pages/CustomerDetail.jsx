@@ -541,15 +541,6 @@ function CustomerDetail({
             <>
                     <div style={{ borderTop: "1px solid #e1e6eb", paddingTop: 16 }}>
                       <div style={{ padding: "14px 12px 10px" }}><h2 style={{ margin: 0, fontSize: 15 }}>Survey Checklist</h2><p style={{ margin: "4px 0 0", color: "#75818b", fontSize: 11 }}>Work through each section, then generate the combined checklist and photo PDF.</p></div>
-                      <div style={{padding:"0 12px 14px"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-                          <div style={{flex:1,height:7,background:"#e8edf2",borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width: `${surveyCompletion}%`,background:"#16845b",borderRadius:99,transition:"width .2s"}}/></div>
-                          <div style={{fontSize:11,color:"#64748b",whiteSpace:"nowrap"}}>{answeredSurveyCount} of {surveyQuestions.length} answered · {surveyCompletion}%</div>
-                        </div>
-                        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-                          <div style={{flex:1,height:7,background:"#e8edf2",borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.round((surveyPhotoSections.filter(section=>documents.some(d=>d.category==="survey_photos"&&d.survey_section===section)||pendingSurveyPhotos.some(p=>p.section===section)).length/surveyPhotoSections.length)*100)}%`,background:"#16845b",borderRadius:99,transition:"width .2s"}}/></div>
-                          <div style={{fontSize:11,color:"#64748b",whiteSpace:"nowrap"}}>{surveyPhotoSections.filter(section=>documents.some(d=>d.category==="survey_photos"&&d.survey_section===section)||pendingSurveyPhotos.some(p=>p.section===section)).length} of {surveyPhotoSections.length} photo sections complete</div>
-                        </div>
           {documentCategories.filter(category => category.key !== "survey_photos").map(category => {
             const categoryDocuments = documents.filter(document => document.category === category.key)
             const busy = uploadingCategory === category.key
@@ -575,6 +566,16 @@ function CustomerDetail({
 
             </>
           })}
+                      <div style={{padding:"0 12px 14px"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+                          <div style={{flex:1,height:7,background:"#e8edf2",borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width: `${surveyCompletion}%`,background:"#16845b",borderRadius:99,transition:"width .2s"}}/></div>
+                          <div style={{fontSize:11,color:"#64748b",whiteSpace:"nowrap"}}>{answeredSurveyCount} of {surveyQuestions.length} answered · {surveyCompletion}%</div>
+                        </div>
+                        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+                          <div style={{flex:1,height:7,background:"#e8edf2",borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.round((surveyPhotoSections.filter(section=>documents.some(d=>d.category==="survey_photos"&&d.survey_section===section)||pendingSurveyPhotos.some(p=>p.section===section)).length/surveyPhotoSections.length)*100)}%`,background:"#16845b",borderRadius:99,transition:"width .2s"}}/></div>
+                          <div style={{fontSize:11,color:"#64748b",whiteSpace:"nowrap"}}>{surveyPhotoSections.filter(section=>documents.some(d=>d.category==="survey_photos"&&d.survey_section===section)||pendingSurveyPhotos.some(p=>p.section===section)).length} of {surveyPhotoSections.length} photo sections complete</div>
+                        </div>
+
                         <div style={{display:"grid",gap:10}}>
                           {surveyQuestionGroups.map((group,index) => {
                             const groupQuestions = surveyQuestions.filter(([,key]) => group.keys.includes(key))
