@@ -517,7 +517,7 @@ function CustomerDetail({
           {documentCategories.map(category => {
             const categoryDocuments = documents.filter(document => document.category === category.key)
             const busy = uploadingCategory === category.key
-            return <div key={category.key} style={{ border: "1px solid #e1e6eb", borderRadius: 9, overflow: "hidden" }}>
+            return <><div key={category.key} style={{ border: "1px solid #e1e6eb", borderRadius: 9, overflow: "hidden" }}>
               <div style={{ padding: "13px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "#f8fafc", borderBottom: "1px solid #e1e6eb" }}>
                 {category.key === "survey_photos" && <select value={surveySection} onChange={e=>setSurveySection(e.target.value)} style={{maxWidth:220,padding:"7px 8px",border:"1px solid #d7dee8",borderRadius:6,background:"#fff",fontSize:10}}>{surveyPhotoSections.map(section=><option key={section} value={section}>{section}</option>)}</select>}
                 <div style={{ minWidth: 0 }}><div style={{ fontSize: 12, fontWeight: 700, color: "#263645" }}>{category.label}</div><div style={{ marginTop: 4, fontSize: 10, color: "#75818b" }}>{category.hint}</div></div>
@@ -536,6 +536,21 @@ function CustomerDetail({
                 {!categoryDocuments.length && <div style={{ fontSize: 10, color: "#89939c" }}>{documentsLoading ? "Loading files…" : "No files uploaded yet."}</div>}
               </div>
             </div>
+            {category.key === "survey_video" && (
+                    <div className="card" style={{ marginBottom: 18 }}>
+                      <div className="card-head"><div><h2>Solar survey checklist</h2><p>Complete the survey answers, then generate the combined checklist and photo PDF.</p></div></div>
+                      <div style={{padding:"0 20px 20px"}}>
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}}>
+                          {surveyQuestions.map(([question,key]) => <label key={key} style={{display:"grid",gap:5,fontSize:11,color:"#475569"}}><span>{question}</span><input value={surveyAnswers[key] || ""} onChange={e=>setSurveyAnswers(current=>({...current,[key]:e.target.value}))} placeholder="Enter answer" style={{boxSizing:"border-box",width:"100%",minHeight:36,padding:"8px 10px",border:"1px solid #d9dadd",borderRadius:7,font:"inherit"}} /></label>)}
+                        </div>
+                        <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:16}}>
+                          <button type="button" onClick={saveSurveyAnswers} disabled={surveySaving} style={{border:0,borderRadius:7,padding:"10px 14px",background:"#e8eef4",color:"#172554",fontWeight:700,cursor:"pointer"}}>{surveySaving?"Saving checklist…":"Save checklist"}</button>
+                          <button type="button" onClick={generateSurveyPdf} disabled={generatingSurvey} style={{border:0,borderRadius:7,padding:"10px 14px",background:"#002d49",color:"#fff",fontWeight:700,cursor:"pointer"}}>{generatingSurvey?"Generating PDF…":"Generate full survey PDF"}</button>
+                        </div>
+                      </div>
+                    </div>
+            )}
+            </>
           })}
         </div>
       </div>
