@@ -28,7 +28,6 @@ export default function MapOfInstalls(){
    if(areaLeadsResult.error)throw areaLeadsResult.error
    if(districtLeadsResult.error)throw districtLeadsResult.error
    if(typesResult.error)throw typesResult.error
-   if(appointmentSources.error)throw appointmentSources.error
    if(leadSourcesResult.error)throw leadSourcesResult.error
    const areaLeadCounts=(areaLeadsResult.data||[]).reduce((acc,row)=>({...acc,[row.postcode_key]:Number(row.lead_count||0)}),{}),districtLeadCounts=(districtLeadsResult.data||[]).reduce((acc,row)=>({...acc,[row.postcode_key]:Number(row.lead_count||0)}),{})
    const districts=(districtsResult.data||[]).map(row=>({...mapRow(row),leads:districtLeadCounts[row.postcode_key]||0}))
