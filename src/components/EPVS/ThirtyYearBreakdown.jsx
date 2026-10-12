@@ -295,7 +295,7 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection, data = {} })
                   <tr
                     key={row.year}
                     style={[10, 15, 20].includes(Number(row.year))
-                      ? { background: "#f1f1f1" }
+                      ? { background: "#e2e2e2" }
                       : undefined}
                   >
                     <BodyCell>{row.year}</BodyCell>
