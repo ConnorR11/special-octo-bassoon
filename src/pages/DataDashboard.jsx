@@ -10,6 +10,7 @@ import {
   YAxis,
 } from "recharts"
 import { supabase } from "../lib/supabase"
+import MapOfAppointments from "./MapOfAppointments"
 
 const START_YEAR = 2022
 
@@ -567,6 +568,13 @@ function DataDashboard() {
         >
           Pronto
         </button>
+        <button
+          type="button"
+          className={`data-dashboard-tab ${activeTab === "map-appointments" ? "active" : ""}`}
+          onClick={() => setActiveTab("map-appointments")}
+        >
+          Map of Appointments
+        </button>
       </div>
 
       {error && activeTab === "overview" && (
@@ -748,7 +756,7 @@ function DataDashboard() {
       </div>
 
         </>
-      ) : (
+      ) : activeTab === "pronto" ? (
         <>
           {prontoError && (
             <div className="data-dashboard-error">
@@ -800,6 +808,8 @@ function DataDashboard() {
             )}
           </div>
         </>
+      ) : (
+        <MapOfAppointments />
       )}
     </section>
   )
