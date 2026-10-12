@@ -71,7 +71,7 @@ function CustomerDetail({
   const documentCategories = [
     { key: "survey_video", label: "1. Survey Video", accept: "video/*", multiple: false, hint: "Common video formats. Maximum 250 MB per file." },
     { key: "survey_photos", label: "Survey Checklist & Photos", accept: "image/jpeg,image/png,image/webp", multiple: true, hint: "Complete the checklist below and upload labelled survey photos here. Generate the combined survey PDF when finished." },
-    { key: "electricity_bill_epvs_waiver", label: "2. Electricity Bill / EPVS Waiver", accept: "application/pdf,image/jpeg,image/png,image/webp", multiple: true, hint: "Upload a PDF or image. Bill and waiver can be attached separately." },
+    { key: "electricity_bill_epvs_waiver", label: "2. Electricity Bill", accept: "application/pdf,image/jpeg,image/png,image/webp", multiple: true, hint: "Upload a PDF or image. Bill and waiver can be attached separately." },
   ]
 
   async function loadDocuments() {
@@ -540,7 +540,7 @@ function CustomerDetail({
           {documentNotice && <div role="status" style={{ padding: "10px 12px", borderRadius: 7, background: "#e8f4ed", color: "#28734c", fontSize: 11 }}>{documentNotice}</div>}
             <>
                     <div style={{ borderTop: "1px solid #e1e6eb", paddingTop: 16 }}>
-                      <div style={{ padding: "14px 12px 10px" }}><h2 style={{ margin: 0, fontSize: 15 }}>Survey Checklist</h2><p style={{ margin: "4px 0 0", color: "#75818b", fontSize: 11 }}>Work through each section, then generate the combined checklist and photo PDF.</p></div>
+                      <div style={{ padding: "14px 12px 10px" }}><h2 style={{ margin: 0, fontSize: 15 }}>Survey Checklist</h2><p style={{ margin: "4px 0 0", color: "#75818b", fontSize: 11 }}>Complete each section in order, then generate the combined survey PDF.</p></div>
           {documentCategories.filter(category => category.key !== "survey_photos").map(category => {
             const categoryDocuments = documents.filter(document => document.category === category.key)
             const busy = uploadingCategory === category.key
@@ -605,7 +605,7 @@ function CustomerDetail({
                         <div style={{marginTop:16,border:"1px solid #e1e6eb",borderRadius:9,overflow:"hidden"}}>
                           <button type="button" onClick={()=>setSurveyPhotosExpanded(value=>!value)} aria-expanded={surveyPhotosExpanded} style={{display:"flex",alignItems:"center",gap:12,width:"100%",padding:14,border:0,background:surveyPhotosExpanded?"#f4f8fb":"#f8fafc",textAlign:"left",cursor:"pointer"}}>
                             <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:25,height:25,borderRadius:7,background:"#e8eef4",color:"#17364b",fontSize:10,fontWeight:700,flex:"0 0 auto"}}>7</span>
-                            <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:700,color:"#263645"}}>Survey photos</span><span style={{display:"block",marginTop:4,fontSize:10,color:"#75818b"}}>Add photos to each section. Photos are saved and included in the PDF when you generate the full survey PDF.</span></span>
+                            <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:700,color:"#263645"}}>6. Photos</span><span style={{display:"block",marginTop:4,fontSize:10,color:"#75818b"}}>Add photos to each section. Photos are saved and included in the PDF when you generate the full survey PDF.</span></span>
                             <span style={{fontSize:10,color:"#64748b",whiteSpace:"nowrap"}}>{documents.filter(d=>d.category==="survey_photos").length} saved · {pendingSurveyPhotos.length} new</span>
                             <span style={{fontSize:17,color:"#64748b"}}>{surveyPhotosExpanded?"−":"+"}</span>
                           </button>
