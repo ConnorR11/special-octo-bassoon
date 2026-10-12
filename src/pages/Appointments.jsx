@@ -115,12 +115,19 @@ function Appointments({ onSelectAppointment, onSelect }) {
   function formatDate(value) {
     if (!value) return "—"
 
-    const date = new Date(value)
-
-    if (Number.isNaN(date.getTime())) {
-      return value
+    // appointment_date values are stored as the intended UK wall-clock time.
+    // Format the timestamp's written components directly so the browser does
+    // not apply a timezone conversion and shift the appointment by an hour.
+    const match = String(value).trim().match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/)
+    if (match) {
+      const [, year, month, day, hour, minute] = match
+      const date = new Date(Number(year), Number(month) - 1, Number(day))
+      const dateLabel = date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+      return `${dateLabel}, ${hour}:${minute}`
     }
 
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return value
     return date.toLocaleString("en-GB", {
       day: "2-digit",
       month: "short",
