@@ -52,6 +52,7 @@ function CustomerDetail({
   const [surveyAnswers, setSurveyAnswers] = useState({})
   const [surveySaving, setSurveySaving] = useState(false)
   const [surveySection, setSurveySection] = useState("Front of Property")
+  const [pendingSurveyPhotos, setPendingSurveyPhotos] = useState([])
   const [expandedSurveySection, setExpandedSurveySection] = useState("Property & installation")
   const [generatingSurvey, setGeneratingSurvey] = useState(false)
   const surveyQuestions = [
@@ -137,14 +138,28 @@ function CustomerDetail({
   async function generateSurveyPdf() {
     setGeneratingSurvey(true); setDocumentError(""); setDocumentNotice("");
     try {
+      const { data: userData } = await supabase.auth.getUser()
+      const { error: answersError } = await supabase.from("deal_survey_answers").upsert({ deal_id: deal.id, answers: surveyAnswers, updated_by: userData?.user?.id || null, updated_at: new Date().toISOString() }, { onConflict: "deal_id" })
+      if (answersError) throw answersError
+      const newlySavedPhotos = []
+      for (const item of pendingSurveyPhotos) {
+        if (item.file.size > 250 * 1024 * 1024) throw new Error(`"${item.file.name}" exceeds the 250 MB upload limit.`)
+        const safeName = item.file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-140) || "survey-photo"
+        const path = `${deal.id}/survey_photos/${Date.now()}-${Math.random().toString(36).slice(2, 9)}-${safeName}`
+        const { error: photoUploadError } = await supabase.storage.from("deal-documents").upload(path, item.file, { contentType: item.file.type || "application/octet-stream", upsert: false })
+        if (photoUploadError) throw photoUploadError
+        const { data: photoRow, error: photoMetaError } = await supabase.from("deal_documents").insert({ deal_id: deal.id, category: "survey_photos", survey_section: item.section, file_name: item.file.name, storage_path: path, mime_type: item.file.type || null, file_size: item.file.size, uploaded_by: userData?.user?.id || null }).select().single()
+        if (photoMetaError) { await supabase.storage.from("deal-documents").remove([path]); throw photoMetaError }
+        newlySavedPhotos.push(photoRow)
+      }
       const { jsPDF } = await import("jspdf"); const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" }); const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight(), m = 14;
       const header = (title) => { pdf.setFillColor(0,45,73); pdf.rect(0,0,pw,18,"F"); pdf.setTextColor(255,255,255); pdf.setFont("helvetica","bold"); pdf.setFontSize(12); pdf.text(title,m,11.5); pdf.setTextColor(30,41,59); };
       header("Homeshield Solar Survey Checklist & Photos"); pdf.setFontSize(9); pdf.setFont("helvetica","bold"); pdf.text("Customer: " + (deal.customer_name || "—"),m,27); pdf.setFont("helvetica","normal"); pdf.text("Contract: " + (deal.contract_number || "—"),m,33); pdf.text("Address: " + ([deal.address,deal.postcode].filter(Boolean).join(", ") || "—"),m,39,{maxWidth:pw-2*m});
       const gap=8,cw=(pw-2*m-gap)/2,rows=Math.ceil(surveyQuestions.length/2),heights=surveyQuestions.map(([q,k])=>Math.max(13,pdf.splitTextToSize(q,cw-4).length*3.7+pdf.splitTextToSize(String(surveyAnswers[k]||"—"),cw-4).length*3.7+5));let y=49;
       for(let i=0;i<rows;i++){const h=Math.max(heights[i]||13,heights[i+rows]||13);for(let col=0;col<2;col++){const idx=col===0?i:i+rows;if(idx>=surveyQuestions.length)continue;const [q,k]=surveyQuestions[idx],x=m+col*(cw+gap);if(y+h>ph-12){pdf.addPage();header("Homeshield Solar Survey Checklist (continued)");y=27;}pdf.setDrawColor(215,222,230);pdf.setFillColor(248,250,252);pdf.roundedRect(x,y,cw,h,1,1,"FD");pdf.setFont("helvetica","bold");pdf.setFontSize(7.5);const ql=pdf.splitTextToSize(q,cw-4);pdf.text(ql,x+2,y+4);pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.text(pdf.splitTextToSize(String(surveyAnswers[k]||"—"),cw-4),x+2,y+4+ql.length*3.7);}y+=h+2;}
-      const photos=documents.filter(d=>d.category==="survey_photos");
+      const photos=[...documents.filter(d=>d.category==="survey_photos"),...newlySavedPhotos];
       for(const section of surveyPhotoSections){pdf.addPage();header(section);const files=photos.filter(d=>(d.survey_section||"Front of Property")===section);if(!files.length){pdf.setFontSize(10);pdf.setTextColor(120,130,140);pdf.text("No photos uploaded for this section.",m,30);continue;}let py=25;for(const doc of files){const {data,error}=await supabase.storage.from("deal-documents").download(doc.storage_path);if(error)throw error;const url=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(data)});const dim=await new Promise((res,rej)=>{const im=new Image();im.onload=()=>res({w:im.width,h:im.height});im.onerror=rej;im.src=url});const maxW=pw-2*m,maxH=ph-44,s=Math.min(maxW/dim.w,maxH/dim.h);if(py+dim.h*s+10>ph-12){pdf.addPage();header(section+" (continued)");py=25;}pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.text(doc.file_name,m,py+4,{maxWidth:maxW});py+=7;pdf.addImage(url,doc.mime_type==="image/png"?"PNG":"JPEG",m,py,dim.w*s,dim.h*s,undefined,"FAST");py+=dim.h*s+10;}}
-      const blob=pdf.output("blob"),path=deal.id+"/survey_pdf/"+Date.now()+"-survey-photos.pdf";const {error:upErr}=await supabase.storage.from("deal-documents").upload(path,blob,{contentType:"application/pdf",upsert:false});if(upErr)throw upErr;const {data:u}=await supabase.auth.getUser();const {error:metaErr}=await supabase.from("deal_documents").insert({deal_id:deal.id,category:"survey_pdf",file_name:"Survey Photos.pdf",storage_path:path,mime_type:"application/pdf",file_size:blob.size,uploaded_by:u?.user?.id||null});if(metaErr){await supabase.storage.from("deal-documents").remove([path]);throw metaErr;}await loadDocuments();setDocumentNotice("Survey PDF generated and saved to Deal documents.");
+      const blob=pdf.output("blob"),path=deal.id+"/survey_pdf/"+Date.now()+"-survey-photos.pdf";const {error:upErr}=await supabase.storage.from("deal-documents").upload(path,blob,{contentType:"application/pdf",upsert:false});if(upErr)throw upErr;const {data:u}=await supabase.auth.getUser();const {error:metaErr}=await supabase.from("deal_documents").insert({deal_id:deal.id,category:"survey_pdf",file_name:"Survey Photos.pdf",storage_path:path,mime_type:"application/pdf",file_size:blob.size,uploaded_by:u?.user?.id||null});if(metaErr){await supabase.storage.from("deal-documents").remove([path]);throw metaErr;}setPendingSurveyPhotos([]);await loadDocuments();setDocumentNotice("Checklist and photos saved. Survey PDF generated and saved to Deal documents.");
     }catch(e){console.error("Survey PDF generation failed",e);setDocumentError(e?.message||"Unable to generate survey PDF.");}finally{setGeneratingSurvey(false);}
   }
   async function openDocument(document) {
@@ -581,24 +596,19 @@ function CustomerDetail({
                         <div style={{marginTop:16,border:"1px solid #e1e6eb",borderRadius:9,overflow:"hidden"}}>
                           <div style={{padding:14,background:"#f8fafc",borderBottom:"1px solid #e1e6eb"}}>
                             <div style={{fontSize:12,fontWeight:700,color:"#263645"}}>Survey photos</div>
-                            <div style={{marginTop:4,fontSize:10,color:"#75818b"}}>Choose a section and upload photos to include them in the combined survey PDF.</div>
+                            <div style={{marginTop:4,fontSize:10,color:"#75818b"}}>Choose a section and select photos. They will be saved and included in the PDF when you select “Generate full survey PDF”.</div>
                             <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginTop:10}}>
                               <select value={surveySection} onChange={e=>setSurveySection(e.target.value)} style={{flex:"1 1 220px",maxWidth:320,padding:"9px 10px",border:"1px solid #d7dee8",borderRadius:7,background:"#fff",fontSize:11}}>{surveyPhotoSections.map(section=><option key={section} value={section}>{section}</option>)}</select>
-                              <label style={{display:"inline-flex",alignItems:"center",gap:7,padding:"9px 12px",borderRadius:7,background:uploadingCategory==="survey_photos"?"#e2e8f0":"#002d49",color:uploadingCategory==="survey_photos"?"#64748b":"#fff",fontSize:11,fontWeight:700,cursor:uploadingCategory==="survey_photos"?"wait":"pointer",opacity:uploadingCategory==="survey_photos"?.7:1}}>
-                                {uploadingCategory==="survey_photos"?<LoaderCircle size={14}/>:<FileUp size={14}/>}
-                                {uploadingCategory==="survey_photos"?"Uploading…":"Upload photos"}
-                                <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={Boolean(uploadingCategory)} onChange={event=>{uploadDocuments("survey_photos",event.target.files);event.target.value=""}} style={{display:"none"}}/>
+                              <label style={{display:"inline-flex",alignItems:"center",gap:7,padding:"9px 12px",borderRadius:7,border:"1px solid #d7dee8",background:"#fff",color:"#263645",fontSize:11,fontWeight:700,cursor:"pointer"}}>
+                                <FileUp size={14}/>Select photos
+                                <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={generatingSurvey} onChange={event=>{const files=Array.from(event.target.files||[]);setPendingSurveyPhotos(current=>[...current,...files.map(file=>({file,section:surveySection}))]);event.target.value=""}} style={{display:"none"}}/>
                               </label>
                             </div>
                           </div>
-                          <div style={{padding:documents.filter(document=>document.category==="survey_photos").length?"4px 14px":"14px",display:"grid",gap:0}}>
-                            {documents.filter(document=>document.category==="survey_photos").map(document=><div key={document.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:"1px solid #edf0f2"}}>
-                              <div style={{width:32,height:32,borderRadius:7,background:"#eaf3f8",color:"#1676b8",display:"flex",alignItems:"center",justifyContent:"center",flex:"0 0 auto"}}><ExternalLink size={15}/></div>
-                              <div style={{flex:1,minWidth:0}}><div title={document.file_name} style={{fontSize:11,fontWeight:600,color:"#263645",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{document.file_name}</div><div style={{marginTop:3,fontSize:9,color:"#89939c"}}>{document.survey_section || surveySection} · {document.created_at?new Date(document.created_at).toLocaleString("en-GB"):""}</div></div>
-                              <button type="button" onClick={()=>openDocument(document)} disabled={openingDocument===document.id} style={{border:"1px solid #d7dee8",borderRadius:6,padding:"7px 9px",background:"#fff",color:"#334155",fontSize:10,cursor:"pointer"}}>{openingDocument===document.id?"Opening…":"Open"}</button>
-                              <button type="button" onClick={()=>deleteDocument(document)} aria-label={`Delete ${document.file_name}`} style={{border:"1px solid #f0d4d4",borderRadius:6,padding:7,background:"#fff",color:"#a33b3b",cursor:"pointer"}}><Trash2 size={14}/></button>
-                            </div>)}
-                            {!documents.filter(document=>document.category==="survey_photos").length&&<div style={{fontSize:10,color:"#89939c"}}>{documentsLoading?"Loading photos…":"No survey photos uploaded yet."}</div>}
+                          <div style={{padding:14,display:"grid",gap:8}}>
+                            {pendingSurveyPhotos.map((item,index)=><div key={index} style={{display:"flex",alignItems:"center",gap:10,fontSize:11,color:"#263645"}}><FileUp size={14}/><div style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.file.name}<span style={{color:"#89939c"}}> · {item.section}</span></div><button type="button" onClick={()=>setPendingSurveyPhotos(current=>current.filter((_,i)=>i!==index))} disabled={generatingSurvey} style={{border:"1px solid #f0d4d4",borderRadius:6,padding:"5px 8px",background:"#fff",color:"#a33b3b",cursor:"pointer"}}>Remove</button></div>)}
+                            {!pendingSurveyPhotos.length&&<div style={{fontSize:10,color:"#89939c"}}>No new photos selected. Existing uploaded photos will still be included.</div>}
+                            {documents.filter(document=>document.category==="survey_photos").length>0&&<div style={{fontSize:10,color:"#64748b",marginTop:4}}>{documents.filter(document=>document.category==="survey_photos").length} previously saved photo(s) will also be included.</div>}
                           </div>
                         </div>
                         <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:16}}>
