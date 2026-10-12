@@ -12,6 +12,7 @@ export default function MapOfInstalls(){
  const [coords,setCoords]=useState({}),[loading,setLoading]=useState(true),[geoLoading,setGeoLoading]=useState(false),[error,setError]=useState(""),[search,setSearch]=useState(""),[selectedArea,setSelectedArea]=useState(""),[selectedDistrict,setSelectedDistrict]=useState(""),[postcodeCoords,setPostcodeCoords]=useState({}),[jobType,setJobType]=useState("all"),[jobTypes,setJobTypes]=useState([]),[areaRows,setAreaRows]=useState([]),[districtRows,setDistrictRows]=useState([]),[uniquePostcodes,setUniquePostcodes]=useState([]), [appointmentDetails,setAppointmentDetails]=useState([]), [detailsLoading,setDetailsLoading]=useState(false), [detailsError,setDetailsError]=useState(""),[detailsPage,setDetailsPage]=useState(0),[detailsTotal,setDetailsTotal]=useState(0),[detailsHasMore,setDetailsHasMore]=useState(false)
  const mapNode=useRef(null),map=useRef(null),markers=useRef(null)
  const mapRow=row=>({outcode:row.postcode_key,count:Number(row.appointment_count||0),cps_h:Number(row.cps_h||0),cps_c:Number(row.cps_c||0),cps_p:Number(row.cps_p||0),cps_s:Number(row.cps_s||0),leads:Number(row.lead_count||row.leads||0)})
+ const leadCountMap=rows=>(rows||[]).reduce((acc,row)=>({...acc,[row.postcode_key]:Number(row.lead_count||0)}),{})
  const load=useCallback(async()=>{setLoading(true);setError("");try{
    const selectedType=jobType==="all"?null:jobType
    // Run the grouped queries sequentially to avoid three concurrent scans timing out.
@@ -25,8 +26,7 @@ export default function MapOfInstalls(){
    if(areaLeadsResult.error)throw areaLeadsResult.error
    if(districtLeadsResult.error)throw districtLeadsResult.error
    if(typesResult.error)throw typesResult.error
-   const leadCountMap=rows=>(rows||[]).reduce((acc,row)=>({...acc,[row.postcode_key]:Number(row.lead_count||0)}),{})
-   const areaLeadCounts=leadCountMap(areaLeadsResult.data),districtLeadCounts=leadCountMap(districtLeadsResult.data)
+   const areaLeadCounts=(areaLeadsResult.data||[]).reduce((acc,row)=>({...acc,[row.postcode_key]:Number(row.lead_count||0)}),{}),districtLeadCounts=(districtLeadsResult.data||[]).reduce((acc,row)=>({...acc,[row.postcode_key]:Number(row.lead_count||0)}),{})
    const districts=(districtsResult.data||[]).map(row=>({...mapRow(row),leads:districtLeadCounts[row.postcode_key]||0}))
    const districtsByArea={}
    for(const district of districts){const area=areaOf(district.outcode);if(!area)continue;(districtsByArea[area]??=[]).push(district)}
