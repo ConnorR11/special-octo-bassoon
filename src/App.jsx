@@ -34,7 +34,7 @@ import Templates from "./pages/Templates"
 import SolarBackend from "./pages/SolarBackend"
 import AdminUserPreview from "./components/AdminUserPreview"
 import ContractFile from "./pages/ContractFile"
-import MapOfInstalls from "./pages/MapOfInstalls"
+import MapOfAppointments from "./pages/MapOfAppointments"
 
 const DEALS_PAGE_SIZE = 50
 const REPORTING_PAGE_SIZE = 1000
@@ -235,7 +235,7 @@ function App() {
   } else if (page === "solar-backend") {
     pageContent = <SolarBackend onSelectAppointment={handleAppointmentSelect}/>
   } else if (page === "map-of-installs") {
-    pageContent = <MapOfInstalls />
+    pageContent = <MapOfAppointments />
   } else if (page === "sales-performance") {
     pageContent = <SalesPerformance contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setSelected={setSelected}/>
   } else if (page === "balances") {
