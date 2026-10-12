@@ -510,18 +510,6 @@ function CustomerDetail({
 
       {activeTab === "survey" && <>
       <div className="card" style={{ marginBottom: 18 }}>
-        <div className="card-head"><div><h2>Solar survey checklist</h2><p>Complete the survey answers, then generate the combined checklist and photo PDF.</p></div></div>
-        <div style={{padding:"0 20px 20px"}}>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}}>
-            {surveyQuestions.map(([question,key]) => <label key={key} style={{display:"grid",gap:5,fontSize:11,color:"#475569"}}><span>{question}</span><input value={surveyAnswers[key] || ""} onChange={e=>setSurveyAnswers(current=>({...current,[key]:e.target.value}))} placeholder="Enter answer" style={{boxSizing:"border-box",width:"100%",minHeight:36,padding:"8px 10px",border:"1px solid #d9dadd",borderRadius:7,font:"inherit"}} /></label>)}
-          </div>
-          <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:16}}>
-            <button type="button" onClick={saveSurveyAnswers} disabled={surveySaving} style={{border:0,borderRadius:7,padding:"10px 14px",background:"#e8eef4",color:"#172554",fontWeight:700,cursor:"pointer"}}>{surveySaving?"Saving checklist…":"Save checklist"}</button>
-            <button type="button" onClick={generateSurveyPdf} disabled={generatingSurvey} style={{border:0,borderRadius:7,padding:"10px 14px",background:"#002d49",color:"#fff",fontWeight:700,cursor:"pointer"}}>{generatingSurvey?"Generating PDF…":"Generate full survey PDF"}</button>
-          </div>
-        </div>
-      </div>
-      <div className="card" style={{ marginBottom: 18 }}>
         <div className="card-head"><div><h2>Deal documents</h2><p>Upload and manage survey files securely in Supabase Storage</p></div></div>
         <div style={{ padding: "0 20px 20px", display: "grid", gap: 16 }}>
           {documentError && <div role="alert" style={{ padding: "10px 12px", borderRadius: 7, background: "#fff0f0", color: "#a33b3b", fontSize: 11 }}>{documentError}</div>}
