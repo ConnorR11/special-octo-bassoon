@@ -14,11 +14,10 @@ export default function MapOfInstalls(){
  const mapRow=row=>({outcode:row.postcode_key,count:Number(row.appointment_count||0),cps_h:Number(row.cps_h||0),cps_c:Number(row.cps_c||0),cps_p:Number(row.cps_p||0),cps_s:Number(row.cps_s||0)})
  const load=useCallback(async()=>{setLoading(true);setError("");try{
    const selectedType=jobType==="all"?null:jobType
-   const [areasResult,districtsResult,typesResult]=await Promise.all([
-     supabase.rpc("map_installs_counts",{p_level:"area",p_parent:null,p_job_type:selectedType}),
-     supabase.rpc("map_installs_counts",{p_level:"district",p_parent:null,p_job_type:selectedType}),
-     supabase.rpc("map_installs_counts",{p_level:"job_types",p_parent:null,p_job_type:null})
-   ])
+   // Run the grouped queries sequentially to avoid three concurrent scans timing out.
+   const areasResult=await supabase.rpc("map_installs_counts",{p_level:"area",p_parent:null,p_job_type:selectedType})
+   const districtsResult=await supabase.rpc("map_installs_counts",{p_level:"district",p_parent:null,p_job_type:selectedType})
+   const typesResult=await supabase.rpc("map_installs_counts",{p_level:"job_types",p_parent:null,p_job_type:null})
    if(areasResult.error)throw areasResult.error
    if(districtsResult.error)throw districtsResult.error
    if(typesResult.error)throw typesResult.error
