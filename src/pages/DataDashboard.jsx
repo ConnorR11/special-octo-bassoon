@@ -768,7 +768,7 @@ function DataDashboard() {
             <div>
               <div className="data-dashboard-chart-title">Pronto C1</div>
               <div className="data-dashboard-chart-subtitle">
-                Unique Pronto C1 values for Pronto Windows leads received since 1 January 2026.
+                Unique Pronto C1 values for leads with lead source Pronto Windows received since 1 January 2026.
               </div>
             </div>
 
