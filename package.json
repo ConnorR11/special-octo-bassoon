@@ -15,7 +15,8 @@
     "lucide-react": "^0.468.0",
     "recharts": "^3.10.1",
     "xlsx": "^0.18.1",
-    "pdf-lib": "^1.17.1"
+    "pdf-lib": "^1.17.1",
+    "leaflet": "^1.9.4"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
