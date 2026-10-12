@@ -522,7 +522,7 @@ function CustomerDetail({
         <div style={{ padding: "0 20px 20px", display: "grid", gap: 16 }}>
           {documentError && <div role="alert" style={{ padding: "10px 12px", borderRadius: 7, background: "#fff0f0", color: "#a33b3b", fontSize: 11 }}>{documentError}</div>}
           {documentNotice && <div role="status" style={{ padding: "10px 12px", borderRadius: 7, background: "#e8f4ed", color: "#28734c", fontSize: 11 }}>{documentNotice}</div>}
-          {documentCategories.map(category => {
+          {documentCategories.filter(category => category.key !== "survey_photos").map(category => {
             const categoryDocuments = documents.filter(document => document.category === category.key)
             const busy = uploadingCategory === category.key
             return <><div key={category.key} style={{ border: "1px solid #e1e6eb", borderRadius: 9, overflow: "hidden" }}>
@@ -577,6 +577,29 @@ function CustomerDetail({
                               </div>}
                             </div>
                           })}
+                        </div>
+                        <div style={{marginTop:16,border:"1px solid #e1e6eb",borderRadius:9,overflow:"hidden"}}>
+                          <div style={{padding:14,background:"#f8fafc",borderBottom:"1px solid #e1e6eb"}}>
+                            <div style={{fontSize:12,fontWeight:700,color:"#263645"}}>Survey photos</div>
+                            <div style={{marginTop:4,fontSize:10,color:"#75818b"}}>Choose a section and upload photos to include them in the combined survey PDF.</div>
+                            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginTop:10}}>
+                              <select value={surveySection} onChange={e=>setSurveySection(e.target.value)} style={{flex:"1 1 220px",maxWidth:320,padding:"9px 10px",border:"1px solid #d7dee8",borderRadius:7,background:"#fff",fontSize:11}}>{surveyPhotoSections.map(section=><option key={section} value={section}>{section}</option>)}</select>
+                              <label style={{display:"inline-flex",alignItems:"center",gap:7,padding:"9px 12px",borderRadius:7,background:uploadingCategory==="survey_photos"?"#e2e8f0":"#002d49",color:uploadingCategory==="survey_photos"?"#64748b":"#fff",fontSize:11,fontWeight:700,cursor:uploadingCategory==="survey_photos"?"wait":"pointer",opacity:uploadingCategory==="survey_photos"?.7:1}}>
+                                {uploadingCategory==="survey_photos"?<LoaderCircle size={14}/>:<FileUp size={14}/>}
+                                {uploadingCategory==="survey_photos"?"Uploading…":"Upload photos"}
+                                <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={Boolean(uploadingCategory)} onChange={event=>{uploadDocuments("survey_photos",event.target.files);event.target.value=""}} style={{display:"none"}}/>
+                              </label>
+                            </div>
+                          </div>
+                          <div style={{padding:documents.filter(document=>document.category==="survey_photos").length?"4px 14px":"14px",display:"grid",gap:0}}>
+                            {documents.filter(document=>document.category==="survey_photos").map(document=><div key={document.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:"1px solid #edf0f2"}}>
+                              <div style={{width:32,height:32,borderRadius:7,background:"#eaf3f8",color:"#1676b8",display:"flex",alignItems:"center",justifyContent:"center",flex:"0 0 auto"}}><ExternalLink size={15}/></div>
+                              <div style={{flex:1,minWidth:0}}><div title={document.file_name} style={{fontSize:11,fontWeight:600,color:"#263645",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{document.file_name}</div><div style={{marginTop:3,fontSize:9,color:"#89939c"}}>{document.survey_section || surveySection} · {document.created_at?new Date(document.created_at).toLocaleString("en-GB"):""}</div></div>
+                              <button type="button" onClick={()=>openDocument(document)} disabled={openingDocument===document.id} style={{border:"1px solid #d7dee8",borderRadius:6,padding:"7px 9px",background:"#fff",color:"#334155",fontSize:10,cursor:"pointer"}}>{openingDocument===document.id?"Opening…":"Open"}</button>
+                              <button type="button" onClick={()=>deleteDocument(document)} aria-label={`Delete ${document.file_name}`} style={{border:"1px solid #f0d4d4",borderRadius:6,padding:7,background:"#fff",color:"#a33b3b",cursor:"pointer"}}><Trash2 size={14}/></button>
+                            </div>)}
+                            {!documents.filter(document=>document.category==="survey_photos").length&&<div style={{fontSize:10,color:"#89939c"}}>{documentsLoading?"Loading photos…":"No survey photos uploaded yet."}</div>}
+                          </div>
                         </div>
                         <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:16}}>
                           <button type="button" onClick={saveSurveyAnswers} disabled={surveySaving} style={{border:0,borderRadius:7,padding:"10px 14px",background:"#e8eef4",color:"#172554",fontWeight:700,cursor:"pointer"}}>{surveySaving?"Saving checklist…":"Save checklist"}</button>
