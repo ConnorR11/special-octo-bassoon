@@ -292,7 +292,12 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection, data = {} })
                 const annualBenefit = row.annualBenefit
 
                 return (
-                  <tr key={row.year}>
+                  <tr
+                    key={row.year}
+                    style={[10, 15, 20].includes(Number(row.year))
+                      ? { background: "#f1f1f1" }
+                      : undefined}
+                  >
                     <BodyCell>{row.year}</BodyCell>
                     <BodyCell>{number(row.generation)}</BodyCell>
                     <BodyCell>{money(row.solarBenefit)}</BodyCell>
@@ -392,7 +397,7 @@ function HeaderCell({ children, green = false, minWidth }) {
 }
 
 function BodyCell({ children, green = false, negative = false }) {
-  let background = "#fff"
+  let background = "inherit"
   let color = "#333"
   const textValue = String(children ?? "").trim()
   const isNegative = negative || textValue.startsWith("-")
