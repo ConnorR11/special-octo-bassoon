@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     if (userError || !userData?.user) return json(res, 401, { error: "Your session has expired. Please sign in again." })
     const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {})
     const path = String(body.path || "")
-    if (path !== "Homeshield-Solar-Presenter-edited.pdf") {
+    if (path !== "Homeshield-Solar-Presenter-edited.pdf" && path !== "Homeshield-Solar-Presenter-no-page-29.pdf") {
       return json(res, 400, { error: "Invalid presenter file reference." })
     }
     const { data, error } = await supabase.storage.from("presenters").createSignedUrl(path, 1800)
