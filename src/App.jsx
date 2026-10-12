@@ -158,6 +158,7 @@ function App() {
   const upcomingInstallations = allDeals.filter(contract => contract.installation_date && contract.installation_date >= today).length
 
   function handleBackToDeals(){setSelected(null);setPage("contracts");window.history.pushState({},"","/contracts")}
+  function handleDealSelect(deal, sourcePage = page) { if (!deal) return; setSelectedSourcePage(sourcePage); setSelected(deal); setSelectedAppointment(null); setPickupAppointment(null); window.history.pushState({ dealId: deal.id }, "", `/${sourcePage}/${deal.id}`) }
   function handleDealUpdated(updatedDeal){const excludedCommissionStages=new Set(["decline","customer cancelled","returned to sales","awaiting funds","on hold","pending cancellation"]);const stage=String(updatedDeal?.pipedrive_stage??"").trim().replace(/\s+/g," ").toLowerCase();const shouldRemoveFromCommissions=excludedCommissionStages.has(stage);setContracts(current=>current.map(contract=>contract.id===updatedDeal.id?updatedDeal:contract));setAllDeals(current=>current.map(contract=>contract.id===updatedDeal.id?updatedDeal:contract));setCommissionDeals(current=>shouldRemoveFromCommissions?current.filter(contract=>contract.id!==updatedDeal.id):current.map(contract=>contract.id===updatedDeal.id?updatedDeal:contract));setSelected(updatedDeal)}
 
   function handlePageChange(newPage) {
@@ -239,7 +240,7 @@ function App() {
   } else if (page === "epvs") {
     pageContent = <EPVSCalculator/>
   } else if (page === "fit-sheet") {
-    pageContent = <FitSheet setSelected={deal=>{setSelected(deal);setSelectedSourcePage(page);window.history.pushState({}, "", `/${page}/${deal?.id}`)}}/>
+    pageContent = <FitSheet setSelected={deal=>handleDealSelect(deal, page)}/>
   } else if (page === "contracts") {
     pageContent = <Contracts contracts={filteredContracts} loading={loading} query={query} status={status} onSearchChange={handleSearchChange} onStatusChange={value=>{setStatus(value);loadContracts(0,query,value)}} onNext={()=>loadContracts(contractsPage+1)} onPrev={()=>loadContracts(Math.max(contractsPage-1,0))} hasNext={hasMoreContracts} hasPrev={contractsPage>0} onSelect={deal=>{setSelected(deal);setPage("contracts");window.history.pushState({},"",`/contracts/${deal.id}`)}} onNewContract={()=>{}}/>
   } else if (page === "installations") {
@@ -275,7 +276,7 @@ function App() {
   } else if (page === "templates") {
     pageContent = <Templates/>
   } else {
-    pageContent = <Dashboard deals={allDeals}/>
+    pageContent = <Dashboard deals={allDeals} setSelected={deal=>handleDealSelect(deal, page)}/>
   }
 
   return <div className="app">
