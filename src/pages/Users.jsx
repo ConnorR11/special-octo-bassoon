@@ -11,6 +11,8 @@ import {
   GitBranch,
   Users as UsersIcon,
   UserRound,
+  Upload,
+  Image as ImageIcon,
 } from "lucide-react"
 
 import { supabase } from "../lib/supabase"
@@ -53,6 +55,8 @@ export default function Users() {
 
   const [showModal, setShowModal] = useState(false)
   const [editingUser, setEditingUser] = useState(null)
+  const [photoFile, setPhotoFile] = useState(null)
+  const [photoPreview, setPhotoPreview] = useState("")
 
 
   /* =======================================================
@@ -67,6 +71,7 @@ export default function Users() {
     permission_level: 1,
     manager_id: "",
     active: true,
+    profile_photo_path: "",
   }
 
   const [form, setForm] = useState(emptyForm)
@@ -419,6 +424,8 @@ export default function Users() {
     setForm({
       ...emptyForm,
     })
+    setPhotoFile(null)
+    setPhotoPreview("")
 
     setError("")
     setShowModal(true)
@@ -454,7 +461,10 @@ export default function Users() {
 
       active:
         user.active !== false,
+      profile_photo_path: user.profile_photo_path || "",
     })
+    setPhotoFile(null)
+    setPhotoPreview(user.profile_photo_path ? supabase.storage.from("profile-photos").getPublicUrl(user.profile_photo_path).data.publicUrl : "")
 
     setError("")
     setShowModal(true)
@@ -476,6 +486,8 @@ export default function Users() {
     setForm({
       ...emptyForm,
     })
+    setPhotoFile(null)
+    setPhotoPreview("")
     setError("")
   }
 
@@ -499,129 +511,59 @@ export default function Users() {
   ======================================================= */
 
   async function saveUser() {
-
     if (!form.full_name.trim()) {
-
-      setError(
-        "Please enter the user's name."
-      )
-
+      setError("Please enter the user's name.")
+      return
+    }
+    if (photoFile && (!["image/jpeg", "image/png", "image/webp"].includes(photoFile.type) || photoFile.size > 5 * 1024 * 1024)) {
+      setError("Please choose a JPG, PNG or WebP image under 5 MB.")
       return
     }
 
     setSaving(true)
     setError("")
-
     try {
-
       const payload = {
-
-        auth_user_id:
-          form.auth_user_id.trim() ||
-          null,
-
-        full_name:
-          form.full_name.trim(),
-
-        role:
-          form.role.trim() ||
-          null,
-
-        branch:
-          form.branch.trim() ||
-          null,
-
-        permission_level:
-          Number(form.permission_level) || 1,
-
-        manager_id:
-          form.manager_id ||
-          null,
-
-        active:
-          Boolean(form.active),
-
+        auth_user_id: form.auth_user_id.trim() || null,
+        full_name: form.full_name.trim(),
+        role: form.role.trim() || null,
+        branch: form.branch.trim() || null,
+        permission_level: Number(form.permission_level) || 1,
+        manager_id: form.manager_id || null,
+        active: Boolean(form.active),
+        profile_photo_path: form.profile_photo_path || null,
       }
 
-
-      /* ===================================================
-         UPDATE
-      =================================================== */
-
+      let savedProfile
       if (editingUser) {
-
-        const {
-          data,
-          error: updateError,
-        } = await supabase
-          .from("profiles")
-          .update(payload)
-          .eq(
-            "id",
-            editingUser.id
-          )
-          .select()
-          .single()
-
-        if (updateError) {
-          throw updateError
-        }
-
-        setUsers(current =>
-          current.map(user =>
-            user.id === editingUser.id
-              ? data
-              : user
-          )
-        )
-
+        const { data, error: updateError } = await supabase.from("profiles").update(payload).eq("id", editingUser.id).select().single()
+        if (updateError) throw updateError
+        savedProfile = data
+      } else {
+        const { data, error: insertError } = await supabase.from("profiles").insert(payload).select().single()
+        if (insertError) throw insertError
+        savedProfile = data
       }
 
-
-      /* ===================================================
-         INSERT
-      =================================================== */
-
-      else {
-
-        const {
-          data,
-          error: insertError,
-        } = await supabase
-          .from("profiles")
-          .insert(payload)
-          .select()
-          .single()
-
-        if (insertError) {
-          throw insertError
-        }
-
-        setUsers(current => [
-          ...current,
-          data,
-        ])
-
+      if (photoFile) {
+        const extension = (photoFile.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg"
+        const path = `${savedProfile.id}/${Date.now()}.${extension}`
+        const { error: uploadError } = await supabase.storage.from("profile-photos").upload(path, photoFile, { contentType: photoFile.type, upsert: false })
+        if (uploadError) throw uploadError
+        const { data: updatedProfile, error: photoUpdateError } = await supabase.from("profiles").update({ profile_photo_path: path }).eq("id", savedProfile.id).select().single()
+        if (photoUpdateError) throw photoUpdateError
+        savedProfile = updatedProfile
       }
 
+      setUsers(current => editingUser
+        ? current.map(user => user.id === savedProfile.id ? savedProfile : user)
+        : [...current, savedProfile])
       closeModal()
-
     } catch (err) {
-
-      console.error(
-        "Error saving user:",
-        err
-      )
-
-      setError(
-        err?.message ||
-        "Unable to save user."
-      )
-
+      console.error("Error saving user:", err)
+      setError(err?.message || "Unable to save user.")
     } finally {
-
       setSaving(false)
-
     }
   }
 
@@ -678,6 +620,7 @@ export default function Users() {
         .join("")
         .slice(0, 2)
         .toUpperCase()
+    const photoUrl = user.profile_photo_path ? supabase.storage.from("profile-photos").getPublicUrl(user.profile_photo_path).data.publicUrl : ""
 
     return (
       <div
@@ -719,11 +662,7 @@ export default function Users() {
           {/* AVATAR */}
 
           <div className="tree-avatar">
-
-            {initials || (
-              <UserRound size={16} />
-            )}
-
+            {photoUrl ? <img src={photoUrl} alt={`${user.full_name || "User"} profile`} /> : (initials || <UserRound size={16} />)}
           </div>
 
 
@@ -1367,7 +1306,9 @@ export default function Users() {
           color: #2879b5;
           font-size: 11px;
           font-weight: 800;
+          overflow: hidden;
         }
+        .tree-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 
         /* =================================================
@@ -2249,6 +2190,32 @@ export default function Users() {
 
               <div className="users-form-grid">
 
+
+                {/* PROFILE PHOTO */}
+                <div className="users-form-field" style={{ gridColumn: "1 / -1" }}>
+                  <label className="users-form-label">Profile photo</label>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    <div className="tree-avatar" style={{ width: 64, height: 64, flexBasis: 64, marginRight: 0 }}>
+                      {photoPreview ? <img src={photoPreview} alt="Profile preview" /> : <ImageIcon size={22} />}
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                      <label className="users-cancel-button" style={{ display: "inline-flex", alignItems: "center", gap: 7, width: "fit-content", cursor: saving ? "default" : "pointer" }}>
+                        <Upload size={13} /> {photoFile ? "Choose a different photo" : "Upload photo"}
+                        <input type="file" accept="image/jpeg,image/png,image/webp" disabled={saving} style={{ display: "none" }} onChange={event => {
+                          const file = event.target.files?.[0]
+                          if (!file) return
+                          if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) { setError("Please choose a JPG, PNG or WebP image."); event.target.value = ""; return }
+                          if (file.size > 5 * 1024 * 1024) { setError("Please choose an image under 5 MB."); event.target.value = ""; return }
+                          setError("")
+                          setPhotoFile(file)
+                          setPhotoPreview(URL.createObjectURL(file))
+                        }} />
+                      </label>
+                      <span style={{ fontSize: 10, color: "#687585" }}>JPG, PNG or WebP · maximum 5 MB</span>
+                      {form.profile_photo_path && !photoFile && <button type="button" className="users-cancel-button" style={{ width: "fit-content" }} onClick={() => { updateForm("profile_photo_path", ""); setPhotoPreview(""); setPhotoFile(null) }}>Remove photo</button>}
+                    </div>
+                  </div>
+                </div>
 
                 {/* FULL NAME */}
 
