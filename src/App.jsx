@@ -239,7 +239,7 @@ function App() {
   } else if (page === "epvs") {
     pageContent = <EPVSCalculator/>
   } else if (page === "fit-sheet") {
-    pageContent = <FitSheet/>
+    pageContent = <FitSheet setSelected={deal=>{setSelected(deal);setSelectedSourcePage(page);window.history.pushState({}, "", `/${page}/${deal?.id}`)}}/>
   } else if (page === "contracts") {
     pageContent = <Contracts contracts={filteredContracts} loading={loading} query={query} status={status} onSearchChange={handleSearchChange} onStatusChange={value=>{setStatus(value);loadContracts(0,query,value)}} onNext={()=>loadContracts(contractsPage+1)} onPrev={()=>loadContracts(Math.max(contractsPage-1,0))} hasNext={hasMoreContracts} hasPrev={contractsPage>0} onSelect={deal=>{setSelected(deal);setPage("contracts");window.history.pushState({},"",`/contracts/${deal.id}`)}} onNewContract={()=>{}}/>
   } else if (page === "installations") {
