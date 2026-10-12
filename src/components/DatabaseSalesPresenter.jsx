@@ -4,7 +4,7 @@ import { X, ChevronLeft, ChevronRight, LoaderCircle, Maximize2 } from "lucide-re
 import { PDFDocument } from "pdf-lib"
 import { supabase } from "../lib/supabase"
 
-const PRESENTER_PATH = "Homeshield-Solar-Presenter-no-page-29.pdf"
+const PRESENTER_PATH = "Homeshield-Solar-Presenter-edited.pdf"
 
 export default function DatabaseSalesPresenter({ appointment, onClose }) {
   const [sourceUrl, setSourceUrl] = useState("")
