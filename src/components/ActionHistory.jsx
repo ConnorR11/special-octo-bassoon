@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react"
 import { CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, XCircle } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 25
 
 function display(value, fallback = "—") {
   const text = String(value ?? "").trim()
@@ -51,6 +51,9 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
   const [error, setError] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [expandedActionId, setExpandedActionId] = useState(null)
+  // Default to operational actions so presenter page-navigation events do not
+  // hide them; all presenter events remain stored and available in the filters.
+  const [activityFilter, setActivityFilter] = useState("other")
 
   async function loadActions() {
     if (!supabase || !entityId) {
@@ -87,9 +90,9 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
   }, [entityType, entityId])
 
   useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(actions.length / PAGE_SIZE))
+    const totalPages = Math.max(1, Math.ceil(filteredActions.length / PAGE_SIZE))
     setCurrentPage((page) => Math.min(page, totalPages))
-  }, [actions.length])
+  }, [filteredActions.length])
 
   useEffect(() => {
     if (!supabase || !entityId) return undefined
@@ -196,11 +199,17 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
     return () => document.removeEventListener("click", handleActionClick, true)
   }, [entityType, entityId])
 
-  const totalPages = Math.max(1, Math.ceil(actions.length / PAGE_SIZE))
+  const filteredActions = actions.filter((action) => {
+    const isPresenter = action.action_type === "sales_presenter"
+    if (activityFilter === "presenter") return isPresenter
+    if (activityFilter === "other") return !isPresenter
+    return true
+  })
+  const totalPages = Math.max(1, Math.ceil(filteredActions.length / PAGE_SIZE))
   const pageStart = (currentPage - 1) * PAGE_SIZE
-  const visibleActions = actions.slice(pageStart, pageStart + PAGE_SIZE)
-  const showingStart = actions.length ? pageStart + 1 : 0
-  const showingEnd = Math.min(pageStart + PAGE_SIZE, actions.length)
+  const visibleActions = filteredActions.slice(pageStart, pageStart + PAGE_SIZE)
+  const showingStart = filteredActions.length ? pageStart + 1 : 0
+  const showingEnd = Math.min(pageStart + PAGE_SIZE, filteredActions.length)
 
   function renderActionRows(items) {
     return items.map((action) => {
@@ -261,7 +270,13 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
     <section className="action-history">
       <style>{`
         .action-history{background:#fff;border:1px solid #e1e5ea;border-radius:8px;overflow:hidden}
-        .action-history-header{padding:14px 16px;border-bottom:1px solid #e8ebef;font-size:13px;font-weight:800;color:#172033}
+        .action-history-header{padding:14px 16px;border-bottom:1px solid #e8ebef;font-size:13px;font-weight:800;color:#172033;display:flex;align-items:center;justify-content:space-between;gap:10px}
+        .action-history-total{font-size:10px;font-weight:600;color:#64748b}
+        .action-history-filters{display:flex;gap:7px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid #e8ebef;background:#fafbfc}
+        .action-history-filter{display:flex;align-items:center;gap:7px;border:1px solid #d9dee5;border-radius:6px;background:#fff;color:#475569;padding:7px 10px;font:600 11px inherit;cursor:pointer}
+        .action-history-filter span{border-radius:10px;background:#eef2f6;color:#64748b;padding:2px 6px;font-size:10px}
+        .action-history-filter.active{border-color:#0b3551;background:#eaf2f7;color:#0b3551}
+        .action-history-filter.active span{background:#0b3551;color:#fff}
         .action-history-empty{padding:18px 16px;color:#94a3b8;font-size:12px}
         .action-history-error{padding:12px 16px;color:#991b1b;background:#fef2f2;font-size:12px}
         .action-history-list{display:flex;flex-direction:column;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
@@ -294,10 +309,28 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
         .action-history-page-button:hover:not(:disabled){background:#f1f5f9}
         .action-history-page-button:disabled{opacity:.4;cursor:not-allowed}
         .action-history-page-number{font-size:11px;color:#475569;min-width:55px;text-align:center}
-        @media(max-width:800px){.action-history-row{grid-template-columns:28px minmax(125px,1fr) 95px 18px;gap:8px;padding:11px 12px;min-width:0}.action-history-row .action-history-user,.action-history-row .action-history-date{display:none}.action-history-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.action-history-json-grid{grid-template-columns:minmax(0,1fr)}.action-history-pagination{padding:10px 12px}}
+        @media(max-width:800px){.action-history-row{grid-template-columns:28px minmax(125px,1fr) 95px 18px;gap:8px;padding:11px 12px;min-width:0}.action-history-row .action-history-user,.action-history-row .action-history-date{display:none}.action-history-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.action-history-json-grid{grid-template-columns:minmax(0,1fr)}.action-history-pagination{padding:10px 12px}.action-history-filters{gap:5px}.action-history-filter{padding:7px 8px}}
       `}</style>
 
-      <div className="action-history-header">Activity</div>
+      <div className="action-history-header">
+        <span>Activity</span>
+        {!loading && <span className="action-history-total">{actions.length} recorded</span>}
+      </div>
+      {!loading && !error && (
+        <div className="action-history-filters" role="group" aria-label="Filter activity">
+          {[
+            { value: "other", label: "Other actions", count: actions.filter(a => a.action_type !== "sales_presenter").length },
+            { value: "all", label: "All activity", count: actions.length },
+            { value: "presenter", label: "Sales Presenter pages", count: actions.filter(a => a.action_type === "sales_presenter").length },
+          ].map(option => (
+            <button key={option.value} type="button"
+              className={`action-history-filter ${activityFilter === option.value ? "active" : ""}`}
+              onClick={() => { setActivityFilter(option.value); setCurrentPage(1); setExpandedActionId(null) }}>
+              {option.label}<span>{option.count}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <div className="action-history-empty">Loading activity...</div>
@@ -308,7 +341,7 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
               {renderActionRows(visibleActions)}
             </div>
           )}
-          {actions.length > PAGE_SIZE && (
+          {filteredActions.length > PAGE_SIZE && (
             <div className="action-history-pagination">
               <div className="action-history-pagination-info">
                 Showing {showingStart}–{showingEnd} of {actions.length}
@@ -338,15 +371,15 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
           )}
           <div className="action-history-error">{error}</div>
         </>
-      ) : actions.length === 0 ? (
-        <div className="action-history-empty">No actions have been run for this appointment.</div>
+      ) : filteredActions.length === 0 ? (
+        <div className="action-history-empty">{actions.length === 0 ? "No actions have been run for this appointment." : "No actions in this filter."}</div>
       ) : (
         <>
           <div className="action-history-list">
             {renderActionRows(visibleActions)}
           </div>
 
-          {actions.length > PAGE_SIZE && (
+          {filteredActions.length > PAGE_SIZE && (
             <div className="action-history-pagination">
               <div className="action-history-pagination-info">
                 Showing {showingStart}–{showingEnd} of {actions.length}
