@@ -560,7 +560,7 @@ function CustomerDetail({
                 {!categoryDocuments.length && <div style={{ fontSize: 10, color: "#89939c" }}>{documentsLoading ? "Loading files…" : "No files uploaded yet."}</div>}
               </div>
             </div>
-            {category.key === "survey_video" && (
+            {category.key === "electricity_bill_epvs_waiver" && (
                     <div style={{ borderTop: "1px solid #e1e6eb", paddingTop: 16 }}>
                       <div style={{ padding: "14px 12px 10px" }}><h2 style={{ margin: 0, fontSize: 15 }}>Survey Checklist</h2><p style={{ margin: "4px 0 0", color: "#75818b", fontSize: 11 }}>Work through each section, then generate the combined checklist and photo PDF.</p></div>
                       <div style={{padding:"0 12px 14px"}}>
