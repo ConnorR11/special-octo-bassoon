@@ -178,7 +178,10 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
   function renderActionRows(items) {
     return items.map((action) => {
       const status = display(action.status, "running").toLowerCase()
-      const label = display(action.action_type, "Action").replace(/_/g, " ")
+      const buttonLabel = action.action_type === "button_click"
+        ? display(action.input_data?.button_label, "Button")
+        : ""
+      const label = buttonLabel || display(action.action_type, "Action").replace(/_/g, " ")
       const date = action.completed_at || action.started_at || action.created_at
 
       const expanded = expandedActionId === action.id
