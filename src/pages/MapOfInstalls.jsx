@@ -4,7 +4,7 @@ import "leaflet/dist/leaflet.css"
 import {RefreshCw,Search} from "lucide-react"
 import {supabase} from "../lib/supabase"
 
-const outcodeOf=value=>String(value||"").toUpperCase().replace(/\\s+/g,"").match(/^[A-Z]{1,2}\\d[A-Z\\d]?/)?.[0]||""
+const outcodeOf=value=>String(value||"").toUpperCase().replace(/\s+/g,"").match(/^[A-Z]{1,2}\d[A-Z\d]?/)?.[0]||""
 const number=value=>new Intl.NumberFormat("en-GB").format(value||0)
 
 export default function MapOfInstalls(){
