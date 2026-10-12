@@ -534,14 +534,14 @@ function CustomerDetail({
 
       {activeTab === "survey" && <>
       <div className="card" style={{ marginBottom: 18 }}>
-        <div className="card-head"><div><h2>Deal documents</h2><p>Upload and manage survey files securely in Supabase Storage</p></div></div>
+        <div className="card-head"><div><h2>Solar Survey</h2><p>Upload and manage all solar survey information and supporting files</p></div></div>
         <div style={{ padding: "0 20px 20px", display: "grid", gap: 16 }}>
           {documentError && <div role="alert" style={{ padding: "10px 12px", borderRadius: 7, background: "#fff0f0", color: "#a33b3b", fontSize: 11 }}>{documentError}</div>}
           {documentNotice && <div role="status" style={{ padding: "10px 12px", borderRadius: 7, background: "#e8f4ed", color: "#28734c", fontSize: 11 }}>{documentNotice}</div>}
           {documentCategories.filter(category => category.key !== "survey_photos").map(category => {
             const categoryDocuments = documents.filter(document => document.category === category.key)
             const busy = uploadingCategory === category.key
-            return <><div key={category.key} style={{ border: "1px solid #e1e6eb", borderRadius: 9, overflow: "hidden" }}>
+            return <><div key={category.key} style={{ borderTop: "1px solid #e1e6eb", overflow: "hidden" }}>
               <div style={{ padding: "13px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "#f8fafc", borderBottom: "1px solid #e1e6eb" }}>
                 {category.key === "survey_photos" && <select value={surveySection} onChange={e=>setSurveySection(e.target.value)} style={{maxWidth:220,padding:"7px 8px",border:"1px solid #d7dee8",borderRadius:6,background:"#fff",fontSize:10}}>{surveyPhotoSections.map(section=><option key={section} value={section}>{section}</option>)}</select>}
                 <div style={{ minWidth: 0 }}><div style={{ fontSize: 12, fontWeight: 700, color: "#263645" }}>{category.label}</div><div style={{ marginTop: 4, fontSize: 10, color: "#75818b" }}>{category.hint}</div></div>
@@ -561,8 +561,8 @@ function CustomerDetail({
               </div>
             </div>
             {category.key === "survey_video" && (
-                    <div className="card" style={{ marginBottom: 18 }}>
-                      <div className="card-head"><div><h2>2. Solar survey checklist</h2><p>Work through each section, then generate the combined checklist and photo PDF.</p></div></div>
+                    <div style={{ borderTop: "1px solid #e1e6eb", paddingTop: 16 }}>
+                      <div style={{ padding: "0 20px 12px" }}><h2 style={{ margin: 0, fontSize: 16 }}>2. Solar survey checklist</h2><p style={{ margin: "5px 0 0", color: "#75818b", fontSize: 11 }}>Work through each section, then generate the combined checklist and photo PDF.</p></div>
                       <div style={{padding:"0 20px 20px"}}>
                         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
                           <div style={{flex:1,height:7,background:"#e8edf2",borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width: `${surveyCompletion}%`,background:"#16845b",borderRadius:99,transition:"width .2s"}}/></div>
