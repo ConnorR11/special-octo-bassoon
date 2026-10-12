@@ -34,17 +34,6 @@ function statusLabel(status) {
   return "Running"
 }
 
-const EPVS_ACTIONS = {
-  "save current bill info": "save_current_bill_info",
-  "save calculation": "save_current_bill_info",
-  "get current design": "get_current_design",
-  "open design": "open_design",
-  "get current rates": "get_current_rates",
-  "get current octopus flux rates": "get_current_rates",
-  "save payment & calculation": "save_payment_calculation",
-  "download epvs calc": "download_epvs_calc",
-}
-
 export default function ActionHistory({ entityType = "appointment", entityId }) {
   const [actions, setActions] = useState([])
   const [loading, setLoading] = useState(true)
@@ -101,109 +90,78 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
   }, [actions.length, activityFilter])
 
   useEffect(() => {
-    if (!supabase || !entityId) return undefined
+    if (!supabase || !entityId || entityType !== "appointment") return undefined
 
+    let lastLoggedClick = { key: "", at: 0 }
     const handleActionClick = async (event) => {
-      // Capture the click before any button/link handler can stop propagation.
-      // composedPath also handles clicks on nested SVG/icon elements.
       const path = typeof event.composedPath === "function" ? event.composedPath() : []
       const element =
         path.find((node) => node?.tagName === "BUTTON" || node?.tagName === "A") ||
         event.target?.closest?.("button, a")
+      if (!element || element.disabled || element.getAttribute?.("aria-disabled") === "true") return
 
-      if (!element) return
-      if (element.disabled || element.getAttribute?.("aria-disabled") === "true") return
+      // Only audit actual controls inside the appointment detail page, not
+      // the Activity panel's own expand/filter/pagination controls.
+      const host = element.closest?.(".appointment-detail-host")
+      if (!host || element.closest?.(".action-history")) return
+      if (element.dataset?.actionLogIgnore === "true") return
 
-      const label = String(element.textContent || "")
-        .replace(/\s+/g, " ")
-        .trim()
-        .toLowerCase()
-
-      const actionType = EPVS_ACTIONS[label]
-      if (!actionType) return
+      const label = String(element.getAttribute?.("aria-label") || element.textContent || "")
+        .replace(/\\s+/g, " ").trim().slice(0, 160)
+      if (!label) return
+      const nowMs = Date.now()
+      const key = `${element.tagName}:${label}`
+      if (lastLoggedClick.key === key && nowMs - lastLoggedClick.at < 500) return
+      lastLoggedClick = { key, at: nowMs }
 
       const now = new Date().toISOString()
-      const temporaryId = `local-${Date.now()}-${Math.random().toString(36).slice(2)}`
-      const optimisticAction = {
+      const temporaryId = `local-${nowMs}-${Math.random().toString(36).slice(2)}`
+      setActions((current) => [{
         id: temporaryId,
-        action_type: actionType,
+        action_type: "button_click",
         status: "running",
         triggered_by: "Recording…",
         started_at: now,
-        completed_at: null,
         created_at: now,
-      }
-
-      // Show the action immediately. This makes the activity row appear even
-      // while Supabase is processing the insert/update.
-      setActions((current) => [optimisticAction, ...current])
+        entity_type: entityType,
+        entity_id: entityId,
+        input_data: { source: "appointment_button_audit", button_label: label, element: element.tagName.toLowerCase() },
+      }, ...current])
       setCurrentPage(1)
 
       try {
-        const { data: userData } = await supabase.auth.getUser()
+        const { data: userData, error: userError } = await supabase.auth.getUser()
+        if (userError) throw userError
         const user = userData?.user
-        const triggeredBy =
-          String(
-            user?.user_metadata?.full_name ||
-            user?.user_metadata?.name ||
-            user?.email ||
-            "Unknown"
-          ).trim() || "Unknown"
-
-        const { data: action, error: insertError } = await supabase
-          .from("action_runs")
-          .insert({
-            action_type: actionType,
-            status: "running",
-            entity_type: entityType,
-            entity_id: entityId,
-            triggered_by: triggeredBy,
-            started_at: now,
-            input_data: {
-              source: "epvs_calculator",
-              action_label: label,
-            },
-          })
-          .select("id")
-          .single()
-
+        const triggeredBy = String(user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || "Unknown").trim() || "Unknown"
+        const { data: action, error: insertError } = await supabase.from("action_runs").insert({
+          action_type: "button_click",
+          status: "completed",
+          entity_type: entityType,
+          entity_id: entityId,
+          triggered_by: triggeredBy,
+          started_at: now,
+          completed_at: new Date().toISOString(),
+          input_data: { source: "appointment_button_audit", button_label: label, element: element.tagName.toLowerCase() },
+          output_data: { event: "click_recorded", note: "Records that the button was pressed; it does not indicate whether the button's underlying operation succeeded." },
+        }).select("id").single()
         if (insertError) throw insertError
-
-        const { error: updateError } = await supabase
-          .from("action_runs")
-          .update({
-            status: "completed",
-            completed_at: new Date().toISOString(),
-            output_data: { triggered: true },
-          })
-          .eq("id", action.id)
-
-        if (updateError) throw updateError
-
-        await loadActions()
+        setActions((current) => current.map((item) => item.id === temporaryId ? { ...item, ...action, status: "completed", triggered_by: triggeredBy, completed_at: new Date().toISOString() } : item))
       } catch (actionError) {
-        console.error("Error recording EPVS action:", actionError)
-        setActions((current) =>
-          current.map((item) =>
-            item.id === temporaryId
-              ? {
-                  ...item,
-                  status: "failed",
-                  triggered_by: "Action logging failed",
-                  completed_at: new Date().toISOString(),
-                }
-              : item
-          )
-        )
-        setError(`Could not save action history: ${actionError?.message || "Unknown error"}`)
+        console.error("Error recording appointment button click:", actionError)
+        setActions((current) => current.map((item) => item.id === temporaryId ? {
+          ...item,
+          status: "failed",
+          triggered_by: "Action logging failed",
+          completed_at: new Date().toISOString(),
+          error_message: actionError?.message || "Unknown error",
+        } : item))
       }
     }
 
-    // Use capture phase so the tracker still runs for buttons whose own
-    // handlers call stopPropagation().
     document.addEventListener("click", handleActionClick, true)
     return () => document.removeEventListener("click", handleActionClick, true)
-  }, [entityType, entityId])
+  }, [entityType, entityId]))
 
   const filteredActions = actions.filter((action) => {
     const isPresenter = action.action_type === "sales_presenter"
