@@ -23,9 +23,10 @@ export default function MapOfInstalls(){
    if(districtsResult.error)throw districtsResult.error
    if(typesResult.error)throw typesResult.error
    const districts=(districtsResult.data||[]).map(mapRow)
-   const grouped={}
-   for(const district of districts){const area=areaOf(district.outcode);if(!area)continue;grouped[area]??={outcode:area,count:0,cps_h:0,cps_c:0,cps_p:0,cps_s:0,districts:[]};const group=grouped[area];group.count+=district.count;for(const key of ["cps_h","cps_c","cps_p","cps_s"])group[key]+=district[key];group.districts.push(district)}
-   setAreaRows(Object.values(grouped).map(group=>({...group,districts:group.districts.sort((a,b)=>b.count-a.count||a.outcode.localeCompare(b.outcode))})).sort((a,b)=>b.count-a.count||a.outcode.localeCompare(b.outcode)))
+   const districtsByArea={}
+   for(const district of districts){const area=areaOf(district.outcode);if(!area)continue;(districtsByArea[area]??=[]).push(district)}
+   const areas=(areasResult.data||[]).map(mapRow).map(area=>({...area,districts:(districtsByArea[area.outcode]||[]).sort((a,b)=>b.count-a.count||a.outcode.localeCompare(b.outcode))}))
+   setAreaRows(areas)
    setDistrictRows(districts)
    setJobTypes((typesResult.data||[]).map(row=>row.postcode_key).filter(type=>type&&type!=="(blank)").sort((a,b)=>a.localeCompare(b)))
  }catch(e){setError(e.message||"Unable to load postcode summaries.");setAreaRows([]);setDistrictRows([]);setJobTypes([])}finally{setLoading(false)}},[jobType])
