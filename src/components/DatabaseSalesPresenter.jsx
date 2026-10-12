@@ -4,7 +4,7 @@ import { X, ChevronLeft, ChevronRight, LoaderCircle, Maximize2 } from "lucide-re
 import { PDFDocument } from "pdf-lib"
 import { supabase } from "../lib/supabase"
 
-const PRESENTER_PATH = "Homeshield-Solar-Presenter-edited.pdf"
+const PRESENTER_PATH = "Homeshield-Solar-Presenter-no-page-29.pdf"
 
 export default function DatabaseSalesPresenter({ appointment, onClose }) {
   const [sourceUrl, setSourceUrl] = useState("")
@@ -80,14 +80,11 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
         if (!pdfResponse.ok) throw new Error("The presenter PDF could not be downloaded.")
         const bytes = await pdfResponse.arrayBuffer()
         const document = await PDFDocument.load(bytes)
-        // Hide page 29 in the temporary PDF presenter only. The stored source PDF remains unchanged.
-        if (document.getPageCount() >= 29) document.removePage(28)
-        const presenterBytes = await document.save()
         if (cancelled) return
         setSourceUrl(result.url)
-        setPdfBytes(presenterBytes)
+        setPdfBytes(bytes)
         setPageCount(document.getPageCount())
-        logPresenterAction("opened", { page_count: document.getPageCount(), presenter: "solar_pdf", hidden_source_page: 29 })
+        logPresenterAction("opened", { page_count: document.getPageCount(), presenter: "solar_pdf" })
       } catch (e) {
         if (!cancelled) setError(e?.message || "Unable to load the Solar Presenter PDF.")
       } finally {
