@@ -52,10 +52,19 @@ function CustomerDetail({
   const [surveyAnswers, setSurveyAnswers] = useState({})
   const [surveySaving, setSurveySaving] = useState(false)
   const [surveySection, setSurveySection] = useState("Front of Property")
+  const [expandedSurveySection, setExpandedSurveySection] = useState("Property & installation")
   const [generatingSurvey, setGeneratingSurvey] = useState(false)
   const surveyQuestions = [
     ["Is this home in a listed building or in a conservation area?", "listed_conservation"], ["Is it a suspended or concrete floor?", "floor_type"], ["Where is the main fusebox located?", "fusebox_location"], ["How far is the fusebox from the intended fit location of the battery/inverter?", "fusebox_distance"], ["How long is the DC run?", "dc_run"], ["Where will the battery/inverter be located?", "inverter_location"], ["Is the battery/inverter being installed on the south facing wall?", "south_wall"], ["Is a canopy or a fireproof encasement being fitted?", "canopy_fireproof"], ["What type of external walls are there?", "external_walls"], ["Building Width", "building_width"], ["Building Height", "building_height"], ["Height of roof from loft-hatch", "roof_height_loft"], ["Roof Tile Type", "roof_tile_type"], ["Condition of Roof", "roof_condition"], ["Shading Issues", "shading_issues"], ["Roof Obstructions", "roof_obstructions"], ["Any Access Issues", "access_issues"], ["Can scaffolding be erected?", "scaffolding"], ["Does customer Wi-Fi reach the battery/inverter?", "wifi_reach"], ["What is the size of the cut out switch?", "cutout_size"], ["What is the customer’s MPAN number?", "mpan"], ["Are there any high energy appliances?", "high_energy_appliances"], ["Is there sufficient loft access?", "loft_access"], ["Does the customer consent to Copex/trunking around the building? (If loft access is insufficient)", "copex_consent"], ["Does the customer have an existing solar system?", "existing_solar"], ["How many panels? (And their output)", "existing_panels"], ["Type & Size of Inverter", "existing_inverter"]
   ]
+  const surveyQuestionGroups = [
+    { title: "Property & installation", icon: "house", keys: ["listed_conservation", "floor_type", "external_walls", "inverter_location", "south_wall", "canopy_fireproof"] },
+    { title: "Electrical & battery", icon: "zap", keys: ["fusebox_location", "fusebox_distance", "dc_run", "wifi_reach", "cutout_size", "mpan", "high_energy_appliances"] },
+    { title: "Roof & solar panels", icon: "sun", keys: ["roof_tile_type", "roof_condition", "shading_issues", "roof_obstructions", "existing_solar", "existing_panels", "existing_inverter"] },
+    { title: "Measurements & access", icon: "ruler", keys: ["building_width", "building_height", "roof_height_loft", "access_issues", "scaffolding", "loft_access", "copex_consent"] },
+  ]
+  const answeredSurveyCount = surveyQuestions.filter(([, key]) => String(surveyAnswers[key] || "").trim()).length
+  const surveyCompletion = Math.round((answeredSurveyCount / surveyQuestions.length) * 100)
   const surveyPhotoSections = ["Front of Property", "Rear of Property", "Side of Property", "Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Loft Access Point", "Loft Roof Truss", "Internet DC Route", "External DC Route", "Proposed Inverter Location", "Proposed Battery Location", "Proposed Canopy Location", "Proposed Panel Layout", "Alternative Roof Elevations", "Existing Solar Equipment", "Existing EV Charger", "High Electrical Usage Items", "Shading Issues"]
   const documentCategories = [
     { key: "survey_video", label: "Survey Video", accept: "video/*", multiple: false, hint: "Common video formats. Maximum 250 MB per file." },
@@ -537,10 +546,37 @@ function CustomerDetail({
             </div>
             {category.key === "survey_video" && (
                     <div className="card" style={{ marginBottom: 18 }}>
-                      <div className="card-head"><div><h2>Solar survey checklist</h2><p>Complete the survey answers, then generate the combined checklist and photo PDF.</p></div></div>
+                      <div className="card-head"><div><h2>Solar survey checklist</h2><p>Work through each section, then generate the combined checklist and photo PDF.</p></div></div>
                       <div style={{padding:"0 20px 20px"}}>
-                        <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}}>
-                          {surveyQuestions.map(([question,key]) => <label key={key} style={{display:"grid",gap:5,fontSize:11,color:"#475569"}}><span>{question}</span><input value={surveyAnswers[key] || ""} onChange={e=>setSurveyAnswers(current=>({...current,[key]:e.target.value}))} placeholder="Enter answer" style={{boxSizing:"border-box",width:"100%",minHeight:36,padding:"8px 10px",border:"1px solid #d9dadd",borderRadius:7,font:"inherit"}} /></label>)}
+                        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+                          <div style={{flex:1,height:7,background:"#e8edf2",borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width:`${surveyCompletion}%`,background:"#16845b",borderRadius:99,transition:"width .2s"}} /></div>
+                          <div style={{fontSize:11,color:"#64748b",whiteSpace:"nowrap"}}>{answeredSurveyCount} of {surveyQuestions.length} answered · {surveyCompletion}%</div>
+                        </div>
+                        <div style={{display:"grid",gap:10}}>
+                          {surveyQuestionGroups.map((group,index) => {
+                            const groupQuestions = surveyQuestions.filter(([,key]) => group.keys.includes(key))
+                            const groupAnswered = groupQuestions.filter(([,key]) => String(surveyAnswers[key] || "").trim()).length
+                            const isOpen = expandedSurveySection === group.title
+                            return <div key={group.title} style={{border:"1px solid #e1e6eb",borderRadius:9,overflow:"hidden"}}>
+                              <button type="button" onClick={() => setExpandedSurveySection(isOpen ? "" : group.title)} aria-expanded={isOpen} style={{display:"flex",alignItems:"center",gap:12,width:"100%",padding:"14px",border:0,background:isOpen?"#f4f8fb":"#fff",textAlign:"left",cursor:"pointer"}}>
+                                <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:30,height:30,borderRadius:8,background:"#e8eef4",color:"#17364b",fontSize:12,fontWeight:700}}>{index+1}</span>
+                                <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:700,color:"#263645"}}>{group.title}</span><span style={{display:"block",marginTop:3,fontSize:10,color:"#75818b"}}>{groupAnswered} of {groupQuestions.length} answered</span></span>
+                                <span style={{fontSize:10,color:"#64748b",marginRight:5}}>{groupAnswered===groupQuestions.length ? "Complete" : "In progress"}</span>
+                                <span style={{fontSize:17,color:"#64748b"}}>{isOpen ? "−" : "+"}</span>
+                              </button>
+                              {isOpen && <div style={{padding:14,borderTop:"1px solid #e1e6eb",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:12}}>
+                                {groupQuestions.map(([question,key]) => {
+                                  const yesNoKeys = ["listed_conservation","south_wall","canopy_fireproof","wifi_reach","high_energy_appliances","loft_access","copex_consent","existing_solar","scaffolding"]
+                                  const isYesNo = yesNoKeys.includes(key)
+                                  const isFloor = key === "floor_type"
+                                  return <label key={key} style={{display:"grid",alignContent:"start",gap:6,fontSize:11,color:"#475569"}}>
+                                    <span>{question}</span>
+                                    {isYesNo || isFloor ? <select value={surveyAnswers[key] || ""} onChange={e=>setSurveyAnswers(current=>({...current,[key]:e.target.value}))} style={{boxSizing:"border-box",width:"100%",minHeight:38,padding:"8px 10px",border:"1px solid #d9dadd",borderRadius:7,font:"inherit",background:"#fff",color:surveyAnswers[key]?"#263645":"#89939c"}}><option value="">Select answer</option>{(isFloor ? ["Suspended","Concrete"] : ["Yes","No","Not sure"]).map(option=><option key={option} value={option}>{option}</option>)}</select> : <input value={surveyAnswers[key] || ""} onChange={e=>setSurveyAnswers(current=>({...current,[key]:e.target.value}))} placeholder="Enter answer" style={{boxSizing:"border-box",width:"100%",minHeight:38,padding:"8px 10px",border:"1px solid #d9dadd",borderRadius:7,font:"inherit"}} />}
+                                  </label>
+                                })}
+                              </div>}
+                            </div>
+                          })}
                         </div>
                         <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:16}}>
                           <button type="button" onClick={saveSurveyAnswers} disabled={surveySaving} style={{border:0,borderRadius:7,padding:"10px 14px",background:"#e8eef4",color:"#172554",fontWeight:700,cursor:"pointer"}}>{surveySaving?"Saving checklist…":"Save checklist"}</button>
