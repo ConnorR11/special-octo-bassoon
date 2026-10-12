@@ -534,7 +534,7 @@ function DataDashboard() {
           <h1>Data Dashboard</h1>
 
           <p>
-            Lead volume received by month from January 2022 onwards.
+            <span style={{ color: "#dc2626" }}>This is not all leads, still have to move more over</span>
           </p>
         </div>
 
