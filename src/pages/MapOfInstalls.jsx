@@ -10,7 +10,7 @@ const number=value=>new Intl.NumberFormat("en-GB").format(value||0)
 export default function MapOfInstalls(){
  const [deals,setDeals]=useState([]),[coords,setCoords]=useState({}),[loading,setLoading]=useState(true),[geoLoading,setGeoLoading]=useState(false),[error,setError]=useState(""),[search,setSearch]=useState("")
  const mapNode=useRef(null),map=useRef(null),markers=useRef(null)
- const load=useCallback(async()=>{setLoading(true);setError("");try{let all=[],from=0;while(true){const {data,error}=await supabase.from("deals").select("id,customer_name,postcode,pipedrive_stage,status,sale_date,installation_date,installation_start_date").range(from,from+999);if(error)throw error;all.push(...(data||[]));if((data||[]).length<1000)break;from+=1000}setDeals(all)}catch(e){setError(e.message||"Unable to load deals.");setDeals([])}finally{setLoading(false)}},[])
+ const load=useCallback(async()=>{setLoading(true);setError("");try{let all=[],from=0;while(true){const {data,error}=await supabase.from("deals").select("id,customer_name,postcode,pipedrive_stage,status,sale_date").range(from,from+999);if(error)throw error;all.push(...(data||[]));if((data||[]).length<1000)break;from+=1000}setDeals(all)}catch(e){setError(e.message||"Unable to load deals.");setDeals([])}finally{setLoading(false)}},[])
  useEffect(()=>{load()},[load])
  const rows=useMemo(()=>{const groups={};for(const deal of deals){const code=outcodeOf(deal.postcode);if(!code)continue;groups[code]??={outcode:code,count:0};groups[code].count++}return Object.values(groups).sort((a,b)=>b.count-a.count||a.outcode.localeCompare(b.outcode))},[deals])
  const visible=useMemo(()=>{const q=search.trim().toUpperCase();return q?rows.filter(r=>r.outcode.includes(q)):rows},[rows,search])
