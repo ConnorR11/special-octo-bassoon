@@ -90,9 +90,15 @@ export default function ActionHistory({ entityType = "appointment", entityId }) 
   }, [entityType, entityId])
 
   useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(filteredActions.length / PAGE_SIZE))
+    const filteredCount = actions.filter((action) => {
+      const isPresenter = action.action_type === "sales_presenter"
+      if (activityFilter === "presenter") return isPresenter
+      if (activityFilter === "other") return !isPresenter
+      return true
+    }).length
+    const totalPages = Math.max(1, Math.ceil(filteredCount / PAGE_SIZE))
     setCurrentPage((page) => Math.min(page, totalPages))
-  }, [filteredActions.length])
+  }, [actions.length, activityFilter])
 
   useEffect(() => {
     if (!supabase || !entityId) return undefined
