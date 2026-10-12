@@ -565,7 +565,7 @@ function CustomerDetail({
                       <div className="card-head"><div><h2>Solar survey checklist</h2><p>Work through each section, then generate the combined checklist and photo PDF.</p></div></div>
                       <div style={{padding:"0 20px 20px"}}>
                         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-                          <div style={{flex:1,height:7,background:"#e8edf2",borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width:{surveyCompletion + "%"},background:"#16845b",borderRadius:99,transition:"width .2s"}}/></div>
+                          <div style={{flex:1,height:7,background:"#e8edf2",borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width={surveyCompletion + "%"},background:"#16845b",borderRadius:99,transition:"width .2s"}}/></div>
                           <div style={{fontSize:11,color:"#64748b",whiteSpace:"nowrap"}}>{answeredSurveyCount} of {surveyQuestions.length} answered · {surveyCompletion}%</div>
                         </div>
                         <div style={{display:"grid",gap:10}}>
