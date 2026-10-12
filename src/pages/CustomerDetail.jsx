@@ -564,10 +564,6 @@ function CustomerDetail({
                     <div className="card" style={{ marginBottom: 18 }}>
                       <div className="card-head"><div><h2>Solar survey checklist</h2><p>Work through each section, then generate the combined checklist and photo PDF.</p></div></div>
                       <div style={{padding:"0 20px 20px"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-                          <div style={{flex:1,height:7,background:"#e8edf2",borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width:`${surveyCompletion}%`,background:"#16845b",borderRadius:99,transition:"width .2s"}} /></div>
-                          <div style={{fontSize:11,color:"#64748b",whiteSpace:"nowrap"}}>{answeredSurveyCount} of {surveyQuestions.length} answered · {surveyCompletion}%</div>
-                        </div>
                         <div style={{display:"grid",gap:10}}>
                           {surveyQuestionGroups.map((group,index) => {
                             const groupQuestions = surveyQuestions.filter(([,key]) => group.keys.includes(key))
@@ -596,13 +592,22 @@ function CustomerDetail({
                         </div>
                         <div style={{marginTop:16,border:"1px solid #e1e6eb",borderRadius:9,overflow:"hidden"}}>
                           <button type="button" onClick={()=>setSurveyPhotosExpanded(value=>!value)} aria-expanded={surveyPhotosExpanded} style={{display:"flex",alignItems:"center",gap:12,width:"100%",padding:14,border:0,background:surveyPhotosExpanded?"#f4f8fb":"#f8fafc",textAlign:"left",cursor:"pointer"}}>
+                            <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:25,height:25,borderRadius:7,background:"#e8eef4",color:"#17364b",fontSize:10,fontWeight:700,flex:"0 0 auto"}}>5</span>
                             <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:700,color:"#263645"}}>Survey photos</span><span style={{display:"block",marginTop:4,fontSize:10,color:"#75818b"}}>Add photos to each section. Photos are saved and included in the PDF when you generate the full survey PDF.</span></span>
                             <span style={{fontSize:10,color:"#64748b",whiteSpace:"nowrap"}}>{documents.filter(d=>d.category==="survey_photos").length} saved · {pendingSurveyPhotos.length} new</span>
                             <span style={{fontSize:17,color:"#64748b"}}>{surveyPhotosExpanded?"−":"+"}</span>
                           </button>
                           {surveyPhotosExpanded && <>
                           <div style={{padding:14,background:"#f8fafc",borderTop:"1px solid #e1e6eb",borderBottom:"1px solid #e1e6eb"}}>
-                            <div style={{marginTop:4,fontSize:10,color:"#75818b"}}>Add photos to each section. Photos are saved and included in the PDF when you generate the full survey PDF.</div>
+                            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+                              <div style={{flex:1,height:7,background:"#e8edf2",borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width:`${surveyCompletion}%`,background:"#16845b",borderRadius:99,transition:"width .2s"}}/></div>
+                              <div style={{fontSize:11,color:"#64748b",whiteSpace:"nowrap"}}>{answeredSurveyCount} of {surveyQuestions.length} answered · {surveyCompletion}%</div>
+                            </div>
+                            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+                              <div style={{flex:1,height:7,background:"#e8edf2",borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.round((surveyPhotoSections.filter(section=>documents.some(d=>d.category==="survey_photos"&&d.survey_section===section)||pendingSurveyPhotos.some(p=>p.section===section)).length/surveyPhotoSections.length)*100)}%`,background:"#16845b",borderRadius:99,transition:"width .2s"}}/></div>
+                              <div style={{fontSize:11,color:"#64748b",whiteSpace:"nowrap"}}>{surveyPhotoSections.filter(section=>documents.some(d=>d.category==="survey_photos"&&d.survey_section===section)||pendingSurveyPhotos.some(p=>p.section===section)).length} of {surveyPhotoSections.length} photo sections complete</div>
+                            </div>
+                            <div style={{fontSize:10,color:"#75818b"}}>Add photos to each section. They will be saved and included in the PDF when you generate it.</div>
                             <div style={{display:"flex",alignItems:"center",gap:12,marginTop:12}}>
                               <div style={{flex:1,height:7,background:"#e8edf2",borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.round((surveyPhotoSections.filter(section=>documents.some(d=>d.category==="survey_photos"&&d.survey_section===section)||pendingSurveyPhotos.some(p=>p.section===section)).length/surveyPhotoSections.length)*100)}%`,background:"#16845b",borderRadius:99,transition:"width .2s"}}/></div>
                               <div style={{fontSize:11,color:"#64748b",whiteSpace:"nowrap"}}>{surveyPhotoSections.filter(section=>documents.some(d=>d.category==="survey_photos"&&d.survey_section===section)||pendingSurveyPhotos.some(p=>p.section===section)).length} of {surveyPhotoSections.length} sections have photos</div>
