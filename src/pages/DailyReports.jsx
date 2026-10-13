@@ -103,6 +103,14 @@ export default function DailyReports() {
         }
       })
 
+      rows.sort((a, b) => {
+        const branchCompare = String(a.branch || "").localeCompare(String(b.branch || ""), "en-GB", { sensitivity: "base" })
+        if (branchCompare !== 0) return branchCompare
+        const aTime = a.appointment_date ? new Date(a.appointment_date).getTime() : 0
+        const bTime = b.appointment_date ? new Date(b.appointment_date).getTime() : 0
+        return aTime - bTime
+      })
+
       const csv = [
         COLUMNS.map(([heading]) => csvCell(heading)).join(","),
         ...rows.map(row => COLUMNS.map(([, getValue]) => csvCell(cleanValue(getValue(row)))).join(",")),
