@@ -44,7 +44,14 @@ const COLUMNS = [
     return jobType.includes("solar") || product.includes("solar") ? 399 : ""
   }],
   ["Admin Method", () => ""],
-  ["Lender", () => ""],
+  ["Lender", row => {
+    if (String(row.result || "").trim().toUpperCase() !== "SOLD") return ""
+    const calculation = row.epvs_calculation && typeof row.epvs_calculation === "object" ? row.epvs_calculation : {}
+    const data = calculation.data && typeof calculation.data === "object" ? calculation.data : {}
+    const financeProductId = data.financeProductId || calculation.financeProductId || ""
+    const financeProduct = row.finance_products_by_id?.[String(financeProductId)]
+    return financeProduct?.lender || data.lender || data.financeLender || calculation.lender || row.lender || row.finance_lender || ""
+  }],
   ["Contact No", row => row.contract_number],
   ["ContractBoolean", () => ""],
   ["EcofBoolean", () => ""],
@@ -98,20 +105,26 @@ export default function DailyReports() {
       const endBoundary = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate() + 1)
       const end = dateKey(endBoundary)
 
-      const [appointmentsResult, profilesResult] = await Promise.all([
+      const [appointmentsResult, profilesResult, financeProductsResult] = await Promise.all([
         supabase.from("appointments")
           .select("*, deals(*)")
           .gte("appointment_date", startBoundary.toISOString())
           .lt("appointment_date", endBoundary.toISOString())
           .order("appointment_date", { ascending: true }),
         supabase.from("profiles").select("*"),
+        supabase.from("finance_products").select("id,lender"),
       ])
       if (appointmentsResult.error) throw appointmentsResult.error
       if (profilesResult.error) throw profilesResult.error
+      if (financeProductsResult.error) throw financeProductsResult.error
 
       const namesByEmail = (profilesResult.data || []).reduce((map, profile) => {
         const email = String(profile.email || "").trim().toLowerCase()
         if (email) map[email] = profile.full_name || profile.display_name || profile.name || profile.email
+        return map
+      }, {})
+      const financeProductsById = (financeProductsResult.data || []).reduce((map, product) => {
+        map[String(product.id)] = product
         return map
       }, {})
       const rows = (appointmentsResult.data || []).map(appointment => {
@@ -122,6 +135,8 @@ export default function DailyReports() {
           rep_name: namesByEmail[email] || appointment.rep_allocated || "",
           deal_value: deal.net_value ?? deal.deal_value ?? "",
           admin_fee_amount: deal.admin_fee_amount ?? "",
+          lender: deal.lender ?? appointment.lender ?? appointment.finance_lender ?? "",
+          finance_products_by_id: financeProductsById,
         }
       })
 
