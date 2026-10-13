@@ -20,12 +20,18 @@ const COLUMNS = [
   ["C or F", row => {
     if (String(row.result || "").trim().toUpperCase() !== "SOLD") return ""
     const calculation = row.epvs_calculation && typeof row.epvs_calculation === "object" ? row.epvs_calculation : {}
-    const method = String(calculation.paymentMethod || calculation.payment_method || row.payment_method || "").trim().toLowerCase()
+    const data = calculation.data && typeof calculation.data === "object" ? calculation.data : {}
+    const method = String(data.paymentMethod || calculation.paymentMethod || calculation.payment_method || row.payment_method || "").trim().toLowerCase()
     if (method === "cash") return "C"
     if (method === "finance" || method === "financed") return "F"
     return ""
   }],
-  ["Deposit", () => ""],
+  ["Deposit", row => {
+    if (String(row.result || "").trim().toUpperCase() !== "SOLD") return ""
+    const calculation = row.epvs_calculation && typeof row.epvs_calculation === "object" ? row.epvs_calculation : {}
+    const data = calculation.data && typeof calculation.data === "object" ? calculation.data : {}
+    return data.deposit ?? calculation.deposit ?? row.deposit ?? ""
+  }],
   ["Deposit Method", () => ""],
   ["Admin Fee", row => row.admin_fee_amount],
   ["Admin Method", () => ""],
