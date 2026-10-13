@@ -255,7 +255,7 @@ export default function DailyReports() {
       }))
       worksheet["!cols"][5] = { wch: 28 }
       worksheet["!cols"][12] = { wch: 32 }
-      worksheet["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length, c: COLUMNS.length - 1 } }) 
+      worksheet["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length, c: COLUMNS.length - 1 } }) }
       worksheet["!freeze"] = { xSplit: 0, ySplit: 1, topLeftCell: "A2", activePane: "bottomLeft", state: "frozen" }
 
       // Style the detail header.
