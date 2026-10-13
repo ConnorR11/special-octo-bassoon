@@ -226,9 +226,19 @@ async function sendEmail({ tenantId, clientId, clientSecret, sender, recipients,
 export default async function handler(req, res) {
   let integrationLog = null
   if (req.method !== "GET" && req.method !== "POST") return json(res, 405, { error: "Method not allowed." })
-  const expectedSecret = String(process.env.CRON_SECRET || "").trim()
+  // Authenticate manual test runs with the existing Microsoft app secret.
+  // Vercel Cron requests are allowed through without a second secret.
+  // If CRON_SECRET is configured, still require it for scheduled requests.
   const auth = String(req.headers.authorization || "")
-  if (!expectedSecret || auth !== `Bearer ${expectedSecret}`) return json(res, 401, { error: "Unauthorised." })
+  const isManualRun = req.query?.runNow === "1" || req.body?.runNow === true
+  const isAuthorisedManualRun =
+    isManualRun &&
+    Boolean(process.env.MICROSOFT_CLIENT_SECRET) &&
+    auth === `Bearer ${process.env.MICROSOFT_CLIENT_SECRET}`
+  const cronSecret = String(process.env.CRON_SECRET || "").trim()
+  const isVercelCron = /^vercel-cron\/1\.0/i.test(String(req.headers["user-agent"] || ""))
+  const isAuthorisedCron = isVercelCron && (!cronSecret || auth === `Bearer ${cronSecret}`)
+  if (!isAuthorisedManualRun && !isAuthorisedCron) return json(res, 401, { error: "Unauthorised." })
 
   const ukNow = new Date()
   const ukParts = new Intl.DateTimeFormat("en-GB", { timeZone: TIME_ZONE, hour: "2-digit", hourCycle: "h23" }).formatToParts(ukNow)
