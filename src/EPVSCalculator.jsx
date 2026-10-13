@@ -1232,6 +1232,7 @@ export default function EPVSCalculator({
       generation,
       solarSelfConsumption: model.cappedSolarSC,
       batteryContribution: model.cappedBatterySC,
+      forceChargeKwh: model.peakExportCapacity,
       exportKwh: model.exportKwh,
       gridReduction:
         model.cappedSolarSC +
@@ -3016,13 +3017,17 @@ function Results({
     generationKwh,
     Math.max(0, Number(results.solarSelfConsumption || 0))
   );
-  const batteryContributionKwh = Math.min(
+  const batterySelfConsumptionKwh = Math.min(
     Math.max(0, generationKwh - solarSelfConsumptionKwh),
     Math.max(0, Number(results.batteryContribution || 0))
   );
+  // Force-charge energy is imported from the grid, so include it in the
+  // battery card without treating it as part of solar generation allocation.
+  const forceChargeKwh = Math.max(0, Number(results.forceChargeKwh || 0));
+  const batteryContributionKwh = batterySelfConsumptionKwh + forceChargeKwh;
   const exportKwh = Math.max(
     0,
-    generationKwh - solarSelfConsumptionKwh - batteryContributionKwh
+    generationKwh - solarSelfConsumptionKwh - batterySelfConsumptionKwh
   );
   const generationPercentage = (kwh) =>
     generationKwh > 0 ? (kwh / generationKwh) * 100 : 0;
