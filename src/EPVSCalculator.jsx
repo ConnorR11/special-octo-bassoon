@@ -1705,6 +1705,18 @@ export default function EPVSCalculator({
                     value={data.annualConsumption}
                     onChange={(value) => update("annualConsumption", value)}
                     min={0}
+                    inputStyle={
+                      String(data.annualConsumption ?? "").trim() !== "" &&
+                      Number.isFinite(Number(data.annualConsumption)) &&
+                      Number(data.annualConsumption) < 1000
+                        ? {
+                            border: "1px solid #dc2626",
+                            background: "#fef2f2",
+                            color: "#b91c1c",
+                            boxShadow: "0 0 0 1px rgba(220, 38, 38, 0.12)",
+                          }
+                        : undefined
+                    }
                   />
                   <div>
                     <div
