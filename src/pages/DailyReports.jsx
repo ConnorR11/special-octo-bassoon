@@ -1,4 +1,5 @@
 import React, { useState } from "react"
+import * as XLSX from "xlsx"
 import { Download, RefreshCw, FileText } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
@@ -241,25 +242,84 @@ export default function DailyReports() {
         return aTime - bTime
       })
 
-      const detailCsvRows = [
+      const detailRows = [
         COLUMNS.map(([heading]) => heading),
         ...rows.map(row => COLUMNS.map(([, getValue]) => cleanValue(getValue(row)))),
       ]
       const summary = summaryRows(rows, COLUMNS.length)
-      const csv = [
-        ...detailCsvRows.map(line => line.map(csvCell).join(",")),
-        ...summary.map(line => line.map(csvCell).join(",")),
-      ].join("\r\n")
-      const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8;" })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.href = url
-      link.download = `Yesterdays-Mastersheet-${start}.csv`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
-      setMessage(`Downloaded ${rows.length} appointment records for ${yesterday.toLocaleDateString("en-GB")}.`)
+      const worksheetData = [...detailRows, ...summary]
+      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData)
+      const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1:A1")
+      worksheet["!cols"] = COLUMNS.map(([heading]) => ({
+        wch: Math.min(32, Math.max(12, heading.length + 2)),
+      }))
+      worksheet["!cols"][5] = { wch: 28 }
+      worksheet["!cols"][12] = { wch: 32 }
+      worksheet["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length, c: COLUMNS.length - 1 } }) 
+      worksheet["!freeze"] = { xSplit: 0, ySplit: 1, topLeftCell: "A2", activePane: "bottomLeft", state: "frozen" }
+
+      // Style the detail header.
+      for (let c = 0; c < COLUMNS.length; c++) {
+        const cell = worksheet[XLSX.utils.encode_cell({ r: 0, c })]
+        if (cell) cell.s = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "1F4E78" } }, alignment: { vertical: "center", wrapText: true }, border: { bottom: { style: "medium", color: { rgb: "17365D" } } } }
+      }
+      worksheet["!rows"] = [{ hpt: 30 }]
+      const summaryStart = detailRows.length
+      let summaryRowIndex = summaryStart
+      const summaryHeaderRows = []
+      const summaryTotalRows = []
+      for (const section of ["SALES : WINDOWS", "SALES : SOLAR", "TOTAL"]) {
+        summaryRowIndex++
+        summaryHeaderRows.push(summaryRowIndex)
+        const firstCell = worksheet[XLSX.utils.encode_cell({ r: summaryRowIndex, c: 0 })]
+        if (firstCell?.v === section) {
+          for (let c = 0; c < COLUMNS.length; c++) {
+            const cell = worksheet[XLSX.utils.encode_cell({ r: summaryRowIndex, c })]
+            if (cell) cell.s = { font: { bold: true, sz: 12 }, fill: { fgColor: { rgb: "D9D9D9" } }, alignment: { horizontal: "center", vertical: "center" }, border: { top: { style: "thin", color: { rgb: "B7B7B7" } }, bottom: { style: "thin", color: { rgb: "B7B7B7" } } } }
+          }
+          worksheet["!merges"] = worksheet["!merges"] || []
+          worksheet["!merges"].push({ s: { r: summaryRowIndex, c: 0 }, e: { r: summaryRowIndex, c: 1 } })
+          worksheet["!merges"].push({ s: { r: summaryRowIndex, c: 5 }, e: { r: summaryRowIndex, c: 5 } })
+        }
+        // Each section has a heading, zero or more branch rows, and a total row.
+        let scan = summaryRowIndex + 1
+        while (scan < worksheetData.length && worksheetData[scan].every(value => value === "")) scan++
+        while (scan < worksheetData.length && worksheetData[scan][0] !== "TOTAL" && !["SALES : WINDOWS", "SALES : SOLAR", "TOTAL"].includes(worksheetData[scan][0])) scan++
+        if (scan < worksheetData.length && worksheetData[scan][0] === "TOTAL") summaryTotalRows.push(scan)
+        summaryRowIndex = scan
+      }
+      // Style all summary rows using their contents so layout remains correct as branch counts change.
+      for (let r = summaryStart; r < worksheetData.length; r++) {
+        const values = worksheetData[r]
+        if (values.every(value => value === "")) continue
+        if (["SALES : WINDOWS", "SALES : SOLAR", "TOTAL"].includes(values[0])) {
+          for (let c = 0; c < COLUMNS.length; c++) {
+            const cell = worksheet[XLSX.utils.encode_cell({ r, c })]
+            if (cell) cell.s = { font: { bold: true, sz: 12 }, fill: { fgColor: { rgb: values[0] === "TOTAL" ? "BFBFBF" : "D9D9D9" } }, alignment: { horizontal: "center", vertical: "center" }, border: { top: { style: "thin", color: { rgb: "B7B7B7" } }, bottom: { style: "thin", color: { rgb: "B7B7B7" } } } }
+          }
+        } else if (values[0] === "TOTAL") {
+          for (let c = 0; c < COLUMNS.length; c++) {
+            const cell = worksheet[XLSX.utils.encode_cell({ r, c })]
+            if (cell) cell.s = { font: { bold: true }, fill: { fgColor: { rgb: "BFBFBF" } }, border: { top: { style: "thin", color: { rgb: "888888" } } } }
+          }
+        }
+      }
+      // Use native Excel currency number formats for summary £ and Finance columns.
+      for (let r = summaryStart; r < worksheetData.length; r++) {
+        for (const c of [5, 6]) {
+          const cell = worksheet[XLSX.utils.encode_cell({ r, c })]
+          if (cell && typeof cell.v === "string" && /^\\d[\\d,]*$/.test(cell.v)) {
+            const numeric = Number(cell.v.replace(/,/g, ""))
+            cell.v = numeric
+            cell.t = "n"
+            cell.z = '"£"#,##0'
+          }
+        }
+      }
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Mastersheet")
+      XLSX.writeFile(workbook, `Yesterdays-Mastersheet-${start}.xlsx`)
+      setMessage(`Downloaded Excel Mastersheet with ${rows.length} appointment records and a styled summary for ${yesterday.toLocaleDateString("en-GB")}.`)
     } catch (err) {
       console.error("Unable to download yesterday's Mastersheet:", err)
       setError(err?.message || "Unable to generate the Mastersheet.")
