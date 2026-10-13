@@ -82,14 +82,14 @@ export default function DailyReports() {
           .gte("appointment_date", startBoundary.toISOString())
           .lt("appointment_date", endBoundary.toISOString())
           .order("appointment_date", { ascending: true }),
-        supabase.from("profiles").select("email, full_name, display_name"),
+        supabase.from("profiles").select("*"),
       ])
       if (appointmentsResult.error) throw appointmentsResult.error
       if (profilesResult.error) throw profilesResult.error
 
       const namesByEmail = (profilesResult.data || []).reduce((map, profile) => {
         const email = String(profile.email || "").trim().toLowerCase()
-        if (email) map[email] = profile.display_name || profile.full_name || profile.email
+        if (email) map[email] = profile.full_name || profile.display_name || profile.name || profile.email
         return map
       }, {})
       const rows = (appointmentsResult.data || []).map(appointment => {
