@@ -3024,6 +3024,10 @@ function Results({
     0,
     generationKwh - solarSelfConsumptionKwh - batteryContributionKwh
   );
+  const generationPercentage = (kwh) =>
+    generationKwh > 0 ? (kwh / generationKwh) * 100 : 0;
+  const formatEnergyAllocation = (kwh) =>
+    `${Math.round(kwh).toLocaleString("en-GB")} kWh · ${generationPercentage(kwh).toFixed(1)}% of generation`;
 
   const cards = [
     [
@@ -3035,38 +3039,22 @@ function Results({
 
     [
       "Estimated generation",
-      `${Math.round(
-        results.generation
-      ).toLocaleString(
-        "en-GB"
-      )} kWh`,
+      formatEnergyAllocation(generationKwh),
     ],
 
     [
       "Solar self-consumption",
-      `${Math.round(
-        solarSelfConsumptionKwh
-      ).toLocaleString(
-        "en-GB"
-      )} kWh`,
+      formatEnergyAllocation(solarSelfConsumptionKwh),
     ],
 
     [
       "Battery contribution",
-      `${Math.round(
-        batteryContributionKwh
-      ).toLocaleString(
-        "en-GB"
-      )} kWh`,
+      formatEnergyAllocation(batteryContributionKwh),
     ],
 
     [
       "Estimated export",
-      `${Math.round(
-        exportKwh
-      ).toLocaleString(
-        "en-GB"
-      )} kWh`,
+      formatEnergyAllocation(exportKwh),
     ],
 
     [
