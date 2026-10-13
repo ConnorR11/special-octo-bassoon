@@ -7,6 +7,10 @@
   ],
   "crons": [
     {
+      "path": "/api/reports/send-yesterdays-mastersheet",
+      "schedule": "0 * * * *"
+    },
+    {
       "path": "/api/google-reviews/sync",
       "schedule": "10 * * * *"
     },
