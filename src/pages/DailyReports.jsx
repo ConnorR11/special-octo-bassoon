@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import * as XLSX from "xlsx"
+import * as XLSX from "xlsx-js-style"
 import { Download, RefreshCw, FileText } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
