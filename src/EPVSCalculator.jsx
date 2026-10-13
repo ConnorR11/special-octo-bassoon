@@ -3021,10 +3021,9 @@ function Results({
     Math.max(0, generationKwh - solarSelfConsumptionKwh),
     Math.max(0, Number(results.batteryContribution || 0))
   );
-  // Force-charge energy is imported from the grid, so include it in the
-  // battery card without treating it as part of solar generation allocation.
-  const forceChargeKwh = Math.max(0, Number(results.forceChargeKwh || 0));
-  const batteryContributionKwh = batterySelfConsumptionKwh + forceChargeKwh;
+  // Show only battery self-consumption from the solar-generation allocation.
+  // Grid force-charge energy is excluded from this headline card.
+  const batteryContributionKwh = batterySelfConsumptionKwh;
   const exportKwh = Math.max(
     0,
     generationKwh - solarSelfConsumptionKwh - batterySelfConsumptionKwh
