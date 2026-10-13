@@ -123,7 +123,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
           <Folder title="Head Office" icon={Building2} open={openFolders.headOffice} onClick={() => toggleFolder("headOffice")}>
             <NavItem icon={BarChart3} label="MI" active={isActive("mi")} onClick={() => navigate("mi")}/>
             <NavItem icon={Star} label="Reviews" active={isActive("reviews")} onClick={() => navigate("reviews")}/>
-            <NavItem icon={FileText} label="Daily Reports" disabled/>
+            <NavItem icon={FileText} label="Daily Reports" active={isActive("daily-reports")} onClick={() => navigate("daily-reports")} disabled={!isAdministrator} locked={!isAdministrator}/>
             <NavItem icon={Database} label="Data Results" disabled/>
             <NavItem icon={Building2} label="Fleet" disabled/>
             <NavItem icon={Handshake} label="Agency Agreements" disabled/>
