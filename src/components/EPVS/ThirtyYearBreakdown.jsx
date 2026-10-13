@@ -256,8 +256,8 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection, data = {} })
           value={money(finalNetPosition)}
         />
         <SummaryCard
-          label="Total net return"
-          value={money(finalNetPosition)}
+          label="Price of doing nothing"
+          value={money(totals.billPreInstall)}
         />
       </div>
 
