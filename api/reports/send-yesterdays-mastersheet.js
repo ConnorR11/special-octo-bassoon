@@ -224,6 +224,7 @@ async function sendEmail({ tenantId, clientId, clientSecret, sender, recipients,
 }
 
 export default async function handler(req, res) {
+  let integrationLog = null
   if (req.method !== "GET" && req.method !== "POST") return json(res, 405, { error: "Method not allowed." })
   const expectedSecret = String(process.env.CRON_SECRET || "").trim()
   const auth = String(req.headers.authorization || "")
@@ -236,14 +237,25 @@ export default async function handler(req, res) {
     return json(res, 200, { skipped: true, reason: "Outside the 06:00 Europe/London delivery window." })
   }
 
+  integrationLog = await createIntegrationLog({
+    provider: "microsoft_graph",
+    integrationName: "Daily Mastersheet Email",
+    direction: "outbound",
+    eventName: "daily_mastersheet_email",
+    eventType: "scheduled_email",
+    payload: { recipients: RECIPIENTS, schedule: "06:00 Europe/London", status: "started" },
+  })
+
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const tenantId = process.env.MICROSOFT_TENANT_ID
   const clientId = process.env.MICROSOFT_CLIENT_ID
   const clientSecret = process.env.MICROSOFT_CLIENT_SECRET
   const sender = process.env.CONTRACT_SENDER_EMAIL
-  if (![supabaseUrl, serviceKey, tenantId, clientId, clientSecret, sender, RECIPIENT].every(Boolean)) {
-    return json(res, 500, { error: "Mastersheet email is missing required Supabase, Microsoft 365, or recipient environment configuration." })
+  if (![supabaseUrl, serviceKey, tenantId, clientId, clientSecret, sender].every(Boolean)) {
+    const message = "Mastersheet email is missing required Supabase or Microsoft 365 environment configuration."
+    await updateIntegrationLog(integrationLog?.id, { status: "failed", http_status: 500, error_message: message, result: { success: false, error: message } })
+    return json(res, 500, { error: message })
   }
 
   try {
@@ -298,26 +310,29 @@ export default async function handler(req, res) {
     const fileName = `Yesterdays-Mastersheet-${yesterdayDate}.xlsx`
     const attachment = makeWorkbook(rows)
     await sendEmail({
-      tenantId, clientId, clientSecret, sender, recipient: RECIPIENT,
+      tenantId, clientId, clientSecret, sender, recipients: RECIPIENTS,
       subject: `Yesterday's Mastersheet — ${yesterdayDate}`,
       body: `Attached is the freshly generated Mastersheet for ${yesterdayDate}. It was generated directly from current CRM appointment and deal data.\n\nAppointments included: ${rows.length}.`,
       fileName, attachment,
     })
 
-    try {
-      await supabase.from("integration_event_logs").insert({
-        provider: "microsoft_graph", integration_name: "Daily Mastersheet Email", direction: "outbound",
-        event_name: "daily_mastersheet_email", event_type: "scheduled_email", status: "success",
-        received_at: new Date().toISOString(), processed_at: new Date().toISOString(),
-        payload: { recipient: RECIPIENT, file_name: fileName, appointment_date: yesterdayDate, appointment_count: rows.length },
-        result: { success: true, recipient: RECIPIENT, file_name: fileName, appointment_count: rows.length },
-        http_status: 202,
-      })
-    } catch (logError) { console.warn("Unable to log Mastersheet email:", logError?.message) }
+    await updateIntegrationLog(integrationLog?.id, {
+      status: "success",
+      http_status: 202,
+      payload: { recipients: RECIPIENTS, file_name: fileName, appointment_date: yesterdayDate, appointment_count: rows.length, status: "sent" },
+      result: { success: true, recipients: RECIPIENTS, file_name: fileName, appointment_count: rows.length, appointment_date: yesterdayDate },
+      error_message: null,
+    })
 
-    return json(res, 200, { success: true, recipient: RECIPIENT, fileName, appointmentCount: rows.length, appointmentDate: yesterdayDate })
+    return json(res, 200, { success: true, recipients: RECIPIENTS, fileName, appointmentCount: rows.length, appointmentDate: yesterdayDate })
   } catch (error) {
     console.error("Daily Mastersheet email failed:", error)
+    await updateIntegrationLog(integrationLog?.id, {
+      status: "failed",
+      http_status: 500,
+      error_message: error?.message || "Unable to send the daily Mastersheet.",
+      result: { success: false, recipients: RECIPIENTS, error: error?.message || "Unable to send the daily Mastersheet." },
+    })
     return json(res, 500, { error: error?.message || "Unable to send the daily Mastersheet." })
   }
 }
