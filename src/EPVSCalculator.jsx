@@ -3026,8 +3026,23 @@ function Results({
   );
   const generationPercentage = (kwh) =>
     generationKwh > 0 ? (kwh / generationKwh) * 100 : 0;
-  const formatEnergyAllocation = (kwh) =>
-    `${Math.round(kwh).toLocaleString("en-GB")} kWh · ${generationPercentage(kwh).toFixed(1)}% of generation`;
+  const formatEnergyAllocation = (kwh) => (
+    <>
+      {Math.round(kwh).toLocaleString("en-GB")} kWh
+      <small
+        style={{
+          display: "block",
+          marginTop: 3,
+          fontSize: 11,
+          lineHeight: 1.3,
+          fontWeight: 400,
+          color: "#64748b",
+        }}
+      >
+        {generationPercentage(kwh).toFixed(1)}% of generation
+      </small>
+    </>
+  );
 
   const cards = [
     [
