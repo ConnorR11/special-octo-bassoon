@@ -3008,6 +3008,23 @@ function Results({
   results,
   data,
 }) {
+  // The result cards show how the proposed system's generation is allocated.
+  // Keep this display breakdown tied to new-system generation only, so
+  // self-consumption + battery contribution + export always equals generation.
+  const generationKwh = Math.max(0, Number(results.generation || 0));
+  const solarSelfConsumptionKwh = Math.min(
+    generationKwh,
+    Math.max(0, Number(results.solarSelfConsumption || 0))
+  );
+  const batteryContributionKwh = Math.min(
+    Math.max(0, generationKwh - solarSelfConsumptionKwh),
+    Math.max(0, Number(results.batteryContribution || 0))
+  );
+  const exportKwh = Math.max(
+    0,
+    generationKwh - solarSelfConsumptionKwh - batteryContributionKwh
+  );
+
   const cards = [
     [
       "System size",
@@ -3028,7 +3045,7 @@ function Results({
     [
       "Solar self-consumption",
       `${Math.round(
-        results.solarSelfConsumption
+        solarSelfConsumptionKwh
       ).toLocaleString(
         "en-GB"
       )} kWh`,
@@ -3037,7 +3054,7 @@ function Results({
     [
       "Battery contribution",
       `${Math.round(
-        results.batteryContribution
+        batteryContributionKwh
       ).toLocaleString(
         "en-GB"
       )} kWh`,
@@ -3046,7 +3063,7 @@ function Results({
     [
       "Estimated export",
       `${Math.round(
-        results.exportKwh
+        exportKwh
       ).toLocaleString(
         "en-GB"
       )} kWh`,
