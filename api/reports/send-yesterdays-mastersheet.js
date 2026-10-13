@@ -3,6 +3,7 @@ import * as XLSX from "xlsx-js-style"
 import { createIntegrationLog, updateIntegrationLog } from "../_integration-log.js"
 
 const RECIPIENTS = ["ann@homeshield.ltd", "connor@homeshield.ltd"]
+const TEST_RECIPIENTS = ["connor@homeshield.ltd"]
 const TIME_ZONE = "Europe/London"
 
 const json = (res, status, body) => {
@@ -240,6 +241,9 @@ export default async function handler(req, res) {
   const isAuthorisedCron = isVercelCron && (!cronSecret || auth === `Bearer ${cronSecret}`)
   if (!isAuthorisedManualRun && !isAuthorisedCron) return json(res, 401, { error: "Unauthorised." })
 
+  // Manual test runs must only ever send to Connor; scheduled runs use the normal list.
+  const recipients = isManualRun ? TEST_RECIPIENTS : RECIPIENTS
+
   const ukNow = new Date()
   const ukParts = new Intl.DateTimeFormat("en-GB", { timeZone: TIME_ZONE, hour: "2-digit", hourCycle: "h23" }).formatToParts(ukNow)
   const ukHour = Number(ukParts.find(p => p.type === "hour")?.value)
@@ -253,7 +257,7 @@ export default async function handler(req, res) {
     direction: "outbound",
     eventName: "daily_mastersheet_email",
     eventType: "scheduled_email",
-    payload: { recipients: RECIPIENTS, schedule: "06:00 Europe/London", status: "started" },
+    payload: { recipients, test_run: isManualRun, schedule: "06:00 Europe/London", status: "started" },
   })
 
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
@@ -320,7 +324,7 @@ export default async function handler(req, res) {
     const fileName = `Yesterdays-Mastersheet-${yesterdayDate}.xlsx`
     const attachment = makeWorkbook(rows)
     await sendEmail({
-      tenantId, clientId, clientSecret, sender, recipients: RECIPIENTS,
+      tenantId, clientId, clientSecret, sender, recipients,
       subject: `Yesterday's Mastersheet — ${yesterdayDate}`,
       body: `Attached is the freshly generated Mastersheet for ${yesterdayDate}. It was generated directly from current CRM appointment and deal data.\n\nAppointments included: ${rows.length}.`,
       fileName, attachment,
@@ -329,19 +333,19 @@ export default async function handler(req, res) {
     await updateIntegrationLog(integrationLog?.id, {
       status: "success",
       http_status: 202,
-      payload: { recipients: RECIPIENTS, file_name: fileName, appointment_date: yesterdayDate, appointment_count: rows.length, status: "sent" },
-      result: { success: true, recipients: RECIPIENTS, file_name: fileName, appointment_count: rows.length, appointment_date: yesterdayDate },
+      payload: { recipients, file_name: fileName, appointment_date: yesterdayDate, appointment_count: rows.length, status: "sent" },
+      result: { success: true, recipients, file_name: fileName, appointment_count: rows.length, appointment_date: yesterdayDate },
       error_message: null,
     })
 
-    return json(res, 200, { success: true, recipients: RECIPIENTS, fileName, appointmentCount: rows.length, appointmentDate: yesterdayDate })
+    return json(res, 200, { success: true, recipients, fileName, appointmentCount: rows.length, appointmentDate: yesterdayDate })
   } catch (error) {
     console.error("Daily Mastersheet email failed:", error)
     await updateIntegrationLog(integrationLog?.id, {
       status: "failed",
       http_status: 500,
       error_message: error?.message || "Unable to send the daily Mastersheet.",
-      result: { success: false, recipients: RECIPIENTS, error: error?.message || "Unable to send the daily Mastersheet." },
+      result: { success: false, recipients, error: error?.message || "Unable to send the daily Mastersheet." },
     })
     return json(res, 500, { error: error?.message || "Unable to send the daily Mastersheet." })
   }
