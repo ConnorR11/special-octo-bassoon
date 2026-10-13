@@ -278,8 +278,8 @@ export default function DailyReports() {
             if (cell) cell.s = { font: { bold: true, sz: 12 }, fill: { fgColor: { rgb: "D9D9D9" } }, alignment: { horizontal: "center", vertical: "center" }, border: { top: { style: "thin", color: { rgb: "B7B7B7" } }, bottom: { style: "thin", color: { rgb: "B7B7B7" } } } }
           }
           worksheet["!merges"] = worksheet["!merges"] || []
-          worksheet["!merges"].push({ s: { r: summaryRowIndex, c: 0 }, e: { r: summaryRowIndex, c: 1 } })
-          worksheet["!merges"].push({ s: { r: summaryRowIndex, c: 5 }, e: { r: summaryRowIndex, c: 5 } })
+          // Keep the section title in a single cell; do not merge it across columns.
+          // This preserves the same column layout as the C / P / S summary headings.
         }
         // Each section has a heading, zero or more branch rows, and a total row.
         let scan = summaryRowIndex + 1
