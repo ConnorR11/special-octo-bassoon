@@ -53,7 +53,7 @@ const COLUMNS = [
     return financeProduct?.lender || data.lender || data.financeLender || calculation.lender || row.lender || row.finance_lender || ""
   }],
   ["Contact No", row => row.contract_number],
-  ["ContractBoolean", () => ""],
+  ["ContractBoolean", row => row.contract_file_visible ? "TRUE" : "FALSE"],
   ["EcofBoolean", () => ""],
   ["Canvasser", row => row.canvasser],
   ["Monthly Spend", row => row.solar_monthly_spend],
@@ -127,9 +127,22 @@ export default function DailyReports() {
         map[String(product.id)] = product
         return map
       }, {})
-      const rows = (appointmentsResult.data || []).map(appointment => {
+      const rows = await Promise.all((appointmentsResult.data || []).map(async appointment => {
         const deal = getRelatedDeal(appointment) || {}
         const email = String(appointment.rep_allocated || "").trim().toLowerCase()
+        let contractFileVisible = false
+        if (appointment.appointment_row_id) {
+          const { data: contractFiles, error: contractFilesError } = await supabase.storage
+            .from("signatures")
+            .list(`contract-pdfs/${appointment.appointment_row_id}`, { limit: 100 })
+          if (contractFilesError) {
+            console.warn("Unable to check contract files for appointment:", appointment.appointment_row_id, contractFilesError.message)
+          } else {
+            contractFileVisible = (contractFiles || []).some(file =>
+              file?.name && !file.name.startsWith(".") && /\\.pdf$/i.test(file.name)
+            )
+          }
+        }
         return {
           ...appointment,
           rep_name: namesByEmail[email] || appointment.rep_allocated || "",
@@ -137,8 +150,9 @@ export default function DailyReports() {
           admin_fee_amount: deal.admin_fee_amount ?? "",
           lender: deal.lender ?? appointment.lender ?? appointment.finance_lender ?? "",
           finance_products_by_id: financeProductsById,
+          contract_file_visible: contractFileVisible,
         }
-      })
+      }))
 
       rows.sort((a, b) => {
         const branchCompare = String(a.branch || "").localeCompare(String(b.branch || ""), "en-GB", { sensitivity: "base" })
