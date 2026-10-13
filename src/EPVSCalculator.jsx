@@ -10,7 +10,6 @@ import {
   PoundSterling,
 } from "lucide-react"
 
-import AnnualBreakdown from "./components/EPVS/AnnualBreakdown"
 import ThirtyYearBreakdown from "./components/EPVS/ThirtyYearBreakdown"
 import OpenSolarDesignButton from "./components/EPVS/OpenSolarDesignButton"
 
@@ -2922,10 +2921,6 @@ export default function EPVSCalculator({
             <Results
               results={results}
               data={data}
-            />
-
-            <AnnualBreakdown
-              results={results}
             />
 
             <ThirtyYearBreakdown
