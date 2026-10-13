@@ -14,6 +14,7 @@ export default function SalesPresenterUsage() {
   const [error, setError] = useState("")
   const [days, setDays] = useState("30")
   const [selectedUser, setSelectedUser] = useState("all")
+  const [selectedEventType, setSelectedEventType] = useState("all")
 
   const load = useCallback(async () => {
     setLoading(true); setError("")
@@ -171,12 +172,19 @@ export default function SalesPresenterUsage() {
     const closedSessions = sessions.filter(s=>s.closed)
     const durations = closedSessions.map(s=>Object.values(s.pageSeconds).reduce((sum,n)=>sum+n,0))
     return {
-      sessions, chart, appointments, totalSeconds, sessionCount:sessions.length,
+      sessions, chart, appointments, totalSeconds, sessionCount:closedSessions.length,
       closedCount:closedSessions.length,
       averageSeconds:durations.length ? durations.reduce((a,b)=>a+b,0)/durations.length : 0,
-      users:new Set(sessions.map(s=>s.user)).size
+      users:new Set(closedSessions.map(s=>s.user)).size
     }
   }, [events, selectedUser])
+
+  const visibleSessions = useMemo(() => {
+    if (selectedEventType === "all") return analytics.sessions
+    if (selectedEventType === "closed") return analytics.sessions.filter(session => session.closed)
+    if (selectedEventType === "opened") return analytics.sessions.filter(session => !session.closed)
+    return analytics.sessions.filter(session => session.closed && session.closePage != null)
+  }, [analytics.sessions, selectedEventType])
 
   return <div style={{display:"grid",gap:18}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
@@ -191,7 +199,7 @@ export default function SalesPresenterUsage() {
       <Metric icon={<Clock3 size={17}/>} label="Recorded page time" value={secondsLabel(analytics.totalSeconds)}/>
     </div>
     <section style={panel}><h3 style={heading}>Time taken through the presenter by appointment (closed sessions only)</h3><p style={sub}>Each line represents a unique appointment with a recorded close event and shows elapsed time through each page.</p>{loading?<p>Loading usage…</p>:analytics.chart.length?<div style={{width:"100%",height:330}}><ResponsiveContainer><LineChart data={analytics.chart} margin={{top:12,right:24,left:8,bottom:8}}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="page"/><YAxis tickFormatter={secondsLabel}/><Tooltip content={({active,payload,label})=>{if(!active||!payload?.length)return null;return <div style={{background:"#fff",border:"1px solid #cbd5e1",borderRadius:8,padding:"10px 12px",boxShadow:"0 4px 14px rgba(15,23,42,.12)",fontSize:12,color:"#0f172a",maxHeight:260,overflowY:"auto"}}><div style={{fontWeight:700,marginBottom:7}}>{label}</div>{payload.filter(item=>item.dataKey?.startsWith("appointment_")&&Number.isFinite(Number(item.value))).map(item=><div key={item.dataKey} style={{display:"flex",gap:8,alignItems:"baseline",marginBottom:4}}><span style={{color:item.color,fontWeight:700}}>●</span><span>{item.name}: <b>{secondsLabel(item.value)}</b></span></div>)}</div>}}/>{analytics.appointments.map((appointment,index)=><Line key={appointment.dataKey} type="monotone" dataKey={appointment.dataKey} name={appointment.label} connectNulls={false} stroke={["#0284c7","#16a34a","#9333ea","#ea580c","#db2777","#0891b2","#65a30d","#7c3aed"][index%8]} strokeWidth={2} dot={{r:2}} activeDot={{r:4}}/>)}<Scatter dataKey="closeMarker" name="Presenter closed" fill="#dc2626" shape={(props)=>props.payload.closeCount>0?<circle cx={props.cx} cy={props.cy} r={7} fill="#dc2626" stroke="#fff" strokeWidth={2}/>:null}/></LineChart></ResponsiveContainer></div>:<p style={sub}>No page-time data recorded in this period yet. Time tracking starts with presenter events logged by the updated CRM.</p>}</section>
-    <section style={panel}><h3 style={heading}>Recent sessions</h3><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr>{["Customer / appointment","Team member","Opened","Status","Pages visited","Time recorded"].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead><tbody>{analytics.sessions.slice().reverse().slice(0,100).map((s,i)=><tr key={i}><td style={td}>{s.customer||s.appointment||"Appointment"}</td><td style={td}>{s.user}</td><td style={td}>{new Date(s.start).toLocaleString("en-GB")}</td><td style={td}>{s.closed?"Closed":"Open / no close event"}</td><td style={td}>{s.pagesSeen.size}</td><td style={td}>{secondsLabel(Object.values(s.pageSeconds).reduce((a,b)=>a+b,0))}</td></tr>)}</tbody></table></div></section>
+    <section style={panel}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap",marginBottom:8}}><h3 style={{...heading,margin:0}}>Recent sessions</h3><select aria-label="Filter recent sessions by event type" value={selectedEventType} onChange={e=>setSelectedEventType(e.target.value)} style={control}><option value="all">All event types</option><option value="closed">Closed events</option><option value="opened">Opened / no close event</option><option value="closed_with_page">Closed with page recorded</option></select></div><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr>{["Customer / appointment","Team member","Opened","Status","Pages visited","Time recorded"].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead><tbody>{visibleSessions.slice().reverse().slice(0,100).map((s,i)=><tr key={i}><td style={td}>{s.customer||s.appointment||"Appointment"}</td><td style={td}>{s.user}</td><td style={td}>{new Date(s.start).toLocaleString("en-GB")}</td><td style={td}>{s.closed?"Closed":"Open / no close event"}</td><td style={td}>{s.pagesSeen.size}</td><td style={td}>{secondsLabel(Object.values(s.pageSeconds).reduce((a,b)=>a+b,0))}</td></tr>)}</tbody></table></div></section>
   </div>
 }
 function Metric({icon,label,value}) { return <div style={{border:"1px solid #e2e8f0",borderRadius:10,padding:15,background:"#fff"}}><div style={{display:"flex",gap:8,alignItems:"center",color:"#0284c7",fontSize:12,fontWeight:700}}>{icon}{label}</div><div style={{fontSize:25,fontWeight:800,color:"#0f172a",marginTop:9}}>{value}</div></div> }
