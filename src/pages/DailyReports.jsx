@@ -125,11 +125,11 @@ function summaryRows(rows, columnsLength) {
     output.push(blankRow())
     const heading = blankRow()
     heading[0] = section.title
-    heading[2] = "C"
-    heading[3] = "P"
-    heading[4] = "S"
-    heading[5] = "£"
-    heading[6] = "Finance"
+    heading[1] = "C"
+    heading[2] = "P"
+    heading[3] = "S"
+    heading[4] = "£"
+    heading[5] = "Finance"
     output.push(heading)
     const sectionRows = rows.filter(section.filter)
     const branchRows = [...branchNames.map(branch => ({
@@ -139,20 +139,20 @@ function summaryRows(rows, columnsLength) {
     for (const item of branchRows) {
       const line = blankRow()
       line[0] = item.branch
-      line[2] = item.rows.filter(row => isCounted(row.cps_c)).length
-      line[3] = item.rows.filter(row => isCounted(row.cps_p)).length
-      line[4] = item.rows.filter(row => isCounted(row.cps_s)).length
-      line[5] = money(item.rows.reduce((sum, row) => sum + (isSold(row) && Number.isFinite(Number(row.deal_value)) ? Number(row.deal_value) : 0), 0))
-      line[6] = money(item.rows.reduce((sum, row) => sum + financeAmountFor(row), 0))
+      line[1] = item.rows.filter(row => isCounted(row.cps_c)).length
+      line[2] = item.rows.filter(row => isCounted(row.cps_p)).length
+      line[3] = item.rows.filter(row => isCounted(row.cps_s)).length
+      line[4] = money(item.rows.reduce((sum, row) => sum + (isSold(row) && Number.isFinite(Number(row.deal_value)) ? Number(row.deal_value) : 0), 0))
+      line[5] = money(item.rows.reduce((sum, row) => sum + financeAmountFor(row), 0))
       output.push(line)
     }
     const total = blankRow()
     total[0] = "TOTAL"
-    total[2] = sectionRows.filter(row => isCounted(row.cps_c)).length
-    total[3] = sectionRows.filter(row => isCounted(row.cps_p)).length
-    total[4] = sectionRows.filter(row => isCounted(row.cps_s)).length
-    total[5] = money(sectionRows.reduce((sum, row) => sum + (isSold(row) && Number.isFinite(Number(row.deal_value)) ? Number(row.deal_value) : 0), 0))
-    total[6] = money(sectionRows.reduce((sum, row) => sum + financeAmountFor(row), 0))
+    total[1] = sectionRows.filter(row => isCounted(row.cps_c)).length
+    total[2] = sectionRows.filter(row => isCounted(row.cps_p)).length
+    total[3] = sectionRows.filter(row => isCounted(row.cps_s)).length
+    total[4] = money(sectionRows.reduce((sum, row) => sum + (isSold(row) && Number.isFinite(Number(row.deal_value)) ? Number(row.deal_value) : 0), 0))
+    total[5] = money(sectionRows.reduce((sum, row) => sum + financeAmountFor(row), 0))
     output.push(total)
   }
   return output
@@ -253,7 +253,8 @@ export default function DailyReports() {
       worksheet["!cols"] = COLUMNS.map(([heading]) => ({
         wch: Math.min(32, Math.max(12, heading.length + 2)),
       }))
-      worksheet["!cols"][5] = { wch: 28 }
+      worksheet["!cols"][0] = { wch: 22 }
+      worksheet["!cols"][4] = { wch: 16 }
       worksheet["!cols"][12] = { wch: 32 }
       worksheet["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length, c: COLUMNS.length - 1 } }) }
       worksheet["!freeze"] = { xSplit: 0, ySplit: 1, topLeftCell: "A2", activePane: "bottomLeft", state: "frozen" }
@@ -293,14 +294,14 @@ export default function DailyReports() {
       for (let r = summaryStart; r < worksheetData.length; r++) {
         const values = worksheetData[r]
         if (values.every(value => value === "")) continue
-        const isSectionHeader = values[2] === "C" && values[3] === "P" && values[4] === "S"
+        const isSectionHeader = values[1] === "C" && values[2] === "P" && values[3] === "S"
         const isTotalRow = values[0] === "TOTAL" && !isSectionHeader
         const fillColor = isSectionHeader ? "D9D9D9" : isTotalRow ? "BFBFBF" : "FFFFFF"
         const borderColor = isTotalRow ? "888888" : "B7B7B7"
 
         // Create cells across the full summary width so fills and borders span
         // the entire table, including otherwise-empty spacer columns.
-        for (let c = 0; c < 7; c++) {
+        for (let c = 0; c < 6; c++) {
           const address = XLSX.utils.encode_cell({ r, c })
           if (!worksheet[address]) worksheet[address] = { t: "s", v: "" }
           const cell = worksheet[address]
@@ -322,7 +323,7 @@ export default function DailyReports() {
       }
       // Use native Excel currency number formats for summary £ and Finance columns.
       for (let r = summaryStart; r < worksheetData.length; r++) {
-        for (const c of [5, 6]) {
+        for (const c of [4, 5]) {
           const cell = worksheet[XLSX.utils.encode_cell({ r, c })]
           if (cell && typeof cell.v === "string" && /^\\d[\\d,]*$/.test(cell.v)) {
             const numeric = Number(cell.v.replace(/,/g, ""))
