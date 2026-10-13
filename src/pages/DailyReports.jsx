@@ -33,7 +33,16 @@ const COLUMNS = [
     return data.deposit ?? calculation.deposit ?? row.deposit ?? ""
   }],
   ["Deposit Method", () => ""],
-  ["Admin Fee", row => row.admin_fee_amount],
+  ["Admin Fee", row => {
+    if (String(row.result || "").trim().toUpperCase() !== "SOLD") return ""
+    // Use the entered deal amount where present. Solar deals default to £399;
+    // window deals must remain blank until their fee has been entered.
+    const enteredAmount = row.admin_fee_amount
+    if (enteredAmount !== null && enteredAmount !== undefined && String(enteredAmount).trim() !== "") return enteredAmount
+    const jobType = String(row.job_type || "").trim().toLowerCase()
+    const product = String(row.product || "").trim().toLowerCase()
+    return jobType.includes("solar") || product.includes("solar") ? 399 : ""
+  }],
   ["Admin Method", () => ""],
   ["Lender", () => ""],
   ["Contact No", row => row.contract_number],
