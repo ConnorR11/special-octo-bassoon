@@ -83,6 +83,79 @@ function getRelatedDeal(appointment) {
 function cleanValue(value) {
   return value === null || value === undefined ? "" : value
 }
+function isSold(row) {
+  return String(row.result || "").trim().toUpperCase() === "SOLD"
+}
+function isSolar(row) {
+  const type = String(row.job_type || "").trim().toLowerCase()
+  const product = String(row.product || "").trim().toLowerCase()
+  return type.includes("solar") || product.includes("solar")
+}
+function isCounted(value) {
+  if (value === true || value === 1) return true
+  const normalized = String(value ?? "").trim().toLowerCase()
+  return ["true", "1", "yes", "y", "x"].includes(normalized)
+}
+function financeAmountFor(row) {
+  if (!isSold(row)) return 0
+  const calculation = row.epvs_calculation && typeof row.epvs_calculation === "object" ? row.epvs_calculation : {}
+  const data = calculation.data && typeof calculation.data === "object" ? calculation.data : {}
+  const results = calculation.results && typeof calculation.results === "object" ? calculation.results : {}
+  const method = String(data.paymentMethod || calculation.paymentMethod || "").trim().toLowerCase()
+  if (method !== "finance" && method !== "financed") return 0
+  const amount = results.financeAmount ?? calculation.financeAmount ?? data.financeAmount
+  if (amount !== null && amount !== undefined && amount !== "" && Number.isFinite(Number(amount))) return Number(amount)
+  const systemCost = Number(data.systemCost ?? calculation.systemCost ?? 0)
+  const deposit = Number(data.deposit ?? calculation.deposit ?? 0)
+  return Math.max(0, systemCost - deposit)
+}
+function summaryRows(rows, columnsLength) {
+  const branchNames = [...new Set(rows.map(row => String(row.branch || "").trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "en-GB", { sensitivity: "base" }))
+  const sections = [
+    { title: "SALES : WINDOWS", filter: row => !isSolar(row) },
+    { title: "SALES : SOLAR", filter: isSolar },
+    { title: "TOTAL", filter: () => true },
+  ]
+  const output = []
+  const blankRow = () => Array(columnsLength).fill("")
+  const money = value => Math.round(value).toLocaleString("en-GB")
+  for (const section of sections) {
+    output.push(blankRow())
+    const heading = blankRow()
+    heading[0] = section.title
+    heading[2] = "C"
+    heading[3] = "P"
+    heading[4] = "S"
+    heading[5] = "£"
+    heading[6] = "Finance"
+    output.push(heading)
+    const sectionRows = rows.filter(section.filter)
+    const branchRows = [...branchNames.map(branch => ({
+      branch,
+      rows: sectionRows.filter(row => String(row.branch || "").trim() === branch),
+    }))].filter(item => item.rows.length || section.title === "TOTAL")
+    for (const item of branchRows) {
+      const line = blankRow()
+      line[0] = item.branch
+      line[2] = item.rows.filter(row => isCounted(row.cps_c)).length
+      line[3] = item.rows.filter(row => isCounted(row.cps_p)).length
+      line[4] = item.rows.filter(row => isCounted(row.cps_s)).length
+      line[5] = money(item.rows.reduce((sum, row) => sum + (isSold(row) && Number.isFinite(Number(row.deal_value)) ? Number(row.deal_value) : 0), 0))
+      line[6] = money(item.rows.reduce((sum, row) => sum + financeAmountFor(row), 0))
+      output.push(line)
+    }
+    const total = blankRow()
+    total[0] = "TOTAL"
+    total[2] = sectionRows.filter(row => isCounted(row.cps_c)).length
+    total[3] = sectionRows.filter(row => isCounted(row.cps_p)).length
+    total[4] = sectionRows.filter(row => isCounted(row.cps_s)).length
+    total[5] = money(sectionRows.reduce((sum, row) => sum + (isSold(row) && Number.isFinite(Number(row.deal_value)) ? Number(row.deal_value) : 0), 0))
+    total[6] = money(sectionRows.reduce((sum, row) => sum + financeAmountFor(row), 0))
+    output.push(total)
+  }
+  return output
+}
 
 export default function DailyReports() {
   const [loading, setLoading] = useState(false)
@@ -168,9 +241,14 @@ export default function DailyReports() {
         return aTime - bTime
       })
 
+      const detailCsvRows = [
+        COLUMNS.map(([heading]) => heading),
+        ...rows.map(row => COLUMNS.map(([, getValue]) => cleanValue(getValue(row)))),
+      ]
+      const summary = summaryRows(rows, COLUMNS.length)
       const csv = [
-        COLUMNS.map(([heading]) => csvCell(heading)).join(","),
-        ...rows.map(row => COLUMNS.map(([, getValue]) => csvCell(cleanValue(getValue(row)))).join(",")),
+        ...detailCsvRows.map(line => line.map(csvCell).join(",")),
+        ...summary.map(line => line.map(csvCell).join(",")),
       ].join("\r\n")
       const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8;" })
       const url = URL.createObjectURL(blob)
