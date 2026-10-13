@@ -55,7 +55,7 @@ const COLUMNS = [
   ["Contact No", row => row.contract_number],
   ["ContractBoolean", row => row.contract_file_visible ? "TRUE" : "FALSE"],
   ["EcofBoolean", () => ""],
-  ["Canvasser", row => row.canvasser],
+  ["Canvasser", row => row.canvasser_name || row.canvasser],
   ["Monthly Spend", row => row.solar_monthly_spend],
 ]
 
@@ -123,6 +123,11 @@ export default function DailyReports() {
         if (email) map[email] = profile.full_name || profile.display_name || profile.name || profile.email
         return map
       }, {})
+      const namesById = (profilesResult.data || []).reduce((map, profile) => {
+        const profileId = profile.id ?? profile.user_id
+        if (profileId !== null && profileId !== undefined) map[String(profileId)] = profile.full_name || profile.display_name || profile.name || profile.email || ""
+        return map
+      }, {})
       const financeProductsById = (financeProductsResult.data || []).reduce((map, product) => {
         map[String(product.id)] = product
         return map
@@ -146,6 +151,7 @@ export default function DailyReports() {
         return {
           ...appointment,
           rep_name: namesByEmail[email] || appointment.rep_allocated || "",
+          canvasser_name: namesByEmail[String(appointment.canvasser || "").trim().toLowerCase()] || namesById[String(appointment.canvasser || "")] || appointment.canvasser || "",
           deal_value: deal.net_value ?? deal.deal_value ?? "",
           admin_fee_amount: deal.admin_fee_amount ?? "",
           lender: deal.lender ?? appointment.lender ?? appointment.finance_lender ?? "",
