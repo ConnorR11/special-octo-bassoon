@@ -3064,7 +3064,7 @@ function Results({
         fontWeight: 500,
       }}
     >
-      {generationPercentage(percentageKwh).toFixed(1)}% of generation
+      {generationPercentage(percentageKwh).toFixed(2)}% of generation
     </div>
   );
 
