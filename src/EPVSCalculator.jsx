@@ -3038,22 +3038,22 @@ function Results({
   );
   const generationPercentage = (kwh) =>
     generationKwh > 0 ? (kwh / generationKwh) * 100 : 0;
-  const formatEnergyAllocation = (kwh, percentageKwh = kwh, percentageLabel = "of generation") => (
-    <>
-      {Math.round(kwh).toLocaleString("en-GB")} kWh
-      <small
-        style={{
-          display: "block",
-          marginTop: 3,
-          fontSize: 11,
-          lineHeight: 1.3,
-          fontWeight: 400,
-          color: "#64748b",
-        }}
-      >
-        {generationPercentage(percentageKwh).toFixed(1)}% {percentageLabel}
-      </small>
-    </>
+  const formatEnergy = (kwh) =>
+    `${Math.round(kwh).toLocaleString("en-GB")} kWh`;
+  const percentageFooter = (percentageKwh = generationKwh) => (
+    <div
+      style={{
+        marginTop: "auto",
+        paddingTop: 8,
+        borderTop: "1px solid #e5e7eb",
+        color: "#64748b",
+        fontSize: 11,
+        lineHeight: 1.3,
+        fontWeight: 500,
+      }}
+    >
+      {generationPercentage(percentageKwh).toFixed(1)}% of generation
+    </div>
   );
 
   const cards = [
@@ -3066,28 +3066,26 @@ function Results({
 
     [
       "Estimated generation",
-      formatEnergyAllocation(generationKwh),
+      formatEnergy(generationKwh),
+      percentageFooter(),
     ],
 
     [
       "Solar self-consumption",
-      formatEnergyAllocation(solarSelfConsumptionKwh),
+      formatEnergy(solarSelfConsumptionKwh),
+      percentageFooter(solarSelfConsumptionKwh),
     ],
 
     [
       "Battery contribution",
-      // The headline includes battery self-consumption plus grid force-charge
-      // energy. Only the self-consumed solar portion counts toward generation.
-      formatEnergyAllocation(
-        batteryContributionKwh,
-        batterySelfConsumptionKwh,
-        "of generation (self-consumption)"
-      ),
+      formatEnergy(batteryContributionKwh),
+      percentageFooter(batterySelfConsumptionKwh),
     ],
 
     [
       "Estimated export",
-      formatEnergyAllocation(exportKwh),
+      formatEnergy(exportKwh),
+      percentageFooter(exportKwh),
     ],
 
     [
@@ -3160,11 +3158,11 @@ function Results({
         style={styles.resultGrid}
       >
         {cards.map(
-          ([label, value]) => (
+          ([label, value, footer]) => (
             <div
               key={label}
               className="epvs-result-card"
-              style={styles.resultCard}
+              style={{ ...styles.resultCard, display: "flex", flexDirection: "column" }}
             >
               <span>
                 {label}
@@ -3173,6 +3171,8 @@ function Results({
               <strong>
                 {value}
               </strong>
+
+              {footer && footer}
             </div>
           )
         )}
