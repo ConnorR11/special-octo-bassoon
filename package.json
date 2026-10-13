@@ -16,7 +16,8 @@
     "recharts": "^3.10.1",
     "xlsx": "^0.18.1",
     "pdf-lib": "^1.17.1",
-    "leaflet": "^1.9.4"
+    "leaflet": "^1.9.4",
+    "xlsx-js-style": "^1.2.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
