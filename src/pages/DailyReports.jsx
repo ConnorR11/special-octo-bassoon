@@ -274,8 +274,8 @@ export default function DailyReports() {
         summaryHeaderRows.push(summaryRowIndex)
         const firstCell = worksheet[XLSX.utils.encode_cell({ r: summaryRowIndex, c: 0 })]
         if (firstCell?.v === section) {
-          for (let c = 0; c < COLUMNS.length; c++) {
-            const cell = worksheet[XLSX.utils.encode_cell({ r: summaryRowIndex, c })]
+          for (let c = 0; c < 6; c++) {
+            const cell = worksheet[XLSX.utils.encode_cell({ r: summaryRowIndex, c })
             if (cell) cell.s = { font: { bold: true, sz: 12 }, fill: { fgColor: { rgb: "D9D9D9" } }, alignment: { horizontal: "center", vertical: "center" }, border: { top: { style: "thin", color: { rgb: "B7B7B7" } }, bottom: { style: "thin", color: { rgb: "B7B7B7" } } } }
           }
           worksheet["!merges"] = worksheet["!merges"] || []
