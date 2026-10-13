@@ -3031,7 +3031,7 @@ function Results({
   );
   const generationPercentage = (kwh) =>
     generationKwh > 0 ? (kwh / generationKwh) * 100 : 0;
-  const formatEnergyAllocation = (kwh) => (
+  const formatEnergyAllocation = (kwh, percentageKwh = kwh, percentageLabel = "of generation") => (
     <>
       {Math.round(kwh).toLocaleString("en-GB")} kWh
       <small
@@ -3044,7 +3044,7 @@ function Results({
           color: "#64748b",
         }}
       >
-        {generationPercentage(kwh).toFixed(1)}% of generation
+        {generationPercentage(percentageKwh).toFixed(1)}% {percentageLabel}
       </small>
     </>
   );
@@ -3069,7 +3069,13 @@ function Results({
 
     [
       "Battery contribution",
-      formatEnergyAllocation(batteryContributionKwh),
+      // The headline includes battery self-consumption plus grid force-charge
+      // energy. Only the self-consumed solar portion counts toward generation.
+      formatEnergyAllocation(
+        batteryContributionKwh,
+        batterySelfConsumptionKwh,
+        "of generation (self-consumption)"
+      ),
     ],
 
     [
