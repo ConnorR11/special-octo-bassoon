@@ -1,7 +1,8 @@
 import { createClient } from "@supabase/supabase-js"
 import * as XLSX from "xlsx-js-style"
+import { createIntegrationLog, updateIntegrationLog } from "../_integration-log.js"
 
-const RECIPIENT = String(process.env.MASTERSHEET_RECIPIENT_EMAIL || "").trim()
+const RECIPIENTS = ["ann@homeshield.ltd", "connor@homeshield.ltd"]
 const TIME_ZONE = "Europe/London"
 
 const json = (res, status, body) => {
@@ -202,7 +203,7 @@ function makeWorkbook(rows) {
   return Buffer.from(XLSX.write(wb, { type: "buffer", bookType: "xlsx" }))
 }
 
-async function sendEmail({ tenantId, clientId, clientSecret, sender, recipient, subject, body, fileName, attachment }) {
+async function sendEmail({ tenantId, clientId, clientSecret, sender, recipients, subject, body, fileName, attachment }) {
   const tokenResponse = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(tenantId)}/oauth2/v2.0/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -215,7 +216,7 @@ async function sendEmail({ tenantId, clientId, clientSecret, sender, recipient, 
     headers: { Authorization: `Bearer ${token.access_token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ message: {
       subject, body: { contentType: "Text", content: body },
-      toRecipients: [{ emailAddress: { address: recipient } }],
+      toRecipients: recipients.map(address => ({ emailAddress: { address } })),
       attachments: [{ "@odata.type": "#microsoft.graph.fileAttachment", name: fileName, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", contentBytes: attachment.toString("base64") }],
     }, saveToSentItems: true }),
   })
