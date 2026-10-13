@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 import * as XLSX from "xlsx-js-style"
 
-const RECIPIENT = "connor@homeshield.ltd"
+const RECIPIENT = String(process.env.MASTERSHEET_RECIPIENT_EMAIL || "").trim()
 const TIME_ZONE = "Europe/London"
 
 const json = (res, status, body) => {
@@ -241,14 +241,14 @@ export default async function handler(req, res) {
   const clientId = process.env.MICROSOFT_CLIENT_ID
   const clientSecret = process.env.MICROSOFT_CLIENT_SECRET
   const sender = process.env.CONTRACT_SENDER_EMAIL
-  if (![supabaseUrl, serviceKey, tenantId, clientId, clientSecret, sender].every(Boolean)) {
-    return json(res, 500, { error: "Mastersheet email is missing required Supabase or Microsoft 365 environment configuration." })
+  if (![supabaseUrl, serviceKey, tenantId, clientId, clientSecret, sender, RECIPIENT].every(Boolean)) {
+    return json(res, 500, { error: "Mastersheet email is missing required Supabase, Microsoft 365, or recipient environment configuration." })
   }
 
   try {
-    const yesterday = new Date(ukNow)
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1)
-    const yesterdayParts = datePartsInZone(yesterday)
+    const todayParts = datePartsInZone(ukNow)
+    const previousDay = new Date(Date.UTC(Number(todayParts.year), Number(todayParts.month) - 1, Number(todayParts.day) - 1))
+    const yesterdayParts = { year: String(previousDay.getUTCFullYear()), month: String(previousDay.getUTCMonth() + 1).padStart(2, "0"), day: String(previousDay.getUTCDate()).padStart(2, "0") }
     const yesterdayDate = dateKey(yesterdayParts)
     const nextDate = new Date(Date.UTC(Number(yesterdayParts.year), Number(yesterdayParts.month) - 1, Number(yesterdayParts.day) + 1))
     const nextDateKey = dateKey({ year: String(nextDate.getUTCFullYear()), month: String(nextDate.getUTCMonth() + 1).padStart(2, "0"), day: String(nextDate.getUTCDate()).padStart(2, "0") })
