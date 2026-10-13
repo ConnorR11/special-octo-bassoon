@@ -17,7 +17,14 @@ const COLUMNS = [
   ["Result", row => row.result],
   ["Sales Notes", row => row.sales_notes],
   ["DealValueRoundedDisplay", row => row.deal_value],
-  ["C or F", () => ""],
+  ["C or F", row => {
+    if (String(row.result || "").trim().toUpperCase() !== "SOLD") return ""
+    const calculation = row.epvs_calculation && typeof row.epvs_calculation === "object" ? row.epvs_calculation : {}
+    const method = String(calculation.paymentMethod || calculation.payment_method || row.payment_method || "").trim().toLowerCase()
+    if (method === "cash") return "C"
+    if (method === "finance" || method === "financed") return "F"
+    return ""
+  }],
   ["Deposit", () => ""],
   ["Deposit Method", () => ""],
   ["Admin Fee", row => row.admin_fee_amount],
