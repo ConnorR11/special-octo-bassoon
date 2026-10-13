@@ -36,7 +36,7 @@ function dateKey(date) {
 function formatDate(value) {
   if (!value) return ""
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("en-GB", { weekday:"long", month:"long", day:"numeric", year:"numeric" })
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric", year:"numeric" })
 }
 function formatTime(value) {
   if (!value) return ""
