@@ -150,7 +150,7 @@ export default function DailyReports() {
         }
         return {
           ...appointment,
-          rep_name: namesByEmail[email] || appointment.rep_allocated || "",
+          rep_name: namesByEmail[email] || namesById[String(appointment.rep_allocated || "").trim()] || appointment.rep_allocated || "",
           canvasser_name: namesByEmail[String(appointment.canvasser || "").trim().toLowerCase()] || namesById[String(appointment.canvasser || "")] || appointment.canvasser || "",
           deal_value: deal.net_value ?? deal.deal_value ?? "",
           admin_fee_amount: deal.admin_fee_amount ?? "",
