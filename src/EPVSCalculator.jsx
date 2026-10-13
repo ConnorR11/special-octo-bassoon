@@ -2472,15 +2472,22 @@ export default function EPVSCalculator({
       ["Battery configuration", data?.openSolar?.hardware?.batteries || [], "kWh"],
       ["Inverter capacity (kW)", data?.openSolar?.hardware?.inverters || [], "kW"],
       ["EV Charger", data?.openSolar?.hardware?.evChargers || [], "kW"],
-    ].map(([label, items, unit]) => (
+    ].map(([label, items, unit]) => {
+      const hasMultipleInverters =
+        label === "Inverter capacity (kW)" &&
+        items.some((item) => Number(item.quantity || 1) > 1)
+
+      return (
       <div
         key={label}
         style={{
           minWidth: 0,
           padding: 18,
-          border: "1px solid #dbe3ec",
+          border: hasMultipleInverters
+            ? "2px solid #dc2626"
+            : "1px solid #dbe3ec",
           borderRadius: 10,
-          background: "#f8fafc",
+          background: hasMultipleInverters ? "#fef2f2" : "#f8fafc",
           boxSizing: "border-box",
         }}
       >
@@ -2512,7 +2519,8 @@ export default function EPVSCalculator({
           </div>
         )}
       </div>
-    ))}
+      )
+    })}
   </div>
 </Card>
 
