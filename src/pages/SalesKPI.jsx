@@ -75,7 +75,7 @@ export default function SalesKPI() {
           if (!deal.appointment_row_id) return
           const value = Number(deal.net_value || 0)
           dealByAppointmentId[String(deal.appointment_row_id)] = Number.isFinite(value) ? value : 0
-          solidByAppointmentId[String(deal.appointment_row_id)] = !["Deal Lost", "Sales"].includes(String(deal.pipedrive_stage || "").trim()) && Number.isFinite(value) ? value : 0
+          solidByAppointmentId[String(deal.appointment_row_id)] = !["Customer Cancelled", "Decline"].includes(String(deal.pipedrive_stage || "").trim()) && Number.isFinite(value) ? value : 0
         })
       }
       setAppointments(loaded.map(a => ({ ...a, net_value: dealByAppointmentId[String(a.appointment_row_id)] || 0, solid_value: solidByAppointmentId[String(a.appointment_row_id)] || 0 })))
