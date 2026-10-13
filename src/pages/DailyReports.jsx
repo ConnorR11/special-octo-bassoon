@@ -288,20 +288,36 @@ export default function DailyReports() {
         if (scan < worksheetData.length && worksheetData[scan][0] === "TOTAL") summaryTotalRows.push(scan)
         summaryRowIndex = scan
       }
-      // Style all summary rows using their contents so layout remains correct as branch counts change.
+      // Style the summary to match the reference: grey section bars, centred bold
+      // branch labels and values, and darker bold total rows.
       for (let r = summaryStart; r < worksheetData.length; r++) {
         const values = worksheetData[r]
         if (values.every(value => value === "")) continue
-        if (["SALES : WINDOWS", "SALES : SOLAR", "TOTAL"].includes(values[0])) {
-          for (let c = 0; c < COLUMNS.length; c++) {
-            const cell = worksheet[XLSX.utils.encode_cell({ r, c })]
-            if (cell) cell.s = { font: { bold: true, sz: 12 }, fill: { fgColor: { rgb: values[0] === "TOTAL" ? "BFBFBF" : "D9D9D9" } }, alignment: { horizontal: "center", vertical: "center" }, border: { top: { style: "thin", color: { rgb: "B7B7B7" } }, bottom: { style: "thin", color: { rgb: "B7B7B7" } } } }
+        const isSectionHeader = values[2] === "C" && values[3] === "P" && values[4] === "S"
+        const isTotalRow = values[0] === "TOTAL" && !isSectionHeader
+        const fillColor = isSectionHeader ? "D9D9D9" : isTotalRow ? "BFBFBF" : "FFFFFF"
+        const borderColor = isTotalRow ? "888888" : "B7B7B7"
+
+        // Create cells across the full summary width so fills and borders span
+        // the entire table, including otherwise-empty spacer columns.
+        for (let c = 0; c < 7; c++) {
+          const address = XLSX.utils.encode_cell({ r, c })
+          if (!worksheet[address]) worksheet[address] = { t: "s", v: "" }
+          const cell = worksheet[address]
+          cell.s = {
+            font: { bold: true, sz: isSectionHeader ? 12 : 11 },
+            fill: { patternType: "solid", fgColor: { rgb: fillColor } },
+            alignment: { horizontal: "center", vertical: "center" },
+            border: {
+              top: { style: isTotalRow ? "medium" : "thin", color: { rgb: borderColor } },
+              bottom: { style: "thin", color: { rgb: borderColor } },
+            },
           }
-        } else if (values[0] === "TOTAL") {
-          for (let c = 0; c < COLUMNS.length; c++) {
-            const cell = worksheet[XLSX.utils.encode_cell({ r, c })]
-            if (cell) cell.s = { font: { bold: true }, fill: { fgColor: { rgb: "BFBFBF" } }, border: { top: { style: "thin", color: { rgb: "888888" } } } }
-          }
+        }
+        if (isSectionHeader) {
+          worksheet["!rows"][r] = { hpt: 22 }
+        } else {
+          worksheet["!rows"][r] = { hpt: 18 }
         }
       }
       // Use native Excel currency number formats for summary £ and Finance columns.
