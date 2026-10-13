@@ -53,8 +53,8 @@ const COLUMNS = [
     return financeProduct?.lender || data.lender || data.financeLender || calculation.lender || row.lender || row.finance_lender || ""
   }],
   ["Contact No", row => row.contract_number],
-  ["ContractBoolean", row => row.contract_file_visible ? "TRUE" : "FALSE"],
-  ["EcofBoolean", () => ""],
+  ["ContractBoolean", row => String(row.result || "").trim().toUpperCase() === "SOLD" ? (row.contract_file_visible ? "TRUE" : "FALSE") : ""],
+  ["EcofBoolean", row => String(row.result || "").trim().toUpperCase() === "SOLD" ? "" : ""],
   ["Canvasser", row => row.canvasser_name || row.canvasser],
   ["Monthly Spend", row => row.solar_monthly_spend],
 ]
