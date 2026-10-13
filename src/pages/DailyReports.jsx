@@ -72,15 +72,15 @@ export default function DailyReports() {
       const yesterday = new Date()
       yesterday.setDate(yesterday.getDate() - 1)
       const start = dateKey(yesterday)
-      const tomorrow = new Date(yesterday)
-      tomorrow.setDate(tomorrow.getDate() + 1)
-      const end = dateKey(tomorrow)
+      const startBoundary = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate())
+      const endBoundary = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate() + 1)
+      const end = dateKey(endBoundary)
 
       const [appointmentsResult, profilesResult] = await Promise.all([
         supabase.from("appointments")
           .select("*, deals(*)")
-          .gte("appointment_date", `${start}T00:00:00`)
-          .lt("appointment_date", `${end}T00:00:00`)
+          .gte("appointment_date", startBoundary.toISOString())
+          .lt("appointment_date", endBoundary.toISOString())
           .order("appointment_date", { ascending: true }),
         supabase.from("profiles").select("email, full_name, display_name"),
       ])
