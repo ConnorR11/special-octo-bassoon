@@ -16,6 +16,7 @@ function FitSheet({ setSelected }) {
   const [installationTypeFilter, setInstallationTypeFilter] =
     useState("all")
   const [windowTeamsExpanded, setWindowTeamsExpanded] = useState(true)
+  const [windowsRenewablesExpanded, setWindowsRenewablesExpanded] = useState(true)
 
   function getMonday(date) {
     const d = new Date(date)
@@ -455,14 +456,23 @@ function FitSheet({ setSelected }) {
         return name
       }),
     }))
+    const renewablesNames = ["Bryan Cartridge", "Gordon Pender"]
+    const renewablesTeams = renewablesNames.map((expected) => {
+      const actual = actualTeams.find((team) => normalise(team) === normalise(expected))
+      if (actual) assigned.add(normalise(actual))
+      return actual || expected
+    })
     const unorganised = actualTeams.filter((team) => !assigned.has(normalise(team))).sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }))
     if (unorganised.length) groups.push({ label: "UNORGANISED", teams: unorganised })
-    return groups
+    return { windowGroups: groups, renewablesTeams }
   }, [jobs])
 
+  const windowGroups = fitTeamGroups.windowGroups
+  const renewablesTeams = fitTeamGroups.renewablesTeams
+
   const fitTeams = useMemo(
-    () => fitTeamGroups.flatMap((group) => group.teams),
-    [fitTeamGroups]
+    () => [...windowGroups.flatMap((group) => group.teams), ...renewablesTeams],
+    [windowGroups, renewablesTeams]
   )
 
   /*
@@ -1109,7 +1119,7 @@ function FitSheet({ setSelected }) {
                 <div style={{ padding: "12px", background: "#dce6f0", borderRight: "1px solid #c4d1df", fontSize: "11px", fontWeight: 800, color: "#172554", letterSpacing: "0.5px", position: "sticky", left: 0, zIndex: 5 }}>WINDOW TEAMS</div>
                 <div style={{ gridColumn: "span 8", padding: "12px", fontSize: "10px", fontWeight: 700, color: "#52627a" }}>{fitTeams.length} teams · {windowTeamsExpanded ? "click to collapse" : "click to expand"}</div>
               </div>
-              {windowTeamsExpanded && fitTeamGroups.map((group) => (
+              {windowTeamsExpanded && windowGroups.map((group) => (
                 <div key={group.label} style={{ display: "grid", gridTemplateColumns: "150px minmax(0, 1fr)", borderBottom: "1px solid #d9dadd" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gridRow: "span " + group.teams.length, minHeight: (group.teams.length * 160) + "px", padding: "12px 4px", borderRight: "2px solid #111", background: "#fff", color: "#111", fontSize: "20px", fontWeight: 500, letterSpacing: "1px", writingMode: "vertical-rl", transform: "rotate(180deg)", textAlign: "center" }}>{group.label}</div>
                   <div>
@@ -1125,6 +1135,26 @@ function FitSheet({ setSelected }) {
                   </div>
                 </div>
               ))}
+              <div role="button" tabIndex={0} onClick={() => setWindowsRenewablesExpanded((value) => !value)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setWindowsRenewablesExpanded((value) => !value) } }} style={{ display: "grid", gridTemplateColumns: "150px 190px repeat(7, minmax(150px, 1fr))", minHeight: "42px", cursor: "pointer", borderBottom: "1px solid #c9d2df", background: "#e8eef5" }}>
+                <div style={{ padding: "12px", background: "#dce6f0", borderRight: "1px solid #c4d1df", fontSize: "11px", fontWeight: 800, color: "#172554", letterSpacing: "0.5px", position: "sticky", left: 0, zIndex: 5 }}>WINDOWS RENEWABLES</div>
+                <div style={{ gridColumn: "span 8", padding: "12px", fontSize: "10px", fontWeight: 700, color: "#52627a" }}>{renewablesTeams.length} teams · {windowsRenewablesExpanded ? "click to collapse" : "click to expand"}</div>
+              </div>
+              {windowsRenewablesExpanded && (
+                <div style={{ display: "grid", gridTemplateColumns: "150px minmax(0, 1fr)", borderBottom: "1px solid #d9dadd" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gridRow: "span " + renewablesTeams.length, minHeight: (renewablesTeams.length * 160) + "px", padding: "12px 4px", borderRight: "2px solid #111", background: "#fff", color: "#111", fontSize: "20px", fontWeight: 500, letterSpacing: "1px", writingMode: "vertical-rl", transform: "rotate(180deg)", textAlign: "center" }}>WINDOWS RENEWABLES</div>
+                  <div>
+                    {renewablesTeams.map((team) => (
+                      <div key={team} style={{ display: "grid", gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))", minHeight: "160px", borderBottom: "1px solid #111" }}>
+                        <div style={{ padding: "14px 12px", background: "#fff", borderRight: "2px solid #111", fontSize: "11px", fontWeight: 600, color: "#111", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}>{team}</div>
+                        {weekDays.map((date) => {
+                          const dayJobs = getJobs(team, date)
+                          return <div key={team + "-" + formatDate(date)} style={{ padding: "6px", borderRight: "1px solid #d9dadd", background: "#fff", minHeight: "160px" }}>{dayJobs.map(renderJobCard)}</div>
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
