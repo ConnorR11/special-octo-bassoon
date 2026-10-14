@@ -1155,6 +1155,26 @@ function FitSheet({ setSelected }) {
                   </div>
                 </div>
               )}
+              <div role="button" tabIndex={0} onClick={() => setHeatPumpExpanded((value) => !value)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setHeatPumpExpanded((value) => !value) } }} style={{ display: "grid", gridTemplateColumns: "150px 190px repeat(7, minmax(150px, 1fr))", minHeight: "42px", cursor: "pointer", borderBottom: "1px solid #c9d2df", background: "#e8eef5" }}>
+                <div style={{ padding: "12px", background: "#dce6f0", borderRight: "1px solid #c4d1df", fontSize: "11px", fontWeight: 800, color: "#172554", letterSpacing: "0.5px", position: "sticky", left: 0, zIndex: 5 }}>HEAT PUMP</div>
+                <div style={{ gridColumn: "span 8", padding: "12px", fontSize: "10px", fontWeight: 700, color: "#52627a" }}>{heatPumpTeams.length} fitters · {heatPumpExpanded ? "click to collapse" : "click to expand"}</div>
+              </div>
+              {heatPumpExpanded && (
+                <div style={{ display: "grid", gridTemplateColumns: "150px minmax(0, 1fr)", borderBottom: "1px solid #d9dadd" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gridRow: "span " + heatPumpTeams.length, minHeight: (heatPumpTeams.length * 160) + "px", padding: "12px 4px", borderRight: "2px solid #111", background: "#f2f2f2", color: "#111", fontSize: "20px", fontWeight: 500, letterSpacing: "1px", writingMode: "vertical-rl", transform: "rotate(180deg)", textAlign: "center" }}>HEAT PUMP</div>
+                  <div>
+                    {heatPumpTeams.map((team) => (
+                      <div key={team} style={{ display: "grid", gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))", minHeight: "160px", borderBottom: "1px solid #111" }}>
+                        <div style={{ padding: "14px 12px", background: "#f2f2f2", borderRight: "2px solid #111", fontSize: "11px", fontWeight: 600, color: "#111", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}>{team}</div>
+                        {weekDays.map((date) => {
+                          const dayJobs = getJobs(team, date)
+                          return <div key={team + "-" + formatDate(date)} style={{ padding: "6px", borderRight: "1px solid #d9dadd", background: "#fff", minHeight: "160px" }}>{dayJobs.map(renderJobCard)}</div>
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
