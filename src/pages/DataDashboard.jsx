@@ -3,7 +3,6 @@ import { BarChart3, RefreshCw, TrendingUp, Search } from "lucide-react"
 import {
   Bar,
   CartesianGrid,
-  ComposedChart,
   Line,
   LineChart,
   Legend,
@@ -529,6 +528,33 @@ function DataDashboard() {
           color: #64748b;
         }
 
+        .data-dashboard-stage-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr);
+          gap: 12px;
+        }
+
+        .data-dashboard-stage-panel {
+          border: 1px solid #e5eaf0;
+          border-radius: 10px;
+          padding: 12px 12px 6px;
+          background: #fff;
+          min-width: 0;
+        }
+
+        .data-dashboard-stage-panel h3 {
+          margin: 0 0 2px;
+          font-size: 13px;
+          font-weight: 750;
+          color: #172033;
+        }
+
+        .data-dashboard-stage-panel p {
+          margin: 0 0 6px;
+          font-size: 11px;
+          color: #64748b;
+        }
+
         .data-dashboard-chart-card {
           background: #fff;
           border: 1px solid #dfe5ec;
@@ -759,103 +785,56 @@ function DataDashboard() {
           </div>
         ) : rows.length === 0 ? (
           <div className="data-dashboard-empty">
-            <TrendingUp
-              size={18}
-              style={{ marginRight: 8 }}
-            />
+            <TrendingUp size={18} style={{ marginRight: 8 }} />
             No lead data available.
           </div>
         ) : (
-          <ResponsiveContainer
-            width="100%"
-            height={430}
-          >
-            <ComposedChart
-              data={rows}
-              margin={{
-                top: 10,
-                right: 18,
-                left: 0,
-                bottom: 8,
-              }}
-            >
-              <CartesianGrid
-                stroke="#e8edf3"
-                vertical={false}
-              />
-
-              <XAxis
-                dataKey="month"
-                tickFormatter={(value) => {
-                  const date = new Date(
-                    `${value}T00:00:00`
-                  )
-
-                  return date.toLocaleDateString(
-                    "en-GB",
-                    {
-                      month: "short",
-                      year: "2-digit",
-                    }
-                  )
-                }}
-                interval={5}
-                tick={{
-                  fontSize: 10,
-                  fill: "#64748b",
-                }}
-                axisLine={{
-                  stroke: "#dfe5ec",
-                }}
-                tickLine={false}
-              />
-
-              <YAxis
-                yAxisId="volume"
-                tickFormatter={formatNumber}
-                tick={{
-                  fontSize: 10,
-                  fill: "#64748b",
-                }}
-                axisLine={false}
-                tickLine={false}
-                width={55}
-              />
-
-              <Legend
-                formatter={(value) => ({ lead_count: "Lead count", cps_h_count: "CPS H count", cps_c_count: "CPS C count", cps_p_count: "CPS P count", cps_s_count: "CPS S count" }[value] || value)}
-                wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
-              />
-              <Tooltip
-                labelFormatter={(value) => formatMonth(value)}
-                itemSorter={(item) => ({ lead_count: 0, cps_h_count: 1, cps_c_count: 2, cps_p_count: 3, cps_s_count: 4 }[item.dataKey] ?? 99)}
-                formatter={(value, name, item) => {
-                  const labels = { lead_count: "Lead count", cps_h_count: "CPS H count", cps_c_count: "CPS C count", cps_p_count: "CPS P count", cps_s_count: "CPS S count" }
-                  const count = Number(value || 0)
-                  const leadCount = Number(item?.payload?.lead_count || 0)
-                  const ratio = name === "lead_count" || count <= 0 ? null : leadCount / count
-                  const displayValue = ratio == null
-                    ? formatNumber(count)
-                    : `${formatNumber(count)} (${ratio.toFixed(2)})`
-                  return [displayValue, labels[name] || name]
-                }}
-                contentStyle={{
-                  border: "1px solid #dfe5ec",
-                  borderRadius: 8,
-                  fontSize: 12,
-                  boxShadow:
-                    "0 5px 18px rgba(15,23,42,.08)",
-                }}
-              />
-
-              <Line yAxisId="volume" type="monotone" dataKey="lead_count" name="lead_count" stroke="#64748b" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls={false} />
-              <Line yAxisId="volume" type="monotone" dataKey="cps_h_count" name="cps_h_count" stroke="#2563eb" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls={false} />
-              <Line yAxisId="volume" type="monotone" dataKey="cps_c_count" name="cps_c_count" stroke="#9333ea" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls={false} />
-              <Line yAxisId="volume" type="monotone" dataKey="cps_p_count" name="cps_p_count" stroke="#0d9488" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls={false} />
-              <Line yAxisId="volume" type="monotone" dataKey="cps_s_count" name="cps_s_count" stroke="#dc2626" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls={false} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        )}
+          <div className="data-dashboard-stage-grid">
+            {[
+              { key: "lead_count", title: "Lead count", color: "#64748b" },
+              { key: "cps_h_count", title: "CPS H count", color: "#2563eb" },
+              { key: "cps_c_count", title: "CPS C count", color: "#9333ea" },
+              { key: "cps_p_count", title: "CPS P count", color: "#0d9488" },
+              { key: "cps_s_count", title: "CPS S count", color: "#dc2626" },
+            ].map((series) => (
+              <div className="data-dashboard-stage-panel" key={series.key}>
+                <h3>{series.title}</h3>
+                <p>Monthly totals since January 2024</p>
+                <ResponsiveContainer width="100%" height={155}>
+                  <LineChart data={rows} margin={{ top: 8, right: 14, left: 0, bottom: 2 }}>
+                    <CartesianGrid stroke="#e8edf3" vertical={false} />
+                    <XAxis
+                      dataKey="month"
+                      tickFormatter={(value) => new Date(`${value}T00:00:00`).toLocaleDateString("en-GB", { month: "short", year: "2-digit" })}
+                      interval={5}
+                      tick={{ fontSize: 10, fill: "#64748b" }}
+                      axisLine={{ stroke: "#dfe5ec" }}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      domain={[0, "auto"]}
+                      tickFormatter={formatNumber}
+                      tick={{ fontSize: 10, fill: "#64748b" }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={48}
+                    />
+                    <Tooltip
+                      labelFormatter={(value) => formatMonth(value)}
+                      formatter={(value, name, item) => {
+                        const count = Number(value || 0)
+                        const leadCount = Number(item?.payload?.lead_count || 0)
+                        const ratio = series.key === "lead_count" || count <= 0 ? null : leadCount / count
+                        return [ratio == null ? formatNumber(count) : `${formatNumber(count)} (${ratio.toFixed(2)})`, series.title]
+                      }}
+                      contentStyle={{ border: "1px solid #dfe5ec", borderRadius: 8, fontSize: 12, boxShadow: "0 5px 18px rgba(15,23,42,.08)" }}
+                    />
+                    <Line type="monotone" dataKey={series.key} name={series.title} stroke={series.color} strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} connectNulls={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ))}
+          </div>
       </div>
 
         </>
