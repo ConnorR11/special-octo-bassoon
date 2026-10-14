@@ -158,10 +158,26 @@ function DataDashboard() {
         throw rpcError
       }
 
+      const { data: conversionData, error: conversionError } = await supabase.rpc(
+        "get_monthly_cps_p_by_lead_source",
+        {
+          start_date: start.toISOString(),
+          end_date: end.toISOString(),
+          selected_lead_source: selectedLeadSource || null,
+        }
+      )
+      if (conversionError) throw conversionError
+
       const lookup = new Map(
         (data || []).map((row) => [
           String(row.month).slice(0, 10),
           Number(row.lead_count || 0),
+        ])
+      )
+      const conversionLookup = new Map(
+        (conversionData || []).map((row) => [
+          String(row.month).slice(0, 10),
+          Number(row.cps_p_count || 0),
         ])
       )
 
@@ -174,6 +190,7 @@ function DataDashboard() {
         .map((row) => ({
           ...row,
           lead_count: lookup.get(row.month) || 0,
+          cps_p_count: conversionLookup.get(row.month) || 0,
         }))
         .slice(0, -1)
 
@@ -766,9 +783,9 @@ function DataDashboard() {
                 labelFormatter={(value) =>
                   formatMonth(value)
                 }
-                formatter={(value) => [
+                formatter={(value, name) => [
                   formatNumber(value),
-                  "Leads",
+                  name === "cps_p_count" ? "Appointments (CPS P)" : "Leads",
                 ]}
                 contentStyle={{
                   border: "1px solid #dfe5ec",
@@ -783,6 +800,15 @@ function DataDashboard() {
                 type="monotone"
                 dataKey="lead_count"
                 stroke="#0877bd"
+                strokeWidth={2.5}
+                dot={false}
+                activeDot={{ r: 5 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="cps_p_count"
+                name="cps_p_count"
+                stroke="#16a34a"
                 strokeWidth={2.5}
                 dot={false}
                 activeDot={{ r: 5 }}
