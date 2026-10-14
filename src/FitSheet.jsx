@@ -435,22 +435,61 @@ function FitSheet({ setSelected }) {
    * ------------------------------------------------------------
    */
 
-  const fitTeams = useMemo(() => {
-    const teams =
+  const fitTeamGroups = useMemo(() => {
+    const teams = [...new Set(
       filteredJobs
-        .map((job) =>
-          String(
-            job.team || ""
-          ).trim()
-        )
+        .map((job) => String(job.team || "").trim())
         .filter(Boolean)
+    )]
 
-    return [
-      ...new Set(teams),
-    ].sort((a, b) =>
-      a.localeCompare(b)
-    )
+    const definitions = [
+      { label: "ABERDEEN", teams: ["Paul Duncan", "Paul Falconer", "Jamie Adamson"] },
+      { label: "FIFE", teams: ["Jon Gray"] },
+      { label: "EDINBURGH", teams: ["Vladimir Ivanovs", "Vlad Team 2"] },
+      { label: "1", teams: ["Darren Green"] },
+      { label: "2", teams: ["Nicky McHugh"] },
+      { label: "3", teams: ["Ian Kidd"] },
+      { label: "4", teams: ["Daniel Barron"] },
+      { label: "5", teams: ["Dmytro Mykhailenko Team 1"] },
+      { label: "6", teams: ["John Cannon"] },
+      { label: "7", teams: ["Andrei Vlasov"] },
+      { label: "8", teams: ["Lloyd Reid"] },
+      { label: "9", teams: ["Matt White"] },
+      { label: "10", teams: ["David Coyle"] },
+      { label: "11", teams: ["James Clarke"] },
+    ]
+
+    const normalise = (value) => String(value || "").trim().toLocaleLowerCase()
+    const assigned = new Set()
+    const groups = definitions.map((group) => {
+      const matchingTeams = group.teams
+        .map((expected) => teams.find((team) => normalise(team) === normalise(expected)))
+        .filter(Boolean)
+        .filter((team) => {
+          const key = normalise(team)
+          if (assigned.has(key)) return false
+          assigned.add(key)
+          return true
+        })
+
+      return { label: group.label, teams: matchingTeams }
+    }).filter((group) => group.teams.length > 0)
+
+    const unorganised = teams
+      .filter((team) => !assigned.has(normalise(team)))
+      .sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }))
+
+    if (unorganised.length) {
+      groups.push({ label: "UNORGANISED", teams: unorganised })
+    }
+
+    return groups
   }, [filteredJobs])
+
+  const fitTeams = useMemo(
+    () => fitTeamGroups.flatMap((group) => group.teams),
+    [fitTeamGroups]
+  )
 
   /*
    * ------------------------------------------------------------
@@ -1085,83 +1124,95 @@ function FitSheet({ setSelected }) {
                 fontSize: "12px",
               }}
             >
-              No jobs found for
-              the selected week/
-              filter.
+              No jobs found for the selected week/filter.
             </div>
           ) : (
-            fitTeams.map(
-              (team) => (
+            fitTeamGroups.map((group) => (
+              <React.Fragment key={group.label}>
                 <div
-                  key={team}
                   style={{
                     display: "grid",
-                    gridTemplateColumns:
-                      "190px repeat(7, minmax(150px, 1fr))",
-                    minHeight: "160px",
-                    borderBottom:
-                      "1px solid #d9dadd",
+                    gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))",
+                    minHeight: "42px",
+                    borderBottom: "1px solid #c9d2df",
+                    background: "#e8eef5",
                   }}
                 >
-                  {/* TEAM NAME */}
-
                   <div
                     style={{
-                      padding:
-                        "14px 12px",
-                      background:
-                        "#f7f7f8",
-                      borderRight:
-                        "1px solid #d9dadd",
+                      padding: "12px",
+                      background: "#dce6f0",
+                      borderRight: "1px solid #c4d1df",
                       fontSize: "11px",
-                      fontWeight: 600,
-                      color: "#333",
-                      display: "flex",
-                      alignItems:
-                        "flex-start",
+                      fontWeight: 800,
+                      color: "#172554",
+                      letterSpacing: "0.5px",
                       position: "sticky",
                       left: 0,
                       zIndex: 5,
                     }}
                   >
-                    {team}
+                    {group.label}
                   </div>
-
-                  {/* DAYS */}
-
-                  {weekDays.map(
-                    (date) => {
-                      const dayJobs =
-                        getJobs(
-                          team,
-                          date
-                        )
-
+                  <div
+                    style={{
+                      gridColumn: "span 7",
+                      padding: "12px",
+                      fontSize: "10px",
+                      fontWeight: 700,
+                      color: "#52627a",
+                    }}
+                  >
+                    {group.label === "UNORGANISED" ? "Teams not in the configured list" : " "}
+                  </div>
+                </div>
+                {group.teams.map((team) => (
+                  <div
+                    key={team}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))",
+                      minHeight: "160px",
+                      borderBottom: "1px solid #d9dadd",
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: "14px 12px",
+                        background: "#f7f7f8",
+                        borderRight: "1px solid #d9dadd",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        color: "#333",
+                        display: "flex",
+                        alignItems: "flex-start",
+                        position: "sticky",
+                        left: 0,
+                        zIndex: 5,
+                      }}
+                    >
+                      {team}
+                    </div>
+                    {weekDays.map((date) => {
+                      const dayJobs = getJobs(team, date)
                       return (
                         <div
-                          key={`${team}-${formatDate(
-                            date
-                          )}`}
+                          key={`${team}-${formatDate(date)}`}
                           style={{
                             padding: "6px",
-                            borderRight:
-                              "1px solid #d9dadd",
-                            background:
-                              "#fff",
-                            minHeight:
-                              "160px",
+                            borderRight: "1px solid #d9dadd",
+                            background: "#fff",
+                            minHeight: "160px",
                           }}
                         >
-                          {dayJobs.map(
-                            renderJobCard
-                          )}
+                          {dayJobs.map(renderJobCard)}
                         </div>
                       )
-                    }
-                  )}
-                </div>
-              )
-            )
+                    })}
+                  </div>
+                ))}
+              </React.Fragment>
+            ))
           )}
         </div>
       </div>
