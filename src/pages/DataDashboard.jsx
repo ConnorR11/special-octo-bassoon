@@ -1089,7 +1089,7 @@ function DataDashboard() {
                       </tr>
                       {expandedProntoSids[row.pronto_sid] && (
                         <tr>
-                          <td colSpan={5} className="pronto-breakdown-cell">
+                          <td colSpan={6} className="pronto-breakdown-cell">
                             {prontoC3Loading[row.pronto_sid] ? (
                               <div className="pronto-empty" style={{ padding: 16 }}>Loading Pronto C3 breakdown…</div>
                             ) : (
