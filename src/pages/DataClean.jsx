@@ -5,7 +5,10 @@ import { supabase } from "../lib/supabase"
 const REPORTS = [
   { id: "missing-result", title: "Appointments missing result", description: "Appointments where no result has been recorded." },
   { id: "wrong-cps", title: "Wrong CPS", description: "Appointments where CPS-P is FALSE, CPS-S is TRUE and is_pickup is FALSE." },
+  { id: "missing-lead-type", title: "Leads missing lead type", description: "Leads where lead_type is empty or NULL. Assign one of the approved lead types." },
 ]
+
+const LEAD_TYPE_OPTIONS = ["Air Source Heat Pump", "ECO4", "Garden Room", "Solar", "Windows"]
 
 function formatDate(value) {
   if (!value) return "—"
@@ -28,6 +31,9 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [search, setSearch] = useState("")
+  const [leadTypeEdits, setLeadTypeEdits] = useState({})
+  const [savingLeadIds, setSavingLeadIds] = useState({})
+  const [saveMessages, setSaveMessages] = useState({})
   const requestIdRef = useRef(0)
 
   const selectedReport = REPORTS.find(report => report.id === activeReport) || REPORTS[0]
@@ -68,6 +74,12 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
             .eq("cps_s", true)
             .eq("is_pickup", false)
             .order("appointment_date", { ascending: false, nullsFirst: false })
+        } else if (reportId === "missing-lead-type") {
+          query = supabase
+            .from("leads")
+            .select("delete_row_id,marketing_row_id,first_name,last_name,salutations,primary_phone_number,email,address,postcode,lead_source,lead_type,received_date_time")
+            .or('lead_type.is.null,lead_type.eq.""')
+            .order("received_date_time", { ascending: false, nullsFirst: false })
         } else {
           break
         }
@@ -83,6 +95,8 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
 
       if (requestId !== requestIdRef.current) return
       setRows(allRows)
+      setLeadTypeEdits({})
+      setSaveMessages({})
     } catch (err) {
       if (requestId !== requestIdRef.current) return
       console.error("Data Clean load error:", err)
@@ -113,14 +127,46 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
         row.phone_number_1,
         row.appointment_date,
         activeReport === "wrong-cps" ? hcps(row) : "",
+        row.lead_source,
+        row.lead_type,
       ]
       return values.map(text).join(" ").toLowerCase().includes(term)
     })
   }, [rows, search, activeReport])
 
   function openRow(row) {
+    if (activeReport === "missing-lead-type") {
+      if (typeof onOpenLead === "function") return onOpenLead(row)
+      return
+    }
     if (typeof onOpenAppointment === "function") return onOpenAppointment(row)
     if (typeof onOpenLead === "function") onOpenLead(row)
+  }
+
+  async function saveLeadType(row) {
+    const id = row.delete_row_id
+    const leadType = leadTypeEdits[id]
+    if (!id || !LEAD_TYPE_OPTIONS.includes(leadType) || !supabase) return
+    setSavingLeadIds(current => ({ ...current, [id]: true }))
+    setSaveMessages(current => ({ ...current, [id]: "" }))
+    try {
+      const { error: updateError } = await supabase
+        .from("leads")
+        .update({ lead_type: leadType })
+        .eq("delete_row_id", id)
+      if (updateError) throw updateError
+      setRows(current => current.filter(item => item.delete_row_id !== id))
+      setLeadTypeEdits(current => {
+        const next = { ...current }
+        delete next[id]
+        return next
+      })
+    } catch (err) {
+      console.error("Unable to update lead type:", err)
+      setSaveMessages(current => ({ ...current, [id]: err?.message || "Could not save lead type." }))
+    } finally {
+      setSavingLeadIds(current => ({ ...current, [id]: false }))
+    }
   }
 
   return (
@@ -181,25 +227,55 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                   <table className="data-clean-table">
                     <thead>
                       <tr>
-                        <th>Customer</th><th>Appointment</th><th>Postcode</th><th>Product</th><th>Job Type</th><th>Branch</th><th>Sales Rep</th><th>Phone</th><th>Email</th>
-                        {activeReport === "wrong-cps" && <><th>HCPS</th><th>Pickup</th></>}
-                        <th></th>
+                        {activeReport === "missing-lead-type" ? (
+                          <><th>Lead</th><th>Received</th><th>Postcode</th><th>Lead Source</th><th>Phone</th><th>Email</th><th>Assign Lead Type</th><th></th></>
+                        ) : (
+                          <><th>Customer</th><th>Appointment</th><th>Postcode</th><th>Product</th><th>Job Type</th><th>Branch</th><th>Sales Rep</th><th>Phone</th><th>Email</th>
+                          {activeReport === "wrong-cps" && <><th>HCPS</th><th>Pickup</th></>}
+                          <th></th></>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
                       {filteredRows.map((row, index) => (
                         <tr key={row.appointment_row_id || `${row.name}-${row.appointment_date}-${index}`}>
-                          <td><strong>{row.name || "Unnamed customer"}</strong>{row.appointment_row_id && <small>{row.appointment_row_id}</small>}</td>
-                          <td>{formatDate(row.appointment_date)}</td>
-                          <td>{row.postcode || "—"}</td>
-                          <td>{row.product || "—"}</td>
-                          <td>{row.job_type || "—"}</td>
-                          <td>{row.branch || "—"}</td>
-                          <td>{row.rep_allocated || "—"}</td>
-                          <td>{row.phone_number_1 || "—"}</td>
-                          <td>{row.email_address || "—"}</td>
-                          {activeReport === "wrong-cps" && <><td><span className="data-clean-badge warning">{hcps(row)}</span></td><td><span className="data-clean-badge danger">FALSE</span></td></>}
-                          <td><button type="button" className="data-clean-open" onClick={() => openRow(row)}>Open</button></td>
+                          {activeReport === "missing-lead-type" ? (
+                            <>
+                              <td><strong>{[row.salutations, row.first_name, row.last_name].map(text).filter(Boolean).join(" ") || "Unnamed lead"}</strong><small>{row.delete_row_id}</small></td>
+                              <td>{formatDate(row.received_date_time)}</td>
+                              <td>{row.postcode || "—"}</td>
+                              <td>{row.lead_source || "—"}</td>
+                              <td>{row.primary_phone_number || "—"}</td>
+                              <td>{row.email || "—"}</td>
+                              <td>
+                                <select
+                                  aria-label={`Lead type for ${row.first_name || row.delete_row_id}`}
+                                  value={leadTypeEdits[row.delete_row_id] || ""}
+                                  onChange={event => setLeadTypeEdits(current => ({ ...current, [row.delete_row_id]: event.target.value }))}
+                                  style={{ minWidth: 190, padding: "7px 9px", border: "1px solid #d7dee7", borderRadius: 7, background: "#fff", color: "#334155", fontSize: 11 }}
+                                >
+                                  <option value="">Select lead type…</option>
+                                  {LEAD_TYPE_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                                </select>
+                                {saveMessages[row.delete_row_id] && <small style={{ color: "#b91c1c" }}>{saveMessages[row.delete_row_id]}</small>}
+                              </td>
+                              <td><button type="button" className="data-clean-open" disabled={!LEAD_TYPE_OPTIONS.includes(leadTypeEdits[row.delete_row_id]) || !!savingLeadIds[row.delete_row_id]} onClick={() => saveLeadType(row)}>{savingLeadIds[row.delete_row_id] ? "Saving…" : "Save"}</button></td>
+                            </>
+                          ) : (
+                            <>
+                              <td><strong>{row.name || "Unnamed customer"}</strong>{row.appointment_row_id && <small>{row.appointment_row_id}</small>}</td>
+                              <td>{formatDate(row.appointment_date)}</td>
+                              <td>{row.postcode || "—"}</td>
+                              <td>{row.product || "—"}</td>
+                              <td>{row.job_type || "—"}</td>
+                              <td>{row.branch || "—"}</td>
+                              <td>{row.rep_allocated || "—"}</td>
+                              <td>{row.phone_number_1 || "—"}</td>
+                              <td>{row.email_address || "—"}</td>
+                              {activeReport === "wrong-cps" && <><td><span className="data-clean-badge warning">{hcps(row)}</span></td><td><span className="data-clean-badge danger">FALSE</span></td></>}
+                              <td><button type="button" className="data-clean-open" onClick={() => openRow(row)}>Open</button></td>
+                            </>
+                          )}
                         </tr>
                       ))}
                     </tbody>
