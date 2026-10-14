@@ -1197,7 +1197,7 @@ function FitSheet({ setSelected }) {
                   <div>
                     {heatPumpTeams.map((team) => (
                       <div key={team} style={{ display: "grid", gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))", minHeight: "160px", borderBottom: "1px solid #111" }}>
-                        <div style={{ padding: "14px 12px", background: "#f2f2f2", borderRight: "2px solid #111", fontSize: "11px", fontWeight: 600, color: "#111", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}>{team}</div>
+                        <div style={{ padding: "14px 12px", background: "#f2f2f2", borderLeft: "2px solid #111", borderRight: "2px solid #111", fontSize: "11px", fontWeight: 600, color: "#111", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}>{team}</div>
                         {weekDays.map((date) => {
                           const dayJobs = getJobs(team, date)
                           return <div key={team + "-" + formatDate(date)} style={{ padding: "6px", borderRight: "1px solid #d9dadd", background: "#fff", minHeight: "160px" }}>{dayJobs.map(renderJobCard)}</div>
