@@ -456,7 +456,7 @@ function FitSheet({ setSelected }) {
         return name
       }),
     }))
-    const renewablesNames = ["Bryan Cartridge", "Gordon Pender"]
+    const renewablesNames = ["Bryan Cartridge", "Gordon Pender", "Ken Murdoch"]
     const renewablesTeams = renewablesNames.map((expected) => {
       const actual = actualTeams.find((team) => normalise(team) === normalise(expected))
       if (actual) assigned.add(normalise(actual))
