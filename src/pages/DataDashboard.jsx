@@ -892,7 +892,7 @@ function DataDashboard() {
                     </React.Fragment>
                   ))}
                   <tr>
-                    <td><strong>Total leads with SID</strong></td>
+                    <td><strong>Total Pronto Windows leads</strong></td>
                     <td><strong>{formatNumber(prontoSidTotal)}</strong></td>
                   </tr>
                 </tbody>
