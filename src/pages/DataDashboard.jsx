@@ -174,6 +174,13 @@ function DataDashboard() {
       )
       if (productError) throw productError
 
+      const lookup = new Map(
+        (data || []).map((row) => [
+          String(row.month).slice(0, 10),
+          Number(row.lead_count || 0),
+        ])
+      )
+
       const productLookup = new Map(
         (productData || []).map((row) => [
           String(row.month).slice(0, 10),
