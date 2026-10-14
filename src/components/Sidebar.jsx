@@ -54,6 +54,11 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
     customerService: false, admin: false, procurement: false,
     headOffice: false, digitalTeam: false,
   })
+  React.useEffect(() => {
+    if (!isDepartmentRestricted || !departmentFolder) return
+    setOpenFolders(current => ({ ...current, [departmentFolder]: true }))
+  }, [isDepartmentRestricted, departmentFolder])
+
   const [showPhoneDialer, setShowPhoneDialer] = React.useState(false)
   const [showCallLog, setShowCallLog] = React.useState(false)
 
