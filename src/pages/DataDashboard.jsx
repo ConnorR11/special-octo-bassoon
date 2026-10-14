@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { BarChart3, RefreshCw, TrendingUp, Search } from "lucide-react"
 import {
+  Bar,
   CartesianGrid,
+  ComposedChart,
   Line,
   LineChart,
   Legend,
@@ -44,6 +46,9 @@ function buildMonthRange(startDate, endDate) {
         year: "2-digit",
       }),
       lead_count: 0,
+      cps_p_count: 0,
+      conversion_rate: null,
+      rolling_conversion_rate: null,
     })
 
     cursor.setMonth(cursor.getMonth() + 1)
@@ -192,6 +197,17 @@ function DataDashboard() {
           ...row,
           lead_count: lookup.get(row.month) || 0,
           cps_p_count: conversionLookup.get(row.month) || 0,
+        }))
+        .map((row) => ({
+          ...row,
+          conversion_rate: row.lead_count > 0 ? (row.cps_p_count / row.lead_count) * 100 : null,
+        }))
+        .map((row, index, allRows) => ({
+          ...row,
+          rolling_conversion_rate: index >= 2 && allRows.slice(index - 2, index + 1).every((item) => item.lead_count > 0)
+            ? (allRows.slice(index - 2, index + 1).reduce((sum, item) => sum + item.cps_p_count, 0) /
+              allRows.slice(index - 2, index + 1).reduce((sum, item) => sum + item.lead_count, 0)) * 100
+            : null,
         }))
         .slice(0, -1)
 
@@ -680,7 +696,7 @@ function DataDashboard() {
           <div>
             <div className="data-dashboard-chart-title">
               <BarChart3 size={17} />
-              Lead volume
+              Lead volume & appointment conversion
             </div>
 
             <div className="data-dashboard-chart-subtitle">
@@ -729,7 +745,7 @@ function DataDashboard() {
             width="100%"
             height={430}
           >
-            <LineChart
+            <ComposedChart
               data={rows}
               margin={{
                 top: 10,
@@ -770,6 +786,7 @@ function DataDashboard() {
               />
 
               <YAxis
+                yAxisId="volume"
                 tickFormatter={formatNumber}
                 tick={{
                   fontSize: 10,
@@ -780,18 +797,29 @@ function DataDashboard() {
                 width={55}
               />
 
+              <YAxis
+                yAxisId="rate"
+                orientation="right"
+                domain={[0, "auto"]}
+                tickFormatter={(value) => `${Number(value).toFixed(0)}%`}
+                tick={{ fontSize: 10, fill: "#64748b" }}
+                axisLine={false}
+                tickLine={false}
+                width={48}
+              />
               <Legend
-                formatter={(value) => value === "cps_p_count" ? "Appointments with CPS P" : "Leads"}
+                formatter={(value) => ({ lead_count: "Leads received", conversion_rate: "Lead-to-appointment conversion", rolling_conversion_rate: "3-month average" }[value] || value)}
                 wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
               />
               <Tooltip
-                labelFormatter={(value) =>
-                  formatMonth(value)
-                }
-                formatter={(value, name) => [
-                  formatNumber(value),
-                  name === "cps_p_count" ? "Appointments (CPS P)" : "Leads",
-                ]}
+                labelFormatter={(value) => formatMonth(value)}
+                formatter={(value, name, item) => {
+                  if (name === "conversion_rate" || name === "rolling_conversion_rate") {
+                    return [value == null ? "—" : `${Number(value).toFixed(1)}%`, name === "rolling_conversion_rate" ? "3-month average" : "Conversion rate"]
+                  }
+                  if (name === "cps_p_count") return [formatNumber(value), "Unique leads reaching CPS P"]
+                  return [formatNumber(value), "Leads received"]
+                }}
                 contentStyle={{
                   border: "1px solid #dfe5ec",
                   borderRadius: 8,
@@ -801,24 +829,10 @@ function DataDashboard() {
                 }}
               />
 
-              <Line
-                type="monotone"
-                dataKey="lead_count"
-                stroke="#0877bd"
-                strokeWidth={2.5}
-                dot={false}
-                activeDot={{ r: 5 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="cps_p_count"
-                name="cps_p_count"
-                stroke="#16a34a"
-                strokeWidth={2.5}
-                dot={false}
-                activeDot={{ r: 5 }}
-              />
-            </LineChart>
+              <Bar yAxisId="volume" dataKey="lead_count" name="lead_count" fill="#93c5fd" radius={[3, 3, 0, 0]} maxBarSize={28} />
+              <Line yAxisId="rate" type="monotone" dataKey="conversion_rate" name="conversion_rate" stroke="#0d9488" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls={false} />
+              <Line yAxisId="rate" type="monotone" dataKey="rolling_conversion_rate" name="rolling_conversion_rate" stroke="#0d9488" strokeWidth={2} strokeDasharray="6 4" dot={false} connectNulls={false} />
+            </ComposedChart>
           </ResponsiveContainer>
         )}
       </div>
