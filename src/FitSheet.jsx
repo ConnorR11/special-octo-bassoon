@@ -437,45 +437,27 @@ function FitSheet({ setSelected }) {
    */
 
   const fitTeamGroups = useMemo(() => {
-    // All configured window teams stay visible in the requested order,
-    // regardless of whether they have jobs in the selected week.
-    const configuredTeams = [
-      "Paul Duncan",
-      "Paul Falconer",
-      "Jamie Adamson",
-      "Jon Gray",
-      "Vladimir Ivanovs",
-      "Vlad Team 2",
-      "Darren Green",
-      "Nicky McHugh",
-      "Ian Kidd",
-      "Daniel Barron",
-      "Dmytro Mykhailenko Team 1",
-      "John Cannon",
-      "Andrei Vlasov",
-      "Lloyd Reid",
-      "Matt White",
-      "David Coyle",
-      "James Clarke",
+    const configuredGroups = [
+      { label: "ABERDEEN", teams: ["Paul Duncan", "Paul Falconer", "Jamie Adamson"] },
+      { label: "FIFE", teams: ["Jon Gray"] },
+      { label: "EDINBURGH", teams: ["Vladimir Ivanovs", "Vlad Team 2"] },
+      { label: "TEAMS 1–11", teams: ["Darren Green", "Nicky McHugh", "Ian Kidd", "Daniel Barron", "Dmytro Mykhailenko Team 1", "John Cannon", "Andrei Vlasov", "Lloyd Reid", "Matt White", "David Coyle", "James Clarke"] },
     ]
     const normalise = (value) => String(value || "").trim().toLocaleLowerCase()
-    const actualTeams = [...new Set(
-      jobs.map((job) => String(job.team || "").trim()).filter(Boolean)
-    )]
+    const actualTeams = [...new Set(jobs.map((job) => String(job.team || "").trim()).filter(Boolean))]
     const assigned = new Set()
-    const orderedTeams = configuredTeams.map((expected) => {
-      const actual = actualTeams.find((team) => normalise(team) === normalise(expected))
-      const teamName = actual || expected
-      assigned.add(normalise(teamName))
-      return teamName
-    })
-    const unorganised = actualTeams
-      .filter((team) => !assigned.has(normalise(team)))
-      .sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }))
-    return [
-      { label: "WINDOW TEAMS", teams: orderedTeams },
-      ...(unorganised.length ? [{ label: "UNORGANISED", teams: unorganised }] : []),
-    ]
+    const groups = configuredGroups.map((group) => ({
+      label: group.label,
+      teams: group.teams.map((expected) => {
+        const actual = actualTeams.find((team) => normalise(team) === normalise(expected))
+        const name = actual || expected
+        assigned.add(normalise(name))
+        return name
+      }),
+    }))
+    const unorganised = actualTeams.filter((team) => !assigned.has(normalise(team))).sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }))
+    if (unorganised.length) groups.push({ label: "UNORGANISED", teams: unorganised })
+    return groups
   }, [jobs])
 
   const fitTeams = useMemo(
