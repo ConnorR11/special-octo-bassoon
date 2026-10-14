@@ -88,6 +88,10 @@ function DataDashboard() {
   const [prontoLoading, setProntoLoading] = useState(false)
   const [prontoError, setProntoError] = useState("")
   const [prontoSearch, setProntoSearch] = useState("")
+  const [prontoSidRows, setProntoSidRows] = useState([])
+  const [prontoSidLoading, setProntoSidLoading] = useState(false)
+  const [prontoSidError, setProntoSidError] = useState("")
+  const [prontoSidSearch, setProntoSidSearch] = useState("")
 
   async function loadProntoData() {
     if (!supabase) {
@@ -118,6 +122,32 @@ function DataDashboard() {
       setProntoRows([])
     } finally {
       setProntoLoading(false)
+    }
+  }
+
+  async function loadProntoSidData() {
+    if (!supabase) {
+      setProntoSidError("Supabase is not configured.")
+      return
+    }
+
+    setProntoSidLoading(true)
+    setProntoSidError("")
+
+    try {
+      const { data, error: rpcError } = await supabase.rpc("get_pronto_sid_lead_counts")
+      if (rpcError) throw rpcError
+
+      setProntoSidRows((data || []).map((row) => ({
+        pronto_sid: String(row.pronto_sid || ""),
+        lead_count: Number(row.lead_count || 0),
+      })))
+    } catch (err) {
+      console.error("Error loading Pronto SID data:", err)
+      setProntoSidError(err?.message || "Unable to load Pronto SID data.")
+      setProntoSidRows([])
+    } finally {
+      setProntoSidLoading(false)
     }
   }
 
@@ -237,8 +267,9 @@ function DataDashboard() {
   }, [selectedLeadSource])
 
   useEffect(() => {
-    if (activeTab === "pronto" && prontoRows.length === 0 && !prontoLoading) {
-      loadProntoData()
+    if (activeTab === "pronto") {
+      if (prontoRows.length === 0 && !prontoLoading) loadProntoData()
+      if (prontoSidRows.length === 0 && !prontoSidLoading) loadProntoSidData()
     }
   }, [activeTab])
 
@@ -253,6 +284,17 @@ function DataDashboard() {
   const prontoTotal = useMemo(
     () => prontoRows.reduce((total, row) => total + row.lead_count, 0),
     [prontoRows]
+  )
+
+  const filteredProntoSidRows = useMemo(() => {
+    const search = prontoSidSearch.trim().toLowerCase()
+    if (!search) return prontoSidRows
+    return prontoSidRows.filter((row) => row.pronto_sid.toLowerCase().includes(search))
+  }, [prontoSidRows, prontoSidSearch])
+
+  const prontoSidTotal = useMemo(
+    () => prontoSidRows.reduce((total, row) => total + row.lead_count, 0),
+    [prontoSidRows]
   )
 
   const totalLeads = useMemo(
@@ -833,6 +875,57 @@ function DataDashboard() {
                       <td>{formatNumber(row.lead_count)}</td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="pronto-toolbar" style={{ marginTop: 26 }}>
+            <div>
+              <div className="data-dashboard-chart-title">Pronto SID Lead Counts</div>
+              <div className="data-dashboard-chart-subtitle">
+                Unique pronto_SID values and their total lead counts for Pronto Windows, across all dates.
+              </div>
+            </div>
+            <div className="pronto-search">
+              <Search size={14} color="#64748b" />
+              <input
+                type="text"
+                value={prontoSidSearch}
+                onChange={(event) => setProntoSidSearch(event.target.value)}
+                placeholder="Search Pronto SID"
+              />
+            </div>
+          </div>
+
+          {prontoSidError && (
+            <div className="data-dashboard-error">{prontoSidError}</div>
+          )}
+
+          <div className="pronto-table-card">
+            {prontoSidLoading ? (
+              <div className="pronto-empty">Loading Pronto SID data…</div>
+            ) : filteredProntoSidRows.length === 0 ? (
+              <div className="pronto-empty">No Pronto SID data found.</div>
+            ) : (
+              <table className="pronto-table">
+                <thead>
+                  <tr>
+                    <th>Pronto SID</th>
+                    <th>Leads</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredProntoSidRows.map((row) => (
+                    <tr key={row.pronto_sid}>
+                      <td>{row.pronto_sid}</td>
+                      <td>{formatNumber(row.lead_count)}</td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <td><strong>Total leads with SID</strong></td>
+                    <td><strong>{formatNumber(prontoSidTotal)}</strong></td>
+                  </tr>
                 </tbody>
               </table>
             )}
