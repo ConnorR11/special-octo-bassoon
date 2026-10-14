@@ -84,46 +84,10 @@ function DataDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [activeTab, setActiveTab] = useState("overview")
-  const [prontoRows, setProntoRows] = useState([])
-  const [prontoLoading, setProntoLoading] = useState(false)
-  const [prontoError, setProntoError] = useState("")
-  const [prontoSearch, setProntoSearch] = useState("")
   const [prontoSidRows, setProntoSidRows] = useState([])
   const [prontoSidLoading, setProntoSidLoading] = useState(false)
   const [prontoSidError, setProntoSidError] = useState("")
   const [prontoSidSearch, setProntoSidSearch] = useState("")
-
-  async function loadProntoData() {
-    if (!supabase) {
-      setProntoError("Supabase is not configured.")
-      return
-    }
-
-    setProntoLoading(true)
-    setProntoError("")
-
-    try {
-      const { data, error: rpcError } = await supabase.rpc(
-        "get_pronto_c1_lead_counts",
-        { start_date: "2026-01-01T00:00:00+00:00" }
-      )
-
-      if (rpcError) throw rpcError
-
-      setProntoRows(
-        (data || []).map((row) => ({
-          pronto_c1: String(row.pronto_c1 || "?"),
-          lead_count: Number(row.lead_count || 0),
-        }))
-      )
-    } catch (err) {
-      console.error("Error loading Pronto data:", err)
-      setProntoError(err?.message || "Unable to load Pronto data.")
-      setProntoRows([])
-    } finally {
-      setProntoLoading(false)
-    }
-  }
 
   async function loadProntoSidData() {
     if (!supabase) {
@@ -267,24 +231,10 @@ function DataDashboard() {
   }, [selectedLeadSource])
 
   useEffect(() => {
-    if (activeTab === "pronto") {
-      if (prontoRows.length === 0 && !prontoLoading) loadProntoData()
-      if (prontoSidRows.length === 0 && !prontoSidLoading) loadProntoSidData()
+    if (activeTab === "pronto" && prontoSidRows.length === 0 && !prontoSidLoading) {
+      loadProntoSidData()
     }
   }, [activeTab])
-
-  const filteredProntoRows = useMemo(() => {
-    const search = prontoSearch.trim().toLowerCase()
-    if (!search) return prontoRows
-    return prontoRows.filter((row) =>
-      row.pronto_c1.toLowerCase().includes(search)
-    )
-  }, [prontoRows, prontoSearch])
-
-  const prontoTotal = useMemo(
-    () => prontoRows.reduce((total, row) => total + row.lead_count, 0),
-    [prontoRows]
-  )
 
   const filteredProntoSidRows = useMemo(() => {
     const search = prontoSidSearch.trim().toLowerCase()
@@ -830,57 +780,7 @@ function DataDashboard() {
         </>
       ) : activeTab === "pronto" ? (
         <>
-          {prontoError && (
-            <div className="data-dashboard-error">
-              {prontoError}
-            </div>
-          )}
-
           <div className="pronto-toolbar">
-            <div>
-              <div className="data-dashboard-chart-title">Pronto C1</div>
-              <div className="data-dashboard-chart-subtitle">
-                Unique Pronto C1 values for leads with lead source Pronto Windows received since 1 January 2026.
-              </div>
-            </div>
-
-            <div className="pronto-search">
-              <Search size={14} color="#64748b" />
-              <input
-                type="text"
-                value={prontoSearch}
-                onChange={(event) => setProntoSearch(event.target.value)}
-                placeholder="Search Pronto C1"
-              />
-            </div>
-          </div>
-
-          <div className="pronto-table-card">
-            {prontoLoading ? (
-              <div className="pronto-empty">Loading Pronto data…</div>
-            ) : filteredProntoRows.length === 0 ? (
-              <div className="pronto-empty">No Pronto C1 data found.</div>
-            ) : (
-              <table className="pronto-table">
-                <thead>
-                  <tr>
-                    <th>Pronto C1</th>
-                    <th>Leads</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredProntoRows.map((row) => (
-                    <tr key={row.pronto_c1}>
-                      <td>{row.pronto_c1}</td>
-                      <td>{formatNumber(row.lead_count)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          <div className="pronto-toolbar" style={{ marginTop: 26 }}>
             <div>
               <div className="data-dashboard-chart-title">Pronto SID Lead Counts</div>
               <div className="data-dashboard-chart-subtitle">
