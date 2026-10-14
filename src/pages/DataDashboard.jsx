@@ -318,13 +318,16 @@ function DataDashboard() {
   }, [selectedLeadSource])
 
   useEffect(() => {
-    if (activeTab === "pronto" && prontoSidRows.length === 0 && !prontoSidLoading) {
+    if (activeTab === "pronto") {
       loadProntoSidData()
     }
+  }, [activeTab, prontoDatePeriod])
+
+  useEffect(() => {
     if (activeTab === "pronto" && missingSidC1Rows.length === 0 && !missingSidC1Loading) {
       loadMissingSidC1Values()
     }
-  }, [activeTab, prontoDatePeriod])
+  }, [activeTab])
 
   const filteredMissingSidC1Rows = useMemo(() => {
     const search = missingSidC1Search.trim().toLowerCase()
