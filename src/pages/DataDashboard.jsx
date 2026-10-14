@@ -168,6 +168,15 @@ function DataDashboard() {
       const { count: noContactCount, error: noContactError } = await noContactQuery
       if (noContactError) throw noContactError
       setProntoNoContactTotal(Number(noContactCount || 0))
+
+      const { data: noContactRows, error: noContactRowsError } = await supabase.rpc(
+        "get_pronto_sid_no_contact_counts",
+        { date_period: prontoDatePeriod }
+      )
+      if (noContactRowsError) throw noContactRowsError
+      setProntoNoContactBySid(Object.fromEntries(
+        (noContactRows || []).map((row) => [String(row.pronto_sid || "(No SID)"), Number(row.no_contact_count || 0)])
+      ))
     } catch (err) {
       console.error("Error loading Pronto SID data:", err)
       setProntoSidError(err?.message || "Unable to load Pronto SID data.")
@@ -1054,6 +1063,7 @@ function DataDashboard() {
                     <th>Latest received</th>
                     <th>Status</th>
                     <th>Leads</th>
+                    <th>No Contact</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1075,6 +1085,7 @@ function DataDashboard() {
                         <td>{formatProntoDate(row.latest_lead_date)}</td>
                         <td>{prontoStatus(row.latest_lead_date)}</td>
                         <td>{formatNumber(row.lead_count)}</td>
+                        <td>{formatNumber(prontoNoContactBySid[row.pronto_sid] || 0)}</td>
                       </tr>
                       {expandedProntoSids[row.pronto_sid] && (
                         <tr>
@@ -1122,9 +1133,8 @@ function DataDashboard() {
                     </React.Fragment>
                   ))}
                   <tr>
-                    <td colSpan={2}><strong>Total Pronto Windows leads</strong></td>
+                    <td colSpan={4}><strong>Total Pronto Windows leads</strong></td>
                     <td><strong>{formatNumber(prontoSidTotal)}</strong></td>
-                    <td><strong>No Contact</strong></td>
                     <td><strong>{formatNumber(prontoNoContactTotal)}</strong></td>
                   </tr>
                 </tbody>
