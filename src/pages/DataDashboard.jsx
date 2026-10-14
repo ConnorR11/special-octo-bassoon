@@ -98,10 +98,10 @@ function DataDashboard() {
   const [missingSidC1Loading, setMissingSidC1Loading] = useState(false)
   const [missingSidC1Error, setMissingSidC1Error] = useState("")
   const [missingSidC1Search, setMissingSidC1Search] = useState("")
-  const [blankC1C2Rows, setBlankC1C2Rows] = useState([])
-  const [blankC1C2Loading, setBlankC1C2Loading] = useState(false)
-  const [blankC1C2Error, setBlankC1C2Error] = useState("")
-  const [blankC1C2Search, setBlankC1C2Search] = useState("")
+  const [blankC1C3Rows, setBlankC1C2Rows] = useState([])
+  const [blankC1C3Loading, setBlankC1C2Loading] = useState(false)
+  const [blankC1C3Error, setBlankC1C2Error] = useState("")
+  const [blankC1C3Search, setBlankC1C2Search] = useState("")
 
   function formatProntoDate(value) {
     if (!value) return "—"
@@ -178,7 +178,7 @@ function DataDashboard() {
     }
   }
 
-  async function loadBlankC1C2Values() {
+  async function loadBlankC1C3Values() {
     if (!supabase) {
       setBlankC1C2Error("Supabase is not configured.")
       return
@@ -187,15 +187,15 @@ function DataDashboard() {
     setBlankC1C2Loading(true)
     setBlankC1C2Error("")
     try {
-      const { data, error: rpcError } = await supabase.rpc("get_pronto_c2_values_when_c1_blank")
+      const { data, error: rpcError } = await supabase.rpc("get_pronto_c3_values_when_c1_blank")
       if (rpcError) throw rpcError
       setBlankC1C2Rows((data || []).map((row) => ({
-        pronto_c2: String(row.pronto_c2 || ""),
+        pronto_c3: String(row.pronto_c3 || ""),
         lead_count: Number(row.lead_count || 0),
       })))
     } catch (err) {
-      console.error("Error loading Pronto C2 values where C1 is blank:", err)
-      setBlankC1C2Error(err?.message || "Unable to load Pronto C2 values where C1 is blank.")
+      console.error("Error loading Pronto C3 values where C1 is blank:", err)
+      setBlankC1C2Error(err?.message || "Unable to load Pronto C3 values where C1 is blank.")
       setBlankC1C2Rows([])
     } finally {
       setBlankC1C2Loading(false)
@@ -355,8 +355,8 @@ function DataDashboard() {
     if (activeTab === "pronto" && missingSidC1Rows.length === 0 && !missingSidC1Loading) {
       loadMissingSidC1Values()
     }
-    if (activeTab === "pronto" && blankC1C2Rows.length === 0 && !blankC1C2Loading) {
-      loadBlankC1C2Values()
+    if (activeTab === "pronto" && blankC1C3Rows.length === 0 && !blankC1C3Loading) {
+      loadBlankC1C3Values()
     }
   }, [activeTab])
 
@@ -366,9 +366,9 @@ function DataDashboard() {
   }, [missingSidC1Rows, missingSidC1Search])
 
   const filteredBlankC1C2Rows = useMemo(() => {
-    const search = blankC1C2Search.trim().toLowerCase()
-    return blankC1C2Rows.filter((row) => !search || row.pronto_c2.toLowerCase().includes(search))
-  }, [blankC1C2Rows, blankC1C2Search])
+    const search = blankC1C3Search.trim().toLowerCase()
+    return blankC1C3Rows.filter((row) => !search || row.pronto_c3.toLowerCase().includes(search))
+  }, [blankC1C3Rows, blankC1C3Search])
 
   const filteredProntoSidRows = useMemo(() => {
     const search = prontoSidSearch.trim().toLowerCase()
@@ -1161,9 +1161,9 @@ function DataDashboard() {
           </div>
 
           <div style={{ marginTop: 22, marginBottom: 10 }}>
-            <div className="data-dashboard-chart-title">Unique Pronto C2 values where C1 is blank or NULL</div>
+            <div className="data-dashboard-chart-title">Unique Pronto C3 values where C1 is blank or NULL</div>
             <div className="data-dashboard-chart-subtitle">
-              Distinct, non-blank Pronto C2 values from Pronto Windows leads where pronto_c1 is blank or NULL, with the number of matching leads for each value.
+              Distinct, non-blank Pronto C3 values from Pronto Windows leads where pronto_c1 is blank or NULL, with the number of matching leads for each value.
             </div>
           </div>
 
@@ -1176,26 +1176,26 @@ function DataDashboard() {
                 <Search size={14} color="#64748b" />
                 <input
                   type="text"
-                  value={blankC1C2Search}
+                  value={blankC1C3Search}
                   onChange={(event) => setBlankC1C2Search(event.target.value)}
-                  placeholder="Search Pronto C2"
-                  aria-label="Search Pronto C2 values where C1 is blank"
+                  placeholder="Search Pronto C3"
+                  aria-label="Search Pronto C3 values where C1 is blank"
                 />
               </div>
-              <button type="button" className="data-dashboard-refresh" onClick={loadBlankC1C2Values} disabled={blankC1C2Loading}>
-                <RefreshCw size={14} className={blankC1C2Loading ? "spin" : ""} />
+              <button type="button" className="data-dashboard-refresh" onClick={loadBlankC1C3Values} disabled={blankC1C3Loading}>
+                <RefreshCw size={14} className={blankC1C3Loading ? "spin" : ""} />
                 Refresh list
               </button>
             </div>
           </div>
 
-          {blankC1C2Error && <div className="data-dashboard-error">{blankC1C2Error}</div>}
+          {blankC1C3Error && <div className="data-dashboard-error">{blankC1C3Error}</div>}
 
           <div className="pronto-table-card">
-            {blankC1C2Loading ? (
-              <div className="pronto-empty">Loading unique Pronto C2 values…</div>
+            {blankC1C3Loading ? (
+              <div className="pronto-empty">Loading unique Pronto C3 values…</div>
             ) : filteredBlankC1C2Rows.length === 0 ? (
-              <div className="pronto-empty">{blankC1C2Search ? "No matching Pronto C2 values." : "No non-blank Pronto C2 values found where C1 is blank or NULL."}</div>
+              <div className="pronto-empty">{blankC1C3Search ? "No matching Pronto C3 values." : "No non-blank Pronto C3 values found where C1 is blank or NULL."}</div>
             ) : (
               <table className="pronto-table">
                 <colgroup>
@@ -1204,14 +1204,14 @@ function DataDashboard() {
                 </colgroup>
                 <thead>
                   <tr>
-                    <th>Pronto C2 value</th>
+                    <th>Pronto C3 value</th>
                     <th>Leads</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredBlankC1C2Rows.map((row) => (
-                    <tr key={row.pronto_c2}>
-                      <td style={{ fontWeight: 500 }}>{row.pronto_c2}</td>
+                    <tr key={row.pronto_c3}>
+                      <td style={{ fontWeight: 500 }}>{row.pronto_c3}</td>
                       <td>{formatNumber(row.lead_count)}</td>
                     </tr>
                   ))}
