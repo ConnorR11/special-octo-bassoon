@@ -15,7 +15,7 @@ function normaliseDepartment(value) {
     .toLowerCase()
     .replace(/&/g, "and")
     .replace(/[_-]+/g, " ")
-    .replace(/\\s+/g, " ")
+    .replace(/\s+/g, " ")
 }
 
 function getDepartmentFolder(department) {
