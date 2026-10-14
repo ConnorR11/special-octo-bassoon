@@ -498,6 +498,7 @@ function FitSheet({ setSelected }) {
   const windowGroups = fitTeamGroups.windowGroups
   const renewablesTeams = fitTeamGroups.renewablesTeams
   const heatPumpTeams = fitTeamGroups.heatPumpTeams
+  const nameCellStyle = { padding: "14px 12px", background: "#f2f2f2", borderLeft: "2px solid #111", borderRight: "2px solid #111", fontSize: "11px", fontWeight: 600, color: "#111", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center" }
   const roofTeams = fitTeamGroups.roofTeams
   const electricsTeams = fitTeamGroups.electricsTeams
   const renewableRemedialsTeams = fitTeamGroups.renewableRemedialsTeams
@@ -1157,7 +1158,7 @@ function FitSheet({ setSelected }) {
                   <div>
                     {group.teams.map((team) => (
                       <div key={team} style={{ display: "grid", gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))", minHeight: "160px", borderBottom: "1px solid #111" }}>
-                        <div style={{ padding: "14px 12px", background: "#fff", borderRight: "2px solid #111", fontSize: "11px", fontWeight: 600, color: "#111", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}>{team}</div>
+                        <div style={nameCellStyle}>{team}</div>
                         {weekDays.map((date) => {
                           const dayJobs = getJobs(team, date)
                           return <div key={team + "-" + formatDate(date)} style={{ padding: "6px", borderRight: "1px solid #d9dadd", background: "#fff", minHeight: "160px" }}>{dayJobs.map(renderJobCard)}</div>
@@ -1177,7 +1178,7 @@ function FitSheet({ setSelected }) {
                   <div>
                     {renewablesTeams.map((team) => (
                       <div key={team} style={{ display: "grid", gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))", minHeight: "160px", borderBottom: "1px solid #111" }}>
-                        <div style={{ padding: "14px 12px", background: "#fff", borderRight: "2px solid #111", fontSize: "11px", fontWeight: 600, color: "#111", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}>{team}</div>
+                        <div style={nameCellStyle}>{team}</div>
                         {weekDays.map((date) => {
                           const dayJobs = getJobs(team, date)
                           return <div key={team + "-" + formatDate(date)} style={{ padding: "6px", borderRight: "1px solid #d9dadd", background: "#fff", minHeight: "160px" }}>{dayJobs.map(renderJobCard)}</div>
@@ -1197,7 +1198,7 @@ function FitSheet({ setSelected }) {
                   <div>
                     {heatPumpTeams.map((team) => (
                       <div key={team} style={{ display: "grid", gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))", minHeight: "160px", borderBottom: "1px solid #111" }}>
-                        <div style={{ padding: "14px 12px", background: "#f2f2f2", borderLeft: "2px solid #111", borderRight: "2px solid #111", fontSize: "11px", fontWeight: 600, color: "#111", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}>{team}</div>
+                        <div style={nameCellStyle}>{team}</div>
                         {weekDays.map((date) => {
                           const dayJobs = getJobs(team, date)
                           return <div key={team + "-" + formatDate(date)} style={{ padding: "6px", borderRight: "1px solid #d9dadd", background: "#fff", minHeight: "160px" }}>{dayJobs.map(renderJobCard)}</div>
@@ -1218,7 +1219,7 @@ function FitSheet({ setSelected }) {
                   <div>
                     {roofTeams.map((team) => (
                       <div key={team} style={{ display: "grid", gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))", minHeight: "160px", borderBottom: "1px solid #111" }}>
-                        <div style={{ padding: "14px 12px", background: "#f2f2f2", borderRight: "2px solid #111", fontSize: "11px", fontWeight: 600, color: "#111", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}>{team}</div>
+                        <div style={nameCellStyle}>{team}</div>
                         {weekDays.map((date) => {
                           const dayJobs = getJobs(team, date)
                           return <div key={team + "-" + formatDate(date)} style={{ padding: "6px", borderRight: "1px solid #d9dadd", background: "#fff", minHeight: "160px" }}>{dayJobs.map(renderJobCard)}</div>
@@ -1239,7 +1240,7 @@ function FitSheet({ setSelected }) {
                   <div>
                     {electricsTeams.map((team) => (
                       <div key={team} style={{ display: "grid", gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))", minHeight: "160px", borderBottom: "1px solid #111" }}>
-                        <div style={{ padding: "14px 12px", background: "#f2f2f2", borderRight: "2px solid #111", fontSize: "11px", fontWeight: 600, color: "#111", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}>{team}</div>
+                        <div style={nameCellStyle}>{team}</div>
                         {weekDays.map((date) => {
                           const dayJobs = getJobs(team, date)
                           return <div key={team + "-" + formatDate(date)} style={{ padding: "6px", borderRight: "1px solid #d9dadd", background: "#fff", minHeight: "160px" }}>{dayJobs.map(renderJobCard)}</div>
@@ -1260,7 +1261,7 @@ function FitSheet({ setSelected }) {
                   <div>
                     {renewableRemedialsTeams.map((team) => (
                       <div key={team} style={{ display: "grid", gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))", minHeight: "160px", borderBottom: "1px solid #111" }}>
-                        <div style={{ padding: "14px 12px", background: "#f2f2f2", borderRight: "2px solid #111", fontSize: "11px", fontWeight: 600, color: "#111", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}>{team}</div>
+                        <div style={nameCellStyle}>{team}</div>
                         {weekDays.map((date) => {
                           const dayJobs = getJobs(team, date)
                           return <div key={team + "-" + formatDate(date)} style={{ padding: "6px", borderRight: "1px solid #d9dadd", background: "#fff", minHeight: "160px" }}>{dayJobs.map(renderJobCard)}</div>
