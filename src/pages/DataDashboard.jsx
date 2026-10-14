@@ -212,11 +212,14 @@ function DataDashboard() {
       try {
         const { data, error: sourcesError } = await supabase.rpc("get_lead_volume_sources")
         if (sourcesError) throw sourcesError
-        setLeadSources((data || []).map((row) => ({
-          value: String(row.lead_source ?? ""),
-          label: row.lead_source === "__NO_SOURCE__" ? "(No lead source)" : String(row.lead_source),
-          count: Number(row.lead_count || 0),
-        })).sort((a, b) => a.label.localeCompare(b.label, "en", { sensitivity: "base" })))
+        setLeadSources((data || [])
+          .filter((row) => !String(row.lead_source ?? "").toLowerCase().includes("dds solar"))
+          .map((row) => ({
+            value: String(row.lead_source ?? ""),
+            label: row.lead_source === "__NO_SOURCE__" ? "(No lead source)" : String(row.lead_source),
+            count: Number(row.lead_count || 0),
+          }))
+          .sort((a, b) => a.label.localeCompare(b.label, "en", { sensitivity: "base" })))
       } catch (err) {
         console.error("Error loading lead sources:", err)
       } finally {
