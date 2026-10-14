@@ -227,7 +227,7 @@ export default async function handler(req, res) {
       "Contract Number": appointment.contract_number,
       "Date Sold": dateSold,
       "Contract: Order Price": systemCost + adminFee,
-      "Contract: Contract Price": systemCost,
+      "Contract: Contract Price (excluding AF)": systemCost,
       "Contract: Net Sales": systemCost,
       "Lead Source": appointment.lead_source,
       "Lead: Marketing Team": "Paul Ross",
