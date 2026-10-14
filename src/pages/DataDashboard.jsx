@@ -94,6 +94,10 @@ function DataDashboard() {
   const [expandedProntoSids, setExpandedProntoSids] = useState({})
   const [prontoC3Rows, setProntoC3Rows] = useState({})
   const [prontoC3Loading, setProntoC3Loading] = useState({})
+  const [missingSidC1Rows, setMissingSidC1Rows] = useState([])
+  const [missingSidC1Loading, setMissingSidC1Loading] = useState(false)
+  const [missingSidC1Error, setMissingSidC1Error] = useState("")
+  const [missingSidC1Search, setMissingSidC1Search] = useState("")
 
   function formatProntoDate(value) {
     if (!value) return "—"
@@ -143,6 +147,30 @@ function DataDashboard() {
       setProntoSidTotal(0)
     } finally {
       setProntoSidLoading(false)
+    }
+  }
+
+  async function loadMissingSidC1Values() {
+    if (!supabase) {
+      setMissingSidC1Error("Supabase is not configured.")
+      return
+    }
+
+    setMissingSidC1Loading(true)
+    setMissingSidC1Error("")
+    try {
+      const { data, error: rpcError } = await supabase.rpc("get_pronto_c1_values_without_sid")
+      if (rpcError) throw rpcError
+      setMissingSidC1Rows((data || []).map((row) => ({
+        pronto_c1: String(row.pronto_c1 || ""),
+        lead_count: Number(row.lead_count || 0),
+      })))
+    } catch (err) {
+      console.error("Error loading Pronto C1 values without SID:", err)
+      setMissingSidC1Error(err?.message || "Unable to load Pronto C1 values without a SID.")
+      setMissingSidC1Rows([])
+    } finally {
+      setMissingSidC1Loading(false)
     }
   }
 
@@ -293,7 +321,15 @@ function DataDashboard() {
     if (activeTab === "pronto" && prontoSidRows.length === 0 && !prontoSidLoading) {
       loadProntoSidData()
     }
+    if (activeTab === "pronto" && missingSidC1Rows.length === 0 && !missingSidC1Loading) {
+      loadMissingSidC1Values()
+    }
   }, [activeTab, prontoDatePeriod])
+
+  const filteredMissingSidC1Rows = useMemo(() => {
+    const search = missingSidC1Search.trim().toLowerCase()
+    return missingSidC1Rows.filter((row) => !search || row.pronto_c1.toLowerCase().includes(search))
+  }, [missingSidC1Rows, missingSidC1Search])
 
   const filteredProntoSidRows = useMemo(() => {
     const search = prontoSidSearch.trim().toLowerCase()
@@ -1020,6 +1056,66 @@ function DataDashboard() {
                     <td colSpan={4}><strong>Total Pronto Windows leads</strong></td>
                     <td><strong>{formatNumber(prontoSidTotal)}</strong></td>
                   </tr>
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div style={{ marginTop: 22, marginBottom: 10 }}>
+            <div className="data-dashboard-chart-title">Unique Pronto C1 values without a SID</div>
+            <div className="data-dashboard-chart-subtitle">
+              Distinct, non-blank Pronto C1 values from Pronto Windows leads where pronto_SID is blank or NULL, with the number of matching leads for each value.
+            </div>
+          </div>
+
+          <div className="pronto-toolbar">
+            <div style={{ fontSize: 12, color: "#64748b" }}>
+              {formatNumber(filteredMissingSidC1Rows.length)} unique values · {formatNumber(filteredMissingSidC1Rows.reduce((sum, row) => sum + row.lead_count, 0))} matching leads
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div className="pronto-search">
+                <Search size={14} color="#64748b" />
+                <input
+                  type="text"
+                  value={missingSidC1Search}
+                  onChange={(event) => setMissingSidC1Search(event.target.value)}
+                  placeholder="Search Pronto C1"
+                  aria-label="Search Pronto C1 values without SID"
+                />
+              </div>
+              <button type="button" className="data-dashboard-refresh" onClick={loadMissingSidC1Values} disabled={missingSidC1Loading}>
+                <RefreshCw size={14} className={missingSidC1Loading ? "spin" : ""} />
+                Refresh list
+              </button>
+            </div>
+          </div>
+
+          {missingSidC1Error && <div className="data-dashboard-error">{missingSidC1Error}</div>}
+
+          <div className="pronto-table-card">
+            {missingSidC1Loading ? (
+              <div className="pronto-empty">Loading unique Pronto C1 values…</div>
+            ) : filteredMissingSidC1Rows.length === 0 ? (
+              <div className="pronto-empty">{missingSidC1Search ? "No matching Pronto C1 values." : "No non-blank Pronto C1 values found without a SID."}</div>
+            ) : (
+              <table className="pronto-table">
+                <colgroup>
+                  <col style={{ width: "80%" }} />
+                  <col style={{ width: "20%" }} />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>Pronto C1 value</th>
+                    <th>Leads</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredMissingSidC1Rows.map((row) => (
+                    <tr key={row.pronto_c1}>
+                      <td style={{ fontWeight: 500 }}>{row.pronto_c1}</td>
+                      <td>{formatNumber(row.lead_count)}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             )}
