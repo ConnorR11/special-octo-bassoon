@@ -828,6 +828,7 @@ function DataDashboard() {
               />
               <Tooltip
                 labelFormatter={(value) => formatMonth(value)}
+                itemSorter={(item) => ({ lead_count: 0, cps_h_count: 1, cps_c_count: 2, cps_p_count: 3, cps_s_count: 4 }[item.dataKey] ?? 99)}
                 formatter={(value, name) => {
                   const labels = { lead_count: "Lead count", cps_h_count: "CPS H count", cps_c_count: "CPS C count", cps_p_count: "CPS P count", cps_s_count: "CPS S count" }
                   return [formatNumber(value), labels[name] || name]
