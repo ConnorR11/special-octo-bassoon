@@ -219,7 +219,7 @@ function DataDashboard() {
         .map((row) => ({
           ...row,
           conversion_rate: row.lead_count > 0 ? (row.cps_p_count / row.lead_count) * 100 : null,
-          sold_conversion_rate: row.lead_count > 0 ? (row.cps_s_count / row.lead_count) * 100 : null,
+          sold_conversion_rate: row.cps_p_count > 0 ? (row.cps_s_count / row.cps_p_count) * 100 : null,
         }))
         .slice(0, -1)
 
@@ -708,7 +708,7 @@ function DataDashboard() {
           <div>
             <div className="data-dashboard-chart-title">
               <BarChart3 size={17} />
-              Lead volume & pitched conversion
+              Lead volume & sales conversion
             </div>
 
             <div className="data-dashboard-chart-subtitle">
@@ -820,14 +820,14 @@ function DataDashboard() {
                 width={48}
               />
               <Legend
-                formatter={(value) => ({ lead_count: "Leads received", conversion_rate: "Lead-to-pitched conversion", sold_conversion_rate: "Lead-to-sold conversion" }[value] || value)}
+                formatter={(value) => ({ lead_count: "Leads received", conversion_rate: "Lead-to-pitched conversion", sold_conversion_rate: "Pitched-to-sold conversion" }[value] || value)}
                 wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
               />
               <Tooltip
                 labelFormatter={(value) => formatMonth(value)}
                 formatter={(value, name, item) => {
                   if (name === "conversion_rate" || name === "sold_conversion_rate") {
-                    return [value == null ? "—" : `${Number(value).toFixed(1)}%`, name === "sold_conversion_rate" ? "Lead-to-sold conversion" : "Lead-to-pitched conversion"]
+                    return [value == null ? "—" : `${Number(value).toFixed(1)}%`, name === "sold_conversion_rate" ? "Pitched-to-sold conversion" : "Lead-to-pitched conversion"]
                   }
                   if (name === "cps_p_count") return [formatNumber(value), "Unique leads pitched (CPS P)"]
                   return [formatNumber(value), "Leads received"]
