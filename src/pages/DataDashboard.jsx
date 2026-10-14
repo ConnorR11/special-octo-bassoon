@@ -98,10 +98,10 @@ function DataDashboard() {
   const [missingSidC1Loading, setMissingSidC1Loading] = useState(false)
   const [missingSidC1Error, setMissingSidC1Error] = useState("")
   const [missingSidC1Search, setMissingSidC1Search] = useState("")
-  const [blankC1C3Rows, setBlankC1C2Rows] = useState([])
-  const [blankC1C3Loading, setBlankC1C2Loading] = useState(false)
-  const [blankC1C3Error, setBlankC1C2Error] = useState("")
-  const [blankC1C3Search, setBlankC1C2Search] = useState("")
+  const [missingSidLeadRows, setMissingSidLeadRows] = useState([])
+  const [missingSidLeadsLoading, setMissingSidLeadsLoading] = useState(false)
+  const [missingSidLeadsError, setMissingSidLeadsError] = useState("")
+  const [missingSidLeadsSearch, setMissingSidLeadsSearch] = useState("")
 
   function formatProntoDate(value) {
     if (!value) return "—"
@@ -178,27 +178,29 @@ function DataDashboard() {
     }
   }
 
-  async function loadBlankC1C3Values() {
+  async function loadMissingSidLeads() {
     if (!supabase) {
-      setBlankC1C2Error("Supabase is not configured.")
+      setMissingSidLeadsError("Supabase is not configured.")
       return
     }
 
-    setBlankC1C2Loading(true)
-    setBlankC1C2Error("")
+    setMissingSidLeadsLoading(true)
+    setMissingSidLeadsError("")
     try {
-      const { data, error: rpcError } = await supabase.rpc("get_pronto_c3_values_when_c1_blank")
+      const { data, error: rpcError } = await supabase.rpc("get_pronto_windows_leads_without_sid")
       if (rpcError) throw rpcError
-      setBlankC1C2Rows((data || []).map((row) => ({
+      setMissingSidLeadRows((data || []).map((row) => ({
+        lead_identifier: String(row.lead_identifier || ""),
+        pronto_c1: String(row.pronto_c1 || ""),
+        pronto_c2: String(row.pronto_c2 || ""),
         pronto_c3: String(row.pronto_c3 || ""),
-        lead_count: Number(row.lead_count || 0),
       })))
     } catch (err) {
-      console.error("Error loading Pronto C3 values where C1 is blank:", err)
-      setBlankC1C2Error(err?.message || "Unable to load Pronto C3 values where C1 is blank.")
-      setBlankC1C2Rows([])
+      console.error("Error loading Pronto Windows leads without SID:", err)
+      setMissingSidLeadsError(err?.message || "Unable to load Pronto Windows leads without a SID.")
+      setMissingSidLeadRows([])
     } finally {
-      setBlankC1C2Loading(false)
+      setMissingSidLeadsLoading(false)
     }
   }
 
@@ -355,8 +357,8 @@ function DataDashboard() {
     if (activeTab === "pronto" && missingSidC1Rows.length === 0 && !missingSidC1Loading) {
       loadMissingSidC1Values()
     }
-    if (activeTab === "pronto" && blankC1C3Rows.length === 0 && !blankC1C3Loading) {
-      loadBlankC1C3Values()
+    if (activeTab === "pronto" && missingSidLeadRows.length === 0 && !missingSidLeadsLoading) {
+      loadMissingSidLeads()
     }
   }, [activeTab])
 
@@ -365,10 +367,13 @@ function DataDashboard() {
     return missingSidC1Rows.filter((row) => !search || row.pronto_c1.toLowerCase().includes(search))
   }, [missingSidC1Rows, missingSidC1Search])
 
-  const filteredBlankC1C2Rows = useMemo(() => {
-    const search = blankC1C3Search.trim().toLowerCase()
-    return blankC1C3Rows.filter((row) => !search || row.pronto_c3.toLowerCase().includes(search))
-  }, [blankC1C3Rows, blankC1C3Search])
+  const filteredMissingSidLeadRows = useMemo(() => {
+    const search = missingSidLeadsSearch.trim().toLowerCase()
+    return missingSidLeadRows.filter((row) =>
+      !search || [row.lead_identifier, row.pronto_c1, row.pronto_c2, row.pronto_c3]
+        .some((value) => value.toLowerCase().includes(search))
+    )
+  }, [missingSidLeadRows, missingSidLeadsSearch])
 
   const filteredProntoSidRows = useMemo(() => {
     const search = prontoSidSearch.trim().toLowerCase()
@@ -1161,58 +1166,64 @@ function DataDashboard() {
           </div>
 
           <div style={{ marginTop: 22, marginBottom: 10 }}>
-            <div className="data-dashboard-chart-title">Unique Pronto C3 values where C1 is blank or NULL</div>
+            <div className="data-dashboard-chart-title">Pronto Windows leads without a SID</div>
             <div className="data-dashboard-chart-subtitle">
-              Distinct, non-blank Pronto C3 values from Pronto Windows leads where pronto_c1 is blank or NULL, with the number of matching leads for each value.
+              Individual Pronto Windows leads where pronto_SID is blank or NULL, showing their Pronto C1, C2 and C3 values.
             </div>
           </div>
 
           <div className="pronto-toolbar">
             <div style={{ fontSize: 12, color: "#64748b" }}>
-              {formatNumber(filteredBlankC1C2Rows.length)} unique values · {formatNumber(filteredBlankC1C2Rows.reduce((sum, row) => sum + row.lead_count, 0))} matching leads
+              {formatNumber(filteredMissingSidLeadRows.length)} leads shown
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div className="pronto-search">
                 <Search size={14} color="#64748b" />
                 <input
                   type="text"
-                  value={blankC1C3Search}
-                  onChange={(event) => setBlankC1C2Search(event.target.value)}
-                  placeholder="Search Pronto C3"
-                  aria-label="Search Pronto C3 values where C1 is blank"
+                  value={missingSidLeadsSearch}
+                  onChange={(event) => setMissingSidLeadsSearch(event.target.value)}
+                  placeholder="Search C1, C2 or C3"
+                  aria-label="Search Pronto Windows leads without SID"
                 />
               </div>
-              <button type="button" className="data-dashboard-refresh" onClick={loadBlankC1C3Values} disabled={blankC1C3Loading}>
-                <RefreshCw size={14} className={blankC1C3Loading ? "spin" : ""} />
+              <button type="button" className="data-dashboard-refresh" onClick={loadMissingSidLeads} disabled={missingSidLeadsLoading}>
+                <RefreshCw size={14} className={missingSidLeadsLoading ? "spin" : ""} />
                 Refresh list
               </button>
             </div>
           </div>
 
-          {blankC1C3Error && <div className="data-dashboard-error">{blankC1C3Error}</div>}
+          {missingSidLeadsError && <div className="data-dashboard-error">{missingSidLeadsError}</div>}
 
           <div className="pronto-table-card">
-            {blankC1C3Loading ? (
-              <div className="pronto-empty">Loading unique Pronto C3 values…</div>
-            ) : filteredBlankC1C2Rows.length === 0 ? (
-              <div className="pronto-empty">{blankC1C3Search ? "No matching Pronto C3 values." : "No non-blank Pronto C3 values found where C1 is blank or NULL."}</div>
+            {missingSidLeadsLoading ? (
+              <div className="pronto-empty">Loading Pronto Windows leads without a SID…</div>
+            ) : filteredMissingSidLeadRows.length === 0 ? (
+              <div className="pronto-empty">{missingSidLeadsSearch ? "No matching leads found." : "No Pronto Windows leads found without a SID."}</div>
             ) : (
               <table className="pronto-table">
                 <colgroup>
-                  <col style={{ width: "80%" }} />
-                  <col style={{ width: "20%" }} />
+                  <col style={{ width: "25%" }} />
+                  <col style={{ width: "25%" }} />
+                  <col style={{ width: "25%" }} />
+                  <col style={{ width: "25%" }} />
                 </colgroup>
                 <thead>
                   <tr>
-                    <th>Pronto C3 value</th>
-                    <th>Leads</th>
+                    <th>Lead identifier</th>
+                    <th>Pronto C1</th>
+                    <th>Pronto C2</th>
+                    <th>Pronto C3</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredBlankC1C2Rows.map((row) => (
-                    <tr key={row.pronto_c3}>
-                      <td style={{ fontWeight: 500 }}>{row.pronto_c3}</td>
-                      <td>{formatNumber(row.lead_count)}</td>
+                  {filteredMissingSidLeadRows.map((row, index) => (
+                    <tr key={row.lead_identifier || `${row.pronto_c1}-${row.pronto_c2}-${row.pronto_c3}-${index}`}>
+                      <td style={{ fontWeight: 500 }}>{row.lead_identifier || "—"}</td>
+                      <td style={{ fontWeight: 500 }}>{row.pronto_c1 || "—"}</td>
+                      <td style={{ fontWeight: 500 }}>{row.pronto_c2 || "—"}</td>
+                      <td style={{ fontWeight: 500 }}>{row.pronto_c3 || "—"}</td>
                     </tr>
                   ))}
                 </tbody>
