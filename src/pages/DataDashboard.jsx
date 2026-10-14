@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from "react"
 import { BarChart3, RefreshCw, TrendingUp, Search } from "lucide-react"
 import {
   Bar,
+  BarChart,
   CartesianGrid,
-  Line,
   LineChart,
   Legend,
   ResponsiveContainer,
@@ -164,74 +164,32 @@ function DataDashboard() {
         throw rpcError
       }
 
-      const { data: conversionData, error: conversionError } = await supabase.rpc(
-        "get_monthly_cps_p_by_lead_source",
+      const { data: productData, error: productError } = await supabase.rpc(
+        "get_monthly_lead_volume_by_product",
         {
           start_date: start.toISOString(),
           end_date: end.toISOString(),
           selected_lead_source: selectedLeadSource || null,
         }
       )
-      if (conversionError) throw conversionError
+      if (productError) throw productError
 
-      const { data: stageData, error: stageError } = await supabase.rpc(
-        "get_monthly_cps_h_c_by_lead_source",
-        {
-          start_date: start.toISOString(),
-          end_date: end.toISOString(),
-          selected_lead_source: selectedLeadSource || null,
-        }
-      )
-      if (stageError) throw stageError
-
-      const { data: soldData, error: soldError } = await supabase.rpc(
-        "get_monthly_cps_s_by_lead_source",
-        {
-          start_date: start.toISOString(),
-          end_date: end.toISOString(),
-          selected_lead_source: selectedLeadSource || null,
-        }
-      )
-      if (soldError) throw soldError
-
-      const lookup = new Map(
-        (data || []).map((row) => [
+      const productLookup = new Map(
+        (productData || []).map((row) => [
           String(row.month).slice(0, 10),
-          Number(row.lead_count || 0),
-        ])
-      )
-      const conversionLookup = new Map(
-        (conversionData || []).map((row) => [
-          String(row.month).slice(0, 10),
-          Number(row.cps_p_count || 0),
-        ])
-      )
-      const soldLookup = new Map(
-        (soldData || []).map((row) => [
-          String(row.month).slice(0, 10),
-          Number(row.cps_s_count || 0),
-        ])
-      )
-      const stageLookup = new Map(
-        (stageData || []).map((row) => [
-          String(row.month).slice(0, 10),
-          { cps_h_count: Number(row.cps_h_count || 0), cps_c_count: Number(row.cps_c_count || 0) },
+          {
+            solar_count: Number(row.solar_count || 0),
+            windows_count: Number(row.windows_count || 0),
+          },
         ])
       )
 
-      /*
-       * Build every month from January 2024 through the
-       * previous completed month. This means months with zero
-       * leads still appear on the graph.
-       */
       const complete = buildMonthRange(start, end)
         .map((row) => ({
           ...row,
           lead_count: lookup.get(row.month) || 0,
-          cps_p_count: conversionLookup.get(row.month) || 0,
-          cps_s_count: soldLookup.get(row.month) || 0,
-          cps_h_count: stageLookup.get(row.month)?.cps_h_count || 0,
-          cps_c_count: stageLookup.get(row.month)?.cps_c_count || 0,
+          solar_count: productLookup.get(row.month)?.solar_count || 0,
+          windows_count: productLookup.get(row.month)?.windows_count || 0,
         }))
         .slice(0, -1)
 
@@ -747,7 +705,7 @@ function DataDashboard() {
           <div>
             <div className="data-dashboard-chart-title">
               <BarChart3 size={17} />
-              Lead volume & sales conversion
+              Monthly lead volume by product
             </div>
 
             <div className="data-dashboard-chart-subtitle">
@@ -789,52 +747,17 @@ function DataDashboard() {
             No lead data available.
           </div>
         ) : (
-          <div className="data-dashboard-stage-grid">
-            {[
-              { key: "lead_count", title: "Lead count", color: "#64748b" },
-              { key: "cps_h_count", title: "CPS H count", color: "#2563eb" },
-              { key: "cps_c_count", title: "CPS C count", color: "#9333ea" },
-              { key: "cps_p_count", title: "CPS P count", color: "#0d9488" },
-              { key: "cps_s_count", title: "CPS S count", color: "#dc2626" },
-            ].map((series) => (
-              <div className="data-dashboard-stage-panel" key={series.key}>
-                <h3>{series.title}</h3>
-                <p>Monthly totals since January 2024</p>
-                <ResponsiveContainer width="100%" height={155}>
-                  <LineChart data={rows} margin={{ top: 8, right: 14, left: 0, bottom: 2 }}>
-                    <CartesianGrid stroke="#e8edf3" vertical={false} />
-                    <XAxis
-                      dataKey="month"
-                      tickFormatter={(value) => new Date(`${value}T00:00:00`).toLocaleDateString("en-GB", { month: "short", year: "2-digit" })}
-                      interval={5}
-                      tick={{ fontSize: 10, fill: "#64748b" }}
-                      axisLine={{ stroke: "#dfe5ec" }}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      domain={[0, "auto"]}
-                      tickFormatter={formatNumber}
-                      tick={{ fontSize: 10, fill: "#64748b" }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={48}
-                    />
-                    <Tooltip
-                      labelFormatter={(value) => formatMonth(value)}
-                      formatter={(value, name, item) => {
-                        const count = Number(value || 0)
-                        const leadCount = Number(item?.payload?.lead_count || 0)
-                        const ratio = series.key === "lead_count" || count <= 0 ? null : leadCount / count
-                        return [ratio == null ? formatNumber(count) : `${formatNumber(count)} (${ratio.toFixed(2)})`, series.title]
-                      }}
-                      contentStyle={{ border: "1px solid #dfe5ec", borderRadius: 8, fontSize: 12, boxShadow: "0 5px 18px rgba(15,23,42,.08)" }}
-                    />
-                    <Line type="monotone" dataKey={series.key} name={series.title} stroke={series.color} strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} connectNulls={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            ))}
-          </div>
+          <ResponsiveContainer width="100%" height={430}>
+            <BarChart data={rows} margin={{ top: 10, right: 18, left: 0, bottom: 8 }}>
+              <CartesianGrid stroke="#e8edf3" vertical={false} />
+              <XAxis dataKey="month" tickFormatter={(value) => new Date(`${value}T00:00:00`).toLocaleDateString("en-GB", { month: "short", year: "2-digit" })} interval={5} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={{ stroke: "#dfe5ec" }} tickLine={false} />
+              <YAxis tickFormatter={formatNumber} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} width={55} />
+              <Tooltip labelFormatter={(value) => formatMonth(value)} formatter={(value, name) => [formatNumber(value), name === "solar_count" ? "Solar leads" : "Windows leads"]} contentStyle={{ border: "1px solid #dfe5ec", borderRadius: 8, fontSize: 12, boxShadow: "0 5px 18px rgba(15,23,42,.08)" }} />
+              <Legend formatter={(value) => value === "solar_count" ? "Solar" : "Windows"} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+              <Bar dataKey="solar_count" name="solar_count" stackId="leads" fill="#0d9488" />
+              <Bar dataKey="windows_count" name="windows_count" stackId="leads" fill="#2563eb" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         )}
       </div>
 
