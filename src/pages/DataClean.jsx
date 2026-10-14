@@ -82,7 +82,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
             .or('lead_type.is.null,lead_type.eq.""')
             .order("received_date_time", { ascending: false, nullsFirst: false })
         } else {
-          break
+          throw new Error("Unknown Data Clean report.")
         }
 
         query = query.range(reportId === "missing-lead-type" ? page * pageSize : 0, (reportId === "missing-lead-type" ? page * pageSize : 0) + (reportId === "missing-lead-type" ? pageSize : 999) )
