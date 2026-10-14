@@ -4,6 +4,7 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -779,6 +780,10 @@ function DataDashboard() {
                 width={55}
               />
 
+              <Legend
+                formatter={(value) => value === "cps_p_count" ? "Appointments with CPS P" : "Leads"}
+                wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
+              />
               <Tooltip
                 labelFormatter={(value) =>
                   formatMonth(value)
