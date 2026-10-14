@@ -1121,9 +1121,10 @@ function DataDashboard() {
                     </React.Fragment>
                   ))}
                   <tr>
-                    <td colSpan={3}><strong>Total Pronto Windows leads</strong></td>
+                    <td colSpan={2}><strong>Total Pronto Windows leads</strong></td>
                     <td><strong>{formatNumber(prontoSidTotal)}</strong></td>
-                    <td><strong>No Contact: {formatNumber(prontoNoContactTotal)}</strong></td>
+                    <td><strong>No Contact</strong></td>
+                    <td><strong>{formatNumber(prontoNoContactTotal)}</strong></td>
                   </tr>
                 </tbody>
               </table>
