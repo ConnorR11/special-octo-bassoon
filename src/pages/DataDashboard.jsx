@@ -454,7 +454,16 @@ function DataDashboard() {
 
         .pronto-table th:last-child,
         .pronto-table td:last-child {
-          text-align: right;
+          text-align: left;
+        }
+
+        .pronto-table th,
+        .pronto-table td {
+          text-align: left !important;
+        }
+
+        .pronto-table td[colspan] {
+          text-align: left !important;
         }
 
         .pronto-table td {
