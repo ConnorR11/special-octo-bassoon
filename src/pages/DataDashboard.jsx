@@ -87,6 +87,7 @@ function DataDashboard() {
   const [prontoSidRows, setProntoSidRows] = useState([])
   const [prontoSidTotal, setProntoSidTotal] = useState(0)
   const [prontoNoContactTotal, setProntoNoContactTotal] = useState(0)
+  const [prontoNoContactBySid, setProntoNoContactBySid] = useState({})
   const [prontoSidLoading, setProntoSidLoading] = useState(false)
   const [prontoSidError, setProntoSidError] = useState("")
   const [prontoSidSearch, setProntoSidSearch] = useState("")
