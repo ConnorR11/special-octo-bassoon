@@ -6,6 +6,77 @@ const json = (res, status, body) => {
   return res.status(status).json(body)
 }
 
+const ADMIN_FEE = 399
+const PIPEDRIVE_OWNER_ID = 11989938
+const NEW_CONTRACT_STAGE_ID = 8
+
+const firstValue = (...values) => values.find(value => value !== undefined && value !== null && value !== "")
+const numeric = value => {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+const personName = profile => String(profile?.full_name || profile?.display_name || profile?.email || "").trim()
+
+function totalPanels(data) {
+  const arrays = Array.isArray(data?.arrays) ? data.arrays : []
+  const fromArrays = arrays.reduce((sum, array) => sum + Math.max(0, Number(array?.panelCount ?? array?.panel_count ?? array?.numberOfPanels ?? array?.number_of_panels ?? 0) || 0), 0)
+  if (fromArrays > 0) return fromArrays
+  const hardwareSources = [data?.hardware, data?.openSolar?.hardware, data?.open_solar?.hardware].filter(Boolean)
+  for (const source of hardwareSources) {
+    const panels = Array.isArray(source?.panels) ? source.panels : []
+    const count = panels.reduce((sum, panel) => sum + Math.max(0, Number(panel?.quantity ?? panel?.panelCount ?? panel?.panel_count ?? 0) || 0), 0)
+    if (count > 0) return count
+  }
+  return firstValue(data?.panelQuantity, data?.numberOfPanels, null)
+}
+
+function hardwareValue(data, type, key) {
+  const sources = [data?.hardware, data?.openSolar?.hardware, data?.open_solar?.hardware].filter(Boolean)
+  for (const source of sources) {
+    const items = Array.isArray(source?.[type]) ? source[type] : []
+    const item = items.find(Boolean)
+    if (item && firstValue(item[key], item[key === "capacity" ? "size" : key]) !== undefined) {
+      const value = firstValue(item[key], item[key === "capacity" ? "size" : key])
+      if (value !== undefined) return value
+    }
+  }
+  return null
+}
+
+async function resolveStaff(supabase, appointment) {
+  const email = String(appointment?.rep_allocated || "").trim()
+  if (!email) return { rep: null, salesManager: null, branchManager: null }
+
+  const { data: rep, error: repError } = await supabase
+    .from("profiles")
+    .select("id,full_name,display_name,email,role,branch,manager_id,sales_manager")
+    .ilike("email", email)
+    .maybeSingle()
+  if (repError) throw repError
+  if (!rep) return { rep: null, salesManager: null, branchManager: null }
+
+  const managerIds = [...new Set([rep.sales_manager, rep.manager_id].filter(Boolean))]
+  let managers = []
+  if (managerIds.length) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id,full_name,display_name,email,role,branch,manager_id,sales_manager")
+      .in("id", managerIds)
+    if (error) throw error
+    managers = data || []
+  }
+
+  const roleOf = profile => String(profile?.role || "").toLowerCase()
+  const salesManager = managers.find(profile => String(profile.id) === String(rep.sales_manager) && roleOf(profile).includes("sales manager"))
+    || managers.find(profile => roleOf(profile).includes("sales manager"))
+    || null
+  const branchManager = managers.find(profile => String(profile.id) === String(rep.manager_id) && roleOf(profile).includes("branch manager"))
+    || managers.find(profile => roleOf(profile).includes("branch manager"))
+    || null
+
+  return { rep, salesManager, branchManager }
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return json(res, 405, { error: "Method not allowed." })
 
@@ -37,12 +108,7 @@ export default async function handler(req, res) {
     if (error) console.error("Unable to update solar deal upload log:", error.message)
   }
   const fail = async (status, message) => {
-    await finishLog({
-      status: "failed",
-      httpStatus: status,
-      errorMessage: message,
-      result: { success: false, message },
-    })
+    await finishLog({ status: "failed", httpStatus: status, errorMessage: message, result: { success: false, message } })
     return json(res, status, { success: false, error: message })
   }
 
@@ -63,10 +129,7 @@ export default async function handler(req, res) {
       external_id: appointmentRowId,
       status: "received",
       received_at: new Date().toISOString(),
-      payload: {
-        appointment_row_id: appointmentRowId,
-        triggered_by: userData.user.email || userData.user.id,
-      },
+      payload: { appointment_row_id: appointmentRowId, triggered_by: userData.user.email || userData.user.id },
     }).select("id").single()
     if (logError) console.error("Unable to create solar deal upload log:", logError.message)
     else logId = logRow?.id || null
@@ -75,7 +138,7 @@ export default async function handler(req, res) {
 
     const { data: appointment, error: appointmentError } = await supabase
       .from("appointments")
-      .select("appointment_row_id,name,result,email_address,phone_number_1,address,postcode,product,job_type,rep_allocated,branch,sales_notes,epvs_calculation,contract_number,signature_path,express_fit_signature_path,seg_disclaimer_signature_path")
+      .select("appointment_row_id,name,result,email_address,phone_number_1,secondary_phone_number,address,postcode,product,job_type,rep_allocated,branch,sales_notes,lead_source,canvasser,appointment_date,epvs_calculation,contract_number,signature_path,express_fit_signature_path,seg_disclaimer_signature_path")
       .eq("appointment_row_id", appointmentRowId)
       .maybeSingle()
     if (appointmentError) throw appointmentError
@@ -90,6 +153,7 @@ export default async function handler(req, res) {
       || Boolean(appointment.epvs_calculation)
     if (!isSolar) return await fail(409, "This appointment is not identified as a solar contract.")
     if (!appointment.contract_number) return await fail(409, "The contract number has not been saved yet.")
+    if (!appointment.appointment_date) return await fail(409, "The appointment date is missing; Date Sold cannot be populated.")
 
     const pipedriveRequest = async (path, options = {}) => {
       const separator = path.includes("?") ? "&" : "?"
@@ -105,25 +169,104 @@ export default async function handler(req, res) {
     }
 
     const now = new Date().toISOString()
-    const systemCost = Number(appointment?.epvs_calculation?.data?.systemCost || 0)
-    const dealValue = Number.isFinite(systemCost) && systemCost > 0 ? systemCost : 0
+    const data = appointment?.epvs_calculation?.data || {}
+    const results = appointment?.epvs_calculation?.results || {}
+    const systemCost = numeric(firstValue(data.systemCost, results.systemCost, 0)) || 0
+    const dealValue = Math.max(0, systemCost)
+    const adminFee = ADMIN_FEE
+    const dateSold = String(appointment.appointment_date).slice(0, 10)
     const contractTitle = `${appointment.contract_number} - ${appointment.name || "Customer"}`
+    const { rep, salesManager, branchManager } = await resolveStaff(supabase, appointment)
+
+    let lender = null
+    const financeProductId = numeric(data.financeProductId)
+    if (financeProductId) {
+      const { data: financeProduct, error: financeError } = await supabase
+        .from("finance_products")
+        .select("id,lender,apr,term")
+        .eq("id", financeProductId)
+        .maybeSingle()
+      if (financeError) throw financeError
+      lender = financeProduct?.lender || null
+    }
+
+    const batteryQuantity = firstValue(data.batteryQuantity, hardwareValue(data, "batteries", "quantity"), null)
+    const batteryCapacity = firstValue(data.batteryCapacity, hardwareValue(data, "batteries", "capacity"), null)
+    const inverterCapacity = firstValue(data.inverterCapacity, hardwareValue(data, "inverters", "capacity"), null)
+    const panelCount = totalPanels(data)
 
     const contractPdfPath = String(body?.pdf_path || "").trim()
     if (!contractPdfPath || !contractPdfPath.startsWith("contract-pdfs/" + appointmentRowId + "/") || contractPdfPath.includes("..")) {
       return await fail(409, "The generated contract PDF path was not provided or does not match this appointment.")
     }
-    // Permanent CRM link. The PDF remains private; the CRM authenticates the user
-    // and creates a short-lived signed URL only when they open this link.
     const contractFileUrl = `https://crm.homeshield.ltd/contract-file?path=${encodeURIComponent(contractPdfPath)}`
 
     const fieldsResponse = await pipedriveRequest("dealFields")
-    const contractFileField = (Array.isArray(fieldsResponse) ? fieldsResponse : []).find(field =>
-      String(field?.name || field?.field_name || "").trim().toLowerCase() === "contract: file"
-    )
-    const contractFileFieldKey = String(contractFileField?.key || contractFileField?.field_code || "").trim()
-    if (!contractFileFieldKey) {
-      throw new Error('Pipedrive deal field "Contract: File" was not found.')
+    const dealFields = Array.isArray(fieldsResponse) ? fieldsResponse : []
+    const normalizedFieldName = value => String(value || "").trim().toLowerCase()
+    const fieldByName = new Map(dealFields.map(field => [
+      normalizedFieldName(field?.name || field?.field_name),
+      String(field?.key || field?.field_code || "").trim(),
+    ]).filter(([name, key]) => name && key))
+    const contractFileFieldKey = fieldByName.get("contract: file")
+    if (!contractFileFieldKey) throw new Error('Pipedrive deal field "Contract: File" was not found.')
+
+    // Custom fields are resolved by their Pipedrive labels, avoiding hard-coded custom-field hashes.
+    // Finance: Status is intentionally excluded from this payload.
+    const customValues = {
+      "Finance: Lender": lender,
+      "Finance: Rate": firstValue(data.financeRate, null),
+      "Finance: Term": firstValue(data.financeTerm, null),
+      "Solar: Inverter Size": inverterCapacity,
+      "Solar: Number of Batteries": batteryQuantity,
+      "Solar: Battery Size": batteryCapacity,
+      "Solar: Number Of Solar Panels": panelCount,
+      "Glide: Appointment Table Row": appointment.appointment_row_id,
+      "Deposit: Amount": firstValue(data.deposit, null),
+      "Contract: Payment Method": firstValue(data.paymentMethod, null),
+      "AF: Price - Admin Fee": adminFee,
+      "Contract Number": appointment.contract_number,
+      "Date Sold": dateSold,
+      "Contract: Order Price": systemCost + adminFee,
+      "Contract: Contract Price": systemCost,
+      "Contract: Net Sales": systemCost,
+      "Lead Source": appointment.lead_source,
+      "Lead: Marketing Team": "Paul Ross",
+      "Lead: Canvasser": appointment.canvasser,
+      "Sales Rep": personName(rep) || appointment.rep_allocated,
+      "Sales Manager": personName(salesManager) || null,
+      "Branch Manager": personName(branchManager) || null,
+      "Lead: Phone Number 1": appointment.phone_number_1,
+      "Lead: Phone Number 2": appointment.secondary_phone_number,
+      "Lead: Email": appointment.email_address,
+      "Lead: Postcode": appointment.postcode,
+      "Lead: Address": appointment.address,
+      "Sales Branch": appointment.branch,
+      "ECOF: File": "N/A",
+      "Overstay Form": "N/A",
+      "Customer Name": appointment.name,
+    }
+    const missingFields = []
+    const customFieldPayload = {}
+    for (const [name, value] of Object.entries(customValues)) {
+      if (value === undefined || value === null || value === "") continue
+      const key = fieldByName.get(normalizedFieldName(name))
+      if (!key) {
+        missingFields.push(name)
+        continue
+      }
+      customFieldPayload[key] = value
+    }
+    customFieldPayload[contractFileFieldKey] = contractFileUrl
+
+    const baseDealPayload = {
+      title: contractTitle,
+      value: dealValue,
+      currency: "GBP",
+      status: "open",
+      stage_id: NEW_CONTRACT_STAGE_ID,
+      owner_id: PIPEDRIVE_OWNER_ID,
+      ...customFieldPayload,
     }
 
     const { data: existingSupabaseDeal, error: existingDealError } = await supabase
@@ -134,13 +277,13 @@ export default async function handler(req, res) {
     if (existingDealError) throw existingDealError
 
     let pipedriveDeal = null
+    let personId = null
     if (existingSupabaseDeal?.pipedrive_deal_id) {
       pipedriveDeal = await pipedriveRequest(`deals/${encodeURIComponent(existingSupabaseDeal.pipedrive_deal_id)}`, {
         method: "PUT",
-        body: JSON.stringify({ title: contractTitle, value: dealValue, currency: "GBP", status: "open", [contractFileFieldKey]: contractFileUrl }),
+        body: JSON.stringify(baseDealPayload),
       })
     } else {
-      // Recover a deal created by a previous attempt before creating another.
       const search = await pipedriveRequest(`deals/search?term=${encodeURIComponent(appointment.contract_number)}&fields=title&exact_match=true`)
       const existingPipedriveDeal = (search?.items || []).map(item => item?.item).find(item =>
         String(item?.title || "").startsWith(String(appointment.contract_number))
@@ -148,11 +291,10 @@ export default async function handler(req, res) {
       if (existingPipedriveDeal?.id) {
         pipedriveDeal = await pipedriveRequest(`deals/${encodeURIComponent(existingPipedriveDeal.id)}`, {
           method: "PUT",
-          body: JSON.stringify({ title: contractTitle, value: dealValue, currency: "GBP", status: "open", [contractFileFieldKey]: contractFileUrl }),
+          body: JSON.stringify(baseDealPayload),
         })
       } else {
         const customerEmail = String(appointment.email_address || "").trim()
-        let personId = null
         if (customerEmail) {
           const peopleSearch = await pipedriveRequest(`persons/search?term=${encodeURIComponent(customerEmail)}&fields=email&exact_match=true`)
           const person = (peopleSearch?.items || []).map(item => item?.item).find(candidate =>
@@ -173,14 +315,7 @@ export default async function handler(req, res) {
         }
         pipedriveDeal = await pipedriveRequest("deals", {
           method: "POST",
-          body: JSON.stringify({
-            title: contractTitle,
-            value: dealValue,
-            currency: "GBP",
-            status: "open",
-            person_id: personId || undefined,
-            [contractFileFieldKey]: contractFileUrl,
-          }),
+          body: JSON.stringify({ ...baseDealPayload, person_id: personId || undefined }),
         })
       }
     }
@@ -208,8 +343,8 @@ export default async function handler(req, res) {
       product: appointment.product || appointment.job_type || "Solar",
       deal_value: dealValue || null,
       salesperson: appointment.rep_allocated || null,
-      salesperson_name: appointment.rep_allocated || null,
-      sale_date: now.slice(0, 10),
+      salesperson_name: personName(rep) || appointment.rep_allocated || null,
+      sale_date: dateSold,
       status: "sold",
       notes: appointment.sales_notes || null,
       synced_at: now,
@@ -228,6 +363,10 @@ export default async function handler(req, res) {
       pipedrive_deal_id: pipedriveDealId,
       supabase_deal_id: existingRow?.id || null,
       deal_value: dealValue,
+      stage_id: NEW_CONTRACT_STAGE_ID,
+      date_sold: dateSold,
+      custom_fields_updated: Object.keys(customFieldPayload).length - 1,
+      custom_fields_missing_in_pipedrive: missingFields,
     }
     await finishLog({ status: "success", httpStatus: 200, result })
     return json(res, 200, result)
