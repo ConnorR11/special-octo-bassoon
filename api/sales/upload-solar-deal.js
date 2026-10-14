@@ -223,7 +223,7 @@ export default async function handler(req, res) {
       "Glide: Appointment Table Row": appointment.appointment_row_id,
       "Deposit: Amount": firstValue(data.deposit, null),
       "Contract: Payment Method": firstValue(data.paymentMethod, null),
-      "AF: Price - Admin Fee": adminFee,
+      "AF: Price": adminFee,
       "Contract Number": appointment.contract_number,
       "Date Sold": dateSold,
       "Contract: Order Price": systemCost + adminFee,
