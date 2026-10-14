@@ -47,8 +47,9 @@ function buildMonthRange(startDate, endDate) {
       }),
       lead_count: 0,
       cps_p_count: 0,
+      cps_s_count: 0,
       conversion_rate: null,
-      rolling_conversion_rate: null,
+      sold_conversion_rate: null,
     })
 
     cursor.setMonth(cursor.getMonth() + 1)
@@ -174,6 +175,16 @@ function DataDashboard() {
       )
       if (conversionError) throw conversionError
 
+      const { data: soldData, error: soldError } = await supabase.rpc(
+        "get_monthly_cps_s_by_lead_source",
+        {
+          start_date: start.toISOString(),
+          end_date: end.toISOString(),
+          selected_lead_source: selectedLeadSource || null,
+        }
+      )
+      if (soldError) throw soldError
+
       const lookup = new Map(
         (data || []).map((row) => [
           String(row.month).slice(0, 10),
@@ -184,6 +195,12 @@ function DataDashboard() {
         (conversionData || []).map((row) => [
           String(row.month).slice(0, 10),
           Number(row.cps_p_count || 0),
+        ])
+      )
+      const soldLookup = new Map(
+        (soldData || []).map((row) => [
+          String(row.month).slice(0, 10),
+          Number(row.cps_s_count || 0),
         ])
       )
 
@@ -197,17 +214,12 @@ function DataDashboard() {
           ...row,
           lead_count: lookup.get(row.month) || 0,
           cps_p_count: conversionLookup.get(row.month) || 0,
+          cps_s_count: soldLookup.get(row.month) || 0,
         }))
         .map((row) => ({
           ...row,
           conversion_rate: row.lead_count > 0 ? (row.cps_p_count / row.lead_count) * 100 : null,
-        }))
-        .map((row, index, allRows) => ({
-          ...row,
-          rolling_conversion_rate: index >= 2 && allRows.slice(index - 2, index + 1).every((item) => item.lead_count > 0)
-            ? (allRows.slice(index - 2, index + 1).reduce((sum, item) => sum + item.cps_p_count, 0) /
-              allRows.slice(index - 2, index + 1).reduce((sum, item) => sum + item.lead_count, 0)) * 100
-            : null,
+          sold_conversion_rate: row.lead_count > 0 ? (row.cps_s_count / row.lead_count) * 100 : null,
         }))
         .slice(0, -1)
 
@@ -808,14 +820,14 @@ function DataDashboard() {
                 width={48}
               />
               <Legend
-                formatter={(value) => ({ lead_count: "Leads received", conversion_rate: "Lead-to-pitched conversion", rolling_conversion_rate: "3-month average" }[value] || value)}
+                formatter={(value) => ({ lead_count: "Leads received", conversion_rate: "Lead-to-pitched conversion", sold_conversion_rate: "Lead-to-sold conversion" }[value] || value)}
                 wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
               />
               <Tooltip
                 labelFormatter={(value) => formatMonth(value)}
                 formatter={(value, name, item) => {
-                  if (name === "conversion_rate" || name === "rolling_conversion_rate") {
-                    return [value == null ? "—" : `${Number(value).toFixed(1)}%`, name === "rolling_conversion_rate" ? "3-month average" : "Lead-to-pitched conversion"]
+                  if (name === "conversion_rate" || name === "sold_conversion_rate") {
+                    return [value == null ? "—" : `${Number(value).toFixed(1)}%`, name === "sold_conversion_rate" ? "Lead-to-sold conversion" : "Lead-to-pitched conversion"]
                   }
                   if (name === "cps_p_count") return [formatNumber(value), "Unique leads pitched (CPS P)"]
                   return [formatNumber(value), "Leads received"]
@@ -831,7 +843,7 @@ function DataDashboard() {
 
               <Bar yAxisId="volume" dataKey="lead_count" name="lead_count" fill="#93c5fd" radius={[3, 3, 0, 0]} maxBarSize={28} />
               <Line yAxisId="rate" type="monotone" dataKey="conversion_rate" name="conversion_rate" stroke="#0d9488" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls={false} />
-              <Line yAxisId="rate" type="monotone" dataKey="rolling_conversion_rate" name="rolling_conversion_rate" stroke="#0d9488" strokeWidth={2} strokeDasharray="6 4" dot={false} connectNulls={false} />
+              <Line yAxisId="rate" type="monotone" dataKey="sold_conversion_rate" name="sold_conversion_rate" stroke="#dc2626" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls={false} />
             </ComposedChart>
           </ResponsiveContainer>
         )}
