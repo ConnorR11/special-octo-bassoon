@@ -283,7 +283,7 @@ function App() {
   }
 
   return <div className="app">
-    <Sidebar page={page} setPage={handlePageChange} mobile={mobile} setMobile={setMobile} onSignOut={handleSignOut} permissionLevel={effectivePermissionLevel}/>
+    <Sidebar page={page} setPage={handlePageChange} mobile={mobile} setMobile={setMobile} onSignOut={handleSignOut} permissionLevel={effectivePermissionLevel} department={previewUser?.department ?? profile?.department ?? ""}/>
     <main>
       <Header page={headerPage} setMobile={setMobile}/>
       {error&&page!=="epvs"&&<div className="error"><b>Database error</b><span>{error}</span></div>}
