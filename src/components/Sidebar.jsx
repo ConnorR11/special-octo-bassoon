@@ -9,9 +9,41 @@ import {
 import CallLog from "../pages/CallLog"
 import PhoneDialer from "./PhoneDialer"
 
+function normaliseDepartment(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[_-]+/g, " ")
+    .replace(/\\s+/g, " ")
+}
+
+function getDepartmentFolder(department) {
+  const value = normaliseDepartment(department)
+  const departmentMap = {
+    marketing: "marketing",
+    sales: "sales",
+    "central confirmation": "sales",
+    "central confirmation manager": "sales",
+    procurement: "procurement",
+    installations: "installation",
+    installation: "installation",
+    remedials: "customerService",
+    "customer service": "customerService",
+    accounts: "finance",
+    finance: "finance",
+    "head office": "headOffice",
+    "digital team": "digitalTeam",
+  }
+  return departmentMap[value] || null
+}
+
 function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel = 1, department = "" }) {
   const numericPermissionLevel = Number(permissionLevel) || 0
   const isAdministrator = numericPermissionLevel >= 4
+  const isDepartmentRestricted = numericPermissionLevel === 1 || numericPermissionLevel === 2
+  const departmentFolder = getDepartmentFolder(department)
+  const canSeeFolder = (folder) => !isDepartmentRestricted || departmentFolder === folder
   const canAccessMarketingDashboard = numericPermissionLevel >= 3
   const canAccessCanvasserKPI = numericPermissionLevel >= 3
   const canAccessSalesPerformance = numericPermissionLevel >= 2
@@ -75,7 +107,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
           </button>
           <div className="sidebar-divider" />
 
-          <Folder title="Marketing" icon={Megaphone} open={openFolders.marketing} onClick={() => toggleFolder("marketing")}>
+          <Folder visible={canSeeFolder("marketing")} title="Marketing" icon={Megaphone} open={openFolders.marketing} onClick={() => toggleFolder("marketing")}>
             <NavItem icon={BarChart3} label="Marketing Dashboard" active={isActive("marketing-dashboard")} onClick={() => navigate("marketing-dashboard")} disabled={!canAccessMarketingDashboard} locked={!canAccessMarketingDashboard}/>
             <NavItem icon={Target} label="Leads" active={isActive("leads")} onClick={() => navigate("leads")}/>
             <NavItem icon={Phone} label="Call Log" onClick={() => setShowCallLog(true)}/>
@@ -84,7 +116,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={Trophy} label="Canvasser KPI" active={isActive("canvasser-kpi")} onClick={() => navigate("canvasser-kpi")} disabled={!canAccessCanvasserKPI} locked={!canAccessCanvasserKPI}/>
           </Folder>
 
-          <Folder title="Sales" icon={Target} open={openFolders.sales} onClick={() => toggleFolder("sales")}>
+          <Folder visible={canSeeFolder("sales")} title="Sales" icon={Target} open={openFolders.sales} onClick={() => toggleFolder("sales")}>
             <NavItem icon={LayoutDashboard} label="Mastersheet" active={isActive("marketing-tv")} onClick={() => navigate("marketing-tv")}/>
             <NavItem icon={CalendarDays} label="Appointments" active={isActive("appointments")} onClick={() => navigate("appointments")}/>
             <NavItem icon={FileText} label="Deals" active={isActive("contracts")} onClick={() => navigate("contracts")}/>
@@ -94,33 +126,33 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={BarChart3} label="Sales Performance" active={isActive("sales-performance")} onClick={() => navigate("sales-performance")} disabled={!canAccessSalesPerformance} locked={!canAccessSalesPerformance}/>
           </Folder>
 
-          <Folder title="Procurement" icon={Clipboard} open={openFolders.procurement} onClick={() => toggleFolder("procurement")}>
+          <Folder visible={canSeeFolder("procurement")} title="Procurement" icon={Clipboard} open={openFolders.procurement} onClick={() => toggleFolder("procurement")}>
             <NavItem icon={ClipboardCheck} label="Surveys" disabled/>
             <NavItem icon={CalendarDays} label="Cover Calls" disabled/>
             <NavItem icon={Calculator} label="Costing" disabled/>
             <NavItem icon={ShoppingCart} label="Ordering" disabled/>
           </Folder>
 
-          <Folder title="Installations" icon={Wrench} open={openFolders.installation} onClick={() => toggleFolder("installation")}>
+          <Folder visible={canSeeFolder("installation")} title="Installations" icon={Wrench} open={openFolders.installation} onClick={() => toggleFolder("installation")}>
             <NavItem icon={ClipboardCheck} label="Fit Sheet" active={isActive("fitsheet")} onClick={() => navigate("fitsheet")}/>
             <NavItem icon={KanbanSquare} label="Kanban" active={isActive("installations")} onClick={() => navigate("installations")}/>
             <NavItem icon={AlertTriangle} label="Installation Issues" disabled/>
           </Folder>
 
-          <Folder title="Remedials" icon={Headphones} open={openFolders.customerService} onClick={() => toggleFolder("customerService")}>
+          <Folder visible={canSeeFolder("customerService")} title="Remedials" icon={Headphones} open={openFolders.customerService} onClick={() => toggleFolder("customerService")}>
             <NavItem icon={UserRound} label="Customers" disabled/>
             <NavItem icon={MessageCircle} label="Follow-ups" disabled/>
             <NavItem icon={AlertTriangle} label="Complaints" disabled/>
           </Folder>
 
-          <Folder title="Accounts" icon={PoundSterling} open={openFolders.finance} onClick={() => toggleFolder("finance")}>
+          <Folder visible={canSeeFolder("finance")} title="Accounts" icon={PoundSterling} open={openFolders.finance} onClick={() => toggleFolder("finance")}>
             <NavItem icon={PoundSterling} label="Revenue" disabled/>
             <NavItem icon={CreditCard} label="Balances" active={isActive("balances")} onClick={() => navigate("balances")} disabled={!canAccessBalances} locked={!canAccessBalances}/>
             <NavItem icon={CreditCard} label="Payments" disabled/>
             <NavItem icon={Receipt} label="Invoices" disabled/>
           </Folder>
 
-          <Folder title="Head Office" icon={Building2} open={openFolders.headOffice} onClick={() => toggleFolder("headOffice")}>
+          <Folder visible={canSeeFolder("headOffice")} title="Head Office" icon={Building2} open={openFolders.headOffice} onClick={() => toggleFolder("headOffice")}>
             <NavItem icon={BarChart3} label="MI" active={isActive("mi")} onClick={() => navigate("mi")}/>
             <NavItem icon={Star} label="Reviews" active={isActive("reviews")} onClick={() => navigate("reviews")}/>
             <NavItem icon={FileText} label="Daily Reports" active={isActive("daily-reports")} onClick={() => navigate("daily-reports")} disabled={!isAdministrator} locked={!isAdministrator}/>
@@ -132,7 +164,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={FileText} label="Documents / Brochures" disabled/>
           </Folder>
 
-          <Folder title="Digital Team" icon={Search} open={openFolders.digitalTeam} onClick={() => toggleFolder("digitalTeam")}>
+          <Folder visible={canSeeFolder("digitalTeam")} title="Digital Team" icon={Search} open={openFolders.digitalTeam} onClick={() => toggleFolder("digitalTeam")}>
             <NavItem icon={Search} label="SEO" active={isActive("seo")} onClick={() => navigate("seo")}/>
           </Folder>
 
@@ -165,7 +197,8 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
   )
 }
 
-function Folder({ title, icon: Icon, open, onClick, children }) {
+function Folder({ title, icon: Icon, open, onClick, children, visible = true }) {
+  if (!visible) return null
   return <div className="sidebar-folder">
     <button type="button" className="sidebar-folder-header" onClick={onClick}>
       <span className="sidebar-folder-left"><Icon size={17}/><span>{title}</span></span>
