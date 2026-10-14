@@ -48,8 +48,12 @@ function buildMonthRange(startDate, endDate) {
       lead_count: 0,
       cps_p_count: 0,
       cps_s_count: 0,
+      cps_h_count: 0,
+      cps_c_count: 0,
       conversion_rate: null,
       sold_conversion_rate: null,
+      cps_h_conversion_rate: null,
+      cps_c_conversion_rate: null,
     })
 
     cursor.setMonth(cursor.getMonth() + 1)
@@ -175,6 +179,16 @@ function DataDashboard() {
       )
       if (conversionError) throw conversionError
 
+      const { data: stageData, error: stageError } = await supabase.rpc(
+        "get_monthly_cps_h_c_by_lead_source",
+        {
+          start_date: start.toISOString(),
+          end_date: end.toISOString(),
+          selected_lead_source: selectedLeadSource || null,
+        }
+      )
+      if (stageError) throw stageError
+
       const { data: soldData, error: soldError } = await supabase.rpc(
         "get_monthly_cps_s_by_lead_source",
         {
@@ -203,6 +217,12 @@ function DataDashboard() {
           Number(row.cps_s_count || 0),
         ])
       )
+      const stageLookup = new Map(
+        (stageData || []).map((row) => [
+          String(row.month).slice(0, 10),
+          { cps_h_count: Number(row.cps_h_count || 0), cps_c_count: Number(row.cps_c_count || 0) },
+        ])
+      )
 
       /*
        * Build every month from January 2024 through the
@@ -215,11 +235,15 @@ function DataDashboard() {
           lead_count: lookup.get(row.month) || 0,
           cps_p_count: conversionLookup.get(row.month) || 0,
           cps_s_count: soldLookup.get(row.month) || 0,
+          cps_h_count: stageLookup.get(row.month)?.cps_h_count || 0,
+          cps_c_count: stageLookup.get(row.month)?.cps_c_count || 0,
         }))
         .map((row) => ({
           ...row,
           conversion_rate: row.lead_count > 0 ? (row.cps_p_count / row.lead_count) * 100 : null,
           sold_conversion_rate: row.cps_p_count > 0 ? (row.cps_s_count / row.cps_p_count) * 100 : null,
+          cps_h_conversion_rate: row.lead_count > 0 ? (row.cps_h_count / row.lead_count) * 100 : null,
+          cps_c_conversion_rate: row.cps_h_count > 0 ? (row.cps_c_count / row.cps_h_count) * 100 : null,
         }))
         .slice(0, -1)
 
@@ -820,14 +844,15 @@ function DataDashboard() {
                 width={48}
               />
               <Legend
-                formatter={(value) => ({ lead_count: "Leads received", conversion_rate: "Lead-to-pitched conversion", sold_conversion_rate: "Pitched-to-sold conversion" }[value] || value)}
+                formatter={(value) => ({ lead_count: "Leads received", conversion_rate: "Lead-to-pitched conversion", sold_conversion_rate: "Pitched-to-sold conversion", cps_h_conversion_rate: "Lead-to-H (CPS H) conversion", cps_c_conversion_rate: "H-to-C (CPS C) conversion" }[value] || value)}
                 wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
               />
               <Tooltip
                 labelFormatter={(value) => formatMonth(value)}
                 formatter={(value, name, item) => {
-                  if (name === "conversion_rate" || name === "sold_conversion_rate") {
-                    return [value == null ? "—" : `${Number(value).toFixed(1)}%`, name === "sold_conversion_rate" ? "Pitched-to-sold conversion" : "Lead-to-pitched conversion"]
+                  if (name === "conversion_rate" || name === "sold_conversion_rate" || name === "cps_h_conversion_rate" || name === "cps_c_conversion_rate") {
+                    const labels = { conversion_rate: "Lead-to-pitched conversion", sold_conversion_rate: "Pitched-to-sold conversion", cps_h_conversion_rate: "Lead-to-H (CPS H) conversion", cps_c_conversion_rate: "H-to-C (CPS C) conversion" }
+                    return [value == null ? "—" : `${Number(value).toFixed(1)}%`, labels[name]]
                   }
                   if (name === "cps_p_count") return [formatNumber(value), "Unique leads pitched (CPS P)"]
                   return [formatNumber(value), "Leads received"]
@@ -844,6 +869,8 @@ function DataDashboard() {
               <Bar yAxisId="volume" dataKey="lead_count" name="lead_count" fill="#93c5fd" radius={[3, 3, 0, 0]} maxBarSize={28} />
               <Line yAxisId="rate" type="monotone" dataKey="conversion_rate" name="conversion_rate" stroke="#0d9488" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls={false} />
               <Line yAxisId="rate" type="monotone" dataKey="sold_conversion_rate" name="sold_conversion_rate" stroke="#dc2626" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls={false} />
+              <Line yAxisId="rate" type="monotone" dataKey="cps_h_conversion_rate" name="cps_h_conversion_rate" stroke="#2563eb" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls={false} />
+              <Line yAxisId="rate" type="monotone" dataKey="cps_c_conversion_rate" name="cps_c_conversion_rate" stroke="#9333ea" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls={false} />
             </ComposedChart>
           </ResponsiveContainer>
         )}
