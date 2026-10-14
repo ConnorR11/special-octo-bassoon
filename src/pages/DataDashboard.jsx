@@ -90,6 +90,7 @@ function DataDashboard() {
   const [prontoSidError, setProntoSidError] = useState("")
   const [prontoSidSearch, setProntoSidSearch] = useState("")
   const [prontoDatePeriod, setProntoDatePeriod] = useState("year_to_date")
+  const [prontoStatusFilter, setProntoStatusFilter] = useState("all")
   const [expandedProntoSids, setExpandedProntoSids] = useState({})
   const [prontoC3Rows, setProntoC3Rows] = useState({})
   const [prontoC3Loading, setProntoC3Loading] = useState({})
@@ -296,9 +297,13 @@ function DataDashboard() {
 
   const filteredProntoSidRows = useMemo(() => {
     const search = prontoSidSearch.trim().toLowerCase()
-    if (!search) return prontoSidRows
-    return prontoSidRows.filter((row) => row.pronto_sid.toLowerCase().includes(search))
-  }, [prontoSidRows, prontoSidSearch])
+    return prontoSidRows.filter((row) => {
+      const matchesSearch = !search || row.pronto_sid.toLowerCase().includes(search)
+      const live = isProntoLive(row.latest_lead_date)
+      const matchesStatus = prontoStatusFilter === "all" || (prontoStatusFilter === "live" ? live : !live)
+      return matchesSearch && matchesStatus
+    })
+  }, [prontoSidRows, prontoSidSearch, prontoStatusFilter])
 
   const totalLeads = useMemo(
     () =>
@@ -854,6 +859,17 @@ function DataDashboard() {
                 <option value="last_week">Last Week</option>
                 <option value="last_4_weeks">Last 4 Weeks</option>
                 <option value="year_to_date">Year To Date</option>
+                <option value="all_time">All Time</option>
+              </select>
+              <select
+                aria-label="Filter Pronto campaigns by status"
+                value={prontoStatusFilter}
+                onChange={(event) => setProntoStatusFilter(event.target.value)}
+                style={{ height: 36, padding: "0 10px", border: "1px solid #d7dee7", borderRadius: 8, background: "#fff", color: "#172033", font: "inherit", fontSize: 12 }}
+              >
+                <option value="all">All Statuses</option>
+                <option value="live">Live</option>
+                <option value="off">Off</option>
               </select>
               <div className="pronto-search">
                 <Search size={14} color="#64748b" />
