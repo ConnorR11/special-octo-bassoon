@@ -89,7 +89,7 @@ function DataDashboard() {
   const [prontoSidLoading, setProntoSidLoading] = useState(false)
   const [prontoSidError, setProntoSidError] = useState("")
   const [prontoSidSearch, setProntoSidSearch] = useState("")
-  const [prontoDatePeriod, setProntoDatePeriod] = useState("year_to_date")
+  const [prontoDatePeriod, setProntoDatePeriod] = useState("all_time")
   const [prontoStatusFilter, setProntoStatusFilter] = useState("all")
   const [expandedProntoSids, setExpandedProntoSids] = useState({})
   const [prontoC3Rows, setProntoC3Rows] = useState({})
