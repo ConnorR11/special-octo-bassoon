@@ -34,6 +34,9 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
   const [leadTypeEdits, setLeadTypeEdits] = useState({})
   const [savingLeadIds, setSavingLeadIds] = useState({})
   const [saveMessages, setSaveMessages] = useState({})
+  const [page, setPage] = useState(0)
+  const [hasNextPage, setHasNextPage] = useState(false)
+  const pageSize = 50
   const requestIdRef = useRef(0)
 
   const selectedReport = REPORTS.find(report => report.id === activeReport) || REPORTS[0]
@@ -53,11 +56,9 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
     setSearch("")
 
     try {
-      const pageSize = 1000
-      let from = 0
       let allRows = []
 
-      while (true) {
+      {
         let query
 
         if (reportId === "missing-result") {
@@ -84,13 +85,17 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
           break
         }
 
-        const { data, error: queryError } = await query.range(from, from + pageSize - 1)
+        query = query.range(reportId === "missing-lead-type" ? page * pageSize : 0, (reportId === "missing-lead-type" ? page * pageSize : 0) + (reportId === "missing-lead-type" ? pageSize : 999) )
+        const { data, error: queryError } = await query
         if (queryError) throw queryError
 
-        const page = Array.isArray(data) ? data : []
-        allRows = allRows.concat(page)
-        if (page.length < pageSize) break
-        from += pageSize
+        const fetchedRows = Array.isArray(data) ? data : []
+        if (reportId === "missing-lead-type") {
+          setHasNextPage(fetchedRows.length > pageSize)
+          allRows = fetchedRows.slice(0, pageSize)
+        } else {
+          allRows = fetchedRows
+        }
       }
 
       if (requestId !== requestIdRef.current) return
@@ -109,7 +114,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
 
   useEffect(() => {
     loadReport(activeReport)
-  }, [activeReport])
+  }, [activeReport, page])
 
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -190,7 +195,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
           {REPORTS.map(report => {
             const active = report.id === activeReport
             return (
-              <button key={report.id} type="button" className={`data-clean-report-card ${active ? "active" : ""}`} onClick={() => setActiveReport(report.id)}>
+              <button key={report.id} type="button" className={`data-clean-report-card ${active ? "active" : ""}`} onClick={() => { setPage(0); setActiveReport(report.id) }}>
                 <div className="data-clean-report-icon">{active ? <AlertTriangle size={17} /> : <ChevronRight size={17} />}</div>
                 <div className="data-clean-report-copy"><strong>{report.title}</strong><span>{report.description}</span></div>
               </button>
@@ -222,7 +227,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
               <div className="data-clean-empty"><CheckCircle2 size={28} /><strong>{search ? "No matching records" : "No issues found"}</strong><span>{search ? "Try a different search term." : "There are currently no records matching this report."}</span></div>
             ) : (
               <>
-                <div className="data-clean-count">Showing {filteredRows.length.toLocaleString("en-GB")} of {rows.length.toLocaleString("en-GB")} records</div>
+                <div className="data-clean-count">Showing {filteredRows.length.toLocaleString("en-GB")} records{activeReport === "missing-lead-type" ? ` · Page ${page + 1}` : ` · ${rows.length.toLocaleString("en-GB")} loaded`}</div>
                 <div className="data-clean-table-wrap">
                   <table className="data-clean-table">
                     <thead>
@@ -281,6 +286,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                     </tbody>
                   </table>
                 </div>
+                {activeReport === "missing-lead-type" && <div className="data-clean-pagination"><button type="button" className="data-clean-open" disabled={page === 0 || loading} onClick={() => setPage(current => Math.max(0, current - 1))}>Previous</button><span>Page {page + 1}</span><button type="button" className="data-clean-open" disabled={!hasNextPage || loading} onClick={() => setPage(current => current + 1)}>Next</button></div>}
               </>
             )}
           </div>
@@ -326,7 +332,7 @@ const styles = `
 .data-clean-panel-header p{margin:4px 0 0;font-size:11px;color:#64748b}
 .data-clean-search{width:min(360px,100%);height:36px;display:flex;align-items:center;gap:8px;padding:0 11px;box-sizing:border-box;border:1px solid #d7dee7;border-radius:8px;background:#fff;color:#64748b}
 .data-clean-search input{width:100%;border:0;outline:0;background:transparent;color:#172033;font:inherit;font-size:12px}
-.data-clean-count{padding:10px 18px;background:#fafbfc;border-bottom:1px solid #e6eaf0;font-size:10px;font-weight:700;color:#64748b}
+.data-clean-count{padding:10px 18px;background:#fafbfc;border-bottom:1px solid #e6eaf0;font-size:10px;font-weight:700;color:#64748b}\n.data-clean-pagination{display:flex;align-items:center;justify-content:center;gap:14px;padding:14px;border-top:1px solid #e6eaf0;color:#64748b;font-size:11px}
 .data-clean-table-wrap{width:100%;overflow:auto}
 .data-clean-table{width:100%;min-width:1250px;border-collapse:collapse}
 .data-clean-table th{padding:10px 12px;background:#f8fafc;border-bottom:1px solid #dfe5ec;text-align:left;white-space:nowrap;font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.04em}
