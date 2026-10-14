@@ -70,6 +70,9 @@ function formatMonth(value) {
 
 function DataDashboard() {
   const [rows, setRows] = useState([])
+  const [leadSources, setLeadSources] = useState([])
+  const [selectedLeadSource, setSelectedLeadSource] = useState("")
+  const [leadSourcesLoading, setLeadSourcesLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [activeTab, setActiveTab] = useState("overview")
@@ -147,6 +150,7 @@ function DataDashboard() {
         {
           start_date: start.toISOString(),
           end_date: end.toISOString(),
+          selected_lead_source: selectedLeadSource || null,
         }
       )
 
@@ -188,8 +192,28 @@ function DataDashboard() {
   }
 
   useEffect(() => {
-    loadData()
+    async function loadLeadSources() {
+      setLeadSourcesLoading(true)
+      try {
+        const { data, error: sourcesError } = await supabase.rpc("get_lead_volume_sources")
+        if (sourcesError) throw sourcesError
+        setLeadSources((data || []).map((row) => ({
+          value: String(row.lead_source ?? ""),
+          label: row.lead_source === "__NO_SOURCE__" ? "(No lead source)" : String(row.lead_source),
+          count: Number(row.lead_count || 0),
+        })).sort((a, b) => a.label.localeCompare(b.label, "en", { sensitivity: "base" })))
+      } catch (err) {
+        console.error("Error loading lead sources:", err)
+      } finally {
+        setLeadSourcesLoading(false)
+      }
+    }
+    if (supabase) loadLeadSources()
   }, [])
+
+  useEffect(() => {
+    loadData()
+  }, [selectedLeadSource])
 
   useEffect(() => {
     if (activeTab === "pronto" && prontoRows.length === 0 && !prontoLoading) {
@@ -650,10 +674,23 @@ function DataDashboard() {
             </div>
           </div>
 
-          <div className="data-dashboard-status">
-            {loading
-              ? "Loading…"
-              : `${formatNumber(totalLeads)} leads`}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <label htmlFor="lead-volume-source" style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>Lead source</label>
+            <select
+              id="lead-volume-source"
+              value={selectedLeadSource}
+              onChange={(event) => setSelectedLeadSource(event.target.value)}
+              disabled={leadSourcesLoading}
+              style={{ minWidth: 210, maxWidth: "100%", padding: "8px 10px", border: "1px solid #dfe5ec", borderRadius: 8, background: "#fff", color: "#334155", fontSize: 12 }}
+            >
+              <option value="">All lead sources</option>
+              {leadSources.map((source) => (
+                <option key={source.value || "__NO_SOURCE__"} value={source.value}>{source.label} ({formatNumber(source.count)})</option>
+              ))}
+            </select>
+            <div className="data-dashboard-status">
+              {loading ? "Loading…" : `${formatNumber(totalLeads)} leads`}
+            </div>
           </div>
         </div>
 
