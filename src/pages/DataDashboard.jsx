@@ -85,9 +85,13 @@ function DataDashboard() {
   const [error, setError] = useState("")
   const [activeTab, setActiveTab] = useState("overview")
   const [prontoSidRows, setProntoSidRows] = useState([])
+  const [prontoSidTotal, setProntoSidTotal] = useState(0)
   const [prontoSidLoading, setProntoSidLoading] = useState(false)
   const [prontoSidError, setProntoSidError] = useState("")
   const [prontoSidSearch, setProntoSidSearch] = useState("")
+  const [expandedProntoSids, setExpandedProntoSids] = useState({})
+  const [prontoC3Rows, setProntoC3Rows] = useState({})
+  const [prontoC3Loading, setProntoC3Loading] = useState({})
 
   async function loadProntoSidData() {
     if (!supabase) {
@@ -99,19 +103,47 @@ function DataDashboard() {
     setProntoSidError("")
 
     try {
-      const { data, error: rpcError } = await supabase.rpc("get_pronto_sid_lead_counts")
+      const { data, error: rpcError } = await supabase.rpc("get_pronto_sid_lead_counts_with_total")
       if (rpcError) throw rpcError
 
       setProntoSidRows((data || []).map((row) => ({
         pronto_sid: String(row.pronto_sid || ""),
         lead_count: Number(row.lead_count || 0),
       })))
+      setProntoSidTotal(Number(data?.[0]?.total_count || 0))
     } catch (err) {
       console.error("Error loading Pronto SID data:", err)
       setProntoSidError(err?.message || "Unable to load Pronto SID data.")
       setProntoSidRows([])
+      setProntoSidTotal(0)
     } finally {
       setProntoSidLoading(false)
+    }
+  }
+
+  async function toggleProntoSid(sid) {
+    const isExpanded = Boolean(expandedProntoSids[sid])
+    setExpandedProntoSids((current) => ({ ...current, [sid]: !current[sid] }))
+    if (isExpanded || Object.prototype.hasOwnProperty.call(prontoC3Rows, sid) || prontoC3Loading[sid]) return
+    if (!supabase) return
+
+    setProntoC3Loading((current) => ({ ...current, [sid]: true }))
+    try {
+      const { data, error: rpcError } = await supabase.rpc("get_pronto_sid_c3_lead_counts", { sid_filter: sid })
+      if (rpcError) throw rpcError
+      setProntoC3Rows((current) => ({
+        ...current,
+        [sid]: (data || []).map((row) => ({
+          pronto_c3: String(row.pronto_c3 || "(Blank / NULL)"),
+          lead_count: Number(row.lead_count || 0),
+        })),
+      }))
+    } catch (err) {
+      console.error("Error loading Pronto C3 breakdown:", err)
+      setProntoC3Rows((current) => ({ ...current, [sid]: [] }))
+      setProntoSidError(err?.message || `Unable to load Pronto C3 breakdown for SID ${sid}.`)
+    } finally {
+      setProntoC3Loading((current) => ({ ...current, [sid]: false }))
     }
   }
 
@@ -241,11 +273,6 @@ function DataDashboard() {
     if (!search) return prontoSidRows
     return prontoSidRows.filter((row) => row.pronto_sid.toLowerCase().includes(search))
   }, [prontoSidRows, prontoSidSearch])
-
-  const prontoSidTotal = useMemo(
-    () => prontoSidRows.reduce((total, row) => total + row.lead_count, 0),
-    [prontoSidRows]
-  )
 
   const totalLeads = useMemo(
     () =>
@@ -817,10 +844,52 @@ function DataDashboard() {
                 </thead>
                 <tbody>
                   {filteredProntoSidRows.map((row) => (
-                    <tr key={row.pronto_sid}>
-                      <td>{row.pronto_sid}</td>
-                      <td>{formatNumber(row.lead_count)}</td>
-                    </tr>
+                    <React.Fragment key={row.pronto_sid}>
+                      <tr>
+                        <td>
+                          <button
+                            type="button"
+                            onClick={() => toggleProntoSid(row.pronto_sid)}
+                            aria-expanded={Boolean(expandedProntoSids[row.pronto_sid])}
+                            style={{ border: 0, background: "transparent", padding: 0, color: "inherit", font: "inherit", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}
+                          >
+                            <span aria-hidden="true">{expandedProntoSids[row.pronto_sid] ? "▾" : "▸"}</span>
+                            {row.pronto_sid}
+                          </button>
+                        </td>
+                        <td>{formatNumber(row.lead_count)}</td>
+                      </tr>
+                      {expandedProntoSids[row.pronto_sid] && (
+                        <tr>
+                          <td colSpan={2} style={{ padding: "8px 14px 14px", background: "#f8fafc" }}>
+                            {prontoC3Loading[row.pronto_sid] ? (
+                              <div className="pronto-empty" style={{ padding: 16 }}>Loading Pronto C3 breakdown…</div>
+                            ) : (
+                              <table className="pronto-table" style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8 }}>
+                                <thead>
+                                  <tr>
+                                    <th>Pronto C3</th>
+                                    <th>Leads</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {(prontoC3Rows[row.pronto_sid] || []).length ? (
+                                    prontoC3Rows[row.pronto_sid].map((c3Row) => (
+                                      <tr key={c3Row.pronto_c3}>
+                                        <td>{c3Row.pronto_c3}</td>
+                                        <td>{formatNumber(c3Row.lead_count)}</td>
+                                      </tr>
+                                    ))
+                                  ) : (
+                                    <tr><td colSpan={2}>No Pronto C3 values found.</td></tr>
+                                  )}
+                                </tbody>
+                              </table>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   ))}
                   <tr>
                     <td><strong>Total leads with SID</strong></td>
