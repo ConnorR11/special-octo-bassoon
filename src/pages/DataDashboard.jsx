@@ -407,8 +407,40 @@ function DataDashboard() {
 
         .pronto-table {
           width: 100%;
+          table-layout: fixed;
           border-collapse: collapse;
           font-size: 12px;
+        }
+
+        .pronto-table col.pronto-col-name { width: 20.5%; }
+        .pronto-table col.pronto-col-first { width: 23.5%; }
+        .pronto-table col.pronto-col-latest { width: 25.5%; }
+        .pronto-table col.pronto-col-status { width: 17%; }
+        .pronto-table col.pronto-col-leads { width: 13.5%; }
+
+        .pronto-table th,
+        .pronto-table td {
+          box-sizing: border-box;
+          overflow-wrap: anywhere;
+        }
+
+        .pronto-breakdown-cell {
+          padding: 8px 14px 14px !important;
+          background: #f8fafc;
+        }
+
+        .pronto-breakdown-table {
+          width: calc(100% + 28px);
+          margin-left: -14px;
+          background: #fff;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+
+        .pronto-breakdown-table th:first-child,
+        .pronto-breakdown-table td:first-child {
+          padding-left: 16px;
         }
 
         .pronto-table th {
@@ -894,6 +926,13 @@ function DataDashboard() {
               <div className="pronto-empty">No Pronto SID data found.</div>
             ) : (
               <table className="pronto-table">
+                <colgroup>
+                  <col className="pronto-col-name" />
+                  <col className="pronto-col-first" />
+                  <col className="pronto-col-latest" />
+                  <col className="pronto-col-status" />
+                  <col className="pronto-col-leads" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th>Pronto SID</th>
@@ -925,11 +964,18 @@ function DataDashboard() {
                       </tr>
                       {expandedProntoSids[row.pronto_sid] && (
                         <tr>
-                          <td colSpan={5} style={{ padding: "8px 14px 14px", background: "#f8fafc" }}>
+                          <td colSpan={5} className="pronto-breakdown-cell">
                             {prontoC3Loading[row.pronto_sid] ? (
                               <div className="pronto-empty" style={{ padding: 16 }}>Loading Pronto C3 breakdown…</div>
                             ) : (
-                              <table className="pronto-table" style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8 }}>
+                              <table className="pronto-table pronto-breakdown-table">
+                                <colgroup>
+                                  <col className="pronto-col-name" />
+                                  <col className="pronto-col-first" />
+                                  <col className="pronto-col-latest" />
+                                  <col className="pronto-col-status" />
+                                  <col className="pronto-col-leads" />
+                                </colgroup>
                                 <thead>
                                   <tr>
                                     <th>Pronto C1</th>
