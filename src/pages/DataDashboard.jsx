@@ -86,6 +86,7 @@ function DataDashboard() {
   const [activeTab, setActiveTab] = useState("overview")
   const [prontoSidRows, setProntoSidRows] = useState([])
   const [prontoSidTotal, setProntoSidTotal] = useState(0)
+  const [prontoNoContactTotal, setProntoNoContactTotal] = useState(0)
   const [prontoSidLoading, setProntoSidLoading] = useState(false)
   const [prontoSidError, setProntoSidError] = useState("")
   const [prontoSidSearch, setProntoSidSearch] = useState("")
@@ -144,11 +145,34 @@ function DataDashboard() {
         latest_lead_date: row.latest_lead_date || null,
       })))
       setProntoSidTotal(Number(data?.[0]?.total_count || 0))
+
+      let noContactQuery = supabase
+        .from("leads")
+        .select("delete_row_id", { count: "exact", head: true })
+        .eq("lead_source", "Pronto Windows")
+        .ilike("disposition", "No Contact")
+
+      const now = new Date()
+      if (prontoDatePeriod === "last_week") {
+        const from = new Date(now)
+        from.setDate(from.getDate() - 7)
+        noContactQuery = noContactQuery.gte("received_date_time", from.toISOString())
+      } else if (prontoDatePeriod === "last_4_weeks") {
+        const from = new Date(now)
+        from.setDate(from.getDate() - 28)
+        noContactQuery = noContactQuery.gte("received_date_time", from.toISOString())
+      } else if (prontoDatePeriod === "year_to_date") {
+        noContactQuery = noContactQuery.gte("received_date_time", new Date(now.getFullYear(), 0, 1).toISOString())
+      }
+      const { count: noContactCount, error: noContactError } = await noContactQuery
+      if (noContactError) throw noContactError
+      setProntoNoContactTotal(Number(noContactCount || 0))
     } catch (err) {
       console.error("Error loading Pronto SID data:", err)
       setProntoSidError(err?.message || "Unable to load Pronto SID data.")
       setProntoSidRows([])
       setProntoSidTotal(0)
+      setProntoNoContactTotal(0)
     } finally {
       setProntoSidLoading(false)
     }
@@ -1097,8 +1121,9 @@ function DataDashboard() {
                     </React.Fragment>
                   ))}
                   <tr>
-                    <td colSpan={4}><strong>Total Pronto Windows leads</strong></td>
+                    <td colSpan={3}><strong>Total Pronto Windows leads</strong></td>
                     <td><strong>{formatNumber(prontoSidTotal)}</strong></td>
+                    <td><strong>No Contact: {formatNumber(prontoNoContactTotal)}</strong></td>
                   </tr>
                 </tbody>
               </table>
