@@ -17,6 +17,7 @@ function FitSheet({ setSelected }) {
     useState("all")
   const [windowTeamsExpanded, setWindowTeamsExpanded] = useState(true)
   const [windowsRenewablesExpanded, setWindowsRenewablesExpanded] = useState(true)
+  const [heatPumpExpanded, setHeatPumpExpanded] = useState(true)
 
   function getMonday(date) {
     const d = new Date(date)
@@ -462,17 +463,24 @@ function FitSheet({ setSelected }) {
       if (actual) assigned.add(normalise(actual))
       return actual || expected
     })
+    const heatPumpNames = ["Gordon Frew", "Ian Hogg", "Alan Gowans"]
+    const heatPumpTeams = heatPumpNames.map((expected) => {
+      const actual = actualTeams.find((team) => normalise(team) === normalise(expected))
+      if (actual) assigned.add(normalise(actual))
+      return actual || expected
+    })
     const unorganised = actualTeams.filter((team) => !assigned.has(normalise(team))).sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }))
     if (unorganised.length) groups.push({ label: "UNORGANISED", teams: unorganised })
-    return { windowGroups: groups, renewablesTeams }
+    return { windowGroups: groups, renewablesTeams, heatPumpTeams }
   }, [jobs])
 
   const windowGroups = fitTeamGroups.windowGroups
   const renewablesTeams = fitTeamGroups.renewablesTeams
+  const heatPumpTeams = fitTeamGroups.heatPumpTeams
 
   const fitTeams = useMemo(
-    () => [...windowGroups.flatMap((group) => group.teams), ...renewablesTeams],
-    [windowGroups, renewablesTeams]
+    () => [...windowGroups.flatMap((group) => group.teams), ...renewablesTeams, ...heatPumpTeams],
+    [windowGroups, renewablesTeams, heatPumpTeams]
   )
 
   /*
