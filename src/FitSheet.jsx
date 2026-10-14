@@ -481,6 +481,11 @@ function FitSheet({ setSelected }) {
     return groups
   }, [jobs])
 
+  const fitTeams = useMemo(
+    () => fitTeamGroups.flatMap((group) => group.teams),
+    [fitTeamGroups]
+  )
+
   /*
    * ------------------------------------------------------------
    * JOB LOOKUP
