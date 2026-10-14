@@ -89,6 +89,7 @@ function DataDashboard() {
   const [prontoSidLoading, setProntoSidLoading] = useState(false)
   const [prontoSidError, setProntoSidError] = useState("")
   const [prontoSidSearch, setProntoSidSearch] = useState("")
+  const [prontoDatePeriod, setProntoDatePeriod] = useState("year_to_date")
   const [expandedProntoSids, setExpandedProntoSids] = useState({})
   const [prontoC3Rows, setProntoC3Rows] = useState({})
   const [prontoC3Loading, setProntoC3Loading] = useState({})
@@ -124,7 +125,7 @@ function DataDashboard() {
     setProntoSidError("")
 
     try {
-      const { data, error: rpcError } = await supabase.rpc("get_pronto_sid_lead_counts_with_dates")
+      const { data, error: rpcError } = await supabase.rpc("get_pronto_sid_lead_counts_with_dates_filtered", { date_period: prontoDatePeriod })
       if (rpcError) throw rpcError
 
       setProntoSidRows((data || []).map((row) => ({
@@ -152,7 +153,7 @@ function DataDashboard() {
 
     setProntoC3Loading((current) => ({ ...current, [sid]: true }))
     try {
-      const { data, error: rpcError } = await supabase.rpc("get_pronto_sid_c3_lead_counts_with_dates", { sid_filter: sid })
+      const { data, error: rpcError } = await supabase.rpc("get_pronto_sid_c3_lead_counts_with_dates_filtered", { sid_filter: sid, date_period: prontoDatePeriod })
       if (rpcError) throw rpcError
       setProntoC3Rows((current) => ({
         ...current,
@@ -291,7 +292,7 @@ function DataDashboard() {
     if (activeTab === "pronto" && prontoSidRows.length === 0 && !prontoSidLoading) {
       loadProntoSidData()
     }
-  }, [activeTab])
+  }, [activeTab, prontoDatePeriod])
 
   const filteredProntoSidRows = useMemo(() => {
     const search = prontoSidSearch.trim().toLowerCase()
@@ -836,17 +837,33 @@ function DataDashboard() {
             <div>
               <div className="data-dashboard-chart-title">Pronto SID Lead Counts</div>
               <div className="data-dashboard-chart-subtitle">
-                Unique pronto_SID values and their total lead counts for Pronto Windows, across all dates.
+                Lead counts and campaign activity for the selected period.
               </div>
             </div>
-            <div className="pronto-search">
-              <Search size={14} color="#64748b" />
-              <input
-                type="text"
-                value={prontoSidSearch}
-                onChange={(event) => setProntoSidSearch(event.target.value)}
-                placeholder="Search Pronto SID"
-              />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", flexWrap: "wrap", gap: 10 }}>
+              <select
+                aria-label="Filter Pronto leads by date"
+                value={prontoDatePeriod}
+                onChange={(event) => {
+                  setProntoDatePeriod(event.target.value)
+                  setProntoC3Rows({})
+                  setExpandedProntoSids({})
+                }}
+                style={{ height: 36, padding: "0 10px", border: "1px solid #d7dee7", borderRadius: 8, background: "#fff", color: "#172033", font: "inherit", fontSize: 12 }}
+              >
+                <option value="last_week">Last Week</option>
+                <option value="last_4_weeks">Last 4 Weeks</option>
+                <option value="year_to_date">Year To Date</option>
+              </select>
+              <div className="pronto-search">
+                <Search size={14} color="#64748b" />
+                <input
+                  type="text"
+                  value={prontoSidSearch}
+                  onChange={(event) => setProntoSidSearch(event.target.value)}
+                  placeholder="Search Pronto SID"
+                />
+              </div>
             </div>
           </div>
 
