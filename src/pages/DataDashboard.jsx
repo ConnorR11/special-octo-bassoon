@@ -751,7 +751,25 @@ function DataDashboard() {
               <CartesianGrid stroke="#e8edf3" vertical={false} />
               <XAxis dataKey="month" tickFormatter={(value) => new Date(`${value}T00:00:00`).toLocaleDateString("en-GB", { month: "short", year: "2-digit" })} interval={5} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={{ stroke: "#dfe5ec" }} tickLine={false} />
               <YAxis tickFormatter={formatNumber} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} width={55} />
-              <Tooltip labelFormatter={(value) => formatMonth(value)} formatter={(value, name) => [formatNumber(value), name]} contentStyle={{ border: "1px solid #dfe5ec", borderRadius: 8, fontSize: 12, boxShadow: "0 5px 18px rgba(15,23,42,.08)" }} />
+              <Tooltip
+                content={({ active, payload, label }) => {
+                  const visibleItems = (payload || []).filter(
+                    (item) => Number(item.value || 0) >= 1
+                  )
+                  if (!active || visibleItems.length === 0) return null
+                  return (
+                    <div style={{ background: "#fff", border: "1px solid #dfe5ec", borderRadius: 8, padding: "10px 12px", fontSize: 12, boxShadow: "0 5px 18px rgba(15,23,42,.08)" }}>
+                      <div style={{ marginBottom: 7, color: "#0f172a", fontWeight: 600 }}>{formatMonth(label)}</div>
+                      {visibleItems.map((item) => (
+                        <div key={item.dataKey} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, color: item.color || "#334155" }}>
+                          <span style={{ width: 8, height: 8, borderRadius: 2, background: item.color || "#334155", flexShrink: 0 }} />
+                          <span>{item.name}: {formatNumber(item.value)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                }}
+              />
               <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
               {typeNames.map((type, index) => (
                 <Bar key={type} dataKey={type} name={type} stackId="leads" fill={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} />
