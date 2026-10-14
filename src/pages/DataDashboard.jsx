@@ -916,7 +916,7 @@ function DataDashboard() {
                               <table className="pronto-table" style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8 }}>
                                 <thead>
                                   <tr>
-                                    <th>Pronto C3</th>
+                                    <th>Pronto C1</th>
                                     <th>First received</th>
                                     <th>Latest received</th>
                                     <th>Status</th>
