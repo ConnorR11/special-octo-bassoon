@@ -15,6 +15,11 @@ const numeric = value => {
   return Number.isFinite(n) ? n : null
 }
 const personName = profile => String(profile?.full_name || profile?.display_name || profile?.email || "").trim()
+const financeTermLabel = value => {
+  if (value === undefined || value === null || value === "") return null
+  const term = String(value).trim()
+  return /months?$/i.test(term) ? term.replace(/month$/i, "months") : `${term} months`
+}
 
 function totalPanels(data) {
   const arrays = Array.isArray(data?.arrays) ? data.arrays : []
@@ -215,7 +220,7 @@ export default async function handler(req, res) {
     const customValues = {
       "Finance: Lender": lender,
       "Finance: Rate": firstValue(data.financeRate, null),
-      "Finance: Term": firstValue(data.financeTerm, null),
+      "Finance: Term": financeTermLabel(firstValue(data.financeTerm, null)),
       "Solar: Inverter Size": inverterCapacity,
       "Solar: Number of Batteries": batteryQuantity,
       "Solar: Battery Size": batteryCapacity,
