@@ -7,7 +7,6 @@ const json = (res, status, body) => {
 }
 
 const ADMIN_FEE = 399
-const PIPEDRIVE_OWNER_ID = 11989938
 const NEW_CONTRACT_STAGE_ID = 8
 
 const firstValue = (...values) => values.find(value => value !== undefined && value !== null && value !== "")
@@ -265,7 +264,6 @@ export default async function handler(req, res) {
       currency: "GBP",
       status: "open",
       stage_id: NEW_CONTRACT_STAGE_ID,
-      owner_id: PIPEDRIVE_OWNER_ID,
       ...customFieldPayload,
     }
 
