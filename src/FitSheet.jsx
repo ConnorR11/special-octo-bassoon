@@ -1144,7 +1144,7 @@ function FitSheet({ setSelected }) {
                 </div>
               ))}
             </>
-          )
+          )}
         </div>
       </div>
     </section>
