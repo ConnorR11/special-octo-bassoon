@@ -76,6 +76,7 @@ function formatMonth(value) {
 
 function DataDashboard() {
   const [rows, setRows] = useState([])
+  const [typeNames, setTypeNames] = useState([])
   const [leadSources, setLeadSources] = useState([])
   const [selectedLeadSource, setSelectedLeadSource] = useState("")
   const [leadSourcesLoading, setLeadSourcesLoading] = useState(false)
@@ -174,7 +175,8 @@ function DataDashboard() {
       )
       if (typeError) throw typeError
 
-      const typeNames = [...new Set((typeData || []).map((row) => String(row.lead_type || "(Empty / NULL)")))]
+      const availableTypes = [...new Set((typeData || []).map((row) => String(row.lead_type || "(Empty / NULL)")))]
+      setTypeNames(availableTypes)
       const typeColors = ["#2563eb", "#0d9488", "#9333ea", "#ea580c", "#64748b", "#dc2626", "#0891b2", "#65a30d", "#c026d3", "#a16207"]
       const typeLookup = new Map()
       ;(typeData || []).forEach((row) => {
@@ -186,7 +188,7 @@ function DataDashboard() {
       const complete = buildMonthRange(start, end)
         .map((row) => ({
           ...row,
-          ...Object.fromEntries(typeNames.map((type) => [type, typeLookup.get(row.month)?.[type] || 0])),
+          ...Object.fromEntries(availableTypes.map((type) => [type, typeLookup.get(row.month)?.[type] || 0])),
         }))
         .slice(0, -1)
 
