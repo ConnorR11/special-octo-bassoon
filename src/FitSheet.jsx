@@ -976,7 +976,7 @@ function FitSheet({ setSelected }) {
             style={{
               display: "grid",
               gridTemplateColumns:
-                "190px repeat(7, minmax(150px, 1fr))",
+                "150px 190px repeat(7, minmax(150px, 1fr))",
               borderBottom:
                 "2px solid #172554",
               position: "sticky",
@@ -1003,6 +1003,9 @@ function FitSheet({ setSelected }) {
                 zIndex: 21,
               }}
             >
+              Area
+            </div>
+            <div style={{ padding: "10px 12px", background: "#f2f3f5", borderRight: "1px solid #d9dadd", fontSize: "10px", fontWeight: 700, color: "#555", textTransform: "uppercase", position: "sticky", left: 150, zIndex: 21 }}>
               Fit Team
             </div>
 
@@ -1119,103 +1122,29 @@ function FitSheet({ setSelected }) {
               No jobs found for the selected week/filter.
             </div>
           ) : (
-            fitTeamGroups.map((group) => (
-              <React.Fragment key={group.label}>
-                <div
-                  role={group.label === "WINDOW TEAMS" ? "button" : undefined}
-                  tabIndex={group.label === "WINDOW TEAMS" ? 0 : undefined}
-                  onClick={group.label === "WINDOW TEAMS" ? () => setWindowTeamsExpanded((value) => !value) : undefined}
-                  onKeyDown={group.label === "WINDOW TEAMS" ? (event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault()
-                      setWindowTeamsExpanded((value) => !value)
-                    }
-                  } : undefined}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))",
-                    minHeight: "42px",
-                    cursor: group.label === "WINDOW TEAMS" ? "pointer" : "default",
-                    borderBottom: "1px solid #c9d2df",
-                    background: "#e8eef5",
-                  }}
-                >
-                  <div
-                    style={{
-                      padding: "12px",
-                      background: "#dce6f0",
-                      borderRight: "1px solid #c4d1df",
-                      fontSize: "11px",
-                      fontWeight: 800,
-                      color: "#172554",
-                      letterSpacing: "0.5px",
-                      position: "sticky",
-                      left: 0,
-                      zIndex: 5,
-                    }}
-                  >
-                    {group.label}
-                  </div>
-                  <div
-                    style={{
-                      gridColumn: "span 7",
-                      padding: "12px",
-                      fontSize: "10px",
-                      fontWeight: 700,
-                      color: "#52627a",
-                    }}
-                  >
-                    {group.label === "WINDOW TEAMS" ? `${group.teams.length} teams · ${windowTeamsExpanded ? "click to collapse" : "click to expand"}` : "Teams not in the configured list"}
+            <>
+              <div role="button" tabIndex={0} onClick={() => setWindowTeamsExpanded((value) => !value)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setWindowTeamsExpanded((value) => !value) } }} style={{ display: "grid", gridTemplateColumns: "150px 190px repeat(7, minmax(150px, 1fr))", minHeight: "42px", cursor: "pointer", borderBottom: "1px solid #c9d2df", background: "#e8eef5" }}>
+                <div style={{ padding: "12px", background: "#dce6f0", borderRight: "1px solid #c4d1df", fontSize: "11px", fontWeight: 800, color: "#172554", letterSpacing: "0.5px", position: "sticky", left: 0, zIndex: 5 }}>WINDOW TEAMS</div>
+                <div style={{ gridColumn: "span 8", padding: "12px", fontSize: "10px", fontWeight: 700, color: "#52627a" }}>{fitTeams.length} teams · {windowTeamsExpanded ? "click to collapse" : "click to expand"}</div>
+              </div>
+              {windowTeamsExpanded && fitTeamGroups.map((group) => (
+                <div key={group.label} style={{ display: "grid", gridTemplateColumns: "150px minmax(0, 1fr)", borderBottom: "1px solid #d9dadd" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gridRow: "span " + group.teams.length, minHeight: (group.teams.length * 160) + "px", padding: "12px 4px", borderRight: "2px solid #111", background: "#fff", color: "#111", fontSize: "20px", fontWeight: 500, letterSpacing: "1px", writingMode: "vertical-rl", transform: "rotate(180deg)", textAlign: "center" }}>{group.label}</div>
+                  <div>
+                    {group.teams.map((team) => (
+                      <div key={team} style={{ display: "grid", gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))", minHeight: "160px", borderBottom: "1px solid #111" }}>
+                        <div style={{ padding: "14px 12px", background: "#fff", borderRight: "2px solid #111", fontSize: "11px", fontWeight: 600, color: "#111", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}>{team}</div>
+                        {weekDays.map((date) => {
+                          const dayJobs = getJobs(team, date)
+                          return <div key={team + "-" + formatDate(date)} style={{ padding: "6px", borderRight: "1px solid #d9dadd", background: "#fff", minHeight: "160px" }}>{dayJobs.map(renderJobCard)}</div>
+                        })}
+                      </div>
+                    ))}
                   </div>
                 </div>
-                {(group.label !== "WINDOW TEAMS" || windowTeamsExpanded) && group.teams.map((team) => (
-                  <div
-                    key={team}
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))",
-                      minHeight: "160px",
-                      borderBottom: "1px solid #d9dadd",
-                    }}
-                  >
-                    <div
-                      style={{
-                        padding: "14px 12px",
-                        background: "#f7f7f8",
-                        borderRight: "1px solid #d9dadd",
-                        fontSize: "11px",
-                        fontWeight: 600,
-                        color: "#333",
-                        display: "flex",
-                        alignItems: "flex-start",
-                        position: "sticky",
-                        left: 0,
-                        zIndex: 5,
-                      }}
-                    >
-                      {team}
-                    </div>
-                    {weekDays.map((date) => {
-                      const dayJobs = getJobs(team, date)
-                      return (
-                        <div
-                          key={`${team}-${formatDate(date)}`}
-                          style={{
-                            padding: "6px",
-                            borderRight: "1px solid #d9dadd",
-                            background: "#fff",
-                            minHeight: "160px",
-                          }}
-                        >
-                          {dayJobs.map(renderJobCard)}
-                        </div>
-                      )
-                    })}
-                  </div>
-                ))}
-              </React.Fragment>
-            ))
-          )}
+              ))}
+            </>
+          )
         </div>
       </div>
     </section>
