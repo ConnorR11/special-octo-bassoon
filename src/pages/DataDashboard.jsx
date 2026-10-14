@@ -213,7 +213,10 @@ function DataDashboard() {
         const { data, error: sourcesError } = await supabase.rpc("get_lead_volume_sources")
         if (sourcesError) throw sourcesError
         setLeadSources((data || [])
-          .filter((row) => !String(row.lead_source ?? "").toLowerCase().includes("dds solar"))
+          .filter((row) => {
+            const source = String(row.lead_source ?? "").toLowerCase()
+            return !source.includes("dds solar") && source !== "sales fuel solar"
+          })
           .map((row) => ({
             value: String(row.lead_source ?? ""),
             label: row.lead_source === "__NO_SOURCE__" ? "(No lead source)" : String(row.lead_source),
