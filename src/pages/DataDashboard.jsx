@@ -164,39 +164,29 @@ function DataDashboard() {
         throw rpcError
       }
 
-      const { data: productData, error: productError } = await supabase.rpc(
-        "get_monthly_lead_volume_by_product",
+      const { data: typeData, error: typeError } = await supabase.rpc(
+        "get_monthly_lead_volume_by_type",
         {
           start_date: start.toISOString(),
           end_date: end.toISOString(),
           selected_lead_source: selectedLeadSource || null,
         }
       )
-      if (productError) throw productError
+      if (typeError) throw typeError
 
-      const lookup = new Map(
-        (data || []).map((row) => [
-          String(row.month).slice(0, 10),
-          Number(row.lead_count || 0),
-        ])
-      )
-
-      const productLookup = new Map(
-        (productData || []).map((row) => [
-          String(row.month).slice(0, 10),
-          {
-            solar_count: Number(row.solar_count || 0),
-            windows_count: Number(row.windows_count || 0),
-          },
-        ])
-      )
+      const typeNames = [...new Set((typeData || []).map((row) => String(row.lead_type || "(Empty / NULL)")))]
+      const typeColors = ["#2563eb", "#0d9488", "#9333ea", "#ea580c", "#64748b", "#dc2626", "#0891b2", "#65a30d", "#c026d3", "#a16207"]
+      const typeLookup = new Map()
+      ;(typeData || []).forEach((row) => {
+        const key = String(row.month).slice(0, 10)
+        if (!typeLookup.has(key)) typeLookup.set(key, {})
+        typeLookup.get(key)[String(row.lead_type || "(Empty / NULL)")] = Number(row.lead_count || 0)
+      })
 
       const complete = buildMonthRange(start, end)
         .map((row) => ({
           ...row,
-          lead_count: lookup.get(row.month) || 0,
-          solar_count: productLookup.get(row.month)?.solar_count || 0,
-          windows_count: productLookup.get(row.month)?.windows_count || 0,
+          ...Object.fromEntries(typeNames.map((type) => [type, typeLookup.get(row.month)?.[type] || 0])),
         }))
         .slice(0, -1)
 
@@ -712,7 +702,7 @@ function DataDashboard() {
           <div>
             <div className="data-dashboard-chart-title">
               <BarChart3 size={17} />
-              Monthly lead volume by product
+              Monthly lead volume by lead type
             </div>
 
             <div className="data-dashboard-chart-subtitle">
@@ -759,10 +749,11 @@ function DataDashboard() {
               <CartesianGrid stroke="#e8edf3" vertical={false} />
               <XAxis dataKey="month" tickFormatter={(value) => new Date(`${value}T00:00:00`).toLocaleDateString("en-GB", { month: "short", year: "2-digit" })} interval={5} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={{ stroke: "#dfe5ec" }} tickLine={false} />
               <YAxis tickFormatter={formatNumber} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} width={55} />
-              <Tooltip labelFormatter={(value) => formatMonth(value)} formatter={(value, name) => [formatNumber(value), name === "solar_count" ? "Solar leads" : "Windows leads"]} contentStyle={{ border: "1px solid #dfe5ec", borderRadius: 8, fontSize: 12, boxShadow: "0 5px 18px rgba(15,23,42,.08)" }} />
-              <Legend formatter={(value) => value === "solar_count" ? "Solar" : "Windows"} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-              <Bar dataKey="solar_count" name="solar_count" stackId="leads" fill="#0d9488" />
-              <Bar dataKey="windows_count" name="windows_count" stackId="leads" fill="#2563eb" radius={[3, 3, 0, 0]} />
+              <Tooltip labelFormatter={(value) => formatMonth(value)} formatter={(value, name) => [formatNumber(value), name]} contentStyle={{ border: "1px solid #dfe5ec", borderRadius: 8, fontSize: 12, boxShadow: "0 5px 18px rgba(15,23,42,.08)" }} />
+              <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+              {typeNames.map((type, index) => (
+                <Bar key={type} dataKey={type} name={type} stackId="leads" fill={typeColors[index % typeColors.length]} />
+              ))}
             </BarChart>
           </ResponsiveContainer>
         )}
