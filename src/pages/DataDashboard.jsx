@@ -50,10 +50,6 @@ function buildMonthRange(startDate, endDate) {
       cps_s_count: 0,
       cps_h_count: 0,
       cps_c_count: 0,
-      conversion_rate: null,
-      sold_conversion_rate: null,
-      cps_h_conversion_rate: null,
-      cps_c_conversion_rate: null,
     })
 
     cursor.setMonth(cursor.getMonth() + 1)
@@ -237,13 +233,6 @@ function DataDashboard() {
           cps_s_count: soldLookup.get(row.month) || 0,
           cps_h_count: stageLookup.get(row.month)?.cps_h_count || 0,
           cps_c_count: stageLookup.get(row.month)?.cps_c_count || 0,
-        }))
-        .map((row) => ({
-          ...row,
-          conversion_rate: row.lead_count > 0 ? (row.cps_p_count / row.lead_count) * 100 : null,
-          sold_conversion_rate: row.cps_p_count > 0 ? (row.cps_s_count / row.cps_p_count) * 100 : null,
-          cps_h_conversion_rate: row.lead_count > 0 ? (row.cps_h_count / row.lead_count) * 100 : null,
-          cps_c_conversion_rate: row.cps_h_count > 0 ? (row.cps_c_count / row.cps_h_count) * 100 : null,
         }))
         .slice(0, -1)
 
@@ -833,29 +822,15 @@ function DataDashboard() {
                 width={55}
               />
 
-              <YAxis
-                yAxisId="rate"
-                orientation="right"
-                domain={[0, "auto"]}
-                tickFormatter={(value) => `${Number(value).toFixed(0)}%`}
-                tick={{ fontSize: 10, fill: "#64748b" }}
-                axisLine={false}
-                tickLine={false}
-                width={48}
-              />
               <Legend
-                formatter={(value) => ({ lead_count: "Leads received", conversion_rate: "Lead-to-pitched conversion", sold_conversion_rate: "Pitched-to-sold conversion", cps_h_conversion_rate: "Lead-to-H (CPS H) conversion", cps_c_conversion_rate: "H-to-C (CPS C) conversion" }[value] || value)}
+                formatter={(value) => ({ lead_count: "Lead count", cps_h_count: "CPS H count", cps_c_count: "CPS C count", cps_p_count: "CPS P count", cps_s_count: "CPS S count" }[value] || value)}
                 wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
               />
               <Tooltip
                 labelFormatter={(value) => formatMonth(value)}
-                formatter={(value, name, item) => {
-                  if (name === "conversion_rate" || name === "sold_conversion_rate" || name === "cps_h_conversion_rate" || name === "cps_c_conversion_rate") {
-                    const labels = { conversion_rate: "Lead-to-pitched conversion", sold_conversion_rate: "Pitched-to-sold conversion", cps_h_conversion_rate: "Lead-to-H (CPS H) conversion", cps_c_conversion_rate: "H-to-C (CPS C) conversion" }
-                    return [value == null ? "—" : `${Number(value).toFixed(1)}%`, labels[name]]
-                  }
-                  if (name === "cps_p_count") return [formatNumber(value), "Unique leads pitched (CPS P)"]
-                  return [formatNumber(value), "Leads received"]
+                formatter={(value, name) => {
+                  const labels = { lead_count: "Lead count", cps_h_count: "CPS H count", cps_c_count: "CPS C count", cps_p_count: "CPS P count", cps_s_count: "CPS S count" }
+                  return [formatNumber(value), labels[name] || name]
                 }}
                 contentStyle={{
                   border: "1px solid #dfe5ec",
@@ -866,11 +841,11 @@ function DataDashboard() {
                 }}
               />
 
-              <Bar yAxisId="volume" dataKey="lead_count" name="lead_count" fill="#93c5fd" radius={[3, 3, 0, 0]} maxBarSize={28} />
-              <Line yAxisId="rate" type="monotone" dataKey="conversion_rate" name="conversion_rate" stroke="#0d9488" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls={false} />
-              <Line yAxisId="rate" type="monotone" dataKey="sold_conversion_rate" name="sold_conversion_rate" stroke="#dc2626" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls={false} />
-              <Line yAxisId="rate" type="monotone" dataKey="cps_h_conversion_rate" name="cps_h_conversion_rate" stroke="#2563eb" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls={false} />
-              <Line yAxisId="rate" type="monotone" dataKey="cps_c_conversion_rate" name="cps_c_conversion_rate" stroke="#9333ea" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls={false} />
+              <Line yAxisId="volume" type="monotone" dataKey="lead_count" name="lead_count" stroke="#64748b" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls={false} />
+              <Line yAxisId="volume" type="monotone" dataKey="cps_h_count" name="cps_h_count" stroke="#2563eb" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls={false} />
+              <Line yAxisId="volume" type="monotone" dataKey="cps_c_count" name="cps_c_count" stroke="#9333ea" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls={false} />
+              <Line yAxisId="volume" type="monotone" dataKey="cps_p_count" name="cps_p_count" stroke="#0d9488" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls={false} />
+              <Line yAxisId="volume" type="monotone" dataKey="cps_s_count" name="cps_s_count" stroke="#dc2626" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} connectNulls={false} />
             </ComposedChart>
           </ResponsiveContainer>
         )}
