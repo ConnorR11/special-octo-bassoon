@@ -15,6 +15,7 @@ function FitSheet({ setSelected }) {
   const [loadError, setLoadError] = useState("")
   const [installationTypeFilter, setInstallationTypeFilter] =
     useState("all")
+  const [windowTeamsExpanded, setWindowTeamsExpanded] = useState(true)
 
   function getMonday(date) {
     const d = new Date(date)
@@ -436,49 +437,45 @@ function FitSheet({ setSelected }) {
    */
 
   const fitTeamGroups = useMemo(() => {
-    // Keep the full configured team list visible even when a team has no
-    // jobs in the selected week or current installation-type filter.
-    const definitions = [
-      { label: "ABERDEEN", teams: ["Paul Duncan", "Paul Falconer", "Jamie Adamson"] },
-      { label: "FIFE", teams: ["Jon Gray"] },
-      { label: "EDINBURGH", teams: ["Vladimir Ivanovs", "Vlad Team 2"] },
-      { label: "1", teams: ["Darren Green"] },
-      { label: "2", teams: ["Nicky McHugh"] },
-      { label: "3", teams: ["Ian Kidd"] },
-      { label: "4", teams: ["Daniel Barron"] },
-      { label: "5", teams: ["Dmytro Mykhailenko Team 1"] },
-      { label: "6", teams: ["John Cannon"] },
-      { label: "7", teams: ["Andrei Vlasov"] },
-      { label: "8", teams: ["Lloyd Reid"] },
-      { label: "9", teams: ["Matt White"] },
-      { label: "10", teams: ["David Coyle"] },
-      { label: "11", teams: ["James Clarke"] },
+    // All configured window teams stay visible in the requested order,
+    // regardless of whether they have jobs in the selected week.
+    const configuredTeams = [
+      "Paul Duncan",
+      "Paul Falconer",
+      "Jamie Adamson",
+      "Jon Gray",
+      "Vladimir Ivanovs",
+      "Vlad Team 2",
+      "Darren Green",
+      "Nicky McHugh",
+      "Ian Kidd",
+      "Daniel Barron",
+      "Dmytro Mykhailenko Team 1",
+      "John Cannon",
+      "Andrei Vlasov",
+      "Lloyd Reid",
+      "Matt White",
+      "David Coyle",
+      "James Clarke",
     ]
-
     const normalise = (value) => String(value || "").trim().toLocaleLowerCase()
     const actualTeams = [...new Set(
       jobs.map((job) => String(job.team || "").trim()).filter(Boolean)
     )]
     const assigned = new Set()
-    const groups = definitions.map((group) => {
-      const matchingTeams = group.teams.map((expected) => {
-        const actual = actualTeams.find((team) => normalise(team) === normalise(expected))
-        const teamName = actual || expected
-        assigned.add(normalise(teamName))
-        return teamName
-      })
-      return { label: group.label, teams: matchingTeams }
+    const orderedTeams = configuredTeams.map((expected) => {
+      const actual = actualTeams.find((team) => normalise(team) === normalise(expected))
+      const teamName = actual || expected
+      assigned.add(normalise(teamName))
+      return teamName
     })
-
     const unorganised = actualTeams
       .filter((team) => !assigned.has(normalise(team)))
       .sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }))
-
-    if (unorganised.length) {
-      groups.push({ label: "UNORGANISED", teams: unorganised })
-    }
-
-    return groups
+    return [
+      { label: "WINDOW TEAMS", teams: orderedTeams },
+      ...(unorganised.length ? [{ label: "UNORGANISED", teams: unorganised }] : []),
+    ]
   }, [jobs])
 
   const fitTeams = useMemo(
@@ -1125,10 +1122,20 @@ function FitSheet({ setSelected }) {
             fitTeamGroups.map((group) => (
               <React.Fragment key={group.label}>
                 <div
+                  role={group.label === "WINDOW TEAMS" ? "button" : undefined}
+                  tabIndex={group.label === "WINDOW TEAMS" ? 0 : undefined}
+                  onClick={group.label === "WINDOW TEAMS" ? () => setWindowTeamsExpanded((value) => !value) : undefined}
+                  onKeyDown={group.label === "WINDOW TEAMS" ? (event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault()
+                      setWindowTeamsExpanded((value) => !value)
+                    }
+                  } : undefined}
                   style={{
                     display: "grid",
                     gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))",
                     minHeight: "42px",
+                    cursor: group.label === "WINDOW TEAMS" ? "pointer" : "default",
                     borderBottom: "1px solid #c9d2df",
                     background: "#e8eef5",
                   }}
@@ -1158,10 +1165,10 @@ function FitSheet({ setSelected }) {
                       color: "#52627a",
                     }}
                   >
-                    {group.label === "UNORGANISED" ? "Teams not in the configured list" : " "}
+                    {group.label === "WINDOW TEAMS" ? `${group.teams.length} teams · ${windowTeamsExpanded ? "click to collapse" : "click to expand"}` : "Teams not in the configured list"}
                   </div>
                 </div>
-                {group.teams.map((team) => (
+                {(group.label !== "WINDOW TEAMS" || windowTeamsExpanded) && group.teams.map((team) => (
                   <div
                     key={team}
                     style={{
