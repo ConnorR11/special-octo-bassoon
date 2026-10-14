@@ -1063,7 +1063,7 @@ function DataDashboard() {
                     <th>Latest received</th>
                     <th>Status</th>
                     <th>Leads</th>
-                    <th>No Contact</th>
+                    <th style={{ minWidth: 130, whiteSpace: "nowrap" }}>No Contact</th>
                   </tr>
                 </thead>
                 <tbody>
