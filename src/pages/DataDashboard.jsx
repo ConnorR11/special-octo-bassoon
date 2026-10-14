@@ -696,7 +696,7 @@ function DataDashboard() {
           <div>
             <div className="data-dashboard-chart-title">
               <BarChart3 size={17} />
-              Lead volume & appointment conversion
+              Lead volume & pitched conversion
             </div>
 
             <div className="data-dashboard-chart-subtitle">
@@ -808,16 +808,16 @@ function DataDashboard() {
                 width={48}
               />
               <Legend
-                formatter={(value) => ({ lead_count: "Leads received", conversion_rate: "Lead-to-appointment conversion", rolling_conversion_rate: "3-month average" }[value] || value)}
+                formatter={(value) => ({ lead_count: "Leads received", conversion_rate: "Lead-to-pitched conversion", rolling_conversion_rate: "3-month average" }[value] || value)}
                 wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
               />
               <Tooltip
                 labelFormatter={(value) => formatMonth(value)}
                 formatter={(value, name, item) => {
                   if (name === "conversion_rate" || name === "rolling_conversion_rate") {
-                    return [value == null ? "—" : `${Number(value).toFixed(1)}%`, name === "rolling_conversion_rate" ? "3-month average" : "Conversion rate"]
+                    return [value == null ? "—" : `${Number(value).toFixed(1)}%`, name === "rolling_conversion_rate" ? "3-month average" : "Lead-to-pitched conversion"]
                   }
-                  if (name === "cps_p_count") return [formatNumber(value), "Unique leads reaching CPS P"]
+                  if (name === "cps_p_count") return [formatNumber(value), "Unique leads pitched (CPS P)"]
                   return [formatNumber(value), "Leads received"]
                 }}
                 contentStyle={{
