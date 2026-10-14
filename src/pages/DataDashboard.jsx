@@ -93,6 +93,27 @@ function DataDashboard() {
   const [prontoC3Rows, setProntoC3Rows] = useState({})
   const [prontoC3Loading, setProntoC3Loading] = useState({})
 
+  function formatProntoDate(value) {
+    if (!value) return "—"
+    const date = new Date(`${value}T00:00:00`)
+    return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("en-GB")
+  }
+
+  function isProntoLive(value) {
+    if (!value) return false
+    const latest = new Date(`${value}T00:00:00`)
+    if (Number.isNaN(latest.getTime())) return false
+    const cutoff = new Date()
+    cutoff.setHours(0, 0, 0, 0)
+    cutoff.setDate(cutoff.getDate() - 2)
+    return latest >= cutoff
+  }
+
+  function prontoStatus(value) {
+    const live = isProntoLive(value)
+    return <span style={{ display: "inline-block", minWidth: 42, textAlign: "center", padding: "3px 8px", borderRadius: 999, background: live ? "#dcfce7" : "#fee2e2", color: live ? "#166534" : "#991b1b", fontSize: 11, fontWeight: 700 }}>{live ? "Live" : "Off"}</span>
+  }
+
   async function loadProntoSidData() {
     if (!supabase) {
       setProntoSidError("Supabase is not configured.")
@@ -103,12 +124,14 @@ function DataDashboard() {
     setProntoSidError("")
 
     try {
-      const { data, error: rpcError } = await supabase.rpc("get_pronto_sid_lead_counts_with_total")
+      const { data, error: rpcError } = await supabase.rpc("get_pronto_sid_lead_counts_with_dates")
       if (rpcError) throw rpcError
 
       setProntoSidRows((data || []).map((row) => ({
         pronto_sid: String(row.pronto_sid || ""),
         lead_count: Number(row.lead_count || 0),
+        first_lead_date: row.first_lead_date || null,
+        latest_lead_date: row.latest_lead_date || null,
       })))
       setProntoSidTotal(Number(data?.[0]?.total_count || 0))
     } catch (err) {
@@ -129,13 +152,15 @@ function DataDashboard() {
 
     setProntoC3Loading((current) => ({ ...current, [sid]: true }))
     try {
-      const { data, error: rpcError } = await supabase.rpc("get_pronto_sid_c3_lead_counts", { sid_filter: sid })
+      const { data, error: rpcError } = await supabase.rpc("get_pronto_sid_c3_lead_counts_with_dates", { sid_filter: sid })
       if (rpcError) throw rpcError
       setProntoC3Rows((current) => ({
         ...current,
         [sid]: (data || []).map((row) => ({
           pronto_c3: String(row.pronto_c3 || "(Blank / NULL)"),
           lead_count: Number(row.lead_count || 0),
+          first_lead_date: row.first_lead_date || null,
+          latest_lead_date: row.latest_lead_date || null,
         })),
       }))
     } catch (err) {
@@ -839,6 +864,9 @@ function DataDashboard() {
                 <thead>
                   <tr>
                     <th>Pronto SID</th>
+                    <th>First received</th>
+                    <th>Latest received</th>
+                    <th>Status</th>
                     <th>Leads</th>
                   </tr>
                 </thead>
@@ -857,11 +885,14 @@ function DataDashboard() {
                             {row.pronto_sid}
                           </button>
                         </td>
+                        <td>{formatProntoDate(row.first_lead_date)}</td>
+                        <td>{formatProntoDate(row.latest_lead_date)}</td>
+                        <td>{prontoStatus(row.latest_lead_date)}</td>
                         <td>{formatNumber(row.lead_count)}</td>
                       </tr>
                       {expandedProntoSids[row.pronto_sid] && (
                         <tr>
-                          <td colSpan={2} style={{ padding: "8px 14px 14px", background: "#f8fafc" }}>
+                          <td colSpan={5} style={{ padding: "8px 14px 14px", background: "#f8fafc" }}>
                             {prontoC3Loading[row.pronto_sid] ? (
                               <div className="pronto-empty" style={{ padding: 16 }}>Loading Pronto C3 breakdown…</div>
                             ) : (
@@ -869,6 +900,9 @@ function DataDashboard() {
                                 <thead>
                                   <tr>
                                     <th>Pronto C3</th>
+                                    <th>First received</th>
+                                    <th>Latest received</th>
+                                    <th>Status</th>
                                     <th>Leads</th>
                                   </tr>
                                 </thead>
@@ -877,11 +911,14 @@ function DataDashboard() {
                                     prontoC3Rows[row.pronto_sid].map((c3Row) => (
                                       <tr key={c3Row.pronto_c3}>
                                         <td>{c3Row.pronto_c3}</td>
+                                        <td>{formatProntoDate(c3Row.first_lead_date)}</td>
+                                        <td>{formatProntoDate(c3Row.latest_lead_date)}</td>
+                                        <td>{prontoStatus(c3Row.latest_lead_date)}</td>
                                         <td>{formatNumber(c3Row.lead_count)}</td>
                                       </tr>
                                     ))
                                   ) : (
-                                    <tr><td colSpan={2}>No Pronto C3 values found.</td></tr>
+                                    <tr><td colSpan={5}>No Pronto C3 values found.</td></tr>
                                   )}
                                 </tbody>
                               </table>
@@ -892,7 +929,7 @@ function DataDashboard() {
                     </React.Fragment>
                   ))}
                   <tr>
-                    <td><strong>Total Pronto Windows leads</strong></td>
+                    <td colSpan={4}><strong>Total Pronto Windows leads</strong></td>
                     <td><strong>{formatNumber(prontoSidTotal)}</strong></td>
                   </tr>
                 </tbody>
