@@ -215,7 +215,7 @@ function DataDashboard() {
         setLeadSources((data || [])
           .filter((row) => {
             const source = String(row.lead_source ?? "").toLowerCase()
-            return !source.includes("dds solar") && source !== "sales fuel solar"
+            return !source.includes("dds solar")
           })
           .map((row) => ({
             value: String(row.lead_source ?? ""),
