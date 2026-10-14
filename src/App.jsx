@@ -88,7 +88,7 @@ function App() {
       const { data: previewId, error: previewError } = await supabase.rpc("current_preview_profile_id")
       if (previewError) { console.error("Error loading admin preview:", previewError); return }
       if (!previewId) { setPreviewUser(null); return }
-      const { data: previewProfile, error: previewProfileError } = await supabase.from("profiles").select("id, full_name, display_name, email, role, permission_level, branch, active").eq("id", previewId).maybeSingle()
+      const { data: previewProfile, error: previewProfileError } = await supabase.from("profiles").select("id, full_name, display_name, email, role, permission_level, branch, department, active").eq("id", previewId).maybeSingle()
       if (!mounted) return
       if (previewProfileError) console.error("Error loading preview profile:", previewProfileError)
       setPreviewUser(previewProfile || null)
