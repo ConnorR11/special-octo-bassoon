@@ -436,12 +436,8 @@ function FitSheet({ setSelected }) {
    */
 
   const fitTeamGroups = useMemo(() => {
-    const teams = [...new Set(
-      filteredJobs
-        .map((job) => String(job.team || "").trim())
-        .filter(Boolean)
-    )]
-
+    // Keep the full configured team list visible even when a team has no
+    // jobs in the selected week or current installation-type filter.
     const definitions = [
       { label: "ABERDEEN", teams: ["Paul Duncan", "Paul Falconer", "Jamie Adamson"] },
       { label: "FIFE", teams: ["Jon Gray"] },
@@ -460,22 +456,21 @@ function FitSheet({ setSelected }) {
     ]
 
     const normalise = (value) => String(value || "").trim().toLocaleLowerCase()
+    const actualTeams = [...new Set(
+      jobs.map((job) => String(job.team || "").trim()).filter(Boolean)
+    )]
     const assigned = new Set()
     const groups = definitions.map((group) => {
-      const matchingTeams = group.teams
-        .map((expected) => teams.find((team) => normalise(team) === normalise(expected)))
-        .filter(Boolean)
-        .filter((team) => {
-          const key = normalise(team)
-          if (assigned.has(key)) return false
-          assigned.add(key)
-          return true
-        })
-
+      const matchingTeams = group.teams.map((expected) => {
+        const actual = actualTeams.find((team) => normalise(team) === normalise(expected))
+        const teamName = actual || expected
+        assigned.add(normalise(teamName))
+        return teamName
+      })
       return { label: group.label, teams: matchingTeams }
-    }).filter((group) => group.teams.length > 0)
+    })
 
-    const unorganised = teams
+    const unorganised = actualTeams
       .filter((team) => !assigned.has(normalise(team)))
       .sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }))
 
@@ -484,12 +479,7 @@ function FitSheet({ setSelected }) {
     }
 
     return groups
-  }, [filteredJobs])
-
-  const fitTeams = useMemo(
-    () => fitTeamGroups.flatMap((group) => group.teams),
-    [fitTeamGroups]
-  )
+  }, [jobs])
 
   /*
    * ------------------------------------------------------------
