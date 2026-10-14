@@ -15,6 +15,7 @@ import { supabase } from "../lib/supabase"
 import MapOfAppointments from "./MapOfAppointments"
 
 const START_YEAR = 2024
+const LEAD_TYPE_COLORS = ["#2563eb", "#0d9488", "#9333ea", "#ea580c", "#64748b", "#dc2626", "#0891b2", "#65a30d", "#c026d3", "#a16207"]
 
 function pad(value) {
   return String(value).padStart(2, "0")
@@ -177,7 +178,6 @@ function DataDashboard() {
 
       const availableTypes = [...new Set((typeData || []).map((row) => String(row.lead_type || "(Empty / NULL)")))]
       setTypeNames(availableTypes)
-      const typeColors = ["#2563eb", "#0d9488", "#9333ea", "#ea580c", "#64748b", "#dc2626", "#0891b2", "#65a30d", "#c026d3", "#a16207"]
       const typeLookup = new Map()
       ;(typeData || []).forEach((row) => {
         const key = String(row.month).slice(0, 10)
@@ -754,7 +754,7 @@ function DataDashboard() {
               <Tooltip labelFormatter={(value) => formatMonth(value)} formatter={(value, name) => [formatNumber(value), name]} contentStyle={{ border: "1px solid #dfe5ec", borderRadius: 8, fontSize: 12, boxShadow: "0 5px 18px rgba(15,23,42,.08)" }} />
               <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
               {typeNames.map((type, index) => (
-                <Bar key={type} dataKey={type} name={type} stackId="leads" fill={typeColors[index % typeColors.length]} />
+                <Bar key={type} dataKey={type} name={type} stackId="leads" fill={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} />
               ))}
             </BarChart>
           </ResponsiveContainer>
