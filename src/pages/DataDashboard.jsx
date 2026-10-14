@@ -13,7 +13,7 @@ import {
 import { supabase } from "../lib/supabase"
 import MapOfAppointments from "./MapOfAppointments"
 
-const START_YEAR = 2022
+const START_YEAR = 2024
 
 function pad(value) {
   return String(value).padStart(2, "0")
@@ -126,9 +126,9 @@ function DataDashboard() {
 
     try {
       /*
-       * Dashboard starts from January 2022.
+       * Dashboard starts from January 2024.
        *
-       * We deliberately use a fixed January 2022 start date rather
+       * We deliberately use a fixed January 2024 start date rather
        * than relying on the browser's current date for the beginning
        * of the dataset.
        */
@@ -183,7 +183,7 @@ function DataDashboard() {
       )
 
       /*
-       * Build every month from January 2022 through the
+       * Build every month from January 2024 through the
        * previous completed month. This means months with zero
        * leads still appear on the graph.
        */
@@ -638,7 +638,7 @@ function DataDashboard() {
           </div>
 
           <div className="data-dashboard-card-note">
-            Since January 2022
+            Since January 2024
           </div>
         </div>
 
@@ -688,7 +688,7 @@ function DataDashboard() {
                 ? `CRM lead records currently begin ${formatMonth(
                     firstDataMonth
                   )}.`
-                : "Monthly lead records from January 2022 onwards."}
+                : "Monthly lead records from January 2024 onwards."}
             </div>
           </div>
 
