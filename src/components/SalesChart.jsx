@@ -123,6 +123,8 @@ function SalesChart({ contracts = [] }) {
               .eq("cps_c", true)
               .gte("appointment_date", startDate)
               .lte("appointment_date", endDate)
+              .order("appointment_date", { ascending: true })
+              .order("appointment_row_id", { ascending: true })
               .range(from, to)
           ))
           let reachedEnd = false
