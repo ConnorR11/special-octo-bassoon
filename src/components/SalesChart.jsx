@@ -104,14 +104,16 @@ function SalesChart({ contracts = [] }) {
       setCpsError("")
       try {
         const rows = []
-        const pageSize = 1000
+        const pageSize = 250
+        const startDate = "2020-01-01T00:00:00"
+        const endDate = new Date().toISOString()
         for (let from = 0; ; from += pageSize) {
           const { data, error } = await supabase
             .from("appointments")
-            .select("appointment_row_id,appointment_date,cps_c,cps_p,cps_s,product,job_type")
+            .select("appointment_row_id,appointment_date,cps_c,cps_p,cps_s,product")
             .eq("cps_c", true)
-            .not("appointment_date", "is", null)
-            .order("appointment_date", { ascending: true })
+            .gte("appointment_date", startDate)
+            .lte("appointment_date", endDate)
             .range(from, from + pageSize - 1)
           if (error) throw error
           rows.push(...(data || []))
