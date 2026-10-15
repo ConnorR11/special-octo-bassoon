@@ -198,7 +198,11 @@ export default function UnitAnalysis() {
     })
   }, [groups, search, styleFilter])
 
-  const orderedRows = rows.filter(row => Boolean(row.ordered_date))
+  const orderedRows = rows.filter(row => Boolean(row.ordered_date)).map(row => ({
+    ...row,
+    netCost: row.net_product_cost == null || row.net_product_cost === "" ? null : Number(row.net_product_cost),
+    cost: row.discountable == null || row.discountable === "" ? null : Number(row.discountable)
+  }))
   const orderedMetrics = getCostMetrics(orderedRows)
   const orderedUnits = orderedRows.length
   const orderedSpend = orderedMetrics.total
