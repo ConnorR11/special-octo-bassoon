@@ -128,7 +128,7 @@ function FitSheet({ setSelected }) {
       setLoadError("")
 
       const dealSelect =
-        "id,pipedrive_deal_id,customer_name,postcode,contract_number,deal_value,balance_outstanding,product,installation_start_date,fit_team_1,installation_roof_start_date,installation_roof_team,installation_electrics_start_date,installation_electrics_team,remedial_start_date,remedial_fit_team,pipedrive_stage"
+        "id,pipedrive_deal_id,customer_name,postcode,contract_number,deal_value,balance_outstanding,product,window_count,door_count,"sp/tl_count","fd/pd_count",velux_count,installation_start_date,fit_team_1,installation_roof_start_date,installation_roof_team,installation_electrics_start_date,installation_electrics_team,remedial_start_date,remedial_fit_team,pipedrive_stage"
 
       const issueSelect =
         "id,pipedrive_deal_id,customer_name,postcode,contract_number,deal_value,balance_outstanding,product,installations_issues_start_date,installation_issues_fit_team,pipedrive_stage"
@@ -712,6 +712,25 @@ function FitSheet({ setSelected }) {
             }}
           >
             {deal.product}
+          </div>
+        )}
+
+        {job.type === "fit" && (
+          <div
+            style={{
+              marginTop: "4px",
+              fontSize: "9px",
+              fontWeight: 700,
+              color: colours.text,
+              opacity: 0.9,
+              lineHeight: "1.3",
+            }}
+          >
+            {String(Number(deal.window_count) || 0) + "W " +
+              (Number(deal.door_count) || 0) + "D " +
+              (Number(deal["sp/tl_count"]) || 0) + "SP/TL " +
+              (Number(deal["fd/pd_count"]) || 0) + "FD/PD " +
+              (Number(deal.velux_count) || 0) + "Velux"}
           </div>
         )}
 
