@@ -863,53 +863,7 @@ function DataDashboard() {
 
       {activeTab === "overview" ? (
         <>
-      <div className="data-dashboard-grid">
-        <div className="data-dashboard-card">
-          <div className="data-dashboard-card-label">
-            Total leads
-          </div>
 
-          <div className="data-dashboard-card-value">
-            {formatNumber(totalLeads)}
-          </div>
-
-          <div className="data-dashboard-card-note">
-            Since January 2024
-          </div>
-        </div>
-
-        <div className="data-dashboard-card">
-          <div className="data-dashboard-card-label">
-            Average per active month
-          </div>
-
-          <div className="data-dashboard-card-value">
-            {formatNumber(averageMonthly)}
-          </div>
-
-          <div className="data-dashboard-card-note">
-            Months containing at least one lead
-          </div>
-        </div>
-
-        <div className="data-dashboard-card">
-          <div className="data-dashboard-card-label">
-            Peak month
-          </div>
-
-          <div className="data-dashboard-card-value">
-            {peakMonth
-              ? formatNumber(peakMonth.lead_count)
-              : "—"}
-          </div>
-
-          <div className="data-dashboard-card-note">
-            {peakMonth
-              ? formatMonth(peakMonth.month)
-              : "No data"}
-          </div>
-        </div>
-      </div>
 
       <div className="data-dashboard-chart-card">
         <div className="data-dashboard-chart-head">
