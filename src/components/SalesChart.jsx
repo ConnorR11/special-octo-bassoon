@@ -78,7 +78,7 @@ function SalesChart({ contracts = [] }) {
   const [selectedProduct, setSelectedProduct] = useState("All products")
   const [selectedYear, setSelectedYear] = useState("all")
   const [timeGrouping, setTimeGrouping] = useState("month")
-  const [cpsSelectedYear, setCpsSelectedYear] = useState("2026")
+  const [cpsSelectedYear, setCpsSelectedYear] = useState("2025")
   const [cpsTimeGrouping, setCpsTimeGrouping] = useState("month")
   const [cpsSelectedProduct, setCpsSelectedProduct] = useState("All products")
   const [cpsAppointments, setCpsAppointments] = useState([])
@@ -107,7 +107,7 @@ function SalesChart({ contracts = [] }) {
       setCpsError("")
       try {
         const { data, error } = await supabase.rpc("sales_conversion_appointment_counts", {
-          p_start_date: "2026-01-01T00:00:00Z",
+          p_start_date: "2025-01-01T00:00:00Z",
           p_end_date: new Date().toISOString()
         })
         if (error) throw error
@@ -195,7 +195,7 @@ function SalesChart({ contracts = [] }) {
   }, [contracts, currentYear, currentMonth, currentDay, selectedProduct, selectedYear, timeGrouping])
 
   const conversionData = useMemo(() => {
-    const start = cpsSelectedYear === "all" ? new Date(2026, 0, 1) : new Date(Math.max(2026, Number(cpsSelectedYear)), 0, 1)
+    const start = cpsSelectedYear === "all" ? new Date(2025, 0, 1) : new Date(Math.max(2025, Number(cpsSelectedYear)), 0, 1)
     const todayEnd = new Date(currentYear, currentMonth, currentDay, 23, 59, 59, 999)
     const requestedEnd = cpsSelectedYear === "all" ? todayEnd : new Date(Number(cpsSelectedYear), 11, 31, 23, 59, 59, 999)
     const end = requestedEnd > todayEnd ? todayEnd : requestedEnd
@@ -285,9 +285,9 @@ function SalesChart({ contracts = [] }) {
       </div>
       <div style={{ marginTop: 18, background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "20px 18px 10px", minWidth: 0, boxSizing: "border-box" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
-          <div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Sales Conversion by Month</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Confirmed (C), price left (P) and sold (S) · 2026 onwards · conversion is sold ÷ price left</p></div>
+          <div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Sales Conversion by Month</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Confirmed (C), price left (P) and sold (S) · 2025 onwards · conversion is sold ÷ price left</p></div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, color: "#475569" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Year<select value={cpsSelectedYear} onChange={(event) => setCpsSelectedYear(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="all">All 2026+</option>{years.filter(year => year >= 2026).map(year => <option key={year} value={String(year)}>{year}</option>)}</select></label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Year<select value={cpsSelectedYear} onChange={(event) => setCpsSelectedYear(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="all">All 2026+</option>{years.filter(year => year >= 2025).map(year => <option key={year} value={String(year)}>{year}</option>)}</select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Period<select value={cpsTimeGrouping} onChange={(event) => setCpsTimeGrouping(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="year">Year</option><option value="quarter">Quarter</option><option value="month">Month</option><option value="week">Week</option></select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Products<select value={cpsSelectedProduct} onChange={(event) => setCpsSelectedProduct(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", minWidth: 145 }}><option value="All products">All products</option>{PRODUCT_FILTER_OPTIONS.map(product => <option key={product} value={product}>{product}</option>)}</select></label>
           </div>
