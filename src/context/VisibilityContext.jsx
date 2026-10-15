@@ -360,7 +360,7 @@ export function VisibilityProvider({ children }) {
         .filter(Boolean)
 
     const visibleSalespersonIds =
-      canSeeAll
+      canSeeAllDeals
         ? null
         : isBranchManager ||
           isSalesManager
