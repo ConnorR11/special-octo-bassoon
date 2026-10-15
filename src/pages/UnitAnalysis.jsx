@@ -123,9 +123,9 @@ export default function UnitAnalysis() {
 
   const totalCosted = rows.filter(row => row.discountable != null && row.discountable !== "" && Number.isFinite(Number(row.discountable)))
   const totalOrdered = rows.filter(row => Boolean(row.ordered_date))
-  const orderedCosted = totalOrdered.filter(row => row.net_product_cost != null && row.net_product_cost !== "" && Number.isFinite(Number(row.net_product_cost)))
+  const orderedCosted = totalOrdered.filter(row => row.discountable != null && row.discountable !== "" && Number.isFinite(Number(row.discountable)))
   const overallAverage = totalCosted.length ? totalCosted.reduce((sum, row) => sum + Number(row.discountable), 0) / totalCosted.length : null
-  const orderedAverage = orderedCosted.length ? orderedCosted.reduce((sum, row) => sum + Number(row.net_product_cost), 0) / orderedCosted.length : null
+  const orderedAverage = orderedCosted.length ? orderedCosted.reduce((sum, row) => sum + Number(row.discountable), 0) / orderedCosted.length : null
 
   return <div className="unit-analysis-page">
     <style>{`
@@ -178,7 +178,7 @@ export default function UnitAnalysis() {
       <StatCard label="Units costed" value={totalCosted.length.toLocaleString("en-GB")} note="Units with a recorded net product cost"/>
       <StatCard label="Units ordered" value={totalOrdered.length.toLocaleString("en-GB")} note="Units with an order date"/>
       <StatCard label="Average Disc Total" value={overallAverage == null ? "—" : money(overallAverage)} note="Average discountable total across costed units"/>
-      <StatCard label="Average ordered Disc Total" value={orderedAverage == null ? "—" : money(orderedAverage)} note="Ordered units with a recorded net product cost"/>
+      <StatCard label="Average ordered Disc Total" value={orderedAverage == null ? "—" : money(orderedAverage)} note="Ordered units with a recorded discountable total"/>
     </div>
     <section className="unit-analysis-panel">
       <div className="unit-analysis-toolbar">
@@ -192,7 +192,7 @@ export default function UnitAnalysis() {
       <div className="unit-analysis-count">{loading ? "Loading units…" : `Showing ${filteredGroups.length.toLocaleString("en-GB")} size groups · ${rows.length.toLocaleString("en-GB")} units loaded`}</div>
       <div className="unit-analysis-table-wrap">
         <table className="unit-analysis-table">
-          <thead><tr><th style={{textAlign:"left"}}>Unit type / approximate size</th><th>Units costed</th><th>Units ordered</th><th>Disc Total</th><th>Avg. ordered price</th><th>Total costed value</th></tr></thead>
+          <thead><tr><th style={{textAlign:"left"}}>Unit type / approximate size</th><th>Units costed</th><th>Units ordered</th><th>Disc Total</th><th>Avg. ordered Disc Total</th><th>Total costed value</th></tr></thead>
           <tbody>
             {loading && rows.length === 0 ? <tr><td colSpan="6" className="unit-analysis-empty">Loading unit records…</td></tr> :
               filteredGroups.length === 0 ? <tr><td colSpan="6" className="unit-analysis-empty">{error ? "Unit data could not be loaded." : "No units match these filters."}</td></tr> :
