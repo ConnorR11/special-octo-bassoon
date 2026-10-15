@@ -14,8 +14,7 @@ function FitSheet({ setSelected }) {
   const [weekIssues, setWeekIssues] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState("")
-  const [installationTypeFilter, setInstallationTypeFilter] =
-    useState("all")
+  const [teamAllocationFilter, setTeamAllocationFilter] = useState("all")
   const [searchTerm, setSearchTerm] = useState("")
   const [allWeekSearchJobs, setAllWeekSearchJobs] = useState([])
   const [allWeekSearchLoading, setAllWeekSearchLoading] = useState(false)
@@ -380,7 +379,7 @@ function FitSheet({ setSelected }) {
         const filtered = results.filter((job) => {
           const values = [job.deal.customer_name,job.deal.postcode,job.deal.contract_number,job.deal.product,job.deal.pipedrive_deal_id,job.team,job.type]
           return values.some((value) => String(value ?? "").toLocaleLowerCase().includes(normalized)) &&
-            (installationTypeFilter === "all" || job.type === installationTypeFilter)
+            true
         }).sort((a,b) => a.date.localeCompare(b.date) || a.team.localeCompare(b.team))
         if (!cancelled) setAllWeekSearchJobs(filtered)
       } catch (error) {
@@ -393,7 +392,7 @@ function FitSheet({ setSelected }) {
       }
     }, 300)
     return () => { cancelled = true; clearTimeout(timer) }
-  }, [searchTerm, installationTypeFilter])
+  }, [searchTerm])
 
   /*
    * ------------------------------------------------------------
@@ -513,10 +512,6 @@ function FitSheet({ setSelected }) {
   const filteredJobs = useMemo(() => {
     const search = searchTerm.trim().toLocaleLowerCase()
     return jobs.filter((job) => {
-      const matchesType =
-        installationTypeFilter === "all" ||
-        job.type === installationTypeFilter
-
       const deal = job.deal || {}
       const searchableValues = [
         deal.customer_name,
@@ -533,9 +528,9 @@ function FitSheet({ setSelected }) {
           String(value ?? "").toLocaleLowerCase().includes(search)
         )
 
-      return matchesType && matchesSearch
+      return matchesSearch
     })
-  }, [jobs, installationTypeFilter, searchTerm])
+  }, [jobs, searchTerm])
 
   /*
    * ------------------------------------------------------------
@@ -604,6 +599,18 @@ function FitSheet({ setSelected }) {
   const roofTeams = fitTeamGroups.roofTeams
   const electricsTeams = fitTeamGroups.electricsTeams
   const renewableRemedialsTeams = fitTeamGroups.renewableRemedialsTeams
+
+  const teamsWithJobsThisWeek = useMemo(() => {
+    const normaliseTeam = (value) => String(value || "").trim().toLocaleLowerCase()
+    return new Set(jobs.map((job) => normaliseTeam(job.team)).filter(Boolean))
+  }, [jobs])
+
+  const shouldShowTeam = (team) => {
+    const allocated = teamsWithJobsThisWeek.has(String(team || "").trim().toLocaleLowerCase())
+    if (teamAllocationFilter === "allocated") return allocated
+    if (teamAllocationFilter === "unallocated") return !allocated
+    return true
+  }
 
   const fitTeams = useMemo(
     () => [...windowGroups.flatMap((group) => group.teams), ...renewablesTeams, ...heatPumpTeams, ...roofTeams, ...electricsTeams, ...renewableRemedialsTeams],
@@ -1014,57 +1021,48 @@ function FitSheet({ setSelected }) {
               />
             </div>
 
-            {/* INSTALLATION TYPE FILTER */}
-
-            <select
-              value={
-                installationTypeFilter
-              }
-              onChange={(event) =>
-                setInstallationTypeFilter(
-                  event.target.value
-                )
-              }
+            {/* TEAM ALLOCATION FILTER */}
+            <div
+              role="group"
+              aria-label="Filter teams by job allocation"
               style={{
-                height: "34px",
-                padding: "0 6px",
-                width: "132px",
-                minWidth: "112px",
-                flex: "0 0 132px",
-                border:
-                  "1px solid #dddfe3",
-                borderRadius: "7px",
-                background: "#fff",
-                cursor: "pointer",
-                fontSize: "11px",
-                fontWeight: 600,
-                color: "#333",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 2,
+                padding: 3,
+                border: "1px solid #d7dce3",
+                borderRadius: 8,
+                background: "#f8fafc",
+                flex: "0 0 auto",
               }}
             >
-              <option value="all">
-                All installation types
-              </option>
-
-              <option value="fit">
-                Fit
-              </option>
-
-              <option value="roofer">
-                Roofer
-              </option>
-
-              <option value="electrics">
-                Electrics
-              </option>
-
-              <option value="remedial">
-                Remedial
-              </option>
-
-              <option value="issue">
-                Issue
-              </option>
-            </select>
+              {[
+                { value: "all", label: "All teams" },
+                { value: "allocated", label: "Jobs allocated" },
+                { value: "unallocated", label: "No jobs" },
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={teamAllocationFilter === option.value}
+                  onClick={() => setTeamAllocationFilter(option.value)}
+                  style={{
+                    height: 27,
+                    padding: "0 8px",
+                    border: 0,
+                    borderRadius: 6,
+                    background: teamAllocationFilter === option.value ? "#172554" : "transparent",
+                    color: teamAllocationFilter === option.value ? "#fff" : "#475569",
+                    cursor: "pointer",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
 
             {/* PREVIOUS WEEK */}
 
