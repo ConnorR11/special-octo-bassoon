@@ -233,7 +233,7 @@ function SalesChart({ contracts = [] }) {
       if (!appointment?.appointment_day) return
       const date = new Date(`${String(appointment.appointment_day).slice(0, 10)}T00:00:00`)
       if (Number.isNaN(date.getTime()) || date < start || date > end) return
-      if (cpsSelectedProduct !== "All products" && cpsSelectedProduct !== normaliseProduct(appointment.product)) return
+      if (cpsSelectedProduct !== "All products" && cpsSelectedProduct !== normaliseProduct(appointment.job_type)) return
       const row = rowByKey.get(getBucket(date).key)
       if (!row) return
       row.confirmedTotal += Number(appointment.confirmed_count || 0)
