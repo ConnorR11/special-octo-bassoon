@@ -624,15 +624,30 @@ function FitSheet({ setSelected }) {
         >
           <div
             style={{
+              display: "flex",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "5px",
+              minWidth: 0,
               fontSize: "8px",
               fontWeight: 800,
               color: colours.text,
-              textTransform:
-                "uppercase",
+              textTransform: "uppercase",
               letterSpacing: "0.5px",
             }}
           >
-            {colours.label}
+            <span>{colours.label}</span>
+            {job.type === "fit" && (
+              <span style={{ fontSize: "8px", fontWeight: 700, letterSpacing: 0, textTransform: "none" }}>
+                {[
+                  Number(deal.window_count) > 0 ? `${Number(deal.window_count)}W` : null,
+                  Number(deal.door_count) > 0 ? `${Number(deal.door_count)}D` : null,
+                  Number(deal["sp/tl_count"]) > 0 ? `${Number(deal["sp/tl_count"])}SP/TL` : null,
+                  Number(deal["fd/pd_count"]) > 0 ? `${Number(deal["fd/pd_count"])}FD/PD` : null,
+                  Number(deal.velux_count) > 0 ? `${Number(deal.velux_count)}Velux` : null,
+                ].filter(Boolean).join(" ")}
+              </span>
+            )}
           </div>
 
           {job.type ===
@@ -712,25 +727,6 @@ function FitSheet({ setSelected }) {
             }}
           >
             {deal.product}
-          </div>
-        )}
-
-        {job.type === "fit" && (
-          <div
-            style={{
-              marginTop: "4px",
-              fontSize: "9px",
-              fontWeight: 700,
-              color: colours.text,
-              opacity: 0.9,
-              lineHeight: "1.3",
-            }}
-          >
-            {String(Number(deal.window_count) || 0) + "W " +
-              (Number(deal.door_count) || 0) + "D " +
-              (Number(deal["sp/tl_count"]) || 0) + "SP/TL " +
-              (Number(deal["fd/pd_count"]) || 0) + "FD/PD " +
-              (Number(deal.velux_count) || 0) + "Velux"}
           </div>
         )}
 
