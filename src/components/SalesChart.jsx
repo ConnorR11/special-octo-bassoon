@@ -72,6 +72,7 @@ function ChartCard({ title, subtitle, data, series, dataKey }) {
 
 function SalesChart({ contracts = [] }) {
   const [selectedProduct, setSelectedProduct] = useState("All products")
+  const [selectedYear, setSelectedYear] = useState("all")
   const [timeGrouping, setTimeGrouping] = useState("month")
   const today = new Date()
   const currentYear = today.getFullYear()
@@ -79,7 +80,15 @@ function SalesChart({ contracts = [] }) {
   const currentDay = today.getDate()
   const years = useMemo(() => Array.from({ length: Math.max(0, currentYear - 2019) }, (_, i) => 2020 + i), [currentYear])
 
-  const productFilterLabel = selectedProduct
+  const availableYears = useMemo(() => {
+    const values = new Set()
+    contracts.forEach((deal) => {
+      if (!deal?.sale_date) return
+      const date = new Date(`${String(deal.sale_date).slice(0, 10)}T00:00:00`)
+      if (!Number.isNaN(date.getTime())) values.add(date.getFullYear())
+    })
+    return Array.from(values).sort((a, b) => b - a)
+  }, [contracts])
 
   const chartData = useMemo(() => years.map((year) => {
     const row = { year, total: 0 }
@@ -99,8 +108,9 @@ function SalesChart({ contracts = [] }) {
   }), [contracts, years, currentMonth, currentDay])
 
   const monthlyBalanceData = useMemo(() => {
-    const start = new Date(2020, 0, 1)
-    const end = new Date(currentYear, currentMonth, currentDay)
+    const start = selectedYear === "all" ? new Date(2020, 0, 1) : new Date(Number(selectedYear), 0, 1)
+    const yearEnd = selectedYear === "all" ? new Date(currentYear, currentMonth, currentDay) : new Date(Number(selectedYear), 11, 31)
+    const end = yearEnd > new Date(currentYear, currentMonth, currentDay) ? new Date(currentYear, currentMonth, currentDay) : yearEnd
     const rows = []
     const getBucket = (date) => {
       const year = date.getFullYear()
@@ -145,7 +155,7 @@ function SalesChart({ contracts = [] }) {
     })
     rows.forEach((row) => { row.notSolidPercent = row.total > 0 ? ((row.Decline + row.Cancelled) / row.total) * 100 : 0 })
     return rows
-  }, [contracts, currentYear, currentMonth, currentDay, selectedProduct, timeGrouping])
+  }, [contracts, currentYear, currentMonth, currentDay, selectedProduct, selectedYear, timeGrouping])
 
   if (!contracts.length) {
     return <div style={{ marginTop: 18, background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: 24, color: "#777", fontSize: 12 }}>No sales data available.</div>
@@ -161,6 +171,7 @@ function SalesChart({ contracts = [] }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
           <div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Net Sales Value by Month</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Net sales value by deal result · January 2020 onwards</p></div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, color: "#475569" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Year<select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="all">All time</option>{availableYears.map((year) => <option key={year} value={String(year)}>{year}</option>)}</select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Period<select value={timeGrouping} onChange={(event) => setTimeGrouping(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="year">Year</option><option value="quarter">Quarter</option><option value="month">Month</option><option value="week">Week</option></select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Products<select value={selectedProduct} onChange={(event) => setSelectedProduct(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", minWidth: 145 }}><option value="All products">All products</option>{PRODUCT_FILTER_OPTIONS.map((product) => <option key={product} value={product}>{product}</option>)}</select></label>
           </div>
