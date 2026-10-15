@@ -150,6 +150,11 @@ export default function UnitAnalysis() {
   const [colourExpanded, setColourExpanded] = useState({})
   const [sizeExpanded, setSizeExpanded] = useState({})
   const [lastUpdated, setLastUpdated] = useState(null)
+  const [dealRecords, setDealRecords] = useState([])
+  const [dealsLoading, setDealsLoading] = useState(false)
+  const [dealsError, setDealsError] = useState("")
+  const [dealSearch, setDealSearch] = useState("")
+  const [expandedDeals, setExpandedDeals] = useState({})
 
   const loadUnits = useCallback(async () => {
     if (!supabase) { setError("Supabase is not configured."); setLoading(false); return }
@@ -182,6 +187,92 @@ export default function UnitAnalysis() {
   }, [])
 
   useEffect(() => { loadUnits() }, [loadUnits])
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadDealUnitAnalysis() {
+      if (!supabase) return
+      const costedRows = rows.filter(row =>
+        Boolean(row.ordered_date) &&
+        row.net_product_cost != null &&
+        row.net_product_cost !== "" &&
+        Number.isFinite(Number(row.net_product_cost)) &&
+        Number(row.net_product_cost) > 0 &&
+        text(row.appointment_id)
+      )
+      const appointmentIds = [...new Set(costedRows.map(row => text(row.appointment_id)))]
+      if (!appointmentIds.length) {
+        setDealRecords([])
+        setDealsError("")
+        setDealsLoading(false)
+        return
+      }
+      setDealsLoading(true)
+      setDealsError("")
+      try {
+        const matchedDeals = []
+        for (let i = 0; i < appointmentIds.length; i += 100) {
+          const batch = appointmentIds.slice(i, i + 100)
+          const { data, error: dealFetchError } = await supabase
+            .from("deals")
+            .select("appointment_row_id, net_value, pipedrive_stage, customer_name")
+            .in("appointment_row_id", batch)
+          if (dealFetchError) throw dealFetchError
+          matchedDeals.push(...(data || []))
+        }
+        if (cancelled) return
+        const byAppointment = new Map()
+        matchedDeals.forEach(deal => {
+          const key = text(deal.appointment_row_id)
+          if (key && !byAppointment.has(key)) byAppointment.set(key, deal)
+        })
+        const aggregate = new Map()
+        costedRows.forEach(unit => {
+          const appointmentId = text(unit.appointment_id)
+          const deal = byAppointment.get(appointmentId)
+          if (!deal) return
+          const key = appointmentId
+          if (!aggregate.has(key)) aggregate.set(key, {
+            key,
+            appointmentId,
+            customerName: text(deal.customer_name) || text(unit.contract_number) || appointmentId,
+            netValue: Number.isFinite(Number(deal.net_value)) ? Number(deal.net_value) : 0,
+            stage: text(deal.pipedrive_stage) || "—",
+            units: [],
+            byType: new Map(),
+            unitSpend: 0
+          })
+          const entry = aggregate.get(key)
+          const cost = Number(unit.net_product_cost)
+          entry.units.push(unit)
+          entry.unitSpend += cost
+          const unitType = text(unit.unit_type) || "Unspecified type"
+          const style = text(unit.style_choice) || "Unspecified style"
+          const typeKey = `${unitType}::${style}`
+          if (!entry.byType.has(typeKey)) entry.byType.set(typeKey, { unitType, style, count: 0, spend: 0 })
+          const typeEntry = entry.byType.get(typeKey)
+          typeEntry.count += 1
+          typeEntry.spend += cost
+        })
+        setDealRecords([...aggregate.values()].map(deal => ({
+          ...deal,
+          marginAfterUnits: deal.netValue - deal.unitSpend,
+          unitCount: deal.units.length,
+          byType: [...deal.byType.values()].sort((a, b) => a.unitType.localeCompare(b.unitType) || a.style.localeCompare(b.style))
+        })).sort((a, b) => b.unitSpend - a.unitSpend))
+      } catch (err) {
+        console.error("Unable to load deal unit analysis:", err)
+        if (!cancelled) {
+          setDealsError(err?.message || "Unable to load deal and unit comparisons.")
+          setDealRecords([])
+        }
+      } finally {
+        if (!cancelled) setDealsLoading(false)
+      }
+    }
+    loadDealUnitAnalysis()
+    return () => { cancelled = true }
+  }, [rows])
 
   const groups = useMemo(() => buildGroups(rows), [rows])
   const styleOptions = useMemo(() => [...new Set(groups.map(group => group.style))].sort((a, b) => a.localeCompare(b)), [groups])
@@ -337,6 +428,40 @@ export default function UnitAnalysis() {
       </div>
       <div className="unit-analysis-footnote">Only records where unit_type is “Window”, department is “SURVEY” and ordered_date is populated are included. Groups follow style_choice → colour_choice → width/height within 50 mm → openers_choice/fixed_choice → individual units. Average, lowest and highest Net Cost use positive numeric net_product_cost values; Average Disc Total uses units with a positive net cost and a numeric discountable value. Size groups show ranges and may contain different exact dimensions.</div>
     </section>
-    {lastUpdated && <div style={{fontSize:10,color:"#98a2b3",marginTop:10,textAlign:"right"}}>Last refreshed {lastUpdated.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</div>}
+    
+    <section className="unit-analysis-panel" style={{marginTop:24}}>
+      <div className="unit-analysis-toolbar">
+        <div><div className="unit-analysis-toolbar-title">Deals with costed units</div><div className="unit-analysis-toolbar-subtitle">Deal net value compared with the recorded net cost of its ordered units. Expand a deal to see the unit-type and style breakdown.</div></div>
+        <label className="unit-analysis-search"><Search size={14} color="#667085"/><input value={dealSearch} onChange={event => setDealSearch(event.target.value)} placeholder="Search deal or appointment"/></label>
+      </div>
+      {dealsError && <div className="unit-analysis-error" style={{margin:12}}>{dealsError}</div>}
+      <div className="unit-analysis-count">{dealsLoading ? "Loading deal comparisons…" : `${dealRecords.filter(deal => !dealSearch.trim() || `${deal.customerName} ${deal.appointmentId} ${deal.stage}`.toLowerCase().includes(dealSearch.trim().toLowerCase())).length.toLocaleString("en-GB")} deals with costed units`}</div>
+      <div className="unit-analysis-table-wrap">
+        <table className="unit-analysis-table" style={{minWidth:1000}}>
+          <thead><tr><th style={{textAlign:"left"}}>Deal / appointment</th><th>Stage</th><th>Units costed</th><th>Deal net value</th><th>Unit spend</th><th>Net value less units</th><th>Unit spend % of deal</th></tr></thead>
+          <tbody>
+            {dealsLoading && dealRecords.length === 0 ? <tr><td colSpan="7" className="unit-analysis-empty">Loading deals…</td></tr> :
+              dealRecords.filter(deal => !dealSearch.trim() || `${deal.customerName} ${deal.appointmentId} ${deal.stage}`.toLowerCase().includes(dealSearch.trim().toLowerCase())).length === 0 ?
+                <tr><td colSpan="7" className="unit-analysis-empty">{dealsError ? "Deal comparisons could not be loaded." : "No deals found with costed units that match the search."}</td></tr> :
+                dealRecords.filter(deal => !dealSearch.trim() || `${deal.customerName} ${deal.appointmentId} ${deal.stage}`.toLowerCase().includes(dealSearch.trim().toLowerCase())).map(deal => <React.Fragment key={deal.key}>
+                  <tr className="unit-analysis-group-row" onClick={() => setExpandedDeals(current => ({...current,[deal.key]:!current[deal.key]}))}>
+                    <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{expandedDeals[deal.key] ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<div><div className="unit-analysis-type">{deal.customerName}</div><div className="unit-analysis-muted">Appointment {deal.appointmentId}</div></div></div></td>
+                    <td>{deal.stage}</td><td>{deal.unitCount.toLocaleString("en-GB")}</td><td>{money(deal.netValue)}</td><td>{money(deal.unitSpend)}</td><td style={{fontWeight:750,color:deal.marginAfterUnits < 0 ? "#b42318" : "#027a48"}}>{money(deal.marginAfterUnits)}</td><td>{deal.netValue > 0 ? `${(deal.unitSpend / deal.netValue * 100).toFixed(1)}%` : "—"}</td>
+                  </tr>
+                  {expandedDeals[deal.key] && <tr className="unit-analysis-detail"><td colSpan="7" style={{padding:0}}>
+                    <table className="unit-analysis-table" style={{minWidth:700}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Unit type / style</th><th>Quantity</th><th>Total unit spend</th><th>Average unit cost</th></tr></thead><tbody>
+                      {deal.byType.map(item => <tr key={`${deal.key}::${item.unitType}::${item.style}`}><td style={{textAlign:"left"}}><div className="unit-analysis-type">{item.unitType}</div><div className="unit-analysis-muted">{item.style}</div></td><td>{item.count.toLocaleString("en-GB")}</td><td>{money(item.spend)}</td><td>{money(item.spend / item.count)}</td></tr>)}
+                      <tr><td style={{textAlign:"left",fontWeight:800}}>Total</td><td style={{fontWeight:800}}>{deal.unitCount.toLocaleString("en-GB")}</td><td style={{fontWeight:800}}>{money(deal.unitSpend)}</td><td>—</td></tr>
+                    </tbody></table>
+                  </td></tr>}
+                </React.Fragment>)
+            }
+          </tbody>
+        </table>
+      </div>
+      <div className="unit-analysis-footnote">Includes ordered units from this page's current scope (unit_type = Window, department = SURVEY) where net_product_cost is positive and an appointment_id matches deals.appointment_row_id. “Net value less units” is a comparison only; it is not gross profit because it excludes other job costs.</div>
+    </section>
+
+    {lastUpdated && <div style={{fontSize:10,color:"#98a2b3",marginTop:10,textAlign:"right"}}>Last refreshed {lastUpdated.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</div>}}
   </div>
 }
