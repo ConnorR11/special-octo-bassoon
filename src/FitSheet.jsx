@@ -926,8 +926,9 @@ function FitSheet({ setSelected }) {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "8px",
-              flexWrap: "wrap",
+              gap: "6px",
+              flexWrap: "nowrap",
+              minWidth: 0,
             }}
           >
             {/* SEARCH */}
@@ -941,7 +942,9 @@ function FitSheet({ setSelected }) {
                 border: "1px solid #dddfe3",
                 borderRadius: "7px",
                 background: "#fff",
-                minWidth: "220px",
+                width: "195px",
+                minWidth: "165px",
+                flex: "0 1 195px",
                 boxSizing: "border-box",
               }}
             >
@@ -977,7 +980,10 @@ function FitSheet({ setSelected }) {
               }
               style={{
                 height: "34px",
-                padding: "0 10px",
+                padding: "0 6px",
+                width: "132px",
+                minWidth: "112px",
+                flex: "0 0 132px",
                 border:
                   "1px solid #dddfe3",
                 borderRadius: "7px",
@@ -1019,9 +1025,12 @@ function FitSheet({ setSelected }) {
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "5px",
-                flexWrap: "wrap",
-                marginRight: "5px",
+                gap: "4px",
+                flexWrap: "nowrap",
+                whiteSpace: "nowrap",
+                marginRight: "2px",
+                flex: "0 1 auto",
+                minWidth: 0,
               }}
             >
               {Object.entries(
