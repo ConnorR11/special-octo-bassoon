@@ -106,7 +106,7 @@ function SalesChart({ contracts = [] }) {
         const rows = []
         const pageSize = 250
         const pagesPerWave = 6
-        const startDate = "2025-01-01T00:00:00"
+        const startDate = "2026-01-01T00:00:00"
         const endDate = new Date().toISOString()
         for (let waveStart = 0; ; waveStart += pageSize * pagesPerWave) {
           const ranges = Array.from({ length: pagesPerWave }, (_, i) => {
@@ -162,7 +162,7 @@ function SalesChart({ contracts = [] }) {
   }), [contracts, years, currentMonth, currentDay])
 
   const monthlyBalanceData = useMemo(() => {
-    const start = selectedYear === "all" ? new Date(2025, 0, 1) : new Date(Math.max(2025, Number(selectedYear)), 0, 1)
+    const start = selectedYear === "all" ? new Date(2026, 0, 1) : new Date(Math.max(2026, Number(selectedYear)), 0, 1)
     const yearEnd = selectedYear === "all" ? new Date(currentYear, currentMonth, currentDay) : new Date(Number(selectedYear), 11, 31)
     const end = yearEnd > new Date(currentYear, currentMonth, currentDay) ? new Date(currentYear, currentMonth, currentDay) : yearEnd
     const rows = []
@@ -306,7 +306,7 @@ function SalesChart({ contracts = [] }) {
       <div style={{ marginTop: 18, background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "20px 18px 10px", minWidth: 0, boxSizing: "border-box" }}>
         <div style={{ marginBottom: 10 }}>
           <h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Sales Conversion by Month</h2>
-          <p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Confirmed (C), price left (P) and sold (S) · conversion is sold ÷ price left</p>
+          <p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Confirmed (C), price left (P) and sold (S) · 2026 onwards · conversion is sold ÷ price left</p>
         </div>
         {cpsLoading ? <div style={{ padding: 28, color: "#667085", fontSize: 12 }}>Loading sales conversion…</div> : cpsError ? <div style={{ padding: 18, color: "#b42318", fontSize: 12 }}>{cpsError}</div> : <ResponsiveContainer width="100%" height={330}>
           <BarChart data={conversionData} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
