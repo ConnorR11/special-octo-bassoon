@@ -460,9 +460,26 @@ export default function UnitAnalysis() {
                     <td>{deal.stage}</td><td>{deal.unitCount.toLocaleString("en-GB")}</td><td>{money(deal.netValue)}</td><td>{money(deal.discountableTotal)}</td><td>{deal.surveyCosting == null ? "—" : `${deal.surveyCosting.toFixed(1)}%`}</td><td>{money(deal.unitSpend)}</td><td style={{fontWeight:750}}>{money(deal.cos)}</td><td style={{fontWeight:800,color:deal.cosPercent > 70 ? "#b42318" : "#b54708"}}>{deal.cosPercent.toFixed(1)}%</td>
                   </tr>
                   {expandedDeals[deal.key] && <tr className="unit-analysis-detail"><td colSpan="9" style={{padding:0}}>
-                    <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Unit / contract</th><th>Colour choice</th><th>Width</th><th>Height</th><th>Disc Total</th><th>Net Cost</th><th>Supplier</th><th>Ordered date</th></tr></thead><tbody>
-                      {deal.units.map((unit, index) => <tr key={unit.UUID || `${deal.key}-unit-${index}`}><td style={{textAlign:"left"}}>{text(unit.contract_number) || text(unit.UUID) || "Unit"}<div className="unit-analysis-muted">{text(unit.location) || text(unit.appointment_id) || "—"}</div></td><td>{text(unit.colour_choice) || "—"}</td><td>{unit.width == null || unit.width === "" || !Number.isFinite(Number(unit.width)) ? "—" : `${dimension(Number(unit.width))} mm`}</td><td>{unit.height == null || unit.height === "" || !Number.isFinite(Number(unit.height)) ? "—" : `${dimension(Number(unit.height))} mm`}</td><td>{unit.discountable == null || unit.discountable === "" || !Number.isFinite(Number(unit.discountable)) ? "—" : money(Number(unit.discountable))}</td><td>{unit.net_product_cost == null || unit.net_product_cost === "" || !Number.isFinite(Number(unit.net_product_cost)) ? "—" : money(Number(unit.net_product_cost))}</td><td>{text(unit.supplier) || "—"}</td><td>{unit.ordered_date ? new Date(unit.ordered_date).toLocaleDateString("en-GB") : "—"}</td></tr>)}
-                      <tr><td style={{textAlign:"left",fontWeight:800}}>Total</td><td>—</td><td>—</td><td>—</td><td>—</td><td style={{fontWeight:800}}>{money(deal.unitSpend)}</td><td>—</td><td>—</td></tr>
+                    <table className="unit-analysis-table" style={{minWidth:1050}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Unit / contract</th><th>Discountable</th><th>After Discount</th><th>Survey Costing</th><th>Sold Price</th><th>Net Cost</th><th>Product Cost %</th></tr></thead><tbody>
+                      {deal.units.map((unit, index) => {
+                        const discountable = unit.discountable == null || unit.discountable === "" || !Number.isFinite(Number(unit.discountable)) ? null : Number(unit.discountable)
+                        const discountRate = deal.discountableTotal >= 12000 ? 0.30 : 0.25
+                        const afterDiscount = discountable == null ? null : discountable * (1 - discountRate)
+                        const surveyRate = deal.surveyCosting == null ? null : deal.surveyCosting / 100
+                        const soldPrice = afterDiscount == null || surveyRate == null ? null : afterDiscount * surveyRate
+                        const netCost = unit.net_product_cost == null || unit.net_product_cost === "" || !Number.isFinite(Number(unit.net_product_cost)) ? null : Number(unit.net_product_cost)
+                        const productCostPercent = soldPrice > 0 && netCost != null ? (netCost / soldPrice) * 100 : null
+                        return <tr key={unit.UUID || `${deal.key}-unit-${index}`}>
+                          <td style={{textAlign:"left"}}>{text(unit.contract_number) || text(unit.UUID) || "Unit"}<div className="unit-analysis-muted">{text(unit.unit_type) || "Window"} · {text(unit.style_choice) || "Unspecified style"} · {unit.width && unit.height ? `${dimension(Number(unit.width))} × ${dimension(Number(unit.height))} mm` : ""}</div></td>
+                          <td>{discountable == null ? "—" : money(discountable)}</td>
+                          <td>{afterDiscount == null ? "—" : money(afterDiscount)}</td>
+                          <td>{deal.surveyCosting == null ? "—" : `${deal.surveyCosting.toFixed(1)}%`}</td>
+                          <td>{soldPrice == null ? "—" : money(soldPrice)}</td>
+                          <td>{netCost == null ? "—" : money(netCost)}</td>
+                          <td style={{fontWeight:750,color:productCostPercent != null && productCostPercent > 100 ? "#b42318" : "#344054"}}>{productCostPercent == null ? "—" : `${productCostPercent.toFixed(1)}%`}</td>
+                        </tr>
+                      })}
+                      <tr><td style={{textAlign:"left",fontWeight:800}}>Total</td><td style={{fontWeight:800}}>{money(deal.discountableTotal)}</td><td style={{fontWeight:800}}>{money(deal.discountableTotal * (1 - (deal.discountableTotal >= 12000 ? 0.30 : 0.25)))}</td><td>{deal.surveyCosting == null ? "—" : `${deal.surveyCosting.toFixed(1)}%`}</td><td style={{fontWeight:800}}>{deal.surveyCosting == null ? "—" : money(deal.discountableTotal * (1 - (deal.discountableTotal >= 12000 ? 0.30 : 0.25)) * deal.surveyCosting / 100)}</td><td style={{fontWeight:800}}>{money(deal.unitSpend)}</td><td>—</td></tr>
                     </tbody></table>
                   </td></tr>}
                 </React.Fragment>)
