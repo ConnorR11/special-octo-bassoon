@@ -38,6 +38,8 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,permissi
   if(!isSold(result))return;
   setError("");
   if(soldStep===1){
+   if(!customerName.trim()){setError("Please enter the customer name.");return}
+   if(!adminFeeExpectedDate){setError("Please enter the expected admin fee payment date.");return}
    if(!customerEmail.trim()){setError("Please enter the customer's email address.");return}
    if(!arrivalTime){setError("Please enter the arrival time.");return}
    setSoldStep(2);return;
