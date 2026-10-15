@@ -3,6 +3,7 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -110,6 +111,7 @@ function SalesChart({ contracts = [] }) {
         Decline: 0,
         Cancelled: 0,
         total: 0,
+        notSolidPercent: 0,
       })
     }
     const rowByMonth = new Map(rows.map((row) => [row.monthKey, row]))
@@ -125,6 +127,7 @@ function SalesChart({ contracts = [] }) {
       row[stage] += amount
       row.total += amount
     })
+    rows.forEach((row) => { row.notSolidPercent = row.total > 0 ? ((row.Decline + row.Cancelled) / row.total) * 100 : 0 })
     return rows
   }, [contracts, currentYear, currentMonth, currentDay])
 
@@ -142,15 +145,17 @@ function SalesChart({ contracts = [] }) {
         <h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Net Sales Value by Month</h2>
         <p style={{ margin: "0 0 10px", fontSize: 11, color: "#818891" }}>Monthly net sales value by deal result · January 2020 onwards</p>
         <ResponsiveContainer width="100%" height={330}>
-          <BarChart data={monthlyBalanceData} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}>
+          <BarChart data={monthlyBalanceData} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
             <XAxis dataKey="month" interval="preserveStartEnd" minTickGap={24} axisLine={false} tickLine={false} tick={{ fill: "#8a8a8a", fontSize: 10 }} />
-            <YAxis axisLine={false} tickLine={false} tickFormatter={axisMoney} tick={{ fill: "#777", fontSize: 10 }} width={74} />
-            <Tooltip labelFormatter={(label) => label} formatter={(value, name) => [money(Number(value || 0)), `Net Sales/${name}`]} contentStyle={{ border: "1px solid #e2e5e8", borderRadius: 8, fontSize: 11 }} />
+            <YAxis yAxisId="sales" axisLine={false} tickLine={false} tickFormatter={axisMoney} tick={{ fill: "#777", fontSize: 10 }} width={74} />
+            <YAxis yAxisId="percent" orientation="right" axisLine={false} tickLine={false} domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} tickFormatter={(value) => `${value}%`} tick={{ fill: "#64748b", fontSize: 10 }} width={48} />
+            <Tooltip labelFormatter={(label) => label} formatter={(value, name) => name === "Not Solid" ? [`${Number(value || 0).toFixed(1)}%`, name] : [money(Number(value || 0)), name]} contentStyle={{ border: "1px solid #e2e5e8", borderRadius: 8, fontSize: 11 }} />
             <Legend verticalAlign="bottom" height={32} iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-            <Bar dataKey="Solid" name="Net Sales/Solid" stackId="balance" fill="#008000" />
-            <Bar dataKey="Decline" name="Net Sales/Decline" stackId="balance" fill="#ff9900" />
-            <Bar dataKey="Cancelled" name="Net Sales/Cancel" stackId="balance" fill="#ff0000" />
+            <Bar yAxisId="sales" dataKey="Solid" name="Net Sales/Solid" stackId="balance" fill="#008000" />
+            <Bar yAxisId="sales" dataKey="Decline" name="Net Sales/Decline" stackId="balance" fill="#ff9900" />
+            <Bar yAxisId="sales" dataKey="Cancelled" name="Net Sales/Cancel" stackId="balance" fill="#ff0000" />
+            <Line yAxisId="percent" type="monotone" dataKey="notSolidPercent" name="Not Solid" stroke="#111827" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
           </BarChart>
         </ResponsiveContainer>
       </div>
