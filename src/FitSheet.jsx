@@ -128,7 +128,7 @@ function FitSheet({ setSelected }) {
       setLoadError("")
 
       const dealSelect =
-        "id,pipedrive_deal_id,customer_name,postcode,contract_number,deal_value,balance_outstanding,product,window_count,door_count,"sp/tl_count","fd/pd_count",velux_count,installation_start_date,fit_team_1,installation_roof_start_date,installation_roof_team,installation_electrics_start_date,installation_electrics_team,remedial_start_date,remedial_fit_team,pipedrive_stage"
+        `id,pipedrive_deal_id,customer_name,postcode,contract_number,deal_value,balance_outstanding,product,window_count,door_count,"sp/tl_count","fd/pd_count",velux_count,installation_start_date,fit_team_1,installation_roof_start_date,installation_roof_team,installation_electrics_start_date,installation_electrics_team,remedial_start_date,remedial_fit_team,pipedrive_stage`
 
       const issueSelect =
         "id,pipedrive_deal_id,customer_name,postcode,contract_number,deal_value,balance_outstanding,product,installations_issues_start_date,installation_issues_fit_team,pipedrive_stage"
