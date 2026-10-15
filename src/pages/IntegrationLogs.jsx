@@ -44,9 +44,8 @@ export default function IntegrationLogs({ setMobile }) {
       if (!response.ok && response.status !== 207) throw new Error(result.error || `Backfill request failed (HTTP ${response.status})`)
       setBackfillPreview(result)
       if (execute) {
-        setBackfillMessage(`Batch complete: ${result.updated||0} updated, ${result.skipped||0} skipped, ${result.failed||0} failed.`)
         setBackfillOffset(0)
-        else setBackfillMessage(`Backfill batch complete: ${result.updated||0} updated, ${result.skipped||0} skipped, ${result.failed||0} failed. No further matching rows were reported for this batch.`)
+        setBackfillMessage(`Batch complete: ${result.updated||0} updated, ${result.skipped||0} skipped, ${result.failed||0} failed.`)
         loadProviders(); loadLogs(); loadStats(); loadChartLogs()
       } else {
         setBackfillMessage(`Preview ready: ${result.previewed||0} stage values found, ${result.failed||0} unable to resolve. No deals were changed.`)
