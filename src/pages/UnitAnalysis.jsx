@@ -16,8 +16,6 @@ function getCostMetrics(rows) {
   return {
     ordered: rows.length,
     costed: costed.length,
-    missing: rows.length - costed.length,
-    total: costs.reduce((sum, value) => sum + value, 0),
     average: costs.length ? costs.reduce((sum, value) => sum + value, 0) / costs.length : null,
     lowest: costs.length ? Math.min(...costs) : null,
     highest: costs.length ? Math.max(...costs) : null,
@@ -30,8 +28,6 @@ function MetricCells({ rows }) {
   return <>
     <td>{metrics.ordered.toLocaleString("en-GB")}</td>
     <td>{metrics.costed.toLocaleString("en-GB")}</td>
-    <td>{metrics.missing.toLocaleString("en-GB")}</td>
-    <td>{metrics.total ? money(metrics.total) : "—"}</td>
     <td>{metrics.average == null ? "—" : money(metrics.average)}</td>
     <td>{metrics.lowest == null ? "—" : money(metrics.lowest)}</td>
     <td>{metrics.highest == null ? "—" : money(metrics.highest)}</td>
@@ -205,7 +201,6 @@ export default function UnitAnalysis() {
   }))
   const orderedMetrics = getCostMetrics(orderedRows)
   const orderedUnits = orderedRows.length
-  const orderedSpend = orderedMetrics.total
   const averageOrderedNet = orderedMetrics.average
 
 
@@ -259,9 +254,7 @@ export default function UnitAnalysis() {
     {error && <div className="unit-analysis-error">{error}</div>}
     <div className="unit-analysis-stats">
       <StatCard label="Windows ordered" value={orderedUnits.toLocaleString("en-GB")} note="Only units with an order date"/>
-      <StatCard label="Total Net Cost" value={money(orderedSpend)} note="Sum of positive recorded net costs"/>
       <StatCard label="Average Net Cost" value={averageOrderedNet == null ? "—" : money(averageOrderedNet)} note="Ordered units with a positive recorded net cost"/>
-      <StatCard label="Missing / zero costs" value={orderedMetrics.missing.toLocaleString("en-GB")} note="Ordered units needing a valid net cost"/>
     </div>
     <section className="unit-analysis-panel">
       <div className="unit-analysis-toolbar">
@@ -274,17 +267,17 @@ export default function UnitAnalysis() {
       <div className="unit-analysis-count">{loading ? "Loading units…" : `Showing ${filteredGroups.length.toLocaleString("en-GB")} styles · ${orderedRows.length.toLocaleString("en-GB")} ordered windows`}</div>
       <div className="unit-analysis-table-wrap">
         <table className="unit-analysis-table">
-          <thead><tr><th style={{textAlign:"left"}}>Style</th><th>Ordered</th><th>Costed</th><th>Missing cost</th><th>Total Net Cost</th><th>Avg. Net Cost</th><th>Lowest</th><th>Highest</th><th>Avg. Disc Total</th></tr></thead>
+          <thead><tr><th style={{textAlign:"left"}}>Style</th><th>Ordered</th><th>Costed</th><th>Avg. Net Cost</th><th>Lowest</th><th>Highest</th><th>Avg. Disc Total</th></tr></thead>
           <tbody>
-            {loading && rows.length === 0 ? <tr><td colSpan="9" className="unit-analysis-empty">Loading unit records…</td></tr> :
-              filteredGroups.length === 0 ? <tr><td colSpan="9" className="unit-analysis-empty">{error ? "Unit data could not be loaded." : "No units match these filters."}</td></tr> :
+            {loading && rows.length === 0 ? <tr><td colSpan="7" className="unit-analysis-empty">Loading unit records…</td></tr> :
+              filteredGroups.length === 0 ? <tr><td colSpan="7" className="unit-analysis-empty">{error ? "Unit data could not be loaded." : "No units match these filters."}</td></tr> :
               filteredGroups.map(group => <React.Fragment key={group.key}>
                 <tr className="unit-analysis-group-row" onClick={() => setExpanded(current => ({...current,[group.key]:!current[group.key]}))}>
                   <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{expanded[group.key] ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<div><div className="unit-analysis-type">{group.style}</div><div className="unit-analysis-muted">{new Set(group.rows.map(row => normaliseType(row.unit_type))).size} unit types · {group.rows.length} total units</div></div></div></td>
                   <MetricCells rows={group.rows}/>
                 </tr>
-                {expanded[group.key] && <tr className="unit-analysis-detail"><td colSpan="9" style={{padding:0}}>
-                  <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Colour</th><th>Ordered</th><th>Costed</th><th>Missing cost</th><th>Total Net Cost</th><th>Avg. Net Cost</th><th>Lowest</th><th>Highest</th><th>Avg. Disc Total</th></tr></thead><tbody>
+                {expanded[group.key] && <tr className="unit-analysis-detail"><td colSpan="7" style={{padding:0}}>
+                  <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Colour</th><th>Ordered</th><th>Costed</th><th>Avg. Net Cost</th><th>Lowest</th><th>Highest</th><th>Avg. Disc Total</th></tr></thead><tbody>
                     {buildColourGroups(group.rows).map(colourGroup => {
                       const colourNetCosted = colourGroup.rows.filter(row => row.netCost != null && Number.isFinite(row.netCost))
                       const colourCosted = colourNetCosted.filter(row => row.cost != null && Number.isFinite(row.cost))
@@ -295,8 +288,8 @@ export default function UnitAnalysis() {
                           <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{colourExpanded[colourKey] ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}<div><div className="unit-analysis-type">{colourGroup.colour}</div><div className="unit-analysis-muted">{colourGroup.rows.length.toLocaleString("en-GB")} units</div></div></div></td>
                           <MetricCells rows={colourGroup.rows}/>
                         </tr>
-                        {colourExpanded[colourKey] && <tr className="unit-analysis-detail"><td colSpan="9" style={{padding:0}}>
-                          <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Approx. size (W × H)</th><th>Ordered</th><th>Costed</th><th>Missing cost</th><th>Total Net Cost</th><th>Avg. Net Cost</th><th>Lowest</th><th>Highest</th><th>Avg. Disc Total</th></tr></thead><tbody>
+                        {colourExpanded[colourKey] && <tr className="unit-analysis-detail"><td colSpan="7" style={{padding:0}}>
+                          <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Approx. size (W × H)</th><th>Ordered</th><th>Costed</th><th>Avg. Net Cost</th><th>Lowest</th><th>Highest</th><th>Avg. Disc Total</th></tr></thead><tbody>
                             {colourGroup.sizeGroups.map(sizeGroup => {
                               const sizeNetCosted = sizeGroup.rows.filter(row => row.netCost != null && Number.isFinite(row.netCost))
                               const sizeCosted = sizeNetCosted.filter(row => row.cost != null && Number.isFinite(row.cost))
@@ -308,8 +301,8 @@ export default function UnitAnalysis() {
                                   <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{sizeExpanded[sizeKey] ? <ChevronDown size={13}/> : <ChevronRight size={13}/>}<div><div className="unit-analysis-type">{rangeLabel(sizeGroup.minWidth,sizeGroup.maxWidth)} × {rangeLabel(sizeGroup.minHeight,sizeGroup.maxHeight)}</div><div className="unit-analysis-muted">{sizeGroup.rows.length.toLocaleString("en-GB")} units</div></div></div></td>
                                   <MetricCells rows={sizeGroup.rows}/>
                                 </tr>
-                                {sizeExpanded[sizeKey] && <tr className="unit-analysis-detail"><td colSpan="9" style={{padding:0}}>
-                                  <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Openers / fixed</th><th>Ordered</th><th>Costed</th><th>Missing cost</th><th>Total Net Cost</th><th>Avg. Net Cost</th><th>Lowest</th><th>Highest</th><th>Avg. Disc Total</th></tr></thead><tbody>
+                                {sizeExpanded[sizeKey] && <tr className="unit-analysis-detail"><td colSpan="7" style={{padding:0}}>
+                                  <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Openers / fixed</th><th>Ordered</th><th>Costed</th><th>Avg. Net Cost</th><th>Lowest</th><th>Highest</th><th>Avg. Disc Total</th></tr></thead><tbody>
                                     {buildConfigurationGroups(sizeGroup.rows).map(configuration => {
                                       const configNetCosted = configuration.rows.filter(row => row.netCost != null && Number.isFinite(row.netCost))
                                       const configCosted = configNetCosted.filter(row => row.cost != null && Number.isFinite(row.cost))
@@ -320,7 +313,7 @@ export default function UnitAnalysis() {
                                           <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{configurationExpanded[configKey] ? <ChevronDown size={13}/> : <ChevronRight size={13}/>}<span className="unit-analysis-type">{configuration.openers} openers · {configuration.fixed} fixed</span><span className="unit-analysis-muted">{configuration.rows.length.toLocaleString("en-GB")} units</span></div></td>
                                           <MetricCells rows={configuration.rows}/>
                                         </tr>
-                                        {configurationExpanded[configKey] && <tr className="unit-analysis-detail"><td colSpan="9" style={{padding:0}}>
+                                        {configurationExpanded[configKey] && <tr className="unit-analysis-detail"><td colSpan="7" style={{padding:0}}>
                                           <table className="unit-analysis-table" style={{minWidth:750}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Unit / contract</th><th>Colour choice</th><th>Width</th><th>Height</th><th>Disc Total</th><th>Net Cost</th><th>Supplier</th><th>Ordered date</th></tr></thead><tbody>
                                             {configuration.rows.map((row,index) => <tr key={row.UUID || `${configKey}-${index}`}><td style={{textAlign:"left"}}>{text(row.contract_number) || text(row.UUID) || "Unit"}<div className="unit-analysis-muted">{text(row.location) || text(row.appointment_id) || "—"}</div></td><td>{text(row.colour_choice) || "—"}</td><td>{dimension(row.width)} mm</td><td>{dimension(row.height)} mm</td><td>{row.cost == null || !Number.isFinite(row.cost) ? "—" : money(row.cost)}</td><td>{row.netCost == null || !Number.isFinite(row.netCost) ? "—" : money(row.netCost)}</td><td>{text(row.supplier) || "—"}</td><td>{row.ordered_date ? new Date(row.ordered_date).toLocaleDateString("en-GB") : "—"}</td></tr>)}
                                           </tbody></table>
@@ -342,7 +335,7 @@ export default function UnitAnalysis() {
           </tbody>
         </table>
       </div>
-      <div className="unit-analysis-footnote">Only records where unit_type is “Window”, department is “SURVEY” and ordered_date is populated are included. Groups follow style_choice → colour_choice → width/height within 50 mm → openers_choice/fixed_choice → individual units. Net cost metrics include only positive numeric net_product_cost values; zero or missing costs are counted as missing. Average Disc Total includes units with a positive net cost and a numeric discountable value. Size groups show ranges and may contain different exact dimensions.</div>
+      <div className="unit-analysis-footnote">Only records where unit_type is “Window”, department is “SURVEY” and ordered_date is populated are included. Groups follow style_choice → colour_choice → width/height within 50 mm → openers_choice/fixed_choice → individual units. Average, lowest and highest Net Cost use positive numeric net_product_cost values; Average Disc Total uses units with a positive net cost and a numeric discountable value. Size groups show ranges and may contain different exact dimensions.</div>
     </section>
     {lastUpdated && <div style={{fontSize:10,color:"#98a2b3",marginTop:10,textAlign:"right"}}>Last refreshed {lastUpdated.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</div>}
   </div>
