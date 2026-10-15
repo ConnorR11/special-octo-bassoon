@@ -205,6 +205,31 @@ const PIPEDRIVE_FIELDS = {
     name: "Remedial: Fit Team",
     key: null,
   },
+
+  windowCount: {
+    name: "Product: Number of Windows",
+    key: null,
+  },
+
+  doorCount: {
+    name: "Product: Number of Doors",
+    key: null,
+  },
+
+  spTlCount: {
+    name: "Product: Number of SP/TL",
+    key: null,
+  },
+
+  fdPdCount: {
+    name: "Product: Number of Fr/Pt Doors",
+    key: null,
+  },
+
+  veluxCount: {
+    name: "Product: Number of Velux Windows",
+    key: null,
+  },
 }
 
 
@@ -1185,6 +1210,12 @@ export default async function handler(req, res) {
         )
       )
 
+    const windowCount = normaliseNumber(getCustomFieldValue(deal, fields.windowCount.key))
+    const doorCount = normaliseNumber(getCustomFieldValue(deal, fields.doorCount.key))
+    const spTlCount = normaliseNumber(getCustomFieldValue(deal, fields.spTlCount.key))
+    const fdPdCount = normaliseNumber(getCustomFieldValue(deal, fields.fdPdCount.key))
+    const veluxCount = normaliseNumber(getCustomFieldValue(deal, fields.veluxCount.key))
+
     /*
     |--------------------------------------------------------------------------
     | SALESPERSON
@@ -1411,6 +1442,11 @@ export default async function handler(req, res) {
         "installation_electrics_team",
         "remedial_start_date",
         "remedial_fit_team",
+        "window_count",
+        "door_count",
+        "sp/tl_count",
+        "fd/pd_count",
+        "velux_count",
       ].join(",")
 
     const lookup =
@@ -1500,6 +1536,11 @@ export default async function handler(req, res) {
         installationElectricsTeam,
         remedialStartDate,
         remedialFitTeam,
+        windowCount,
+        doorCount,
+        spTlCount,
+        fdPdCount,
+        veluxCount,
         pipedriveStage,
       }
 
@@ -1609,6 +1650,12 @@ export default async function handler(req, res) {
 
       remedial_fit_team:
         remedialFitTeam,
+
+      window_count: windowCount,
+      door_count: doorCount,
+      "sp/tl_count": spTlCount,
+      "fd/pd_count": fdPdCount,
+      velux_count: veluxCount,
 
       updated_at:
         new Date().toISOString(),
@@ -1742,6 +1789,12 @@ export default async function handler(req, res) {
       remedialStartDate,
 
       remedialFitTeam,
+
+      windowCount,
+      doorCount,
+      spTlCount,
+      fdPdCount,
+      veluxCount,
 
       pipedriveStage,
 
