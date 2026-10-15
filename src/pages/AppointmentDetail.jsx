@@ -52,7 +52,7 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,permissi
     const signaturePath=await uploadSignature(signature,"contract");
     const expressFitSignaturePath=await uploadSignature(expressFitSignature,"express-fit");
     const segSignaturePath=await uploadSignature(segSignature,"seg-disclaimer");
-    const payload={name:customerName.trim(),result:"Sold",rep_arrival_time:combineAppointmentDateAndTime(appointment?.appointment_date,arrivalTime),sales_notes:salesNote||null,email_address:customerEmail.trim(),signature_path:signaturePath,express_fit_signature_path:expressFitSignaturePath,seg_disclaimer_signature_path:segSignaturePath};
+    const payload={name:customerName.trim(),result:"Sold",admin_fee_expected_date:adminFeeExpectedDate,rep_arrival_time:combineAppointmentDateAndTime(appointment?.appointment_date,arrivalTime),sales_notes:salesNote||null,email_address:customerEmail.trim(),signature_path:signaturePath,express_fit_signature_path:expressFitSignaturePath,seg_disclaimer_signature_path:segSignaturePath};
     const{data:updated,error:updateError}=await supabase.from("appointments").update(payload).eq("appointment_row_id",appointment.appointment_row_id).select("*").single();
     if(updateError)throw updateError;
     if(solar({...appointment,...updated})&&!epvs)throw new Error("Please complete and save the EPVS calculation before generating the solar contract.");
