@@ -3,6 +3,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CalendarDays,
+  Search,
 } from "lucide-react"
 import { supabase } from "./lib/supabase"
 import { money } from "./utils/formatters"
@@ -15,6 +16,7 @@ function FitSheet({ setSelected }) {
   const [loadError, setLoadError] = useState("")
   const [installationTypeFilter, setInstallationTypeFilter] =
     useState("all")
+  const [searchTerm, setSearchTerm] = useState("")
   const [windowTeamsExpanded, setWindowTeamsExpanded] = useState(true)
   const [windowsRenewablesExpanded, setWindowsRenewablesExpanded] = useState(true)
   const [heatPumpExpanded, setHeatPumpExpanded] = useState(true)
@@ -433,22 +435,31 @@ function FitSheet({ setSelected }) {
    */
 
   const filteredJobs = useMemo(() => {
-    if (
-      installationTypeFilter ===
-      "all"
-    ) {
-      return jobs
-    }
+    const search = searchTerm.trim().toLocaleLowerCase()
+    return jobs.filter((job) => {
+      const matchesType =
+        installationTypeFilter === "all" ||
+        job.type === installationTypeFilter
 
-    return jobs.filter(
-      (job) =>
-        job.type ===
-        installationTypeFilter
-    )
-  }, [
-    jobs,
-    installationTypeFilter,
-  ])
+      const deal = job.deal || {}
+      const searchableValues = [
+        deal.customer_name,
+        deal.postcode,
+        deal.contract_number,
+        deal.product,
+        deal.pipedrive_deal_id,
+        job.team,
+        job.type,
+      ]
+      const matchesSearch =
+        !search ||
+        searchableValues.some((value) =>
+          String(value ?? "").toLocaleLowerCase().includes(search)
+        )
+
+      return matchesType && matchesSearch
+    })
+  }, [jobs, installationTypeFilter, searchTerm])
 
   /*
    * ------------------------------------------------------------
@@ -843,6 +854,40 @@ function FitSheet({ setSelected }) {
               flexWrap: "wrap",
             }}
           >
+            {/* SEARCH */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "7px",
+                height: "34px",
+                padding: "0 10px",
+                border: "1px solid #dddfe3",
+                borderRadius: "7px",
+                background: "#fff",
+                minWidth: "220px",
+                boxSizing: "border-box",
+              }}
+            >
+              <Search size={14} color="#64748b" />
+              <input
+                type="search"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search customer, postcode, contract…"
+                aria-label="Search FitSheet deals"
+                style={{
+                  border: 0,
+                  outline: "none",
+                  width: "100%",
+                  minWidth: 0,
+                  fontSize: "11px",
+                  color: "#333",
+                  background: "transparent",
+                }}
+              />
+            </div>
+
             {/* INSTALLATION TYPE FILTER */}
 
             <select
