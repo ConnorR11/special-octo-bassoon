@@ -152,6 +152,7 @@ function DataDashboard() {
         .select("delete_row_id", { count: "exact", head: true })
         .eq("lead_source", "Pronto Windows")
         .ilike("disposition", "No Contact")
+        .gte("received_date_time", "2025-01-01T00:00:00.000Z")
 
       const now = new Date()
       if (prontoDatePeriod === "last_week") {
