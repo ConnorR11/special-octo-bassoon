@@ -932,6 +932,52 @@ function FitSheet({ setSelected }) {
               minWidth: 0,
             }}
           >
+            {/* LEGEND — left side of the right-hand controls */}
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                flexWrap: "nowrap",
+                whiteSpace: "nowrap",
+                marginRight: "2px",
+                flex: "0 1 auto",
+                minWidth: 0,
+              }}
+            >
+              {Object.entries(
+                jobTypes
+              ).map(
+                ([key, type]) => (
+                  <div
+                    key={key}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "3px",
+                      fontSize: "9px",
+                      color: "#555",
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: "9px",
+                        height: "9px",
+                        borderRadius: "2px",
+                        background:
+                          type.background,
+                        border: `1px solid ${type.border}`,
+                      }}
+                    />
+
+                    {type.label}
+                  </div>
+                )
+              )}
+            </div>
+
+
             {/* SEARCH */}
             <div
               style={{
@@ -1019,52 +1065,6 @@ function FitSheet({ setSelected }) {
                 Issue
               </option>
             </select>
-
-            {/* LEGEND — left side of the right-hand controls */}
-
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-                flexWrap: "nowrap",
-                whiteSpace: "nowrap",
-                marginRight: "2px",
-                flex: "0 1 auto",
-                minWidth: 0,
-              }}
-            >
-              {Object.entries(
-                jobTypes
-              ).map(
-                ([key, type]) => (
-                  <div
-                    key={key}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "3px",
-                      fontSize: "9px",
-                      color: "#555",
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: "9px",
-                        height: "9px",
-                        borderRadius: "2px",
-                        background:
-                          type.background,
-                        border: `1px solid ${type.border}`,
-                      }}
-                    />
-
-                    {type.label}
-                  </div>
-                )
-              )}
-            </div>
-
 
             {/* PREVIOUS WEEK */}
 
