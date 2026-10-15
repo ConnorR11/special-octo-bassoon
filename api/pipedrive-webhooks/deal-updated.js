@@ -1444,8 +1444,8 @@ export default async function handler(req, res) {
         "remedial_fit_team",
         "window_count",
         "door_count",
-        "sp/tl_count",
-        "fd/pd_count",
+        '"sp/tl_count"',
+        '"fd/pd_count"',
         "velux_count",
       ].join(",")
 
@@ -1453,7 +1453,7 @@ export default async function handler(req, res) {
       await fetch(
         `${supabaseUrl}/rest/v1/deals?pipedrive_deal_id=eq.${encodeURIComponent(
           dealId
-        )}&select=${select}`,
+        )}&select=${encodeURIComponent(select)}`,
         {
           headers: {
             apikey: serviceRoleKey,
