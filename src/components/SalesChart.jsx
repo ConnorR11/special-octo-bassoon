@@ -245,7 +245,7 @@ function SalesChart({ contracts = [] }) {
       row.priceOnly += Number(appointment.price_not_sold_count || 0)
       row.confirmedOnly += Number(appointment.confirmed_no_price_count || 0)
     })
-    rows.forEach(row => { const totalPriced = row.priceOnly + row.sold; row.conversionPercent = row.priceTotal > 0 ? row.sold / row.priceTotal * 100 : 0; row.boPercent = row.confirmedTotal > 0 ? ((row.confirmedTotal - row.priceTotal) / row.confirmedTotal) * 100 : 0; row.totalPriced = totalPriced })
+    rows.forEach(row => { const barC = Math.max(0, row.confirmedTotal); const barP = Math.min(barC, Math.max(0, row.priceTotal)); const barS = Math.min(barP, Math.max(0, row.soldTotal)); row.confirmedOnly = barC - barP; row.priceOnly = barP - barS; row.sold = barS; row.conversionPercent = row.priceTotal > 0 ? row.soldTotal / row.priceTotal * 100 : 0; row.boPercent = row.confirmedTotal > 0 ? ((row.confirmedTotal - row.priceTotal) / row.confirmedTotal) * 100 : 0; row.totalPriced = barP })
     return rows
   }, [cpsAppointments, cpsSelectedProduct, cpsSelectedYear, cpsTimeGrouping, currentYear, currentMonth, currentDay])
 
