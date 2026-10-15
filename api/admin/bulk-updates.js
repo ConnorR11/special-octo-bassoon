@@ -7,14 +7,31 @@ function header(req, name) {
   return Array.isArray(value) ? value[0] : value
 }
 
-function isAuthorized(req) {
-  // Reuse the existing server-side Pipedrive token; no additional secret is required.
-  // The token must be sent in the Authorization header and is never returned by this endpoint.
-  const token = String(process.env.PIPEDRIVE_API_TOKEN || "").trim()
+async function isAuthorized(req, config) {
+  // Authenticate the user's Supabase session, then enforce the same permission level
+  // used by the CRM's admin pages. Never expose the Pipedrive API token to the browser.
   const auth = String(header(req, "authorization") || "")
-  if (!token || !auth.toLowerCase().startsWith("bearer ")) return false
-  const supplied = auth.slice(7).trim()
-  return supplied.length === token.length && supplied === token
+  if (!auth.toLowerCase().startsWith("bearer ")) return false
+  const userToken = auth.slice(7).trim()
+  if (!userToken || !config.supabaseUrl || !config.serviceKey) return false
+
+  const userResponse = await fetch(`${config.supabaseUrl}/auth/v1/user`, {
+    headers: { apikey: config.serviceKey, Authorization: `Bearer ${userToken}`, Accept: "application/json" },
+  })
+  const user = await responseJson(userResponse)
+  if (!userResponse.ok || !user?.id) return false
+
+  const profileUrl = new URL(`${config.supabaseUrl}/rest/v1/profiles`)
+  profileUrl.searchParams.set("select", "permission_level,active")
+  profileUrl.searchParams.set("auth_user_id", `eq.${user.id}`)
+  profileUrl.searchParams.set("limit", "1")
+  const profileResponse = await fetch(profileUrl, {
+    headers: { apikey: config.serviceKey, Authorization: `Bearer ${config.serviceKey}`, Accept: "application/json" },
+  })
+  const profiles = await responseJson(profileResponse)
+  if (!profileResponse.ok || !Array.isArray(profiles) || !profiles.length) return false
+  const profile = profiles[0]
+  return Number(profile.permission_level) >= 4 && profile.active !== false
 }
 
 function getConfig() {
@@ -202,12 +219,14 @@ export default async function handler(req, res) {
     return send(res, 405, { success: false, error: "Use GET for the authenticated bulk job endpoint" })
   }
 
-  if (!isAuthorized(req)) {
+  const config = getConfig()
+  let authorized = false
+  try { authorized = await isAuthorized(req, config) } catch { authorized = false }
+  if (!authorized) {
     res.setHeader("WWW-Authenticate", 'Bearer realm="CRM Bulk Updates"')
-    return send(res, 401, { success: false, error: "Unauthorized. Send the existing Pipedrive API token in the Authorization: Bearer header." })
+    return send(res, 401, { success: false, error: "Unauthorized. Sign in with an active CRM administrator account." })
   }
 
-  const config = getConfig()
   if (!config.supabaseUrl || !config.serviceKey || !config.pipedriveToken) {
     return send(res, 500, { success: false, error: "Required Supabase or Pipedrive environment variables are missing." })
   }
