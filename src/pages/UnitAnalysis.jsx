@@ -9,6 +9,36 @@ const text = value => String(value ?? "").trim()
 const normaliseType = value => text(value) || "Unspecified type"
 const normaliseStyle = value => text(value) || "Unspecified style"
 
+function getCostMetrics(rows) {
+  const costed = rows.filter(row => row.netCost != null && Number.isFinite(row.netCost) && row.netCost > 0)
+  const discCosted = costed.filter(row => row.cost != null && Number.isFinite(row.cost))
+  const costs = costed.map(row => row.netCost)
+  return {
+    ordered: rows.length,
+    costed: costed.length,
+    missing: rows.length - costed.length,
+    total: costs.reduce((sum, value) => sum + value, 0),
+    average: costs.length ? costs.reduce((sum, value) => sum + value, 0) / costs.length : null,
+    lowest: costs.length ? Math.min(...costs) : null,
+    highest: costs.length ? Math.max(...costs) : null,
+    averageDisc: discCosted.length ? discCosted.reduce((sum, row) => sum + row.cost, 0) / discCosted.length : null
+  }
+}
+
+function MetricCells({ rows }) {
+  const metrics = getCostMetrics(rows)
+  return <>
+    <td>{metrics.ordered.toLocaleString("en-GB")}</td>
+    <td>{metrics.costed.toLocaleString("en-GB")}</td>
+    <td>{metrics.missing.toLocaleString("en-GB")}</td>
+    <td>{metrics.total ? money(metrics.total) : "—"}</td>
+    <td>{metrics.average == null ? "—" : money(metrics.average)}</td>
+    <td>{metrics.lowest == null ? "—" : money(metrics.lowest)}</td>
+    <td>{metrics.highest == null ? "—" : money(metrics.highest)}</td>
+    <td>{metrics.averageDisc == null ? "—" : money(metrics.averageDisc)}</td>
+  </>
+}
+
 function buildConfigurationGroups(rows) {
   const configurations = new Map()
   rows.forEach(row => {
@@ -85,39 +115,28 @@ function buildColourGroups(rows) {
 }
 
 function buildGroups(rows) {
-  const validRows = rows.map(row => ({
-    ...row,
-    width: Number(row.width),
-    height: Number(row.height),
-    cost: row.discountable == null || row.discountable === "" ? null : Number(row.discountable),
-    netCost: row.net_product_cost == null || row.net_product_cost === "" ? null : Number(row.net_product_cost),
-    ordered: Boolean(row.ordered_date),
-    style: normaliseStyle(row.style_choice)
-  })).filter(row => Number.isFinite(row.width) && row.width > 0 && Number.isFinite(row.height) && row.height > 0)
+  const validRows = rows
+    .filter(row => Boolean(row.ordered_date))
+    .map(row => ({
+      ...row,
+      width: Number(row.width),
+      height: Number(row.height),
+      cost: row.discountable == null || row.discountable === "" ? null : Number(row.discountable),
+      netCost: row.net_product_cost == null || row.net_product_cost === "" ? null : Number(row.net_product_cost),
+      ordered: true,
+      style: normaliseStyle(row.style_choice)
+    }))
+    .filter(row => Number.isFinite(row.width) && row.width > 0 && Number.isFinite(row.height) && row.height > 0)
   const byStyle = new Map()
   validRows.forEach(row => {
     if (!byStyle.has(row.style)) byStyle.set(row.style, [])
     byStyle.get(row.style).push(row)
   })
-  const groups = []
-  for (const [style, styleRows] of byStyle) {
-    const netCosted = styleRows.filter(row => row.netCost !== null && Number.isFinite(row.netCost))
-    const costed = netCosted.filter(row => row.cost !== null && Number.isFinite(row.cost))
-    const ordered = styleRows.filter(row => row.ordered)
-    const orderedCosted = ordered.filter(row => row.netCost !== null && Number.isFinite(row.netCost) && row.cost !== null && Number.isFinite(row.cost))
-    const orderedNetCosted = ordered.filter(row => row.netCost !== null && Number.isFinite(row.netCost))
-    styleRows.sort((a, b) => a.width - b.width || a.height - b.height || String(a.UUID).localeCompare(String(b.UUID)))
-    groups.push({
-      key: style, style, rows: styleRows,
-      costedCount: costed.length, orderedCount: ordered.length,
-      averageCosted: costed.length ? costed.reduce((sum, row) => sum + row.cost, 0) / costed.length : null,
-      averageNetCost: netCosted.length ? netCosted.reduce((sum, row) => sum + row.netCost, 0) / netCosted.length : null,
-      averageOrdered: orderedCosted.length ? orderedCosted.reduce((sum, row) => sum + row.cost, 0) / orderedCosted.length : null,
-      averageOrderedNetCost: orderedNetCosted.length ? orderedNetCosted.reduce((sum, row) => sum + row.netCost, 0) / orderedNetCosted.length : null,
-      totalCosted: costed.reduce((sum, row) => sum + row.cost, 0)
-    })
-  }
-  return groups.sort((a, b) => a.style.localeCompare(b.style))
+  return [...byStyle.entries()].map(([style, styleRows]) => ({
+    key: style,
+    style,
+    rows: styleRows.sort((a, b) => a.width - b.width || a.height - b.height || String(a.UUID).localeCompare(String(b.UUID)))
+  })).sort((a, b) => a.style.localeCompare(b.style))
 }
 
 function StatCard({ label, value, note }) {
@@ -130,7 +149,6 @@ export default function UnitAnalysis() {
   const [error, setError] = useState("")
   const [search, setSearch] = useState("")
   const [styleFilter, setStyleFilter] = useState("all")
-  const [orderedFilter, setOrderedFilter] = useState("all")
   const [expanded, setExpanded] = useState({})
   const [configurationExpanded, setConfigurationExpanded] = useState({})
   const [colourExpanded, setColourExpanded] = useState({})
@@ -175,23 +193,17 @@ export default function UnitAnalysis() {
     const term = search.trim().toLowerCase()
     return groups.filter(group => {
       if (styleFilter !== "all" && group.style !== styleFilter) return false
-      if (orderedFilter === "ordered" && group.orderedCount === 0) return false
-      if (orderedFilter === "not-ordered" && group.orderedCount > 0) return false
       if (term && ![group.style, ...group.rows.map(row => String(row.contract_number || "") + " " + String(row.unit_type || "") + " " + row.width + " " + row.height)].some(value => String(value ?? "").toLowerCase().includes(term))) return false
       return true
     })
-  }, [groups, search, styleFilter, orderedFilter])
+  }, [groups, search, styleFilter])
 
-  const totalCosted = rows.filter(row => row.net_product_cost != null && row.net_product_cost !== "" && Number.isFinite(Number(row.net_product_cost)))
-  const totalNetCosted = rows.filter(row => row.net_product_cost != null && row.net_product_cost !== "" && Number.isFinite(Number(row.net_product_cost)))
-  const totalOrdered = rows.filter(row => Boolean(row.ordered_date))
-  const orderedCosted = totalOrdered.filter(row => row.discountable != null && row.discountable !== "" && Number.isFinite(Number(row.discountable)))
-  const orderedNetCosted = totalOrdered.filter(row => row.net_product_cost != null && row.net_product_cost !== "" && Number.isFinite(Number(row.net_product_cost)))
-  const totalDiscCosted = totalCosted.filter(row => row.discountable != null && row.discountable !== "" && Number.isFinite(Number(row.discountable)))
-  const overallAverage = totalDiscCosted.length ? totalDiscCosted.reduce((sum, row) => sum + Number(row.discountable), 0) / totalDiscCosted.length : null
-  const overallAverageNet = totalNetCosted.length ? totalNetCosted.reduce((sum, row) => sum + Number(row.net_product_cost), 0) / totalNetCosted.length : null
-  const orderedAverage = orderedCosted.length ? orderedCosted.reduce((sum, row) => sum + Number(row.discountable), 0) / orderedCosted.length : null
-  const orderedAverageNet = orderedNetCosted.length ? orderedNetCosted.reduce((sum, row) => sum + Number(row.net_product_cost), 0) / orderedNetCosted.length : null
+  const orderedRows = rows.filter(row => Boolean(row.ordered_date))
+  const orderedMetrics = getCostMetrics(orderedRows)
+  const orderedUnits = orderedRows.length
+  const orderedSpend = orderedMetrics.total
+  const averageOrderedNet = orderedMetrics.average
+
 
 
   return <div className="unit-analysis-page">
@@ -237,39 +249,38 @@ export default function UnitAnalysis() {
       @media(max-width:650px){.unit-analysis-page{padding-top:0}.unit-analysis-header{padding-left:48px;align-items:flex-start}.unit-analysis-header h1{font-size:24px}.unit-analysis-refresh{padding:9px}.unit-analysis-stats{gap:9px}.unit-analysis-stat{padding:13px}.unit-analysis-stat-value{font-size:21px}.unit-analysis-toolbar{align-items:stretch}.unit-analysis-filters{display:grid;grid-template-columns:1fr 1fr;width:100%}.unit-analysis-search{grid-column:1/-1;min-width:0}.unit-analysis-select{width:100%;max-width:none}}
     `}</style>
     <div className="unit-analysis-header">
-      <div><div className="unit-analysis-eyebrow">Administration</div><h1>Unit Analysis</h1><p className="unit-analysis-subtitle">Compare costed and ordered units grouped by style, then colour, size, opener/fixed configuration and individual units.</p></div>
+      <div><div className="unit-analysis-eyebrow">Administration</div><h1>Unit Analysis</h1><p className="unit-analysis-subtitle">Analyse ordered windows only, grouped by style, colour, approximate size, opener/fixed configuration and individual unit.</p></div>
       <button className="unit-analysis-refresh" type="button" onClick={loadUnits} disabled={loading}><RefreshCw size={14}/>{loading ? "Loading…" : "Refresh"}</button>
     </div>
     {error && <div className="unit-analysis-error">{error}</div>}
     <div className="unit-analysis-stats">
-      <StatCard label="Units costed" value={totalCosted.length.toLocaleString("en-GB")} note="Units with a recorded net product cost"/>
-      <StatCard label="Units ordered" value={totalOrdered.length.toLocaleString("en-GB")} note="Units with an order date"/>
-      <StatCard label="Average Disc Total" value={overallAverage == null ? "—" : money(overallAverage)} note="Costed units with a recorded discountable total"/>
-      <StatCard label="Average Net Cost" value={overallAverageNet == null ? "—" : money(overallAverageNet)} note="Units with a recorded net product cost"/>
+      <StatCard label="Windows ordered" value={orderedUnits.toLocaleString("en-GB")} note="Only units with an order date"/>
+      <StatCard label="Total Net Cost" value={money(orderedSpend)} note="Sum of positive recorded net costs"/>
+      <StatCard label="Average Net Cost" value={averageOrderedNet == null ? "—" : money(averageOrderedNet)} note="Ordered units with a positive recorded net cost"/>
+      <StatCard label="Missing / zero costs" value={orderedMetrics.missing.toLocaleString("en-GB")} note="Ordered units needing a valid net cost"/>
     </div>
     <section className="unit-analysis-panel">
       <div className="unit-analysis-toolbar">
-        <div><div className="unit-analysis-toolbar-title">Breakdown by style</div><div className="unit-analysis-toolbar-subtitle">Hierarchy: style → colour → approximate size (within 50 mm) → opener/fixed configuration → individual units.</div></div>
+        <div><div className="unit-analysis-toolbar-title">Breakdown by style</div><div className="unit-analysis-toolbar-subtitle">Ordered windows only · style → colour choice → size within 50 mm → openers/fixed → individual units.</div></div>
         <div className="unit-analysis-filters">
-          <label className="unit-analysis-search"><Search size={14} color="#667085"/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search type, size or contract"/></label>
+          <label className="unit-analysis-search"><Search size={14} color="#667085"/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search style, size or contract"/></label>
           <select className="unit-analysis-select" value={styleFilter} onChange={event => setStyleFilter(event.target.value)} aria-label="Filter by style"><option value="all">All styles</option>{styleOptions.map(style => <option key={style} value={style}>{style}</option>)}</select>
-          <select className="unit-analysis-select" value={orderedFilter} onChange={event => setOrderedFilter(event.target.value)} aria-label="Filter by order status"><option value="all">All order statuses</option><option value="ordered">Ordered only</option><option value="not-ordered">Not ordered</option></select>
         </div>
       </div>
-      <div className="unit-analysis-count">{loading ? "Loading units…" : `Showing ${filteredGroups.length.toLocaleString("en-GB")} styles · ${rows.length.toLocaleString("en-GB")} units loaded`}</div>
+      <div className="unit-analysis-count">{loading ? "Loading units…" : `Showing ${filteredGroups.length.toLocaleString("en-GB")} styles · ${orderedRows.length.toLocaleString("en-GB")} ordered windows`}</div>
       <div className="unit-analysis-table-wrap">
         <table className="unit-analysis-table">
-          <thead><tr><th style={{textAlign:"left"}}>Style</th><th>Units costed</th><th>Units ordered</th><th>Avg. Disc Total</th><th>Avg. Net Cost</th><th>Total Disc Total</th></tr></thead>
+          <thead><tr><th style={{textAlign:"left"}}>Style</th><th>Ordered</th><th>Costed</th><th>Missing cost</th><th>Total Net Cost</th><th>Avg. Net Cost</th><th>Lowest</th><th>Highest</th><th>Avg. Disc Total</th></tr></thead>
           <tbody>
-            {loading && rows.length === 0 ? <tr><td colSpan="6" className="unit-analysis-empty">Loading unit records…</td></tr> :
-              filteredGroups.length === 0 ? <tr><td colSpan="6" className="unit-analysis-empty">{error ? "Unit data could not be loaded." : "No units match these filters."}</td></tr> :
+            {loading && rows.length === 0 ? <tr><td colSpan="9" className="unit-analysis-empty">Loading unit records…</td></tr> :
+              filteredGroups.length === 0 ? <tr><td colSpan="9" className="unit-analysis-empty">{error ? "Unit data could not be loaded." : "No units match these filters."}</td></tr> :
               filteredGroups.map(group => <React.Fragment key={group.key}>
                 <tr className="unit-analysis-group-row" onClick={() => setExpanded(current => ({...current,[group.key]:!current[group.key]}))}>
                   <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{expanded[group.key] ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<div><div className="unit-analysis-type">{group.style}</div><div className="unit-analysis-muted">{new Set(group.rows.map(row => normaliseType(row.unit_type))).size} unit types · {group.rows.length} total units</div></div></div></td>
-                  <td>{group.costedCount.toLocaleString("en-GB")}</td><td>{group.orderedCount.toLocaleString("en-GB")}</td><td>{group.averageCosted == null ? "—" : money(group.averageCosted)}</td><td>{group.averageNetCost == null ? "—" : money(group.averageNetCost)}</td><td>{money(group.totalCosted)}</td>
+                  <MetricCells rows={group.rows}/>
                 </tr>
-                {expanded[group.key] && <tr className="unit-analysis-detail"><td colSpan="6" style={{padding:0}}>
-                  <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Colour</th><th>Units costed</th><th>Units ordered</th><th>Avg. Disc Total</th><th>Avg. Net Cost</th><th>Total Disc Total</th></tr></thead><tbody>
+                {expanded[group.key] && <tr className="unit-analysis-detail"><td colSpan="9" style={{padding:0}}>
+                  <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Colour</th><th>Ordered</th><th>Costed</th><th>Missing cost</th><th>Total Net Cost</th><th>Avg. Net Cost</th><th>Lowest</th><th>Highest</th><th>Avg. Disc Total</th></tr></thead><tbody>
                     {buildColourGroups(group.rows).map(colourGroup => {
                       const colourNetCosted = colourGroup.rows.filter(row => row.netCost != null && Number.isFinite(row.netCost))
                       const colourCosted = colourNetCosted.filter(row => row.cost != null && Number.isFinite(row.cost))
@@ -278,10 +289,10 @@ export default function UnitAnalysis() {
                       return <React.Fragment key={colourKey}>
                         <tr className="unit-analysis-group-row" style={{background:"#eef2f6"}} onClick={() => setColourExpanded(current => ({...current,[colourKey]:!current[colourKey]}))}>
                           <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{colourExpanded[colourKey] ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}<div><div className="unit-analysis-type">{colourGroup.colour}</div><div className="unit-analysis-muted">{colourGroup.rows.length.toLocaleString("en-GB")} units</div></div></div></td>
-                          <td>{colourCosted.length.toLocaleString("en-GB")}</td><td>{colourOrdered.length.toLocaleString("en-GB")}</td><td>{colourCosted.length ? money(colourCosted.reduce((sum,row) => sum + row.cost,0) / colourCosted.length) : "—"}</td><td>{colourNetCosted.length ? money(colourNetCosted.reduce((sum,row) => sum + row.netCost,0) / colourNetCosted.length) : "—"}</td><td>{money(colourCosted.reduce((sum,row) => sum + row.cost,0))}</td>
+                          <MetricCells rows={colourGroup.rows}/>
                         </tr>
-                        {colourExpanded[colourKey] && <tr className="unit-analysis-detail"><td colSpan="6" style={{padding:0}}>
-                          <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Approx. size (W × H)</th><th>Units costed</th><th>Units ordered</th><th>Avg. Disc Total</th><th>Avg. Net Cost</th><th>Total Disc Total</th></tr></thead><tbody>
+                        {colourExpanded[colourKey] && <tr className="unit-analysis-detail"><td colSpan="9" style={{padding:0}}>
+                          <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Approx. size (W × H)</th><th>Ordered</th><th>Costed</th><th>Missing cost</th><th>Total Net Cost</th><th>Avg. Net Cost</th><th>Lowest</th><th>Highest</th><th>Avg. Disc Total</th></tr></thead><tbody>
                             {colourGroup.sizeGroups.map(sizeGroup => {
                               const sizeNetCosted = sizeGroup.rows.filter(row => row.netCost != null && Number.isFinite(row.netCost))
                               const sizeCosted = sizeNetCosted.filter(row => row.cost != null && Number.isFinite(row.cost))
@@ -291,10 +302,10 @@ export default function UnitAnalysis() {
                               return <React.Fragment key={sizeKey}>
                                 <tr className="unit-analysis-group-row" style={{background:"#f5f7fa"}} onClick={() => setSizeExpanded(current => ({...current,[sizeKey]:!current[sizeKey]}))}>
                                   <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{sizeExpanded[sizeKey] ? <ChevronDown size={13}/> : <ChevronRight size={13}/>}<div><div className="unit-analysis-type">{rangeLabel(sizeGroup.minWidth,sizeGroup.maxWidth)} × {rangeLabel(sizeGroup.minHeight,sizeGroup.maxHeight)}</div><div className="unit-analysis-muted">{sizeGroup.rows.length.toLocaleString("en-GB")} units</div></div></div></td>
-                                  <td>{sizeCosted.length.toLocaleString("en-GB")}</td><td>{sizeOrdered.length.toLocaleString("en-GB")}</td><td>{sizeCosted.length ? money(sizeCosted.reduce((sum,row) => sum + row.cost,0) / sizeCosted.length) : "—"}</td><td>{sizeNetCosted.length ? money(sizeNetCosted.reduce((sum,row) => sum + row.netCost,0) / sizeNetCosted.length) : "—"}</td><td>{money(sizeCosted.reduce((sum,row) => sum + row.cost,0))}</td>
+                                  <MetricCells rows={sizeGroup.rows}/>
                                 </tr>
-                                {sizeExpanded[sizeKey] && <tr className="unit-analysis-detail"><td colSpan="6" style={{padding:0}}>
-                                  <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Openers / fixed</th><th>Units costed</th><th>Units ordered</th><th>Avg. Disc Total</th><th>Avg. Net Cost</th><th>Total Disc Total</th></tr></thead><tbody>
+                                {sizeExpanded[sizeKey] && <tr className="unit-analysis-detail"><td colSpan="9" style={{padding:0}}>
+                                  <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Openers / fixed</th><th>Ordered</th><th>Costed</th><th>Missing cost</th><th>Total Net Cost</th><th>Avg. Net Cost</th><th>Lowest</th><th>Highest</th><th>Avg. Disc Total</th></tr></thead><tbody>
                                     {buildConfigurationGroups(sizeGroup.rows).map(configuration => {
                                       const configNetCosted = configuration.rows.filter(row => row.netCost != null && Number.isFinite(row.netCost))
                                       const configCosted = configNetCosted.filter(row => row.cost != null && Number.isFinite(row.cost))
@@ -303,11 +314,11 @@ export default function UnitAnalysis() {
                                       return <React.Fragment key={configuration.key}>
                                         <tr className="unit-analysis-group-row" style={{background:"#f8fafc"}} onClick={() => setConfigurationExpanded(current => ({...current,[configKey]:!current[configKey]}))}>
                                           <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{configurationExpanded[configKey] ? <ChevronDown size={13}/> : <ChevronRight size={13}/>}<span className="unit-analysis-type">{configuration.openers} openers · {configuration.fixed} fixed</span><span className="unit-analysis-muted">{configuration.rows.length.toLocaleString("en-GB")} units</span></div></td>
-                                          <td>{configCosted.length.toLocaleString("en-GB")}</td><td>{configOrdered.length.toLocaleString("en-GB")}</td><td>{configCosted.length ? money(configCosted.reduce((sum,row) => sum + row.cost,0) / configCosted.length) : "—"}</td><td>{configNetCosted.length ? money(configNetCosted.reduce((sum,row) => sum + row.netCost,0) / configNetCosted.length) : "—"}</td><td>{money(configCosted.reduce((sum,row) => sum + row.cost,0))}</td>
+                                          <MetricCells rows={configuration.rows}/>
                                         </tr>
-                                        {configurationExpanded[configKey] && <tr className="unit-analysis-detail"><td colSpan="6" style={{padding:0}}>
-                                          <table className="unit-analysis-table" style={{minWidth:750}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Unit / contract</th><th>Width</th><th>Height</th><th>Disc Total</th><th>Net Cost</th><th>Order status</th><th>Supplier</th><th>Created</th></tr></thead><tbody>
-                                            {configuration.rows.map((row,index) => <tr key={row.UUID || `${configKey}-${index}`}><td style={{textAlign:"left"}}>{text(row.contract_number) || text(row.UUID) || "Unit"}<div className="unit-analysis-muted">{text(row.location) || text(row.appointment_id) || "—"}</div></td><td>{dimension(row.width)} mm</td><td>{dimension(row.height)} mm</td><td>{row.cost == null || !Number.isFinite(row.cost) ? "—" : money(row.cost)}</td><td>{row.netCost == null || !Number.isFinite(row.netCost) ? "—" : money(row.netCost)}</td><td>{row.ordered ? <span className="unit-analysis-pill">Ordered</span> : "Not ordered"}</td><td>{text(row.supplier) || "—"}</td><td>{row.added_to_supabase_date || row.created_date ? new Date(row.added_to_supabase_date || row.created_date).toLocaleDateString("en-GB") : "—"}</td></tr>)}
+                                        {configurationExpanded[configKey] && <tr className="unit-analysis-detail"><td colSpan="9" style={{padding:0}}>
+                                          <table className="unit-analysis-table" style={{minWidth:750}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Unit / contract</th><th>Colour choice</th><th>Width</th><th>Height</th><th>Disc Total</th><th>Net Cost</th><th>Supplier</th><th>Ordered date</th></tr></thead><tbody>
+                                            {configuration.rows.map((row,index) => <tr key={row.UUID || `${configKey}-${index}`}><td style={{textAlign:"left"}}>{text(row.contract_number) || text(row.UUID) || "Unit"}<div className="unit-analysis-muted">{text(row.location) || text(row.appointment_id) || "—"}</div></td><td>{text(row.colour_choice) || "—"}</td><td>{dimension(row.width)} mm</td><td>{dimension(row.height)} mm</td><td>{row.cost == null || !Number.isFinite(row.cost) ? "—" : money(row.cost)}</td><td>{row.netCost == null || !Number.isFinite(row.netCost) ? "—" : money(row.netCost)}</td><td>{text(row.supplier) || "—"}</td><td>{row.ordered_date ? new Date(row.ordered_date).toLocaleDateString("en-GB") : "—"}</td></tr>)}
                                           </tbody></table>
                                         </td></tr>}
                                       </React.Fragment>
@@ -327,7 +338,7 @@ export default function UnitAnalysis() {
           </tbody>
         </table>
       </div>
-      <div className="unit-analysis-footnote">Only records where unit_type is “Window” and department is “SURVEY” are included. Windows are grouped by style_choice, then colour, then by width and height within 50 mm, then by openers_choice and fixed_choice; blank opener/fixed values appear as “Unspecified”. Average Disc Total includes only costed units with a numeric discountable value; Average Net Cost includes units with a numeric net_product_cost. “Ordered” is determined by a populated ordered_date.</div>
+      <div className="unit-analysis-footnote">Only records where unit_type is “Window”, department is “SURVEY” and ordered_date is populated are included. Groups follow style_choice → colour_choice → width/height within 50 mm → openers_choice/fixed_choice → individual units. Net cost metrics include only positive numeric net_product_cost values; zero or missing costs are counted as missing. Average Disc Total includes units with a positive net cost and a numeric discountable value. Size groups show ranges and may contain different exact dimensions.</div>
     </section>
     {lastUpdated && <div style={{fontSize:10,color:"#98a2b3",marginTop:10,textAlign:"right"}}>Last refreshed {lastUpdated.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</div>}
   </div>
