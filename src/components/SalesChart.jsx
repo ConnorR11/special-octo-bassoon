@@ -1,4 +1,4 @@
-import React, { useMemo } from "react"
+import React, { useMemo, useState } from "react"
 import {
   ResponsiveContainer,
   BarChart,
@@ -76,6 +76,7 @@ function ChartCard({ title, subtitle, data, series, dataKey }) {
 }
 
 function SalesChart({ contracts = [] }) {
+  const [selectedProduct, setSelectedProduct] = useState("All products")
   const today = new Date()
   const currentYear = today.getFullYear()
   const currentMonth = today.getMonth()
@@ -121,6 +122,7 @@ function SalesChart({ contracts = [] }) {
       if (Number.isNaN(date.getTime()) || date < start || date > today) return
       const row = rowByMonth.get(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`)
       if (!row) return
+      if (selectedProduct !== "All products" && normaliseProduct(deal.product) !== selectedProduct) return
       const amount = Number(deal.net_value || 0)
       if (!Number.isFinite(amount) || amount <= 0) return
       const stage = normaliseResult(deal)
@@ -129,7 +131,7 @@ function SalesChart({ contracts = [] }) {
     })
     rows.forEach((row) => { row.notSolidPercent = row.total > 0 ? ((row.Decline + row.Cancelled) / row.total) * 100 : 0 })
     return rows
-  }, [contracts, currentYear, currentMonth, currentDay])
+  }, [contracts, currentYear, currentMonth, currentDay, selectedProduct])
 
   if (!contracts.length) {
     return <div style={{ marginTop: 18, background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: 24, color: "#777", fontSize: 12 }}>No sales data available.</div>
@@ -142,8 +144,7 @@ function SalesChart({ contracts = [] }) {
         <ChartCard title="Sales by Product" subtitle="Year-to-date net sales value by product" data={chartData} series={PRODUCT_SERIES} dataKey="product" />
       </div>
       <div style={{ marginTop: 18, background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "20px 18px 10px", minWidth: 0, boxSizing: "border-box" }}>
-        <h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Net Sales Value by Month</h2>
-        <p style={{ margin: "0 0 10px", fontSize: 11, color: "#818891" }}>Monthly net sales value by deal result · January 2020 onwards</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 10 }}><div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Net Sales Value by Month</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Monthly net sales value by deal result · January 2020 onwards</p></div><label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#475569" }}>Product<select value={selectedProduct} onChange={(event) => setSelectedProduct(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}>{["All products", "Windows", "Solar", "ASHP", "Other"].map((product) => <option key={product} value={product}>{product}</option>)}</select></label></div>
         <ResponsiveContainer width="100%" height={330}>
           <BarChart data={monthlyBalanceData} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
@@ -155,7 +156,7 @@ function SalesChart({ contracts = [] }) {
             <Bar yAxisId="sales" dataKey="Solid" name="Net Sales/Solid" stackId="balance" fill="#008000" />
             <Bar yAxisId="sales" dataKey="Decline" name="Net Sales/Decline" stackId="balance" fill="#ff9900" />
             <Bar yAxisId="sales" dataKey="Cancelled" name="Net Sales/Cancel" stackId="balance" fill="#ff0000" />
-            <Line yAxisId="percent" type="monotone" dataKey="notSolidPercent" name="Not Solid" stroke="#111827" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
+            <Line yAxisId="percent" type="monotone" dataKey="notSolidPercent" name="Not Solid" stroke="#1683c7" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
           </BarChart>
         </ResponsiveContainer>
       </div>
