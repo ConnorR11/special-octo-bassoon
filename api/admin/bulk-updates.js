@@ -172,7 +172,7 @@ async function runBackfill(config, { limit, offset, dryRun }) {
     skipped,
     failed,
     totalMissing: total,
-    nextOffset: rows.length === limit && (total === null || offset + rows.length < total) ? offset + rows.length : null,
+    nextOffset: rows.length === limit && (total === null || total > 0) ? 0 : null,
     results,
   }
 }
@@ -236,7 +236,7 @@ export default async function handler(req, res) {
   const job = JOBS[jobName]
   if (!job) return send(res, 400, { success: false, error: "Unknown job", availableJobs: Object.keys(JOBS) })
 
-  const limit = Math.min(100, Math.max(1, Number.parseInt(query.limit, 10) || 100))
+  const limit = Math.min(250, Math.max(1, Number.parseInt(query.limit, 10) || 250))
   const offset = Math.max(0, Number.parseInt(query.offset, 10) || 0)
   const dryRun = String(query.execute || "").toLowerCase() !== "true"
   const runQuery = { limit, offset, dryRun }
