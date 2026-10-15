@@ -251,7 +251,7 @@ function SalesChart({ contracts = [] }) {
       else if (price) row.priceOnly += 1
       else row.confirmedOnly += 1
     })
-    rows.forEach(row => { row.conversionPercent = row.confirmed > 0 ? row.sold / row.confirmed * 100 : 0 })
+    rows.forEach(row => { const totalPriced = row.priceOnly + row.sold; row.conversionPercent = totalPriced > 0 ? row.sold / totalPriced * 100 : 0; row.totalPriced = totalPriced })
     return rows
   }, [cpsAppointments, selectedProduct, selectedYear, timeGrouping, currentYear, currentMonth, currentDay])
 
@@ -293,7 +293,7 @@ function SalesChart({ contracts = [] }) {
       <div style={{ marginTop: 18, background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "20px 18px 10px", minWidth: 0, boxSizing: "border-box" }}>
         <div style={{ marginBottom: 10 }}>
           <h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Sales Conversion by Month</h2>
-          <p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Confirmed appointments (C), price left (P) and sold (S) · appointment date</p>
+          <p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Confirmed (C), price left (P) and sold (S) · conversion is sold ÷ price left</p>
         </div>
         {cpsLoading ? <div style={{ padding: 28, color: "#667085", fontSize: 12 }}>Loading sales conversion…</div> : cpsError ? <div style={{ padding: 18, color: "#b42318", fontSize: 12 }}>{cpsError}</div> : <ResponsiveContainer width="100%" height={330}>
           <BarChart data={conversionData} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
@@ -301,12 +301,12 @@ function SalesChart({ contracts = [] }) {
             <XAxis dataKey="month" interval="preserveStartEnd" minTickGap={24} axisLine={false} tickLine={false} tick={{ fill: "#8a8a8a", fontSize: 10 }} />
             <YAxis yAxisId="count" axisLine={false} tickLine={false} allowDecimals={false} tick={{ fill: "#777", fontSize: 10 }} width={55} />
             <YAxis yAxisId="percent" orientation="right" axisLine={false} tickLine={false} domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} tickFormatter={value => `${value}%`} tick={{ fill: "#64748b", fontSize: 10 }} width={48} />
-            <Tooltip labelFormatter={(label, payload) => { const row = payload?.[0]?.payload; return row ? `${row.hoverLabel || label} · Confirmed: ${row.confirmed}` : label }} formatter={(value, name, item) => name === "Sales conversion" ? [`${Number(value || 0).toFixed(1)}%`, name] : [Number(value || 0).toLocaleString("en-GB"), name]} contentStyle={{ border: "1px solid #e2e5e8", borderRadius: 8, fontSize: 11 }} />
+            <Tooltip labelFormatter={(label, payload) => { const row = payload?.[0]?.payload; return row ? `${row.hoverLabel || label} · Price left: ${row.totalPriced} · Sold: ${row.sold}` : label }} formatter={(value, name, item) => name === "Sales conversion" ? [`${Number(value || 0).toFixed(1)}%`, name] : [Number(value || 0).toLocaleString("en-GB"), name]} contentStyle={{ border: "1px solid #e2e5e8", borderRadius: 8, fontSize: 11 }} />
             <Legend verticalAlign="bottom" height={32} iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
             <Bar yAxisId="count" dataKey="confirmedOnly" name="C · Confirmed, no price" stackId="cps" fill="#64748b" />
             <Bar yAxisId="count" dataKey="priceOnly" name="P · Price left" stackId="cps" fill="#ff9900" />
             <Bar yAxisId="count" dataKey="sold" name="S · Sold" stackId="cps" fill="#008000" />
-            <Line yAxisId="percent" type="monotone" dataKey="conversionPercent" name="Sales conversion" stroke="#111827" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
+            <Line yAxisId="percent" type="monotone" dataKey="conversionPercent" name="P → S conversion" stroke="#111827" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
           </BarChart>
         </ResponsiveContainer>}
       </div>
