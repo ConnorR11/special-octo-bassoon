@@ -26,10 +26,10 @@ function buildGroups(rows) {
   })
   const groups = []
   for (const [style, styleRows] of byStyle) {
-    const costed = styleRows.filter(row => row.cost !== null && Number.isFinite(row.cost))
     const netCosted = styleRows.filter(row => row.netCost !== null && Number.isFinite(row.netCost))
+    const costed = netCosted.filter(row => row.cost !== null && Number.isFinite(row.cost))
     const ordered = styleRows.filter(row => row.ordered)
-    const orderedCosted = ordered.filter(row => row.cost !== null && Number.isFinite(row.cost))
+    const orderedCosted = ordered.filter(row => row.netCost !== null && Number.isFinite(row.netCost) && row.cost !== null && Number.isFinite(row.cost))
     const orderedNetCosted = ordered.filter(row => row.netCost !== null && Number.isFinite(row.netCost))
     styleRows.sort((a, b) => a.width - b.width || a.height - b.height || String(a.UUID).localeCompare(String(b.UUID)))
     groups.push({
@@ -103,12 +103,13 @@ export default function UnitAnalysis() {
     })
   }, [groups, search, styleFilter, orderedFilter])
 
-  const totalCosted = rows.filter(row => row.discountable != null && row.discountable !== "" && Number.isFinite(Number(row.discountable)))
+  const totalCosted = rows.filter(row => row.net_product_cost != null && row.net_product_cost !== "" && Number.isFinite(Number(row.net_product_cost)))
   const totalNetCosted = rows.filter(row => row.net_product_cost != null && row.net_product_cost !== "" && Number.isFinite(Number(row.net_product_cost)))
   const totalOrdered = rows.filter(row => Boolean(row.ordered_date))
   const orderedCosted = totalOrdered.filter(row => row.discountable != null && row.discountable !== "" && Number.isFinite(Number(row.discountable)))
   const orderedNetCosted = totalOrdered.filter(row => row.net_product_cost != null && row.net_product_cost !== "" && Number.isFinite(Number(row.net_product_cost)))
-  const overallAverage = totalCosted.length ? totalCosted.reduce((sum, row) => sum + Number(row.discountable), 0) / totalCosted.length : null
+  const totalDiscCosted = totalCosted.filter(row => row.discountable != null && row.discountable !== "" && Number.isFinite(Number(row.discountable)))
+  const overallAverage = totalDiscCosted.length ? totalDiscCosted.reduce((sum, row) => sum + Number(row.discountable), 0) / totalDiscCosted.length : null
   const overallAverageNet = totalNetCosted.length ? totalNetCosted.reduce((sum, row) => sum + Number(row.net_product_cost), 0) / totalNetCosted.length : null
   const orderedAverage = orderedCosted.length ? orderedCosted.reduce((sum, row) => sum + Number(row.discountable), 0) / orderedCosted.length : null
   const orderedAverageNet = orderedNetCosted.length ? orderedNetCosted.reduce((sum, row) => sum + Number(row.net_product_cost), 0) / orderedNetCosted.length : null
@@ -164,7 +165,7 @@ export default function UnitAnalysis() {
     <div className="unit-analysis-stats">
       <StatCard label="Units costed" value={totalCosted.length.toLocaleString("en-GB")} note="Units with a recorded net product cost"/>
       <StatCard label="Units ordered" value={totalOrdered.length.toLocaleString("en-GB")} note="Units with an order date"/>
-      <StatCard label="Average Disc Total" value={overallAverage == null ? "—" : money(overallAverage)} note="Units with a recorded discountable total"/>
+      <StatCard label="Average Disc Total" value={overallAverage == null ? "—" : money(overallAverage)} note="Costed units with a recorded discountable total"/>
       <StatCard label="Average Net Cost" value={overallAverageNet == null ? "—" : money(overallAverageNet)} note="Units with a recorded net product cost"/>
     </div>
     <section className="unit-analysis-panel">
@@ -198,7 +199,7 @@ export default function UnitAnalysis() {
           </tbody>
         </table>
       </div>
-      <div className="unit-analysis-footnote">Only records where unit_type is “Window” are included. Windows are grouped by style_choice; blank styles appear as “Unspecified style”. Average Disc Total includes units with a numeric discountable value; Average Net Cost includes units with a numeric net_product_cost. “Ordered” is determined by a populated ordered_date.</div>
+      <div className="unit-analysis-footnote">Only records where unit_type is “Window” are included. Windows are grouped by style_choice; blank styles appear as “Unspecified style”. Average Disc Total includes only costed units with a numeric discountable value; Average Net Cost includes units with a numeric net_product_cost. “Ordered” is determined by a populated ordered_date.</div>
     </section>
     {lastUpdated && <div style={{fontSize:10,color:"#98a2b3",marginTop:10,textAlign:"right"}}>Last refreshed {lastUpdated.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</div>}
   </div>
