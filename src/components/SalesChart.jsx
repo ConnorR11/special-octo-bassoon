@@ -221,7 +221,7 @@ function SalesChart({ contracts = [] }) {
       const cursor = new Date(start)
       while (cursor <= end) {
         const bucket = getBucket(cursor)
-        if (!rows.some(row => row.bucketKey === bucket.key)) rows.push({ bucketKey: bucket.key, month: bucket.label, hoverLabel: bucket.hoverLabel || bucket.label, confirmedOnly: 0, priceOnly: 0, sold: 0, confirmed: 0, confirmedTotal: 0, priceTotal: 0, soldTotal: 0, conversionPercent: 0, boPercent: 0 })
+        if (!rows.some(row => row.bucketKey === bucket.key)) rows.push({ bucketKey: bucket.key, month: bucket.label, hoverLabel: bucket.hoverLabel || bucket.label, confirmedOnly: 0, priceOnly: 0, sold: 0, confirmed: 0, confirmedTotal: 0, priceTotal: 0, soldTotal: 0, soldNetValue: 0, conversionPercent: 0, boPercent: 0 })
         if (cpsTimeGrouping === "year") cursor.setFullYear(cursor.getFullYear() + 1)
         else if (cpsTimeGrouping === "quarter") cursor.setMonth(cursor.getMonth() + 3, 1)
         else if (cpsTimeGrouping === "week") cursor.setDate(cursor.getDate() + 7)
@@ -239,6 +239,7 @@ function SalesChart({ contracts = [] }) {
       row.confirmedTotal += Number(appointment.confirmed_count || 0)
       row.priceTotal += Number(appointment.price_count || 0)
       row.soldTotal += Number(appointment.sold_count || 0)
+      row.soldNetValue += Number(appointment.sold_net_value || 0)
       row.confirmed += Number(appointment.confirmed_count || 0)
       row.sold += Number(appointment.sold_count || 0)
       row.priceOnly += Number(appointment.price_not_sold_count || 0)
@@ -298,7 +299,7 @@ function SalesChart({ contracts = [] }) {
             <XAxis dataKey="month" interval="preserveStartEnd" minTickGap={24} axisLine={false} tickLine={false} tick={{ fill: "#8a8a8a", fontSize: 10 }} />
             <YAxis yAxisId="count" axisLine={false} tickLine={false} allowDecimals={false} tick={{ fill: "#777", fontSize: 10 }} width={55} />
             <YAxis yAxisId="percent" orientation="right" axisLine={false} tickLine={false} domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} tickFormatter={value => `${value}%`} tick={{ fill: "#64748b", fontSize: 10 }} width={48} />
-            <Tooltip content={({ active, payload, label }) => { if (!active || !payload?.length) return null; const row = payload[0]?.payload || {}; const count = value => Number(value || 0).toLocaleString("en-GB"); const pct = value => `${Number(value || 0).toFixed(1)}%`; const lineStyle = { display: "flex", alignItems: "center", gap: 7, marginTop: 5 }; return <div style={{ background: "#fff", border: "1px solid #e2e5e8", borderRadius: 8, padding: "10px 12px", fontSize: 11, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}><div style={{ color: "#17212b", fontWeight: 600, marginBottom: 6 }}>{row.hoverLabel || label}</div><div style={{ ...lineStyle, color: "#ff0000" }}>C · Confirmed: {count(row.confirmedTotal)}</div><div style={{ ...lineStyle, color: "#ff9900" }}>P · Price left: {count(row.priceTotal)}</div><div style={{ ...lineStyle, color: "#008000" }}>S · Sold: {count(row.soldTotal)}</div><div style={{ borderTop: "1px solid #d1d5db", marginTop: 8, paddingTop: 3 }}><div style={{ ...lineStyle, color: "#2563eb" }}>BO%: {pct(row.boPercent)}</div><div style={{ ...lineStyle, color: "#111827" }}>Conv: {pct(row.conversionPercent)}</div></div></div> }} />
+            <Tooltip content={({ active, payload, label }) => { if (!active || !payload?.length) return null; const row = payload[0]?.payload || {}; const count = value => Number(value || 0).toLocaleString("en-GB"); const pct = value => `${Number(value || 0).toFixed(1)}%`; const lineStyle = { display: "flex", alignItems: "center", gap: 7, marginTop: 5 }; return <div style={{ background: "#fff", border: "1px solid #e2e5e8", borderRadius: 8, padding: "10px 12px", fontSize: 11, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}><div style={{ color: "#17212b", fontWeight: 600, marginBottom: 6 }}>{row.hoverLabel || label}</div><div style={{ ...lineStyle, color: "#ff0000" }}>C · Confirmed: {count(row.confirmedTotal)}</div><div style={{ ...lineStyle, color: "#ff9900" }}>P · Price left: {count(row.priceTotal)}</div><div style={{ ...lineStyle, color: "#008000" }}>S · Sold: {count(row.soldTotal)}</div><div style={{ ...lineStyle, color: "#008000", marginTop: 2, paddingLeft: 12 }}>Net value: {new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(Number(row.soldNetValue || 0))}</div><div style={{ borderTop: "1px solid #d1d5db", marginTop: 8, paddingTop: 3 }}><div style={{ ...lineStyle, color: "#2563eb" }}>BO%: {pct(row.boPercent)}</div><div style={{ ...lineStyle, color: "#111827" }}>Conv: {pct(row.conversionPercent)}</div></div></div> }} />
             <Legend verticalAlign="bottom" height={32} iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
             <Bar yAxisId="count" dataKey="sold" name="S · Sold" stackId="cps" fill="#008000" />
             <Bar yAxisId="count" dataKey="priceOnly" name="P · Price left" stackId="cps" fill="#ff9900" />
