@@ -162,7 +162,7 @@ function SalesChart({ contracts = [] }) {
   }), [contracts, years, currentMonth, currentDay])
 
   const monthlyBalanceData = useMemo(() => {
-    const start = new Date(2026, 0, 1)
+    const start = selectedYear === "all" ? new Date(2020, 0, 1) : new Date(Number(selectedYear), 0, 1)
     const yearEnd = selectedYear === "all" ? new Date(currentYear, currentMonth, currentDay) : new Date(Number(selectedYear), 11, 31)
     const end = yearEnd > new Date(currentYear, currentMonth, currentDay) ? new Date(currentYear, currentMonth, currentDay) : yearEnd
     const rows = []
