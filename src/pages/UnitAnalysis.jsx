@@ -65,6 +65,7 @@ export default function UnitAnalysis() {
         const { data, error: fetchError } = await supabase
           .from("units")
           .select('"UUID", appointment_id, location, created_by, created_date, unit_type, style_choice, width, height, discountable, ordered_date, contract_number, department, supplier, added_to_supabase_date')
+          .eq("unit_type", "Window")
           .range(from, from + PAGE_SIZE - 1)
         if (fetchError) throw fetchError
         const batch = data || []
@@ -158,7 +159,7 @@ export default function UnitAnalysis() {
     </div>
     <section className="unit-analysis-panel">
       <div className="unit-analysis-toolbar">
-        <div><div className="unit-analysis-toolbar-title">Breakdown by style</div><div className="unit-analysis-toolbar-subtitle">Expand any style to see the underlying units, unit types and exact dimensions.</div></div>
+        <div><div className="unit-analysis-toolbar-title">Breakdown by style</div><div className="unit-analysis-toolbar-subtitle">Expand any style to see the underlying windows and their exact dimensions.</div></div>
         <div className="unit-analysis-filters">
           <label className="unit-analysis-search"><Search size={14} color="#667085"/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search type, size or contract"/></label>
           <select className="unit-analysis-select" value={styleFilter} onChange={event => setStyleFilter(event.target.value)} aria-label="Filter by style"><option value="all">All styles</option>{styleOptions.map(style => <option key={style} value={style}>{style}</option>)}</select>
@@ -187,7 +188,7 @@ export default function UnitAnalysis() {
           </tbody>
         </table>
       </div>
-      <div className="unit-analysis-footnote">Units are grouped by style_choice; blank styles appear as “Unspecified style”. Disc Total averages and totals exclude units without a numeric discountable value. “Ordered” is determined by a populated ordered_date.</div>
+      <div className="unit-analysis-footnote">Only records where unit_type is “Window” are included. Windows are grouped by style_choice; blank styles appear as “Unspecified style”. Disc Total averages and totals exclude units without a numeric discountable value. “Ordered” is determined by a populated ordered_date.</div>
     </section>
     {lastUpdated && <div style={{fontSize:10,color:"#98a2b3",marginTop:10,textAlign:"right"}}>Last refreshed {lastUpdated.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</div>}
   </div>
