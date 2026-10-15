@@ -241,12 +241,15 @@ export default function UnitAnalysis() {
             stage: text(deal.pipedrive_stage) || "—",
             units: [],
             byType: new Map(),
-            unitSpend: 0
+            unitSpend: 0,
+            discountableTotal: 0
           })
           const entry = aggregate.get(key)
           const cost = Number(unit.net_product_cost)
           entry.units.push(unit)
           entry.unitSpend += cost
+          const discountable = unit.discountable == null || unit.discountable === "" ? 0 : Number(unit.discountable)
+          if (Number.isFinite(discountable)) entry.discountableTotal += discountable
           const unitType = text(unit.unit_type) || "Unspecified type"
           const style = text(unit.style_choice) || "Unspecified style"
           const typeKey = `${unitType}::${style}`
@@ -446,17 +449,17 @@ export default function UnitAnalysis() {
       <div className="unit-analysis-count">{dealsLoading ? "Loading deal comparisons…" : `${dealRecords.filter(deal => !dealSearch.trim() || `${deal.customerName} ${deal.appointmentId} ${deal.stage}`.toLowerCase().includes(dealSearch.trim().toLowerCase())).length.toLocaleString("en-GB")} jobs with COS% over 50%`}</div>
       <div className="unit-analysis-table-wrap">
         <table className="unit-analysis-table" style={{minWidth:1000}}>
-          <thead><tr><th style={{textAlign:"left"}}>Deal / appointment</th><th>Stage</th><th>Units costed</th><th>Deal net value</th><th>Survey costing</th><th>Unit spend</th><th>COS</th><th>COS%</th></tr></thead>
+          <thead><tr><th style={{textAlign:"left"}}>Deal / appointment</th><th>Stage</th><th>Units costed</th><th>Deal net value</th><th>Discountable total</th><th>Survey costing</th><th>Unit spend</th><th>COS</th><th>COS%</th></tr></thead>
           <tbody>
-            {dealsLoading && dealRecords.length === 0 ? <tr><td colSpan="8" className="unit-analysis-empty">Loading deals…</td></tr> :
+            {dealsLoading && dealRecords.length === 0 ? <tr><td colSpan="9" className="unit-analysis-empty">Loading deals…</td></tr> :
               dealRecords.filter(deal => !dealSearch.trim() || `${deal.customerName} ${deal.appointmentId} ${deal.stage}`.toLowerCase().includes(dealSearch.trim().toLowerCase())).length === 0 ?
-                <tr><td colSpan="8" className="unit-analysis-empty">{dealsError ? "Deal comparisons could not be loaded." : "No jobs have COS% over 50% matching this search."}</td></tr> :
+                <tr><td colSpan="9" className="unit-analysis-empty">{dealsError ? "Deal comparisons could not be loaded." : "No jobs have COS% over 50% matching this search."}</td></tr> :
                 dealRecords.filter(deal => !dealSearch.trim() || `${deal.customerName} ${deal.appointmentId} ${deal.stage}`.toLowerCase().includes(dealSearch.trim().toLowerCase())).map(deal => <React.Fragment key={deal.key}>
                   <tr className="unit-analysis-group-row" onClick={() => setExpandedDeals(current => ({...current,[deal.key]:!current[deal.key]}))}>
                     <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{expandedDeals[deal.key] ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<div><div className="unit-analysis-type">{deal.customerName}</div><div className="unit-analysis-muted">Appointment {deal.appointmentId}</div></div></div></td>
-                    <td>{deal.stage}</td><td>{deal.unitCount.toLocaleString("en-GB")}</td><td>{money(deal.netValue)}</td><td>{deal.surveyCosting == null ? "—" : `${deal.surveyCosting.toFixed(1)}%`}</td><td>{money(deal.unitSpend)}</td><td style={{fontWeight:750}}>{money(deal.cos)}</td><td style={{fontWeight:800,color:deal.cosPercent > 70 ? "#b42318" : "#b54708"}}>{deal.cosPercent.toFixed(1)}%</td>
+                    <td>{deal.stage}</td><td>{deal.unitCount.toLocaleString("en-GB")}</td><td>{money(deal.netValue)}</td><td>{money(deal.discountableTotal)}</td><td>{deal.surveyCosting == null ? "—" : `${deal.surveyCosting.toFixed(1)}%`}</td><td>{money(deal.unitSpend)}</td><td style={{fontWeight:750}}>{money(deal.cos)}</td><td style={{fontWeight:800,color:deal.cosPercent > 70 ? "#b42318" : "#b54708"}}>{deal.cosPercent.toFixed(1)}%</td>
                   </tr>
-                  {expandedDeals[deal.key] && <tr className="unit-analysis-detail"><td colSpan="8" style={{padding:0}}>
+                  {expandedDeals[deal.key] && <tr className="unit-analysis-detail"><td colSpan="9" style={{padding:0}}>
                     <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Unit / contract</th><th>Colour choice</th><th>Width</th><th>Height</th><th>Disc Total</th><th>Net Cost</th><th>Supplier</th><th>Ordered date</th></tr></thead><tbody>
                       {deal.units.map((unit, index) => <tr key={unit.UUID || `${deal.key}-unit-${index}`}><td style={{textAlign:"left"}}>{text(unit.contract_number) || text(unit.UUID) || "Unit"}<div className="unit-analysis-muted">{text(unit.location) || text(unit.appointment_id) || "—"}</div></td><td>{text(unit.colour_choice) || "—"}</td><td>{unit.width == null || unit.width === "" || !Number.isFinite(Number(unit.width)) ? "—" : `${dimension(Number(unit.width))} mm`}</td><td>{unit.height == null || unit.height === "" || !Number.isFinite(Number(unit.height)) ? "—" : `${dimension(Number(unit.height))} mm`}</td><td>{unit.discountable == null || unit.discountable === "" || !Number.isFinite(Number(unit.discountable)) ? "—" : money(Number(unit.discountable))}</td><td>{unit.net_product_cost == null || unit.net_product_cost === "" || !Number.isFinite(Number(unit.net_product_cost)) ? "—" : money(Number(unit.net_product_cost))}</td><td>{text(unit.supplier) || "—"}</td><td>{unit.ordered_date ? new Date(unit.ordered_date).toLocaleDateString("en-GB") : "—"}</td></tr>)}
                       <tr><td style={{textAlign:"left",fontWeight:800}}>Total</td><td>—</td><td>—</td><td>—</td><td>—</td><td style={{fontWeight:800}}>{money(deal.unitSpend)}</td><td>—</td><td>—</td></tr>
