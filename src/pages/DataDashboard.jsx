@@ -96,6 +96,9 @@ function DataDashboard() {
   const [expandedProntoSids, setExpandedProntoSids] = useState({})
   const [prontoC3Rows, setProntoC3Rows] = useState({})
   const [prontoC3Loading, setProntoC3Loading] = useState({})
+  const [expandedProntoC1s, setExpandedProntoC1s] = useState({})
+  const [prontoC1C3Rows, setProntoC1C3Rows] = useState({})
+  const [prontoC1C3Loading, setProntoC1C3Loading] = useState({})
   const [missingSidC1Rows, setMissingSidC1Rows] = useState([])
   const [missingSidC1Loading, setMissingSidC1Loading] = useState(false)
   const [missingSidC1Error, setMissingSidC1Error] = useState("")
@@ -264,6 +267,39 @@ function DataDashboard() {
       setProntoSidError(err?.message || `Unable to load Pronto C3 breakdown for SID ${sid}.`)
     } finally {
       setProntoC3Loading((current) => ({ ...current, [sid]: false }))
+    }
+  }
+
+  async function toggleProntoC1(sid, c1) {
+    const key = JSON.stringify([sid, c1])
+    const isExpanded = Boolean(expandedProntoC1s[key])
+    setExpandedProntoC1s((current) => ({ ...current, [key]: !current[key] }))
+    if (isExpanded || Object.prototype.hasOwnProperty.call(prontoC1C3Rows, key) || prontoC1C3Loading[key]) return
+    if (!supabase) return
+
+    setProntoC1C3Loading((current) => ({ ...current, [key]: true }))
+    try {
+      const { data, error: rpcError } = await supabase.rpc("get_pronto_c1_c3_lead_counts", {
+        sid_filter: sid,
+        c1_filter: c1,
+        date_period: prontoDatePeriod,
+      })
+      if (rpcError) throw rpcError
+      setProntoC1C3Rows((current) => ({
+        ...current,
+        [key]: (data || []).map((item) => ({
+          pronto_c3: String(item.pronto_c3 || "(Blank / NULL)"),
+          lead_count: Number(item.lead_count || 0),
+          first_lead_date: item.first_lead_date || null,
+          latest_lead_date: item.latest_lead_date || null,
+        })),
+      }))
+    } catch (err) {
+      console.error("Error loading Pronto C3 breakdown for C1:", err)
+      setProntoC1C3Rows((current) => ({ ...current, [key]: [] }))
+      setProntoSidError(err?.message || `Unable to load Pronto C3 breakdown for C1 ${c1}.`)
+    } finally {
+      setProntoC1C3Loading((current) => ({ ...current, [key]: false }))
     }
   }
 
@@ -1081,15 +1117,58 @@ function DataDashboard() {
                                 </thead>
                                 <tbody>
                                   {(prontoC3Rows[row.pronto_sid] || []).length ? (
-                                    prontoC3Rows[row.pronto_sid].map((c3Row) => (
-                                      <tr key={c3Row.pronto_c3}>
-                                        <td>{c3Row.pronto_c3}</td>
-                                        <td>{formatProntoDate(c3Row.first_lead_date)}</td>
-                                        <td>{formatProntoDate(c3Row.latest_lead_date)}</td>
-                                        <td>{prontoStatus(c3Row.latest_lead_date)}</td>
-                                        <td>{formatNumber(c3Row.lead_count)}</td>
-                                      </tr>
-                                    ))
+                                    prontoC3Rows[row.pronto_sid].map((c1Row) => {
+                                      const c1Key = JSON.stringify([row.pronto_sid, c1Row.pronto_c3])
+                                      return (
+                                        <React.Fragment key={c1Key}>
+                                          <tr>
+                                            <td>
+                                              <button
+                                                type="button"
+                                                onClick={() => toggleProntoC1(row.pronto_sid, c1Row.pronto_c3)}
+                                                aria-expanded={Boolean(expandedProntoC1s[c1Key])}
+                                                style={{ border: 0, background: "transparent", padding: 0, color: "inherit", font: "inherit", fontWeight: 500, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}
+                                              >
+                                                <span aria-hidden="true">{expandedProntoC1s[c1Key] ? "▾" : "▸"}</span>
+                                                {c1Row.pronto_c3}
+                                              </button>
+                                            </td>
+                                            <td>{formatProntoDate(c1Row.first_lead_date)}</td>
+                                            <td>{formatProntoDate(c1Row.latest_lead_date)}</td>
+                                            <td>{prontoStatus(c1Row.latest_lead_date)}</td>
+                                            <td>{formatNumber(c1Row.lead_count)}</td>
+                                          </tr>
+                                          {expandedProntoC1s[c1Key] && (
+                                            <tr>
+                                              <td colSpan={5} className="pronto-breakdown-cell">
+                                                {prontoC1C3Loading[c1Key] ? (
+                                                  <div className="pronto-empty" style={{ padding: 16 }}>Loading Pronto C3 breakdown…</div>
+                                                ) : (
+                                                  <table className="pronto-table pronto-breakdown-table">
+                                                    <thead><tr><th>Pronto C3</th><th>First received</th><th>Latest received</th><th>Status</th><th>Leads</th></tr></thead>
+                                                    <tbody>
+                                                      {(prontoC1C3Rows[c1Key] || []).length ? (
+                                                        prontoC1C3Rows[c1Key].map((c3Item) => (
+                                                          <tr key={c3Item.pronto_c3}>
+                                                            <td>{c3Item.pronto_c3}</td>
+                                                            <td>{formatProntoDate(c3Item.first_lead_date)}</td>
+                                                            <td>{formatProntoDate(c3Item.latest_lead_date)}</td>
+                                                            <td>{prontoStatus(c3Item.latest_lead_date)}</td>
+                                                            <td>{formatNumber(c3Item.lead_count)}</td>
+                                                          </tr>
+                                                        ))
+                                                      ) : (
+                                                        <tr><td colSpan={5}>No Pronto C3 values found.</td></tr>
+                                                      )}
+                                                    </tbody>
+                                                  </table>
+                                                )}
+                                              </td>
+                                            </tr>
+                                          )}
+                                        </React.Fragment>
+                                      )
+                                    })
                                   ) : (
                                     <tr><td colSpan={5}>No Pronto C3 values found.</td></tr>
                                   )}
