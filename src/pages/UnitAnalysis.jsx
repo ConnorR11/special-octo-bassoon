@@ -7,6 +7,7 @@ const money = value => Number.isFinite(Number(value)) ? Number(value).toLocaleSt
 const dimension = value => Number(value).toLocaleString("en-GB", { maximumFractionDigits: 1 })
 const text = value => String(value ?? "").trim()
 const normaliseType = value => text(value) || "Unspecified type"
+const normaliseStyle = value => text(value) || "Unspecified style"
 
 function buildGroups(rows) {
   const validRows = rows.map(row => ({
@@ -14,54 +15,29 @@ function buildGroups(rows) {
     width: Number(row.width),
     height: Number(row.height),
     cost: row.discountable == null || row.discountable === "" ? null : Number(row.discountable),
-    ordered: Boolean(row.ordered_date)
+    ordered: Boolean(row.ordered_date),
+    style: normaliseStyle(row.style_choice)
   })).filter(row => Number.isFinite(row.width) && row.width > 0 && Number.isFinite(row.height) && row.height > 0)
-
-  const byType = new Map()
+  const byStyle = new Map()
   validRows.forEach(row => {
-    const type = normaliseType(row.unit_type)
-    if (!byType.has(type)) byType.set(type, [])
-    byType.get(type).push(row)
+    if (!byStyle.has(row.style)) byStyle.set(row.style, [])
+    byStyle.get(row.style).push(row)
   })
-
   const groups = []
-  for (const [type, typeRows] of byType) {
-    typeRows.sort((a, b) => a.width - b.width || a.height - b.height || String(a.UUID).localeCompare(String(b.UUID)))
-    const typeGroups = []
-    typeRows.forEach(row => {
-      // Stable, non-transitive grouping: each group is anchored to its smallest
-      // width/height record, so results do not depend on database return order.
-      let group = typeGroups.find(candidate =>
-        Math.abs(row.width - candidate.anchorWidth) <= 50 &&
-        Math.abs(row.height - candidate.anchorHeight) <= 50
-      )
-      if (!group) {
-        group = {
-          key: `${type}|${row.width}|${row.height}`,
-          type, anchorWidth: row.width, anchorHeight: row.height, rows: []
-        }
-        typeGroups.push(group)
-      }
-      group.rows.push(row)
-    })
-    typeGroups.forEach(group => {
-      const costed = group.rows.filter(row => row.cost !== null && Number.isFinite(row.cost))
-      const ordered = group.rows.filter(row => row.ordered)
-      const orderedCosted = ordered.filter(row => row.cost !== null && Number.isFinite(row.cost))
-      group.costedCount = costed.length
-      group.orderedCount = ordered.length
-      group.averageCosted = costed.length ? costed.reduce((sum, row) => sum + row.cost, 0) / costed.length : null
-      group.averageOrdered = orderedCosted.length ? orderedCosted.reduce((sum, row) => sum + row.cost, 0) / orderedCosted.length : null
-      group.totalCosted = costed.reduce((sum, row) => sum + row.cost, 0)
-      group.rows.sort((a, b) => a.width - b.width || a.height - b.height)
-      group.minWidth = Math.min(...group.rows.map(row => row.width))
-      group.maxWidth = Math.max(...group.rows.map(row => row.width))
-      group.minHeight = Math.min(...group.rows.map(row => row.height))
-      group.maxHeight = Math.max(...group.rows.map(row => row.height))
-      groups.push(group)
+  for (const [style, styleRows] of byStyle) {
+    const costed = styleRows.filter(row => row.cost !== null && Number.isFinite(row.cost))
+    const ordered = styleRows.filter(row => row.ordered)
+    const orderedCosted = ordered.filter(row => row.cost !== null && Number.isFinite(row.cost))
+    styleRows.sort((a, b) => a.width - b.width || a.height - b.height || String(a.UUID).localeCompare(String(b.UUID)))
+    groups.push({
+      key: style, style, rows: styleRows,
+      costedCount: costed.length, orderedCount: ordered.length,
+      averageCosted: costed.length ? costed.reduce((sum, row) => sum + row.cost, 0) / costed.length : null,
+      averageOrdered: orderedCosted.length ? orderedCosted.reduce((sum, row) => sum + row.cost, 0) / orderedCosted.length : null,
+      totalCosted: costed.reduce((sum, row) => sum + row.cost, 0)
     })
   }
-  return groups.sort((a, b) => a.type.localeCompare(b.type) || a.anchorWidth - b.anchorWidth || a.anchorHeight - b.anchorHeight)
+  return groups.sort((a, b) => a.style.localeCompare(b.style))
 }
 
 function StatCard({ label, value, note }) {
@@ -73,7 +49,7 @@ export default function UnitAnalysis() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [search, setSearch] = useState("")
-  const [typeFilter, setTypeFilter] = useState("all")
+  const [styleFilter, setStyleFilter] = useState("all")
   const [orderedFilter, setOrderedFilter] = useState("all")
   const [expanded, setExpanded] = useState({})
   const [lastUpdated, setLastUpdated] = useState(null)
@@ -88,7 +64,7 @@ export default function UnitAnalysis() {
       while (true) {
         const { data, error: fetchError } = await supabase
           .from("units")
-          .select('"UUID", appointment_id, location, created_by, created_date, unit_type, width, height, discountable, ordered_date, contract_number, department, supplier, added_to_supabase_date')
+          .select('"UUID", appointment_id, location, created_by, created_date, unit_type, style_choice, width, height, discountable, ordered_date, contract_number, department, supplier, added_to_supabase_date')
           .range(from, from + PAGE_SIZE - 1)
         if (fetchError) throw fetchError
         const batch = data || []
@@ -109,17 +85,17 @@ export default function UnitAnalysis() {
   useEffect(() => { loadUnits() }, [loadUnits])
 
   const groups = useMemo(() => buildGroups(rows), [rows])
-  const typeOptions = useMemo(() => [...new Set(groups.map(group => group.type))].sort((a, b) => a.localeCompare(b)), [groups])
+  const styleOptions = useMemo(() => [...new Set(groups.map(group => group.style))].sort((a, b) => a.localeCompare(b)), [groups])
   const filteredGroups = useMemo(() => {
     const term = search.trim().toLowerCase()
     return groups.filter(group => {
-      if (typeFilter !== "all" && group.type !== typeFilter) return false
+      if (styleFilter !== "all" && group.style !== styleFilter) return false
       if (orderedFilter === "ordered" && group.orderedCount === 0) return false
       if (orderedFilter === "not-ordered" && group.orderedCount > 0) return false
-      if (term && ![group.type, group.anchorWidth, group.anchorHeight, ...group.rows.map(row => row.contract_number || "")].some(value => String(value ?? "").toLowerCase().includes(term))) return false
+      if (term && ![group.style, ...group.rows.map(row => String(row.contract_number || "") + " " + String(row.unit_type || "") + " " + row.width + " " + row.height)].some(value => String(value ?? "").toLowerCase().includes(term))) return false
       return true
     })
-  }, [groups, search, typeFilter, orderedFilter])
+  }, [groups, search, styleFilter, orderedFilter])
 
   const totalCosted = rows.filter(row => row.discountable != null && row.discountable !== "" && Number.isFinite(Number(row.discountable)))
   const totalOrdered = rows.filter(row => Boolean(row.ordered_date))
@@ -170,7 +146,7 @@ export default function UnitAnalysis() {
       @media(max-width:650px){.unit-analysis-page{padding-top:0}.unit-analysis-header{padding-left:48px;align-items:flex-start}.unit-analysis-header h1{font-size:24px}.unit-analysis-refresh{padding:9px}.unit-analysis-stats{gap:9px}.unit-analysis-stat{padding:13px}.unit-analysis-stat-value{font-size:21px}.unit-analysis-toolbar{align-items:stretch}.unit-analysis-filters{display:grid;grid-template-columns:1fr 1fr;width:100%}.unit-analysis-search{grid-column:1/-1;min-width:0}.unit-analysis-select{width:100%;max-width:none}}
     `}</style>
     <div className="unit-analysis-header">
-      <div><div className="unit-analysis-eyebrow">Administration</div><h1>Unit Analysis</h1><p className="unit-analysis-subtitle">Compare costed and ordered units by type and approximate dimensions. Units are grouped within ±50 mm of a stable width and height reference.</p></div>
+      <div><div className="unit-analysis-eyebrow">Administration</div><h1>Unit Analysis</h1><p className="unit-analysis-subtitle">Compare costed and ordered units grouped by style. Expand a style to inspect the underlying units, types and dimensions.</p></div>
       <button className="unit-analysis-refresh" type="button" onClick={loadUnits} disabled={loading}><RefreshCw size={14}/>{loading ? "Loading…" : "Refresh"}</button>
     </div>
     {error && <div className="unit-analysis-error">{error}</div>}
@@ -182,23 +158,23 @@ export default function UnitAnalysis() {
     </div>
     <section className="unit-analysis-panel">
       <div className="unit-analysis-toolbar">
-        <div><div className="unit-analysis-toolbar-title">Breakdown by unit type and size</div><div className="unit-analysis-toolbar-subtitle">Expand any row to see the underlying units and their exact dimensions.</div></div>
+        <div><div className="unit-analysis-toolbar-title">Breakdown by style</div><div className="unit-analysis-toolbar-subtitle">Expand any style to see the underlying units, unit types and exact dimensions.</div></div>
         <div className="unit-analysis-filters">
           <label className="unit-analysis-search"><Search size={14} color="#667085"/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search type, size or contract"/></label>
-          <select className="unit-analysis-select" value={typeFilter} onChange={event => setTypeFilter(event.target.value)} aria-label="Filter by unit type"><option value="all">All unit types</option>{typeOptions.map(type => <option key={type} value={type}>{type}</option>)}</select>
+          <select className="unit-analysis-select" value={styleFilter} onChange={event => setStyleFilter(event.target.value)} aria-label="Filter by style"><option value="all">All styles</option>{styleOptions.map(style => <option key={style} value={style}>{style}</option>)}</select>
           <select className="unit-analysis-select" value={orderedFilter} onChange={event => setOrderedFilter(event.target.value)} aria-label="Filter by order status"><option value="all">All order statuses</option><option value="ordered">Ordered only</option><option value="not-ordered">Not ordered</option></select>
         </div>
       </div>
-      <div className="unit-analysis-count">{loading ? "Loading units…" : `Showing ${filteredGroups.length.toLocaleString("en-GB")} size groups · ${rows.length.toLocaleString("en-GB")} units loaded`}</div>
+      <div className="unit-analysis-count">{loading ? "Loading units…" : `Showing ${filteredGroups.length.toLocaleString("en-GB")} styles · ${rows.length.toLocaleString("en-GB")} units loaded`}</div>
       <div className="unit-analysis-table-wrap">
         <table className="unit-analysis-table">
-          <thead><tr><th style={{textAlign:"left"}}>Unit type / approximate size</th><th>Units costed</th><th>Units ordered</th><th>Disc Total</th><th>Avg. ordered Disc Total</th><th>Total costed value</th></tr></thead>
+          <thead><tr><th style={{textAlign:"left"}}>Style</th><th>Units costed</th><th>Units ordered</th><th>Disc Total</th><th>Avg. ordered Disc Total</th><th>Total costed value</th></tr></thead>
           <tbody>
             {loading && rows.length === 0 ? <tr><td colSpan="6" className="unit-analysis-empty">Loading unit records…</td></tr> :
               filteredGroups.length === 0 ? <tr><td colSpan="6" className="unit-analysis-empty">{error ? "Unit data could not be loaded." : "No units match these filters."}</td></tr> :
               filteredGroups.map(group => <React.Fragment key={group.key}>
                 <tr className="unit-analysis-group-row" onClick={() => setExpanded(current => ({...current,[group.key]:!current[group.key]}))}>
-                  <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{expanded[group.key] ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<div><div className="unit-analysis-type">{group.type}</div><div className="unit-analysis-size">{dimension(group.anchorWidth)} × {dimension(group.anchorHeight)} mm</div><div className="unit-analysis-muted">W {dimension(group.minWidth)}–{dimension(group.maxWidth)} mm · H {dimension(group.minHeight)}–{dimension(group.maxHeight)} mm</div></div></div></td>
+                  <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{expanded[group.key] ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<div><div className="unit-analysis-type">{group.style}</div><div className="unit-analysis-muted">{new Set(group.rows.map(row => normaliseType(row.unit_type))).size} unit types · {group.rows.length} total units</div></div></div></td>
                   <td>{group.costedCount.toLocaleString("en-GB")}</td><td>{group.orderedCount.toLocaleString("en-GB")}</td><td>{group.averageCosted == null ? "—" : money(group.averageCosted)}</td><td>{group.averageOrdered == null ? "—" : money(group.averageOrdered)}</td><td>{money(group.totalCosted)}</td>
                 </tr>
                 {expanded[group.key] && <tr className="unit-analysis-detail"><td colSpan="6" style={{padding:0}}>
@@ -211,7 +187,7 @@ export default function UnitAnalysis() {
           </tbody>
         </table>
       </div>
-      <div className="unit-analysis-footnote">Grouping is by unit type and a fixed reference dimension: each unit must be within 50 mm of both the group's reference width and reference height. This avoids chain grouping that could merge units more than 50 mm apart. Disc Total averages and totals exclude units without a numeric discountable value. “Ordered” is determined by a populated ordered_date.</div>
+      <div className="unit-analysis-footnote">Units are grouped by style_choice; blank styles appear as “Unspecified style”. Disc Total averages and totals exclude units without a numeric discountable value. “Ordered” is determined by a populated ordered_date.</div>
     </section>
     {lastUpdated && <div style={{fontSize:10,color:"#98a2b3",marginTop:10,textAlign:"right"}}>Last refreshed {lastUpdated.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</div>}
   </div>
