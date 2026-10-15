@@ -74,10 +74,10 @@ async function fetchDealStage(token, dealId, stageMap) {
 
 async function getMissingStageRows(config, limit, offset) {
   const url = new URL(`${config.supabaseUrl}/rest/v1/deals`)
-  url.searchParams.set("select", "id,pipedrive_deal_id,pipedrive_stage,contract_number,customer_name")
+  url.searchParams.set("select", "id,pipedrive_deal_id,pipedrive_stage,contract_number,customer_name,sale_date")
   url.searchParams.set("pipedrive_deal_id", "not.is.null")
   url.searchParams.set("or", "(pipedrive_stage.is.null,pipedrive_stage.eq.)")
-  url.searchParams.set("order", "id.asc")
+  url.searchParams.set("order", "sale_date.desc.nullslast,id.asc")
   url.searchParams.set("limit", String(limit))
   url.searchParams.set("offset", String(offset))
   const response = await fetch(url, {
