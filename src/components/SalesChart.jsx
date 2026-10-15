@@ -71,8 +71,7 @@ function ChartCard({ title, subtitle, data, series, dataKey }) {
 }
 
 function SalesChart({ contracts = [] }) {
-  const [selectedProducts, setSelectedProducts] = useState(["All products"])
-  const [productMenuOpen, setProductMenuOpen] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState("All products")
   const [timeGrouping, setTimeGrouping] = useState("month")
   const today = new Date()
   const currentYear = today.getFullYear()
@@ -80,21 +79,7 @@ function SalesChart({ contracts = [] }) {
   const currentDay = today.getDate()
   const years = useMemo(() => Array.from({ length: Math.max(0, currentYear - 2019) }, (_, i) => 2020 + i), [currentYear])
 
-  const toggleProduct = (product) => {
-    if (product === "All products") {
-      setSelectedProducts(["All products"])
-      return
-    }
-    setSelectedProducts((current) => {
-      const active = current.includes("All products") ? [] : current
-      const next = active.includes(product) ? active.filter((item) => item !== product) : [...active, product]
-      return next.length ? next : ["All products"]
-    })
-  }
-
-  const productFilterLabel = selectedProducts.includes("All products")
-    ? "All products"
-    : selectedProducts.join(", ")
+  const productFilterLabel = selectedProduct
 
   const chartData = useMemo(() => years.map((year) => {
     const row = { year, total: 0 }
@@ -149,7 +134,7 @@ function SalesChart({ contracts = [] }) {
       if (!deal?.sale_date) return
       const date = new Date(`${String(deal.sale_date).slice(0, 10)}T00:00:00`)
       if (Number.isNaN(date.getTime()) || date < start || date > end) return
-      if (!selectedProducts.includes("All products") && !selectedProducts.includes(normaliseProduct(deal.product))) return
+      if (selectedProduct !== "All products" && selectedProduct !== normaliseProduct(deal.product)) return
       const bucket = getBucket(date)
       const row = rowByKey.get(bucket.key)
       if (!row) return
@@ -160,7 +145,7 @@ function SalesChart({ contracts = [] }) {
     })
     rows.forEach((row) => { row.notSolidPercent = row.total > 0 ? ((row.Decline + row.Cancelled) / row.total) * 100 : 0 })
     return rows
-  }, [contracts, currentYear, currentMonth, currentDay, selectedProducts, timeGrouping])
+  }, [contracts, currentYear, currentMonth, currentDay, selectedProduct, timeGrouping])
 
   if (!contracts.length) {
     return <div style={{ marginTop: 18, background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: 24, color: "#777", fontSize: 12 }}>No sales data available.</div>
@@ -177,19 +162,7 @@ function SalesChart({ contracts = [] }) {
           <div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Net Sales Value by Month</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Net sales value by deal result · January 2020 onwards</p></div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, color: "#475569" }}>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Period<select value={timeGrouping} onChange={(event) => setTimeGrouping(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="year">Year</option><option value="quarter">Quarter</option><option value="month">Month</option><option value="week">Week</option></select></label>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span>Products</span>
-              <div style={{ position: "relative", minWidth: 165 }}>
-                <button type="button" aria-haspopup="listbox" aria-expanded={productMenuOpen} onClick={() => setProductMenuOpen((open) => !open)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, width: "100%", border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", cursor: "pointer", textAlign: "left" }}>
-                  <span style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", maxWidth: 210 }}>{productFilterLabel}</span><span aria-hidden="true">▾</span>
-                </button>
-                {productMenuOpen && <div role="group" aria-label="Filter products" style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 20, minWidth: "100%", width: 170, padding: 6, background: "#fff", border: "1px solid #cbd5e1", borderRadius: 6, boxShadow: "0 6px 18px rgba(15,23,42,0.16)" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 3px", cursor: "pointer", whiteSpace: "nowrap" }}><input type="checkbox" checked={selectedProducts.includes("All products")} onChange={() => toggleProduct("All products")} />All products</label>
-                  <div style={{ height: 1, background: "#e5e7eb", margin: "3px 0" }} />
-                  {PRODUCT_FILTER_OPTIONS.map((product) => <label key={product} style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 3px", cursor: "pointer", whiteSpace: "nowrap" }}><input type="checkbox" checked={!selectedProducts.includes("All products") && selectedProducts.includes(product)} onChange={() => toggleProduct(product)} />{product}</label>)}
-                </div>}
-              </div>
-            </div>
+            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Products<select value={selectedProduct} onChange={(event) => setSelectedProduct(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", minWidth: 145 }}><option value="All products">All products</option>{PRODUCT_FILTER_OPTIONS.map((product) => <option key={product} value={product}>{product}</option>)}</select></label>
           </div>
         </div>
         <ResponsiveContainer width="100%" height={330}>
