@@ -106,36 +106,12 @@ function SalesChart({ contracts = [] }) {
       setCpsLoading(true)
       setCpsError("")
       try {
-        const rows = []
-        const pageSize = 250
-        const pagesPerWave = 6
-        const startDate = "2026-01-01T00:00:00"
-        const endDate = new Date().toISOString()
-        for (let waveStart = 0; ; waveStart += pageSize * pagesPerWave) {
-          const ranges = Array.from({ length: pagesPerWave }, (_, i) => {
-            const from = waveStart + i * pageSize
-            return { from, to: from + pageSize - 1 }
-          })
-          const results = await Promise.all(ranges.map(({ from, to }) =>
-            supabase
-              .from("appointments")
-              .select("appointment_row_id,appointment_date,cps_c,cps_p,cps_s,product")
-              .or("cps_c.eq.true,cps_p.eq.true,cps_s.eq.true")
-              .gte("appointment_date", startDate)
-              .lte("appointment_date", endDate)
-              .order("appointment_date", { ascending: true })
-              .order("appointment_row_id", { ascending: true })
-              .range(from, to)
-          ))
-          let reachedEnd = false
-          for (const result of results) {
-            if (result.error) throw result.error
-            rows.push(...(result.data || []))
-            if (!result.data || result.data.length < pageSize) reachedEnd = true
-          }
-          if (reachedEnd) break
-        }
-        if (!cancelled) setCpsAppointments(rows)
+        const { data, error } = await supabase.rpc("sales_conversion_appointment_counts", {
+          p_start_date: "2026-01-01T00:00:00Z",
+          p_end_date: new Date().toISOString()
+        })
+        if (error) throw error
+        if (!cancelled) setCpsAppointments(data || [])
       } catch (error) {
         if (!cancelled) {
           setCpsAppointments([])
@@ -254,20 +230,16 @@ function SalesChart({ contracts = [] }) {
     }
     const rowByKey = new Map(rows.map(row => [row.bucketKey, row]))
     cpsAppointments.forEach(appointment => {
-      if (!appointment?.appointment_date) return
-      const date = new Date(appointment.appointment_date)
+      if (!appointment?.appointment_day) return
+      const date = new Date(`${String(appointment.appointment_day).slice(0, 10)}T00:00:00`)
       if (Number.isNaN(date.getTime()) || date < start || date > end) return
       if (cpsSelectedProduct !== "All products" && cpsSelectedProduct !== normaliseProduct(appointment.product)) return
       const row = rowByKey.get(getBucket(date).key)
       if (!row) return
-      const confirmed = appointment.cps_c === true
-      const price = appointment.cps_p === true
-      const sold = appointment.cps_s === true
-      if (!confirmed && !price && !sold) return
-      if (confirmed) row.confirmed += 1
-      if (sold) row.sold += 1
-      else if (price) row.priceOnly += 1
-      else if (confirmed) row.confirmedOnly += 1
+      row.confirmed += Number(appointment.confirmed_count || 0)
+      row.sold += Number(appointment.sold_count || 0)
+      row.priceOnly += Number(appointment.price_not_sold_count || 0)
+      row.confirmedOnly += Number(appointment.confirmed_no_price_count || 0)
     })
     rows.forEach(row => { const totalPriced = row.priceOnly + row.sold; row.conversionPercent = totalPriced > 0 ? row.sold / totalPriced * 100 : 0; row.totalPriced = totalPriced })
     return rows
