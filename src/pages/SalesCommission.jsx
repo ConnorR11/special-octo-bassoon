@@ -386,7 +386,7 @@ export default function SalesCommission({
   setSelected,
 }) {
   const {
-    canSeeAll,
+    canSeeAllDeals,
     visibleSalespersonIds,
     loading: visibilityLoading,
   } = useVisibility()
@@ -463,7 +463,7 @@ export default function SalesCommission({
           )
           .limit(1000)
 
-        if (!canSeeAll) {
+        if (!canSeeAllDeals) {
           if (!visibleSalespersonIds?.length) {
             if (!cancelled) {
               setCommissionDeals([])
@@ -532,7 +532,7 @@ export default function SalesCommission({
       cancelled = true
     }
   }, [
-    canSeeAll,
+    canSeeAllDeals,
     visibleSalespersonIds,
     visibilityLoading,
   ])
@@ -568,7 +568,7 @@ export default function SalesCommission({
           )
           .limit(1000)
 
-        if (!canSeeAll) {
+        if (!canSeeAllDeals) {
           if (!visibleSalespersonIds?.length) {
             if (!cancelled) {
               setAdminDeals([])
@@ -662,7 +662,7 @@ export default function SalesCommission({
       cancelled = true
     }
   }, [
-    canSeeAll,
+    canSeeAllDeals,
     visibleSalespersonIds,
     visibilityLoading,
   ])
