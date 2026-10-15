@@ -128,10 +128,10 @@ function FitSheet({ setSelected }) {
       setLoadError("")
 
       const dealSelect =
-        "id,customer_name,postcode,contract_number,deal_value,balance_outstanding,product,installation_start_date,fit_team_1,installation_roof_start_date,installation_roof_team,installation_electrics_start_date,installation_electrics_team,remedial_start_date,remedial_fit_team,pipedrive_stage"
+        "id,pipedrive_deal_id,customer_name,postcode,contract_number,deal_value,balance_outstanding,product,installation_start_date,fit_team_1,installation_roof_start_date,installation_roof_team,installation_electrics_start_date,installation_electrics_team,remedial_start_date,remedial_fit_team,pipedrive_stage"
 
       const issueSelect =
-        "id,customer_name,postcode,contract_number,deal_value,balance_outstanding,product,installations_issues_start_date,installation_issues_fit_team,pipedrive_stage"
+        "id,pipedrive_deal_id,customer_name,postcode,contract_number,deal_value,balance_outstanding,product,installations_issues_start_date,installation_issues_fit_team,pipedrive_stage"
 
       // Query each indexed installation-date column separately instead of
       // using one multi-column OR, which can trigger slow scans/timeouts.
@@ -547,10 +547,18 @@ function FitSheet({ setSelected }) {
     formatDate(new Date())
 
   function openDeal(deal) {
-    if (
-      typeof setSelected ===
-      "function"
-    ) {
+    const pipedriveDealId = String(deal?.pipedrive_deal_id || "").trim()
+    if (pipedriveDealId) {
+      window.open(
+        `https://homeshield-scotland.pipedrive.com/deal/${encodeURIComponent(pipedriveDealId)}`,
+        "_blank",
+        "noopener,noreferrer"
+      )
+      return
+    }
+
+    // Keep the existing in-app behaviour for legacy records without a Pipedrive ID.
+    if (typeof setSelected === "function") {
       setSelected(deal)
     }
   }
