@@ -150,7 +150,7 @@ function SalesChart({ contracts = [] }) {
             <XAxis dataKey="month" interval="preserveStartEnd" minTickGap={24} axisLine={false} tickLine={false} tick={{ fill: "#8a8a8a", fontSize: 10 }} />
             <YAxis yAxisId="sales" axisLine={false} tickLine={false} tickFormatter={axisMoney} tick={{ fill: "#777", fontSize: 10 }} width={74} />
             <YAxis yAxisId="percent" orientation="right" axisLine={false} tickLine={false} domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} tickFormatter={(value) => `${value}%`} tick={{ fill: "#64748b", fontSize: 10 }} width={48} />
-            <Tooltip labelFormatter={(label) => label} formatter={(value, name) => name === "Not Solid" ? [`${Number(value || 0).toFixed(1)}%`, name] : [money(Number(value || 0)), name]} contentStyle={{ border: "1px solid #e2e5e8", borderRadius: 8, fontSize: 11 }} />
+            <Tooltip labelFormatter={(label) => label} formatter={(value, name, item) => { if (name === "Not Solid") return [`${Number(value || 0).toFixed(1)}%`, name]; const total = Number(item?.payload?.total || 0); const share = total > 0 ? (Number(value || 0) / total) * 100 : 0; return [`${money(Number(value || 0))} (${share.toFixed(1)}%)`, name] }} contentStyle={{ border: "1px solid #e2e5e8", borderRadius: 8, fontSize: 11 }} />
             <Legend verticalAlign="bottom" height={32} iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
             <Bar yAxisId="sales" dataKey="Solid" name="Net Sales/Solid" stackId="balance" fill="#008000" />
             <Bar yAxisId="sales" dataKey="Decline" name="Net Sales/Decline" stackId="balance" fill="#ff9900" />
