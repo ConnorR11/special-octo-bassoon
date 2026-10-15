@@ -126,14 +126,15 @@ function SalesChart({ contracts = [] }) {
         const weekYear = weekStart.getFullYear()
         const jan1 = new Date(weekYear, 0, 1)
         const week = Math.ceil((((weekStart - jan1) / 86400000) + jan1.getDay() + 6) / 7)
-        return { key: weekStart.toISOString().slice(0, 10), label: `W${String(week).padStart(2, "0")} ${weekYear}`, start: weekStart }
+        const startDate = weekStart.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+        return { key: weekStart.toISOString().slice(0, 10), label: `W${String(week).padStart(2, "0")} ${weekYear}`, hoverLabel: startDate, start: weekStart }
       }
       return { key: `${year}-${String(date.getMonth() + 1).padStart(2, "0")}`, label: date.toLocaleDateString("en-GB", { month: "short", year: "numeric" }), start: new Date(year, date.getMonth(), 1) }
     }
     const cursor = new Date(start)
     while (cursor <= end) {
       const bucket = getBucket(cursor)
-      if (!rows.some((row) => row.bucketKey === bucket.key)) rows.push({ bucketKey: bucket.key, month: bucket.label, bucketStart: bucket.start.getTime(), Solid: 0, Decline: 0, Cancelled: 0, total: 0, notSolidPercent: 0 })
+      if (!rows.some((row) => row.bucketKey === bucket.key)) rows.push({ bucketKey: bucket.key, month: bucket.label, hoverLabel: bucket.hoverLabel || bucket.label, bucketStart: bucket.start.getTime(), Solid: 0, Decline: 0, Cancelled: 0, total: 0, notSolidPercent: 0 })
       if (timeGrouping === "year") cursor.setFullYear(cursor.getFullYear() + 1)
       else if (timeGrouping === "quarter") cursor.setMonth(cursor.getMonth() + 3, 1)
       else if (timeGrouping === "week") cursor.setDate(cursor.getDate() + 7)
@@ -182,7 +183,7 @@ function SalesChart({ contracts = [] }) {
             <XAxis dataKey="month" interval="preserveStartEnd" minTickGap={24} axisLine={false} tickLine={false} tick={{ fill: "#8a8a8a", fontSize: 10 }} />
             <YAxis yAxisId="sales" axisLine={false} tickLine={false} tickFormatter={axisMoney} tick={{ fill: "#777", fontSize: 10 }} width={74} />
             <YAxis yAxisId="percent" orientation="right" axisLine={false} tickLine={false} domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} tickFormatter={(value) => `${value}%`} tick={{ fill: "#64748b", fontSize: 10 }} width={48} />
-            <Tooltip labelFormatter={(label) => label} formatter={(value, name, item) => { if (name === "Not Solid") return null; const total = Number(item?.payload?.total || 0); const share = total > 0 ? (Number(value || 0) / total) * 100 : 0; return [`${money(Number(value || 0))} (${share.toFixed(1)}%)`, name] }} contentStyle={{ border: "1px solid #e2e5e8", borderRadius: 8, fontSize: 11 }} />
+            <Tooltip labelFormatter={(label, payload) => timeGrouping === "week" ? (payload?.[0]?.payload?.hoverLabel || label) : label} formatter={(value, name, item) => { if (name === "Not Solid") return null; const total = Number(item?.payload?.total || 0); const share = total > 0 ? (Number(value || 0) / total) * 100 : 0; return [`${money(Number(value || 0))} (${share.toFixed(1)}%)`, name] }} contentStyle={{ border: "1px solid #e2e5e8", borderRadius: 8, fontSize: 11 }} />
             <Legend verticalAlign="bottom" height={32} iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
             <Bar yAxisId="sales" dataKey="Solid" name="Net Sales/Solid" stackId="balance" fill="#008000" />
             <Bar yAxisId="sales" dataKey="Decline" name="Net Sales/Decline" stackId="balance" fill="#ff9900" />
