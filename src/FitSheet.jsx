@@ -638,7 +638,7 @@ function FitSheet({ setSelected }) {
           >
             <span>{colours.label}</span>
             {job.type === "fit" && (
-              <span style={{ fontSize: "8px", fontWeight: 700, letterSpacing: 0, textTransform: "none" }}>
+              <span style={{ marginLeft: "auto", textAlign: "right", fontSize: "8px", fontWeight: 800, letterSpacing: 0, textTransform: "none" }}>
                 {[
                   Number(deal.window_count) > 0 ? `${Number(deal.window_count)}W` : null,
                   Number(deal.door_count) > 0 ? `${Number(deal.door_count)}D` : null,
