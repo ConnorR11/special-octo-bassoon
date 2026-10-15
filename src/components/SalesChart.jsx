@@ -119,7 +119,7 @@ function SalesChart({ contracts = [] }) {
       if (Number.isNaN(date.getTime()) || date < start || date > today) return
       const row = rowByMonth.get(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`)
       if (!row) return
-      const amount = Number(deal.balance_outstanding || 0)
+      const amount = Number(deal.net_value || 0)
       if (!Number.isFinite(amount) || amount <= 0) return
       const stage = normaliseResult(deal)
       row[stage] += amount
@@ -139,18 +139,18 @@ function SalesChart({ contracts = [] }) {
         <ChartCard title="Sales by Product" subtitle="Year-to-date net sales value by product" data={chartData} series={PRODUCT_SERIES} dataKey="product" />
       </div>
       <div style={{ marginTop: 18, background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "20px 18px 10px", minWidth: 0, boxSizing: "border-box" }}>
-        <h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Outstanding Balance by Month</h2>
-        <p style={{ margin: "0 0 10px", fontSize: 11, color: "#818891" }}>Monthly outstanding balance by deal result · January 2020 onwards</p>
+        <h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Net Sales Value by Month</h2>
+        <p style={{ margin: "0 0 10px", fontSize: 11, color: "#818891" }}>Monthly net sales value by deal result · January 2020 onwards</p>
         <ResponsiveContainer width="100%" height={330}>
           <BarChart data={monthlyBalanceData} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
             <XAxis dataKey="month" interval="preserveStartEnd" minTickGap={24} axisLine={false} tickLine={false} tick={{ fill: "#8a8a8a", fontSize: 10 }} />
             <YAxis axisLine={false} tickLine={false} tickFormatter={axisMoney} tick={{ fill: "#777", fontSize: 10 }} width={74} />
-            <Tooltip labelFormatter={(label) => label} formatter={(value, name) => [money(Number(value || 0)), `Balance/${name}`]} contentStyle={{ border: "1px solid #e2e5e8", borderRadius: 8, fontSize: 11 }} />
+            <Tooltip labelFormatter={(label) => label} formatter={(value, name) => [money(Number(value || 0)), `Net Sales/${name}`]} contentStyle={{ border: "1px solid #e2e5e8", borderRadius: 8, fontSize: 11 }} />
             <Legend verticalAlign="bottom" height={32} iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-            <Bar dataKey="Solid" name="Balance/Solid" stackId="balance" fill="#008000" />
-            <Bar dataKey="Decline" name="Balance/Decline" stackId="balance" fill="#ff9900" />
-            <Bar dataKey="Cancelled" name="Balance/Cancel" stackId="balance" fill="#ff0000" />
+            <Bar dataKey="Solid" name="Net Sales/Solid" stackId="balance" fill="#008000" />
+            <Bar dataKey="Decline" name="Net Sales/Decline" stackId="balance" fill="#ff9900" />
+            <Bar dataKey="Cancelled" name="Net Sales/Cancel" stackId="balance" fill="#ff0000" />
           </BarChart>
         </ResponsiveContainer>
       </div>
