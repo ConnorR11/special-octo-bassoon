@@ -98,6 +98,36 @@ function SalesChart({ contracts = [] }) {
     return row
   }), [contracts, years, currentMonth, currentDay])
 
+  const monthlyBalanceData = useMemo(() => {
+    const rows = []
+    const start = new Date(2020, 0, 1)
+    const end = new Date(currentYear, currentMonth, 1)
+    for (let cursor = new Date(start); cursor <= end; cursor.setMonth(cursor.getMonth() + 1)) {
+      rows.push({
+        month: cursor.toLocaleDateString("en-GB", { month: "short", year: "numeric" }),
+        monthKey: `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`,
+        Solid: 0,
+        Decline: 0,
+        Cancelled: 0,
+        total: 0,
+      })
+    }
+    const rowByMonth = new Map(rows.map((row) => [row.monthKey, row]))
+    contracts.forEach((deal) => {
+      if (!deal?.sale_date) return
+      const date = new Date(`${String(deal.sale_date).slice(0, 10)}T00:00:00`)
+      if (Number.isNaN(date.getTime()) || date < start || date > today) return
+      const row = rowByMonth.get(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`)
+      if (!row) return
+      const amount = Number(deal.balance_outstanding || 0)
+      if (!Number.isFinite(amount) || amount <= 0) return
+      const stage = normaliseResult(deal)
+      row[stage] += amount
+      row.total += amount
+    })
+    return rows
+  }, [contracts, currentYear, currentMonth, currentDay])
+
   if (!contracts.length) {
     return <div style={{ marginTop: 18, background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: 24, color: "#777", fontSize: 12 }}>No sales data available.</div>
   }
@@ -107,6 +137,22 @@ function SalesChart({ contracts = [] }) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 18 }}>
         <ChartCard title="Sales by Result" subtitle="Year-to-date net sales value by result" data={chartData} series={RESULT_SERIES} dataKey="result" />
         <ChartCard title="Sales by Product" subtitle="Year-to-date net sales value by product" data={chartData} series={PRODUCT_SERIES} dataKey="product" />
+      </div>
+      <div style={{ marginTop: 18, background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "20px 18px 10px", minWidth: 0, boxSizing: "border-box" }}>
+        <h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Outstanding Balance by Month</h2>
+        <p style={{ margin: "0 0 10px", fontSize: 11, color: "#818891" }}>Monthly outstanding balance by deal result · January 2020 onwards</p>
+        <ResponsiveContainer width="100%" height={330}>
+          <BarChart data={monthlyBalanceData} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+            <XAxis dataKey="month" interval="preserveStartEnd" minTickGap={24} axisLine={false} tickLine={false} tick={{ fill: "#8a8a8a", fontSize: 10 }} />
+            <YAxis axisLine={false} tickLine={false} tickFormatter={axisMoney} tick={{ fill: "#777", fontSize: 10 }} width={74} />
+            <Tooltip labelFormatter={(label) => label} formatter={(value, name) => [money(Number(value || 0)), `Balance/${name}`]} contentStyle={{ border: "1px solid #e2e5e8", borderRadius: 8, fontSize: 11 }} />
+            <Legend verticalAlign="bottom" height={32} iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+            <Bar dataKey="Solid" name="Balance/Solid" stackId="balance" fill="#008000" />
+            <Bar dataKey="Decline" name="Balance/Decline" stackId="balance" fill="#ff9900" />
+            <Bar dataKey="Cancelled" name="Balance/Cancel" stackId="balance" fill="#ff0000" />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
       <style>{`@media (max-width: 760px) { .sales-performance-two-chart-grid { grid-template-columns: minmax(0, 1fr) !important; } }`}</style>
     </section>
