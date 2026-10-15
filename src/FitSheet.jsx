@@ -141,7 +141,7 @@ function FitSheet({ setSelected }) {
           .from("deals")
           .select(dealSelect)
           .or(
-            `installation_start_date.gte.${weekStart},installation_roof_start_date.gte.${weekStart},installation_electrics_start_date.gte.${weekStart},remedial_start_date.gte.${weekStart}`
+            `and(installation_start_date.gte.${weekStart},installation_start_date.lte.${weekEnd}),and(installation_roof_start_date.gte.${weekStart},installation_roof_start_date.lte.${weekEnd}),and(installation_electrics_start_date.gte.${weekStart},installation_electrics_start_date.lte.${weekEnd}),and(remedial_start_date.gte.${weekStart},remedial_start_date.lte.${weekEnd})`
           )
           .order(
             "installation_start_date",
