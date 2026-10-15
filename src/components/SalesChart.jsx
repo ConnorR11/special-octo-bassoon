@@ -233,7 +233,7 @@ function SalesChart({ contracts = [] }) {
       if (!appointment?.appointment_day) return
       const date = new Date(`${String(appointment.appointment_day).slice(0, 10)}T00:00:00`)
       if (Number.isNaN(date.getTime()) || date < start || date > end) return
-      if (cpsSelectedProduct !== "All products" && cpsSelectedProduct !== normaliseProduct(appointment.job_type)) return
+      if (cpsSelectedProduct !== "All products") { const jobType = normaliseProduct(appointment.job_type); if (cpsSelectedProduct === "Solar & ASHP" ? !["Solar", "ASHP"].includes(jobType) : cpsSelectedProduct !== jobType) return }
       const row = rowByKey.get(getBucket(date).key)
       if (!row) return
       row.confirmedTotal += Number(appointment.confirmed_count || 0)
@@ -289,7 +289,7 @@ function SalesChart({ contracts = [] }) {
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, color: "#475569" }}>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Year<select value={cpsSelectedYear} onChange={(event) => setCpsSelectedYear(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="all">All 2026+</option>{years.filter(year => year >= 2025).map(year => <option key={year} value={String(year)}>{year}</option>)}</select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Period<select value={cpsTimeGrouping} onChange={(event) => setCpsTimeGrouping(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="year">Year</option><option value="quarter">Quarter</option><option value="month">Month</option><option value="week">Week</option></select></label>
-            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Products<select value={cpsSelectedProduct} onChange={(event) => setCpsSelectedProduct(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", minWidth: 145 }}><option value="All products">All products</option>{PRODUCT_FILTER_OPTIONS.map(product => <option key={product} value={product}>{product}</option>)}</select></label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Products<select value={cpsSelectedProduct} onChange={(event) => setCpsSelectedProduct(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", minWidth: 145 }}><option value="All products">All products</option>{["Windows", "Solar & ASHP", "Other"].map(product => <option key={product} value={product}>{product}</option>)}</select></label>
           </div>
         </div>
         {cpsLoading ? <div style={{ padding: 28, color: "#667085", fontSize: 12 }}>Loading sales conversion…</div> : cpsError ? <div style={{ padding: 18, color: "#b42318", fontSize: 12 }}>{cpsError}</div> : <ResponsiveContainer width="100%" height={330}>
