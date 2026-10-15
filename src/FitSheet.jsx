@@ -133,41 +133,56 @@ function FitSheet({ setSelected }) {
       const issueSelect =
         "id,customer_name,postcode,contract_number,deal_value,balance_outstanding,product,installations_issues_start_date,installation_issues_fit_team,pipedrive_stage"
 
+      // Query each indexed installation-date column separately instead of
+      // using one multi-column OR, which can trigger slow scans/timeouts.
       const [
-        normalResult,
+        fitResult,
+        roofResult,
+        electricsResult,
+        remedialResult,
         issueResult,
       ] = await Promise.all([
         supabase
           .from("deals")
           .select(dealSelect)
-          .or(
-            `and(installation_start_date.gte.${weekStart},installation_start_date.lte.${weekEnd}),and(installation_roof_start_date.gte.${weekStart},installation_roof_start_date.lte.${weekEnd}),and(installation_electrics_start_date.gte.${weekStart},installation_electrics_start_date.lte.${weekEnd}),and(remedial_start_date.gte.${weekStart},remedial_start_date.lte.${weekEnd})`
-          )
-          .order(
-            "installation_start_date",
-            {
-              ascending: true,
-            }
-          ),
-
+          .gte("installation_start_date", weekStart)
+          .lte("installation_start_date", weekEnd)
+          .order("installation_start_date", { ascending: true }),
+        supabase
+          .from("deals")
+          .select(dealSelect)
+          .gte("installation_roof_start_date", weekStart)
+          .lte("installation_roof_start_date", weekEnd)
+          .order("installation_roof_start_date", { ascending: true }),
+        supabase
+          .from("deals")
+          .select(dealSelect)
+          .gte("installation_electrics_start_date", weekStart)
+          .lte("installation_electrics_start_date", weekEnd)
+          .order("installation_electrics_start_date", { ascending: true }),
+        supabase
+          .from("deals")
+          .select(dealSelect)
+          .gte("remedial_start_date", weekStart)
+          .lte("remedial_start_date", weekEnd)
+          .order("remedial_start_date", { ascending: true }),
         supabase
           .from("deals")
           .select(issueSelect)
-          .gte(
-            "installations_issues_start_date",
-            weekStart
-          )
-          .lte(
-            "installations_issues_start_date",
-            weekEnd
-          )
-          .order(
-            "installations_issues_start_date",
-            {
-              ascending: true,
-            }
-          ),
+          .gte("installations_issues_start_date", weekStart)
+          .lte("installations_issues_start_date", weekEnd)
+          .order("installations_issues_start_date", { ascending: true }),
       ])
+      const normalResults = [fitResult, roofResult, electricsResult, remedialResult]
+      const normalResultError = normalResults.find((result) => result.error)?.error
+      const normalDealsById = new Map()
+      normalResults.forEach((result) => {
+        ;(result.data || []).forEach((deal) => normalDealsById.set(deal.id, deal))
+      })
+      const normalResult = {
+        data: Array.from(normalDealsById.values()),
+        error: normalResultError,
+      }
 
       if (!mounted) return
 
