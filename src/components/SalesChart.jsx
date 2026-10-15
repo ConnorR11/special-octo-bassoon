@@ -105,7 +105,7 @@ function SalesChart({ contracts = [] }) {
       try {
         const rows = []
         const pageSize = 250
-        const startDate = "2020-01-01T00:00:00"
+        const startDate = "2025-01-01T00:00:00"
         const endDate = new Date().toISOString()
         for (let from = 0; ; from += pageSize) {
           const { data, error } = await supabase
@@ -151,7 +151,7 @@ function SalesChart({ contracts = [] }) {
   }), [contracts, years, currentMonth, currentDay])
 
   const monthlyBalanceData = useMemo(() => {
-    const start = selectedYear === "all" ? new Date(2020, 0, 1) : new Date(Number(selectedYear), 0, 1)
+    const start = selectedYear === "all" ? new Date(2025, 0, 1) : new Date(Math.max(2025, Number(selectedYear)), 0, 1)
     const yearEnd = selectedYear === "all" ? new Date(currentYear, currentMonth, currentDay) : new Date(Number(selectedYear), 11, 31)
     const end = yearEnd > new Date(currentYear, currentMonth, currentDay) ? new Date(currentYear, currentMonth, currentDay) : yearEnd
     const rows = []
