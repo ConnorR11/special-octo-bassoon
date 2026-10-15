@@ -105,19 +105,30 @@ function SalesChart({ contracts = [] }) {
       try {
         const rows = []
         const pageSize = 250
+        const pagesPerWave = 6
         const startDate = "2025-01-01T00:00:00"
         const endDate = new Date().toISOString()
-        for (let from = 0; ; from += pageSize) {
-          const { data, error } = await supabase
-            .from("appointments")
-            .select("appointment_row_id,appointment_date,cps_c,cps_p,cps_s,product")
-            .eq("cps_c", true)
-            .gte("appointment_date", startDate)
-            .lte("appointment_date", endDate)
-            .range(from, from + pageSize - 1)
-          if (error) throw error
-          rows.push(...(data || []))
-          if (!data || data.length < pageSize) break
+        for (let waveStart = 0; ; waveStart += pageSize * pagesPerWave) {
+          const ranges = Array.from({ length: pagesPerWave }, (_, i) => {
+            const from = waveStart + i * pageSize
+            return { from, to: from + pageSize - 1 }
+          })
+          const results = await Promise.all(ranges.map(({ from, to }) =>
+            supabase
+              .from("appointments")
+              .select("appointment_row_id,appointment_date,cps_c,cps_p,cps_s,product")
+              .eq("cps_c", true)
+              .gte("appointment_date", startDate)
+              .lte("appointment_date", endDate)
+              .range(from, to)
+          ))
+          let reachedEnd = false
+          for (const result of results) {
+            if (result.error) throw result.error
+            rows.push(...(result.data || []))
+            if (!result.data || result.data.length < pageSize) reachedEnd = true
+          }
+          if (reachedEnd) break
         }
         if (!cancelled) setCpsAppointments(rows)
       } catch (error) {
