@@ -70,7 +70,7 @@ function buildSizeGroups(rows, tolerance = 50) {
 function buildColourGroups(rows) {
   const byColour = new Map()
   rows.forEach(row => {
-    const colour = text(row.colour_value) || text(row.colour_choice) || "Unspecified colour"
+    const colour = text(row.colour_choice) || "Unspecified colour"
     if (!byColour.has(colour)) byColour.set(colour, [])
     byColour.get(colour).push(row)
   })
