@@ -18,10 +18,45 @@ export default function IntegrationLogs({ setMobile }) {
   const [runStats, setRunStats] = React.useState({ total: 0, success: 0, failed: 0, received: 0, ignored: 0 })
   const [chartLogs, setChartLogs] = React.useState([])
   const pageSize = 50
+  const [backfillOffset, setBackfillOffset] = React.useState(0)
+  const [backfillPreview, setBackfillPreview] = React.useState(null)
+  const [backfillBusy, setBackfillBusy] = React.useState(false)
+  const [backfillError, setBackfillError] = React.useState("")
+  const [backfillMessage, setBackfillMessage] = React.useState("")
 
   React.useEffect(() => { loadProviders() }, [])
   React.useEffect(() => { setPage(1) }, [status, provider, search, dateFrom, dateTo])
   React.useEffect(() => { loadLogs(); loadStats(); loadChartLogs() }, [status, provider, search, dateFrom, dateTo, page])
+
+  async function runStageBackfill(execute) {
+    setBackfillBusy(true)
+    setBackfillError("")
+    setBackfillMessage("")
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError) throw sessionError
+      const accessToken = sessionData?.session?.access_token
+      if (!accessToken) throw new Error("Your session has expired. Sign in again.")
+      const params = new URLSearchParams({ job: "backfill-pipedrive-stages", limit: "100", offset: String(backfillOffset) })
+      if (execute) params.set("execute", "true")
+      const response = await fetch(`/api/admin/bulk-updates?${params.toString()}`, { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok || !result.success) throw new Error(result.error || `Backfill request failed (HTTP ${response.status})`)
+      setBackfillPreview(result)
+      if (execute) {
+        setBackfillMessage(`Batch complete: ${result.updated||0} updated, ${result.skipped||0} skipped, ${result.failed||0} failed.`)
+        if (result.nextOffset !== null && result.nextOffset !== undefined) setBackfillOffset(result.nextOffset)
+        else setBackfillMessage(`Backfill batch complete: ${result.updated||0} updated, ${result.skipped||0} skipped, ${result.failed||0} failed. No further matching rows were reported for this batch.`)
+        loadProviders(); loadLogs(); loadStats(); loadChartLogs()
+      } else {
+        setBackfillMessage(`Preview ready: ${result.previewed||0} stage values found, ${result.failed||0} unable to resolve. No deals were changed.`)
+      }
+    } catch (error) {
+      setBackfillError(error?.message || "Could not run the Pipedrive stage backfill.")
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
 
   function escapeSearch(value) {
     return value.replace(/[(),]/g, " ").trim()
@@ -195,6 +230,28 @@ export default function IntegrationLogs({ setMobile }) {
       <div className="integration-logs-header">
         <div><div style={{fontSize:12,fontWeight:700,color:"#667085",letterSpacing:1}}>ADMINISTRATION</div><h1 style={{margin:"5px 0 0",fontSize:28}}>API & Webhooks</h1><p style={{margin:"6px 0 0",color:"#667085"}}>Monitor API calls and webhook events across CRM integrations.</p></div>
         <button className="integration-logs-refresh" onClick={() => { loadProviders(); loadLogs(); loadStats(); loadChartLogs() }}>Refresh</button>
+      </div>
+
+      <div style={{background:"#fff",border:"1px solid #d0d5dd",borderRadius:12,padding:20,marginBottom:20}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:16,flexWrap:"wrap"}}>
+          <div style={{maxWidth:760}}>
+            <h2 style={{margin:"0 0 6px",fontSize:18}}>Pipedrive Stage Backfill</h2>
+            <p style={{margin:"0 0 8px",fontSize:13,color:"#475467"}}>Find CRM deals whose Pipedrive stage is empty and fill it from Pipedrive. Each batch is limited to 100 deals. Existing non-empty stages are never overwritten, and the server checks again immediately before each update.</p>
+            <p style={{margin:0,fontSize:12,color:"#667085"}}>Every preview and execution is recorded in Integration Activity below. Preview first, then explicitly confirm each batch.</p>
+          </div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            <button type="button" className="integration-logs-refresh" disabled={backfillBusy} onClick={()=>runStageBackfill(false)}>Preview next batch</button>
+            <button type="button" disabled={backfillBusy||!backfillPreview||backfillPreview.dryRun!==true||!backfillPreview.results?.some(r=>r.status==="preview")} onClick={()=>{if(window.confirm("Update up to 100 deals with an empty Pipedrive stage? Existing stages will not be overwritten."))runStageBackfill(true)}} style={{padding:"9px 12px",border:"1px solid #175cd3",borderRadius:8,background:backfillBusy||!backfillPreview||backfillPreview.dryRun!==true?"#eaecf0":"#175cd3",color:backfillBusy||!backfillPreview||backfillPreview.dryRun!==true?"#667085":"#fff",cursor:backfillBusy||!backfillPreview||backfillPreview.dryRun!==true?"not-allowed":"pointer",fontWeight:600}}>Execute previewed batch</button>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:18,flexWrap:"wrap",marginTop:16,fontSize:13,color:"#344054"}}>
+          <span><strong>Batch offset:</strong> {backfillOffset.toLocaleString("en-GB")}</span>
+          {backfillPreview&&<><span><strong>Found:</strong> {(backfillPreview.requested||0).toLocaleString("en-GB")}</span><span><strong>Missing stages:</strong> {backfillPreview.totalMissing==null?"—":backfillPreview.totalMissing.toLocaleString("en-GB")}</span>{backfillPreview.dryRun===false&&<><span><strong>Updated:</strong> {backfillPreview.updated||0}</span><span><strong>Skipped:</strong> {backfillPreview.skipped||0}</span><span><strong>Failed:</strong> {backfillPreview.failed||0}</span></>}</>}
+        </div>
+        {backfillBusy&&<p style={{margin:"12px 0 0",fontSize:13,color:"#175cd3"}}>Running batch and writing integration logs…</p>}
+        {backfillError&&<p style={{margin:"12px 0 0",fontSize:13,color:"#b42318"}}>{backfillError}</p>}
+        {backfillMessage&&<p style={{margin:"12px 0 0",fontSize:13,color:"#027a48"}}>{backfillMessage}</p>}
+        {backfillPreview?.results?.length>0&&<div style={{marginTop:14,maxHeight:260,overflow:"auto",border:"1px solid #eaecf0",borderRadius:8}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr>{["Deal ID","Contract","Customer","Stage","Status"].map(h=><th key={h} style={{position:"sticky",top:0,textAlign:"left",padding:9,background:"#f9fafb",borderBottom:"1px solid #eaecf0"}}>{h}</th>)}</tr></thead><tbody>{backfillPreview.results.map((r,i)=><tr key={r.dealId||i}>{[r.dealId,r.contractNumber,r.customerName,r.stage,r.status].map((v,j)=><td key={j} style={{padding:9,borderBottom:"1px solid #f2f4f7"}}>{v??"—"}</td>)}</tr>)}</tbody></table></div>}
       </div>
 
       <div className="integration-logs-stats"><Stat title="Total Runs" value={runStats.total.toLocaleString("en-GB")}/><Stat title="Successful" value={runStats.success.toLocaleString("en-GB")}/><Stat title="Failed" value={runStats.failed.toLocaleString("en-GB")}/><Stat title="Success Rate" value={`${successRate.toFixed(1)}%`} subtitle={`${runStats.received.toLocaleString("en-GB")} processing · ${runStats.ignored.toLocaleString("en-GB")} ignored`}/></div>
