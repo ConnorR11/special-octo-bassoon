@@ -76,7 +76,7 @@ function ChartCard({ title, subtitle, data, series, dataKey }) {
 }
 
 function SalesChart({ contracts = [] }) {
-  const [selectedProduct, setSelectedProduct] = useState("All products")
+  const [selectedProducts, setSelectedProducts] = useState(["All products"])
   const [timeGrouping, setTimeGrouping] = useState("month")
   const today = new Date()
   const currentYear = today.getFullYear()
@@ -137,7 +137,7 @@ function SalesChart({ contracts = [] }) {
       if (!deal?.sale_date) return
       const date = new Date(`${String(deal.sale_date).slice(0, 10)}T00:00:00`)
       if (Number.isNaN(date.getTime()) || date < start || date > end) return
-      if (selectedProduct !== "All products" && normaliseProduct(deal.product) !== selectedProduct) return
+      if (!selectedProducts.includes("All products") && !selectedProducts.includes(normaliseProduct(deal.product))) return
       const bucket = getBucket(date)
       const row = rowByKey.get(bucket.key)
       if (!row) return
@@ -148,7 +148,7 @@ function SalesChart({ contracts = [] }) {
     })
     rows.forEach((row) => { row.notSolidPercent = row.total > 0 ? ((row.Decline + row.Cancelled) / row.total) * 100 : 0 })
     return rows
-  }, [contracts, currentYear, currentMonth, currentDay, selectedProduct, timeGrouping])
+  }, [contracts, currentYear, currentMonth, currentDay, selectedProducts, timeGrouping])
 
   if (!contracts.length) {
     return <div style={{ marginTop: 18, background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: 24, color: "#777", fontSize: 12 }}>No sales data available.</div>
@@ -161,7 +161,7 @@ function SalesChart({ contracts = [] }) {
         <ChartCard title="Sales by Product" subtitle="Year-to-date net sales value by product" data={chartData} series={PRODUCT_SERIES} dataKey="product" />
       </div>
       <div style={{ marginTop: 18, background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "20px 18px 10px", minWidth: 0, boxSizing: "border-box" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 10 }}><div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Net Sales Value by Month</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Net sales value by deal result · January 2020 onwards</p></div><label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#475569" }}>Period<select value={timeGrouping} onChange={(event) => setTimeGrouping(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="year">Year</option><option value="quarter">Quarter</option><option value="month">Month</option><option value="week">Week</option></select>Product<select value={selectedProduct} onChange={(event) => setSelectedProduct(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}>{["All products", "Windows", "Solar", "ASHP", "Other"].map((product) => <option key={product} value={product}>{product}</option>)}</select></label></div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 10 }}><div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Net Sales Value by Month</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Net sales value by deal result · January 2020 onwards</p></div><div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, color: "#475569" }}><label style={{ display: "flex", alignItems: "center", gap: 8 }}>Period<select value={timeGrouping} onChange={(event) => setTimeGrouping(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="year">Year</option><option value="quarter">Quarter</option><option value="month">Month</option><option value="week">Week</option></select></label><label style={{ display: "flex", alignItems: "center", gap: 8 }}>Products<select multiple value={selectedProducts} onChange={(event) => { const values = Array.from(event.target.selectedOptions, (option) => option.value); setSelectedProducts(values.includes("All products") || values.length === 0 ? ["All products"] : values.filter((value) => value !== "All products")) }} size={1} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", minWidth: 145 }}>{["All products", "Windows", "Solar", "ASHP", "Other"].map((product) => <option key={product} value={product}>{product}</option>)}</select></label><span style={{ fontSize: 10, color: "#818891" }}>Use Ctrl (Windows) or ⌘ (Mac) to select multiple</span></div></div>
         <ResponsiveContainer width="100%" height={330}>
           <BarChart data={monthlyBalanceData} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
