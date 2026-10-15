@@ -17,6 +17,9 @@ function FitSheet({ setSelected }) {
   const [installationTypeFilter, setInstallationTypeFilter] =
     useState("all")
   const [searchTerm, setSearchTerm] = useState("")
+  const [allWeekSearchJobs, setAllWeekSearchJobs] = useState([])
+  const [allWeekSearchLoading, setAllWeekSearchLoading] = useState(false)
+  const [allWeekSearchError, setAllWeekSearchError] = useState("")
   const [windowTeamsExpanded, setWindowTeamsExpanded] = useState(true)
   const [windowsRenewablesExpanded, setWindowsRenewablesExpanded] = useState(true)
   const [heatPumpExpanded, setHeatPumpExpanded] = useState(true)
@@ -318,6 +321,79 @@ function FitSheet({ setSelected }) {
       text: "#b42318",
     },
   }
+
+  useEffect(() => {
+    const term = searchTerm.trim()
+    if (!term) {
+      setAllWeekSearchJobs([])
+      setAllWeekSearchError("")
+      setAllWeekSearchLoading(false)
+      return
+    }
+    let cancelled = false
+    const timer = setTimeout(async () => {
+      if (!supabase) return
+      setAllWeekSearchLoading(true)
+      setAllWeekSearchError("")
+      const escaped = term.replace(/[,%()]/g, " ").trim()
+      if (!escaped) {
+        setAllWeekSearchJobs([])
+        setAllWeekSearchLoading(false)
+        return
+      }
+      const pattern = `%${escaped}%`
+      const dealSelect = `id,pipedrive_deal_id,customer_name,postcode,contract_number,deal_value,balance_outstanding,product,window_count,door_count,"sp/tl_count","fd/pd_count",velux_count,installation_start_date,fit_team_1,installation_roof_start_date,installation_roof_team,installation_electrics_start_date,installation_electrics_team,remedial_start_date,remedial_fit_team,pipedrive_stage`
+      const issueSelect = "id,pipedrive_deal_id,customer_name,postcode,contract_number,deal_value,balance_outstanding,product,installations_issues_start_date,installation_issues_fit_team,pipedrive_stage"
+      const orFilter = [
+        `customer_name.ilike.${pattern}`,
+        `postcode.ilike.${pattern}`,
+        `contract_number.ilike.${pattern}`,
+        `product.ilike.${pattern}`,
+        `fit_team_1.ilike.${pattern}`,
+        `installation_roof_team.ilike.${pattern}`,
+        `installation_electrics_team.ilike.${pattern}`,
+        `remedial_fit_team.ilike.${pattern}`,
+      ].join(",")
+      try {
+        const [normalResult, issueResult] = await Promise.all([
+          supabase.from("deals").select(dealSelect).or(orFilter).limit(1000),
+          supabase.from("deals").select(issueSelect).or(
+            [`customer_name.ilike.${pattern}`,`postcode.ilike.${pattern}`,`contract_number.ilike.${pattern}`,`product.ilike.${pattern}`,`installation_issues_fit_team.ilike.${pattern}`].join(",")
+          ).limit(1000),
+        ])
+        if (normalResult.error) throw normalResult.error
+        if (issueResult.error) throw issueResult.error
+        const results = []
+        const addJob = (deal, type, rawDate, rawTeam) => {
+          if (!rawDate || !rawTeam) return
+          const date = String(rawDate).slice(0, 10)
+          results.push({ id: `${type}-${deal.id}-${date}`, deal, type, date, team: String(rawTeam).trim(), product: String(deal.product || "").trim() })
+        }
+        ;(normalResult.data || []).forEach((deal) => {
+          addJob(deal, "fit", deal.installation_start_date, deal.fit_team_1)
+          addJob(deal, "roofer", deal.installation_roof_start_date, deal.installation_roof_team)
+          addJob(deal, "electrics", deal.installation_electrics_start_date, deal.installation_electrics_team)
+          addJob(deal, "remedial", deal.remedial_start_date, deal.remedial_fit_team)
+        })
+        ;(issueResult.data || []).forEach((deal) => addJob(deal, "issue", deal.installations_issues_start_date, deal.installation_issues_fit_team))
+        const normalized = term.toLocaleLowerCase()
+        const filtered = results.filter((job) => {
+          const values = [job.deal.customer_name,job.deal.postcode,job.deal.contract_number,job.deal.product,job.deal.pipedrive_deal_id,job.team,job.type]
+          return values.some((value) => String(value ?? "").toLocaleLowerCase().includes(normalized)) &&
+            (installationTypeFilter === "all" || job.type === installationTypeFilter)
+        }).sort((a,b) => a.date.localeCompare(b.date) || a.team.localeCompare(b.team))
+        if (!cancelled) setAllWeekSearchJobs(filtered)
+      } catch (error) {
+        if (!cancelled) {
+          setAllWeekSearchJobs([])
+          setAllWeekSearchError(error?.message || "Search failed.")
+        }
+      } finally {
+        if (!cancelled) setAllWeekSearchLoading(false)
+      }
+    }, 300)
+    return () => { cancelled = true; clearTimeout(timer) }
+  }, [searchTerm, installationTypeFilter])
 
   /*
    * ------------------------------------------------------------
@@ -1205,7 +1281,25 @@ function FitSheet({ setSelected }) {
             </div>
           )}
 
-          {loading ? (
+          {searchTerm.trim() ? (
+            allWeekSearchLoading ? (
+              <div style={{ padding: "40px 20px", textAlign: "center", color: "#64748b", fontSize: "12px" }}>Searching all weeks…</div>
+            ) : allWeekSearchError ? (
+              <div style={{ padding: "20px", color: "#b42318", fontSize: "12px" }}>Search failed: {allWeekSearchError}</div>
+            ) : allWeekSearchJobs.length === 0 ? (
+              <div style={{ padding: "40px 20px", textAlign: "center", color: "#64748b", fontSize: "12px" }}>No matching jobs found across all weeks.</div>
+            ) : (
+              <div style={{ padding: "12px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "10px" }}>
+                <div style={{ gridColumn: "1 / -1", fontSize: "11px", color: "#64748b", padding: "2px 0 4px" }}>{allWeekSearchJobs.length} matching jobs across all weeks</div>
+                {allWeekSearchJobs.map((job) => (
+                  <div key={job.id} style={{ border: "1px solid #d9dadd", borderRadius: "8px", overflow: "hidden" }}>
+                    <div style={{ padding: "6px 9px", background: "#f2f3f5", fontSize: "10px", fontWeight: 700, color: "#334155" }}>{new Date(job.date + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })} · {job.team} · {job.type.toUpperCase()}</div>
+                    <div style={{ padding: "6px" }}>{renderJobCard(job)}</div>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : loading ? (
             <div
               style={{
                 padding: "60px 20px",
