@@ -16,6 +16,7 @@ const RESULT_SERIES = [
   { key: "Solid", colour: "#008000" },
   { key: "Decline", colour: "#ff9900" },
   { key: "Cancelled", colour: "#ff0000" },
+  { key: "Missing stage", colour: "#64748b" },
 ]
 const PRODUCT_SERIES = [
   { key: "Windows", colour: "#1683c7" },
@@ -26,7 +27,9 @@ const PRODUCT_SERIES = [
 const PRODUCT_FILTER_OPTIONS = ["Windows", "Solar", "ASHP", "Other"]
 
 function normaliseResult(deal) {
-  const value = String(deal?.pipedrive_stage || deal?.status || "").trim().toLowerCase()
+  const stage = String(deal?.pipedrive_stage || "").trim()
+  if (!stage) return "Missing stage"
+  const value = stage.toLowerCase()
   if (value.includes("declin")) return "Decline"
   if (value.includes("cancel")) return "Cancelled"
   return "Solid"
@@ -189,6 +192,7 @@ function SalesChart({ contracts = [] }) {
             <Bar yAxisId="sales" dataKey="Solid" name="Net Sales/Solid" stackId="balance" fill="#008000" />
             <Bar yAxisId="sales" dataKey="Decline" name="Net Sales/Decline" stackId="balance" fill="#ff9900" />
             <Bar yAxisId="sales" dataKey="Cancelled" name="Net Sales/Cancel" stackId="balance" fill="#ff0000" />
+            <Bar yAxisId="sales" dataKey="Missing stage" name="Missing stage" stackId="balance" fill="#64748b" />
             <Line yAxisId="percent" type="monotone" dataKey="notSolidPercent" name="Drop Off" stroke="#111827" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
           </BarChart>
         </ResponsiveContainer>
