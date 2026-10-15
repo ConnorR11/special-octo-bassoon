@@ -214,7 +214,7 @@ function SalesChart({ contracts = [] }) {
   }, [contracts, currentYear, currentMonth, currentDay, selectedProduct, selectedYear, timeGrouping])
 
   const conversionData = useMemo(() => {
-    const start = selectedYear === "all" ? new Date(2020, 0, 1) : new Date(Number(selectedYear), 0, 1)
+    const start = new Date(2026, 0, 1)
     const todayEnd = new Date(currentYear, currentMonth, currentDay, 23, 59, 59, 999)
     const requestedEnd = selectedYear === "all" ? todayEnd : new Date(Number(selectedYear), 11, 31, 23, 59, 59, 999)
     const end = requestedEnd > todayEnd ? todayEnd : requestedEnd
