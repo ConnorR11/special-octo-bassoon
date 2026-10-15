@@ -905,9 +905,10 @@ function FitSheet({ setSelected }) {
                   margin: 0,
                   fontSize: "20px",
                   lineHeight: 1.2,
+                  color: "#172554",
                 }}
               >
-                FitSheet
+                Fit Sheet
               </h1>
 
               <p
@@ -1019,7 +1020,7 @@ function FitSheet({ setSelected }) {
               </option>
             </select>
 
-            {/* LEGEND */}
+            {/* LEGEND — left side of the right-hand controls */}
 
             <div
               style={{
@@ -1063,6 +1064,7 @@ function FitSheet({ setSelected }) {
                 )
               )}
             </div>
+
 
             {/* PREVIOUS WEEK */}
 
