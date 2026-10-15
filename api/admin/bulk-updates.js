@@ -7,20 +7,14 @@ function header(req, name) {
   return Array.isArray(value) ? value[0] : value
 }
 
-function hasValidBasicAuth(req) {
-  const username = String(process.env.PIPEDRIVE_WEBHOOK_USERNAME || "").trim()
-  const password = String(process.env.PIPEDRIVE_WEBHOOK_PASSWORD || "").trim()
-  // Bulk updates must fail closed; never allow an unauthenticated request.
-  if (!username || !password) return false
+function isAuthorized(req) {
+  // Reuse the existing server-side Pipedrive token; no additional secret is required.
+  // The token must be sent in the Authorization header and is never returned by this endpoint.
+  const token = String(process.env.PIPEDRIVE_API_TOKEN || "").trim()
   const auth = String(header(req, "authorization") || "")
-  if (!auth.toLowerCase().startsWith("basic ")) return false
-  try {
-    const decoded = Buffer.from(auth.slice(6), "base64").toString("utf8")
-    const split = decoded.indexOf(":")
-    return split >= 0 && decoded.slice(0, split) === username && decoded.slice(split + 1) === password
-  } catch {
-    return false
-  }
+  if (!token || !auth.toLowerCase().startsWith("bearer ")) return false
+  const supplied = auth.slice(7).trim()
+  return supplied.length === token.length && supplied === token
 }
 
 function getConfig() {
@@ -176,9 +170,9 @@ export default async function handler(req, res) {
     return send(res, 405, { success: false, error: "Use GET for the authenticated bulk job endpoint" })
   }
 
-  if (!hasValidBasicAuth(req)) {
-    res.setHeader("WWW-Authenticate", 'Basic realm="CRM Bulk Updates"')
-    return send(res, 401, { success: false, error: "Unauthorized. Configure PIPEDRIVE_WEBHOOK_USERNAME and PIPEDRIVE_WEBHOOK_PASSWORD in Vercel." })
+  if (!isAuthorized(req)) {
+    res.setHeader("WWW-Authenticate", 'Bearer realm="CRM Bulk Updates"')
+    return send(res, 401, { success: false, error: "Unauthorized. Send the existing Pipedrive API token in the Authorization: Bearer header." })
   }
 
   const config = getConfig()
