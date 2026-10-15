@@ -27,6 +27,38 @@ function buildConfigurationGroups(rows) {
   })
 }
 
+function buildSizeGroups(rows, tolerance = 50) {
+  const sorted = [...rows].sort((a, b) => a.width - b.width || a.height - b.height)
+  const groups = []
+  sorted.forEach(row => {
+    let target = groups.find(group =>
+      Math.abs(row.width - group.anchorWidth) <= tolerance &&
+      Math.abs(row.height - group.anchorHeight) <= tolerance
+    )
+    if (!target) {
+      target = {
+        key: `${row.width}x${row.height}-${groups.length}`,
+        anchorWidth: row.width,
+        anchorHeight: row.height,
+        rows: []
+      }
+      groups.push(target)
+    }
+    target.rows.push(row)
+  })
+  return groups.map(group => {
+    const widths = group.rows.map(row => row.width)
+    const heights = group.rows.map(row => row.height)
+    return {
+      ...group,
+      minWidth: Math.min(...widths),
+      maxWidth: Math.max(...widths),
+      minHeight: Math.min(...heights),
+      maxHeight: Math.max(...heights)
+    }
+  }).sort((a, b) => a.anchorWidth - b.anchorWidth || a.anchorHeight - b.anchorHeight)
+}
+
 function buildGroups(rows) {
   const validRows = rows.map(row => ({
     ...row,
@@ -76,6 +108,7 @@ export default function UnitAnalysis() {
   const [orderedFilter, setOrderedFilter] = useState("all")
   const [expanded, setExpanded] = useState({})
   const [configurationExpanded, setConfigurationExpanded] = useState({})
+  const [sizeExpanded, setSizeExpanded] = useState({})
   const [lastUpdated, setLastUpdated] = useState(null)
 
   const loadUnits = useCallback(async () => {
@@ -178,7 +211,7 @@ export default function UnitAnalysis() {
       @media(max-width:650px){.unit-analysis-page{padding-top:0}.unit-analysis-header{padding-left:48px;align-items:flex-start}.unit-analysis-header h1{font-size:24px}.unit-analysis-refresh{padding:9px}.unit-analysis-stats{gap:9px}.unit-analysis-stat{padding:13px}.unit-analysis-stat-value{font-size:21px}.unit-analysis-toolbar{align-items:stretch}.unit-analysis-filters{display:grid;grid-template-columns:1fr 1fr;width:100%}.unit-analysis-search{grid-column:1/-1;min-width:0}.unit-analysis-select{width:100%;max-width:none}}
     `}</style>
     <div className="unit-analysis-header">
-      <div><div className="unit-analysis-eyebrow">Administration</div><h1>Unit Analysis</h1><p className="unit-analysis-subtitle">Compare costed and ordered units grouped by style. Expand a style to see totals by number of openers and fixed panes, then expand a configuration to see its individual units.</p></div>
+      <div><div className="unit-analysis-eyebrow">Administration</div><h1>Unit Analysis</h1><p className="unit-analysis-subtitle">Compare costed and ordered units grouped by style. Expand a style for opener/fixed totals, then expand a configuration for size groups within 50 mm and individual units.</p></div>
       <button className="unit-analysis-refresh" type="button" onClick={loadUnits} disabled={loading}><RefreshCw size={14}/>{loading ? "Loading…" : "Refresh"}</button>
     </div>
     {error && <div className="unit-analysis-error">{error}</div>}
@@ -190,7 +223,7 @@ export default function UnitAnalysis() {
     </div>
     <section className="unit-analysis-panel">
       <div className="unit-analysis-toolbar">
-        <div><div className="unit-analysis-toolbar-title">Breakdown by style</div><div className="unit-analysis-toolbar-subtitle">Expand a style to see opener/fixed configuration totals; expand a configuration row to see its individual windows.</div></div>
+        <div><div className="unit-analysis-toolbar-title">Breakdown by style</div><div className="unit-analysis-toolbar-subtitle">Expand a style for opener/fixed totals, then expand a configuration row to see size totals within 50 mm. Expand a size row to see individual windows.</div></div>
         <div className="unit-analysis-filters">
           <label className="unit-analysis-search"><Search size={14} color="#667085"/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search type, size or contract"/></label>
           <select className="unit-analysis-select" value={styleFilter} onChange={event => setStyleFilter(event.target.value)} aria-label="Filter by style"><option value="all">All styles</option>{styleOptions.map(style => <option key={style} value={style}>{style}</option>)}</select>
@@ -222,8 +255,25 @@ export default function UnitAnalysis() {
                           <td>{configCosted.length.toLocaleString("en-GB")}</td><td>{configOrdered.length.toLocaleString("en-GB")}</td><td>{configCosted.length ? money(configCosted.reduce((sum,row) => sum + row.cost,0) / configCosted.length) : "—"}</td><td>{configNetCosted.length ? money(configNetCosted.reduce((sum,row) => sum + row.netCost,0) / configNetCosted.length) : "—"}</td><td>{money(configCosted.reduce((sum,row) => sum + row.cost,0))}</td>
                         </tr>
                         {configurationExpanded[configKey] && <tr className="unit-analysis-detail"><td colSpan="6" style={{padding:0}}>
-                          <table className="unit-analysis-table" style={{minWidth:750}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Unit / contract</th><th>Width</th><th>Height</th><th>Disc Total</th><th>Net Cost</th><th>Order status</th><th>Supplier</th><th>Created</th></tr></thead><tbody>
-                            {configuration.rows.map((row,index) => <tr key={row.UUID || `${configuration.key}-${index}`}><td style={{textAlign:"left"}}>{text(row.contract_number) || text(row.UUID) || "Unit"}<div className="unit-analysis-muted">{text(row.location) || text(row.appointment_id) || "—"}</div></td><td>{dimension(row.width)} mm</td><td>{dimension(row.height)} mm</td><td>{row.cost == null || !Number.isFinite(row.cost) ? "—" : money(row.cost)}</td><td>{row.netCost == null || !Number.isFinite(row.netCost) ? "—" : money(row.netCost)}</td><td>{row.ordered ? <span className="unit-analysis-pill">Ordered</span> : "Not ordered"}</td><td>{text(row.supplier) || "—"}</td><td>{row.added_to_supabase_date || row.created_date ? new Date(row.added_to_supabase_date || row.created_date).toLocaleDateString("en-GB") : "—"}</td></tr>)}
+                          <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Approx. size (width × height)</th><th>Units costed</th><th>Units ordered</th><th>Avg. Disc Total</th><th>Avg. Net Cost</th><th>Total Disc Total</th></tr></thead><tbody>
+                            {buildSizeGroups(configuration.rows).map(sizeGroup => {
+                              const sizeNetCosted = sizeGroup.rows.filter(row => row.netCost != null && Number.isFinite(row.netCost))
+                              const sizeCosted = sizeNetCosted.filter(row => row.cost != null && Number.isFinite(row.cost))
+                              const sizeOrdered = sizeGroup.rows.filter(row => row.ordered)
+                              const sizeKey = `${configKey}::${sizeGroup.key}`
+                              const rangeLabel = (min, max) => min === max ? `${dimension(min)} mm` : `${dimension(min)}–${dimension(max)} mm`
+                              return <React.Fragment key={sizeGroup.key}>
+                                <tr className="unit-analysis-group-row" style={{background:"#f8fafc"}} onClick={() => setSizeExpanded(current => ({...current,[sizeKey]:!current[sizeKey]}))}>
+                                  <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{sizeExpanded[sizeKey] ? <ChevronDown size={13}/> : <ChevronRight size={13}/>}<span className="unit-analysis-type">{rangeLabel(sizeGroup.minWidth,sizeGroup.maxWidth)} × {rangeLabel(sizeGroup.minHeight,sizeGroup.maxHeight)}</span><span className="unit-analysis-muted">{sizeGroup.rows.length.toLocaleString("en-GB")} units</span></div></td>
+                                  <td>{sizeCosted.length.toLocaleString("en-GB")}</td><td>{sizeOrdered.length.toLocaleString("en-GB")}</td><td>{sizeCosted.length ? money(sizeCosted.reduce((sum,row) => sum + row.cost,0) / sizeCosted.length) : "—"}</td><td>{sizeNetCosted.length ? money(sizeNetCosted.reduce((sum,row) => sum + row.netCost,0) / sizeNetCosted.length) : "—"}</td><td>{money(sizeCosted.reduce((sum,row) => sum + row.cost,0))}</td>
+                                </tr>
+                                {sizeExpanded[sizeKey] && <tr className="unit-analysis-detail"><td colSpan="6" style={{padding:0}}>
+                                  <table className="unit-analysis-table" style={{minWidth:750}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Unit / contract</th><th>Width</th><th>Height</th><th>Disc Total</th><th>Net Cost</th><th>Order status</th><th>Supplier</th><th>Created</th></tr></thead><tbody>
+                                    {sizeGroup.rows.map((row,index) => <tr key={row.UUID || `${sizeGroup.key}-${index}`}><td style={{textAlign:"left"}}>{text(row.contract_number) || text(row.UUID) || "Unit"}<div className="unit-analysis-muted">{text(row.location) || text(row.appointment_id) || "—"}</div></td><td>{dimension(row.width)} mm</td><td>{dimension(row.height)} mm</td><td>{row.cost == null || !Number.isFinite(row.cost) ? "—" : money(row.cost)}</td><td>{row.netCost == null || !Number.isFinite(row.netCost) ? "—" : money(row.netCost)}</td><td>{row.ordered ? <span className="unit-analysis-pill">Ordered</span> : "Not ordered"}</td><td>{text(row.supplier) || "—"}</td><td>{row.added_to_supabase_date || row.created_date ? new Date(row.added_to_supabase_date || row.created_date).toLocaleDateString("en-GB") : "—"}</td></tr>)}
+                                  </tbody></table>
+                                </td></tr>}
+                              </React.Fragment>
+                            })}
                           </tbody></table>
                         </td></tr>}
                       </React.Fragment>
@@ -235,7 +285,7 @@ export default function UnitAnalysis() {
           </tbody>
         </table>
       </div>
-      <div className="unit-analysis-footnote">Only records where unit_type is “Window” and department is “SURVEY” are included. Windows are grouped by style_choice, then by openers_choice and fixed_choice; blank values appear as “Unspecified”. Average Disc Total includes only costed units with a numeric discountable value; Average Net Cost includes units with a numeric net_product_cost. “Ordered” is determined by a populated ordered_date.</div>
+      <div className="unit-analysis-footnote">Only records where unit_type is “Window” and department is “SURVEY” are included. Windows are grouped by style_choice, then by openers_choice and fixed_choice, then by width and height clustered within 50 mm of each size group’s anchor dimensions; blank opener/fixed values appear as “Unspecified”. Average Disc Total includes only costed units with a numeric discountable value; Average Net Cost includes units with a numeric net_product_cost. “Ordered” is determined by a populated ordered_date.</div>
     </section>
     {lastUpdated && <div style={{fontSize:10,color:"#98a2b3",marginTop:10,textAlign:"right"}}>Last refreshed {lastUpdated.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</div>}
   </div>
