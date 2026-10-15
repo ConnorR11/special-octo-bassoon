@@ -67,16 +67,21 @@ function buildSizeGroups(rows, tolerance = 50) {
   }).sort((a, b) => a.anchorWidth - b.anchorWidth || a.anchorHeight - b.anchorHeight)
 }
 
-function buildSizeColourGroups(rows) {
+function buildColourGroups(rows) {
   const byColour = new Map()
   rows.forEach(row => {
-    const colour = text(row.colour_choice) || text(row.colour_value) || "Unspecified colour"
+    const colour = text(row.colour_value) || text(row.colour_choice) || "Unspecified colour"
     if (!byColour.has(colour)) byColour.set(colour, [])
     byColour.get(colour).push(row)
   })
-  return [...byColour.entries()].flatMap(([colour, colourRows]) =>
-    buildSizeGroups(colourRows).map(sizeGroup => ({ ...sizeGroup, colour }))
-  ).sort((a, b) => a.anchorWidth - b.anchorWidth || a.anchorHeight - b.anchorHeight || a.colour.localeCompare(b.colour))
+  return [...byColour.entries()]
+    .map(([colour, colourRows]) => ({
+      key: colour,
+      colour,
+      rows: colourRows,
+      sizeGroups: buildSizeGroups(colourRows)
+    }))
+    .sort((a, b) => a.colour.localeCompare(b.colour))
 }
 
 function buildGroups(rows) {
@@ -128,6 +133,7 @@ export default function UnitAnalysis() {
   const [orderedFilter, setOrderedFilter] = useState("all")
   const [expanded, setExpanded] = useState({})
   const [configurationExpanded, setConfigurationExpanded] = useState({})
+  const [colourExpanded, setColourExpanded] = useState({})
   const [sizeExpanded, setSizeExpanded] = useState({})
   const [lastUpdated, setLastUpdated] = useState(null)
 
@@ -231,7 +237,7 @@ export default function UnitAnalysis() {
       @media(max-width:650px){.unit-analysis-page{padding-top:0}.unit-analysis-header{padding-left:48px;align-items:flex-start}.unit-analysis-header h1{font-size:24px}.unit-analysis-refresh{padding:9px}.unit-analysis-stats{gap:9px}.unit-analysis-stat{padding:13px}.unit-analysis-stat-value{font-size:21px}.unit-analysis-toolbar{align-items:stretch}.unit-analysis-filters{display:grid;grid-template-columns:1fr 1fr;width:100%}.unit-analysis-search{grid-column:1/-1;min-width:0}.unit-analysis-select{width:100%;max-width:none}}
     `}</style>
     <div className="unit-analysis-header">
-      <div><div className="unit-analysis-eyebrow">Administration</div><h1>Unit Analysis</h1><p className="unit-analysis-subtitle">Compare costed and ordered units grouped by style. Expand a style to see size-and-colour totals, then opener/fixed totals, then individual units.</p></div>
+      <div><div className="unit-analysis-eyebrow">Administration</div><h1>Unit Analysis</h1><p className="unit-analysis-subtitle">Compare costed and ordered units grouped by style, then colour, size, opener/fixed configuration and individual units.</p></div>
       <button className="unit-analysis-refresh" type="button" onClick={loadUnits} disabled={loading}><RefreshCw size={14}/>{loading ? "Loading…" : "Refresh"}</button>
     </div>
     {error && <div className="unit-analysis-error">{error}</div>}
@@ -243,7 +249,7 @@ export default function UnitAnalysis() {
     </div>
     <section className="unit-analysis-panel">
       <div className="unit-analysis-toolbar">
-        <div><div className="unit-analysis-toolbar-title">Breakdown by style</div><div className="unit-analysis-toolbar-subtitle">Hierarchy: style → approximate size and colour → opener/fixed configuration → individual units.</div></div>
+        <div><div className="unit-analysis-toolbar-title">Breakdown by style</div><div className="unit-analysis-toolbar-subtitle">Hierarchy: style → colour → approximate size (within 50 mm) → opener/fixed configuration → individual units.</div></div>
         <div className="unit-analysis-filters">
           <label className="unit-analysis-search"><Search size={14} color="#667085"/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search type, size or contract"/></label>
           <select className="unit-analysis-select" value={styleFilter} onChange={event => setStyleFilter(event.target.value)} aria-label="Filter by style"><option value="all">All styles</option>{styleOptions.map(style => <option key={style} value={style}>{style}</option>)}</select>
@@ -263,33 +269,49 @@ export default function UnitAnalysis() {
                   <td>{group.costedCount.toLocaleString("en-GB")}</td><td>{group.orderedCount.toLocaleString("en-GB")}</td><td>{group.averageCosted == null ? "—" : money(group.averageCosted)}</td><td>{group.averageNetCost == null ? "—" : money(group.averageNetCost)}</td><td>{money(group.totalCosted)}</td>
                 </tr>
                 {expanded[group.key] && <tr className="unit-analysis-detail"><td colSpan="6" style={{padding:0}}>
-                  <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Approx. size (W × H) · Colour</th><th>Units costed</th><th>Units ordered</th><th>Avg. Disc Total</th><th>Avg. Net Cost</th><th>Total Disc Total</th></tr></thead><tbody>
-                    {buildSizeColourGroups(group.rows).map(sizeGroup => {
-                      const sizeNetCosted = sizeGroup.rows.filter(row => row.netCost != null && Number.isFinite(row.netCost))
-                      const sizeCosted = sizeNetCosted.filter(row => row.cost != null && Number.isFinite(row.cost))
-                      const sizeOrdered = sizeGroup.rows.filter(row => row.ordered)
-                      const sizeKey = `${group.key}::${sizeGroup.key}::${sizeGroup.colour}`
-                      const rangeLabel = (min, max) => min === max ? `${dimension(min)} mm` : `${dimension(min)}–${dimension(max)} mm`
-                      return <React.Fragment key={sizeKey}>
-                        <tr className="unit-analysis-group-row" style={{background:"#eef2f6"}} onClick={() => setSizeExpanded(current => ({...current,[sizeKey]:!current[sizeKey]}))}>
-                          <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{sizeExpanded[sizeKey] ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}<div><div className="unit-analysis-type">{rangeLabel(sizeGroup.minWidth,sizeGroup.maxWidth)} × {rangeLabel(sizeGroup.minHeight,sizeGroup.maxHeight)}</div><div className="unit-analysis-muted">{sizeGroup.colour} · {sizeGroup.rows.length.toLocaleString("en-GB")} units</div></div></div></td>
-                          <td>{sizeCosted.length.toLocaleString("en-GB")}</td><td>{sizeOrdered.length.toLocaleString("en-GB")}</td><td>{sizeCosted.length ? money(sizeCosted.reduce((sum,row) => sum + row.cost,0) / sizeCosted.length) : "—"}</td><td>{sizeNetCosted.length ? money(sizeNetCosted.reduce((sum,row) => sum + row.netCost,0) / sizeNetCosted.length) : "—"}</td><td>{money(sizeCosted.reduce((sum,row) => sum + row.cost,0))}</td>
+                  <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Colour</th><th>Units costed</th><th>Units ordered</th><th>Avg. Disc Total</th><th>Avg. Net Cost</th><th>Total Disc Total</th></tr></thead><tbody>
+                    {buildColourGroups(group.rows).map(colourGroup => {
+                      const colourNetCosted = colourGroup.rows.filter(row => row.netCost != null && Number.isFinite(row.netCost))
+                      const colourCosted = colourNetCosted.filter(row => row.cost != null && Number.isFinite(row.cost))
+                      const colourOrdered = colourGroup.rows.filter(row => row.ordered)
+                      const colourKey = `${group.key}::colour::${colourGroup.key}`
+                      return <React.Fragment key={colourKey}>
+                        <tr className="unit-analysis-group-row" style={{background:"#eef2f6"}} onClick={() => setColourExpanded(current => ({...current,[colourKey]:!current[colourKey]}))}>
+                          <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{colourExpanded[colourKey] ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}<div><div className="unit-analysis-type">{colourGroup.colour}</div><div className="unit-analysis-muted">{colourGroup.rows.length.toLocaleString("en-GB")} units</div></div></div></td>
+                          <td>{colourCosted.length.toLocaleString("en-GB")}</td><td>{colourOrdered.length.toLocaleString("en-GB")}</td><td>{colourCosted.length ? money(colourCosted.reduce((sum,row) => sum + row.cost,0) / colourCosted.length) : "—"}</td><td>{colourNetCosted.length ? money(colourNetCosted.reduce((sum,row) => sum + row.netCost,0) / colourNetCosted.length) : "—"}</td><td>{money(colourCosted.reduce((sum,row) => sum + row.cost,0))}</td>
                         </tr>
-                        {sizeExpanded[sizeKey] && <tr className="unit-analysis-detail"><td colSpan="6" style={{padding:0}}>
-                          <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Openers / fixed</th><th>Units costed</th><th>Units ordered</th><th>Avg. Disc Total</th><th>Avg. Net Cost</th><th>Total Disc Total</th></tr></thead><tbody>
-                            {buildConfigurationGroups(sizeGroup.rows).map(configuration => {
-                              const configNetCosted = configuration.rows.filter(row => row.netCost != null && Number.isFinite(row.netCost))
-                              const configCosted = configNetCosted.filter(row => row.cost != null && Number.isFinite(row.cost))
-                              const configOrdered = configuration.rows.filter(row => row.ordered)
-                              const configKey = `${sizeKey}::${configuration.key}`
-                              return <React.Fragment key={configuration.key}>
-                                <tr className="unit-analysis-group-row" style={{background:"#f8fafc"}} onClick={() => setConfigurationExpanded(current => ({...current,[configKey]:!current[configKey]}))}>
-                                  <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{configurationExpanded[configKey] ? <ChevronDown size={13}/> : <ChevronRight size={13}/>}<span className="unit-analysis-type">{configuration.openers} openers · {configuration.fixed} fixed</span><span className="unit-analysis-muted">{configuration.rows.length.toLocaleString("en-GB")} units</span></div></td>
-                                  <td>{configCosted.length.toLocaleString("en-GB")}</td><td>{configOrdered.length.toLocaleString("en-GB")}</td><td>{configCosted.length ? money(configCosted.reduce((sum,row) => sum + row.cost,0) / configCosted.length) : "—"}</td><td>{configNetCosted.length ? money(configNetCosted.reduce((sum,row) => sum + row.netCost,0) / configNetCosted.length) : "—"}</td><td>{money(configCosted.reduce((sum,row) => sum + row.cost,0))}</td>
+                        {colourExpanded[colourKey] && <tr className="unit-analysis-detail"><td colSpan="6" style={{padding:0}}>
+                          <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Approx. size (W × H)</th><th>Units costed</th><th>Units ordered</th><th>Avg. Disc Total</th><th>Avg. Net Cost</th><th>Total Disc Total</th></tr></thead><tbody>
+                            {colourGroup.sizeGroups.map(sizeGroup => {
+                              const sizeNetCosted = sizeGroup.rows.filter(row => row.netCost != null && Number.isFinite(row.netCost))
+                              const sizeCosted = sizeNetCosted.filter(row => row.cost != null && Number.isFinite(row.cost))
+                              const sizeOrdered = sizeGroup.rows.filter(row => row.ordered)
+                              const sizeKey = `${colourKey}::size::${sizeGroup.key}`
+                              const rangeLabel = (min, max) => min === max ? `${dimension(min)} mm` : `${dimension(min)}–${dimension(max)} mm`
+                              return <React.Fragment key={sizeKey}>
+                                <tr className="unit-analysis-group-row" style={{background:"#f5f7fa"}} onClick={() => setSizeExpanded(current => ({...current,[sizeKey]:!current[sizeKey]}))}>
+                                  <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{sizeExpanded[sizeKey] ? <ChevronDown size={13}/> : <ChevronRight size={13}/>}<div><div className="unit-analysis-type">{rangeLabel(sizeGroup.minWidth,sizeGroup.maxWidth)} × {rangeLabel(sizeGroup.minHeight,sizeGroup.maxHeight)}</div><div className="unit-analysis-muted">{sizeGroup.rows.length.toLocaleString("en-GB")} units</div></div></div></td>
+                                  <td>{sizeCosted.length.toLocaleString("en-GB")}</td><td>{sizeOrdered.length.toLocaleString("en-GB")}</td><td>{sizeCosted.length ? money(sizeCosted.reduce((sum,row) => sum + row.cost,0) / sizeCosted.length) : "—"}</td><td>{sizeNetCosted.length ? money(sizeNetCosted.reduce((sum,row) => sum + row.netCost,0) / sizeNetCosted.length) : "—"}</td><td>{money(sizeCosted.reduce((sum,row) => sum + row.cost,0))}</td>
                                 </tr>
-                                {configurationExpanded[configKey] && <tr className="unit-analysis-detail"><td colSpan="6" style={{padding:0}}>
-                                  <table className="unit-analysis-table" style={{minWidth:750}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Unit / contract</th><th>Width</th><th>Height</th><th>Disc Total</th><th>Net Cost</th><th>Order status</th><th>Supplier</th><th>Created</th></tr></thead><tbody>
-                                    {configuration.rows.map((row,index) => <tr key={row.UUID || `${configKey}-${index}`}><td style={{textAlign:"left"}}>{text(row.contract_number) || text(row.UUID) || "Unit"}<div className="unit-analysis-muted">{text(row.location) || text(row.appointment_id) || "—"}</div></td><td>{dimension(row.width)} mm</td><td>{dimension(row.height)} mm</td><td>{row.cost == null || !Number.isFinite(row.cost) ? "—" : money(row.cost)}</td><td>{row.netCost == null || !Number.isFinite(row.netCost) ? "—" : money(row.netCost)}</td><td>{row.ordered ? <span className="unit-analysis-pill">Ordered</span> : "Not ordered"}</td><td>{text(row.supplier) || "—"}</td><td>{row.added_to_supabase_date || row.created_date ? new Date(row.added_to_supabase_date || row.created_date).toLocaleDateString("en-GB") : "—"}</td></tr>)}
+                                {sizeExpanded[sizeKey] && <tr className="unit-analysis-detail"><td colSpan="6" style={{padding:0}}>
+                                  <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Openers / fixed</th><th>Units costed</th><th>Units ordered</th><th>Avg. Disc Total</th><th>Avg. Net Cost</th><th>Total Disc Total</th></tr></thead><tbody>
+                                    {buildConfigurationGroups(sizeGroup.rows).map(configuration => {
+                                      const configNetCosted = configuration.rows.filter(row => row.netCost != null && Number.isFinite(row.netCost))
+                                      const configCosted = configNetCosted.filter(row => row.cost != null && Number.isFinite(row.cost))
+                                      const configOrdered = configuration.rows.filter(row => row.ordered)
+                                      const configKey = `${sizeKey}::${configuration.key}`
+                                      return <React.Fragment key={configuration.key}>
+                                        <tr className="unit-analysis-group-row" style={{background:"#f8fafc"}} onClick={() => setConfigurationExpanded(current => ({...current,[configKey]:!current[configKey]}))}>
+                                          <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{configurationExpanded[configKey] ? <ChevronDown size={13}/> : <ChevronRight size={13}/>}<span className="unit-analysis-type">{configuration.openers} openers · {configuration.fixed} fixed</span><span className="unit-analysis-muted">{configuration.rows.length.toLocaleString("en-GB")} units</span></div></td>
+                                          <td>{configCosted.length.toLocaleString("en-GB")}</td><td>{configOrdered.length.toLocaleString("en-GB")}</td><td>{configCosted.length ? money(configCosted.reduce((sum,row) => sum + row.cost,0) / configCosted.length) : "—"}</td><td>{configNetCosted.length ? money(configNetCosted.reduce((sum,row) => sum + row.netCost,0) / configNetCosted.length) : "—"}</td><td>{money(configCosted.reduce((sum,row) => sum + row.cost,0))}</td>
+                                        </tr>
+                                        {configurationExpanded[configKey] && <tr className="unit-analysis-detail"><td colSpan="6" style={{padding:0}}>
+                                          <table className="unit-analysis-table" style={{minWidth:750}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Unit / contract</th><th>Width</th><th>Height</th><th>Disc Total</th><th>Net Cost</th><th>Order status</th><th>Supplier</th><th>Created</th></tr></thead><tbody>
+                                            {configuration.rows.map((row,index) => <tr key={row.UUID || `${configKey}-${index}`}><td style={{textAlign:"left"}}>{text(row.contract_number) || text(row.UUID) || "Unit"}<div className="unit-analysis-muted">{text(row.location) || text(row.appointment_id) || "—"}</div></td><td>{dimension(row.width)} mm</td><td>{dimension(row.height)} mm</td><td>{row.cost == null || !Number.isFinite(row.cost) ? "—" : money(row.cost)}</td><td>{row.netCost == null || !Number.isFinite(row.netCost) ? "—" : money(row.netCost)}</td><td>{row.ordered ? <span className="unit-analysis-pill">Ordered</span> : "Not ordered"}</td><td>{text(row.supplier) || "—"}</td><td>{row.added_to_supabase_date || row.created_date ? new Date(row.added_to_supabase_date || row.created_date).toLocaleDateString("en-GB") : "—"}</td></tr>)}
+                                          </tbody></table>
+                                        </td></tr>}
+                                      </React.Fragment>
+                                    })}
                                   </tbody></table>
                                 </td></tr>}
                               </React.Fragment>
@@ -305,7 +327,7 @@ export default function UnitAnalysis() {
           </tbody>
         </table>
       </div>
-      <div className="unit-analysis-footnote">Only records where unit_type is “Window” and department is “SURVEY” are included. Windows are grouped by style_choice, then by width and height within 50 mm and colour, then by openers_choice and fixed_choice; blank opener/fixed values appear as “Unspecified”. Average Disc Total includes only costed units with a numeric discountable value; Average Net Cost includes units with a numeric net_product_cost. “Ordered” is determined by a populated ordered_date.</div>
+      <div className="unit-analysis-footnote">Only records where unit_type is “Window” and department is “SURVEY” are included. Windows are grouped by style_choice, then colour, then by width and height within 50 mm, then by openers_choice and fixed_choice; blank opener/fixed values appear as “Unspecified”. Average Disc Total includes only costed units with a numeric discountable value; Average Net Cost includes units with a numeric net_product_cost. “Ordered” is determined by a populated ordered_date.</div>
     </section>
     {lastUpdated && <div style={{fontSize:10,color:"#98a2b3",marginTop:10,textAlign:"right"}}>Last refreshed {lastUpdated.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</div>}
   </div>
