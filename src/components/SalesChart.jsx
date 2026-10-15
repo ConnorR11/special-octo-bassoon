@@ -221,7 +221,7 @@ function SalesChart({ contracts = [] }) {
       const cursor = new Date(start)
       while (cursor <= end) {
         const bucket = getBucket(cursor)
-        if (!rows.some(row => row.bucketKey === bucket.key)) rows.push({ bucketKey: bucket.key, month: bucket.label, hoverLabel: bucket.hoverLabel || bucket.label, confirmedOnly: 0, priceOnly: 0, sold: 0, confirmed: 0, conversionPercent: 0 })
+        if (!rows.some(row => row.bucketKey === bucket.key)) rows.push({ bucketKey: bucket.key, month: bucket.label, hoverLabel: bucket.hoverLabel || bucket.label, confirmedOnly: 0, priceOnly: 0, sold: 0, confirmed: 0, confirmedTotal: 0, priceTotal: 0, soldTotal: 0, conversionPercent: 0 })
         if (cpsTimeGrouping === "year") cursor.setFullYear(cursor.getFullYear() + 1)
         else if (cpsTimeGrouping === "quarter") cursor.setMonth(cursor.getMonth() + 3, 1)
         else if (cpsTimeGrouping === "week") cursor.setDate(cursor.getDate() + 7)
@@ -236,6 +236,9 @@ function SalesChart({ contracts = [] }) {
       if (cpsSelectedProduct !== "All products" && cpsSelectedProduct !== normaliseProduct(appointment.product)) return
       const row = rowByKey.get(getBucket(date).key)
       if (!row) return
+      row.confirmedTotal += Number(appointment.confirmed_count || 0)
+      row.priceTotal += Number(appointment.price_count || 0)
+      row.soldTotal += Number(appointment.sold_count || 0)
       row.confirmed += Number(appointment.confirmed_count || 0)
       row.sold += Number(appointment.sold_count || 0)
       row.priceOnly += Number(appointment.price_not_sold_count || 0)
@@ -295,7 +298,7 @@ function SalesChart({ contracts = [] }) {
             <XAxis dataKey="month" interval="preserveStartEnd" minTickGap={24} axisLine={false} tickLine={false} tick={{ fill: "#8a8a8a", fontSize: 10 }} />
             <YAxis yAxisId="count" axisLine={false} tickLine={false} allowDecimals={false} tick={{ fill: "#777", fontSize: 10 }} width={55} />
             <YAxis yAxisId="percent" orientation="right" axisLine={false} tickLine={false} domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} tickFormatter={value => `${value}%`} tick={{ fill: "#64748b", fontSize: 10 }} width={48} />
-            <Tooltip labelFormatter={(label, payload) => { const row = payload?.[0]?.payload; return row ? `${row.hoverLabel || label} · Price left: ${row.totalPriced} · Sold: ${row.sold}` : label }} formatter={(value, name, item) => name === "Sales conversion" ? [`${Number(value || 0).toFixed(1)}%`, name] : [Number(value || 0).toLocaleString("en-GB"), name]} contentStyle={{ border: "1px solid #e2e5e8", borderRadius: 8, fontSize: 11 }} />
+            <Tooltip labelFormatter={(label, payload) => { const row = payload?.[0]?.payload; return row ? `${row.hoverLabel || label} · C: ${row.confirmedTotal} · P: ${row.priceTotal} · S: ${row.soldTotal} · P → S: ${row.totalPriced ? (row.soldTotal / row.priceTotal * 100).toFixed(1) : "0.0"}%` : label }} formatter={(value, name, item) => name === "Sales conversion" ? [`${Number(value || 0).toFixed(1)}%`, name] : [Number(value || 0).toLocaleString("en-GB"), name]} contentStyle={{ border: "1px solid #e2e5e8", borderRadius: 8, fontSize: 11 }} />
             <Legend verticalAlign="bottom" height={32} iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
             <Bar yAxisId="count" dataKey="sold" name="S · Sold" stackId="cps" fill="#008000" />
             <Bar yAxisId="count" dataKey="priceOnly" name="P · Price left" stackId="cps" fill="#ff9900" />
