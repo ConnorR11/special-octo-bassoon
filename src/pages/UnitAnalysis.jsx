@@ -215,7 +215,7 @@ export default function UnitAnalysis() {
           const batch = appointmentIds.slice(i, i + 100)
           const { data, error: dealFetchError } = await supabase
             .from("deals")
-            .select("appointment_row_id, net_value, pipedrive_stage, customer_name")
+            .select("appointment_row_id, net_value, survey_costing, pipedrive_stage, customer_name")
             .in("appointment_row_id", batch)
           if (dealFetchError) throw dealFetchError
           matchedDeals.push(...(data || []))
@@ -237,6 +237,7 @@ export default function UnitAnalysis() {
             appointmentId,
             customerName: text(deal.customer_name) || text(unit.contract_number) || appointmentId,
             netValue: Number.isFinite(Number(deal.net_value)) ? Number(deal.net_value) : 0,
+            surveyCosting: deal.survey_costing == null || deal.survey_costing === "" || !Number.isFinite(Number(deal.survey_costing)) ? null : Number(deal.survey_costing),
             stage: text(deal.pipedrive_stage) || "—",
             units: [],
             byType: new Map(),
@@ -445,17 +446,17 @@ export default function UnitAnalysis() {
       <div className="unit-analysis-count">{dealsLoading ? "Loading deal comparisons…" : `${dealRecords.filter(deal => !dealSearch.trim() || `${deal.customerName} ${deal.appointmentId} ${deal.stage}`.toLowerCase().includes(dealSearch.trim().toLowerCase())).length.toLocaleString("en-GB")} jobs with COS% over 50%`}</div>
       <div className="unit-analysis-table-wrap">
         <table className="unit-analysis-table" style={{minWidth:1000}}>
-          <thead><tr><th style={{textAlign:"left"}}>Deal / appointment</th><th>Stage</th><th>Units costed</th><th>Deal net value</th><th>Unit spend</th><th>COS</th><th>COS%</th><th>Net value less units</th><th>Unit spend % of deal</th></tr></thead>
+          <thead><tr><th style={{textAlign:"left"}}>Deal / appointment</th><th>Stage</th><th>Units costed</th><th>Deal net value</th><th>Survey costing</th><th>Unit spend</th><th>COS</th><th>COS%</th></tr></thead>
           <tbody>
-            {dealsLoading && dealRecords.length === 0 ? <tr><td colSpan="9" className="unit-analysis-empty">Loading deals…</td></tr> :
+            {dealsLoading && dealRecords.length === 0 ? <tr><td colSpan="8" className="unit-analysis-empty">Loading deals…</td></tr> :
               dealRecords.filter(deal => !dealSearch.trim() || `${deal.customerName} ${deal.appointmentId} ${deal.stage}`.toLowerCase().includes(dealSearch.trim().toLowerCase())).length === 0 ?
-                <tr><td colSpan="9" className="unit-analysis-empty">{dealsError ? "Deal comparisons could not be loaded." : "No jobs have COS% over 50% matching this search."}</td></tr> :
+                <tr><td colSpan="8" className="unit-analysis-empty">{dealsError ? "Deal comparisons could not be loaded." : "No jobs have COS% over 50% matching this search."}</td></tr> :
                 dealRecords.filter(deal => !dealSearch.trim() || `${deal.customerName} ${deal.appointmentId} ${deal.stage}`.toLowerCase().includes(dealSearch.trim().toLowerCase())).map(deal => <React.Fragment key={deal.key}>
                   <tr className="unit-analysis-group-row" onClick={() => setExpandedDeals(current => ({...current,[deal.key]:!current[deal.key]}))}>
                     <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{expandedDeals[deal.key] ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<div><div className="unit-analysis-type">{deal.customerName}</div><div className="unit-analysis-muted">Appointment {deal.appointmentId}</div></div></div></td>
-                    <td>{deal.stage}</td><td>{deal.unitCount.toLocaleString("en-GB")}</td><td>{money(deal.netValue)}</td><td>{money(deal.unitSpend)}</td><td style={{fontWeight:750}}>{money(deal.cos)}</td><td style={{fontWeight:800,color:deal.cosPercent > 70 ? "#b42318" : "#b54708"}}>{deal.cosPercent.toFixed(1)}%</td><td style={{fontWeight:750,color:deal.marginAfterUnits < 0 ? "#b42318" : "#027a48"}}>{money(deal.marginAfterUnits)}</td><td>{deal.netValue > 0 ? `${(deal.unitSpend / deal.netValue * 100).toFixed(1)}%` : "—"}</td>
+                    <td>{deal.stage}</td><td>{deal.unitCount.toLocaleString("en-GB")}</td><td>{money(deal.netValue)}</td><td>{deal.surveyCosting == null ? "—" : money(deal.surveyCosting)}</td><td>{money(deal.unitSpend)}</td><td style={{fontWeight:750}}>{money(deal.cos)}</td><td style={{fontWeight:800,color:deal.cosPercent > 70 ? "#b42318" : "#b54708"}}>{deal.cosPercent.toFixed(1)}%</td>
                   </tr>
-                  {expandedDeals[deal.key] && <tr className="unit-analysis-detail"><td colSpan="9" style={{padding:0}}>
+                  {expandedDeals[deal.key] && <tr className="unit-analysis-detail"><td colSpan="8" style={{padding:0}}>
                     <table className="unit-analysis-table" style={{minWidth:700}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Unit type / style</th><th>Quantity</th><th>Total unit spend</th><th>Average unit cost</th></tr></thead><tbody>
                       {deal.byType.map(item => <tr key={`${deal.key}::${item.unitType}::${item.style}`}><td style={{textAlign:"left"}}><div className="unit-analysis-type">{item.unitType}</div><div className="unit-analysis-muted">{item.style}</div></td><td>{item.count.toLocaleString("en-GB")}</td><td>{money(item.spend)}</td><td>{money(item.spend / item.count)}</td></tr>)}
                       <tr><td style={{textAlign:"left",fontWeight:800}}>Total</td><td style={{fontWeight:800}}>{deal.unitCount.toLocaleString("en-GB")}</td><td style={{fontWeight:800}}>{money(deal.unitSpend)}</td><td>—</td></tr>
