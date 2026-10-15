@@ -1338,7 +1338,7 @@ function FitSheet({ setSelected }) {
                 <div style={{ padding: "12px", background: "#dce6f0", borderRight: "1px solid #c4d1df", fontSize: "11px", fontWeight: 800, color: "#172554", letterSpacing: "0.5px", position: "sticky", left: 0, zIndex: 5 }}>WINDOW TEAMS</div>
                 <div style={{ gridColumn: "span 8", padding: "12px", fontSize: "10px", fontWeight: 700, color: "#52627a" }}>{fitTeams.length} teams · {windowTeamsExpanded ? "click to collapse" : "click to expand"}</div>
               </div>
-              {windowTeamsExpanded && windowGroups.map((group) => (
+              {windowTeamsExpanded && windowGroups.map((group) => ({ ...group, teams: group.teams.filter(shouldShowTeam) })).filter((group) => group.teams.length > 0).map((group) => (
                 <div key={group.label} style={{ display: "grid", gridTemplateColumns: "150px minmax(0, 1fr)", borderBottom: "1px solid #d9dadd" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gridRow: "span " + group.teams.length, minHeight: (group.teams.length * 160) + "px", padding: "12px 4px", borderRight: "2px solid #111", background: "#fff", color: "#111", fontSize: "20px", fontWeight: 500, letterSpacing: "1px", writingMode: "vertical-rl", transform: "rotate(180deg)", textAlign: "center" }}>{group.label}</div>
                   <div>
@@ -1362,7 +1362,7 @@ function FitSheet({ setSelected }) {
                 <div style={{ display: "grid", gridTemplateColumns: "150px minmax(0, 1fr)", borderBottom: "1px solid #d9dadd" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gridRow: "span " + renewablesTeams.length, minHeight: (renewablesTeams.length * 160) + "px", padding: "12px 4px", borderRight: "2px solid #111", background: "#fff", color: "#111", fontSize: "20px", fontWeight: 500, letterSpacing: "1px", writingMode: "vertical-rl", transform: "rotate(180deg)", textAlign: "center" }}>WINDOW REMEDIALS</div>
                   <div>
-                    {renewablesTeams.map((team) => (
+                    {renewablesTeams.filter(shouldShowTeam).map((team) => (
                       <div key={team} style={{ display: "grid", gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))", minHeight: "160px", borderBottom: "1px solid #111" }}>
                         <div style={nameCellStyle}>{team}</div>
                         {weekDays.map((date) => {
@@ -1382,7 +1382,7 @@ function FitSheet({ setSelected }) {
                 <div style={{ display: "grid", gridTemplateColumns: "150px minmax(0, 1fr)", borderBottom: "1px solid #d9dadd" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gridRow: "span " + heatPumpTeams.length, minHeight: (heatPumpTeams.length * 160) + "px", padding: "12px 4px", borderRight: "2px solid #111", background: "#f2f2f2", color: "#111", fontSize: "20px", fontWeight: 500, letterSpacing: "1px", writingMode: "vertical-rl", transform: "rotate(180deg)", textAlign: "center" }}>HEAT PUMP</div>
                   <div>
-                    {heatPumpTeams.map((team) => (
+                    {heatPumpTeams.filter(shouldShowTeam).map((team) => (
                       <div key={team} style={{ display: "grid", gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))", minHeight: "160px", borderBottom: "1px solid #111" }}>
                         <div style={nameCellStyle}>{team}</div>
                         {weekDays.map((date) => {
@@ -1403,7 +1403,7 @@ function FitSheet({ setSelected }) {
                 <div style={{ display: "grid", gridTemplateColumns: "150px minmax(0, 1fr)", borderBottom: "1px solid #d9dadd" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gridRow: "span " + roofTeams.length, minHeight: (roofTeams.length * 160) + "px", padding: "12px 4px", borderRight: "2px solid #111", background: "#f2f2f2", color: "#111", fontSize: "20px", fontWeight: 500, letterSpacing: "1px", writingMode: "vertical-rl", transform: "rotate(180deg)", textAlign: "center" }}>ROOF</div>
                   <div>
-                    {roofTeams.map((team) => (
+                    {roofTeams.filter(shouldShowTeam).map((team) => (
                       <div key={team} style={{ display: "grid", gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))", minHeight: "160px", borderBottom: "1px solid #111" }}>
                         <div style={nameCellStyle}>{team}</div>
                         {weekDays.map((date) => {
@@ -1424,7 +1424,7 @@ function FitSheet({ setSelected }) {
                 <div style={{ display: "grid", gridTemplateColumns: "150px minmax(0, 1fr)", borderBottom: "1px solid #d9dadd" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gridRow: "span " + electricsTeams.length, minHeight: (electricsTeams.length * 160) + "px", padding: "12px 4px", borderRight: "2px solid #111", background: "#f2f2f2", color: "#111", fontSize: "20px", fontWeight: 500, letterSpacing: "1px", writingMode: "vertical-rl", transform: "rotate(180deg)", textAlign: "center" }}>ELECTRICS</div>
                   <div>
-                    {electricsTeams.map((team) => (
+                    {electricsTeams.filter(shouldShowTeam).map((team) => (
                       <div key={team} style={{ display: "grid", gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))", minHeight: "160px", borderBottom: "1px solid #111" }}>
                         <div style={nameCellStyle}>{team}</div>
                         {weekDays.map((date) => {
@@ -1445,7 +1445,7 @@ function FitSheet({ setSelected }) {
                 <div style={{ display: "grid", gridTemplateColumns: "150px minmax(0, 1fr)", borderBottom: "1px solid #d9dadd" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gridRow: "span " + renewableRemedialsTeams.length, minHeight: (renewableRemedialsTeams.length * 160) + "px", padding: "12px 4px", borderRight: "2px solid #111", background: "#f2f2f2", color: "#111", fontSize: "20px", fontWeight: 500, letterSpacing: "1px", writingMode: "vertical-rl", transform: "rotate(180deg)", textAlign: "center" }}>RENEWABLE REMEDIALS</div>
                   <div>
-                    {renewableRemedialsTeams.map((team) => (
+                    {renewableRemedialsTeams.filter(shouldShowTeam).map((team) => (
                       <div key={team} style={{ display: "grid", gridTemplateColumns: "190px repeat(7, minmax(150px, 1fr))", minHeight: "160px", borderBottom: "1px solid #111" }}>
                         <div style={nameCellStyle}>{team}</div>
                         {weekDays.map((date) => {
