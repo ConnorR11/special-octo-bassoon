@@ -137,7 +137,7 @@ function SalesChart({ contracts = [] }) {
     const cursor = new Date(start)
     while (cursor <= end) {
       const bucket = getBucket(cursor)
-      if (!rows.some((row) => row.bucketKey === bucket.key)) rows.push({ bucketKey: bucket.key, month: bucket.label, hoverLabel: bucket.hoverLabel || bucket.label, bucketStart: bucket.start.getTime(), Solid: 0, Decline: 0, Cancelled: 0, total: 0, totalSold: 0, notSolidPercent: 0 })
+      if (!rows.some((row) => row.bucketKey === bucket.key)) rows.push({ bucketKey: bucket.key, month: bucket.label, hoverLabel: bucket.hoverLabel || bucket.label, bucketStart: bucket.start.getTime(), Solid: 0, Decline: 0, Cancelled: 0, "Missing stage": 0, total: 0, totalSold: 0, notSolidPercent: 0 })
       if (timeGrouping === "year") cursor.setFullYear(cursor.getFullYear() + 1)
       else if (timeGrouping === "quarter") cursor.setMonth(cursor.getMonth() + 3, 1)
       else if (timeGrouping === "week") cursor.setDate(cursor.getDate() + 7)
