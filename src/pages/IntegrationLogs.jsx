@@ -37,7 +37,7 @@ export default function IntegrationLogs({ setMobile }) {
       if (sessionError) throw sessionError
       const accessToken = sessionData?.session?.access_token
       if (!accessToken) throw new Error("Your session has expired. Sign in again.")
-      const params = new URLSearchParams({ job: "backfill-pipedrive-stages", limit: "100", offset: String(backfillOffset) })
+      const params = new URLSearchParams({ job: "backfill-pipedrive-stages", limit: "250", offset: "0" })
       if (execute) params.set("execute", "true")
       const response = await fetch(`/api/admin/bulk-updates?${params.toString()}`, { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } })
       const result = await response.json().catch(() => ({}))
@@ -45,7 +45,7 @@ export default function IntegrationLogs({ setMobile }) {
       setBackfillPreview(result)
       if (execute) {
         setBackfillMessage(`Batch complete: ${result.updated||0} updated, ${result.skipped||0} skipped, ${result.failed||0} failed.`)
-        if (result.nextOffset !== null && result.nextOffset !== undefined) setBackfillOffset(result.nextOffset)
+        setBackfillOffset(0)
         else setBackfillMessage(`Backfill batch complete: ${result.updated||0} updated, ${result.skipped||0} skipped, ${result.failed||0} failed. No further matching rows were reported for this batch.`)
         loadProviders(); loadLogs(); loadStats(); loadChartLogs()
       } else {
@@ -236,16 +236,16 @@ export default function IntegrationLogs({ setMobile }) {
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:16,flexWrap:"wrap"}}>
           <div style={{maxWidth:760}}>
             <h2 style={{margin:"0 0 6px",fontSize:18}}>Pipedrive Stage Backfill</h2>
-            <p style={{margin:"0 0 8px",fontSize:13,color:"#475467"}}>Find CRM deals whose Pipedrive stage is empty and fill it from Pipedrive. Each batch is limited to 100 deals. Existing non-empty stages are never overwritten, and the server checks again immediately before each update.</p>
+            <p style={{margin:"0 0 8px",fontSize:13,color:"#475467"}}>Find CRM deals whose Pipedrive stage is empty and fill it from Pipedrive. Each batch is limited to 250 deals. Existing non-empty stages are never overwritten, and the server checks again immediately before each update.</p>
             <p style={{margin:0,fontSize:12,color:"#667085"}}>Every preview and execution is recorded in Integration Activity below. Preview first, then explicitly confirm each batch.</p>
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             <button type="button" className="integration-logs-refresh" disabled={backfillBusy} onClick={()=>runStageBackfill(false)}>Preview next batch</button>
-            <button type="button" disabled={backfillBusy||!backfillPreview||backfillPreview.dryRun!==true||!backfillPreview.results?.some(r=>r.status==="preview")} onClick={()=>{if(window.confirm("Update up to 100 deals with an empty Pipedrive stage? Existing stages will not be overwritten."))runStageBackfill(true)}} style={{padding:"9px 12px",border:"1px solid #175cd3",borderRadius:8,background:backfillBusy||!backfillPreview||backfillPreview.dryRun!==true?"#eaecf0":"#175cd3",color:backfillBusy||!backfillPreview||backfillPreview.dryRun!==true?"#667085":"#fff",cursor:backfillBusy||!backfillPreview||backfillPreview.dryRun!==true?"not-allowed":"pointer",fontWeight:600}}>Execute previewed batch</button>
+            <button type="button" disabled={backfillBusy||!backfillPreview||backfillPreview.dryRun!==true||!backfillPreview.results?.some(r=>r.status==="preview")} onClick={()=>{if(window.confirm("Update up to 250 deals with an empty Pipedrive stage? Existing stages will not be overwritten."))runStageBackfill(true)}} style={{padding:"9px 12px",border:"1px solid #175cd3",borderRadius:8,background:backfillBusy||!backfillPreview||backfillPreview.dryRun!==true?"#eaecf0":"#175cd3",color:backfillBusy||!backfillPreview||backfillPreview.dryRun!==true?"#667085":"#fff",cursor:backfillBusy||!backfillPreview||backfillPreview.dryRun!==true?"not-allowed":"pointer",fontWeight:600}}>Execute previewed batch</button>
           </div>
         </div>
         <div style={{display:"flex",gap:18,flexWrap:"wrap",marginTop:16,fontSize:13,color:"#344054"}}>
-          <span><strong>Batch offset:</strong> {backfillOffset.toLocaleString("en-GB")}</span>
+          <span><strong>Batch size:</strong> 250</span>
           {backfillPreview&&<><span><strong>Found:</strong> {(backfillPreview.requested||0).toLocaleString("en-GB")}</span><span><strong>Missing stages:</strong> {backfillPreview.totalMissing==null?"—":backfillPreview.totalMissing.toLocaleString("en-GB")}</span>{backfillPreview.dryRun===false&&<><span><strong>Updated:</strong> {backfillPreview.updated||0}</span><span><strong>Skipped:</strong> {backfillPreview.skipped||0}</span><span><strong>Failed:</strong> {backfillPreview.failed||0}</span></>}</>}
         </div>
         {backfillBusy&&<p style={{margin:"12px 0 0",fontSize:13,color:"#175cd3"}}>Running batch and writing integration logs…</p>}
