@@ -120,7 +120,7 @@ function SalesChart({ contracts = [] }) {
             supabase
               .from("appointments")
               .select("appointment_row_id,appointment_date,cps_c,cps_p,cps_s,product")
-              .eq("cps_c", true)
+              .or("cps_c.eq.true,cps_p.eq.true,cps_s.eq.true")
               .gte("appointment_date", startDate)
               .lte("appointment_date", endDate)
               .order("appointment_date", { ascending: true })
@@ -263,11 +263,11 @@ function SalesChart({ contracts = [] }) {
       const confirmed = appointment.cps_c === true
       const price = appointment.cps_p === true
       const sold = appointment.cps_s === true
-      if (!confirmed) return
-      row.confirmed += 1
+      if (!confirmed && !price && !sold) return
+      if (confirmed) row.confirmed += 1
       if (sold) row.sold += 1
       else if (price) row.priceOnly += 1
-      else row.confirmedOnly += 1
+      else if (confirmed) row.confirmedOnly += 1
     })
     rows.forEach(row => { const totalPriced = row.priceOnly + row.sold; row.conversionPercent = totalPriced > 0 ? row.sold / totalPriced * 100 : 0; row.totalPriced = totalPriced })
     return rows
