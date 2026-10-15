@@ -23,6 +23,7 @@ const PRODUCT_SERIES = [
   { key: "ASHP", colour: "#f59e0b" },
   { key: "Other", colour: "#15803d" },
 ]
+const PRODUCT_FILTER_OPTIONS = ["Windows", "Solar", "ASHP", "Other"]
 
 function normaliseResult(deal) {
   const value = String(deal?.pipedrive_stage || deal?.status || "").trim().toLowerCase()
@@ -60,15 +61,9 @@ function ChartCard({ title, subtitle, data, series, dataKey }) {
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d7d7d7" />
           <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fill: "#8a8a8a", fontSize: 11 }} />
           <YAxis axisLine={false} tickLine={false} ticks={ticks} domain={[0, maxTick]} tickFormatter={axisMoney} tick={{ fill: "#777", fontSize: 10 }} width={74} />
-          <Tooltip
-            labelFormatter={(label) => String(label)}
-            formatter={(value, name) => [money(Number(value || 0)), name]}
-            contentStyle={{ border: "1px solid #e2e5e8", borderRadius: 8, fontSize: 11 }}
-          />
+          <Tooltip labelFormatter={(label) => String(label)} formatter={(value, name) => [money(Number(value || 0)), name]} contentStyle={{ border: "1px solid #e2e5e8", borderRadius: 8, fontSize: 11 }} />
           <Legend verticalAlign="bottom" height={32} iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-          {series.map((item) => (
-            <Bar key={item.key} dataKey={item.key} name={item.key} stackId={dataKey} fill={item.colour} />
-          ))}
+          {series.map((item) => <Bar key={item.key} dataKey={item.key} name={item.key} stackId={dataKey} fill={item.colour} />)}
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -77,12 +72,29 @@ function ChartCard({ title, subtitle, data, series, dataKey }) {
 
 function SalesChart({ contracts = [] }) {
   const [selectedProducts, setSelectedProducts] = useState(["All products"])
+  const [productMenuOpen, setProductMenuOpen] = useState(false)
   const [timeGrouping, setTimeGrouping] = useState("month")
   const today = new Date()
   const currentYear = today.getFullYear()
   const currentMonth = today.getMonth()
   const currentDay = today.getDate()
   const years = useMemo(() => Array.from({ length: Math.max(0, currentYear - 2019) }, (_, i) => 2020 + i), [currentYear])
+
+  const toggleProduct = (product) => {
+    if (product === "All products") {
+      setSelectedProducts(["All products"])
+      return
+    }
+    setSelectedProducts((current) => {
+      const active = current.includes("All products") ? [] : current
+      const next = active.includes(product) ? active.filter((item) => item !== product) : [...active, product]
+      return next.length ? next : ["All products"]
+    })
+  }
+
+  const productFilterLabel = selectedProducts.includes("All products")
+    ? "All products"
+    : selectedProducts.join(", ")
 
   const chartData = useMemo(() => years.map((year) => {
     const row = { year, total: 0 }
@@ -161,7 +173,25 @@ function SalesChart({ contracts = [] }) {
         <ChartCard title="Sales by Product" subtitle="Year-to-date net sales value by product" data={chartData} series={PRODUCT_SERIES} dataKey="product" />
       </div>
       <div style={{ marginTop: 18, background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "20px 18px 10px", minWidth: 0, boxSizing: "border-box" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 10 }}><div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Net Sales Value by Month</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Net sales value by deal result · January 2020 onwards</p></div><div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, color: "#475569" }}><label style={{ display: "flex", alignItems: "center", gap: 8 }}>Period<select value={timeGrouping} onChange={(event) => setTimeGrouping(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="year">Year</option><option value="quarter">Quarter</option><option value="month">Month</option><option value="week">Week</option></select></label><label style={{ display: "flex", alignItems: "center", gap: 8 }}>Products<select multiple value={selectedProducts} onChange={(event) => { const values = Array.from(event.target.selectedOptions, (option) => option.value); setSelectedProducts(values.includes("All products") || values.length === 0 ? ["All products"] : values.filter((value) => value !== "All products")) }} size={1} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", minWidth: 145 }}>{["All products", "Windows", "Solar", "ASHP", "Other"].map((product) => <option key={product} value={product}>{product}</option>)}</select></label><span style={{ fontSize: 10, color: "#818891" }}>Use Ctrl (Windows) or ⌘ (Mac) to select multiple</span></div></div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+          <div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Net Sales Value by Month</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Net sales value by deal result · January 2020 onwards</p></div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, color: "#475569" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Period<select value={timeGrouping} onChange={(event) => setTimeGrouping(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="year">Year</option><option value="quarter">Quarter</option><option value="month">Month</option><option value="week">Week</option></select></label>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span>Products</span>
+              <div style={{ position: "relative", minWidth: 165 }}>
+                <button type="button" aria-haspopup="listbox" aria-expanded={productMenuOpen} onClick={() => setProductMenuOpen((open) => !open)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, width: "100%", border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", cursor: "pointer", textAlign: "left" }}>
+                  <span style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", maxWidth: 210 }}>{productFilterLabel}</span><span aria-hidden="true">▾</span>
+                </button>
+                {productMenuOpen && <div role="group" aria-label="Filter products" style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 20, minWidth: "100%", width: 170, padding: 6, background: "#fff", border: "1px solid #cbd5e1", borderRadius: 6, boxShadow: "0 6px 18px rgba(15,23,42,0.16)" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 3px", cursor: "pointer", whiteSpace: "nowrap" }}><input type="checkbox" checked={selectedProducts.includes("All products")} onChange={() => toggleProduct("All products")} />All products</label>
+                  <div style={{ height: 1, background: "#e5e7eb", margin: "3px 0" }} />
+                  {PRODUCT_FILTER_OPTIONS.map((product) => <label key={product} style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 3px", cursor: "pointer", whiteSpace: "nowrap" }}><input type="checkbox" checked={!selectedProducts.includes("All products") && selectedProducts.includes(product)} onChange={() => toggleProduct(product)} />{product}</label>)}
+                </div>}
+              </div>
+            </div>
+          </div>
+        </div>
         <ResponsiveContainer width="100%" height={330}>
           <BarChart data={monthlyBalanceData} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
