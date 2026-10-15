@@ -13,7 +13,7 @@ function buildGroups(rows) {
     ...row,
     width: Number(row.width),
     height: Number(row.height),
-    cost: row.net_product_cost == null || row.net_product_cost === "" ? null : Number(row.net_product_cost),
+    cost: row.discountable == null || row.discountable === "" ? null : Number(row.discountable),
     ordered: Boolean(row.ordered_date)
   })).filter(row => Number.isFinite(row.width) && row.width > 0 && Number.isFinite(row.height) && row.height > 0)
 
@@ -88,7 +88,7 @@ export default function UnitAnalysis() {
       while (true) {
         const { data, error: fetchError } = await supabase
           .from("units")
-          .select('"UUID", appointment_id, location, created_by, created_date, unit_type, width, height, net_product_cost, ordered_date, contract_number, department, supplier, added_to_supabase_date')
+          .select('"UUID", appointment_id, location, created_by, created_date, unit_type, width, height, discountable, ordered_date, contract_number, department, supplier, added_to_supabase_date')
           .range(from, from + PAGE_SIZE - 1)
         if (fetchError) throw fetchError
         const batch = data || []
@@ -121,10 +121,10 @@ export default function UnitAnalysis() {
     })
   }, [groups, search, typeFilter, orderedFilter])
 
-  const totalCosted = rows.filter(row => row.net_product_cost != null && row.net_product_cost !== "" && Number.isFinite(Number(row.net_product_cost)))
+  const totalCosted = rows.filter(row => row.discountable != null && row.discountable !== "" && Number.isFinite(Number(row.discountable)))
   const totalOrdered = rows.filter(row => Boolean(row.ordered_date))
   const orderedCosted = totalOrdered.filter(row => row.net_product_cost != null && row.net_product_cost !== "" && Number.isFinite(Number(row.net_product_cost)))
-  const overallAverage = totalCosted.length ? totalCosted.reduce((sum, row) => sum + Number(row.net_product_cost), 0) / totalCosted.length : null
+  const overallAverage = totalCosted.length ? totalCosted.reduce((sum, row) => sum + Number(row.discountable), 0) / totalCosted.length : null
   const orderedAverage = orderedCosted.length ? orderedCosted.reduce((sum, row) => sum + Number(row.net_product_cost), 0) / orderedCosted.length : null
 
   return <div className="unit-analysis-page">
@@ -177,8 +177,8 @@ export default function UnitAnalysis() {
     <div className="unit-analysis-stats">
       <StatCard label="Units costed" value={totalCosted.length.toLocaleString("en-GB")} note="Units with a recorded net product cost"/>
       <StatCard label="Units ordered" value={totalOrdered.length.toLocaleString("en-GB")} note="Units with an order date"/>
-      <StatCard label="Average costed unit" value={overallAverage == null ? "—" : money(overallAverage)} note="Average net product cost across costed units"/>
-      <StatCard label="Average ordered unit" value={orderedAverage == null ? "—" : money(orderedAverage)} note="Ordered units with a recorded net product cost"/>
+      <StatCard label="Average Disc Total" value={overallAverage == null ? "—" : money(overallAverage)} note="Average discountable total across costed units"/>
+      <StatCard label="Average ordered Disc Total" value={orderedAverage == null ? "—" : money(orderedAverage)} note="Ordered units with a recorded net product cost"/>
     </div>
     <section className="unit-analysis-panel">
       <div className="unit-analysis-toolbar">
@@ -192,7 +192,7 @@ export default function UnitAnalysis() {
       <div className="unit-analysis-count">{loading ? "Loading units…" : `Showing ${filteredGroups.length.toLocaleString("en-GB")} size groups · ${rows.length.toLocaleString("en-GB")} units loaded`}</div>
       <div className="unit-analysis-table-wrap">
         <table className="unit-analysis-table">
-          <thead><tr><th style={{textAlign:"left"}}>Unit type / approximate size</th><th>Units costed</th><th>Units ordered</th><th>Avg. costed price</th><th>Avg. ordered price</th><th>Total costed value</th></tr></thead>
+          <thead><tr><th style={{textAlign:"left"}}>Unit type / approximate size</th><th>Units costed</th><th>Units ordered</th><th>Disc Total</th><th>Avg. ordered price</th><th>Total costed value</th></tr></thead>
           <tbody>
             {loading && rows.length === 0 ? <tr><td colSpan="6" className="unit-analysis-empty">Loading unit records…</td></tr> :
               filteredGroups.length === 0 ? <tr><td colSpan="6" className="unit-analysis-empty">{error ? "Unit data could not be loaded." : "No units match these filters."}</td></tr> :
@@ -202,7 +202,7 @@ export default function UnitAnalysis() {
                   <td>{group.costedCount.toLocaleString("en-GB")}</td><td>{group.orderedCount.toLocaleString("en-GB")}</td><td>{group.averageCosted == null ? "—" : money(group.averageCosted)}</td><td>{group.averageOrdered == null ? "—" : money(group.averageOrdered)}</td><td>{money(group.totalCosted)}</td>
                 </tr>
                 {expanded[group.key] && <tr className="unit-analysis-detail"><td colSpan="6" style={{padding:0}}>
-                  <table className="unit-analysis-table" style={{minWidth:750}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Unit / contract</th><th>Width</th><th>Height</th><th>Net product cost</th><th>Order status</th><th>Supplier</th><th>Created</th></tr></thead><tbody>
+                  <table className="unit-analysis-table" style={{minWidth:750}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Unit / contract</th><th>Width</th><th>Height</th><th>Disc Total</th><th>Order status</th><th>Supplier</th><th>Created</th></tr></thead><tbody>
                     {group.rows.map((row,index) => <tr key={row.UUID || `${group.key}-${index}`}><td style={{textAlign:"left"}}>{text(row.contract_number) || text(row.UUID) || "Unit"}<div className="unit-analysis-muted">{text(row.location) || text(row.appointment_id) || "—"}</div></td><td>{dimension(row.width)} mm</td><td>{dimension(row.height)} mm</td><td>{row.cost == null || !Number.isFinite(row.cost) ? "—" : money(row.cost)}</td><td>{row.ordered ? <span className="unit-analysis-pill">Ordered</span> : "Not ordered"}</td><td>{text(row.supplier) || "—"}</td><td>{row.added_to_supabase_date || row.created_date ? new Date(row.added_to_supabase_date || row.created_date).toLocaleDateString("en-GB") : "—"}</td></tr>)}
                   </tbody></table>
                 </td></tr>}
@@ -211,7 +211,7 @@ export default function UnitAnalysis() {
           </tbody>
         </table>
       </div>
-      <div className="unit-analysis-footnote">Grouping is by unit type and a fixed reference dimension: each unit must be within 50 mm of both the group's reference width and reference height. This avoids chain grouping that could merge units more than 50 mm apart. Average prices exclude units without a numeric net product cost. “Ordered” is determined by a populated ordered_date.</div>
+      <div className="unit-analysis-footnote">Grouping is by unit type and a fixed reference dimension: each unit must be within 50 mm of both the group's reference width and reference height. This avoids chain grouping that could merge units more than 50 mm apart. Disc Total averages and totals exclude units without a numeric discountable value. “Ordered” is determined by a populated ordered_date.</div>
     </section>
     {lastUpdated && <div style={{fontSize:10,color:"#98a2b3",marginTop:10,textAlign:"right"}}>Last refreshed {lastUpdated.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</div>}
   </div>
