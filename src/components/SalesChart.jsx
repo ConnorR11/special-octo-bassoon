@@ -156,7 +156,7 @@ function SalesChart({ contracts = [] }) {
             <Bar yAxisId="sales" dataKey="Solid" name="Net Sales/Solid" stackId="balance" fill="#008000" />
             <Bar yAxisId="sales" dataKey="Decline" name="Net Sales/Decline" stackId="balance" fill="#ff9900" />
             <Bar yAxisId="sales" dataKey="Cancelled" name="Net Sales/Cancel" stackId="balance" fill="#ff0000" />
-            <Line yAxisId="percent" type="monotone" dataKey="notSolidPercent" name="Not Solid" stroke="#1683c7" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
+            <Line yAxisId="percent" type="monotone" dataKey="notSolidPercent" name="Not Solid" stroke="#111827" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
           </BarChart>
         </ResponsiveContainer>
       </div>
