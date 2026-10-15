@@ -982,8 +982,22 @@ function DataDashboard() {
                 }}
               />
               <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-              {typeNames.map((type, index) => (
-                <Bar key={type} dataKey={type} name={type} stackId="leads" fill={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} />
+              {[...typeNames].sort((a, b) => {
+                const stackPriority = (type) => {
+                  if (type === "Windows") return 0
+                  if (type === "Solar") return 1
+                  if (type === "Air Source Heat Pump") return 2
+                  return 3
+                }
+                return stackPriority(a) - stackPriority(b) || typeNames.indexOf(a) - typeNames.indexOf(b)
+              }).map((type) => (
+                <Bar
+                  key={type}
+                  dataKey={type}
+                  name={type}
+                  stackId="leads"
+                  fill={LEAD_TYPE_COLORS[typeNames.indexOf(type) % LEAD_TYPE_COLORS.length]}
+                />
               ))}
             </BarChart>
           </ResponsiveContainer>
