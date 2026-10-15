@@ -46,19 +46,32 @@ async function responseJson(response) {
   return response.json().catch(() => ({}))
 }
 
+async function fetchPipedriveWithRateLimitRetry(url, options = {}, maxRetries = 4) {
+  for (let attempt = 0; ; attempt += 1) {
+    const response = await fetch(url, options)
+    if (response.status !== 429 || attempt >= maxRetries) return response
+    const retryAfter = Number(response.headers.get("retry-after"))
+    const delayMs = Number.isFinite(retryAfter) && retryAfter > 0
+      ? Math.min(retryAfter * 1000, 30000)
+      : Math.min(1000 * (2 ** attempt), 16000)
+    await new Promise((resolve) => setTimeout(resolve, delayMs))
+  }
+}
+
 async function fetchStageMap(token) {
-  const response = await fetch(`https://api.pipedrive.com/api/v2/stages?limit=500&api_token=${encodeURIComponent(token)}`, {
+  const response = await fetchPipedriveWithRateLimitRetry(`https://api.pipedrive.com/api/v2/stages?limit=500&api_token=${encodeURIComponent(token)}`, {
     headers: { Accept: "application/json" },
   })
   const json = await responseJson(response)
   if (!response.ok || !json?.success || !Array.isArray(json.data)) {
-    throw new Error(`Pipedrive stage list failed (HTTP ${response.status})`)
+    const retryHint = response.status === 429 ? " Pipedrive rate limit is still active; wait briefly and retry." : ""
+    throw new Error(`Pipedrive stage list failed (HTTP ${response.status}).${retryHint}`)
   }
   return new Map(json.data.map((stage) => [String(stage.id), String(stage.name || "").trim()]).filter((entry) => entry[1]))
 }
 
 async function fetchDealStage(token, dealId, stageMap) {
-  const response = await fetch(`https://api.pipedrive.com/api/v2/deals/${encodeURIComponent(dealId)}?api_token=${encodeURIComponent(token)}`, {
+  const response = await fetchPipedriveWithRateLimitRetry(`https://api.pipedrive.com/api/v2/deals/${encodeURIComponent(dealId)}?api_token=${encodeURIComponent(token)}`, {
     headers: { Accept: "application/json" },
   })
   const json = await responseJson(response)
