@@ -1,5 +1,4 @@
 import React, { useMemo } from "react"
-
 import {
   ResponsiveContainer,
   BarChart,
@@ -10,309 +9,107 @@ import {
   Tooltip,
   Legend,
 } from "recharts"
-
 import { money } from "../utils/formatters"
 
-const PRODUCT_COLOURS = [
-  "#1683c7",
-  "#d86bdc",
-  "#f59e0b",
-  "#15803d",
-  "#6366f1",
-  "#64748b",
-  "#dc2626",
-  "#0f766e",
+const RESULT_SERIES = [
+  { key: "Solid", colour: "#008000" },
+  { key: "Decline", colour: "#ff9900" },
+  { key: "Cancelled", colour: "#ff0000" },
+]
+const PRODUCT_SERIES = [
+  { key: "Windows", colour: "#1683c7" },
+  { key: "Solar", colour: "#d86bdc" },
+  { key: "ASHP", colour: "#f59e0b" },
+  { key: "Other", colour: "#15803d" },
 ]
 
-const PRODUCT_ORDER = [
-  "Windows",
-  "Solar",
-  "Air Source Heat Pump",
-  "Unassigned",
-]
-
-function normaliseProduct(value) {
-  const product = String(value ?? "").trim()
-  if (!product) return "Unassigned"
-
-  const lower = product.toLowerCase()
-  if (lower.includes("window")) return "Windows"
-  if (lower.includes("solar")) return "Solar"
-  if (lower === "ashp" || lower.includes("air source heat pump") || lower.includes("heat pump")) {
-    return "Air Source Heat Pump"
-  }
-
-  return product
+function normaliseResult(deal) {
+  const value = String(deal?.pipedrive_stage || deal?.status || "").trim().toLowerCase()
+  if (value.includes("declin")) return "Decline"
+  if (value.includes("cancel")) return "Cancelled"
+  return "Solid"
 }
 
-function productColour(product, index) {
-  const name = product.toLowerCase()
+function normaliseProduct(value) {
+  const product = String(value ?? "").trim().toLowerCase()
+  if (product.includes("window")) return "Windows"
+  if (product.includes("solar")) return "Solar"
+  if (product === "ashp" || product.includes("air source heat pump") || product.includes("heat pump")) return "ASHP"
+  return "Other"
+}
 
-  if (name === "unassigned") return "#94a3b8"
-  if (name === "windows") return "#1683c7"
-  if (name === "solar") return "#d86bdc"
-  if (name === "air source heat pump") return "#f59e0b"
-  if (name === "other") return "#15803d"
+function axisMoney(value) {
+  if (value >= 1000000) return `£${(value / 1000000).toFixed(1)}m`
+  if (value >= 1000) return `£${Math.round(value / 1000)}k`
+  return `£${value}`
+}
 
-  return PRODUCT_COLOURS[index % PRODUCT_COLOURS.length]
+function ChartCard({ title, subtitle, data, series, dataKey }) {
+  const maxValue = data.reduce((max, row) => Math.max(max, Number(row.total || 0)), 0)
+  const step = maxValue > 10000000 ? 2000000 : 2000000
+  const maxTick = Math.max(step, Math.ceil(maxValue / step) * step)
+  const ticks = Array.from({ length: Math.floor(maxTick / step) + 1 }, (_, i) => i * step)
+
+  return (
+    <div style={{ background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "20px 18px 10px", minWidth: 0, boxSizing: "border-box" }}>
+      <h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>{title}</h2>
+      <p style={{ margin: "0 0 10px", fontSize: 11, color: "#818891" }}>{subtitle}</p>
+      <ResponsiveContainer width="100%" height={330}>
+        <BarChart data={data} margin={{ top: 8, right: 4, left: 4, bottom: 4 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d7d7d7" />
+          <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fill: "#8a8a8a", fontSize: 11 }} />
+          <YAxis axisLine={false} tickLine={false} ticks={ticks} domain={[0, maxTick]} tickFormatter={axisMoney} tick={{ fill: "#777", fontSize: 10 }} width={74} />
+          <Tooltip
+            labelFormatter={(label) => String(label)}
+            formatter={(value, name) => [money(Number(value || 0)), name]}
+            contentStyle={{ border: "1px solid #e2e5e8", borderRadius: 8, fontSize: 11 }}
+          />
+          <Legend verticalAlign="bottom" height={32} iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+          {series.map((item) => (
+            <Bar key={item.key} dataKey={item.key} name={item.key} stackId={dataKey} fill={item.colour} />
+          ))}
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
 }
 
 function SalesChart({ contracts = [] }) {
   const today = new Date()
+  const currentYear = today.getFullYear()
   const currentMonth = today.getMonth()
   const currentDay = today.getDate()
+  const years = useMemo(() => Array.from({ length: Math.max(0, currentYear - 2019) }, (_, i) => 2020 + i), [currentYear])
 
-  const years = useMemo(() => {
-    const yearSet = new Set()
-
-    contracts.forEach((contract) => {
-      if (!contract.sale_date) return
-
-      const date = new Date(`${contract.sale_date}T00:00:00`)
-      if (!Number.isNaN(date.getTime())) {
-        yearSet.add(date.getFullYear())
-      }
+  const chartData = useMemo(() => years.map((year) => {
+    const row = { year, total: 0 }
+    ;[...RESULT_SERIES, ...PRODUCT_SERIES].forEach((item) => { row[item.key] = 0 })
+    contracts.forEach((deal) => {
+      if (!deal?.sale_date) return
+      const date = new Date(`${String(deal.sale_date).slice(0, 10)}T00:00:00`)
+      if (Number.isNaN(date.getTime()) || date.getFullYear() !== year) return
+      if (date.getMonth() > currentMonth || (date.getMonth() === currentMonth && date.getDate() > currentDay)) return
+      const value = Number(deal.net_value || 0)
+      if (!Number.isFinite(value) || value <= 0) return
+      row[normaliseResult(deal)] += value
+      row[normaliseProduct(deal.product)] += value
+      row.total += value
     })
+    return row
+  }), [contracts, years, currentMonth, currentDay])
 
-    return Array.from(yearSet)
-      .filter((year) => year >= 2020)
-      .sort((a, b) => a - b)
-  }, [contracts])
-
-  const products = useMemo(() => {
-    const productSet = new Set()
-
-    contracts.forEach((contract) => {
-      productSet.add(normaliseProduct(contract.product))
-    })
-
-    return Array.from(productSet).sort((a, b) => {
-      const aIndex = PRODUCT_ORDER.indexOf(a)
-      const bIndex = PRODUCT_ORDER.indexOf(b)
-
-      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex
-      if (aIndex !== -1) return -1
-      if (bIndex !== -1) return 1
-      return a.localeCompare(b)
-    })
-  }, [contracts])
-
-  const chartData = useMemo(() => {
-    return years.map((year) => {
-      const row = { year }
-
-      products.forEach((product) => {
-        row[product] = 0
-      })
-
-      contracts.forEach((contract) => {
-        if (!contract.sale_date) return
-
-        const date = new Date(`${contract.sale_date}T00:00:00`)
-        if (Number.isNaN(date.getTime()) || date.getFullYear() !== year) return
-
-        const month = date.getMonth()
-        const day = date.getDate()
-
-        if (month > currentMonth) return
-        if (month === currentMonth && day > currentDay) return
-
-        const product = normaliseProduct(contract.product)
-        const value = Number(contract.net_value || 0)
-
-        if (Number.isFinite(value)) {
-          if (row[product] === undefined) row[product] = 0
-          row[product] += value
-        }
-      })
-
-      row.total = products.reduce(
-        (sum, product) => sum + Number(row[product] || 0),
-        0
-      )
-
-      return row
-    })
-  }, [contracts, products, years, currentMonth, currentDay])
-
-  const currentYear = today.getFullYear()
-  const previousYear = currentYear - 1
-
-  const yearTotal = useMemo(() => {
-    const row = chartData.find((item) => item.year === currentYear)
-    return row?.total || 0
-  }, [chartData, currentYear])
-
-  const previousYearTotal = useMemo(() => {
-    const row = chartData.find((item) => item.year === previousYear)
-    return row?.total || 0
-  }, [chartData, previousYear])
-
-  const yearDifference = yearTotal - previousYearTotal
-  const yearDifferencePercent = previousYearTotal > 0
-    ? (yearDifference / previousYearTotal) * 100
-    : null
-
-  const yAxisTicks = useMemo(() => {
-    const maxValue = chartData.reduce(
-      (max, row) => Math.max(max, Number(row.total || 0)),
-      0
-    )
-
-    const step = 2500000
-    const maxTick = Math.max(step, Math.ceil(maxValue / step) * step)
-
-    return Array.from(
-      { length: maxTick / step + 1 },
-      (_, index) => index * step
-    )
-  }, [chartData])
-
-  if (!years.length) {
-    return (
-      <div className="card sales-chart">
-        <div className="card-head">
-          <div>
-            <h2>Sales Performance</h2>
-            <p>No sales data available</p>
-          </div>
-        </div>
-      </div>
-    )
+  if (!contracts.length) {
+    return <div style={{ marginTop: 18, background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: 24, color: "#777", fontSize: 12 }}>No sales data available.</div>
   }
 
   return (
-    <div className="card sales-chart">
-      <div className="card-head">
-        <div>
-          <h2>Sales Performance</h2>
-          <p>Year-to-date net sales value by product</p>
-        </div>
-
-        <div className="chart-total">
-          <span>{currentYear} vs {previousYear} (YTD)</span>
-          <b>
-            {yearDifference >= 0 ? "+" : ""}{money(yearDifference)}
-            {yearDifferencePercent !== null
-              ? ` (${yearDifferencePercent >= 0 ? "+" : ""}${yearDifferencePercent.toFixed(1)}%)`
-              : ""}
-          </b>
-        </div>
+    <section style={{ marginTop: 18 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 18 }}>
+        <ChartCard title="Sales by Result" subtitle="Year-to-date net sales value by result" data={chartData} series={RESULT_SERIES} dataKey="result" />
+        <ChartCard title="Sales by Product" subtitle="Year-to-date net sales value by product" data={chartData} series={PRODUCT_SERIES} dataKey="product" />
       </div>
-
-      <div className="chart-container">
-        <ResponsiveContainer width="100%" height={340}>
-          <BarChart
-            data={chartData}
-            margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-
-            <XAxis dataKey="year" axisLine={false} tickLine={false} />
-
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              ticks={yAxisTicks}
-              domain={[0, yAxisTicks[yAxisTicks.length - 1]]}
-              tickFormatter={(value) =>
-                value >= 1000000
-                  ? `£${(value / 1000000).toFixed(1)}m`
-                  : value >= 1000
-                    ? `£${Math.round(value / 1000)}k`
-                    : `£${value}`
-              }
-            />
-
-            <Tooltip
-              labelFormatter={(label) => `${label} YTD`}
-              formatter={(value, name) => [money(value), name]}
-              content={({ active, payload, label }) => {
-                if (!active || !payload?.length) return null
-
-                const row = payload[0]?.payload
-                const nonZeroPayload = payload.filter(
-                  (entry) => Number(entry.value || 0) > 0
-                )
-
-                return (
-                  <div
-                    style={{
-                      background: "#fff",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: 8,
-                      padding: "10px 12px",
-                      boxShadow: "0 4px 12px rgba(15,23,42,.10)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontWeight: 700,
-                        marginBottom: 7,
-                        color: "#0f172a",
-                      }}
-                    >
-                      {label} YTD
-                    </div>
-
-                    {nonZeroPayload.map((entry) => (
-                      <div
-                        key={entry.dataKey}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          gap: 20,
-                          fontSize: 12,
-                          lineHeight: 1.7,
-                        }}
-                      >
-                        <span style={{ color: "#64748b" }}>
-                          {entry.name}
-                        </span>
-                        <strong>{money(entry.value)}</strong>
-                      </div>
-                    ))}
-
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: 20,
-                        marginTop: 6,
-                        paddingTop: 7,
-                        borderTop: "1px solid #e2e8f0",
-                        fontSize: 12,
-                      }}
-                    >
-                      <strong>Total</strong>
-                      <strong>{money(row?.total || 0)}</strong>
-                    </div>
-                  </div>
-                )
-              }}
-            />
-
-            <Legend
-              verticalAlign="bottom"
-              height={36}
-              iconType="circle"
-              wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
-            />
-
-            {products.map((product, index) => (
-              <Bar
-                key={product}
-                dataKey={product}
-                name={product}
-                stackId="sales"
-                fill={productColour(product, index)}
-                radius={index === products.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-              />
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
+      <style>{`@media (max-width: 760px) { .sales-performance-two-chart-grid { grid-template-columns: minmax(0, 1fr) !important; } }`}</style>
+    </section>
   )
 }
 
