@@ -304,7 +304,7 @@ function SalesChart({ contracts = [] }) {
             <Bar yAxisId="count" dataKey="priceOnly" name="P · Price left" stackId="cps" fill="#ff9900" />
             <Bar yAxisId="count" dataKey="confirmedOnly" name="C · Confirmed, no price" stackId="cps" fill="#ff0000" />
             <Line yAxisId="percent" type="monotone" dataKey="conversionPercent" name="P → S conversion" stroke="#111827" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
-            <Line yAxisId="percent" type="monotone" dataKey="boPercent" name="BO%" stroke="#2563eb" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
+            <Line yAxisId="percent" type="monotone" dataKey="boPercent" name="BO%" stroke="#111827" strokeWidth={2.5} strokeDasharray="6 4" dot={false} activeDot={{ r: 4 }} />
           </BarChart>
         </ResponsiveContainer>}
       </div>
