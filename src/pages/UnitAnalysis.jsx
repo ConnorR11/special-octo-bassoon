@@ -32,19 +32,27 @@ function buildSizeGroups(rows, tolerance = 50) {
   const groups = []
   sorted.forEach(row => {
     let target = groups.find(group =>
-      Math.abs(row.width - group.anchorWidth) <= tolerance &&
-      Math.abs(row.height - group.anchorHeight) <= tolerance
+      Math.max(group.maxWidth, row.width) - Math.min(group.minWidth, row.width) <= tolerance &&
+      Math.max(group.maxHeight, row.height) - Math.min(group.minHeight, row.height) <= tolerance
     )
     if (!target) {
       target = {
         key: `${row.width}x${row.height}-${groups.length}`,
         anchorWidth: row.width,
         anchorHeight: row.height,
+        minWidth: row.width,
+        maxWidth: row.width,
+        minHeight: row.height,
+        maxHeight: row.height,
         rows: []
       }
       groups.push(target)
     }
     target.rows.push(row)
+    target.minWidth = Math.min(target.minWidth, row.width)
+    target.maxWidth = Math.max(target.maxWidth, row.width)
+    target.minHeight = Math.min(target.minHeight, row.height)
+    target.maxHeight = Math.max(target.maxHeight, row.height)
   })
   return groups.map(group => {
     const widths = group.rows.map(row => row.width)
