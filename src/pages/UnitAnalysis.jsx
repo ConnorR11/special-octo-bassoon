@@ -71,6 +71,7 @@ export default function UnitAnalysis() {
           .from("units")
           .select('"UUID", appointment_id, location, created_by, created_date, unit_type, style_choice, width, height, discountable, net_product_cost, ordered_date, contract_number, department, supplier, added_to_supabase_date')
           .eq("unit_type", "Window")
+          .eq("department", "SURVEY")
           .range(from, from + PAGE_SIZE - 1)
         if (fetchError) throw fetchError
         const batch = data || []
@@ -199,7 +200,7 @@ export default function UnitAnalysis() {
           </tbody>
         </table>
       </div>
-      <div className="unit-analysis-footnote">Only records where unit_type is “Window” are included. Windows are grouped by style_choice; blank styles appear as “Unspecified style”. Average Disc Total includes only costed units with a numeric discountable value; Average Net Cost includes units with a numeric net_product_cost. “Ordered” is determined by a populated ordered_date.</div>
+      <div className="unit-analysis-footnote">Only records where unit_type is “Window” and department is “SURVEY” are included. Windows are grouped by style_choice; blank styles appear as “Unspecified style”. Average Disc Total includes only costed units with a numeric discountable value; Average Net Cost includes units with a numeric net_product_cost. “Ordered” is determined by a populated ordered_date.</div>
     </section>
     {lastUpdated && <div style={{fontSize:10,color:"#98a2b3",marginTop:10,textAlign:"right"}}>Last refreshed {lastUpdated.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</div>}
   </div>
