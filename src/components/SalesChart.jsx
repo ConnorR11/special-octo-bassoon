@@ -77,6 +77,7 @@ function ChartCard({ title, subtitle, data, series, dataKey }) {
 
 function SalesChart({ contracts = [] }) {
   const [selectedProduct, setSelectedProduct] = useState("All products")
+  const [timeGrouping, setTimeGrouping] = useState("month")
   const today = new Date()
   const currentYear = today.getFullYear()
   const currentMonth = today.getMonth()
@@ -101,37 +102,53 @@ function SalesChart({ contracts = [] }) {
   }), [contracts, years, currentMonth, currentDay])
 
   const monthlyBalanceData = useMemo(() => {
-    const rows = []
     const start = new Date(2020, 0, 1)
-    const end = new Date(currentYear, currentMonth, 1)
-    for (let cursor = new Date(start); cursor <= end; cursor.setMonth(cursor.getMonth() + 1)) {
-      rows.push({
-        month: cursor.toLocaleDateString("en-GB", { month: "short", year: "numeric" }),
-        monthKey: `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`,
-        Solid: 0,
-        Decline: 0,
-        Cancelled: 0,
-        total: 0,
-        notSolidPercent: 0,
-      })
+    const end = new Date(currentYear, currentMonth, currentDay)
+    const rows = []
+    const getBucket = (date) => {
+      const year = date.getFullYear()
+      if (timeGrouping === "year") return { key: String(year), label: String(year), start: new Date(year, 0, 1) }
+      if (timeGrouping === "quarter") {
+        const quarter = Math.floor(date.getMonth() / 3) + 1
+        return { key: `${year}-Q${quarter}`, label: `Q${quarter} ${year}`, start: new Date(year, (quarter - 1) * 3, 1) }
+      }
+      if (timeGrouping === "week") {
+        const weekStart = new Date(year, date.getMonth(), date.getDate())
+        const day = (weekStart.getDay() + 6) % 7
+        weekStart.setDate(weekStart.getDate() - day)
+        const weekYear = weekStart.getFullYear()
+        const jan1 = new Date(weekYear, 0, 1)
+        const week = Math.ceil((((weekStart - jan1) / 86400000) + jan1.getDay() + 6) / 7)
+        return { key: weekStart.toISOString().slice(0, 10), label: `W${String(week).padStart(2, "0")} ${weekYear}`, start: weekStart }
+      }
+      return { key: `${year}-${String(date.getMonth() + 1).padStart(2, "0")}`, label: date.toLocaleDateString("en-GB", { month: "short", year: "numeric" }), start: new Date(year, date.getMonth(), 1) }
     }
-    const rowByMonth = new Map(rows.map((row) => [row.monthKey, row]))
+    const cursor = new Date(start)
+    while (cursor <= end) {
+      const bucket = getBucket(cursor)
+      if (!rows.some((row) => row.bucketKey === bucket.key)) rows.push({ bucketKey: bucket.key, month: bucket.label, bucketStart: bucket.start.getTime(), Solid: 0, Decline: 0, Cancelled: 0, total: 0, notSolidPercent: 0 })
+      if (timeGrouping === "year") cursor.setFullYear(cursor.getFullYear() + 1)
+      else if (timeGrouping === "quarter") cursor.setMonth(cursor.getMonth() + 3, 1)
+      else if (timeGrouping === "week") cursor.setDate(cursor.getDate() + 7)
+      else cursor.setMonth(cursor.getMonth() + 1, 1)
+    }
+    const rowByKey = new Map(rows.map((row) => [row.bucketKey, row]))
     contracts.forEach((deal) => {
       if (!deal?.sale_date) return
       const date = new Date(`${String(deal.sale_date).slice(0, 10)}T00:00:00`)
-      if (Number.isNaN(date.getTime()) || date < start || date > today) return
-      const row = rowByMonth.get(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`)
-      if (!row) return
+      if (Number.isNaN(date.getTime()) || date < start || date > end) return
       if (selectedProduct !== "All products" && normaliseProduct(deal.product) !== selectedProduct) return
+      const bucket = getBucket(date)
+      const row = rowByKey.get(bucket.key)
+      if (!row) return
       const amount = Number(deal.net_value || 0)
       if (!Number.isFinite(amount) || amount <= 0) return
-      const stage = normaliseResult(deal)
-      row[stage] += amount
+      row[normaliseResult(deal)] += amount
       row.total += amount
     })
     rows.forEach((row) => { row.notSolidPercent = row.total > 0 ? ((row.Decline + row.Cancelled) / row.total) * 100 : 0 })
     return rows
-  }, [contracts, currentYear, currentMonth, currentDay, selectedProduct])
+  }, [contracts, currentYear, currentMonth, currentDay, selectedProduct, timeGrouping])
 
   if (!contracts.length) {
     return <div style={{ marginTop: 18, background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: 24, color: "#777", fontSize: 12 }}>No sales data available.</div>
@@ -144,7 +161,7 @@ function SalesChart({ contracts = [] }) {
         <ChartCard title="Sales by Product" subtitle="Year-to-date net sales value by product" data={chartData} series={PRODUCT_SERIES} dataKey="product" />
       </div>
       <div style={{ marginTop: 18, background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "20px 18px 10px", minWidth: 0, boxSizing: "border-box" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 10 }}><div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Net Sales Value by Month</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Monthly net sales value by deal result · January 2020 onwards</p></div><label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#475569" }}>Product<select value={selectedProduct} onChange={(event) => setSelectedProduct(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}>{["All products", "Windows", "Solar", "ASHP", "Other"].map((product) => <option key={product} value={product}>{product}</option>)}</select></label></div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 10 }}><div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Net Sales Value by Month</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Net sales value by deal result · January 2020 onwards</p></div><label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#475569" }}>Period<select value={timeGrouping} onChange={(event) => setTimeGrouping(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="year">Year</option><option value="quarter">Quarter</option><option value="month">Month</option><option value="week">Week</option></select>Product<select value={selectedProduct} onChange={(event) => setSelectedProduct(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}>{["All products", "Windows", "Solar", "ASHP", "Other"].map((product) => <option key={product} value={product}>{product}</option>)}</select></label></div>
         <ResponsiveContainer width="100%" height={330}>
           <BarChart data={monthlyBalanceData} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
