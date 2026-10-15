@@ -11,6 +11,7 @@ import {
   Legend,
 } from "recharts"
 import { money } from "../utils/formatters"
+import { supabase } from "../lib/supabase"
 
 const RESULT_SERIES = [
   { key: "Solid", colour: "#008000" },
@@ -77,6 +78,9 @@ function SalesChart({ contracts = [] }) {
   const [selectedProduct, setSelectedProduct] = useState("All products")
   const [selectedYear, setSelectedYear] = useState("all")
   const [timeGrouping, setTimeGrouping] = useState("month")
+  const [cpsAppointments, setCpsAppointments] = useState([])
+  const [cpsLoading, setCpsLoading] = useState(false)
+  const [cpsError, setCpsError] = useState("")
   const today = new Date()
   const currentYear = today.getFullYear()
   const currentMonth = today.getMonth()
@@ -92,6 +96,40 @@ function SalesChart({ contracts = [] }) {
     })
     return Array.from(values).sort((a, b) => b - a)
   }, [contracts])
+
+  React.useEffect(() => {
+    let cancelled = false
+    async function loadCpsAppointments() {
+      setCpsLoading(true)
+      setCpsError("")
+      try {
+        const rows = []
+        const pageSize = 1000
+        for (let from = 0; ; from += pageSize) {
+          const { data, error } = await supabase
+            .from("appointments")
+            .select("appointment_row_id,appointment_date,cps_c,cps_p,cps_s,product,job_type")
+            .eq("cps_c", true)
+            .not("appointment_date", "is", null)
+            .order("appointment_date", { ascending: true })
+            .range(from, from + pageSize - 1)
+          if (error) throw error
+          rows.push(...(data || []))
+          if (!data || data.length < pageSize) break
+        }
+        if (!cancelled) setCpsAppointments(rows)
+      } catch (error) {
+        if (!cancelled) {
+          setCpsAppointments([])
+          setCpsError(error?.message || "Unable to load sales conversion data.")
+        }
+      } finally {
+        if (!cancelled) setCpsLoading(false)
+      }
+    }
+    loadCpsAppointments()
+    return () => { cancelled = true }
+  }, [])
 
   const chartData = useMemo(() => years.map((year) => {
     const row = { year, total: 0 }
@@ -162,6 +200,61 @@ function SalesChart({ contracts = [] }) {
     return rows
   }, [contracts, currentYear, currentMonth, currentDay, selectedProduct, selectedYear, timeGrouping])
 
+  const conversionData = useMemo(() => {
+    const start = selectedYear === "all" ? new Date(2020, 0, 1) : new Date(Number(selectedYear), 0, 1)
+    const todayEnd = new Date(currentYear, currentMonth, currentDay, 23, 59, 59, 999)
+    const requestedEnd = selectedYear === "all" ? todayEnd : new Date(Number(selectedYear), 11, 31, 23, 59, 59, 999)
+    const end = requestedEnd > todayEnd ? todayEnd : requestedEnd
+    const rows = []
+    const getBucket = (date) => {
+      const year = date.getFullYear()
+      if (timeGrouping === "year") return { key: String(year), label: String(year), start: new Date(year, 0, 1) }
+      if (timeGrouping === "quarter") {
+        const quarter = Math.floor(date.getMonth() / 3) + 1
+        return { key: `${year}-Q${quarter}`, label: `Q${quarter} ${year}`, start: new Date(year, (quarter - 1) * 3, 1) }
+      }
+      if (timeGrouping === "week") {
+        const weekStart = new Date(year, date.getMonth(), date.getDate())
+        const day = (weekStart.getDay() + 6) % 7
+        weekStart.setDate(weekStart.getDate() - day)
+        const jan1 = new Date(weekStart.getFullYear(), 0, 1)
+        const week = Math.ceil((((weekStart - jan1) / 86400000) + jan1.getDay() + 6) / 7)
+        return { key: weekStart.toISOString().slice(0, 10), label: `W${String(week).padStart(2, "0")} ${weekStart.getFullYear()}`, hoverLabel: weekStart.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }), start: weekStart }
+      }
+      return { key: `${year}-${String(date.getMonth() + 1).padStart(2, "0")}`, label: date.toLocaleDateString("en-GB", { month: "short", year: "numeric" }), start: new Date(year, date.getMonth(), 1) }
+    }
+    if (end >= start) {
+      const cursor = new Date(start)
+      while (cursor <= end) {
+        const bucket = getBucket(cursor)
+        if (!rows.some(row => row.bucketKey === bucket.key)) rows.push({ bucketKey: bucket.key, month: bucket.label, hoverLabel: bucket.hoverLabel || bucket.label, confirmedOnly: 0, priceOnly: 0, sold: 0, confirmed: 0, conversionPercent: 0 })
+        if (timeGrouping === "year") cursor.setFullYear(cursor.getFullYear() + 1)
+        else if (timeGrouping === "quarter") cursor.setMonth(cursor.getMonth() + 3, 1)
+        else if (timeGrouping === "week") cursor.setDate(cursor.getDate() + 7)
+        else cursor.setMonth(cursor.getMonth() + 1, 1)
+      }
+    }
+    const rowByKey = new Map(rows.map(row => [row.bucketKey, row]))
+    cpsAppointments.forEach(appointment => {
+      if (!appointment?.appointment_date) return
+      const date = new Date(appointment.appointment_date)
+      if (Number.isNaN(date.getTime()) || date < start || date > end) return
+      if (selectedProduct !== "All products" && selectedProduct !== normaliseProduct(appointment.product)) return
+      const row = rowByKey.get(getBucket(date).key)
+      if (!row) return
+      const confirmed = appointment.cps_c === true
+      const price = appointment.cps_p === true
+      const sold = appointment.cps_s === true
+      if (!confirmed) return
+      row.confirmed += 1
+      if (sold) row.sold += 1
+      else if (price) row.priceOnly += 1
+      else row.confirmedOnly += 1
+    })
+    rows.forEach(row => { row.conversionPercent = row.confirmed > 0 ? row.sold / row.confirmed * 100 : 0 })
+    return rows
+  }, [cpsAppointments, selectedProduct, selectedYear, timeGrouping, currentYear, currentMonth, currentDay])
+
   if (!contracts.length) {
     return <div style={{ marginTop: 18, background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: 24, color: "#777", fontSize: 12 }}>No sales data available.</div>
   }
@@ -196,6 +289,26 @@ function SalesChart({ contracts = [] }) {
             <Line yAxisId="percent" type="monotone" dataKey="notSolidPercent" name="Drop Off" stroke="#111827" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
           </BarChart>
         </ResponsiveContainer>
+      </div>
+      <div style={{ marginTop: 18, background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "20px 18px 10px", minWidth: 0, boxSizing: "border-box" }}>
+        <div style={{ marginBottom: 10 }}>
+          <h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Sales Conversion by Month</h2>
+          <p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Confirmed appointments (C), price left (P) and sold (S) · appointment date</p>
+        </div>
+        {cpsLoading ? <div style={{ padding: 28, color: "#667085", fontSize: 12 }}>Loading sales conversion…</div> : cpsError ? <div style={{ padding: 18, color: "#b42318", fontSize: 12 }}>{cpsError}</div> : <ResponsiveContainer width="100%" height={330}>
+          <BarChart data={conversionData} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+            <XAxis dataKey="month" interval="preserveStartEnd" minTickGap={24} axisLine={false} tickLine={false} tick={{ fill: "#8a8a8a", fontSize: 10 }} />
+            <YAxis yAxisId="count" axisLine={false} tickLine={false} allowDecimals={false} tick={{ fill: "#777", fontSize: 10 }} width={55} />
+            <YAxis yAxisId="percent" orientation="right" axisLine={false} tickLine={false} domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} tickFormatter={value => `${value}%`} tick={{ fill: "#64748b", fontSize: 10 }} width={48} />
+            <Tooltip labelFormatter={(label, payload) => { const row = payload?.[0]?.payload; return row ? `${row.hoverLabel || label} · Confirmed: ${row.confirmed}` : label }} formatter={(value, name, item) => name === "Sales conversion" ? [`${Number(value || 0).toFixed(1)}%`, name] : [Number(value || 0).toLocaleString("en-GB"), name]} contentStyle={{ border: "1px solid #e2e5e8", borderRadius: 8, fontSize: 11 }} />
+            <Legend verticalAlign="bottom" height={32} iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+            <Bar yAxisId="count" dataKey="confirmedOnly" name="C · Confirmed, no price" stackId="cps" fill="#64748b" />
+            <Bar yAxisId="count" dataKey="priceOnly" name="P · Price left" stackId="cps" fill="#ff9900" />
+            <Bar yAxisId="count" dataKey="sold" name="S · Sold" stackId="cps" fill="#008000" />
+            <Line yAxisId="percent" type="monotone" dataKey="conversionPercent" name="Sales conversion" stroke="#111827" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
+          </BarChart>
+        </ResponsiveContainer>}
       </div>
       <style>{`@media (max-width: 760px) { .sales-performance-two-chart-grid { grid-template-columns: minmax(0, 1fr) !important; } }`}</style>
     </section>
