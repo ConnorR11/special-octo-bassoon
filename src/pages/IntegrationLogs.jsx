@@ -41,7 +41,7 @@ export default function IntegrationLogs({ setMobile }) {
       if (execute) params.set("execute", "true")
       const response = await fetch(`/api/admin/bulk-updates?${params.toString()}`, { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } })
       const result = await response.json().catch(() => ({}))
-      if (!response.ok || !result.success) throw new Error(result.error || `Backfill request failed (HTTP ${response.status})`)
+      if (!response.ok && response.status !== 207) throw new Error(result.error || `Backfill request failed (HTTP ${response.status})`)
       setBackfillPreview(result)
       if (execute) {
         setBackfillMessage(`Batch complete: ${result.updated||0} updated, ${result.skipped||0} skipped, ${result.failed||0} failed.`)
@@ -251,7 +251,7 @@ export default function IntegrationLogs({ setMobile }) {
         {backfillBusy&&<p style={{margin:"12px 0 0",fontSize:13,color:"#175cd3"}}>Running batch and writing integration logs…</p>}
         {backfillError&&<p style={{margin:"12px 0 0",fontSize:13,color:"#b42318"}}>{backfillError}</p>}
         {backfillMessage&&<p style={{margin:"12px 0 0",fontSize:13,color:"#027a48"}}>{backfillMessage}</p>}
-        {backfillPreview?.results?.length>0&&<div style={{marginTop:14,maxHeight:260,overflow:"auto",border:"1px solid #eaecf0",borderRadius:8}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr>{["Deal ID","Contract","Customer","Stage","Status"].map(h=><th key={h} style={{position:"sticky",top:0,textAlign:"left",padding:9,background:"#f9fafb",borderBottom:"1px solid #eaecf0"}}>{h}</th>)}</tr></thead><tbody>{backfillPreview.results.map((r,i)=><tr key={r.dealId||i}>{[r.dealId,r.contractNumber,r.customerName,r.stage,r.status].map((v,j)=><td key={j} style={{padding:9,borderBottom:"1px solid #f2f4f7"}}>{v??"—"}</td>)}</tr>)}</tbody></table></div>}
+        {backfillPreview?.results?.length>0&&<div style={{marginTop:14,maxHeight:260,overflow:"auto",border:"1px solid #eaecf0",borderRadius:8}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr>{["Deal ID","Contract","Customer","Stage","Status","Error"].map(h=><th key={h} style={{position:"sticky",top:0,textAlign:"left",padding:9,background:"#f9fafb",borderBottom:"1px solid #eaecf0"}}>{h}</th>)}</tr></thead><tbody>{backfillPreview.results.map((r,i)=><tr key={r.dealId||i}>{[r.dealId,r.contractNumber,r.customerName,r.stage,r.status,r.error].map((v,j)=><td key={j} style={{padding:9,borderBottom:"1px solid #f2f4f7",color:j===5&&v?"#b42318":"inherit",whiteSpace:j===5?"normal":"nowrap"}}>{v??"—"}</td>)}</tr>)}</tbody></table></div>}
       </div>
 
       <div className="integration-logs-stats"><Stat title="Total Runs" value={runStats.total.toLocaleString("en-GB")}/><Stat title="Successful" value={runStats.success.toLocaleString("en-GB")}/><Stat title="Failed" value={runStats.failed.toLocaleString("en-GB")}/><Stat title="Success Rate" value={`${successRate.toFixed(1)}%`} subtitle={`${runStats.received.toLocaleString("en-GB")} processing · ${runStats.ignored.toLocaleString("en-GB")} ignored`}/></div>
