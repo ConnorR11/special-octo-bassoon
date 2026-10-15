@@ -129,7 +129,6 @@ export default function UnitAnalysis() {
   const [expanded, setExpanded] = useState({})
   const [configurationExpanded, setConfigurationExpanded] = useState({})
   const [sizeExpanded, setSizeExpanded] = useState({})
-  const [configurationExpanded, setConfigurationExpanded] = useState({})
   const [lastUpdated, setLastUpdated] = useState(null)
 
   const loadUnits = useCallback(async () => {
@@ -300,7 +299,7 @@ export default function UnitAnalysis() {
                       </React.Fragment>
                     })}
                   </tbody></table>
-                </td></tr>
+                </td></tr>}
               </React.Fragment>)
             }
           </tbody>
