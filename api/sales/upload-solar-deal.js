@@ -122,6 +122,8 @@ export default async function handler(req, res) {
 
     const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {})
     const appointmentRowId = String(body?.appointment_row_id || "").trim()
+    const adminFeeExpectedDate = String(body?.admin_fee_expected_date || "").trim() || null
+    if (adminFeeExpectedDate && !/^\d{4}-\d{2}-\d{2}$/.test(adminFeeExpectedDate)) return json(res, 400, { error: "admin_fee_expected_date must be a valid YYYY-MM-DD date." })
     if (!appointmentRowId) return json(res, 400, { error: "appointment_row_id is required." })
 
     const { data: logRow, error: logError } = await supabase.from("integration_event_logs").insert({
@@ -229,6 +231,7 @@ export default async function handler(req, res) {
       "Deposit: Amount": firstValue(data.deposit, null),
       "Contract: Payment Method": firstValue(data.paymentMethod, null),
       "AF: Price": adminFee,
+      "AF: Expected Payment Date": adminFeeExpectedDate,
       "Contract Number": appointment.contract_number,
       "Date Sold": dateSold,
       "Contract: Order Price": systemCost + adminFee,
@@ -337,6 +340,7 @@ export default async function handler(req, res) {
 
     const dealRow = {
       pipedrive_deal_id: pipedriveDealId,
+      admin_fee_expected_date: adminFeeExpectedDate,
       contract_number: appointment.contract_number,
       customer_name: appointment.name || null,
       phone: appointment.phone_number_1 || null,
