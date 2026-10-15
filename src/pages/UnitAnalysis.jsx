@@ -9,6 +9,24 @@ const text = value => String(value ?? "").trim()
 const normaliseType = value => text(value) || "Unspecified type"
 const normaliseStyle = value => text(value) || "Unspecified style"
 
+function buildConfigurationGroups(rows) {
+  const configurations = new Map()
+  rows.forEach(row => {
+    const openers = text(row.openers_choice) || "Unspecified"
+    const fixed = text(row.fixed_choice) || "Unspecified"
+    const key = JSON.stringify([openers, fixed])
+    if (!configurations.has(key)) configurations.set(key, { key, openers, fixed, rows: [] })
+    configurations.get(key).rows.push(row)
+  })
+  return [...configurations.values()].sort((a, b) => {
+    const openerDiff = (Number(a.openers) || 0) - (Number(b.openers) || 0)
+    if (openerDiff) return openerDiff
+    const fixedDiff = (Number(a.fixed) || 0) - (Number(b.fixed) || 0)
+    if (fixedDiff) return fixedDiff
+    return a.openers.localeCompare(b.openers) || a.fixed.localeCompare(b.fixed)
+  })
+}
+
 function buildGroups(rows) {
   const validRows = rows.map(row => ({
     ...row,
@@ -69,7 +87,7 @@ export default function UnitAnalysis() {
       while (true) {
         const { data, error: fetchError } = await supabase
           .from("units")
-          .select('"UUID", appointment_id, location, created_by, created_date, unit_type, style_choice, width, height, discountable, net_product_cost, ordered_date, contract_number, department, supplier, added_to_supabase_date')
+          .select('"UUID", appointment_id, location, created_by, created_date, unit_type, style_choice, openers_choice, fixed_choice, width, height, discountable, net_product_cost, ordered_date, contract_number, department, supplier, added_to_supabase_date')
           .eq("unit_type", "Window")
           .eq("department", "SURVEY")
           .range(from, from + PAGE_SIZE - 1)
@@ -159,7 +177,7 @@ export default function UnitAnalysis() {
       @media(max-width:650px){.unit-analysis-page{padding-top:0}.unit-analysis-header{padding-left:48px;align-items:flex-start}.unit-analysis-header h1{font-size:24px}.unit-analysis-refresh{padding:9px}.unit-analysis-stats{gap:9px}.unit-analysis-stat{padding:13px}.unit-analysis-stat-value{font-size:21px}.unit-analysis-toolbar{align-items:stretch}.unit-analysis-filters{display:grid;grid-template-columns:1fr 1fr;width:100%}.unit-analysis-search{grid-column:1/-1;min-width:0}.unit-analysis-select{width:100%;max-width:none}}
     `}</style>
     <div className="unit-analysis-header">
-      <div><div className="unit-analysis-eyebrow">Administration</div><h1>Unit Analysis</h1><p className="unit-analysis-subtitle">Compare costed and ordered units grouped by style. Expand a style to inspect the underlying units, types and dimensions.</p></div>
+      <div><div className="unit-analysis-eyebrow">Administration</div><h1>Unit Analysis</h1><p className="unit-analysis-subtitle">Compare costed and ordered units grouped by style. Expand a style to see units grouped by number of openers and fixed panes.</p></div>
       <button className="unit-analysis-refresh" type="button" onClick={loadUnits} disabled={loading}><RefreshCw size={14}/>{loading ? "Loading…" : "Refresh"}</button>
     </div>
     {error && <div className="unit-analysis-error">{error}</div>}
@@ -171,7 +189,7 @@ export default function UnitAnalysis() {
     </div>
     <section className="unit-analysis-panel">
       <div className="unit-analysis-toolbar">
-        <div><div className="unit-analysis-toolbar-title">Breakdown by style</div><div className="unit-analysis-toolbar-subtitle">Expand any style to see the underlying windows and their exact dimensions.</div></div>
+        <div><div className="unit-analysis-toolbar-title">Breakdown by style</div><div className="unit-analysis-toolbar-subtitle">Expand a style to see its opener/fixed configurations and the individual windows.</div></div>
         <div className="unit-analysis-filters">
           <label className="unit-analysis-search"><Search size={14} color="#667085"/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search type, size or contract"/></label>
           <select className="unit-analysis-select" value={styleFilter} onChange={event => setStyleFilter(event.target.value)} aria-label="Filter by style"><option value="all">All styles</option>{styleOptions.map(style => <option key={style} value={style}>{style}</option>)}</select>
@@ -192,7 +210,10 @@ export default function UnitAnalysis() {
                 </tr>
                 {expanded[group.key] && <tr className="unit-analysis-detail"><td colSpan="6" style={{padding:0}}>
                   <table className="unit-analysis-table" style={{minWidth:750}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Unit / contract</th><th>Width</th><th>Height</th><th>Disc Total</th><th>Net Cost</th><th>Order status</th><th>Supplier</th><th>Created</th></tr></thead><tbody>
-                    {group.rows.map((row,index) => <tr key={row.UUID || `${group.key}-${index}`}><td style={{textAlign:"left"}}>{text(row.contract_number) || text(row.UUID) || "Unit"}<div className="unit-analysis-muted">{text(row.location) || text(row.appointment_id) || "—"}</div></td><td>{dimension(row.width)} mm</td><td>{dimension(row.height)} mm</td><td>{row.cost == null || !Number.isFinite(row.cost) ? "—" : money(row.cost)}</td><td>{row.netCost == null || !Number.isFinite(row.netCost) ? "—" : money(row.netCost)}</td><td>{row.ordered ? <span className="unit-analysis-pill">Ordered</span> : "Not ordered"}</td><td>{text(row.supplier) || "—"}</td><td>{row.added_to_supabase_date || row.created_date ? new Date(row.added_to_supabase_date || row.created_date).toLocaleDateString("en-GB") : "—"}</td></tr>)}
+                    {buildConfigurationGroups(group.rows).map(configuration => <React.Fragment key={configuration.key}>
+                      <tr style={{background:"#eef2f6"}}><td colSpan="8" style={{textAlign:"left",fontWeight:750,color:"#344054"}}>{configuration.openers} openers · {configuration.fixed} fixed <span style={{fontWeight:500,color:"#667085",marginLeft:8}}>{configuration.rows.length.toLocaleString("en-GB")} units</span></td></tr>
+                      {configuration.rows.map((row,index) => <tr key={row.UUID || `${configuration.key}-${index}`}><td style={{textAlign:"left"}}>{text(row.contract_number) || text(row.UUID) || "Unit"}<div className="unit-analysis-muted">{text(row.location) || text(row.appointment_id) || "—"}</div></td><td>{dimension(row.width)} mm</td><td>{dimension(row.height)} mm</td><td>{row.cost == null || !Number.isFinite(row.cost) ? "—" : money(row.cost)}</td><td>{row.netCost == null || !Number.isFinite(row.netCost) ? "—" : money(row.netCost)}</td><td>{row.ordered ? <span className="unit-analysis-pill">Ordered</span> : "Not ordered"}</td><td>{text(row.supplier) || "—"}</td><td>{row.added_to_supabase_date || row.created_date ? new Date(row.added_to_supabase_date || row.created_date).toLocaleDateString("en-GB") : "—"}</td></tr>)}
+                    </React.Fragment>)}
                   </tbody></table>
                 </td></tr>}
               </React.Fragment>)
@@ -200,7 +221,7 @@ export default function UnitAnalysis() {
           </tbody>
         </table>
       </div>
-      <div className="unit-analysis-footnote">Only records where unit_type is “Window” and department is “SURVEY” are included. Windows are grouped by style_choice; blank styles appear as “Unspecified style”. Average Disc Total includes only costed units with a numeric discountable value; Average Net Cost includes units with a numeric net_product_cost. “Ordered” is determined by a populated ordered_date.</div>
+      <div className="unit-analysis-footnote">Only records where unit_type is “Window” and department is “SURVEY” are included. Windows are grouped by style_choice, then by openers_choice and fixed_choice; blank values appear as “Unspecified”. Average Disc Total includes only costed units with a numeric discountable value; Average Net Cost includes units with a numeric net_product_cost. “Ordered” is determined by a populated ordered_date.</div>
     </section>
     {lastUpdated && <div style={{fontSize:10,color:"#98a2b3",marginTop:10,textAlign:"right"}}>Last refreshed {lastUpdated.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</div>}
   </div>
