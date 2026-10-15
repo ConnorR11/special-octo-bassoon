@@ -160,6 +160,38 @@ async function runBackfill(config, { limit, offset, dryRun }) {
   }
 }
 
+async function logBulkRun(config, { jobName, status, httpStatus, errorMessage = null, result = null, query = null, externalId = null }) {
+  const url = `${config.supabaseUrl}/rest/v1/integration_event_logs`
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      apikey: config.serviceKey,
+      Authorization: `Bearer ${config.serviceKey}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({
+      provider: "pipedrive",
+      integration_name: "CRM Bulk Updates",
+      direction: "outbound",
+      event_name: jobName,
+      event_type: "bulk_update",
+      external_id: externalId,
+      status,
+      http_status: httpStatus,
+      error_message: errorMessage,
+      payload: query,
+      result,
+      processed_at: status === "received" ? null : new Date().toISOString(),
+    }),
+  })
+  if (!response.ok) {
+    const details = await response.text().catch(() => "")
+    console.error("Bulk update integration log failed", response.status, details)
+    throw new Error("Could not write the required integration log entry")
+  }
+}
+
 const JOBS = {
   "backfill-pipedrive-stages": runBackfill,
 }
@@ -187,13 +219,43 @@ export default async function handler(req, res) {
 
   const limit = Math.min(100, Math.max(1, Number.parseInt(query.limit, 10) || 100))
   const offset = Math.max(0, Number.parseInt(query.offset, 10) || 0)
-  // Safe by default: no writes unless execute=true is explicitly supplied.
   const dryRun = String(query.execute || "").toLowerCase() !== "true"
+  const runQuery = { limit, offset, dryRun }
+
+  try {
+    // Record the run before calling the external API; then record its outcome.
+    await logBulkRun(config, { jobName, status: "received", httpStatus: 200, query: runQuery })
+  } catch {
+    return send(res, 500, { success: false, error: "Bulk update was not run because its integration-log entry could not be created." })
+  }
 
   try {
     const result = await job(config, { limit, offset, dryRun })
-    return send(res, 200, { success: result.failed === 0, ...result })
+    const success = result.failed === 0
+    const summary = {
+      requested: result.requested,
+      updated: result.updated,
+      previewed: result.previewed || 0,
+      skipped: result.skipped,
+      failed: result.failed,
+      totalMissing: result.totalMissing,
+      nextOffset: result.nextOffset,
+    }
+    await logBulkRun(config, {
+      jobName,
+      status: success ? (dryRun ? "success" : "success") : "failed",
+      httpStatus: success ? 200 : 207,
+      query: runQuery,
+      result: summary,
+    })
+    return send(res, success ? 200 : 207, { success, ...result })
   } catch (error) {
-    return send(res, 502, { success: false, job: jobName, error: error instanceof Error ? error.message : "Bulk job failed" })
+    const message = error instanceof Error ? error.message : "Bulk job failed"
+    try {
+      await logBulkRun(config, { jobName, status: "failed", httpStatus: 502, errorMessage: message, query: runQuery })
+    } catch {
+      // Preserve the original integration failure response; the logging failure is visible in server logs.
+    }
+    return send(res, 502, { success: false, job: jobName, error: message })
   }
 }
