@@ -367,14 +367,14 @@ export default function UnitAnalysis() {
         <table className="unit-analysis-table">
           <thead><tr><th style={{textAlign:"left"}}>Style</th><th>Ordered</th><th>Costed</th><th>Avg. Net Cost</th><th>Lowest</th><th>Highest</th><th>Avg. Disc Total</th></tr></thead>
           <tbody>
-            {loading && rows.length === 0 ? <tr><td colSpan="9" className="unit-analysis-empty">Loading unit records…</td></tr> :
-              filteredGroups.length === 0 ? <tr><td colSpan="9" className="unit-analysis-empty">{error ? "Unit data could not be loaded." : "No units match these filters."}</td></tr> :
+            {loading && rows.length === 0 ? <tr><td colSpan="7" className="unit-analysis-empty">Loading unit records…</td></tr> :
+              filteredGroups.length === 0 ? <tr><td colSpan="7" className="unit-analysis-empty">{error ? "Unit data could not be loaded." : "No units match these filters."}</td></tr> :
               filteredGroups.map(group => <React.Fragment key={group.key}>
                 <tr className="unit-analysis-group-row" onClick={() => setExpanded(current => ({...current,[group.key]:!current[group.key]}))}>
                   <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{expanded[group.key] ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<div><div className="unit-analysis-type">{group.style}</div><div className="unit-analysis-muted">{new Set(group.rows.map(row => normaliseType(row.unit_type))).size} unit types · {group.rows.length} total units</div></div></div></td>
                   <MetricCells rows={group.rows}/>
                 </tr>
-                {expanded[group.key] && <tr className="unit-analysis-detail"><td colSpan="9" style={{padding:0}}>
+                {expanded[group.key] && <tr className="unit-analysis-detail"><td colSpan="7" style={{padding:0}}>
                   <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Colour</th><th>Ordered</th><th>Costed</th><th>Avg. Net Cost</th><th>Lowest</th><th>Highest</th><th>Avg. Disc Total</th></tr></thead><tbody>
                     {buildColourGroups(group.rows).map(colourGroup => {
                       const colourNetCosted = colourGroup.rows.filter(row => row.netCost != null && Number.isFinite(row.netCost))
@@ -386,7 +386,7 @@ export default function UnitAnalysis() {
                           <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{colourExpanded[colourKey] ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}<div><div className="unit-analysis-type">{colourGroup.colour}</div><div className="unit-analysis-muted">{colourGroup.rows.length.toLocaleString("en-GB")} units</div></div></div></td>
                           <MetricCells rows={colourGroup.rows}/>
                         </tr>
-                        {colourExpanded[colourKey] && <tr className="unit-analysis-detail"><td colSpan="9" style={{padding:0}}>
+                        {colourExpanded[colourKey] && <tr className="unit-analysis-detail"><td colSpan="7" style={{padding:0}}>
                           <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Approx. size (W × H)</th><th>Ordered</th><th>Costed</th><th>Avg. Net Cost</th><th>Lowest</th><th>Highest</th><th>Avg. Disc Total</th></tr></thead><tbody>
                             {colourGroup.sizeGroups.map(sizeGroup => {
                               const sizeNetCosted = sizeGroup.rows.filter(row => row.netCost != null && Number.isFinite(row.netCost))
@@ -399,7 +399,7 @@ export default function UnitAnalysis() {
                                   <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{sizeExpanded[sizeKey] ? <ChevronDown size={13}/> : <ChevronRight size={13}/>}<div><div className="unit-analysis-type">{rangeLabel(sizeGroup.minWidth,sizeGroup.maxWidth)} × {rangeLabel(sizeGroup.minHeight,sizeGroup.maxHeight)}</div><div className="unit-analysis-muted">{sizeGroup.rows.length.toLocaleString("en-GB")} units</div></div></div></td>
                                   <MetricCells rows={sizeGroup.rows}/>
                                 </tr>
-                                {sizeExpanded[sizeKey] && <tr className="unit-analysis-detail"><td colSpan="9" style={{padding:0}}>
+                                {sizeExpanded[sizeKey] && <tr className="unit-analysis-detail"><td colSpan="7" style={{padding:0}}>
                                   <table className="unit-analysis-table" style={{minWidth:900}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Openers / fixed</th><th>Ordered</th><th>Costed</th><th>Avg. Net Cost</th><th>Lowest</th><th>Highest</th><th>Avg. Disc Total</th></tr></thead><tbody>
                                     {buildConfigurationGroups(sizeGroup.rows).map(configuration => {
                                       const configNetCosted = configuration.rows.filter(row => row.netCost != null && Number.isFinite(row.netCost))
@@ -411,7 +411,7 @@ export default function UnitAnalysis() {
                                           <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{configurationExpanded[configKey] ? <ChevronDown size={13}/> : <ChevronRight size={13}/>}<span className="unit-analysis-type">{configuration.openers} openers · {configuration.fixed} fixed</span><span className="unit-analysis-muted">{configuration.rows.length.toLocaleString("en-GB")} units</span></div></td>
                                           <MetricCells rows={configuration.rows}/>
                                         </tr>
-                                        {configurationExpanded[configKey] && <tr className="unit-analysis-detail"><td colSpan="9" style={{padding:0}}>
+                                        {configurationExpanded[configKey] && <tr className="unit-analysis-detail"><td colSpan="7" style={{padding:0}}>
                                           <table className="unit-analysis-table" style={{minWidth:750}}><thead className="unit-analysis-detail-head"><tr><th style={{textAlign:"left"}}>Unit / contract</th><th>Colour choice</th><th>Width</th><th>Height</th><th>Disc Total</th><th>Net Cost</th><th>Supplier</th><th>Ordered date</th></tr></thead><tbody>
                                             {configuration.rows.map((row,index) => <tr key={row.UUID || `${configKey}-${index}`}><td style={{textAlign:"left"}}>{text(row.contract_number) || text(row.UUID) || "Unit"}<div className="unit-analysis-muted">{text(row.location) || text(row.appointment_id) || "—"}</div></td><td>{text(row.colour_choice) || "—"}</td><td>{dimension(row.width)} mm</td><td>{dimension(row.height)} mm</td><td>{row.cost == null || !Number.isFinite(row.cost) ? "—" : money(row.cost)}</td><td>{row.netCost == null || !Number.isFinite(row.netCost) ? "—" : money(row.netCost)}</td><td>{text(row.supplier) || "—"}</td><td>{row.ordered_date ? new Date(row.ordered_date).toLocaleDateString("en-GB") : "—"}</td></tr>)}
                                           </tbody></table>
@@ -449,7 +449,7 @@ export default function UnitAnalysis() {
           <tbody>
             {dealsLoading && dealRecords.length === 0 ? <tr><td colSpan="9" className="unit-analysis-empty">Loading deals…</td></tr> :
               dealRecords.filter(deal => !dealSearch.trim() || `${deal.customerName} ${deal.appointmentId} ${deal.stage}`.toLowerCase().includes(dealSearch.trim().toLowerCase())).length === 0 ?
-                <tr><td colSpan="9" className="unit-analysis-empty">{dealsError ? "Deal comparisons could not be loaded." : "No deals found with costed units that match the search."}</td></tr> :
+                <tr><td colSpan="9" className="unit-analysis-empty">{dealsError ? "Deal comparisons could not be loaded." : "No jobs have COS% over 50% matching this search."}</td></tr> :
                 dealRecords.filter(deal => !dealSearch.trim() || `${deal.customerName} ${deal.appointmentId} ${deal.stage}`.toLowerCase().includes(dealSearch.trim().toLowerCase())).map(deal => <React.Fragment key={deal.key}>
                   <tr className="unit-analysis-group-row" onClick={() => setExpandedDeals(current => ({...current,[deal.key]:!current[deal.key]}))}>
                     <td style={{textAlign:"left"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{expandedDeals[deal.key] ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<div><div className="unit-analysis-type">{deal.customerName}</div><div className="unit-analysis-muted">Appointment {deal.appointmentId}</div></div></div></td>
