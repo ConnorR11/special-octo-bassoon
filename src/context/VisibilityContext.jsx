@@ -197,6 +197,8 @@ export function VisibilityProvider({ children }) {
     Number(effectiveProfile?.permission_level) || 0
 
   const role = effectiveProfile?.role || ""
+  const department = normalise(effectiveProfile?.department)
+  const canSeeAllDeals = permissionLevel >= 3 || department === "installations"
 
   const email =
     effectiveProfile?.email ||
@@ -588,7 +590,7 @@ export function VisibilityProvider({ children }) {
         return false
       }
 
-      if (canSeeAll) {
+      if (canSeeAll || canSeeAllDeals) {
         return true
       }
 
@@ -706,6 +708,8 @@ export function VisibilityProvider({ children }) {
 
     return {
       canSeeAll,
+      canSeeAllDeals,
+      department,
       permissionLevel,
       role,
       email,
@@ -730,6 +734,8 @@ export function VisibilityProvider({ children }) {
     }
   }, [
     canSeeAll,
+    canSeeAllDeals,
+    department,
     permissionLevel,
     role,
     email,
