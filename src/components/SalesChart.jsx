@@ -81,6 +81,7 @@ function SalesChart({ contracts = [] }) {
   const [cpsSelectedYear, setCpsSelectedYear] = useState("all")
   const [cpsTimeGrouping, setCpsTimeGrouping] = useState("month")
   const [cpsSelectedProduct, setCpsSelectedProduct] = useState("All products")
+  const [cpsSelectedBranch, setCpsSelectedBranch] = useState("All branches")
   const [showCpsBoLine, setShowCpsBoLine] = useState(false)
   const [showCpsConversionLine, setShowCpsConversionLine] = useState(false)
   const [showCpsDropOffLine, setShowCpsDropOffLine] = useState(false)
@@ -237,6 +238,7 @@ function SalesChart({ contracts = [] }) {
       const date = new Date(`${String(appointment.appointment_day).slice(0, 10)}T00:00:00`)
       if (Number.isNaN(date.getTime()) || date < start || date > end) return
       if (cpsSelectedProduct !== "All products") { const jobType = normaliseProduct(appointment.job_type); if (cpsSelectedProduct === "Solar & ASHP" ? !["Solar", "ASHP"].includes(jobType) : cpsSelectedProduct !== jobType) return }
+      if (cpsSelectedBranch !== "All branches" && appointment.branch !== cpsSelectedBranch) return
       const row = rowByKey.get(getBucket(date).key)
       if (!row) return
       row.confirmedTotal += Number(appointment.confirmed_count || 0)
@@ -295,6 +297,7 @@ function SalesChart({ contracts = [] }) {
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Year<select value={cpsSelectedYear} onChange={(event) => setCpsSelectedYear(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="all">All Time</option><option value="2026">2026</option><option value="2025">2025</option></select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Period<select value={cpsTimeGrouping} onChange={(event) => setCpsTimeGrouping(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="year">Year</option><option value="quarter">Quarter</option><option value="month">Month</option><option value="week">Week</option></select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Products<select value={cpsSelectedProduct} onChange={(event) => setCpsSelectedProduct(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", minWidth: 145 }}><option value="All products">All products</option>{["Windows", "Solar & ASHP", "Other"].map(product => <option key={product} value={product}>{product}</option>)}</select></label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Branch<select value={cpsSelectedBranch} onChange={event => setCpsSelectedBranch(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", minWidth: 145 }}><option value="All branches">All branches</option>{["Central Solar", "Central Windows", "Clearline", "Grampian", "HES"].map(branch => <option key={branch} value={branch}>{branch}</option>)}</select></label>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "4px 8px", border: "1px solid #e2e5e8", borderRadius: 8, background: "#f8fafc" }}><span style={{ fontWeight: 600, color: "#475569" }}>Lines</span><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsBoLine} onChange={event => setShowCpsBoLine(event.target.checked)} /> <span style={{ color: "#111827" }}>BO%</span></label><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsConversionLine} onChange={event => setShowCpsConversionLine(event.target.checked)} /> <span style={{ color: "#111827" }}>Conv</span></label><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsDropOffLine} onChange={event => setShowCpsDropOffLine(event.target.checked)} /> <span style={{ color: "#dc2626" }}>Drop Off</span></label></div>
           </div>
         </div>
