@@ -33,6 +33,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
   const [error, setError] = useState("")
   const [search, setSearch] = useState("")
   const [leadTypeEdits, setLeadTypeEdits] = useState({})
+  const [hcpsEdits, setHcpsEdits] = useState({})
   const [savingLeadIds, setSavingLeadIds] = useState({})
   const [saveMessages, setSaveMessages] = useState({})
   const [page, setPage] = useState(0)
@@ -128,6 +129,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
       if (requestId !== requestIdRef.current) return
       setRows(allRows)
       setLeadTypeEdits({})
+      setHcpsEdits({})
       setSaveMessages({})
     } catch (err) {
       if (requestId !== requestIdRef.current) return
@@ -201,6 +203,36 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
     }
   }
 
+  async function saveHcps(row) {
+    const id = row.appointment_row_id
+    const value = String(hcpsEdits[id] ?? hcps(row)).trim()
+    if (!id || !/^[01]{4}$/.test(value) || !supabase) {
+      setSaveMessages(current => ({ ...current, [id]: "Enter exactly four digits, each 0 or 1." }))
+      return
+    }
+    const [cps_h, cps_c, cps_p, cps_s] = value.split("").map(bit => bit === "1")
+    setSavingLeadIds(current => ({ ...current, [id]: true }))
+    setSaveMessages(current => ({ ...current, [id]: "" }))
+    try {
+      const { error: updateError } = await supabase
+        .from("appointments")
+        .update({ cps_h, cps_c, cps_p, cps_s })
+        .eq("appointment_row_id", id)
+      if (updateError) throw updateError
+      if (value === "1110") {
+        setRows(current => current.filter(item => item.appointment_row_id !== id))
+      } else {
+        setRows(current => current.map(item => item.appointment_row_id === id ? { ...item, cps_h, cps_c, cps_p, cps_s } : item))
+      }
+      setHcpsEdits(current => { const next = { ...current }; delete next[id]; return next })
+    } catch (err) {
+      console.error("Unable to update appointment HCPS:", err)
+      setSaveMessages(current => ({ ...current, [id]: err?.message || "Could not save HCPS." }))
+    } finally {
+      setSavingLeadIds(current => ({ ...current, [id]: false }))
+    }
+  }
+
   return (
     <section className="data-clean-page">
       <style>{styles}</style>
@@ -262,8 +294,8 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                         {activeReport === "missing-lead-type" ? (
                           <><th>Lead</th><th>Received</th><th>Postcode</th><th>Lead Source</th><th>Phone</th><th>Email</th><th>Assign Lead Type</th><th></th></>
                         ) : (
-                          <><th>Customer</th><th>Appointment</th><th>Postcode</th><th>Product</th><th>Job Type</th><th>Branch</th><th>Sales Rep</th><th>Phone</th><th>Email</th>
-                          {["wrong-cps", "pm-pickup-hcps"].includes(activeReport) && <><th>Result</th><th>HCPS</th><th>Pickup</th></>}
+                          <><th>Customer</th><th>Appointment</th><th>Postcode</th>{activeReport !== "pm-pickup-hcps" && <th>Product</th>}<th>Job Type</th><th>Branch</th><th>Sales Rep</th>{activeReport !== "pm-pickup-hcps" && <><th>Phone</th><th>Email</th></>}
+                          {["wrong-cps", "pm-pickup-hcps"].includes(activeReport) && <><th>Result</th><th>HCPS</th><th>Pickup</th>{activeReport === "pm-pickup-hcps" && <th>Update HCPS</th>}</>}
                           <th></th></>
                         )}
                       </tr>
@@ -298,13 +330,12 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                               <td><strong>{row.name || "Unnamed customer"}</strong>{row.appointment_row_id && <small>{row.appointment_row_id}</small>}</td>
                               <td>{formatDate(row.appointment_date)}</td>
                               <td>{row.postcode || "—"}</td>
-                              <td>{row.product || "—"}</td>
+                              {activeReport !== "pm-pickup-hcps" && <td>{row.product || "—"}</td>}
                               <td>{row.job_type || "—"}</td>
                               <td>{row.branch || "—"}</td>
                               <td>{row.rep_allocated || "—"}</td>
-                              <td>{row.phone_number_1 || "—"}</td>
-                              <td>{row.email_address || "—"}</td>
-                              {["wrong-cps", "pm-pickup-hcps"].includes(activeReport) && <><td>{row.result || "—"}</td><td><span className="data-clean-badge warning">{hcps(row)}</span></td><td><span className={`data-clean-badge ${row.is_pickup === true ? "danger" : "warning"}`}>{row.is_pickup === true ? "TRUE" : row.is_pickup === false ? "FALSE" : "NULL"}</span></td></>}
+                              {activeReport !== "pm-pickup-hcps" && <><td>{row.phone_number_1 || "—"}</td><td>{row.email_address || "—"}</td></>}
+                              {["wrong-cps", "pm-pickup-hcps"].includes(activeReport) && <><td>{row.result || "—"}</td><td><span className="data-clean-badge warning">{hcps(row)}</span></td><td><span className={`data-clean-badge ${row.is_pickup === true ? "danger" : "warning"}`}>{row.is_pickup === true ? "TRUE" : row.is_pickup === false ? "FALSE" : "NULL"}</span></td>{activeReport === "pm-pickup-hcps" && <td><div style={{display:"flex",gap:5,alignItems:"center"}}><input aria-label={`HCPS for ${row.name || row.appointment_row_id}`} value={hcpsEdits[row.appointment_row_id] ?? hcps(row)} onChange={event => setHcpsEdits(current => ({...current,[row.appointment_row_id]:event.target.value.replace(/[^01]/g,"").slice(0,4)}))} maxLength={4} inputMode="numeric" style={{width:58,padding:"6px 7px",border:"1px solid #d7dee7",borderRadius:6,fontSize:11}}/><button type="button" className="data-clean-open" disabled={!/^[01]{4}$/.test(String(hcpsEdits[row.appointment_row_id] ?? hcps(row))) || !!savingLeadIds[row.appointment_row_id]} onClick={() => saveHcps(row)}>{savingLeadIds[row.appointment_row_id] ? "Saving…" : "Save"}</button></div>{saveMessages[row.appointment_row_id] && <small style={{color:"#b91c1c"}}>{saveMessages[row.appointment_row_id]}</small>}</td>}</>}
                               <td><button type="button" className="data-clean-open" onClick={() => openRow(row)}>Open</button></td>
                             </>
                           )}
