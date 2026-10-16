@@ -242,8 +242,8 @@ export default function MarketingTV({ onSelectAppointment }) {
   }, {}), [profiles])
 
   const visibleAppointments = useMemo(() => {
-    if (activeTab === "mastersheet") return appointments.filter((appointment) => isTrueValue(appointment.cps_c) || isTrueValue(appointment.cps_s))
-    if (activeTab === "handover") return appointments.filter((appointment) => !isTrueValue(appointment.cps_c) && !isTrueValue(appointment.cps_s))
+    if (activeTab === "mastersheet") return appointments.filter((appointment) => isTrueValue(appointment.cps_c) || isTrueValue(appointment.cps_s) || isTrueValue(appointment.is_pickup))
+    if (activeTab === "handover") return appointments.filter((appointment) => !isTrueValue(appointment.cps_c) && !isTrueValue(appointment.cps_s) && !isTrueValue(appointment.is_pickup))
     return []
   }, [appointments, activeTab])
 
