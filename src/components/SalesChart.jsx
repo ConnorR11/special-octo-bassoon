@@ -96,7 +96,10 @@ function SalesChart({ contracts = [] }) {
   const [showCpsBars, setShowCpsBars] = useState(true)
   const [showCpsBoLine, setShowCpsBoLine] = useState(false)
   const [showCpsConversionLine, setShowCpsConversionLine] = useState(false)
-  const [showCpsDropOffLine, setShowCpsDropOffLine] = useState(false)\n  const [showCpsBoTrend, setShowCpsBoTrend] = useState(false)\n  const [showCpsConversionTrend, setShowCpsConversionTrend] = useState(false)\n  const [showCpsDropOffTrend, setShowCpsDropOffTrend] = useState(false)
+  const [showCpsDropOffLine, setShowCpsDropOffLine] = useState(false)
+  const [showCpsBoTrend, setShowCpsBoTrend] = useState(false)
+  const [showCpsConversionTrend, setShowCpsConversionTrend] = useState(false)
+  const [showCpsDropOffTrend, setShowCpsDropOffTrend] = useState(false)
   const [cpsAppointments, setCpsAppointments] = useState([])
   const [cpsLoading, setCpsLoading] = useState(false)
   const [cpsError, setCpsError] = useState("")
@@ -332,7 +335,10 @@ function SalesChart({ contracts = [] }) {
             {showCpsBars && <><Bar yAxisId="count" dataKey="sold" name="S · Sold" stackId="cps" fill="#008000" /><Bar yAxisId="count" dataKey="priceOnly" name="P · Price left" stackId="cps" fill="#ff9900" /><Bar yAxisId="count" dataKey="confirmedOnly" name="C · Confirmed, no price" stackId="cps" fill="#ff0000" /></>}
             {showCpsConversionLine && <Line yAxisId="percent" type="monotone" dataKey="conversionPercent" name="P → S conversion" stroke="#111827" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />}
             {showCpsBoLine && <Line yAxisId="percent" type="monotone" dataKey="boPercent" name="BO%" stroke="#2563eb" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />}
-            {showCpsDropOffLine && <Line yAxisId="percent" type="monotone" dataKey="dropOffPercent" name="Drop Off %" stroke="#dc2626" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />}\n            {showCpsBoTrend && <Line yAxisId="percent" type="linear" dataKey="boTrend" name="BO% trend" stroke="#2563eb" strokeWidth={2} strokeDasharray="6 4" dot={false} activeDot={false} connectNulls />}\n            {showCpsConversionTrend && <Line yAxisId="percent" type="linear" dataKey="conversionTrend" name="Conv trend" stroke="#111827" strokeWidth={2} strokeDasharray="6 4" dot={false} activeDot={false} connectNulls />}\n            {showCpsDropOffTrend && <Line yAxisId="percent" type="linear" dataKey="dropOffTrend" name="Drop Off trend" stroke="#dc2626" strokeWidth={2} strokeDasharray="6 4" dot={false} activeDot={false} connectNulls />}
+            {showCpsDropOffLine && <Line yAxisId="percent" type="monotone" dataKey="dropOffPercent" name="Drop Off %" stroke="#dc2626" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />}
+            {showCpsBoTrend && <Line yAxisId="percent" type="linear" dataKey="boTrend" name="BO% trend" stroke="#2563eb" strokeWidth={2} strokeDasharray="6 4" dot={false} activeDot={false} connectNulls />}
+            {showCpsConversionTrend && <Line yAxisId="percent" type="linear" dataKey="conversionTrend" name="Conv trend" stroke="#111827" strokeWidth={2} strokeDasharray="6 4" dot={false} activeDot={false} connectNulls />}
+            {showCpsDropOffTrend && <Line yAxisId="percent" type="linear" dataKey="dropOffTrend" name="Drop Off trend" stroke="#dc2626" strokeWidth={2} strokeDasharray="6 4" dot={false} activeDot={false} connectNulls />}
           </BarChart>
         </ResponsiveContainer>}
       </div>
