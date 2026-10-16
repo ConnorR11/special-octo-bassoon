@@ -958,7 +958,7 @@ function DataDashboard() {
               <Tooltip
                 content={({ active, payload, label }) => {
                   const visibleItems = (payload || []).filter(
-                    (item) => Number(item.value || 0) >= 1
+                    (item) => item.dataKey === "handoverConversion" || Number(item.value || 0) >= 1
                   )
                   if (!active || visibleItems.length === 0) return null
                   return (
@@ -967,7 +967,7 @@ function DataDashboard() {
                       {visibleItems.map((item) => (
                         <div key={item.dataKey} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, color: item.color || "#334155" }}>
                           <span style={{ width: 8, height: 8, borderRadius: 2, background: item.color || "#334155", flexShrink: 0 }} />
-                          <span>{item.name}: {formatNumber(item.value)}</span>
+                          <span>{item.name}: {item.dataKey === "handoverConversion" ? `${Number(item.value || 0).toFixed(1)}%` : formatNumber(item.value)}</span>
                         </div>
                       ))}
                     </div>
