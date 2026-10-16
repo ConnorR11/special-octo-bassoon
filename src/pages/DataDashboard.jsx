@@ -4,6 +4,9 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  ComposedChart,
+  Line,
+  CartesianGrid,
   LineChart,
   Legend,
   ResponsiveContainer,
@@ -949,10 +952,10 @@ function DataDashboard() {
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={430}>
-            <BarChart data={rows} margin={{ top: 10, right: 18, left: 0, bottom: 8 }}>
+            <ComposedChart data={rows.map(row => ({ ...row, handoverConversion: row.lead_count > 0 ? (Number(row.cps_h_count || 0) / Number(row.lead_count || 0)) * 100 : 0 }))} margin={{ top: 10, right: 18, left: 0, bottom: 8 }}>
               <CartesianGrid stroke="#e8edf3" vertical={false} />
               <XAxis dataKey="month" tickFormatter={(value) => new Date(`${value}T00:00:00`).toLocaleDateString("en-GB", { month: "short", year: "2-digit" })} interval={5} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={{ stroke: "#dfe5ec" }} tickLine={false} />
-              <YAxis tickFormatter={formatNumber} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} width={55} />
+              <YAxis yAxisId="leads" tickFormatter={formatNumber} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} width={55} /><YAxis yAxisId="conversion" orientation="right" domain={[0, 100]} tickFormatter={value => `${Number(value).toFixed(0)}%`} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} width={48} />
               <Tooltip
                 content={({ active, payload, label }) => {
                   const visibleItems = (payload || []).filter(
@@ -986,11 +989,13 @@ function DataDashboard() {
                   key={type}
                   dataKey={type}
                   name={type}
+                  yAxisId="leads"
                   stackId="leads"
                   fill={LEAD_TYPE_COLORS[typeNames.indexOf(type) % LEAD_TYPE_COLORS.length]}
                 />
               ))}
-            </BarChart>
+            <Line yAxisId="conversion" type="monotone" dataKey="handoverConversion" name="Handover conversion" stroke="#111827" strokeWidth={2.5} dot={false} connectNulls />
+            </ComposedChart>
           </ResponsiveContainer>
         )}
       </div>
