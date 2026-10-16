@@ -6,7 +6,6 @@ import {
   CartesianGrid,
   ComposedChart,
   Line,
-  CartesianGrid,
   LineChart,
   Legend,
   ResponsiveContainer,
