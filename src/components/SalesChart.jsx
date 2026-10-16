@@ -81,6 +81,9 @@ function SalesChart({ contracts = [] }) {
   const [cpsSelectedYear, setCpsSelectedYear] = useState("all")
   const [cpsTimeGrouping, setCpsTimeGrouping] = useState("month")
   const [cpsSelectedProduct, setCpsSelectedProduct] = useState("All products")
+  const [showCpsBoLine, setShowCpsBoLine] = useState(false)
+  const [showCpsConversionLine, setShowCpsConversionLine] = useState(false)
+  const [showCpsDropOffLine, setShowCpsDropOffLine] = useState(false)
   const [cpsAppointments, setCpsAppointments] = useState([])
   const [cpsLoading, setCpsLoading] = useState(false)
   const [cpsError, setCpsError] = useState("")
@@ -292,6 +295,7 @@ function SalesChart({ contracts = [] }) {
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Year<select value={cpsSelectedYear} onChange={(event) => setCpsSelectedYear(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="all">All Time</option><option value="2026">2026</option><option value="2025">2025</option></select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Period<select value={cpsTimeGrouping} onChange={(event) => setCpsTimeGrouping(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="year">Year</option><option value="quarter">Quarter</option><option value="month">Month</option><option value="week">Week</option></select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Products<select value={cpsSelectedProduct} onChange={(event) => setCpsSelectedProduct(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", minWidth: 145 }}><option value="All products">All products</option>{["Windows", "Solar & ASHP", "Other"].map(product => <option key={product} value={product}>{product}</option>)}</select></label>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "4px 8px", border: "1px solid #e2e5e8", borderRadius: 8, background: "#f8fafc" }}><span style={{ fontWeight: 600, color: "#475569" }}>Lines</span><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsBoLine} onChange={event => setShowCpsBoLine(event.target.checked)} /> <span style={{ color: "#111827" }}>BO%</span></label><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsConversionLine} onChange={event => setShowCpsConversionLine(event.target.checked)} /> <span style={{ color: "#111827" }}>Conv</span></label><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsDropOffLine} onChange={event => setShowCpsDropOffLine(event.target.checked)} /> <span style={{ color: "#dc2626" }}>Drop Off</span></label></div>
           </div>
         </div>
         {cpsLoading ? <div style={{ padding: 28, color: "#667085", fontSize: 12 }}>Loading sales conversion…</div> : cpsError ? <div style={{ padding: 18, color: "#b42318", fontSize: 12 }}>{cpsError}</div> : <ResponsiveContainer width="100%" height={330}>
@@ -305,9 +309,9 @@ function SalesChart({ contracts = [] }) {
             <Bar yAxisId="count" dataKey="sold" name="S · Sold" stackId="cps" fill="#008000" />
             <Bar yAxisId="count" dataKey="priceOnly" name="P · Price left" stackId="cps" fill="#ff9900" />
             <Bar yAxisId="count" dataKey="confirmedOnly" name="C · Confirmed, no price" stackId="cps" fill="#ff0000" />
-            <Line yAxisId="percent" type="monotone" dataKey="conversionPercent" name="P → S conversion" stroke="#111827" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
-            <Line yAxisId="percent" type="monotone" dataKey="boPercent" name="BO%" stroke="#111827" strokeWidth={2.5} strokeDasharray="6 4" dot={false} activeDot={{ r: 4 }} />
-            <Line yAxisId="percent" type="monotone" dataKey="dropOffPercent" name="Drop Off %" stroke="#dc2626" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
+            {showCpsConversionLine && <Line yAxisId="percent" type="monotone" dataKey="conversionPercent" name="P → S conversion" stroke="#111827" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />}
+            {showCpsBoLine && <Line yAxisId="percent" type="monotone" dataKey="boPercent" name="BO%" stroke="#111827" strokeWidth={2.5} strokeDasharray="6 4" dot={false} activeDot={{ r: 4 }} />}
+            {showCpsDropOffLine && <Line yAxisId="percent" type="monotone" dataKey="dropOffPercent" name="Drop Off %" stroke="#dc2626" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />}
           </BarChart>
         </ResponsiveContainer>}
       </div>
