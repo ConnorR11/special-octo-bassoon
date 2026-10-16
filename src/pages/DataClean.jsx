@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase"
 const REPORTS = [
   { id: "missing-result", title: "Appointments missing result", description: "Appointments where no result has been recorded." },
   { id: "wrong-cps", title: "Wrong CPS", description: "Appointments where CPS-P is FALSE, CPS-S is TRUE and is_pickup is FALSE." },
+  { id: "pm-pickup-hcps", title: "PM · Pickup / HCPS review", description: 'Appointments where result contains "PM", is_pickup is not TRUE, and HCPS is not 1110.' },
   { id: "missing-lead-type", title: "Leads missing lead type", description: "Leads where lead_type is empty or NULL. Assign one of the approved lead types." },
 ]
 
@@ -75,6 +76,13 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
             .eq("cps_s", true)
             .eq("is_pickup", false)
             .order("appointment_date", { ascending: false, nullsFirst: false })
+        } else if (reportId === "pm-pickup-hcps") {
+          query = supabase
+            .from("appointments")
+            .select("appointment_row_id,name,phone_number_1,email_address,postcode,address,appointment_date,product,job_type,branch,rep_allocated,cps_h,cps_c,cps_p,cps_s,is_pickup,result")
+            .ilike("result", "%PM%")
+            .or("is_pickup.is.null,is_pickup.eq.false")
+            .order("appointment_date", { ascending: false, nullsFirst: false })
         } else if (reportId === "missing-lead-type") {
           query = supabase
             .from("leads")
@@ -85,16 +93,32 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
           throw new Error("Unknown Data Clean report.")
         }
 
-        query = query.range(reportId === "missing-lead-type" ? page * pageSize : 0, (reportId === "missing-lead-type" ? page * pageSize : 0) + (reportId === "missing-lead-type" ? pageSize : 999) )
-        const { data, error: queryError } = await query
-        if (queryError) throw queryError
-
-        const fetchedRows = Array.isArray(data) ? data : []
-        if (reportId === "missing-lead-type") {
-          setHasNextPage(fetchedRows.length > pageSize)
-          allRows = fetchedRows.slice(0, pageSize)
+        if (reportId === "pm-pickup-hcps") {
+          const batchSize = 1000
+          let offset = 0
+          let fetchedRows = []
+          while (true) {
+            const { data, error: queryError } = await query.range(offset, offset + batchSize - 1)
+            if (queryError) throw queryError
+            const batch = Array.isArray(data) ? data : []
+            fetchedRows = fetchedRows.concat(batch)
+            if (batch.length < batchSize) break
+            offset += batchSize
+          }
+          allRows = fetchedRows.filter(row => hcps(row) !== "1110")
+          setHasNextPage(false)
         } else {
-          allRows = fetchedRows
+          query = query.range(reportId === "missing-lead-type" ? page * pageSize : 0, (reportId === "missing-lead-type" ? page * pageSize : 0) + (reportId === "missing-lead-type" ? pageSize : 999))
+          const { data, error: queryError } = await query
+          if (queryError) throw queryError
+
+          const fetchedRows = Array.isArray(data) ? data : []
+          if (reportId === "missing-lead-type") {
+            setHasNextPage(fetchedRows.length > pageSize)
+            allRows = fetchedRows.slice(0, pageSize)
+          } else {
+            allRows = fetchedRows
+          }
         }
       }
 
@@ -131,7 +155,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
         row.email_address,
         row.phone_number_1,
         row.appointment_date,
-        activeReport === "wrong-cps" ? hcps(row) : "",
+        ["wrong-cps", "pm-pickup-hcps"].includes(activeReport) ? hcps(row) : "",
         row.lead_source,
         row.lead_type,
       ]
@@ -236,7 +260,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                           <><th>Lead</th><th>Received</th><th>Postcode</th><th>Lead Source</th><th>Phone</th><th>Email</th><th>Assign Lead Type</th><th></th></>
                         ) : (
                           <><th>Customer</th><th>Appointment</th><th>Postcode</th><th>Product</th><th>Job Type</th><th>Branch</th><th>Sales Rep</th><th>Phone</th><th>Email</th>
-                          {activeReport === "wrong-cps" && <><th>HCPS</th><th>Pickup</th></>}
+                          {["wrong-cps", "pm-pickup-hcps"].includes(activeReport) && <><th>Result</th><th>HCPS</th><th>Pickup</th></>}
                           <th></th></>
                         )}
                       </tr>
@@ -277,7 +301,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                               <td>{row.rep_allocated || "—"}</td>
                               <td>{row.phone_number_1 || "—"}</td>
                               <td>{row.email_address || "—"}</td>
-                              {activeReport === "wrong-cps" && <><td><span className="data-clean-badge warning">{hcps(row)}</span></td><td><span className="data-clean-badge danger">FALSE</span></td></>}
+                              {["wrong-cps", "pm-pickup-hcps"].includes(activeReport) && <><td>{row.result || "—"}</td><td><span className="data-clean-badge warning">{hcps(row)}</span></td><td><span className={`data-clean-badge ${row.is_pickup === true ? "danger" : "warning"}`}>{row.is_pickup === true ? "TRUE" : row.is_pickup === false ? "FALSE" : "NULL"}</span></td></>}
                               <td><button type="button" className="data-clean-open" onClick={() => openRow(row)}>Open</button></td>
                             </>
                           )}
