@@ -149,16 +149,31 @@ export default function IntegrationLogs({ setMobile }) {
   }
 
   async function loadChartLogs() {
-    let q = supabase.from("integration_event_logs").select("received_at,status,provider").order("received_at", { ascending: true })
-    if (provider !== "all") q = q.eq("provider", provider)
-    if (dateFrom) q = q.gte("received_at", new Date(`${dateFrom}T00:00:00`).toISOString())
-    if (dateTo) {
-      const end = new Date(`${dateTo}T00:00:00`)
-      end.setDate(end.getDate() + 1)
-      q = q.lt("received_at", end.toISOString())
+    const batchSize = 1000
+    let offset = 0
+    let allRows = []
+    try {
+      while (true) {
+        let q = supabase.from("integration_event_logs").select("received_at,status,provider").order("received_at", { ascending: true }).range(offset, offset + batchSize - 1)
+        if (provider !== "all") q = q.eq("provider", provider)
+        if (dateFrom) q = q.gte("received_at", new Date(`${dateFrom}T00:00:00`).toISOString())
+        if (dateTo) {
+          const end = new Date(`${dateTo}T00:00:00`)
+          end.setDate(end.getDate() + 1)
+          q = q.lt("received_at", end.toISOString())
+        }
+        const { data, error } = await q
+        if (error) throw error
+        const batch = Array.isArray(data) ? data : []
+        allRows = allRows.concat(batch)
+        if (batch.length < batchSize) break
+        offset += batchSize
+      }
+      setChartLogs(allRows)
+    } catch (error) {
+      console.error("Unable to load integration chart data:", error)
+      setChartLogs([])
     }
-    const { data, error } = await q
-    setChartLogs(error ? [] : (data || []))
   }
 
   const providers = Array.isArray(providerOptions) ? providerOptions : []
