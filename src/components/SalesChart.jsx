@@ -253,7 +253,7 @@ function SalesChart({ contracts = [] }) {
     })
     rows.forEach(row => { const barC = Math.max(0, row.confirmedTotal); const barP = Math.min(barC, Math.max(0, row.priceTotal)); const barS = Math.min(barP, Math.max(0, row.soldTotal)); row.confirmedOnly = barC - barP; row.priceOnly = barP - barS; row.sold = barS; row.conversionPercent = row.priceTotal > 0 ? row.soldTotal / row.priceTotal * 100 : 0; row.boPercent = row.confirmedTotal > 0 ? ((row.confirmedTotal - row.priceTotal) / row.confirmedTotal) * 100 : 0; row.dropOffPercent = row.soldNetValue > 0 ? ((row.soldNetValue - row.solidNetValue) / row.soldNetValue) * 100 : 0; row.totalPriced = barP })
     return rows
-  }, [cpsAppointments, cpsSelectedProduct, cpsSelectedYear, cpsTimeGrouping, currentYear, currentMonth, currentDay])
+  }, [cpsAppointments, cpsSelectedProduct, cpsSelectedBranch, cpsSelectedYear, cpsTimeGrouping, currentYear, currentMonth, currentDay])
 
   if (!contracts.length) {
     return <div style={{ marginTop: 18, background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: 24, color: "#777", fontSize: 12 }}>No sales data available.</div>
