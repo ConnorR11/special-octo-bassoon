@@ -94,9 +94,21 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
         }
 
         if (reportId === "pm-pickup-hcps") {
-          const { data, error: queryError } = await query.limit(25)
-          if (queryError) throw queryError
-          allRows = (Array.isArray(data) ? data : []).filter(row => hcps(row) !== "1110").slice(0, 25)
+          // Fetch newest PM appointments in small batches and stop once 25 rows
+          // satisfy the derived HCPS rule. Filtering only after the first 25
+          // candidates can incorrectly return an empty report.
+          const batchSize = 100
+          let offset = 0
+          allRows = []
+          while (allRows.length < 25) {
+            const { data, error: queryError } = await query.range(offset, offset + batchSize - 1)
+            if (queryError) throw queryError
+            const batch = Array.isArray(data) ? data : []
+            allRows = allRows.concat(batch.filter(row => hcps(row) !== "1110"))
+            if (batch.length < batchSize) break
+            offset += batchSize
+          }
+          allRows = allRows.slice(0, 25)
           setHasNextPage(false)
         } else {
           query = query.range(reportId === "missing-lead-type" ? page * pageSize : 0, (reportId === "missing-lead-type" ? page * pageSize : 0) + (reportId === "missing-lead-type" ? pageSize : 999))
