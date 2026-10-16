@@ -44,6 +44,17 @@ function normaliseProduct(value) {
   return "Other"
 }
 
+function addLinearTrend(data, sourceKey, trendKey) {
+  const points = data.map((row, index) => ({ x: index, y: Number(row[sourceKey] || 0) })).filter(point => Number.isFinite(point.y))
+  if (points.length < 2) return data.map(row => ({ ...row, [trendKey]: null }))
+  const meanX = points.reduce((sum, point) => sum + point.x, 0) / points.length
+  const meanY = points.reduce((sum, point) => sum + point.y, 0) / points.length
+  const denominator = points.reduce((sum, point) => sum + (point.x - meanX) ** 2, 0)
+  const slope = denominator ? points.reduce((sum, point) => sum + (point.x - meanX) * (point.y - meanY), 0) / denominator : 0
+  const intercept = meanY - slope * meanX
+  return data.map((row, index) => ({ ...row, [trendKey]: intercept + slope * index }))
+}
+
 function axisMoney(value) {
   if (value >= 1000000) return `£${(value / 1000000).toFixed(1)}m`
   if (value >= 1000) return `£${Math.round(value / 1000)}k`
@@ -85,7 +96,7 @@ function SalesChart({ contracts = [] }) {
   const [showCpsBars, setShowCpsBars] = useState(true)
   const [showCpsBoLine, setShowCpsBoLine] = useState(false)
   const [showCpsConversionLine, setShowCpsConversionLine] = useState(false)
-  const [showCpsDropOffLine, setShowCpsDropOffLine] = useState(false)
+  const [showCpsDropOffLine, setShowCpsDropOffLine] = useState(false)\n  const [showCpsBoTrend, setShowCpsBoTrend] = useState(false)\n  const [showCpsConversionTrend, setShowCpsConversionTrend] = useState(false)\n  const [showCpsDropOffTrend, setShowCpsDropOffTrend] = useState(false)
   const [cpsAppointments, setCpsAppointments] = useState([])
   const [cpsLoading, setCpsLoading] = useState(false)
   const [cpsError, setCpsError] = useState("")
@@ -256,6 +267,14 @@ function SalesChart({ contracts = [] }) {
     return rows
   }, [cpsAppointments, cpsSelectedProduct, cpsSelectedBranch, cpsSelectedYear, cpsTimeGrouping, currentYear, currentMonth, currentDay])
 
+  const conversionTrendData = useMemo(() => {
+    let rows = conversionData
+    rows = addLinearTrend(rows, "boPercent", "boTrend")
+    rows = addLinearTrend(rows, "conversionPercent", "conversionTrend")
+    rows = addLinearTrend(rows, "dropOffPercent", "dropOffTrend")
+    return rows
+  }, [conversionData])
+
   if (!contracts.length) {
     return <div style={{ marginTop: 18, background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: 24, color: "#777", fontSize: 12 }}>No sales data available.</div>
   }
@@ -299,11 +318,11 @@ function SalesChart({ contracts = [] }) {
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Period<select value={cpsTimeGrouping} onChange={(event) => setCpsTimeGrouping(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="year">Year</option><option value="quarter">Quarter</option><option value="month">Month</option><option value="week">Week</option></select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Products<select value={cpsSelectedProduct} onChange={(event) => setCpsSelectedProduct(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", minWidth: 145 }}><option value="All products">All products</option>{["Windows", "Solar & ASHP", "Other"].map(product => <option key={product} value={product}>{product}</option>)}</select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Branch<select value={cpsSelectedBranch} onChange={event => setCpsSelectedBranch(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", minWidth: 145 }}><option value="All branches">All branches</option>{["Central Solar", "Central Windows", "Clearline", "Grampian", "HES"].map(branch => <option key={branch} value={branch}>{branch}</option>)}</select></label>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "4px 8px", border: "1px solid #e2e5e8", borderRadius: 8, background: "#f8fafc" }}><span style={{ fontWeight: 600, color: "#475569" }}>Display</span><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsBars} onChange={event => setShowCpsBars(event.target.checked)} /> <span>Bars</span></label><span style={{ color: "#cbd5e1" }}>|</span><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsBoLine} onChange={event => setShowCpsBoLine(event.target.checked)} /> <span style={{ color: "#2563eb" }}>BO%</span></label><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsConversionLine} onChange={event => setShowCpsConversionLine(event.target.checked)} /> <span style={{ color: "#111827" }}>Conv</span></label><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsDropOffLine} onChange={event => setShowCpsDropOffLine(event.target.checked)} /> <span style={{ color: "#dc2626" }}>Drop Off</span></label></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "4px 8px", border: "1px solid #e2e5e8", borderRadius: 8, background: "#f8fafc" }}><span style={{ fontWeight: 600, color: "#475569" }}>Display</span><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsBars} onChange={event => setShowCpsBars(event.target.checked)} /> <span>Bars</span></label><span style={{ color: "#cbd5e1" }}>|</span><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsBoLine} onChange={event => setShowCpsBoLine(event.target.checked)} /> <span style={{ color: "#2563eb" }}>BO%</span></label><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsConversionLine} onChange={event => setShowCpsConversionLine(event.target.checked)} /> <span style={{ color: "#111827" }}>Conv</span></label><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsDropOffLine} onChange={event => setShowCpsDropOffLine(event.target.checked)} /> <span style={{ color: "#dc2626" }}>Drop Off</span></label><span style={{ color: "#cbd5e1" }}>|</span><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsBoTrend} onChange={event => setShowCpsBoTrend(event.target.checked)} /> <span style={{ color: "#2563eb" }}>BO% trend</span></label><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsConversionTrend} onChange={event => setShowCpsConversionTrend(event.target.checked)} /> <span style={{ color: "#111827" }}>Conv trend</span></label><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsDropOffTrend} onChange={event => setShowCpsDropOffTrend(event.target.checked)} /> <span style={{ color: "#dc2626" }}>Drop Off trend</span></label></div>
           </div>
         </div>
         {cpsLoading ? <div style={{ padding: 28, color: "#667085", fontSize: 12 }}>Loading sales conversion…</div> : cpsError ? <div style={{ padding: 18, color: "#b42318", fontSize: 12 }}>{cpsError}</div> : <ResponsiveContainer width="100%" height={330}>
-          <BarChart data={conversionData} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
+          <BarChart data={conversionTrendData} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
             <XAxis dataKey="month" interval="preserveStartEnd" minTickGap={24} axisLine={false} tickLine={false} tick={{ fill: "#8a8a8a", fontSize: 10 }} />
             <YAxis yAxisId="count" axisLine={false} tickLine={false} allowDecimals={false} tick={{ fill: "#777", fontSize: 10 }} width={55} />
@@ -313,7 +332,7 @@ function SalesChart({ contracts = [] }) {
             {showCpsBars && <><Bar yAxisId="count" dataKey="sold" name="S · Sold" stackId="cps" fill="#008000" /><Bar yAxisId="count" dataKey="priceOnly" name="P · Price left" stackId="cps" fill="#ff9900" /><Bar yAxisId="count" dataKey="confirmedOnly" name="C · Confirmed, no price" stackId="cps" fill="#ff0000" /></>}
             {showCpsConversionLine && <Line yAxisId="percent" type="monotone" dataKey="conversionPercent" name="P → S conversion" stroke="#111827" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />}
             {showCpsBoLine && <Line yAxisId="percent" type="monotone" dataKey="boPercent" name="BO%" stroke="#2563eb" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />}
-            {showCpsDropOffLine && <Line yAxisId="percent" type="monotone" dataKey="dropOffPercent" name="Drop Off %" stroke="#dc2626" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />}
+            {showCpsDropOffLine && <Line yAxisId="percent" type="monotone" dataKey="dropOffPercent" name="Drop Off %" stroke="#dc2626" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />}\n            {showCpsBoTrend && <Line yAxisId="percent" type="linear" dataKey="boTrend" name="BO% trend" stroke="#2563eb" strokeWidth={2} strokeDasharray="6 4" dot={false} activeDot={false} connectNulls />}\n            {showCpsConversionTrend && <Line yAxisId="percent" type="linear" dataKey="conversionTrend" name="Conv trend" stroke="#111827" strokeWidth={2} strokeDasharray="6 4" dot={false} activeDot={false} connectNulls />}\n            {showCpsDropOffTrend && <Line yAxisId="percent" type="linear" dataKey="dropOffTrend" name="Drop Off trend" stroke="#dc2626" strokeWidth={2} strokeDasharray="6 4" dot={false} activeDot={false} connectNulls />}
           </BarChart>
         </ResponsiveContainer>}
       </div>
