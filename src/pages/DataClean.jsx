@@ -94,18 +94,9 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
         }
 
         if (reportId === "pm-pickup-hcps") {
-          const batchSize = 1000
-          let offset = 0
-          let fetchedRows = []
-          while (true) {
-            const { data, error: queryError } = await query.range(offset, offset + batchSize - 1)
-            if (queryError) throw queryError
-            const batch = Array.isArray(data) ? data : []
-            fetchedRows = fetchedRows.concat(batch)
-            if (batch.length < batchSize) break
-            offset += batchSize
-          }
-          allRows = fetchedRows.filter(row => hcps(row) !== "1110")
+          const { data, error: queryError } = await query.limit(25)
+          if (queryError) throw queryError
+          allRows = (Array.isArray(data) ? data : []).filter(row => hcps(row) !== "1110").slice(0, 25)
           setHasNextPage(false)
         } else {
           query = query.range(reportId === "missing-lead-type" ? page * pageSize : 0, (reportId === "missing-lead-type" ? page * pageSize : 0) + (reportId === "missing-lead-type" ? pageSize : 999))
