@@ -1,5 +1,26 @@
 import { createClient } from "@supabase/supabase-js"
 
+async function logEpvsImport(supabase, status, httpStatus, errorMessage = null, result = null) {
+  try {
+    const { error } = await supabase.from("integration_event_logs").insert({
+      event_name: "epvs_import_existing",
+      provider: "epvs",
+      integration_name: "EPVS Validation Hub",
+      direction: "outbound",
+      event_type: "manual_import",
+      status,
+      http_status: httpStatus,
+      error_message: errorMessage ? String(errorMessage).slice(0, 2000) : null,
+      payload: { trigger: "manual_import" },
+      result,
+      processed_at: new Date().toISOString(),
+    })
+    if (error) console.error("EPVS integration log insert failed", error.message)
+  } catch (error) {
+    console.error("EPVS integration log insert failed", error instanceof Error ? error.message : String(error))
+  }
+}
+
 const json = (res, status, body) => {
   res.setHeader("Content-Type", "application/json")
   res.setHeader("Cache-Control", "no-store")
