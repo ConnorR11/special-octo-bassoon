@@ -63,15 +63,14 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
         let query
 
         if (reportId === "cps-review") {
+          // Page through 2026 appointments by date in small indexed batches,
+          // then apply the three review rules locally. Large parallel filtered
+          // queries were timing out on the appointments table.
           const fields = "appointment_row_id,name,phone_number_1,email_address,postcode,address,appointment_date,product,job_type,branch,rep_allocated,cps_h,cps_c,cps_p,cps_s,is_pickup,result"
           const from = "2026-01-01T00:00:00"
           const to = "2027-01-01T00:00:00"
-          const [wrong, sold, pm] = await Promise.all([
-            supabase.from("appointments").select(fields).eq("cps_p", false).eq("cps_s", true).eq("is_pickup", false).gte("appointment_date", from).lt("appointment_date", to).order("appointment_date", { ascending: false }),
-            supabase.from("appointments").select(fields).ilike("result", "SOLD").or("cps_s.is.null,cps_s.eq.false").gte("appointment_date", from).lt("appointment_date", to).order("appointment_date", { ascending: false }),
-            supabase.from("appointments").select(fields).ilike("result", "%PM%").or("is_pickup.is.null,is_pickup.eq.false").gte("appointment_date", from).lt("appointment_date", to).order("appointment_date", { ascending: false }).range(0, 999),
-          ])
-          for (const result of [wrong, sold, pm]) if (result.error) throw result.error
+          const batchSize = 250
+          let offset = 0
           const merged = new Map()
           const add = (row, issue) => {
             const key = row.appointment_row_id
@@ -80,9 +79,24 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
             if (!current.data_clean_issue.includes(issue)) current.data_clean_issue.push(issue)
             merged.set(key, { ...current, ...row, data_clean_issue: current.data_clean_issue })
           }
-          ;(wrong.data || []).forEach(row => add(row, "Wrong CPS"))
-          ;(sold.data || []).forEach(row => add(row, "Sold without CPS-S"))
-          ;(pm.data || []).filter(row => hcps(row) !== "1110").forEach(row => add(row, "PM / HCPS"))
+          while (true) {
+            const { data, error: queryError } = await supabase
+              .from("appointments")
+              .select(fields)
+              .gte("appointment_date", from)
+              .lt("appointment_date", to)
+              .order("appointment_date", { ascending: false })
+              .range(offset, offset + batchSize - 1)
+            if (queryError) throw queryError
+            const batch = Array.isArray(data) ? data : []
+            for (const row of batch) {
+              if (row.cps_p === false && row.cps_s === true && row.is_pickup === false) add(row, "Wrong CPS")
+              if (String(row.result || "").trim().toUpperCase() === "SOLD" && (row.cps_s === false || row.cps_s == null)) add(row, "Sold without CPS-S")
+              if (String(row.result || "").toUpperCase().includes("PM") && row.is_pickup !== true && hcps(row) !== "1110") add(row, "PM / HCPS")
+            }
+            if (batch.length < batchSize) break
+            offset += batchSize
+          }
           allRows = [...merged.values()].map(row => ({ ...row, data_clean_issue: row.data_clean_issue.join(" · ") })).sort((a, b) => String(b.appointment_date || "").localeCompare(String(a.appointment_date || "")))
           setHasNextPage(false)
         } else if (reportId === "missing-result") {
