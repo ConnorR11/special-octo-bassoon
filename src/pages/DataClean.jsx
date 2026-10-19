@@ -4,9 +4,7 @@ import { supabase } from "../lib/supabase"
 
 const REPORTS = [
   { id: "missing-result", title: "Appointments missing result", description: "Appointments where no result has been recorded." },
-  { id: "wrong-cps", title: "Wrong CPS", description: "Appointments where CPS-P is FALSE, CPS-S is TRUE and is_pickup is FALSE." },
-  { id: "sold-missing-cps-s", title: "Sold · CPS-S not true", description: "2026 appointments marked SOLD where CPS-S is FALSE or NULL." },
-  { id: "pm-pickup-hcps", title: "PM · Pickup / HCPS review", description: 'Appointments where result contains "PM", is_pickup is not TRUE, and HCPS is not 1110.' },
+  { id: "cps-review", title: "CPS & Pickup Review", description: "2026 appointments needing CPS, SOLD-status or PM/pickup HCPS review." },
   { id: "missing-lead-type", title: "Leads missing lead type", description: "Leads where lead_type is empty or NULL. Assign one of the approved lead types." },
 ]
 
