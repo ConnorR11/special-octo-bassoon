@@ -33,7 +33,7 @@ export default function EPVSApplications() {
   const [dealLoading, setDealLoading] = React.useState(false)
   const [activeRow, setActiveRow] = React.useState(null)
 
-  React.useEffect(() => { loadRows() }, [page, status])
+  React.useEffect(() => { loadRows() }, [page, status, hideLinked])
 
   async function loadRows() {
     setLoading(true)
@@ -42,6 +42,7 @@ export default function EPVSApplications() {
       .order("epvs_created_at", { ascending: false, nullsFirst: false })
       .range(page * pageSize, page * pageSize + pageSize - 1)
     if (status !== "all") query = query.eq("status", status)
+    if (hideLinked) query = query.is("linked_deal_id", null)
     if (search.trim()) {
       const term = search.trim().replace(/[(),]/g, " ")
       query = query.or(`customer_full_name.ilike.%${term}%,installation_postcode.ilike.%${term}%,customer_email.ilike.%${term}%,customer_phone.ilike.%${term}%,installation_address.ilike.%${term}%,epvs_validation_id.eq.${/^\\d+$/.test(term) ? term : "0"}`)
@@ -145,6 +146,10 @@ export default function EPVSApplications() {
         <option value="all">All statuses</option>
         {[...new Set(rows.map(row => row.status).filter(Boolean))].sort().map(value => <option key={value} value={value}>{value}</option>)}
       </select>
+      <label style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 12px", border: "1px solid #d0d5dd", borderRadius: 8, background: hideLinked ? "#fff0e8" : "#fff", color: hideLinked ? "#a33d16" : "#344054", fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+        <input type="checkbox" checked={hideLinked} onChange={e => { setHideLinked(e.target.checked); setPage(0) }} style={{ accentColor: "#f15a24" }} />
+        Hide linked applications
+      </label>
     </div>
 
     <div style={{ border: "1px solid #eaecf0", borderRadius: 10, overflow: "auto", background: "#fff" }}>
