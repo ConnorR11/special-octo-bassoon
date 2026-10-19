@@ -362,6 +362,12 @@ function DataDashboard() {
       if (handoverError) throw handoverError
       if (cpsError) throw cpsError
 
+      const leadLookup = new Map(
+        (data || []).map((row) => [
+          String(row.month).slice(0, 10),
+          Number(row.lead_count || 0),
+        ])
+      )
       const handoverLookup = new Map(
         (handoverData || []).map((row) => [
           String(row.month).slice(0, 10),
@@ -389,14 +395,27 @@ function DataDashboard() {
       })
 
       const complete = buildMonthRange(start, end)
-        .map((row) => ({
-          ...row,
-          cps_h_count: handoverLookup.get(row.month) || 0,
-          cps_c_count: cpsLookup.get(row.month)?.cps_c_count || 0,
-          cps_p_count: cpsLookup.get(row.month)?.cps_p_count || 0,
-          cps_s_count: cpsLookup.get(row.month)?.cps_s_count || 0,
-          ...Object.fromEntries(availableTypes.map((type) => [type, typeLookup.get(row.month)?.[type] || 0])),
-        }))
+        .map((row) => {
+          const lead_count = leadLookup.get(row.month) || 0
+          const cps_h_count = handoverLookup.get(row.month) || 0
+          const cps_c_count = cpsLookup.get(row.month)?.cps_c_count || 0
+          const cps_p_count = cpsLookup.get(row.month)?.cps_p_count || 0
+          const cps_s_count = cpsLookup.get(row.month)?.cps_s_count || 0
+          const percentage = (count) => lead_count > 0 ? (count / lead_count) * 100 : 0
+          return {
+            ...row,
+            lead_count,
+            cps_h_count,
+            cps_c_count,
+            cps_p_count,
+            cps_s_count,
+            cps_h_pct: percentage(cps_h_count),
+            cps_c_pct: percentage(cps_c_count),
+            cps_p_pct: percentage(cps_p_count),
+            cps_s_pct: percentage(cps_s_count),
+            ...Object.fromEntries(availableTypes.map((type) => [type, typeLookup.get(row.month)?.[type] || 0])),
+          }
+        })
         .slice(0, -1)
 
       setRows(complete)
@@ -981,18 +1000,25 @@ function DataDashboard() {
               <Tooltip
                 content={({ active, payload, label }) => {
                   const visibleItems = (payload || []).filter(
-                    (item) => item.dataKey === "cps_h_count" || Number(item.value || 0) >= 1
+                    (item) => ["cps_h_pct", "cps_c_pct", "cps_p_pct", "cps_s_pct"].includes(item.dataKey) || (!String(item.dataKey).endsWith("_pct") && Number(item.value || 0) >= 1)
                   )
                   if (!active || visibleItems.length === 0) return null
+                  const countKeyByPct = { cps_h_pct: "cps_h_count", cps_c_pct: "cps_c_count", cps_p_pct: "cps_p_count", cps_s_pct: "cps_s_count" }
                   return (
                     <div style={{ background: "#fff", border: "1px solid #dfe5ec", borderRadius: 8, padding: "10px 12px", fontSize: 12, boxShadow: "0 5px 18px rgba(15,23,42,.08)" }}>
                       <div style={{ marginBottom: 7, color: "#0f172a", fontWeight: 600 }}>{formatMonth(label)}</div>
-                      {visibleItems.map((item) => (
-                        <div key={item.dataKey} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, color: item.color || "#334155" }}>
-                          <span style={{ width: 8, height: 8, borderRadius: 2, background: item.color || "#334155", flexShrink: 0 }} />
-                          <span>{item.name}: {formatNumber(item.value)}</span>
-                        </div>
-                      ))}
+                      {visibleItems.map((item) => {
+                        const countKey = countKeyByPct[item.dataKey]
+                        const count = countKey ? Number(item.payload?.[countKey] || 0) : Number(item.value || 0)
+                        const displayName = item.name.replace(" percentage", " count")
+                        const valueText = countKey ? `${formatNumber(count)} (${Number(item.value || 0).toFixed(1)}%)` : formatNumber(item.value)
+                        return (
+                          <div key={item.dataKey} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, color: item.color || "#334155" }}>
+                            <span style={{ width: 8, height: 8, borderRadius: 2, background: item.color || "#334155", flexShrink: 0 }} />
+                            <span>{displayName}: {valueText}</span>
+                          </div>
+                        )
+                      })}
                     </div>
                   )
                 }}
@@ -1016,10 +1042,10 @@ function DataDashboard() {
                   fill={LEAD_TYPE_COLORS[typeNames.indexOf(type) % LEAD_TYPE_COLORS.length]}
                 />
               ))}
-            <Line yAxisId="leads" type="monotone" dataKey="cps_h_count" name="CPS H count" stroke="#111827" strokeWidth={2.5} dot={false} connectNulls />
-            <Line yAxisId="leads" type="monotone" dataKey="cps_c_count" name="CPS C count" stroke="#dc2626" strokeWidth={2.5} dot={false} connectNulls />
-            <Line yAxisId="leads" type="monotone" dataKey="cps_p_count" name="CPS P count" stroke="#7c3aed" strokeWidth={2.5} dot={false} connectNulls />
-            <Line yAxisId="leads" type="monotone" dataKey="cps_s_count" name="CPS S count" stroke="#0d9488" strokeWidth={2.5} dot={false} connectNulls />
+            <Line yAxisId="conversion" type="monotone" dataKey="cps_h_pct" name="CPS H percentage" stroke="#111827" strokeWidth={2.5} dot={false} connectNulls />
+            <Line yAxisId="conversion" type="monotone" dataKey="cps_c_pct" name="CPS C percentage" stroke="#dc2626" strokeWidth={2.5} dot={false} connectNulls />
+            <Line yAxisId="conversion" type="monotone" dataKey="cps_p_pct" name="CPS P percentage" stroke="#7c3aed" strokeWidth={2.5} dot={false} connectNulls />
+            <Line yAxisId="conversion" type="monotone" dataKey="cps_s_pct" name="CPS S percentage" stroke="#0d9488" strokeWidth={2.5} dot={false} connectNulls />
             </ComposedChart>
           </ResponsiveContainer>
         )}
