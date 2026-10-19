@@ -98,12 +98,12 @@ export default async function handler(req, res) {
       await finishLog("failed", 409, "A valid representative arrival time is required.", { success: false })
       return json(res, 409, { error: "A valid representative arrival time is required before generating the overstay form." })
     }
-    // This form records a same-day visit. Refuse stale test/appointment records rather than
-    // misrepresenting several days of elapsed wall-clock time as the visit duration.
+    // The representative arrival must fall on the appointment's calendar day in UK time.
     const londonDate = value => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit" }).format(value)
-    if (londonDate(arrival) !== londonDate(resultAt)) {
-      await finishLog("failed", 409, "The arrival time is not from today; actual visit duration cannot be verified.", { success: false, arrival_time: arrival.toISOString(), generated_at: resultAt.toISOString() })
-      return json(res, 409, { error: "This appointment's arrival time is not today. To avoid recording an incorrect visit duration, generate the overstay form from the appointment on the day of the visit." })
+    const appointmentDate = appointment.appointment_date ? new Date(appointment.appointment_date) : null
+    if (!appointmentDate || Number.isNaN(appointmentDate.getTime()) || londonDate(arrival) !== londonDate(appointmentDate)) {
+      await finishLog("failed", 409, "The representative arrival date does not match the appointment date.", { success: false, arrival_time: arrival.toISOString(), appointment_date: appointment.appointment_date || null })
+      return json(res, 409, { error: "The representative arrival time must be on the same calendar day as the appointment date." })
     }
     const durationMinutes = Math.max(0, Math.round((resultAt - arrival) / 60000))
     if (durationMinutes < 120) {
