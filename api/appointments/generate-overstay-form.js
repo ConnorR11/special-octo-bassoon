@@ -65,7 +65,7 @@ export default async function handler(req, res) {
     const reason = safe(body.reason)
     if (!appointmentRowId || !reason) return json(res, 400, { error: "Appointment and overstay reason are required." })
     if (reason.length > 3000) return json(res, 400, { error: "The overstay reason must be 3,000 characters or fewer." })
-    const selectedReasons = reason.split(/\\s*;\\s*/).map(value => value.trim()).filter(Boolean)
+    const selectedReasons = reason.split(/\s*;\s*/).map(value => value.trim()).filter(Boolean)
     if (!selectedReasons.length || selectedReasons.some(value => !OVERSTAY_REASONS.includes(value))) {
       return json(res, 400, { error: "Select one or more valid reasons from the approved overstay reason list." })
     }
