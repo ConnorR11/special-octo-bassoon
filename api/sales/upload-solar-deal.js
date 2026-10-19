@@ -384,7 +384,8 @@ export default async function handler(req, res) {
       stage_id: NEW_CONTRACT_STAGE_ID,
       date_sold: dateSold,
       custom_fields_updated: Object.keys(customFieldPayload).length - 1,
-      custom_fields_missing_in_pipedrive: missingFields,\n      overstay_form_attached: Boolean(overstayPipedriveFileId),\n      overstay_pipedrive_file_id: overstayPipedriveFileId,
+      custom_fields_missing_in_pipedrive: missingFields,
+      overstay_form_link_populated: Boolean(overstayFormUrl),
     }
     await finishLog({ status: "success", httpStatus: 200, result })
     return json(res, 200, result)
