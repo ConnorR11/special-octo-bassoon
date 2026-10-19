@@ -1,6 +1,6 @@
 import React from "react"
 import { supabase } from "../lib/supabase"
-import { RefreshCw, Search, Link2, Unlink, Download, CheckCircle2, AlertCircle } from "lucide-react"
+import { RefreshCw, Search, Link2, Unlink, Download, CheckCircle2, AlertCircle, ExternalLink } from "lucide-react"
 
 const pageSize = 50
 
@@ -309,7 +309,7 @@ export default function EPVSApplications() {
               <td style={{ ...cell, whiteSpace: "nowrap" }}>{money(row.contract_value)}</td>
               <td style={{ ...cell, whiteSpace: "nowrap" }}>{formatDate(row.contract_signed_at)}</td>
               <td style={{ ...cell, minWidth: 180 }}>{row.linked_deal_id ? <><strong>{row.deals?.contract_number || "Linked"}</strong>{row.deals?.customer_name && <div style={{ color: "#667085", marginTop: 4, fontSize: 11 }}>{row.deals.customer_name}</div>}</> : <span style={{ color: "#b54708" }}>Not linked</span>}</td>
-              <td style={{ ...cell, whiteSpace: "nowrap" }}><button type="button" onClick={() => { setActiveRow(activeRow === row.id ? null : row.id); setDealSearch(""); setDealResults([]) }} style={actionButton}><Link2 size={14}/>{row.linked_deal_id ? "Change link" : "Link deal"}</button>{row.linked_deal_id && <button type="button" title="Remove deal link" onClick={() => linkDeal(row, null)} style={{ ...actionButton, marginLeft: 6, color: "#b42318" }}><Unlink size={14}/></button>}</td>
+              <td style={{ ...cell, whiteSpace: "nowrap" }}>{row.epvs_validation_id != null && <a href={`https://www.validationhub.co.uk/validations/${encodeURIComponent(row.epvs_validation_id)}`} target="_blank" rel="noopener noreferrer" title={`Open EPVS Validation Hub application ${row.epvs_validation_id}`} style={{ ...actionButton, textDecoration: "none", marginRight: 6, color: "#a33d16" }}><ExternalLink size={14}/>Open EPVS</a>}<button type="button" onClick={() => { setActiveRow(activeRow === row.id ? null : row.id); setDealSearch(""); setDealResults([]) }} style={actionButton}><Link2 size={14}/>{row.linked_deal_id ? "Change link" : "Link deal"}</button>{row.linked_deal_id && <button type="button" title="Remove deal link" onClick={() => linkDeal(row, null)} style={{ ...actionButton, marginLeft: 6, color: "#b42318" }}><Unlink size={14}/></button>}</td>
             </tr>
             {activeRow === row.id && <tr><td colSpan={8} style={{ padding: 14, background: "#f9fafb", borderBottom: "1px solid #eaecf0" }}>
               <div style={{ fontWeight: 700, marginBottom: 8 }}>Find the matching CRM deal for EPVS #{row.epvs_validation_id}</div>
