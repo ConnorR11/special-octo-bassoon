@@ -124,14 +124,15 @@ export default async function handler(req, res) {
     field("Visit duration at form generation", `${Math.floor(durationMinutes / 60)} hours ${durationMinutes % 60} minutes`)
     page.drawText("REASON FOR OVERSTAY", { x: margin, y, size: 9, font: bold, color: blue })
     y -= 19
+    let reasonPage = page
     for (const line of wrapText(reason, regular, 11, width)) {
       if (y < 70) {
-        const next = pdf.addPage([595.28, 841.89])
+        reasonPage = pdf.addPage([595.28, 841.89])
         y = 790
-        next.drawText("OVERSTAY FORM — CONTINUED", { x: margin, y, size: 12, font: bold, color: navy })
+        reasonPage.drawText("OVERSTAY FORM — CONTINUED", { x: margin, y, size: 12, font: bold, color: navy })
         y -= 28
       }
-      page.drawText(line, { x: margin, y, size: 11, font: regular, color: navy })
+      reasonPage.drawText(line, { x: margin, y, size: 11, font: regular, color: navy })
       y -= 16
     }
     const bytes = await pdf.save()
