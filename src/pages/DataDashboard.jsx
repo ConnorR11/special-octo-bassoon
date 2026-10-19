@@ -349,20 +349,33 @@ function DataDashboard() {
         { data, error: rpcError },
         { data: typeData, error: typeError },
         { data: handoverData, error: handoverError },
+        { data: cpsData, error: cpsError },
       ] = await Promise.all([
         supabase.rpc("get_lead_volume_by_month", rpcArgs),
         supabase.rpc("get_monthly_lead_volume_by_type", rpcArgs),
         supabase.rpc("get_monthly_handover_lead_counts", rpcArgs),
+        supabase.rpc("get_monthly_cps_lead_counts", rpcArgs),
       ])
 
       if (rpcError) throw rpcError
       if (typeError) throw typeError
       if (handoverError) throw handoverError
+      if (cpsError) throw cpsError
 
       const handoverLookup = new Map(
         (handoverData || []).map((row) => [
           String(row.month).slice(0, 10),
           Number(row.cps_h_count || 0),
+        ])
+      )
+      const cpsLookup = new Map(
+        (cpsData || []).map((row) => [
+          String(row.month).slice(0, 10),
+          {
+            cps_c_count: Number(row.cps_c_count || 0),
+            cps_p_count: Number(row.cps_p_count || 0),
+            cps_s_count: Number(row.cps_s_count || 0),
+          },
         ])
       )
 
@@ -379,6 +392,9 @@ function DataDashboard() {
         .map((row) => ({
           ...row,
           cps_h_count: handoverLookup.get(row.month) || 0,
+          cps_c_count: cpsLookup.get(row.month)?.cps_c_count || 0,
+          cps_p_count: cpsLookup.get(row.month)?.cps_p_count || 0,
+          cps_s_count: cpsLookup.get(row.month)?.cps_s_count || 0,
           ...Object.fromEntries(availableTypes.map((type) => [type, typeLookup.get(row.month)?.[type] || 0])),
         }))
         .slice(0, -1)
@@ -1000,7 +1016,10 @@ function DataDashboard() {
                   fill={LEAD_TYPE_COLORS[typeNames.indexOf(type) % LEAD_TYPE_COLORS.length]}
                 />
               ))}
-            <Line yAxisId="handover" type="monotone" dataKey="cps_h_count" name="Handover count" stroke="#111827" strokeWidth={2.5} dot={false} connectNulls />
+            <Line yAxisId="leads" type="monotone" dataKey="cps_h_count" name="CPS H count" stroke="#111827" strokeWidth={2.5} dot={false} connectNulls />
+            <Line yAxisId="leads" type="monotone" dataKey="cps_c_count" name="CPS C count" stroke="#dc2626" strokeWidth={2.5} dot={false} connectNulls />
+            <Line yAxisId="leads" type="monotone" dataKey="cps_p_count" name="CPS P count" stroke="#7c3aed" strokeWidth={2.5} dot={false} connectNulls />
+            <Line yAxisId="leads" type="monotone" dataKey="cps_s_count" name="CPS S count" stroke="#0d9488" strokeWidth={2.5} dot={false} connectNulls />
             </ComposedChart>
           </ResponsiveContainer>
         )}
