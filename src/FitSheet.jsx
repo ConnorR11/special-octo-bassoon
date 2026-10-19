@@ -4,6 +4,7 @@ import {
   ChevronRight,
   CalendarDays,
   Search,
+  Printer,
 } from "lucide-react"
 import { supabase } from "./lib/supabase"
 import { money } from "./utils/formatters"
@@ -873,7 +874,21 @@ function FitSheet({ setSelected }) {
    */
 
   return (
-    <section>
+    <section className="fit-sheet-print-root">
+      <style>{`
+        @media print {
+          @page { size: landscape; margin: 8mm; }
+          body { background: #fff !important; }
+          body * { visibility: hidden !important; }
+          .fit-sheet-print-root, .fit-sheet-print-root * { visibility: visible !important; }
+          .fit-sheet-print-root { position: absolute !important; inset: 0 auto auto 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+          .fit-sheet-no-print { display: none !important; }
+          .fit-sheet-print-root .card { box-shadow: none !important; border: 0 !important; overflow: visible !important; }
+          .fit-sheet-print-root [style*="overflow: auto"], .fit-sheet-print-root [style*="overflow-x"] { overflow: visible !important; }
+          .fit-sheet-print-root button { break-inside: avoid; }
+          .fit-sheet-print-root * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+      `}</style>
       {/* HEADER */}
 
       <div
@@ -931,6 +946,7 @@ function FitSheet({ setSelected }) {
           </div>
 
           <div
+            className="fit-sheet-no-print"
             style={{
               display: "flex",
               alignItems: "center",
@@ -1063,6 +1079,31 @@ function FitSheet({ setSelected }) {
                 </button>
               ))}
             </div>
+
+            <button
+              type="button"
+              onClick={() => window.print()}
+              title={`Print Fit Sheet for ${weekTitle} to PDF`}
+              style={{
+                height: "34px",
+                padding: "0 10px",
+                border: "1px solid #172554",
+                borderRadius: "7px",
+                background: "#172554",
+                color: "#fff",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px",
+                fontSize: "11px",
+                fontWeight: 700,
+                whiteSpace: "nowrap",
+              }}
+            >
+              <Printer size={14} />
+              Print / PDF
+            </button>
 
             {/* PREVIOUS WEEK */}
 
