@@ -19,6 +19,7 @@ function money(value) {
 export default function EPVSApplications() {
   const [rows, setRows] = React.useState([])
   const [total, setTotal] = React.useState(0)
+  const [validationTrend, setValidationTrend] = React.useState([])
   const [page, setPage] = React.useState(0)
   const [search, setSearch] = React.useState("")
   const [status, setStatus] = React.useState("all")
@@ -34,6 +35,28 @@ export default function EPVSApplications() {
   const [activeRow, setActiveRow] = React.useState(null)
 
   React.useEffect(() => { loadRows() }, [page, status, hideLinked])
+
+  React.useEffect(() => {
+    async function loadValidationTrend() {
+      const { data, error } = await supabase.from("epvs_submissions").select("epvs_created_at").not("epvs_created_at", "is", null).order("epvs_created_at", { ascending: true }).range(0, 4999)
+      if (error) { console.error("Could not load EPVS validation trend", error.message); return }
+      const now = new Date()
+      const months = Array.from({ length: 12 }, (_, index) => {
+        const date = new Date(now.getFullYear(), now.getMonth() - 11 + index, 1)
+        return { key: date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0"), label: date.toLocaleDateString("en-GB", { month: "short" }), count: 0 }
+      })
+      const monthIndex = new Map(months.map((month, index) => [month.key, index]))
+      for (const row of data || []) {
+        const date = new Date(row.epvs_created_at)
+        if (Number.isNaN(date.getTime())) continue
+        const key = date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0")
+        const index = monthIndex.get(key)
+        if (index !== undefined) months[index].count += 1
+      }
+      setValidationTrend(months)
+    }
+    loadValidationTrend()
+  }, [])
 
   async function loadRows() {
     setLoading(true)
@@ -125,6 +148,23 @@ export default function EPVSApplications() {
       <div style={{ fontSize: 12, fontWeight: 750, letterSpacing: ".07em", textTransform: "uppercase" }}>Important notice</div>
       <div style={{ fontSize: 14, marginTop: 5 }}>Application records sync from EPVS Validation Hub when you run an import. Linking a CRM deal does not change the application in EPVS.</div>
     </div>
+    <div style={{ background: "#fff", border: "1px solid #edf0f2", borderRadius: 10, padding: "18px 20px 14px", marginBottom: 16, boxShadow: "0 1px 3px rgba(16,24,40,.04)" }}>
+      <div style={{ fontSize: 15, fontWeight: 750, color: "#182230", marginBottom: 4 }}>Total Validations</div>
+      <div style={{ color: "#667085", fontSize: 12, marginBottom: 8 }}>Applications created in EPVS Validation Hub · last 12 months</div>
+      <div style={{ width: "100%", overflow: "hidden" }}>
+        <svg viewBox="0 0 1000 230" role="img" aria-label="Monthly EPVS applications created over the last 12 months" style={{ width: "100%", height: "auto", display: "block" }}>
+          {(() => {
+            const max = Math.max(1, ...validationTrend.map(point => point.count))
+            const top = 18, bottom = 184, height = bottom - top
+            const points = validationTrend.map((point, index) => ({ ...point, x: 36 + index * (928 / Math.max(1, validationTrend.length - 1)), y: bottom - point.count / max * height }))
+            const line = points.map((point, index) => (index ? "L " : "M ") + point.x + " " + point.y).join(" ")
+            const area = points.length ? line + " L " + points[points.length - 1].x + " " + bottom + " L " + points[0].x + " " + bottom + " Z" : ""
+            return <>{[0, 1, 2, 3, 4].map(tick => { const y = top + tick * height / 4; return <g key={tick}><line x1="36" y1={y} x2="964" y2={y} stroke="#e4e7ec" strokeWidth="1" /><text x="26" y={y + 4} fill="#98a2b3" fontSize="11" textAnchor="end">{Math.round(max * (4 - tick) / 4)}</text></g> })}{points.length > 0 && <><path d={area} fill="#ff8b6b" opacity=".14" /><path d={line} fill="none" stroke="#ff8b6b" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />{points.map(point => <g key={point.key}><circle cx={point.x} cy={point.y} r="4" fill="#ff8b6b" stroke="#fff" strokeWidth="2"><title>{point.label}: {point.count} applications</title></circle><text x={point.x} y="211" fontSize="11" fill="#667085" textAnchor="middle">{point.label}</text></g>)}</>}</>
+          })()}
+        </svg>
+      </div>
+    </div>
+
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 14, marginBottom: 16 }}>
       {[
         { label: "Grand total applications", value: total, accent: "#f15a24" },
