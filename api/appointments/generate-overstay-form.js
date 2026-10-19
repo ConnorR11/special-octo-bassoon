@@ -115,99 +115,95 @@ export default async function handler(req, res) {
     const page = pdf.addPage([595.28, 841.89])
     const regular = await pdf.embedFont(StandardFonts.Helvetica)
     const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
-    const navy = rgb(0.025, 0.15, 0.29)
-    const blue = rgb(0.04, 0.39, 0.63)
-    const paleBlue = rgb(0.92, 0.96, 0.985)
-    const light = rgb(0.965, 0.976, 0.987)
-    const grey = rgb(0.34, 0.40, 0.47)
-    const border = rgb(0.83, 0.88, 0.92)
+    const navy = rgb(0.015, 0.20, 0.34)
+    const deepNavy = rgb(0.0, 0.16, 0.29)
+    const blue = rgb(0.02, 0.43, 0.96)
+    const paleBlue = rgb(0.91, 0.95, 0.98)
+    const border = rgb(0.73, 0.84, 0.92)
+    const grey = rgb(0.30, 0.37, 0.44)
     const white = rgb(1, 1, 1)
-    const margin = 42
+    const margin = 34
     const width = page.getWidth() - margin * 2
     const right = page.getWidth() - margin
-    let y = 0
-    const drawText = (text, x, baseline, size, font = regular, color = navy) => page.drawText(String(text ?? ""), { x, y: baseline, size, font, color })
-    const roundedPanel = (x, top, w, h, color = light, stroke = border) => {
-      page.drawRectangle({ x, y: top - h, width: w, height: h, color, borderColor: stroke, borderWidth: 0.7 })
-    }
-    const fitLines = (value, font, size, maxWidth) => wrapText(value || "—", font, size, maxWidth)
-    const drawField = (label, value, x, top, w, opts = {}) => {
-      const labelSize = opts.labelSize || 7.2
-      const valueSize = opts.valueSize || 10
-      drawText(label.toUpperCase(), x, top - 11, labelSize, bold, grey)
-      const lines = fitLines(value, regular, valueSize, w - 18)
-      let baseline = top - 27
-      for (const line of lines.slice(0, opts.maxLines || 2)) {
-        drawText(line, x, baseline, valueSize, regular, navy)
-        baseline -= 13
+    const text = (value, x, y, size, font = regular, color = navy) => page.drawText(String(value ?? ""), { x, y, size, font, color })
+    const drawWrapped = (value, x, y, size, font, color, maxWidth, lineHeight = size * 1.35) => {
+      let baseline = y
+      for (const line of wrapText(value || "—", font, size, maxWidth)) {
+        text(line, x, baseline, size, font, color)
+        baseline -= lineHeight
       }
+      return baseline
+    }
+    const section = (title, top, height) => {
+      page.drawRectangle({ x: margin, y: top - height, width, height, color: white, borderColor: border, borderWidth: 0.8 })
+      page.drawRectangle({ x: margin, y: top - 28, width, height: 28, color: deepNavy })
+      text(title.toUpperCase(), margin + 38, top - 18, 10, bold, white)
+      // Simple white pictogram block, matching the section-icon treatment of the reference.
+      page.drawCircle({ x: margin + 18, y: top - 11, size: 4.2, color: white })
+      page.drawRectangle({ x: margin + 12, y: top - 22, width: 12, height: 7, color: white })
+    }
+    const row = (top, label, value, height = 31) => {
+      page.drawRectangle({ x: margin, y: top - height, width: 196, height, color: paleBlue })
+      page.drawLine({ start: { x: margin, y: top - height }, end: { x: right, y: top - height }, thickness: 0.65, color: border })
+      page.drawLine({ start: { x: margin + 196, y: top }, end: { x: margin + 196, y: top - height }, thickness: 0.65, color: border })
+      text(label, margin + 18, top - height / 2 - 3, 9, bold, deepNavy)
+      drawWrapped(value || "—", margin + 208, top - height / 2 - 3, 9.5, regular, rgb(0.20, 0.22, 0.24), width - 220, 11)
     }
 
-    // Brand header and title
+    // Reference design: branded header, explanatory notice, grouped detail tables and footer.
     page.drawRectangle({ x: 0, y: 0, width: page.getWidth(), height: page.getHeight(), color: white })
-    page.drawRectangle({ x: 0, y: page.getHeight() - 58, width: page.getWidth(), height: 58, color: navy })
-    page.drawRectangle({ x: 0, y: page.getHeight() - 61, width: page.getWidth(), height: 3, color: blue })
-    drawText("HOMESHIELD", margin, page.getHeight() - 28, 15, bold, white)
-    drawText("SCOTLAND LTD", margin, page.getHeight() - 44, 8, bold, rgb(0.78, 0.87, 0.94))
-    drawText("OVERSTAY FORM", margin, 744, 24, bold, navy)
-    drawText("Appointment visit duration and reason record", margin, 725, 9.5, regular, grey)
-    page.drawRectangle({ x: right - 122, y: 714, width: 122, height: 24, color: paleBlue, borderColor: border, borderWidth: 0.7 })
-    drawText("VISIT OVER 2 HOURS", right - 113, 723, 7.4, bold, blue)
+    page.drawRectangle({ x: 0, y: page.getHeight() - 106, width: page.getWidth(), height: 106, color: deepNavy })
+    page.drawRectangle({ x: 0, y: page.getHeight() - 108, width: page.getWidth(), height: 2, color: blue })
+    // Shield-style mark drawn with vector shapes so the PDF does not depend on a remote asset.
+    page.drawSvgPath("M 0 0 L 25 0 L 25 24 L 12.5 34 L 0 24 Z", { x: margin, y: page.getHeight() - 76, scale: 1.35, color: rgb(0.78, 0.86, 0.92), borderColor: white, borderWidth: 1 })
+    page.drawLine({ start: { x: margin + 5, y: page.getHeight() - 57 }, end: { x: margin + 29, y: page.getHeight() - 80 }, thickness: 4, color: white })
+    page.drawLine({ start: { x: margin + 5, y: page.getHeight() - 80 }, end: { x: margin + 29, y: page.getHeight() - 57 }, thickness: 4, color: white })
+    text("HOMESHIELD SCOTLAND LTD", margin + 48, page.getHeight() - 49, 15, bold, white)
+    text("Enhancing Homes Across Scotland", margin + 48, page.getHeight() - 70, 11, regular, white)
 
-    // Customer details: two-column compact grid
-    const panelTop = 700
-    const panelHeight = 174
-    roundedPanel(margin, panelTop, width, panelHeight, white, border)
-    page.drawRectangle({ x: margin, y: panelTop - 28, width, height: 28, color: paleBlue })
-    drawText("APPOINTMENT DETAILS", margin + 14, panelTop - 18, 8, bold, navy)
-    const colGap = 18
-    const colW = (width - 28 - colGap) / 2
-    const x1 = margin + 14
-    const x2 = x1 + colW + colGap
-    const rowTop = panelTop - 34
-    drawField("Customer name", appointment.name, x1, rowTop, colW)
-    drawField("Customer phone", appointment.phone_number_1, x2, rowTop, colW)
-    drawField("Address", [appointment.address, appointment.postcode].filter(Boolean).join(", "), x1, rowTop - 42, colW)
-    drawField("Appointment date", formatDate(appointment.appointment_date), x2, rowTop - 42, colW)
-    drawField("Representative", appointment.rep_allocated, x1, rowTop - 84, colW)
-    drawField("Branch", appointment.branch, x2, rowTop - 84, colW)
-    drawField("Product / job type", appointment.product || appointment.job_type, x1, rowTop - 126, colW)
-    drawField("Representative arrival", formatDate(appointment.rep_arrival_time), x2, rowTop - 126, colW)
+    text("OVERSTAY", margin, 700, 29, bold, deepNavy)
+    text("FORM", margin + 151, 700, 29, regular, deepNavy)
+    page.drawRectangle({ x: margin, y: 682, width: 70, height: 3, color: blue })
 
-    // Duration summary card
-    const durationTop = 506
-    roundedPanel(margin, durationTop, width, 64, paleBlue, border)
-    drawText("VISIT DURATION", margin + 14, durationTop - 17, 7.4, bold, blue)
-    drawText(`${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m`, margin + 14, durationTop - 43, 17, bold, navy)
-    drawText(`Form generated ${formatDate(resultAt.toISOString())}`, margin + 190, durationTop - 28, 8.5, regular, grey)
-    drawText("Duration measured from representative arrival to form generation.", margin + 190, durationTop - 43, 7.3, regular, grey)
-
-    // Selected reasons in a highlighted, readable panel
-    const reasons = reason.split(/\s*;\s*/).map(value => value.trim()).filter(Boolean)
-    const reasonLines = []
-    for (const item of reasons) {
-      const wrapped = wrapText(item, regular, 9.5, width - 48)
-      reasonLines.push(...wrapped)
-    }
-    const reasonPanelTop = 424
-    const lineHeight = 15
-    const reasonPanelHeight = Math.max(78, 45 + reasonLines.length * lineHeight)
-    roundedPanel(margin, reasonPanelTop, width, reasonPanelHeight, light, border)
-    page.drawRectangle({ x: margin, y: reasonPanelTop - 29, width, height: 29, color: navy })
-    drawText("REASON FOR OVERSTAY", margin + 14, reasonPanelTop - 19, 8.5, bold, white)
-    let reasonY = reasonPanelTop - 47
-    for (const line of reasonLines) {
-      page.drawCircle({ x: margin + 17, y: reasonY + 3, size: 2, color: blue })
-      drawText(line, margin + 27, reasonY, 9.5, regular, navy)
-      reasonY -= lineHeight
+    // Informational notice copied from the supplied reference design.
+    page.drawRectangle({ x: margin, y: 555, width, height: 108, color: paleBlue, borderColor: paleBlue, borderWidth: 0.5 })
+    page.drawCircle({ x: margin + 24, y: 635, size: 13, color: rgb(0.02, 0.43, 0.82) })
+    text("i", margin + 21.4, 630, 15, bold, white)
+    const notice = "Trading Standards state that sales should normally last no more than two hours. When the visit lasts more than two hours we are required to record this and the reasons why this has occurred. As this has occurred in this sales visit, we would ask for you to confirm that the reasons for this overstay are correct.\n\nIf you do not agree with the reason our representative has given you for the overstay, please contact us. We are bound at all times by Trading Standards, and further details can be found at www.consumeradvice.scot"
+    let noticeY = 638
+    for (const paragraph of notice.split("\\n\\n")) {
+      noticeY = drawWrapped(paragraph, margin + 48, noticeY, 8.7, regular, deepNavy, width - 62, 11.5) - 6
     }
 
-    // Footer with company contact details and page rule
-    const footerY = 43
-    page.drawLine({ start: { x: margin, y: footerY + 21 }, end: { x: right, y: footerY + 21 }, thickness: 0.8, color: border })
-    drawText("HOMESHIELD SCOTLAND LTD", margin, footerY + 7, 7.2, bold, navy)
-    drawText("info@homeshield.ltd  |  0800 6 118 118", right - 180, footerY + 7, 7.2, regular, blue)
-    drawText("Overstay visit record", margin, footerY - 8, 6.5, regular, grey)
+    section("Customer Details", 540, 124)
+    row(512, "Name:", appointment.name)
+    row(481, "Address:", [appointment.address, appointment.postcode].filter(Boolean).join(", "))
+    row(450, "Phone Number:", appointment.phone_number_1)
+    row(419, "Email:", appointment.email_address, 31)
+
+    section("Sales Representative", 400, 59)
+    row(372, "Representative’s Name:", appointment.rep_allocated, 31)
+
+    section("Reason for Overlong Sales Visit", 330, 70)
+    row(302, "Reason for Overlong Sales Visit:", selectedReasons.join(", "), 42)
+
+    section("Visit Date", 218, 59)
+    row(190, "Date:", formatDate(appointment.appointment_date), 31)
+
+    // Compact visit duration is included as an additional record while keeping the reference's structure.
+    text("VISIT DURATION", margin, 134, 7.5, bold, rgb(0.02, 0.43, 0.82))
+    text(`${Math.floor(durationMinutes / 60)} hours ${durationMinutes % 60} minutes`, margin, 119, 10, bold, deepNavy)
+    text(`Arrival: ${formatDate(appointment.rep_arrival_time)}   •   Form generated: ${formatDate(resultAt.toISOString())}`, margin, 104, 7.2, regular, grey)
+
+    page.drawLine({ start: { x: margin, y: 78 }, end: { x: right, y: 78 }, thickness: 1, color: blue })
+    // Three-column contact footer, like the reference.
+    text("515 Lawmoor Street, Dixon Blazes", margin + 24, 59, 7.4, regular, deepNavy)
+    text("Industrial Estate, Glasgow G5 0TT", margin + 24, 48, 7.4, regular, deepNavy)
+    page.drawCircle({ x: margin + 7, y: 57, size: 5, color: deepNavy })
+    page.drawLine({ start: { x: 282, y: 42 }, end: { x: 282, y: 69 }, thickness: 0.7, color: border })
+    text("0800 6 118 118", 296, 56, 8, regular, deepNavy)
+    page.drawLine({ start: { x: 420, y: 42 }, end: { x: 420, y: 69 }, thickness: 0.7, color: border })
+    text("info@homeshield.ltd", 433, 56, 7.4, regular, deepNavy)
 
     const bytes = await pdf.save()
     const storagePath = `${appointmentRowId}/${Date.now()}-overstay-form.pdf`
