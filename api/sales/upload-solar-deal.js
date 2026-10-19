@@ -333,29 +333,9 @@ export default async function handler(req, res) {
       }
     }
 
-    // Attach the overstay PDF to the Pipedrive deal as a real file as well as populating its field with a durable CRM link.
-    let overstayPipedriveFileId = null
-    if (overstayFormPath) {
-      const { data: overstayFile, error: overstayDownloadError } = await supabase.storage
-        .from("overstay-forms")
-        .download(overstayFormPath)
-      if (overstayDownloadError || !overstayFile) {
-        throw new Error(`Unable to download the saved overstay form: ${overstayDownloadError?.message || "File not found"}`)
-      }
-      if (overstayFile.size > 10 * 1024 * 1024) throw new Error("The overstay form exceeds the 10 MB upload limit.")
-      const fileForm = new FormData()
-      fileForm.append("file", overstayFile, `Overstay-Form-${appointment.contract_number}.pdf`)
-      fileForm.append("deal_id", String(pipedriveDeal?.id || pipedriveDeal?.deal?.id || existingSupabaseDeal?.pipedrive_deal_id || ""))
-      const fileResponse = await fetch(`https://api.pipedrive.com/v1/files?api_token=${encodeURIComponent(pipedriveToken)}`, {
-        method: "POST",
-        body: fileForm,
-      })
-      const filePayload = await fileResponse.json().catch(() => ({}))
-      if (!fileResponse.ok || filePayload.success === false || !filePayload.data?.id) {
-        throw new Error(filePayload.error || filePayload.error_info || `Pipedrive overstay file upload failed (HTTP ${fileResponse.status}).`)
-      }
-      overstayPipedriveFileId = filePayload.data.id
-    }
+    // The Overstay Form field above contains a secure CRM link to the Supabase-stored PDF.
+    // Do not upload the PDF as a Pipedrive file attachment.
+    const overstayPipedriveFileId = null
 
     const pipedriveDealId = Number(pipedriveDeal?.id || pipedriveDeal?.deal?.id || existingSupabaseDeal?.pipedrive_deal_id)
     if (!Number.isFinite(pipedriveDealId) || pipedriveDealId <= 0) {
