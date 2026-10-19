@@ -130,6 +130,7 @@ export default async function handler(req, res) {
       note: "Existing links to CRM deals were preserved; no new EPVS applications were submitted.",
     })
   } catch (error) {
+    await logEpvsImport(supabase, "failed", 500, error instanceof Error ? error.message : String(error))
     console.error("EPVS import failed:", error)
     return json(res, 500, { error: "Unable to import EPVS applications.", detail: error instanceof Error ? error.message : String(error) })
   }
