@@ -181,19 +181,19 @@ export default async function handler(req, res) {
     row(450, "Phone Number:", appointment.phone_number_1)
     row(419, "Email:", appointment.email_address, 31)
 
-    section("Sales Representative", 400, 59)
-    row(372, "Representative’s Name:", appointment.rep_allocated, 31)
+    section("Sales Representative", 380, 59)
+    row(352, "Representative’s Name:", appointment.rep_allocated, 31)
 
-    section("Reason for Overlong Sales Visit", 330, 70)
-    row(302, "Reason for Overlong Sales Visit:", selectedReasons.join(", "), 42)
+    section("Reason for Overlong Sales Visit", 310, 70)
+    row(282, "Reason for Overlong Sales Visit:", selectedReasons.join(", "), 42)
 
-    section("Visit Date", 218, 59)
-    row(190, "Date:", formatDate(appointment.appointment_date), 31)
+    section("Visit Date", 230, 59)
+    row(202, "Date:", formatDate(appointment.appointment_date), 31)
 
     // Compact visit duration is included as an additional record while keeping the reference's structure.
-    text("VISIT DURATION", margin, 134, 7.5, bold, rgb(0.02, 0.43, 0.82))
-    text(`${Math.floor(durationMinutes / 60)} hours ${durationMinutes % 60} minutes`, margin, 119, 10, bold, deepNavy)
-    text(`Arrival: ${formatDate(appointment.rep_arrival_time)}   •   Form generated: ${formatDate(resultAt.toISOString())}`, margin, 104, 7.2, regular, grey)
+    text("VISIT DURATION", margin, 145, 7.5, bold, rgb(0.02, 0.43, 0.82))
+    text(`${Math.floor(durationMinutes / 60)} hours ${durationMinutes % 60} minutes`, margin, 130, 10, bold, deepNavy)
+    text(`Arrival: ${formatDate(appointment.rep_arrival_time)}   •   Form generated: ${formatDate(resultAt.toISOString())}`, margin, 115, 7.2, regular, grey)
 
     page.drawLine({ start: { x: margin, y: 78 }, end: { x: right, y: 78 }, thickness: 1, color: blue })
     // Three-column contact footer, like the reference.
