@@ -360,6 +360,23 @@ function DataDashboard() {
       )
       if (typeError) throw typeError
 
+      const { data: handoverData, error: handoverError } = await supabase.rpc(
+        "get_monthly_handover_lead_counts",
+        {
+          start_date: start.toISOString(),
+          end_date: end.toISOString(),
+          selected_lead_source: selectedLeadSource || null,
+        }
+      )
+      if (handoverError) throw handoverError
+
+      const handoverLookup = new Map(
+        (handoverData || []).map((row) => [
+          String(row.month).slice(0, 10),
+          Number(row.cps_h_count || 0),
+        ])
+      )
+
       const availableTypes = [...new Set((typeData || []).map((row) => String(row.lead_type || "(Empty / NULL)")))]
       setTypeNames(availableTypes)
       const typeLookup = new Map()
@@ -372,6 +389,7 @@ function DataDashboard() {
       const complete = buildMonthRange(start, end)
         .map((row) => ({
           ...row,
+          cps_h_count: handoverLookup.get(row.month) || 0,
           ...Object.fromEntries(availableTypes.map((type) => [type, typeLookup.get(row.month)?.[type] || 0])),
         }))
         .slice(0, -1)
