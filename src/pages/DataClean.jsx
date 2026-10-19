@@ -62,35 +62,34 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
       {
         let query
 
-        if (reportId === "missing-result") {
+        if (reportId === "cps-review") {
+          const fields = "appointment_row_id,name,phone_number_1,email_address,postcode,address,appointment_date,product,job_type,branch,rep_allocated,cps_h,cps_c,cps_p,cps_s,is_pickup,result"
+          const from = "2026-01-01T00:00:00"
+          const to = "2027-01-01T00:00:00"
+          const [wrong, sold, pm] = await Promise.all([
+            supabase.from("appointments").select(fields).eq("cps_p", false).eq("cps_s", true).eq("is_pickup", false).gte("appointment_date", from).lt("appointment_date", to).order("appointment_date", { ascending: false }),
+            supabase.from("appointments").select(fields).ilike("result", "SOLD").or("cps_s.is.null,cps_s.eq.false").gte("appointment_date", from).lt("appointment_date", to).order("appointment_date", { ascending: false }),
+            supabase.from("appointments").select(fields).ilike("result", "%PM%").or("is_pickup.is.null,is_pickup.eq.false").gte("appointment_date", from).lt("appointment_date", to).order("appointment_date", { ascending: false }).range(0, 999),
+          ])
+          for (const result of [wrong, sold, pm]) if (result.error) throw result.error
+          const merged = new Map()
+          const add = (row, issue) => {
+            const key = row.appointment_row_id
+            if (!key) return
+            const current = merged.get(key) || { ...row, data_clean_issue: [] }
+            if (!current.data_clean_issue.includes(issue)) current.data_clean_issue.push(issue)
+            merged.set(key, { ...current, ...row, data_clean_issue: current.data_clean_issue })
+          }
+          ;(wrong.data || []).forEach(row => add(row, "Wrong CPS"))
+          ;(sold.data || []).forEach(row => add(row, "Sold without CPS-S"))
+          ;(pm.data || []).filter(row => hcps(row) !== "1110").forEach(row => add(row, "PM / HCPS"))
+          allRows = [...merged.values()].map(row => ({ ...row, data_clean_issue: row.data_clean_issue.join(" · ") })).sort((a, b) => String(b.appointment_date || "").localeCompare(String(a.appointment_date || "")))
+          setHasNextPage(false)
+        } else if (reportId === "missing-result") {
           query = supabase
             .from("appointments")
             .select("appointment_row_id,name,phone_number_1,email_address,postcode,address,appointment_date,product,job_type,branch,rep_allocated,result")
             .or('result.is.null,result.eq.""')
-            .order("appointment_date", { ascending: false, nullsFirst: false })
-        } else if (reportId === "wrong-cps") {
-          query = supabase
-            .from("appointments")
-            .select("appointment_row_id,name,phone_number_1,email_address,postcode,address,appointment_date,product,job_type,branch,rep_allocated,cps_h,cps_c,cps_p,cps_s,is_pickup,result")
-            .eq("cps_p", false)
-            .eq("cps_s", true)
-            .eq("is_pickup", false)
-            .order("appointment_date", { ascending: false, nullsFirst: false })
-        } else if (reportId === "sold-missing-cps-s") {
-          query = supabase
-            .from("appointments")
-            .select("appointment_row_id,name,phone_number_1,email_address,postcode,address,appointment_date,product,job_type,branch,rep_allocated,cps_h,cps_c,cps_p,cps_s,is_pickup,result")
-            .ilike("result", "SOLD")
-            .or("cps_s.is.null,cps_s.eq.false")
-            .gte("appointment_date", "2026-01-01T00:00:00")
-            .lt("appointment_date", "2027-01-01T00:00:00")
-            .order("appointment_date", { ascending: false, nullsFirst: false })
-        } else if (reportId === "pm-pickup-hcps") {
-          query = supabase
-            .from("appointments")
-            .select("appointment_row_id,name,phone_number_1,email_address,postcode,address,appointment_date,product,job_type,branch,rep_allocated,cps_h,cps_c,cps_p,cps_s,is_pickup,result")
-            .ilike("result", "%PM%")
-            .or("is_pickup.is.null,is_pickup.eq.false")
             .order("appointment_date", { ascending: false, nullsFirst: false })
         } else if (reportId === "missing-lead-type") {
           query = supabase
@@ -102,7 +101,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
           throw new Error("Unknown Data Clean report.")
         }
 
-        if (["missing-result", "wrong-cps", "pm-pickup-hcps"].includes(reportId)) {
+        if (["missing-result"].includes(reportId)) {
           query = query.gte("appointment_date", "2026-01-01T00:00:00").lt("appointment_date", "2027-01-01T00:00:00")
         }
 
@@ -172,7 +171,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
         row.email_address,
         row.phone_number_1,
         row.appointment_date,
-        ["wrong-cps", "pm-pickup-hcps", "sold-missing-cps-s"].includes(activeReport) ? hcps(row) : "",
+        ["wrong-cps", "pm-pickup-hcps", "sold-missing-cps-s", "cps-review"].includes(activeReport) ? hcps(row) : "",
         row.lead_source,
         row.lead_type,
       ]
@@ -306,8 +305,8 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                         {activeReport === "missing-lead-type" ? (
                           <><th>Lead</th><th>Received</th><th>Postcode</th><th>Lead Source</th><th>Phone</th><th>Email</th><th>Assign Lead Type</th><th></th></>
                         ) : (
-                          <><th>Customer</th><th>Appointment</th><th>Postcode</th>{activeReport !== "pm-pickup-hcps" && <th>Product</th>}<th>Job Type</th><th>Branch</th><th>Sales Rep</th>{activeReport !== "pm-pickup-hcps" && <><th>Phone</th><th>Email</th></>}
-                          {["wrong-cps", "pm-pickup-hcps", "sold-missing-cps-s"].includes(activeReport) && <><th>Result</th><th>HCPS</th><th>Pickup</th>{activeReport === "pm-pickup-hcps" && <th>Update HCPS</th>}</>}
+                          <><th>Customer</th><th>Appointment</th><th>Postcode</th>{activeReport !== "pm-pickup-hcps" && <th>Product</th>}{activeReport === "cps-review" && <th>Issue</th>}<th>Job Type</th><th>Branch</th><th>Sales Rep</th>{activeReport !== "pm-pickup-hcps" && <><th>Phone</th><th>Email</th></>}
+                          {["wrong-cps", "pm-pickup-hcps", "sold-missing-cps-s", "cps-review"].includes(activeReport) && <><th>Result</th><th>HCPS</th><th>Pickup</th>{(activeReport === "pm-pickup-hcps" || (activeReport === "cps-review" && String(row.data_clean_issue || "").includes("PM / HCPS"))) && <th>Update HCPS</th>}</>}
                           <th></th></>
                         )}
                       </tr>
@@ -342,12 +341,12 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                               <td><strong>{row.name || "Unnamed customer"}</strong>{row.appointment_row_id && <small>{row.appointment_row_id}</small>}</td>
                               <td>{formatDate(row.appointment_date)}</td>
                               <td>{row.postcode || "—"}</td>
-                              {activeReport !== "pm-pickup-hcps" && <td>{row.product || "—"}</td>}
+                              {activeReport !== "pm-pickup-hcps" && <td>{row.product || "—"}</td>}{activeReport === "cps-review" && <td>{row.data_clean_issue || "—"}</td>}
                               <td>{row.job_type || "—"}</td>
                               <td>{row.branch || "—"}</td>
                               <td>{row.rep_allocated || "—"}</td>
                               {activeReport !== "pm-pickup-hcps" && <><td>{row.phone_number_1 || "—"}</td><td>{row.email_address || "—"}</td></>}
-                              {["wrong-cps", "pm-pickup-hcps", "sold-missing-cps-s"].includes(activeReport) && <><td>{row.result || "—"}</td><td><span className="data-clean-badge warning">{hcps(row)}</span></td><td><span className={`data-clean-badge ${row.is_pickup === true ? "danger" : "warning"}`}>{row.is_pickup === true ? "TRUE" : row.is_pickup === false ? "FALSE" : "NULL"}</span></td>{activeReport === "pm-pickup-hcps" && <td><div style={{display:"flex",gap:5,alignItems:"center"}}><input aria-label={`HCPS for ${row.name || row.appointment_row_id}`} value={hcpsEdits[row.appointment_row_id] ?? hcps(row)} onChange={event => setHcpsEdits(current => ({...current,[row.appointment_row_id]:event.target.value.replace(/[^01]/g,"").slice(0,4)}))} maxLength={4} inputMode="numeric" style={{width:58,padding:"6px 7px",border:"1px solid #d7dee7",borderRadius:6,fontSize:11}}/><button type="button" className="data-clean-open" disabled={!/^[01]{4}$/.test(String(hcpsEdits[row.appointment_row_id] ?? hcps(row))) || !!savingLeadIds[row.appointment_row_id]} onClick={() => saveHcps(row)}>{savingLeadIds[row.appointment_row_id] ? "Saving…" : "Save"}</button></div>{saveMessages[row.appointment_row_id] && <small style={{color:"#b91c1c"}}>{saveMessages[row.appointment_row_id]}</small>}</td>}</>}
+                              {["wrong-cps", "pm-pickup-hcps", "sold-missing-cps-s", "cps-review"].includes(activeReport) && <><td>{row.result || "—"}</td><td><span className="data-clean-badge warning">{hcps(row)}</span></td><td><span className={`data-clean-badge ${row.is_pickup === true ? "danger" : "warning"}`}>{row.is_pickup === true ? "TRUE" : row.is_pickup === false ? "FALSE" : "NULL"}</span></td>{(activeReport === "pm-pickup-hcps" || (activeReport === "cps-review" && String(row.data_clean_issue || "").includes("PM / HCPS"))) && <td><div style={{display:"flex",gap:5,alignItems:"center"}}><input aria-label={`HCPS for ${row.name || row.appointment_row_id}`} value={hcpsEdits[row.appointment_row_id] ?? hcps(row)} onChange={event => setHcpsEdits(current => ({...current,[row.appointment_row_id]:event.target.value.replace(/[^01]/g,"").slice(0,4)}))} maxLength={4} inputMode="numeric" style={{width:58,padding:"6px 7px",border:"1px solid #d7dee7",borderRadius:6,fontSize:11}}/><button type="button" className="data-clean-open" disabled={!/^[01]{4}$/.test(String(hcpsEdits[row.appointment_row_id] ?? hcps(row))) || !!savingLeadIds[row.appointment_row_id]} onClick={() => saveHcps(row)}>{savingLeadIds[row.appointment_row_id] ? "Saving…" : "Save"}</button></div>{saveMessages[row.appointment_row_id] && <small style={{color:"#b91c1c"}}>{saveMessages[row.appointment_row_id]}</small>}</td>}</>}
                               <td><button type="button" className="data-clean-open" onClick={() => openRow(row)}>Open</button></td>
                             </>
                           )}
