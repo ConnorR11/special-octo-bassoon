@@ -122,6 +122,7 @@ export default async function handler(req, res) {
       imported += data?.length || batch.length
     }
 
+    await logEpvsImport(supabase, "success", 200, null, { fetchedFromEpvs: responseData.data.length, importedOrUpdated: imported, skippedInvalidRecords: responseData.data.length - mapped.length })
     return json(res, 200, {
       status: "success",
       fetchedFromEpvs: responseData.data.length,
