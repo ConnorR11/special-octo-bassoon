@@ -51,8 +51,6 @@ export default function EPVSApplications() {
           const { data, error } = await supabase.from("deals")
             .select("id,contract_number,customer_name,phone,email,address,postcode,product,deal_value,sale_date,status,pipedrive_stage")
             .ilike("product", "%solar%")
-            .neq("pipedrive_stage", "Customer Cancelled")
-            .neq("pipedrive_stage", "Decline")
             .order("sale_date", { ascending: false, nullsFirst: false })
             .range(from, from + 999)
           if (error) throw error
@@ -210,7 +208,7 @@ export default function EPVSApplications() {
       </div>
       <div style={{ overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
         <thead><tr>{["Contract number","Customer","Address / postcode","Deal stage","EPVS status","Sale date","Deal value"].map(title => <th key={title} style={{ padding: "11px 10px", background: "#fff7f3", borderBottom: "1px solid #eaecf0", textAlign: "left", color: "#8b3b20", whiteSpace: "nowrap" }}>{title}</th>)}</tr></thead>
-        <tbody>{solarLoading ? <tr><td colSpan={6} style={{ padding: 28, textAlign: "center", color: "#667085" }}>Loading Solar deals…</td></tr> : (() => {
+        <tbody>{solarLoading ? <tr><td colSpan={7} style={{ padding: 28, textAlign: "center", color: "#667085" }}>Loading Solar deals…</td></tr> : (() => {
           const term = solarSearch.trim().toLowerCase()
           const filtered = solarDeals.filter(deal => !term || [deal.contract_number, deal.customer_name, deal.postcode, deal.address, deal.pipedrive_stage].some(value => String(value || "").toLowerCase().includes(term)))
           return filtered.length ? filtered.map(deal => <tr key={deal.id}>
