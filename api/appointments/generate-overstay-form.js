@@ -115,43 +115,25 @@ export default async function handler(req, res) {
     const page = pdf.addPage([595.28, 841.89])
     const regular = await pdf.embedFont(StandardFonts.Helvetica)
     const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
-    const navy = rgb(0.015, 0.20, 0.34)
     const deepNavy = rgb(0.0, 0.16, 0.29)
     const blue = rgb(0.02, 0.43, 0.96)
     const paleBlue = rgb(0.91, 0.95, 0.98)
     const border = rgb(0.73, 0.84, 0.92)
     const grey = rgb(0.30, 0.37, 0.44)
     const white = rgb(1, 1, 1)
-    const margin = 34
+    const margin = 32
     const width = page.getWidth() - margin * 2
     const right = page.getWidth() - margin
-    const text = (value, x, y, size, font = regular, color = navy) => page.drawText(String(value ?? ""), { x, y, size, font, color })
-    const drawWrapped = (value, x, y, size, font, color, maxWidth, lineHeight = size * 1.35) => {
-      let baseline = y
-      for (const line of wrapText(value || "—", font, size, maxWidth)) {
-        text(line, x, baseline, size, font, color)
-        baseline -= lineHeight
-      }
-      return baseline
-    }
-    const section = (title, top, height) => {
-      page.drawRectangle({ x: margin, y: top - height, width, height, color: white, borderColor: border, borderWidth: 0.8 })
-      page.drawRectangle({ x: margin, y: top - 28, width, height: 28, color: deepNavy })
-      text(title.toUpperCase(), margin + 25, top - 18, 10, bold, white)
-    }
-    const row = (top, label, value, height = 31) => {
-      page.drawRectangle({ x: margin, y: top - height, width: 196, height, color: paleBlue })
-      page.drawLine({ start: { x: margin, y: top - height }, end: { x: right, y: top - height }, thickness: 0.65, color: border })
-      page.drawLine({ start: { x: margin + 196, y: top }, end: { x: margin + 196, y: top - height }, thickness: 0.65, color: border })
-      text(label, margin + 11, top - height / 2 - 3, 9, bold, deepNavy)
-      drawWrapped(value || "—", margin + 208, top - height / 2 - 3, 9.5, regular, rgb(0.20, 0.22, 0.24), width - 220, 11)
+    const text = (value, x, y, size, font = regular, color = deepNavy) => page.drawText(String(value ?? ""), { x, y, size, font, color })
+    const linesFor = (value, font, size, maxWidth) => wrapText(value || "—", font, size, maxWidth)
+    const drawLines = (lines, x, y, size, font, color, lineHeight = size * 1.3) => {
+      lines.forEach((line, index) => text(line, x, y - index * lineHeight, size, font, color))
     }
 
     page.drawRectangle({ x: 0, y: 0, width: page.getWidth(), height: page.getHeight(), color: white })
-    page.drawRectangle({ x: 0, y: page.getHeight() - 106, width: page.getWidth(), height: 106, color: deepNavy })
-    page.drawRectangle({ x: 0, y: page.getHeight() - 108, width: page.getWidth(), height: 2, color: blue })
+    page.drawRectangle({ x: 0, y: page.getHeight() - 100, width: page.getWidth(), height: 100, color: deepNavy })
+    page.drawRectangle({ x: 0, y: page.getHeight() - 102, width: page.getWidth(), height: 2, color: blue })
 
-    // Embed the actual HomeShield logo from the app's public assets.
     let logoEmbedded = false
     try {
       const host = req.headers?.["x-forwarded-host"] || req.headers?.host
@@ -161,67 +143,103 @@ export default async function handler(req, res) {
         if (logoResponse.ok) {
           const logoBytes = new Uint8Array(await logoResponse.arrayBuffer())
           const logoImage = await pdf.embedPng(logoBytes)
-          const logoDims = logoImage.scale(Math.min(0.95, 68 / logoImage.width))
-          page.drawImage(logoImage, { x: margin, y: page.getHeight() - 96, width: logoDims.width, height: logoDims.height })
+          const logoScale = Math.min(0.72, 76 / logoImage.width, 70 / logoImage.height)
+          const logoDims = logoImage.scale(logoScale)
+          page.drawImage(logoImage, { x: margin, y: page.getHeight() - 88, width: logoDims.width, height: logoDims.height })
           logoEmbedded = true
         }
       }
     } catch (logoError) {
       console.error("Unable to load HomeShield logo for overstay PDF:", logoError?.message)
     }
-    const brandX = logoEmbedded ? margin + 82 : margin
-    text("HOMESHIELD SCOTLAND LTD", brandX, page.getHeight() - 49, 15, bold, white)
-    text("Enhancing Homes Across Scotland", brandX, page.getHeight() - 70, 11, regular, white)
+    const brandX = logoEmbedded ? margin + 90 : margin
+    text("HOMESHIELD SCOTLAND LTD", brandX, 800, 14, bold, white)
+    text("Enhancing Homes Across Scotland", brandX, 782, 10, regular, white)
 
-    text("OVERSTAY", margin, 700, 29, bold, deepNavy)
-    text("FORM", margin + 151, 700, 29, regular, deepNavy)
-    page.drawRectangle({ x: margin, y: 682, width: 70, height: 3, color: blue })
+    text("OVERSTAY", margin, 752, 26, bold, deepNavy)
+    text("FORM", margin + 146, 752, 26, regular, deepNavy)
+    page.drawRectangle({ x: margin, y: 736, width: 66, height: 3, color: blue })
 
-    page.drawRectangle({ x: margin, y: 555, width, height: 108, color: paleBlue, borderColor: paleBlue, borderWidth: 0.5 })
-    page.drawCircle({ x: margin + 24, y: 635, size: 13, color: rgb(0.02, 0.43, 0.82) })
-    text("i", margin + 21.4, 630, 15, bold, white)
+    // Informational notice panel, with measured wrapping to avoid crowding.
     const notice = "Trading Standards state that sales should normally last no more than two hours. When the visit lasts more than two hours we are required to record this and the reasons why this has occurred. As this has occurred in this sales visit, we would ask for you to confirm that the reasons for this overstay are correct.\n\nIf you do not agree with the reason our representative has given you for the overstay, please contact us. We are bound at all times by Trading Standards, and further details can be found at www.consumeradvice.scot"
-    let noticeY = 638
-    for (const paragraph of notice.split("\\n\\n")) {
-      noticeY = drawWrapped(paragraph, margin + 48, noticeY, 8.7, regular, deepNavy, width - 62, 11.5) - 6
+    const noticeParagraphs = notice.split("\n\n")
+    const noticeLines = noticeParagraphs.flatMap((paragraph, index) => [...(index ? [""] : []), ...linesFor(paragraph, regular, 7.8, width - 70)])
+    const noticeHeight = Math.max(83, 20 + noticeLines.length * 10)
+    const noticeTop = 718
+    page.drawRectangle({ x: margin, y: noticeTop - noticeHeight, width, height: noticeHeight, color: paleBlue, borderColor: paleBlue, borderWidth: 0.5 })
+    page.drawCircle({ x: margin + 23, y: noticeTop - 24, size: 12, color: rgb(0.02, 0.43, 0.82) })
+    text("i", margin + 20.5, noticeTop - 29, 14, bold, white)
+    drawLines(noticeLines.filter(line => line !== ""), margin + 43, noticeTop - 19, 7.8, regular, deepNavy, 10)
+    let y = noticeTop - noticeHeight - 13
+
+    const drawSection = (title, rows) => {
+      const labelW = 185
+      const valueW = width - labelW - 16
+      const rowLayouts = rows.map(item => {
+        const labelLines = linesFor(item.label, bold, 8.2, labelW - 22)
+        const valueLines = linesFor(item.value, regular, 8.7, valueW - 20)
+        const lineCount = Math.max(labelLines.length, valueLines.length)
+        return { ...item, labelLines, valueLines, height: Math.max(27, 12 + lineCount * 10.5) }
+      })
+      const headerH = 25
+      const totalH = headerH + rowLayouts.reduce((sum, item) => sum + item.height, 0)
+      const top = y
+      page.drawRectangle({ x: margin, y: top - totalH, width, height: totalH, color: white, borderColor, borderWidth: 0.75 })
+      page.drawRectangle({ x: margin, y: top - headerH, width, height: headerH, color: deepNavy })
+      text(title.toUpperCase(), margin + 16, top - 16, 9.2, bold, white)
+      let rowTop = top - headerH
+      for (const item of rowLayouts) {
+        const bottom = rowTop - item.height
+        page.drawRectangle({ x: margin, y: bottom, width: labelW, height: item.height, color: paleBlue })
+        page.drawLine({ start: { x: margin, y: bottom }, end: { x: right, y: bottom }, thickness: 0.55, color: border })
+        page.drawLine({ start: { x: margin + labelW, y: rowTop }, end: { x: margin + labelW, y: bottom }, thickness: 0.55, color: border })
+        const labelY = rowTop - (item.height - item.labelLines.length * 10.5) / 2 - 7
+        const valueY = rowTop - (item.height - item.valueLines.length * 10.5) / 2 - 7
+        drawLines(item.labelLines, margin + 10, labelY, 8.2, bold, deepNavy, 10.5)
+        drawLines(item.valueLines, margin + labelW + 11, valueY, 8.7, regular, rgb(0.20, 0.22, 0.24), 10.5)
+        rowTop = bottom
+      }
+      y = top - totalH - 10
     }
 
-    section("Customer Details", 540, 124)
-    row(512, "Name:", appointment.name)
-    row(481, "Address:", [appointment.address, appointment.postcode].filter(Boolean).join(", "))
-    row(450, "Phone Number:", appointment.phone_number_1)
-    row(419, "Email:", appointment.email_address, 31)
+    drawSection("Customer Details", [
+      { label: "Name:", value: appointment.name },
+      { label: "Address:", value: [appointment.address, appointment.postcode].filter(Boolean).join(", ") },
+      { label: "Phone Number:", value: appointment.phone_number_1 },
+      { label: "Email:", value: appointment.email_address },
+    ])
+    drawSection("Sales Representative", [
+      { label: "Representative’s Name:", value: appointment.rep_allocated },
+    ])
+    drawSection("Reason for Overlong Sales Visit", [
+      { label: "Reason for Overlong Sales Visit:", value: selectedReasons.join(", ") },
+    ])
+    drawSection("Visit Date", [
+      { label: "Date:", value: formatDate(appointment.appointment_date) },
+    ])
 
-    section("Sales Representative", 400, 59)
-    row(372, "Representative’s Name:", appointment.rep_allocated, 31)
+    // Reserve a consistent footer zone. If the selected reasons are unusually long,
+    // the data sections will be compacted by wrapping within their own rows.
+    const durationY = Math.max(y - 1, 104)
+    text("VISIT DURATION", margin, durationY, 7.2, bold, blue)
+    text(`${Math.floor(durationMinutes / 60)} hours ${durationMinutes % 60} minutes`, margin, durationY - 12, 9, bold, deepNavy)
+    text(`Arrival: ${formatDate(appointment.rep_arrival_time)}   •   Form generated: ${formatDate(resultAt.toISOString())}`, margin, durationY - 24, 6.5, regular, grey)
 
-    section("Reason for Overlong Sales Visit", 330, 70)
-    row(302, "Reason for Overlong Sales Visit:", selectedReasons.join(", "), 42)
-
-    section("Visit Date", 218, 59)
-    row(202, "Date:", formatDate(appointment.appointment_date), 31)
-
-    text("VISIT DURATION", margin, 145, 7.5, bold, rgb(0.02, 0.43, 0.82))
-    text(`${Math.floor(durationMinutes / 60)} hours ${durationMinutes % 60} minutes`, margin, 130, 10, bold, deepNavy)
-    text(`Arrival: ${formatDate(appointment.rep_arrival_time)}   •   Form generated: ${formatDate(resultAt.toISOString())}`, margin, 115, 7.2, regular, grey)
-
-    page.drawLine({ start: { x: margin, y: 78 }, end: { x: right, y: 78 }, thickness: 1, color: blue })
-    // Address icon
-    page.drawCircle({ x: margin + 5, y: 57, size: 5, color: deepNavy })
-    page.drawSvgPath("M 0 0 C -3 4 -5 7 -5 10 A 5 5 0 1 0 5 10 C 5 7 3 4 0 0 Z", { x: margin + 5, y: 48, scale: 0.8, color: deepNavy })
-    text("515 Lawmoor Street, Dixon Blazes", margin + 24, 59, 7.4, regular, deepNavy)
-    text("Industrial Estate, Glasgow G5 0TT", margin + 24, 48, 7.4, regular, deepNavy)
-    page.drawLine({ start: { x: 282, y: 42 }, end: { x: 282, y: 69 }, thickness: 0.7, color: border })
-    // Phone icon: handset approximation from vector strokes
-    page.drawLine({ start: { x: 292, y: 62 }, end: { x: 298, y: 56 }, thickness: 3, color: deepNavy })
-    page.drawLine({ start: { x: 298, y: 56 }, end: { x: 304, y: 62 }, thickness: 3, color: deepNavy })
-    text("0800 6 118 118", 309, 56, 8, regular, deepNavy)
-    page.drawLine({ start: { x: 420, y: 42 }, end: { x: 420, y: 69 }, thickness: 0.7, color: border })
-    // Envelope icon
-    page.drawRectangle({ x: 429, y: 51, width: 13, height: 9, borderColor: deepNavy, borderWidth: 1.5 })
-    page.drawLine({ start: { x: 429, y: 60 }, end: { x: 435.5, y: 55 }, thickness: 1, color: deepNavy })
-    page.drawLine({ start: { x: 442, y: 60 }, end: { x: 435.5, y: 55 }, thickness: 1, color: deepNavy })
-    text("info@homeshield.ltd", 447, 56, 7.1, regular, deepNavy)
+    page.drawLine({ start: { x: margin, y: 55 }, end: { x: right, y: 55 }, thickness: 1, color: blue })
+    // Footer address, telephone and email icons.
+    page.drawCircle({ x: margin + 5, y: 34, size: 4, color: deepNavy })
+    page.drawLine({ start: { x: margin + 5, y: 29 }, end: { x: margin + 5, y: 23 }, thickness: 1.5, color: deepNavy })
+    text("515 Lawmoor Street, Dixon Blazes", margin + 18, 36, 6.5, regular, deepNavy)
+    text("Industrial Estate, Glasgow G5 0TT", margin + 18, 27, 6.5, regular, deepNavy)
+    page.drawLine({ start: { x: 282, y: 21 }, end: { x: 282, y: 44 }, thickness: 0.6, color: border })
+    page.drawLine({ start: { x: 291, y: 37 }, end: { x: 296, y: 31 }, thickness: 2, color: deepNavy })
+    page.drawLine({ start: { x: 296, y: 31 }, end: { x: 301, y: 37 }, thickness: 2, color: deepNavy })
+    text("0800 6 118 118", 306, 31, 7, regular, deepNavy)
+    page.drawLine({ start: { x: 420, y: 21 }, end: { x: 420, y: 44 }, thickness: 0.6, color: border })
+    page.drawRectangle({ x: 429, y: 28, width: 12, height: 8, borderColor: deepNavy, borderWidth: 1 })
+    page.drawLine({ start: { x: 429, y: 36 }, end: { x: 435, y: 32 }, thickness: 0.8, color: deepNavy })
+    page.drawLine({ start: { x: 441, y: 36 }, end: { x: 435, y: 32 }, thickness: 0.8, color: deepNavy })
+    text("info@homeshield.ltd", 446, 31, 6.4, regular, deepNavy)
 
     const bytes = await pdf.save()
     const storagePath = `${appointmentRowId}/${Date.now()}-overstay-form.pdf`
