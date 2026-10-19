@@ -37,6 +37,7 @@ import AdminUserPreview from "./components/AdminUserPreview"
 import ContractFile from "./pages/ContractFile"
 import OverstayFormFile from "./pages/OverstayFormFile"
 import UnitAnalysis from "./pages/UnitAnalysis"
+import EPVSApplications from "./pages/EPVSApplications"
 
 const DEALS_PAGE_SIZE = 50
 const REPORTING_PAGE_SIZE = 1000
@@ -105,7 +106,7 @@ function App() {
   const effectiveUserEmail = previewUser?.email ?? session?.user?.email ?? ""
 
   useEffect(() => {
-    const restrictedPages = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, balances: 4, mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, templates: 4, "integration-logs": 4, "data-dashboard": 4, "data-clean": 4, "solar-backend": 4, "unit-analysis": 4 }
+    const restrictedPages = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, balances: 4, mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, templates: 4, "integration-logs": 4, "data-dashboard": 4, "data-clean": 4, "solar-backend": 4, "unit-analysis": 4, epvs-applications: 4 }
     const requiredPermission = restrictedPages[page]
     if (requiredPermission && effectivePermissionLevel < requiredPermission) {
       setPage("dashboard")
@@ -167,7 +168,7 @@ function App() {
   function handleDealUpdated(updatedDeal){const excludedCommissionStages=new Set(["decline","customer cancelled","returned to sales","awaiting funds","on hold","pending cancellation"]);const stage=String(updatedDeal?.pipedrive_stage??"").trim().replace(/\s+/g," ").toLowerCase();const shouldRemoveFromCommissions=excludedCommissionStages.has(stage);setContracts(current=>current.map(contract=>contract.id===updatedDeal.id?updatedDeal:contract));setAllDeals(current=>current.map(contract=>contract.id===updatedDeal.id?updatedDeal:contract));setCommissionDeals(current=>shouldRemoveFromCommissions?current.filter(contract=>contract.id!==updatedDeal.id):current.map(contract=>contract.id===updatedDeal.id?updatedDeal:contract));setSelected(updatedDeal)}
 
   function handlePageChange(newPage) {
-    const requiredPermission={"sales-performance":2,"marketing-dashboard":3,"canvasser-kpi":3,balances:4,mi:4,seo:4,reviews:4,users:4,tasks:4,templates:4,"integration-logs":4,"data-dashboard":4,"data-clean":4 ,"solar-backend":4,"unit-analysis":4}[newPage]
+    const requiredPermission={"sales-performance":2,"marketing-dashboard":3,"canvasser-kpi":3,balances:4,mi:4,seo:4,reviews:4,users:4,tasks:4,templates:4,"integration-logs":4,"data-dashboard":4,"data-clean":4 ,"solar-backend":4,"unit-analysis":4,"epvs-applications":4}[newPage]
     if(requiredPermission&&effectivePermissionLevel<requiredPermission)return
     setSelected(null);setSelectedSourcePage("contracts");setSelectedAppointment(null);setPickupAppointment(null);setPage(newPage)
     if(newPage==="contracts"){setQuery("");setStatus("all");loadContracts(0,"","all")}
@@ -243,6 +244,8 @@ function App() {
     pageContent = <SolarBackend onSelectAppointment={handleAppointmentSelect}/>
   } else if (page === "unit-analysis") {
     pageContent = <UnitAnalysis/>
+  } else if (page === "epvs-applications") {
+    pageContent = <EPVSApplications/>
   } else if (page === "sales-performance") {
     pageContent = <SalesPerformance contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setSelected={setSelected}/>
   } else if (page === "balances") {
@@ -295,7 +298,7 @@ function App() {
     <Sidebar page={page} setPage={handlePageChange} mobile={mobile} setMobile={setMobile} onSignOut={handleSignOut} permissionLevel={effectivePermissionLevel} department={previewUser?.department ?? profile?.department ?? ""}/>
     <main>
       <Header page={headerPage} setMobile={setMobile}/>
-      {error&&page!=="epvs"&&<div className="error"><b>Database error</b><span>{error}</span></div>}
+      {error&&page!=="epvs"&&page!=="epvs-applications"&&<div className="error"><b>Database error</b><span>{error}</span></div>}
       {isAdministrator&&page==="users"&&<AdminUserPreview activeUser={previewUser} onStart={user=>{setPreviewUser(user);setSelected(null);setSelectedAppointment(null);setPickupAppointment(null);setPage("appointments");window.history.pushState({},"","/appointments")}} onStop={async()=>{setPreviewUser(null);setSelectedAppointment(null);setPickupAppointment(null);setPage("users");window.history.pushState({},"","/users")}}/>}
       {isAdministrator&&previewUser&&page!=="users"&&<AdminUserPreview activeUser={previewUser} onStart={()=>{}} onStop={async()=>{setPreviewUser(null);setSelectedAppointment(null);setPickupAppointment(null);setPage("users");window.history.pushState({},"","/users")}}/>}
       {pageContent}
