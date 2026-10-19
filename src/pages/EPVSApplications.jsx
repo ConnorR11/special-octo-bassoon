@@ -88,7 +88,7 @@ export default function EPVSApplications() {
 
   React.useEffect(() => {
     async function loadValidationTrend() {
-      const { data, error } = await supabase.from("epvs_submissions").select("epvs_created_at").not("epvs_created_at", "is", null).order("epvs_created_at", { ascending: true }).range(0, 4999)
+      const { data, error } = await supabase.from("epvs_submissions").select("epvs_created_at,status").not("epvs_created_at", "is", null).order("epvs_created_at", { ascending: true }).range(0, 4999)
       if (error) { console.error("Could not load EPVS validation trend", error.message); return }
       const records = [...(data || [])]
       let from = 5000
@@ -109,14 +109,19 @@ export default function EPVSApplications() {
       const cursor = new Date(first.getFullYear(), first.getMonth(), 1)
       const last = new Date(now.getFullYear(), now.getMonth(), 1)
       while (cursor <= last) {
-        months.push({ key: cursor.getFullYear() + "-" + String(cursor.getMonth() + 1).padStart(2, "0"), label: cursor.toLocaleDateString("en-GB", { month: "short", year: "2-digit" }), count: 0 })
+        months.push({ key: cursor.getFullYear() + "-" + String(cursor.getMonth() + 1).padStart(2, "0"), label: cursor.toLocaleDateString("en-GB", { month: "short", year: "2-digit" }), count: 0, validatedCount: 0 })
         cursor.setMonth(cursor.getMonth() + 1)
       }
       const monthIndex = new Map(months.map((month, index) => [month.key, index]))
-      for (const date of dates) {
+      for (const row of records) {
+        const date = new Date(row.epvs_created_at)
+        if (Number.isNaN(date.getTime())) continue
         const key = date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0")
         const index = monthIndex.get(key)
-        if (index !== undefined) months[index].count += 1
+        if (index !== undefined) {
+          months[index].count += 1
+          if (String(row.status || "").trim().toLowerCase() === "validated") months[index].validatedCount += 1
+        }
       }
       setValidationTrend(months)
     }
@@ -235,16 +240,17 @@ export default function EPVSApplications() {
     </section> : <>
     <div style={{ background: "#fff", border: "1px solid #edf0f2", borderRadius: 10, padding: "18px 20px 14px", marginBottom: 16, boxShadow: "0 1px 3px rgba(16,24,40,.04)" }}>
       <div style={{ fontSize: 15, fontWeight: 750, color: "#182230", marginBottom: 4 }}>Total Validations</div>
-      <div style={{ color: "#667085", fontSize: 12, marginBottom: 8 }}>Applications created in EPVS Validation Hub · all time</div>
+      <div style={{ color: "#667085", fontSize: 12, marginBottom: 8 }}>Applications created in EPVS Validation Hub · all time</div><div style={{ display: "flex", gap: 18, alignItems: "center", marginBottom: 10, fontSize: 12, color: "#475467" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-block", width: 18, height: 3, background: "#ff8b6b", borderRadius: 2 }} /> Total applications</span><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-block", width: 18, height: 3, background: "#2e9d50", borderRadius: 2 }} /> Validated applications</span></div>
       <div style={{ width: "100%", overflow: "hidden" }}>
         <svg viewBox="0 0 1000 230" role="img" aria-label="Monthly EPVS applications created over all time" style={{ width: "100%", height: "auto", display: "block" }}>
           {(() => {
-            const max = Math.max(1, ...validationTrend.map(point => point.count))
+            const max = Math.max(1, ...validationTrend.flatMap(point => [point.count, point.validatedCount || 0]))
             const top = 18, bottom = 184, height = bottom - top
-            const points = validationTrend.map((point, index) => ({ ...point, x: 36 + index * (928 / Math.max(1, validationTrend.length - 1)), y: bottom - point.count / max * height }))
+            const points = validationTrend.map((point, index) => ({ ...point, x: 36 + index * (928 / Math.max(1, validationTrend.length - 1)), y: bottom - point.count / max * height, validatedY: bottom - (point.validatedCount || 0) / max * height }))
             const line = points.map((point, index) => (index ? "L " : "M ") + point.x + " " + point.y).join(" ")
+            const validatedLine = points.map((point, index) => (index ? "L " : "M ") + point.x + " " + point.validatedY).join(" ")
             const area = points.length ? line + " L " + points[points.length - 1].x + " " + bottom + " L " + points[0].x + " " + bottom + " Z" : ""
-            return <>{[0, 1, 2, 3, 4].map(tick => { const y = top + tick * height / 4; return <g key={tick}><line x1="36" y1={y} x2="964" y2={y} stroke="#e4e7ec" strokeWidth="1" /><text x="26" y={y + 4} fill="#98a2b3" fontSize="11" textAnchor="end">{Math.round(max * (4 - tick) / 4)}</text></g> })}{points.length > 0 && <><path d={area} fill="#ff8b6b" opacity=".14" /><path d={line} fill="none" stroke="#ff8b6b" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />{points.map((point, index) => <g key={point.key}><circle cx={point.x} cy={point.y} r={points.length > 36 ? 2.5 : 4} fill="#ff8b6b" stroke="#fff" strokeWidth="2"><title>{point.label}: {point.count} applications</title></circle>{(points.length <= 18 || index === 0 || index === points.length - 1 || index % Math.ceil(points.length / 12) === 0) && <text x={point.x} y="211" fontSize="11" fill="#667085" textAnchor="middle">{point.label}</text>}</g>)}</>}</>
+            return <>{[0, 1, 2, 3, 4].map(tick => { const y = top + tick * height / 4; return <g key={tick}><line x1="36" y1={y} x2="964" y2={y} stroke="#e4e7ec" strokeWidth="1" /><text x="26" y={y + 4} fill="#98a2b3" fontSize="11" textAnchor="end">{Math.round(max * (4 - tick) / 4)}</text></g> })}{points.length > 0 && <><path d={area} fill="#ff8b6b" opacity=".14" /><path d={line} fill="none" stroke="#ff8b6b" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" /><path d={validatedLine} fill="none" stroke="#2e9d50" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />{points.map((point, index) => <g key={point.key}><circle cx={point.x} cy={point.y} r={points.length > 36 ? 2.5 : 4} fill="#ff8b6b" stroke="#fff" strokeWidth="2"><title>{point.label}: {point.count} applications created</title></circle><circle cx={point.x} cy={point.validatedY} r={points.length > 36 ? 2.5 : 4} fill="#2e9d50" stroke="#fff" strokeWidth="2"><title>{point.label}: {point.validatedCount || 0} currently validated applications</title></circle>{(points.length <= 18 || index === 0 || index === points.length - 1 || index % Math.ceil(points.length / 12) === 0) && <text x={point.x} y="211" fontSize="11" fill="#667085" textAnchor="middle">{point.label}</text>}</g>)}</>}</>
           })()}
         </svg>
       </div>
