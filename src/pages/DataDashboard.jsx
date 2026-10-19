@@ -954,7 +954,7 @@ function DataDashboard() {
             <ComposedChart data={rows} margin={{ top: 10, right: 18, left: 0, bottom: 8 }}>
               <CartesianGrid stroke="#e8edf3" vertical={false} />
               <XAxis dataKey="month" tickFormatter={(value) => rows.find((row) => row.month === value)?.period_label || value} interval={chartPeriod === "week" ? 3 : 0} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={{ stroke: "#dfe5ec" }} tickLine={false} />
-              <YAxis yAxisId="leads" tickFormatter={formatNumber} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} width={55} /><YAxis yAxisId="conversion" orientation="right" domain={[0, 100]} tickFormatter={value => `${Number(value).toFixed(0)}%`} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} width={48} />
+              <YAxis yAxisId="leads" tickFormatter={formatNumber} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} width={55} /><YAxis yAxisId="conversion" orientation="right" domain={[0, 30]} ticks={[0, 5, 10, 15, 20, 25, 30]} tickFormatter={value => `${Number(value).toFixed(0)}%`} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} width={48} />
               <Tooltip
                 content={({ active, payload, label }) => {
                   const visibleItems = (payload || []).filter(
