@@ -923,7 +923,7 @@ function DataDashboard() {
                 ? `CRM lead records currently begin ${formatMonth(
                     firstDataMonth
                   )}.`
-                : "Monthly lead records from January 2024 onwards."}
+                : "Monthly lead records from January 2026 onwards."}
             </div>
           </div>
 
@@ -958,14 +958,14 @@ function DataDashboard() {
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={430}>
-            <ComposedChart data={rows.map(row => ({ ...row, handoverConversion: row.lead_count > 0 ? (Number(row.cps_h_count || 0) / Number(row.lead_count || 0)) * 100 : 0 }))} margin={{ top: 10, right: 18, left: 0, bottom: 8 }}>
+            <ComposedChart data={rows} margin={{ top: 10, right: 18, left: 0, bottom: 8 }}>
               <CartesianGrid stroke="#e8edf3" vertical={false} />
               <XAxis dataKey="month" tickFormatter={(value) => new Date(`${value}T00:00:00`).toLocaleDateString("en-GB", { month: "short", year: "2-digit" })} interval={5} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={{ stroke: "#dfe5ec" }} tickLine={false} />
               <YAxis yAxisId="leads" tickFormatter={formatNumber} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} width={55} /><YAxis yAxisId="conversion" orientation="right" domain={[0, 100]} tickFormatter={value => `${Number(value).toFixed(0)}%`} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} width={48} />
               <Tooltip
                 content={({ active, payload, label }) => {
                   const visibleItems = (payload || []).filter(
-                    (item) => item.dataKey === "handoverConversion" || Number(item.value || 0) >= 1
+                    (item) => item.dataKey === "cps_h_count" || Number(item.value || 0) >= 1
                   )
                   if (!active || visibleItems.length === 0) return null
                   return (
@@ -974,7 +974,7 @@ function DataDashboard() {
                       {visibleItems.map((item) => (
                         <div key={item.dataKey} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, color: item.color || "#334155" }}>
                           <span style={{ width: 8, height: 8, borderRadius: 2, background: item.color || "#334155", flexShrink: 0 }} />
-                          <span>{item.name}: {item.dataKey === "handoverConversion" ? `${Number(item.value || 0).toFixed(1)}%` : formatNumber(item.value)}</span>
+                          <span>{item.name}: {formatNumber(item.value)}</span>
                         </div>
                       ))}
                     </div>
@@ -1000,7 +1000,7 @@ function DataDashboard() {
                   fill={LEAD_TYPE_COLORS[typeNames.indexOf(type) % LEAD_TYPE_COLORS.length]}
                 />
               ))}
-            <Line yAxisId="conversion" type="monotone" dataKey="handoverConversion" name="Handover conversion" stroke="#111827" strokeWidth={2.5} dot={false} connectNulls />
+            <Line yAxisId="handover" type="monotone" dataKey="cps_h_count" name="Handover count" stroke="#111827" strokeWidth={2.5} dot={false} connectNulls />
             </ComposedChart>
           </ResponsiveContainer>
         )}
