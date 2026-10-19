@@ -7,6 +7,17 @@ const json = (res, status, body) => {
   return res.status(status).json(body)
 }
 const safe = value => String(value ?? "").trim()
+const OVERSTAY_REASONS = [
+  "Exploring financing options",
+  "Finance application",
+  "Clarifying product specifications",
+  "Price negotiations",
+  "General conversation with customer",
+  "Discussion of styles and designs",
+  "Completion of paperwork",
+  "Answering customer questions",
+  "Late arrival",
+]
 const formatDate = value => {
   if (!value) return "—"
   const date = new Date(value)
@@ -54,6 +65,10 @@ export default async function handler(req, res) {
     const reason = safe(body.reason)
     if (!appointmentRowId || !reason) return json(res, 400, { error: "Appointment and overstay reason are required." })
     if (reason.length > 3000) return json(res, 400, { error: "The overstay reason must be 3,000 characters or fewer." })
+    const selectedReasons = reason.split(/\\s*;\\s*/).map(value => value.trim()).filter(Boolean)
+    if (!selectedReasons.length || selectedReasons.some(value => !OVERSTAY_REASONS.includes(value))) {
+      return json(res, 400, { error: "Select one or more valid reasons from the approved overstay reason list." })
+    }
 
     const { data: logRow, error: logError } = await supabase.from("integration_event_logs").insert({
       provider: "supabase_storage",
