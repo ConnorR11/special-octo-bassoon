@@ -37,7 +37,7 @@ export default function EPVSApplications() {
   async function loadRows() {
     setLoading(true)
     setError("")
-    let query = supabase.from("epvs_submissions").select("id,epvs_validation_id,customer_full_name,customer_first_name,customer_last_name,customer_phone,customer_email,installation_address,installation_postcode,status,contract_value,contract_signed_at,epvs_created_at,last_synced_at,linked_deal_id", { count: "exact" })
+    let query = supabase.from("epvs_submissions").select("id,epvs_validation_id,customer_full_name,customer_first_name,customer_last_name,customer_phone,customer_email,installation_address,installation_postcode,status,contract_value,contract_signed_at,epvs_created_at,last_synced_at,linked_deal_id,deals:linked_deal_id(contract_number,customer_name)", { count: "exact" })
       .order("epvs_created_at", { ascending: false, nullsFirst: false })
       .range(page * pageSize, page * pageSize + pageSize - 1)
     if (status !== "all") query = query.eq("status", status)
@@ -160,7 +160,7 @@ export default function EPVSApplications() {
               <td style={cell}><span style={{ display: "inline-block", borderRadius: 99, padding: "4px 8px", background: "#fff0e8", color: "#a33d16", whiteSpace: "nowrap" }}>{row.status || "Unknown"}</span></td>
               <td style={{ ...cell, whiteSpace: "nowrap" }}>{money(row.contract_value)}</td>
               <td style={{ ...cell, whiteSpace: "nowrap" }}>{formatDate(row.contract_signed_at)}</td>
-              <td style={{ ...cell, minWidth: 180 }}>{row.linked_deal_id ? <><strong>Linked</strong><div style={{ color: "#667085", marginTop: 4, fontSize: 11 }}>{row.linked_deal_id}</div></> : <span style={{ color: "#b54708" }}>Not linked</span>}</td>
+              <td style={{ ...cell, minWidth: 180 }}>{row.linked_deal_id ? <><strong>{row.deals?.contract_number || "Linked"}</strong>{row.deals?.customer_name && <div style={{ color: "#667085", marginTop: 4, fontSize: 11 }}>{row.deals.customer_name}</div>}</> : <span style={{ color: "#b54708" }}>Not linked</span>}</td>
               <td style={{ ...cell, whiteSpace: "nowrap" }}><button type="button" onClick={() => { setActiveRow(activeRow === row.id ? null : row.id); setDealSearch(""); setDealResults([]) }} style={actionButton}><Link2 size={14}/>{row.linked_deal_id ? "Change link" : "Link deal"}</button>{row.linked_deal_id && <button type="button" title="Remove deal link" onClick={() => linkDeal(row, null)} style={{ ...actionButton, marginLeft: 6, color: "#b42318" }}><Unlink size={14}/></button>}</td>
             </tr>
             {activeRow === row.id && <tr><td colSpan={8} style={{ padding: 14, background: "#f9fafb", borderBottom: "1px solid #eaecf0" }}>
