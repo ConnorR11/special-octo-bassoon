@@ -102,6 +102,7 @@ export default async function handler(req, res) {
     try { responseData = JSON.parse(responseText) } catch { responseData = null }
     if (!epvsResponse.ok) {
       console.error("EPVS list request failed", { status: epvsResponse.status, body: responseText.slice(0, 500) })
+      await logEpvsImport(supabase, "failed", epvsResponse.status, "EPVS application-list request failed.", { responseBody: responseText.slice(0, 500) })
       return json(res, 502, { error: "EPVS rejected the application-list request.", epvsHttpStatus: epvsResponse.status })
     }
     if (!responseData || !Array.isArray(responseData.data)) {
