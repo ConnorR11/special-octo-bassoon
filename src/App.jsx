@@ -35,6 +35,7 @@ import Templates from "./pages/Templates"
 import SolarBackend from "./pages/SolarBackend"
 import AdminUserPreview from "./components/AdminUserPreview"
 import ContractFile from "./pages/ContractFile"
+import OverstayFormFile from "./pages/OverstayFormFile"
 import UnitAnalysis from "./pages/UnitAnalysis"
 
 const DEALS_PAGE_SIZE = 50
@@ -184,6 +185,7 @@ function App() {
     function handlePopState(){
       const path=window.location.pathname.replace(/\/+$/,"/")||"/"
       if (path === "/contract-file/") { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("contract-file"); return }
+      if (path === "/overstay-form/") { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("overstay-form"); return }
       const appointmentMatch=path.match(/^\/appointments\/([^/]+)$/)
       if(appointmentMatch){loadAppointmentFromUrl(decodeURIComponent(appointmentMatch[1]));return}
       setSelected(null);setSelectedAppointment(null);setPickupAppointment(null)
@@ -215,6 +217,8 @@ function App() {
   let pageContent
   if (page === "contract-file") {
     pageContent = <ContractFile />
+  } else if (page === "overstay-form") {
+    pageContent = <OverstayFormFile />
   } else if (pickupAppointment) {
     pageContent = <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated}/>
   } else if (selectedAppointment) {

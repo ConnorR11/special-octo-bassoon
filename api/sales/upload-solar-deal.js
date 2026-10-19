@@ -144,7 +144,7 @@ export default async function handler(req, res) {
 
     const { data: appointment, error: appointmentError } = await supabase
       .from("appointments")
-      .select("appointment_row_id,name,result,email_address,phone_number_1,secondary_phone_number,address,postcode,product,job_type,rep_allocated,branch,sales_notes,lead_source,canvasser,appointment_date,epvs_calculation,contract_number,signature_path,express_fit_signature_path,seg_disclaimer_signature_path")
+      .select("appointment_row_id,name,result,email_address,phone_number_1,secondary_phone_number,address,postcode,product,job_type,rep_allocated,branch,sales_notes,lead_source,canvasser,appointment_date,epvs_calculation,contract_number,signature_path,express_fit_signature_path,seg_disclaimer_signature_path,overstay_form_link")
       .eq("appointment_row_id", appointmentRowId)
       .maybeSingle()
     if (appointmentError) throw appointmentError
@@ -206,6 +206,13 @@ export default async function handler(req, res) {
       return await fail(409, "The generated contract PDF path was not provided or does not match this appointment.")
     }
     const contractFileUrl = `https://crm.homeshield.ltd/contract-file?path=${encodeURIComponent(contractPdfPath)}`
+    const overstayFormPath = String(appointment.overstay_form_link || "").trim()
+    if (overstayFormPath && (!overstayFormPath.startsWith(appointmentRowId + "/") || overstayFormPath.includes("..") || overstayFormPath.split("/").length !== 2)) {
+      return await fail(409, "The saved overstay form path is invalid for this appointment.")
+    }
+    const overstayFormUrl = overstayFormPath
+      ? `https://crm.homeshield.ltd/overstay-form?path=${encodeURIComponent(overstayFormPath)}`
+      : null
 
     const fieldsResponse = await pipedriveRequest("dealFields")
     const dealFields = Array.isArray(fieldsResponse) ? fieldsResponse : []
@@ -250,7 +257,7 @@ export default async function handler(req, res) {
       "Lead: Address": appointment.address,
       "Sales Branch": appointment.branch,
       "ECOF: File": "N/A",
-      "Overstay Form": "N/A",
+      "Overstay Form": overstayFormUrl || "N/A",
       "Customer Name": appointment.name,
     }
     const missingFields = []
@@ -326,6 +333,10 @@ export default async function handler(req, res) {
       }
     }
 
+    // The Overstay Form field above contains a secure CRM link to the Supabase-stored PDF.
+    // Do not upload the PDF as a Pipedrive file attachment.
+    const overstayPipedriveFileId = null
+
     const pipedriveDealId = Number(pipedriveDeal?.id || pipedriveDeal?.deal?.id || existingSupabaseDeal?.pipedrive_deal_id)
     if (!Number.isFinite(pipedriveDealId) || pipedriveDealId <= 0) {
       throw new Error("Pipedrive did not return a valid deal ID.")
@@ -374,6 +385,7 @@ export default async function handler(req, res) {
       date_sold: dateSold,
       custom_fields_updated: Object.keys(customFieldPayload).length - 1,
       custom_fields_missing_in_pipedrive: missingFields,
+      overstay_form_link_populated: Boolean(overstayFormUrl),
     }
     await finishLog({ status: "success", httpStatus: 200, result })
     return json(res, 200, result)
