@@ -374,6 +374,20 @@ export default async function handler(req, res) {
     const { error: upsertError } = await supabase.from("deals").upsert(dealRow, { onConflict: "pipedrive_deal_id" })
     if (upsertError) throw upsertError
 
+    // Copy the Sales Note entered on the CRM form into the Pipedrive deal as a note.
+    const salesNote = String(appointment.sales_notes || "").trim()
+    let pipedriveNoteId = null
+    if (salesNote) {
+      const pipedriveNote = await pipedriveRequest("notes", {
+        method: "POST",
+        body: JSON.stringify({
+          content: salesNote,
+          deal_id: pipedriveDealId,
+        }),
+      })
+      pipedriveNoteId = pipedriveNote?.id || null
+    }
+
     const result = {
       success: true,
       appointment_row_id: appointmentRowId,
@@ -386,6 +400,8 @@ export default async function handler(req, res) {
       custom_fields_updated: Object.keys(customFieldPayload).length - 1,
       custom_fields_missing_in_pipedrive: missingFields,
       overstay_form_link_populated: Boolean(overstayFormUrl),
+      sales_note_posted_to_pipedrive: Boolean(salesNote),
+      pipedrive_note_id: pipedriveNoteId,
     }
     await finishLog({ status: "success", httpStatus: 200, result })
     return json(res, 200, result)
