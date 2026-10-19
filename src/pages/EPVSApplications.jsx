@@ -24,6 +24,10 @@ export default function EPVSApplications() {
   const [search, setSearch] = React.useState("")
   const [status, setStatus] = React.useState("all")
   const [hideLinked, setHideLinked] = React.useState(false)
+  const [activeTab, setActiveTab] = React.useState("applications")
+  const [solarDeals, setSolarDeals] = React.useState([])
+  const [solarLoading, setSolarLoading] = React.useState(false)
+  const [solarSearch, setSolarSearch] = React.useState("")
   const [loading, setLoading] = React.useState(true)
   const [importing, setImporting] = React.useState(false)
   const [error, setError] = React.useState("")
@@ -35,6 +39,44 @@ export default function EPVSApplications() {
   const [activeRow, setActiveRow] = React.useState(null)
 
   React.useEffect(() => { loadRows() }, [page, status, hideLinked])
+
+  React.useEffect(() => {
+    if (activeTab !== "missing-validated") return
+    async function loadSolarDeals() {
+      setSolarLoading(true)
+      try {
+        const dealsResult = []
+        let from = 0
+        while (true) {
+          const { data, error } = await supabase.from("deals")
+            .select("id,contract_number,customer_name,phone,email,address,postcode,product,deal_value,sale_date,status,pipedrive_stage")
+            .ilike("product", "%solar%")
+            .order("sale_date", { ascending: false, nullsFirst: false })
+            .range(from, from + 999)
+          if (error) throw error
+          dealsResult.push(...(data || []))
+          if (!data || data.length < 1000) break
+          from += 1000
+        }
+        const solarIds = dealsResult.map(deal => deal.id)
+        const validatedIds = new Set()
+        for (let i = 0; i < solarIds.length; i += 500) {
+          const batch = solarIds.slice(i, i + 500)
+          if (!batch.length) continue
+          const { data, error } = await supabase.from("epvs_submissions")
+            .select("linked_deal_id")
+            .in("linked_deal_id", batch)
+            .ilike("status", "validated")
+          if (error) throw error
+          for (const row of data || []) if (row.linked_deal_id) validatedIds.add(row.linked_deal_id)
+        }
+        setSolarDeals(dealsResult.filter(deal => !validatedIds.has(deal.id)))
+      } catch (err) {
+        setError(err?.message || "Could not load Solar deals missing validated EPVS applications.")
+      } finally { setSolarLoading(false) }
+    }
+    loadSolarDeals()
+  }, [activeTab])
 
   React.useEffect(() => {
     async function loadValidationTrend() {
@@ -144,10 +186,30 @@ export default function EPVSApplications() {
       </button>
     </div>
 
+    <div style={{ display: "flex", gap: 6, borderBottom: "1px solid #e4e7ec", marginBottom: 16 }}>
+      {[["applications", "EPVS Applications"], ["missing-validated", "Solar Deals Missing Validation"]].map(([key, label]) => <button key={key} type="button" onClick={() => setActiveTab(key)} style={{ padding: "11px 16px", border: 0, borderBottom: activeTab === key ? "3px solid #f15a24" : "3px solid transparent", background: "transparent", color: activeTab === key ? "#a33d16" : "#667085", fontWeight: activeTab === key ? 750 : 600, cursor: "pointer" }}>{label}</button>)}
+    </div>
     <div style={{ background: "#f15a24", borderRadius: 10, padding: "17px 20px", color: "#fff", marginBottom: 16, boxShadow: "0 3px 8px rgba(241,90,36,.14)" }}>
       <div style={{ fontSize: 12, fontWeight: 750, letterSpacing: ".07em", textTransform: "uppercase" }}>Important notice</div>
       <div style={{ fontSize: 14, marginTop: 5 }}>Application records sync from EPVS Validation Hub when you run an import. Linking a CRM deal does not change the application in EPVS.</div>
     </div>
+    {activeTab === "missing-validated" ? <section style={{ background: "#fff", border: "1px solid #edf0f2", borderRadius: 10, overflow: "hidden" }}>
+      <div style={{ padding: 18, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div><h2 style={{ margin: 0, fontSize: 17, color: "#182230" }}>Solar deals without a validated EPVS application</h2><p style={{ margin: "5px 0 0", fontSize: 12, color: "#667085" }}>Includes Solar deals with no linked EPVS application marked Validated.</p></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}><strong style={{ fontSize: 24, color: "#f15a24" }}>{solarDeals.length}</strong><input value={solarSearch} onChange={e => setSolarSearch(e.target.value)} placeholder="Search customer, contract, postcode…" style={{ width: 270, maxWidth: "55vw", padding: 9, border: "1px solid #d0d5dd", borderRadius: 8 }} /></div>
+      </div>
+      <div style={{ overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+        <thead><tr>{["Contract number","Customer","Address / postcode","Deal stage","Sale date","Deal value"].map(title => <th key={title} style={{ padding: "11px 10px", background: "#fff7f3", borderBottom: "1px solid #eaecf0", textAlign: "left", color: "#8b3b20", whiteSpace: "nowrap" }}>{title}</th>)}</tr></thead>
+        <tbody>{solarLoading ? <tr><td colSpan={6} style={{ padding: 28, textAlign: "center", color: "#667085" }}>Loading Solar deals…</td></tr> : (() => {
+          const term = solarSearch.trim().toLowerCase()
+          const filtered = solarDeals.filter(deal => !term || [deal.contract_number, deal.customer_name, deal.postcode, deal.address, deal.pipedrive_stage].some(value => String(value || "").toLowerCase().includes(term)))
+          return filtered.length ? filtered.map(deal => <tr key={deal.id}>
+            <td style={cell}><strong>{deal.contract_number || "—"}</strong></td><td style={cell}>{deal.customer_name || "Unknown"}</td><td style={cell}>{deal.address || "—"}<div style={{ color: "#667085", marginTop: 3 }}>{deal.postcode || ""}</div></td><td style={cell}>{deal.pipedrive_stage || deal.status || "—"}</td><td style={cell}>{formatDate(deal.sale_date)}</td><td style={cell}>{money(deal.deal_value)}</td>
+          </tr>) : <tr><td colSpan={6} style={{ padding: 28, textAlign: "center", color: "#667085" }}>No Solar deals missing validation match this search.</td></tr>
+        })()}</tbody>
+      </table></div>
+      <div style={{ padding: "12px 16px", color: "#667085", fontSize: 12, borderTop: "1px solid #f2f4f7" }}>Showing {solarDeals.filter(deal => !solarSearch.trim() || [deal.contract_number, deal.customer_name, deal.postcode, deal.address, deal.pipedrive_stage].some(value => String(value || "").toLowerCase().includes(solarSearch.trim().toLowerCase()))).length} of {solarDeals.length} deals. A deal is considered validated only when a linked EPVS application has status “Validated”.</div>
+    </section> : <>
     <div style={{ background: "#fff", border: "1px solid #edf0f2", borderRadius: 10, padding: "18px 20px 14px", marginBottom: 16, boxShadow: "0 1px 3px rgba(16,24,40,.04)" }}>
       <div style={{ fontSize: 15, fontWeight: 750, color: "#182230", marginBottom: 4 }}>Total Validations</div>
       <div style={{ color: "#667085", fontSize: 12, marginBottom: 8 }}>Applications created in EPVS Validation Hub · last 12 months</div>
@@ -230,6 +292,7 @@ export default function EPVSApplications() {
       <div style={{ display: "flex", gap: 8 }}><button type="button" disabled={page === 0 || loading} onClick={() => setPage(p => Math.max(0, p - 1))} style={pageButton}>Previous</button><button type="button" disabled={(page + 1) * pageSize >= total || loading} onClick={() => setPage(p => p + 1)} style={pageButton}>Next</button></div>
     </div>
     <p style={{ fontSize: 12, color: "#667085", marginTop: 8 }}>Only the EPVS-to-deal link is changed when you link a record. EPVS application data is not edited in Validation Hub.</p>
+    </>}
   </div>
 }
 
