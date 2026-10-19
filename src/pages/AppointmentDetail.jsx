@@ -42,6 +42,9 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,permissi
    if(!adminFeeExpectedDate){setError("Please enter the expected admin fee payment date.");return}
    if(!customerEmail.trim()){setError("Please enter the customer's email address.");return}
    if(!arrivalTime){setError("Please enter the arrival time.");return}
+   const arrivalForOverstay=new Date(combineAppointmentDateAndTime(appointment?.appointment_date,arrivalTime));
+   const minutesAtResult=Math.max(0,Math.round((Date.now()-arrivalForOverstay.getTime())/60000));
+   if(minutesAtResult>=120&&!overstayReason.trim()){setError("Please enter the reason for the overstay before continuing.");return}
    setSoldStep(2);return;
   }
   if(soldStep===2){
@@ -55,6 +58,19 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,permissi
     const payload={name:customerName.trim(),result:"Sold",admin_fee_expected_date:adminFeeExpectedDate,rep_arrival_time:combineAppointmentDateAndTime(appointment?.appointment_date,arrivalTime),sales_notes:salesNote||null,email_address:customerEmail.trim(),signature_path:signaturePath,express_fit_signature_path:expressFitSignaturePath,seg_disclaimer_signature_path:segSignaturePath};
     const{data:updated,error:updateError}=await supabase.from("appointments").update(payload).eq("appointment_row_id",appointment.appointment_row_id).select("*").single();
     if(updateError)throw updateError;
+    const savedArrival=updated.rep_arrival_time?new Date(updated.rep_arrival_time):null;
+    const minutesAtResult=savedArrival&&!Number.isNaN(savedArrival.getTime())?Math.max(0,Math.round((Date.now()-savedArrival.getTime())/60000)):0;
+    if(minutesAtResult>=120){
+     const{data:sessionData,error:sessionError}=await supabase.auth.getSession();
+     if(sessionError)throw sessionError;
+     const token=sessionData?.session?.access_token;
+     if(!token)throw new Error("Your session has expired. Please sign in again.");
+     const formResponse=await fetch("/api/appointments/generate-overstay-form",{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${token}`},body:JSON.stringify({appointment_row_id:appointment.appointment_row_id,reason:overstayReason.trim()})});
+     const formPayload=await formResponse.json().catch(()=>({}));
+     if(!formResponse.ok)throw new Error(formPayload.error||"Unable to generate the overstay form. The contract preview has not been prepared.");
+     updated.reason_for_overstay=overstayReason.trim();
+     updated.overstay_form_link=formPayload.storage_path;
+    }
     if(solar({...appointment,...updated})&&!epvs)throw new Error("Please complete and save the EPVS calculation before generating the solar contract.");
     onUpdated?.(updated);
     const generated=await GenerateSolarContract({appointment:updated,previewOnly:true});
