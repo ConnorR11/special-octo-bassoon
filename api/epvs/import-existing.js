@@ -71,7 +71,7 @@ export default async function handler(req, res) {
       return json(res, 403, { error: "Administrator or management access is required to import EPVS applications." })
     }
 
-    const epvsResponse = await fetch("https://validationhub.co.uk/api/v1/validations", {
+    const epvsResponse = await fetch("https://www.validationhub.co.uk/api/v1/validations", {
       method: "GET",
       headers: { Authorization: "Bearer " + epvsToken, Accept: "application/json" },
       signal: AbortSignal.timeout(30000),
