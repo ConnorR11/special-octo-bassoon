@@ -16,7 +16,7 @@ import {
 import { supabase } from "../lib/supabase"
 import MapOfAppointments from "./MapOfAppointments"
 
-const START_YEAR = 2024
+const START_YEAR = 2026
 const LEAD_TYPE_COLORS = ["#2563eb", "#0d9488", "#9333ea", "#ea580c", "#64748b", "#dc2626", "#0891b2", "#65a30d", "#c026d3", "#a16207"]
 
 function pad(value) {
@@ -317,9 +317,9 @@ function DataDashboard() {
 
     try {
       /*
-       * Dashboard starts from January 2024.
+       * Dashboard starts from January 2026.
        *
-       * We deliberately use a fixed January 2024 start date rather
+       * We deliberately use a fixed January 2026 start date rather
        * than relying on the browser's current date for the beginning
        * of the dataset.
        */
