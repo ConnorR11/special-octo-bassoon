@@ -8,9 +8,11 @@ import {
 } from "lucide-react"
 import { supabase } from "./lib/supabase"
 import { money } from "./utils/formatters"
+import TeamDiaryOutput from "./TeamDiaryOutput"
 
 function FitSheet({ setSelected }) {
   const [weekOffset, setWeekOffset] = useState(0)
+  const [showTeamDiaryOutput, setShowTeamDiaryOutput] = useState(false)
   const [weekDeals, setWeekDeals] = useState([])
   const [weekIssues, setWeekIssues] = useState([])
   const [loading, setLoading] = useState(true)
@@ -879,6 +881,8 @@ function FitSheet({ setSelected }) {
    * ------------------------------------------------------------
    */
 
+  if (showTeamDiaryOutput) return <TeamDiaryOutput onClose={() => setShowTeamDiaryOutput(false)} />
+
   return (
     <section className="fit-sheet-print-root">
       <style>{`
@@ -1042,6 +1046,14 @@ function FitSheet({ setSelected }) {
                 }}
               />
             </div>
+
+            <button
+              type="button"
+              onClick={() => setShowTeamDiaryOutput(true)}
+              style={{ height: "34px", padding: "0 10px", border: "1px solid #172554", borderRadius: "7px", background: "#172554", color: "#fff", cursor: "pointer", fontSize: "11px", fontWeight: 700, whiteSpace: "nowrap" }}
+            >
+              Team Diary Output
+            </button>
 
             {/* TEAM ALLOCATION FILTER */}
             <div
