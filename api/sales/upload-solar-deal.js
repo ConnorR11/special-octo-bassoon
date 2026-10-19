@@ -211,7 +211,7 @@ export default async function handler(req, res) {
       return await fail(409, "The saved overstay form path is invalid for this appointment.")
     }
     const overstayFormUrl = overstayFormPath
-      ? `https://crm.homeshield.ltd/api/sales/overstay-form-file?path=${encodeURIComponent(overstayFormPath)}`
+      ? `https://crm.homeshield.ltd/overstay-form?path=${encodeURIComponent(overstayFormPath)}`
       : null
 
     const fieldsResponse = await pipedriveRequest("dealFields")
