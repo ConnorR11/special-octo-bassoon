@@ -51,6 +51,8 @@ export default function EPVSApplications() {
           const { data, error } = await supabase.from("deals")
             .select("id,contract_number,customer_name,phone,email,address,postcode,product,deal_value,sale_date,status,pipedrive_stage")
             .ilike("product", "%solar%")
+            .neq("pipedrive_stage", "Customer Cancelled")
+            .neq("pipedrive_stage", "Decline")
             .order("sale_date", { ascending: false, nullsFirst: false })
             .range(from, from + 999)
           if (error) throw error
@@ -59,18 +61,26 @@ export default function EPVSApplications() {
           from += 1000
         }
         const solarIds = dealsResult.map(deal => deal.id)
-        const validatedIds = new Set()
+        const statusByDeal = new Map()
         for (let i = 0; i < solarIds.length; i += 500) {
           const batch = solarIds.slice(i, i + 500)
           if (!batch.length) continue
           const { data, error } = await supabase.from("epvs_submissions")
-            .select("linked_deal_id")
+            .select("linked_deal_id,status,contract_signed_at,epvs_created_at")
             .in("linked_deal_id", batch)
-            .ilike("status", "validated")
           if (error) throw error
-          for (const row of data || []) if (row.linked_deal_id) validatedIds.add(row.linked_deal_id)
+          for (const row of data || []) {
+            if (!row.linked_deal_id) continue
+            const current = statusByDeal.get(row.linked_deal_id)
+            const rowDate = new Date(row.epvs_created_at || row.contract_signed_at || 0)
+            const currentDate = new Date(current?.epvs_created_at || current?.contract_signed_at || 0)
+            if (!current || rowDate > currentDate) statusByDeal.set(row.linked_deal_id, row)
+          }
         }
-        setSolarDeals(dealsResult.filter(deal => !validatedIds.has(deal.id)))
+        setSolarDeals(dealsResult
+          .filter(deal => !["customer cancelled", "decline"].includes(String(deal.pipedrive_stage || "").toLowerCase()))
+          .filter(deal => String(statusByDeal.get(deal.id)?.status || "").toLowerCase() !== "validated")
+          .map(deal => ({ ...deal, epvsStatus: statusByDeal.get(deal.id)?.status || "Not Submitted" })))
       } catch (err) {
         setError(err?.message || "Could not load Solar deals missing validated EPVS applications.")
       } finally { setSolarLoading(false) }
@@ -199,13 +209,13 @@ export default function EPVSApplications() {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}><strong style={{ fontSize: 24, color: "#f15a24" }}>{solarDeals.length}</strong><input value={solarSearch} onChange={e => setSolarSearch(e.target.value)} placeholder="Search customer, contract, postcode…" style={{ width: 270, maxWidth: "55vw", padding: 9, border: "1px solid #d0d5dd", borderRadius: 8 }} /></div>
       </div>
       <div style={{ overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-        <thead><tr>{["Contract number","Customer","Address / postcode","Deal stage","Sale date","Deal value"].map(title => <th key={title} style={{ padding: "11px 10px", background: "#fff7f3", borderBottom: "1px solid #eaecf0", textAlign: "left", color: "#8b3b20", whiteSpace: "nowrap" }}>{title}</th>)}</tr></thead>
+        <thead><tr>{["Contract number","Customer","Address / postcode","Deal stage","EPVS status","Sale date","Deal value"].map(title => <th key={title} style={{ padding: "11px 10px", background: "#fff7f3", borderBottom: "1px solid #eaecf0", textAlign: "left", color: "#8b3b20", whiteSpace: "nowrap" }}>{title}</th>)}</tr></thead>
         <tbody>{solarLoading ? <tr><td colSpan={6} style={{ padding: 28, textAlign: "center", color: "#667085" }}>Loading Solar deals…</td></tr> : (() => {
           const term = solarSearch.trim().toLowerCase()
           const filtered = solarDeals.filter(deal => !term || [deal.contract_number, deal.customer_name, deal.postcode, deal.address, deal.pipedrive_stage].some(value => String(value || "").toLowerCase().includes(term)))
           return filtered.length ? filtered.map(deal => <tr key={deal.id}>
-            <td style={cell}><strong>{deal.contract_number || "—"}</strong></td><td style={cell}>{deal.customer_name || "Unknown"}</td><td style={cell}>{deal.address || "—"}<div style={{ color: "#667085", marginTop: 3 }}>{deal.postcode || ""}</div></td><td style={cell}>{deal.pipedrive_stage || deal.status || "—"}</td><td style={cell}>{formatDate(deal.sale_date)}</td><td style={cell}>{money(deal.deal_value)}</td>
-          </tr>) : <tr><td colSpan={6} style={{ padding: 28, textAlign: "center", color: "#667085" }}>No Solar deals missing validation match this search.</td></tr>
+            <td style={cell}><strong>{deal.contract_number || "—"}</strong></td><td style={cell}>{deal.customer_name || "Unknown"}</td><td style={cell}>{deal.address || "—"}<div style={{ color: "#667085", marginTop: 3 }}>{deal.postcode || ""}</div></td><td style={cell}>{deal.pipedrive_stage || deal.status || "—"}</td><td style={cell}><span style={{ display: "inline-block", borderRadius: 99, padding: "4px 8px", background: deal.epvsStatus === "Not Submitted" ? "#f2f4f7" : "#fff0e8", color: deal.epvsStatus === "Not Submitted" ? "#475467" : "#a33d16", whiteSpace: "nowrap" }}>{deal.epvsStatus}</span></td><td style={cell}>{formatDate(deal.sale_date)}</td><td style={cell}>{money(deal.deal_value)}</td>
+          </tr>) : <tr><td colSpan={7} style={{ padding: 28, textAlign: "center", color: "#667085" }}>No Solar deals missing validation match this search.</td></tr>
         })()}</tbody>
       </table></div>
       <div style={{ padding: "12px 16px", color: "#667085", fontSize: 12, borderTop: "1px solid #f2f4f7" }}>Showing {solarDeals.filter(deal => !solarSearch.trim() || [deal.contract_number, deal.customer_name, deal.postcode, deal.address, deal.pipedrive_stage].some(value => String(value || "").toLowerCase().includes(solarSearch.trim().toLowerCase()))).length} of {solarDeals.length} deals. A deal is considered validated only when a linked EPVS application has status “Validated”.</div>
