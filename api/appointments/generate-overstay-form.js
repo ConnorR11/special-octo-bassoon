@@ -137,35 +137,46 @@ export default async function handler(req, res) {
     const section = (title, top, height) => {
       page.drawRectangle({ x: margin, y: top - height, width, height, color: white, borderColor: border, borderWidth: 0.8 })
       page.drawRectangle({ x: margin, y: top - 28, width, height: 28, color: deepNavy })
-      text(title.toUpperCase(), margin + 38, top - 18, 10, bold, white)
-      // Simple white pictogram block, matching the section-icon treatment of the reference.
-      page.drawCircle({ x: margin + 18, y: top - 11, size: 4.2, color: white })
-      page.drawRectangle({ x: margin + 12, y: top - 22, width: 12, height: 7, color: white })
+      text(title.toUpperCase(), margin + 25, top - 18, 10, bold, white)
     }
     const row = (top, label, value, height = 31) => {
       page.drawRectangle({ x: margin, y: top - height, width: 196, height, color: paleBlue })
       page.drawLine({ start: { x: margin, y: top - height }, end: { x: right, y: top - height }, thickness: 0.65, color: border })
       page.drawLine({ start: { x: margin + 196, y: top }, end: { x: margin + 196, y: top - height }, thickness: 0.65, color: border })
-      text(label, margin + 18, top - height / 2 - 3, 9, bold, deepNavy)
+      text(label, margin + 11, top - height / 2 - 3, 9, bold, deepNavy)
       drawWrapped(value || "—", margin + 208, top - height / 2 - 3, 9.5, regular, rgb(0.20, 0.22, 0.24), width - 220, 11)
     }
 
-    // Reference design: branded header, explanatory notice, grouped detail tables and footer.
     page.drawRectangle({ x: 0, y: 0, width: page.getWidth(), height: page.getHeight(), color: white })
     page.drawRectangle({ x: 0, y: page.getHeight() - 106, width: page.getWidth(), height: 106, color: deepNavy })
     page.drawRectangle({ x: 0, y: page.getHeight() - 108, width: page.getWidth(), height: 2, color: blue })
-    // Shield-style mark drawn with vector shapes so the PDF does not depend on a remote asset.
-    page.drawSvgPath("M 0 0 L 25 0 L 25 24 L 12.5 34 L 0 24 Z", { x: margin, y: page.getHeight() - 76, scale: 1.35, color: rgb(0.78, 0.86, 0.92), borderColor: white, borderWidth: 1 })
-    page.drawLine({ start: { x: margin + 5, y: page.getHeight() - 57 }, end: { x: margin + 29, y: page.getHeight() - 80 }, thickness: 4, color: white })
-    page.drawLine({ start: { x: margin + 5, y: page.getHeight() - 80 }, end: { x: margin + 29, y: page.getHeight() - 57 }, thickness: 4, color: white })
-    text("HOMESHIELD SCOTLAND LTD", margin + 48, page.getHeight() - 49, 15, bold, white)
-    text("Enhancing Homes Across Scotland", margin + 48, page.getHeight() - 70, 11, regular, white)
+
+    // Embed the actual HomeShield logo from the app's public assets.
+    let logoEmbedded = false
+    try {
+      const host = req.headers?.["x-forwarded-host"] || req.headers?.host
+      const protocol = req.headers?.["x-forwarded-proto"] || "https"
+      if (host) {
+        const logoResponse = await fetch(`${protocol}://${host}/homeshield-logo.png`)
+        if (logoResponse.ok) {
+          const logoBytes = new Uint8Array(await logoResponse.arrayBuffer())
+          const logoImage = await pdf.embedPng(logoBytes)
+          const logoDims = logoImage.scale(Math.min(0.95, 68 / logoImage.width))
+          page.drawImage(logoImage, { x: margin, y: page.getHeight() - 96, width: logoDims.width, height: logoDims.height })
+          logoEmbedded = true
+        }
+      }
+    } catch (logoError) {
+      console.error("Unable to load HomeShield logo for overstay PDF:", logoError?.message)
+    }
+    const brandX = logoEmbedded ? margin + 82 : margin
+    text("HOMESHIELD SCOTLAND LTD", brandX, page.getHeight() - 49, 15, bold, white)
+    text("Enhancing Homes Across Scotland", brandX, page.getHeight() - 70, 11, regular, white)
 
     text("OVERSTAY", margin, 700, 29, bold, deepNavy)
     text("FORM", margin + 151, 700, 29, regular, deepNavy)
     page.drawRectangle({ x: margin, y: 682, width: 70, height: 3, color: blue })
 
-    // Informational notice copied from the supplied reference design.
     page.drawRectangle({ x: margin, y: 555, width, height: 108, color: paleBlue, borderColor: paleBlue, borderWidth: 0.5 })
     page.drawCircle({ x: margin + 24, y: 635, size: 13, color: rgb(0.02, 0.43, 0.82) })
     text("i", margin + 21.4, 630, 15, bold, white)
@@ -181,29 +192,36 @@ export default async function handler(req, res) {
     row(450, "Phone Number:", appointment.phone_number_1)
     row(419, "Email:", appointment.email_address, 31)
 
-    section("Sales Representative", 380, 59)
-    row(352, "Representative’s Name:", appointment.rep_allocated, 31)
+    section("Sales Representative", 400, 59)
+    row(372, "Representative’s Name:", appointment.rep_allocated, 31)
 
-    section("Reason for Overlong Sales Visit", 310, 70)
-    row(282, "Reason for Overlong Sales Visit:", selectedReasons.join(", "), 42)
+    section("Reason for Overlong Sales Visit", 330, 70)
+    row(302, "Reason for Overlong Sales Visit:", selectedReasons.join(", "), 42)
 
-    section("Visit Date", 230, 59)
+    section("Visit Date", 218, 59)
     row(202, "Date:", formatDate(appointment.appointment_date), 31)
 
-    // Compact visit duration is included as an additional record while keeping the reference's structure.
     text("VISIT DURATION", margin, 145, 7.5, bold, rgb(0.02, 0.43, 0.82))
     text(`${Math.floor(durationMinutes / 60)} hours ${durationMinutes % 60} minutes`, margin, 130, 10, bold, deepNavy)
     text(`Arrival: ${formatDate(appointment.rep_arrival_time)}   •   Form generated: ${formatDate(resultAt.toISOString())}`, margin, 115, 7.2, regular, grey)
 
     page.drawLine({ start: { x: margin, y: 78 }, end: { x: right, y: 78 }, thickness: 1, color: blue })
-    // Three-column contact footer, like the reference.
+    // Address icon
+    page.drawCircle({ x: margin + 5, y: 57, size: 5, color: deepNavy })
+    page.drawSvgPath("M 0 0 C -3 4 -5 7 -5 10 A 5 5 0 1 0 5 10 C 5 7 3 4 0 0 Z", { x: margin + 5, y: 48, scale: 0.8, color: deepNavy })
     text("515 Lawmoor Street, Dixon Blazes", margin + 24, 59, 7.4, regular, deepNavy)
     text("Industrial Estate, Glasgow G5 0TT", margin + 24, 48, 7.4, regular, deepNavy)
-    page.drawCircle({ x: margin + 7, y: 57, size: 5, color: deepNavy })
     page.drawLine({ start: { x: 282, y: 42 }, end: { x: 282, y: 69 }, thickness: 0.7, color: border })
-    text("0800 6 118 118", 296, 56, 8, regular, deepNavy)
+    // Phone icon: handset approximation from vector strokes
+    page.drawLine({ start: { x: 292, y: 62 }, end: { x: 298, y: 56 }, thickness: 3, color: deepNavy })
+    page.drawLine({ start: { x: 298, y: 56 }, end: { x: 304, y: 62 }, thickness: 3, color: deepNavy })
+    text("0800 6 118 118", 309, 56, 8, regular, deepNavy)
     page.drawLine({ start: { x: 420, y: 42 }, end: { x: 420, y: 69 }, thickness: 0.7, color: border })
-    text("info@homeshield.ltd", 433, 56, 7.4, regular, deepNavy)
+    // Envelope icon
+    page.drawRectangle({ x: 429, y: 51, width: 13, height: 9, borderColor: deepNavy, borderWidth: 1.5 })
+    page.drawLine({ start: { x: 429, y: 60 }, end: { x: 435.5, y: 55 }, thickness: 1, color: deepNavy })
+    page.drawLine({ start: { x: 442, y: 60 }, end: { x: 435.5, y: 55 }, thickness: 1, color: deepNavy })
+    text("info@homeshield.ltd", 447, 56, 7.1, regular, deepNavy)
 
     const bytes = await pdf.save()
     const storagePath = `${appointmentRowId}/${Date.now()}-overstay-form.pdf`
