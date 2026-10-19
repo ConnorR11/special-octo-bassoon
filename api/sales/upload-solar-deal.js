@@ -383,6 +383,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           content: salesNote,
           deal_id: pipedriveDealId,
+          pinned_to_deal_flag: true,
         }),
       })
       pipedriveNoteId = pipedriveNote?.id || null
