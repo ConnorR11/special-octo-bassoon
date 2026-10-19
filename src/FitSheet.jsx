@@ -540,13 +540,14 @@ function FitSheet({ setSelected }) {
 
   const fitTeamGroups = useMemo(() => {
     const configuredGroups = [
-      { label: "ABERDEEN", teams: ["Paul Duncan", "Paul Falconer", "Jamie Adamson"] },
+      { label: "ABERDEEN", teams: ["Paul Duncan", "Paul Falconer"] },
       { label: "FIFE", teams: ["Jon Gray"] },
       { label: "EDINBURGH", teams: ["Vladimir Ivanovs", "Vlad Team 2"] },
-      { label: "TEAMS 1–11", teams: ["Darren Green", "Nicky McHugh", "Ian Kidd", "Daniel Barron", "Dmytro Mykhailenko Team 1", "John Cannon", "Andrei Vlasov", "Lloyd Reid", "Matt White", "David Coyle", "James Clarke"] },
+      { label: "TEAMS 1–11", teams: ["Darren Green", "Nicky McHugh", "Ian Kidd", "Daniel Barron", "John Cannon", "Andrei Vlasov", "Lloyd Reid", "James Clarke"] },
     ]
     const normalise = (value) => String(value || "").trim().toLocaleLowerCase()
-    const actualTeams = [...new Set(jobs.map((job) => String(job.team || "").trim()).filter(Boolean))]
+    const excludedTeams = new Set(["Dmytro Mykhailenko Team 1", "Jamie Adamson", "David Coyle", "Matt White", "Gordon Few", "Gordon Frew", "Alan Gowans", "Anton", "Paul Connolly"].map(normalise))
+    const actualTeams = [...new Set(jobs.map((job) => String(job.team || "").trim()).filter(Boolean))].filter((team) => !excludedTeams.has(normalise(team)))
     const assigned = new Set()
     const groups = configuredGroups.map((group) => ({
       label: group.label,
@@ -563,19 +564,19 @@ function FitSheet({ setSelected }) {
       if (actual) assigned.add(normalise(actual))
       return actual || expected
     })
-    const heatPumpNames = ["Gordon Frew", "Ian Hogg", "Alan Gowans"]
+    const heatPumpNames = ["Ian Hogg"]
     const heatPumpTeams = heatPumpNames.map((expected) => {
       const actual = actualTeams.find((team) => normalise(team) === normalise(expected))
       if (actual) assigned.add(normalise(actual))
       return actual || expected
     })
-    const roofNames = ["Summers", "Marcin", "Craig Marshall", "JP McPhail", "Ross White", "Anton"]
+    const roofNames = ["Summers", "Marcin", "Craig Marshall", "JP McPhail", "Ross White"]
     const roofTeams = roofNames.map((expected) => {
       const actual = actualTeams.find((team) => normalise(team) === normalise(expected))
       if (actual) assigned.add(normalise(actual))
       return actual || expected
     })
-    const electricsNames = ["Mariusz", "Gregor King", "Lloyd Reilly", "Jordan Chadwick", "James Wilson", "Bruce Davidson", "Paul Connolly"]
+    const electricsNames = ["Mariusz", "Gregor King", "Lloyd Reilly", "Jordan Chadwick", "James Wilson", "Bruce Davidson"]
     const electricsTeams = electricsNames.map((expected) => {
       const actual = actualTeams.find((team) => normalise(team) === normalise(expected))
       if (actual) assigned.add(normalise(actual))
