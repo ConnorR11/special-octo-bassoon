@@ -99,7 +99,7 @@ export default function TeamDiaryOutput({ onClose }) {
       const date = dateString(cursor)
       const entries = dayJobs.get(date) || []
       if (entries.length) {
-        lines.push(cursor.toLocaleDateString("en-GB", { weekday: "long" }).toLocaleUpperCase())
+        lines.push(`${cursor.toLocaleDateString("en-GB", { weekday: "long" }).toLocaleUpperCase()} ${cursor.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`)
         entries.forEach((job, index) => {
           const frames = formatFrames(job)
           lines.push(`${job.customer_name || "Customer"} - ${job.postcode || "No postcode"} - ${job.contract_number || "No contract"}${frames ? ` - ${frames}` : ""}`)
