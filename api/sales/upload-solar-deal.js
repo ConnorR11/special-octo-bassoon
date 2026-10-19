@@ -381,7 +381,7 @@ export default async function handler(req, res) {
       const pipedriveNote = await pipedriveRequest("notes", {
         method: "POST",
         body: JSON.stringify({
-          content: salesNote,
+          content: `CONTRACT SALES NOTE:\n\n${salesNote}`,
           deal_id: pipedriveDealId,
           pinned_to_deal_flag: true,
         }),
