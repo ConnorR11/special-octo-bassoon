@@ -47,9 +47,6 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,permissi
    const arrivalForOverstay=new Date(combineAppointmentDateAndTime(appointment?.appointment_date,arrivalTime));
    const minutesAtResult=Math.max(0,Math.round((Date.now()-arrivalForOverstay.getTime())/60000));
    if(minutesAtResult>=120&&!overstayReason.length){setError("Please enter the reason for the overstay before continuing.");return}
-   setSoldStep(2);return;
-  }
-  if(soldStep===2){
    if(!appointment?.appointment_row_id){setError("This appointment does not have an appointment_row_id.");return}
    setSaving(true);
    try{
@@ -75,11 +72,12 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,permissi
     if(!generated?.url)throw new Error("The contract preview could not be generated.");
     if(contractPreviewUrl)URL.revokeObjectURL(contractPreviewUrl);
     setContractPreviewUrl(generated.url);
-    setSoldStep(3);
+    setSoldStep(2);
    }catch(e){console.error("Unable to prepare contract preview:",e);setError(e?.message||"Unable to prepare the contract preview.");}
    finally{setSaving(false)}
    return;
   }
+  if(soldStep===2){setSoldStep(3);return}
   if(soldStep===3){
    if(!signature||!expressFitSignature||!segSignature){setError("All three customer signatures are required before continuing.");return}
    if(!appointment?.appointment_row_id){setError("This appointment does not have an appointment_row_id.");return}
