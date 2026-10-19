@@ -887,7 +887,7 @@ function FitSheet({ setSelected }) {
     <section className="fit-sheet-print-root">
       <style>{`
         @media print {
-          @page { size: landscape; margin: 8mm; }
+          @page { size: portrait; margin: 8mm; }
           body { background: #fff !important; }
           body * { visibility: hidden !important; }
           .fit-sheet-print-root, .fit-sheet-print-root * { visibility: visible !important; }
