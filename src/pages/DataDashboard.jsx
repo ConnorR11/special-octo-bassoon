@@ -337,37 +337,26 @@ function DataDashboard() {
         1
       )
 
-      const { data, error: rpcError } = await supabase.rpc(
-        "get_lead_volume_by_month",
-        {
-          start_date: start.toISOString(),
-          end_date: end.toISOString(),
-          selected_lead_source: selectedLeadSource || null,
-        }
-      )
-
-      if (rpcError) {
-        throw rpcError
+      // These aggregates are independent. Run them concurrently to avoid
+      // making the dashboard wait for three full database round trips in sequence.
+      const rpcArgs = {
+        start_date: start.toISOString(),
+        end_date: end.toISOString(),
+        selected_lead_source: selectedLeadSource || null,
       }
 
-      const { data: typeData, error: typeError } = await supabase.rpc(
-        "get_monthly_lead_volume_by_type",
-        {
-          start_date: start.toISOString(),
-          end_date: end.toISOString(),
-          selected_lead_source: selectedLeadSource || null,
-        }
-      )
-      if (typeError) throw typeError
+      const [
+        { data, error: rpcError },
+        { data: typeData, error: typeError },
+        { data: handoverData, error: handoverError },
+      ] = await Promise.all([
+        supabase.rpc("get_lead_volume_by_month", rpcArgs),
+        supabase.rpc("get_monthly_lead_volume_by_type", rpcArgs),
+        supabase.rpc("get_monthly_handover_lead_counts", rpcArgs),
+      ])
 
-      const { data: handoverData, error: handoverError } = await supabase.rpc(
-        "get_monthly_handover_lead_counts",
-        {
-          start_date: start.toISOString(),
-          end_date: end.toISOString(),
-          selected_lead_source: selectedLeadSource || null,
-        }
-      )
+      if (rpcError) throw rpcError
+      if (typeError) throw typeError
       if (handoverError) throw handoverError
 
       const handoverLookup = new Map(
