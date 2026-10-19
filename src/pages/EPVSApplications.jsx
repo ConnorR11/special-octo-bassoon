@@ -22,6 +22,7 @@ export default function EPVSApplications() {
   const [page, setPage] = React.useState(0)
   const [search, setSearch] = React.useState("")
   const [status, setStatus] = React.useState("all")
+  const [hideLinked, setHideLinked] = React.useState(false)
   const [loading, setLoading] = React.useState(true)
   const [importing, setImporting] = React.useState(false)
   const [error, setError] = React.useState("")
