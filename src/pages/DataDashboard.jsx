@@ -82,6 +82,8 @@ function DataDashboard() {
   const [typeNames, setTypeNames] = useState([])
   const [leadSources, setLeadSources] = useState([])
   const [selectedLeadSource, setSelectedLeadSource] = useState("")
+  const [chartPeriod, setChartPeriod] = useState("month")
+  const [selectedLeadType, setSelectedLeadType] = useState("")
   const [leadSourcesLoading, setLeadSourcesLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -316,108 +318,55 @@ function DataDashboard() {
     setError("")
 
     try {
-      /*
-       * Dashboard starts from January 2026.
-       *
-       * We deliberately use a fixed January 2026 start date rather
-       * than relying on the browser's current date for the beginning
-       * of the dataset.
-       */
       const now = new Date()
-
-      const start = new Date(
-        START_YEAR,
-        0,
-        1
-      )
-
-      const end = new Date(
-        now.getFullYear(),
-        now.getMonth() + 1,
-        1
-      )
-
-      // These aggregates are independent. Run them concurrently to avoid
-      // making the dashboard wait for three full database round trips in sequence.
+      const start = new Date(START_YEAR, 0, 1)
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 1)
       const rpcArgs = {
         start_date: start.toISOString(),
         end_date: end.toISOString(),
         selected_lead_source: selectedLeadSource || null,
+        period_type: chartPeriod,
       }
 
-      const [
-        { data, error: rpcError },
-        { data: typeData, error: typeError },
-        { data: handoverData, error: handoverError },
-        { data: cpsData, error: cpsError },
-      ] = await Promise.all([
-        supabase.rpc("get_lead_volume_by_month", rpcArgs),
-        supabase.rpc("get_monthly_lead_volume_by_type", rpcArgs),
-        supabase.rpc("get_monthly_handover_lead_counts", rpcArgs),
-        supabase.rpc("get_monthly_cps_lead_counts", rpcArgs),
-      ])
+      const { data: chartData, error: chartError } = await supabase.rpc("get_lead_volume_chart_by_period", rpcArgs)
+      if (chartError) throw chartError
 
-      if (rpcError) throw rpcError
-      if (typeError) throw typeError
-      if (handoverError) throw handoverError
-      if (cpsError) throw cpsError
-
-      const leadLookup = new Map(
-        (data || []).map((row) => [
-          String(row.month).slice(0, 10),
-          Number(row.lead_count || 0),
-        ])
-      )
-      const handoverLookup = new Map(
-        (handoverData || []).map((row) => [
-          String(row.month).slice(0, 10),
-          Number(row.cps_h_count || 0),
-        ])
-      )
-      const cpsLookup = new Map(
-        (cpsData || []).map((row) => [
-          String(row.month).slice(0, 10),
-          {
-            cps_c_count: Number(row.cps_c_count || 0),
-            cps_p_count: Number(row.cps_p_count || 0),
-            cps_s_count: Number(row.cps_s_count || 0),
-          },
-        ])
-      )
-
-      const availableTypes = [...new Set((typeData || []).map((row) => String(row.lead_type || "(Empty / NULL)")))]
+      const grouped = new Map()
+      const availableTypes = [...new Set((chartData || []).map((row) => String(row.lead_type || "(Empty / NULL)")))]
       setTypeNames(availableTypes)
-      const typeLookup = new Map()
-      ;(typeData || []).forEach((row) => {
-        const key = String(row.month).slice(0, 10)
-        if (!typeLookup.has(key)) typeLookup.set(key, {})
-        typeLookup.get(key)[String(row.lead_type || "(Empty / NULL)")] = Number(row.lead_count || 0)
+      ;(chartData || []).forEach((item) => {
+        const key = String(item.period_start).slice(0, 10)
+        if (!grouped.has(key)) {
+          const date = new Date(`${key}T00:00:00`)
+          const label = chartPeriod === "week"
+            ? `Week of ${date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}`
+            : chartPeriod === "quarter"
+              ? `Q${Math.floor(date.getMonth() / 3) + 1} ${date.getFullYear()}`
+              : chartPeriod === "year"
+                ? String(date.getFullYear())
+                : date.toLocaleDateString("en-GB", { month: "short", year: "2-digit" })
+          grouped.set(key, {
+            month: key,
+            period_label: label,
+            lead_count: Number(item.total_lead_count || 0),
+            cps_h_count: Number(item.cps_h_count || 0),
+            cps_c_count: Number(item.cps_c_count || 0),
+            cps_p_count: Number(item.cps_p_count || 0),
+            cps_s_count: Number(item.cps_s_count || 0),
+          })
+        }
+        grouped.get(key)[String(item.lead_type || "(Empty / NULL)")] = Number(item.lead_count || 0)
       })
-
-      const complete = buildMonthRange(start, end)
-        .map((row) => {
-          const lead_count = leadLookup.get(row.month) || 0
-          const cps_h_count = handoverLookup.get(row.month) || 0
-          const cps_c_count = cpsLookup.get(row.month)?.cps_c_count || 0
-          const cps_p_count = cpsLookup.get(row.month)?.cps_p_count || 0
-          const cps_s_count = cpsLookup.get(row.month)?.cps_s_count || 0
-          const percentage = (count) => lead_count > 0 ? (count / lead_count) * 100 : 0
-          return {
-            ...row,
-            lead_count,
-            cps_h_count,
-            cps_c_count,
-            cps_p_count,
-            cps_s_count,
-            cps_h_pct: percentage(cps_h_count),
-            cps_c_pct: percentage(cps_c_count),
-            cps_p_pct: percentage(cps_p_count),
-            cps_s_pct: percentage(cps_s_count),
-            ...Object.fromEntries(availableTypes.map((type) => [type, typeLookup.get(row.month)?.[type] || 0])),
-          }
-        })
-        .slice(0, -1)
-
+      const complete = [...grouped.values()].map((row) => {
+        const percentage = (count) => row.lead_count > 0 ? (count / row.lead_count) * 100 : 0
+        return {
+          ...row,
+          cps_h_pct: percentage(row.cps_h_count),
+          cps_c_pct: percentage(row.cps_c_count),
+          cps_p_pct: percentage(row.cps_p_count),
+          cps_s_pct: percentage(row.cps_s_count),
+        }
+      })
       setRows(complete)
     } catch (err) {
       console.error("Error loading data dashboard:", err)
@@ -460,7 +409,7 @@ function DataDashboard() {
 
   useEffect(() => {
     loadData()
-  }, [selectedLeadSource])
+  }, [selectedLeadSource, chartPeriod])
 
   useEffect(() => {
     if (activeTab === "pronto") {
@@ -530,7 +479,7 @@ function DataDashboard() {
         ? row
         : peak
     )
-  }, [monthsWithData])
+  }, [monthsWithData, selectedLeadType])
 
   const firstDataMonth = monthsWithData[0]?.month
 
@@ -950,7 +899,7 @@ function DataDashboard() {
           <div>
             <div className="data-dashboard-chart-title">
               <BarChart3 size={17} />
-              Monthly lead volume by lead type
+              Lead volume by type
             </div>
 
             <div className="data-dashboard-chart-subtitle">
@@ -958,11 +907,20 @@ function DataDashboard() {
                 ? `CRM lead records currently begin ${formatMonth(
                     firstDataMonth
                   )}.`
-                : "Monthly lead records from January 2026 onwards."}
+                : "Lead records from January 2026 onwards, grouped by the selected period."}
             </div>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <label htmlFor="lead-volume-period" style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>Period</label>
+            <select id="lead-volume-period" value={chartPeriod} onChange={(event) => setChartPeriod(event.target.value)} style={{ minWidth: 120, padding: "8px 10px", border: "1px solid #dfe5ec", borderRadius: 8, background: "#fff", color: "#334155", fontSize: 12 }}>
+              <option value="week">Week</option><option value="month">Month</option><option value="quarter">Quarter</option><option value="year">Year</option>
+            </select>
+            <label htmlFor="lead-volume-type" style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>Type</label>
+            <select id="lead-volume-type" value={selectedLeadType} onChange={(event) => setSelectedLeadType(event.target.value)} style={{ minWidth: 150, padding: "8px 10px", border: "1px solid #dfe5ec", borderRadius: 8, background: "#fff", color: "#334155", fontSize: 12 }}>
+              <option value="">All types</option>
+              {[...typeNames].sort().map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
             <label htmlFor="lead-volume-source" style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>Lead source</label>
             <select
               id="lead-volume-source"
@@ -995,7 +953,7 @@ function DataDashboard() {
           <ResponsiveContainer width="100%" height={430}>
             <ComposedChart data={rows} margin={{ top: 10, right: 18, left: 0, bottom: 8 }}>
               <CartesianGrid stroke="#e8edf3" vertical={false} />
-              <XAxis dataKey="month" tickFormatter={(value) => new Date(`${value}T00:00:00`).toLocaleDateString("en-GB", { month: "short", year: "2-digit" })} interval={5} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={{ stroke: "#dfe5ec" }} tickLine={false} />
+              <XAxis dataKey="month" tickFormatter={(value) => rows.find((row) => row.month === value)?.period_label || value} interval={chartPeriod === "week" ? 3 : 0} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={{ stroke: "#dfe5ec" }} tickLine={false} />
               <YAxis yAxisId="leads" tickFormatter={formatNumber} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} width={55} /><YAxis yAxisId="conversion" orientation="right" domain={[0, 100]} tickFormatter={value => `${Number(value).toFixed(0)}%`} tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} width={48} />
               <Tooltip
                 content={({ active, payload, label }) => {
