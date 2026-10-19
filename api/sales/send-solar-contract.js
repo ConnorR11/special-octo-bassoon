@@ -105,7 +105,7 @@ export default async function handler(req, res) {
     }
     const { data: appointment, error: appointmentError } = await supabase
       .from("appointments")
-      .select("appointment_row_id,name,result,email_address,phone_number_1,address,postcode,product,job_type,rep_allocated,branch,sales_notes,epvs_calculation,contract_number,signature_path,express_fit_signature_path,seg_disclaimer_signature_path")
+      .select("appointment_row_id,name,result,email_address,phone_number_1,address,postcode,product,job_type,rep_allocated,branch,sales_notes,epvs_calculation,contract_number,signature_path,express_fit_signature_path,seg_disclaimer_signature_path,reason_for_overstay,overstay_form_link")
       .eq("appointment_row_id", appointmentRowId)
       .maybeSingle()
     if (appointmentError) throw appointmentError
@@ -154,6 +154,34 @@ export default async function handler(req, res) {
       return await fail(413, "The contract PDF is over the 10 MB email attachment limit.")
     }
     const pdfBase64 = Buffer.from(await pdfFile.arrayBuffer()).toString("base64")
+    const attachments = [{
+      "@odata.type": "#microsoft.graph.fileAttachment",
+      name: fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`,
+      contentType: "application/pdf",
+      contentBytes: pdfBase64,
+    }]
+
+    // Attach the generated overstay form when one exists. BOs never call this contract endpoint.
+    if (appointment.overstay_form_link) {
+      const overstayPath = String(appointment.overstay_form_link).trim()
+      if (!overstayPath.startsWith(`${appointmentRowId}/`) || overstayPath.includes("..")) {
+        return await fail(409, "The saved overstay form path is invalid. Please regenerate the overstay form.")
+      }
+      const { data: overstayFile, error: overstayDownloadError } = await supabase.storage.from("overstay-forms").download(overstayPath)
+      if (overstayDownloadError || !overstayFile) {
+        console.error("Unable to download overstay PDF from storage:", overstayDownloadError?.message)
+        return await fail(500, "The overstay form could not be retrieved, so the contract email was not sent.")
+      }
+      if (overstayFile.size > 5 * 1024 * 1024 || pdfFile.size + overstayFile.size > 10 * 1024 * 1024) {
+        return await fail(413, "The contract and overstay PDF attachments exceed the email attachment limit.")
+      }
+      attachments.push({
+        "@odata.type": "#microsoft.graph.fileAttachment",
+        name: `${String(appointment.name || "Customer").replace(/[^a-zA-Z0-9._-]/g, "-")}-Overstay-Form.pdf`,
+        contentType: "application/pdf",
+        contentBytes: Buffer.from(await overstayFile.arrayBuffer()).toString("base64"),
+      })
+    }
 
     const { data: emailTemplate, error: templateError } = await supabase
       .from("templates")
@@ -188,12 +216,7 @@ export default async function handler(req, res) {
             content: emailBody,
           },
           toRecipients: [{ emailAddress: { address: customerEmail } }],
-          attachments: [{
-            "@odata.type": "#microsoft.graph.fileAttachment",
-            name: fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`,
-            contentType: "application/pdf",
-            contentBytes: pdfBase64,
-          }],
+          attachments,
         },
         saveToSentItems: true,
       }),
