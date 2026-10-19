@@ -108,29 +108,30 @@ export default function EPVSApplications() {
 
   const linkedIds = new Set(rows.map(row => row.linked_deal_id).filter(Boolean))
 
-  return <div style={{ padding: "8px 0 30px", color: "#101828" }}>
+  return <div style={{ padding: "8px 0 30px", color: "#263238", maxWidth: 1600, margin: "0 auto" }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
       <div>
-        <h1 style={{ margin: 0, fontSize: 26, fontWeight: 750 }}>EPVS Applications</h1>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}><div style={{ width: 42, height: 42, borderRadius: 10, background: "#f15a24", color: "#fff", display: "grid", placeItems: "center", fontSize: 25, fontWeight: 800 }}>e</div><div><h1 style={{ margin: 0, fontSize: 26, fontWeight: 750, color: "#182230" }}>EPVS Applications</h1><div style={{ marginTop: 2, color: "#f15a24", fontSize: 11, fontWeight: 750, letterSpacing: ".08em", textTransform: "uppercase" }}>Validation Hub</div></div></div>
         <p style={{ margin: "6px 0 0", color: "#667085", fontSize: 14 }}>Import existing Validation Hub applications and link each one to its CRM deal.</p>
       </div>
-      <button type="button" onClick={importExisting} disabled={importing} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "11px 15px", border: 0, borderRadius: 9, background: importing ? "#98a2b3" : "#175cd3", color: "#fff", fontWeight: 700, cursor: importing ? "wait" : "pointer" }}>
+      <button type="button" onClick={importExisting} disabled={importing} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "11px 15px", border: 0, borderRadius: 9, background: importing ? "#98a2b3" : "#f15a24", color: "#fff", fontWeight: 700, cursor: importing ? "wait" : "pointer" }}>
         {importing ? <RefreshCw size={16} /> : <Download size={16} />}{importing ? "Importing applications…" : "Import existing EPVS applications"}
       </button>
     </div>
 
-    <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
-      <div style={{ padding: "14px 18px", border: "1px solid #eaecf0", borderRadius: 10, background: "#fff", minWidth: 150 }}>
-        <div style={{ color: "#667085", fontSize: 12 }}>Applications in CRM</div><div style={{ fontSize: 24, fontWeight: 750 }}>{total.toLocaleString("en-GB")}</div>
-      </div>
-      <div style={{ padding: "14px 18px", border: "1px solid #eaecf0", borderRadius: 10, background: "#fff", minWidth: 150 }}>
-        <div style={{ color: "#667085", fontSize: 12 }}>Linked on this page</div><div style={{ fontSize: 24, fontWeight: 750 }}>{rows.filter(row => row.linked_deal_id).length}</div>
-      </div>
-      <div style={{ padding: "14px 18px", border: "1px solid #eaecf0", borderRadius: 10, background: "#fff", minWidth: 150 }}>
-        <div style={{ color: "#667085", fontSize: 12 }}>Unlinked on this page</div><div style={{ fontSize: 24, fontWeight: 750 }}>{rows.filter(row => !row.linked_deal_id).length}</div>
-      </div>
+    <div style={{ background: "#f15a24", borderRadius: 10, padding: "17px 20px", color: "#fff", marginBottom: 16, boxShadow: "0 3px 8px rgba(241,90,36,.14)" }}>
+      <div style={{ fontSize: 12, fontWeight: 750, letterSpacing: ".07em", textTransform: "uppercase" }}>Important notice</div>
+      <div style={{ fontSize: 14, marginTop: 5 }}>Application records sync from EPVS Validation Hub when you run an import. Linking a CRM deal does not change the application in EPVS.</div>
     </div>
-
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 14, marginBottom: 16 }}>
+      {[
+        { label: "Grand total applications", value: total, accent: "#f15a24" },
+        { label: "Linked on this page", value: rows.filter(row => row.linked_deal_id).length, accent: "#64a83b" },
+        { label: "Awaiting a CRM link", value: rows.filter(row => !row.linked_deal_id).length, accent: "#e4a11b" },
+      ].map(item => <div key={item.label} style={{ padding: "17px 18px", border: "1px solid #edf0f2", borderTop: `3px solid ${item.accent}`, borderRadius: 9, background: "#fff", boxShadow: "0 1px 3px rgba(16,24,40,.04)" }}>
+        <div style={{ color: "#667085", fontSize: 12 }}>{item.label}</div><div style={{ fontSize: 28, fontWeight: 800, marginTop: 3, color: "#182230" }}>{Number(item.value).toLocaleString("en-GB")}</div>
+      </div>)}
+    </div>
     {message && <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "12px 14px", marginBottom: 14, borderRadius: 8, background: "#ecfdf3", color: "#027a48", fontSize: 13 }}><CheckCircle2 size={17}/>{message}</div>}
     {error && <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "12px 14px", marginBottom: 14, borderRadius: 8, background: "#fef3f2", color: "#b42318", fontSize: 13 }}><AlertCircle size={17}/>{error}</div>}
 
@@ -147,7 +148,7 @@ export default function EPVSApplications() {
 
     <div style={{ border: "1px solid #eaecf0", borderRadius: 10, overflow: "auto", background: "#fff" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 1100 }}>
-        <thead><tr>{["EPVS ID", "Customer / contact", "Installation address", "Status", "Contract value", "Signed", "CRM deal", "Action"].map(title => <th key={title} style={{ padding: "12px 10px", background: "#f9fafb", textAlign: "left", whiteSpace: "nowrap", borderBottom: "1px solid #eaecf0", color: "#475467", fontWeight: 700 }}>{title}</th>)}</tr></thead>
+        <thead><tr>{["EPVS ID", "Customer / contact", "Installation address", "Status", "Contract value", "Signed", "CRM deal", "Action"].map(title => <th key={title} style={{ padding: "12px 10px", background: "#fff7f3", textAlign: "left", whiteSpace: "nowrap", borderBottom: "1px solid #eaecf0", color: "#8b3b20", fontWeight: 750 }}>{title}</th>)}</tr></thead>
         <tbody>
           {loading ? <tr><td colSpan={8} style={{ padding: 30, textAlign: "center", color: "#667085" }}>Loading EPVS applications…</td></tr> :
            rows.length === 0 ? <tr><td colSpan={8} style={{ padding: 30, textAlign: "center", color: "#667085" }}>No applications found. Use “Import existing EPVS applications” to fetch them from Validation Hub.</td></tr> :
@@ -156,7 +157,7 @@ export default function EPVSApplications() {
               <td style={cell}><strong>#{row.epvs_validation_id}</strong><div style={{ color: "#98a2b3", marginTop: 4 }}>Created {formatDate(row.epvs_created_at)}</div></td>
               <td style={{ ...cell, minWidth: 190 }}><strong>{row.customer_full_name || [row.customer_first_name,row.customer_last_name].filter(Boolean).join(" ") || "Unknown customer"}</strong><div style={{ color: "#667085", marginTop: 4 }}>{row.customer_phone || "No phone"} · {row.customer_email || "No email"}</div></td>
               <td style={{ ...cell, minWidth: 190 }}>{row.installation_address || "—"}<div style={{ color: "#667085", marginTop: 4 }}>{row.installation_postcode || ""}</div></td>
-              <td style={cell}><span style={{ display: "inline-block", borderRadius: 99, padding: "4px 8px", background: "#f2f4f7", color: "#344054", whiteSpace: "nowrap" }}>{row.status || "Unknown"}</span></td>
+              <td style={cell}><span style={{ display: "inline-block", borderRadius: 99, padding: "4px 8px", background: "#fff0e8", color: "#a33d16", whiteSpace: "nowrap" }}>{row.status || "Unknown"}</span></td>
               <td style={{ ...cell, whiteSpace: "nowrap" }}>{money(row.contract_value)}</td>
               <td style={{ ...cell, whiteSpace: "nowrap" }}>{formatDate(row.contract_signed_at)}</td>
               <td style={{ ...cell, minWidth: 180 }}>{row.linked_deal_id ? <><strong>Linked</strong><div style={{ color: "#667085", marginTop: 4, fontSize: 11 }}>{row.linked_deal_id}</div></> : <span style={{ color: "#b54708" }}>Not linked</span>}</td>
