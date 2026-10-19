@@ -259,10 +259,20 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
       <div className="data-clean-layout">
         <aside className="data-clean-report-list">
           <div className="data-clean-report-list-title"><ClipboardList size={16} /><span>Reports</span></div>
-          {REPORTS.map(report => {
+          {REPORTS.filter(report => !report.group).map(report => {
             const active = report.id === activeReport
             return (
               <button key={report.id} type="button" className={`data-clean-report-card ${active ? "active" : ""}`} onClick={() => { setPage(0); setActiveReport(report.id) }}>
+                <div className="data-clean-report-icon">{active ? <AlertTriangle size={17} /> : <ChevronRight size={17} />}</div>
+                <div className="data-clean-report-copy"><strong>{report.title}</strong><span>{report.description}</span></div>
+              </button>
+            )
+          })}
+          <div className="data-clean-group-title"><ClipboardList size={14} /><span>CPS Work</span></div>
+          {REPORTS.filter(report => report.group === "CPS Work").map(report => {
+            const active = report.id === activeReport
+            return (
+              <button key={report.id} type="button" className={`data-clean-report-card data-clean-report-nested ${active ? "active" : ""}`} onClick={() => { setPage(0); setActiveReport(report.id) }}>
                 <div className="data-clean-report-icon">{active ? <AlertTriangle size={17} /> : <ChevronRight size={17} />}</div>
                 <div className="data-clean-report-copy"><strong>{report.title}</strong><span>{report.description}</span></div>
               </button>
@@ -378,6 +388,8 @@ const styles = `
 .data-clean-report-list-title{display:flex;align-items:center;gap:8px;padding:9px 10px 11px;color:#172033;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
 .data-clean-report-card{width:100%;display:flex;align-items:flex-start;gap:10px;padding:13px 10px;border:1px solid transparent;border-radius:9px;background:#fff;text-align:left;cursor:pointer;color:#334155;box-sizing:border-box}
 .data-clean-report-card:hover{background:#f8fafc}
+.data-clean-group-title{display:flex;align-items:center;gap:8px;margin:10px 6px 4px;padding:10px 4px 4px;border-top:1px solid #e6eaf0;color:#475569;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.data-clean-report-nested{padding-left:14px}
 .data-clean-report-card.active{background:#eef4ff;border-color:#cbd9f5;color:#172554}
 .data-clean-report-icon{width:30px;height:30px;flex:0 0 auto;border-radius:7px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#64748b}
 .data-clean-report-card.active .data-clean-report-icon{background:#fff;color:#172554}
