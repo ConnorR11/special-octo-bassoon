@@ -184,7 +184,7 @@ export default async function handler(req, res) {
       const headerH = 25
       const totalH = headerH + rowLayouts.reduce((sum, item) => sum + item.height, 0)
       const top = y
-      page.drawRectangle({ x: margin, y: top - totalH, width, height: totalH, color: white, borderColor, borderWidth: 0.75 })
+      page.drawRectangle({ x: margin, y: top - totalH, width, height: totalH, color: white, borderColor: border, borderWidth: 0.75 })
       page.drawRectangle({ x: margin, y: top - headerH, width, height: headerH, color: deepNavy })
       text(title.toUpperCase(), margin + 16, top - 16, 9.2, bold, white)
       let rowTop = top - headerH
