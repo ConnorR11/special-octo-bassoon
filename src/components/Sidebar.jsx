@@ -4,7 +4,7 @@ import {
   Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck,
   Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound,
   MessageCircle, UserCog, FileCheck, LogOut, ClipboardList, Lock, KanbanSquare,
-  Presentation, Clipboard, Calculator, ShoppingCart, Building2, Search, Database, Star, Sun, Map, Boxes,
+  Presentation, Clipboard, Calculator, ShoppingCart, Building2, Search, Database, Star, Sun, Map, Boxes, Link2,
 } from "lucide-react"
 import CallLog from "../pages/CallLog"
 import PhoneDialer from "./PhoneDialer"
@@ -73,7 +73,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
       "canvasser-kpi": 3,
       balances: 4,
       mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4,
-      templates: 4, "integration-logs": 4, "data-dashboard": 4, "data-clean": 4, "solar-backend": 4, "unit-analysis": 4, "map-of-installs": 4,
+      templates: 4, "integration-logs": 4, "data-dashboard": 4, "data-clean": 4, "solar-backend": 4, "unit-analysis": 4, "map-of-installs": 4, "epvs-applications": 4,
     }[route]
     return !requiredPermission || numericPermissionLevel >= requiredPermission
   }
@@ -182,6 +182,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={ClipboardList} label="Tasks" active={isActive("tasks")} onClick={() => navigate("tasks")}/>
             <NavItem icon={Presentation} label="Templates" active={isActive("templates")} onClick={() => navigate("templates")}/>
             <NavItem icon={Database} label="API & Webhooks" active={isActive("integration-logs")} onClick={() => navigate("integration-logs")}/>
+            <NavItem icon={Link2} label="EPVS Applications" active={isActive("epvs-applications")} onClick={() => navigate("epvs-applications")}/>
             <NavItem icon={Settings} label="Settings" disabled/>
           </Folder>}
         </nav>
