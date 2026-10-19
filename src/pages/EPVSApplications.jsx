@@ -61,24 +61,34 @@ export default function EPVSApplications() {
         }
         const solarIds = dealsResult.map(deal => deal.id)
         const statusByDeal = new Map()
+        const validatedDealIds = new Set()
         for (let i = 0; i < solarIds.length; i += 500) {
           const batch = solarIds.slice(i, i + 500)
           if (!batch.length) continue
-          const { data, error } = await supabase.from("epvs_submissions")
-            .select("linked_deal_id,status,contract_signed_at,epvs_created_at")
-            .in("linked_deal_id", batch)
-          if (error) throw error
-          for (const row of data || []) {
-            if (!row.linked_deal_id) continue
-            const current = statusByDeal.get(row.linked_deal_id)
-            const rowDate = new Date(row.epvs_created_at || row.contract_signed_at || 0)
-            const currentDate = new Date(current?.epvs_created_at || current?.contract_signed_at || 0)
-            if (!current || rowDate > currentDate) statusByDeal.set(row.linked_deal_id, row)
+          let epvsFrom = 0
+          while (true) {
+            const { data, error } = await supabase.from("epvs_submissions")
+              .select("linked_deal_id,status,contract_signed_at,epvs_created_at")
+              .in("linked_deal_id", batch)
+              .range(epvsFrom, epvsFrom + 999)
+            if (error) throw error
+            for (const row of data || []) {
+              if (!row.linked_deal_id) continue
+              if (String(row.status || "").trim().toLowerCase() === "validated") {
+                validatedDealIds.add(row.linked_deal_id)
+              }
+              const current = statusByDeal.get(row.linked_deal_id)
+              const rowDate = new Date(row.epvs_created_at || row.contract_signed_at || 0)
+              const currentDate = new Date(current?.epvs_created_at || current?.contract_signed_at || 0)
+              if (!current || rowDate > currentDate) statusByDeal.set(row.linked_deal_id, row)
+            }
+            if (!data || data.length < 1000) break
+            epvsFrom += 1000
           }
         }
         setSolarDeals(dealsResult
           .filter(deal => !["customer cancelled", "decline"].includes(String(deal.pipedrive_stage || "").toLowerCase()))
-          .filter(deal => String(statusByDeal.get(deal.id)?.status || "").toLowerCase() !== "validated")
+          .filter(deal => !validatedDealIds.has(deal.id))
           .map(deal => ({ ...deal, epvsStatus: statusByDeal.get(deal.id)?.status || "Not Submitted" })))
       } catch (err) {
         setError(err?.message || "Could not load Solar deals missing validated EPVS applications.")
