@@ -121,10 +121,10 @@ function CustomerDetail({
           await supabase.storage.from("deal-documents").remove([path])
           throw metadataError
         }
-        if (category === "survey_video") {
+        if (category === "survey_video" || category === "electricity_bill_epvs_waiver") {
           const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
           if (sessionError) throw sessionError
-          const response = await fetch("/api/deals/sync-survey-video", {
+          const response = await fetch(category === "survey_video" ? "/api/deals/sync-survey-video" : "/api/deals/sync-solar-bill", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -134,7 +134,7 @@ function CustomerDetail({
           })
           const syncResult = await response.json().catch(() => ({}))
           if (!response.ok || !syncResult.success) {
-            throw new Error(`Video uploaded to the CRM, but Pipedrive sync failed: ${syncResult.error || "Unknown error"}`)
+            throw new Error(`${category === "survey_video" ? "Video" : "Bill"} uploaded to the CRM, but Pipedrive sync failed: ${syncResult.error || "Unknown error"}`)
           }
         }
 
