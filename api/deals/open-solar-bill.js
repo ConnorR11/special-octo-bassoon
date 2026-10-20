@@ -31,11 +31,11 @@ export default async function handler(req, res) {
       .eq("category", "electricity_bill_epvs_waiver")
       .maybeSingle()
     if (documentError) throw documentError
-    if (!document) return json(res, 404, { error: "Survey video not found." })
+    if (!document) return json(res, 404, { error: "Solar energy bill not found." })
 
     const { data: signed, error: signedError } = await supabase.storage
       .from("deal-documents").createSignedUrl(document.storage_path, 300)
-    if (signedError || !signed?.signedUrl) return json(res, 404, { error: "Survey video file could not be found." })
+    if (signedError || !signed?.signedUrl) return json(res, 404, { error: "Solar energy bill file could not be found." })
     return json(res, 200, { url: signed.signedUrl })
   } catch (error) {
     console.error("Open solar energy bill failed:", error?.message || error)
