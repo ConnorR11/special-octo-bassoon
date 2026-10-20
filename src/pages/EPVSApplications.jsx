@@ -61,7 +61,7 @@ export default function EPVSApplications() {
         }
         const solarIds = dealsResult.map(deal => deal.id)
         const statusByDeal = new Map()
-        const validatedDealIds = new Set()
+        const excludedDealIds = new Set()
         for (let i = 0; i < solarIds.length; i += 500) {
           const batch = solarIds.slice(i, i + 500)
           if (!batch.length) continue
@@ -74,8 +74,8 @@ export default function EPVSApplications() {
             if (error) throw error
             for (const row of data || []) {
               if (!row.linked_deal_id) continue
-              if (String(row.status || "").trim().toLowerCase() === "validated") {
-                validatedDealIds.add(row.linked_deal_id)
+              if (["validated", "registered"].includes(String(row.status || "").trim().toLowerCase())) {
+                excludedDealIds.add(row.linked_deal_id)
               }
               const current = statusByDeal.get(row.linked_deal_id)
               const rowDate = new Date(row.epvs_created_at || row.contract_signed_at || 0)
@@ -88,7 +88,7 @@ export default function EPVSApplications() {
         }
         setSolarDeals(dealsResult
           .filter(deal => !["customer cancelled", "decline"].includes(String(deal.pipedrive_stage || "").toLowerCase()))
-          .filter(deal => !validatedDealIds.has(deal.id))
+          .filter(deal => !excludedDealIds.has(deal.id))
           .map(deal => ({ ...deal, epvsStatus: statusByDeal.get(deal.id)?.status || "Not Submitted" })))
       } catch (err) {
         setError(err?.message || "Could not load Solar deals missing validated EPVS applications.")
@@ -234,7 +234,7 @@ export default function EPVSApplications() {
     </div>
     {activeTab === "missing-validated" ? <section style={{ background: "#fff", border: "1px solid #edf0f2", borderRadius: 10, overflow: "hidden" }}>
       <div style={{ padding: 18, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <div><h2 style={{ margin: 0, fontSize: 17, color: "#182230" }}>Solar deals without a validated EPVS application</h2><p style={{ margin: "5px 0 0", fontSize: 12, color: "#667085" }}>Includes Solar deals with no linked EPVS application marked Validated.</p></div>
+        <div><h2 style={{ margin: 0, fontSize: 17, color: "#182230" }}>Solar deals without a validated EPVS application</h2><p style={{ margin: "5px 0 0", fontSize: 12, color: "#667085" }}>Excludes Solar deals with any linked EPVS application marked Registered or Validated.</p></div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}><strong style={{ fontSize: 24, color: "#f15a24" }}>{solarDeals.filter(deal => (soldYear === "all" || (deal.sale_date && String(new Date(deal.sale_date).getFullYear()) === soldYear)) && (!solarSearch.trim() || [deal.contract_number, deal.customer_name, deal.postcode, deal.address, deal.pipedrive_stage].some(value => String(value || "").toLowerCase().includes(solarSearch.trim().toLowerCase())))).length}</strong><select value={soldYear} onChange={e => setSoldYear(e.target.value)} aria-label="Filter by sold year" style={{ padding: 9, border: "1px solid #d0d5dd", borderRadius: 8, background: "#fff" }}><option value="all">All sold years</option>{[...new Set(solarDeals.map(deal => deal.sale_date ? String(new Date(deal.sale_date).getFullYear()) : null).filter(Boolean))].sort((a,b) => Number(b)-Number(a)).map(year => <option key={year} value={year}>{year}</option>)}</select><input value={solarSearch} onChange={e => setSolarSearch(e.target.value)} placeholder="Search customer, contract, postcode…" style={{ width: 270, maxWidth: "55vw", padding: 9, border: "1px solid #d0d5dd", borderRadius: 8 }} /></div>
       </div>
       <div style={{ overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -247,7 +247,7 @@ export default function EPVSApplications() {
           </tr>) : <tr><td colSpan={7} style={{ padding: 28, textAlign: "center", color: "#667085" }}>No Solar deals missing validation match this search.</td></tr>
         })()}</tbody>
       </table></div>
-      <div style={{ padding: "12px 16px", color: "#667085", fontSize: 12, borderTop: "1px solid #f2f4f7" }}>Showing {solarDeals.filter(deal => (soldYear === "all" || (deal.sale_date && String(new Date(deal.sale_date).getFullYear()) === soldYear)) && (!solarSearch.trim() || [deal.contract_number, deal.customer_name, deal.postcode, deal.address, deal.pipedrive_stage].some(value => String(value || "").toLowerCase().includes(solarSearch.trim().toLowerCase())))).length} of {solarDeals.length} deals. A deal is considered validated only when a linked EPVS application has status “Validated”.</div>
+      <div style={{ padding: "12px 16px", color: "#667085", fontSize: 12, borderTop: "1px solid #f2f4f7" }}>Showing {solarDeals.filter(deal => (soldYear === "all" || (deal.sale_date && String(new Date(deal.sale_date).getFullYear()) === soldYear)) && (!solarSearch.trim() || [deal.contract_number, deal.customer_name, deal.postcode, deal.address, deal.pipedrive_stage].some(value => String(value || "").toLowerCase().includes(solarSearch.trim().toLowerCase())))).length} of {solarDeals.length} deals. Deals are excluded if any linked EPVS application has status “Registered” or “Validated”.</div>
     </section> : <>
     <div style={{ background: "#fff", border: "1px solid #edf0f2", borderRadius: 10, padding: "18px 20px 14px", marginBottom: 16, boxShadow: "0 1px 3px rgba(16,24,40,.04)" }}>
       <div style={{ fontSize: 15, fontWeight: 750, color: "#182230", marginBottom: 4 }}>Total Validations</div>
