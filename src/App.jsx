@@ -36,6 +36,7 @@ import SolarBackend from "./pages/SolarBackend"
 import AdminUserPreview from "./components/AdminUserPreview"
 import ContractFile from "./pages/ContractFile"
 import OverstayFormFile from "./pages/OverstayFormFile"
+import SurveyVideoFile from "./pages/SurveyVideoFile"
 import UnitAnalysis from "./pages/UnitAnalysis"
 import EPVSApplications from "./pages/EPVSApplications"
 
@@ -187,6 +188,7 @@ function App() {
       const path=window.location.pathname.replace(/\/+$/,"/")||"/"
       if (path === "/contract-file/") { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("contract-file"); return }
       if (path === "/overstay-form/") { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("overstay-form"); return }
+      if (path === "/survey-video/") { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("survey-video"); return }
       const appointmentMatch=path.match(/^\/appointments\/([^/]+)$/)
       if(appointmentMatch){loadAppointmentFromUrl(decodeURIComponent(appointmentMatch[1]));return}
       setSelected(null);setSelectedAppointment(null);setPickupAppointment(null)
@@ -220,6 +222,8 @@ function App() {
     pageContent = <ContractFile />
   } else if (page === "overstay-form") {
     pageContent = <OverstayFormFile />
+  } else if (page === "survey-video") {
+    pageContent = <SurveyVideoFile />
   } else if (pickupAppointment) {
     pageContent = <PickupAppointment appointment={pickupAppointment} onBack={handleBackFromPickup} onCreated={handlePickupCreated}/>
   } else if (selectedAppointment) {
