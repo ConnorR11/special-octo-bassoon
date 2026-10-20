@@ -639,7 +639,7 @@ function CustomerDetail({
                   </label>
                 )}
               </div>
-              {category.key !== "survey_video" && <div style={{ padding: categoryDocuments.length ? "3px 12px" : "10px 12px", display: "grid", gap: 0 }}>
+              {category.key !== "survey_video" && category.key !== "electricity_bill_epvs_waiver" && <div style={{ padding: categoryDocuments.length ? "3px 12px" : "10px 12px", display: "grid", gap: 0 }}>
                 {categoryDocuments.map(document => <div key={document.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #edf0f2" }}>
                   <div style={{ width: 32, height: 32, borderRadius: 7, background: "#eaf3f8", color: "#1676b8", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto" }}><ExternalLink size={15} /></div>
                   <div style={{ flex: 1, minWidth: 0 }}><div title={document.file_name} style={{ fontSize: 11, fontWeight: 600, color: "#263645", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{document.file_name}</div><div style={{ marginTop: 3, fontSize: 9, color: "#89939c" }}>{document.file_size ? (document.file_size >= 1048576 ? `${(document.file_size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(document.file_size / 1024))} KB`) : "Size unknown"} · {document.created_at ? new Date(document.created_at).toLocaleString("en-GB") : ""}</div></div>
@@ -653,15 +653,6 @@ function CustomerDetail({
             </>
           })}
                       <div style={{padding:"0 12px 14px"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-                          <div style={{flex:1,height:7,background:"#e8edf2",borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width: `${surveyCompletion}%`,background:"#16845b",borderRadius:99,transition:"width .2s"}}/></div>
-                          <div style={{fontSize:11,color:"#64748b",whiteSpace:"nowrap"}}>{answeredSurveyCount} of {surveyQuestions.length} answered · {surveyCompletion}%</div>
-                        </div>
-                        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-                          <div style={{flex:1,height:7,background:"#e8edf2",borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.round((surveyPhotoSections.filter(section=>documents.some(d=>d.category==="survey_photos"&&d.survey_section===section)||pendingSurveyPhotos.some(p=>p.section===section)).length/surveyPhotoSections.length)*100)}%`,background:"#16845b",borderRadius:99,transition:"width .2s"}}/></div>
-                          <div style={{fontSize:11,color:"#64748b",whiteSpace:"nowrap"}}>{surveyPhotoSections.filter(section=>documents.some(d=>d.category==="survey_photos"&&d.survey_section===section)||pendingSurveyPhotos.some(p=>p.section===section)).length} of {surveyPhotoSections.length} photo sections complete</div>
-                        </div>
-
                         <div style={{display:"grid",gap:10}}>
                           {surveyQuestionGroups.map((group,index) => {
                             const groupQuestions = surveyQuestions.filter(([,key]) => group.keys.includes(key))
