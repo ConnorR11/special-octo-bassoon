@@ -82,12 +82,6 @@ function CustomerDetail({
       const { data, error } = await supabase.from("deal_documents").select("*").eq("deal_id", deal.id).order("created_at", { ascending: false })
       if (error) throw error
       setDocuments(data || [])
-      // Automatically sync existing survey videos to Pipedrive when the deal is opened.
-      // This also retries videos uploaded before the integration was deployed.
-      const surveyVideos = (data || []).filter(document => document.category === "survey_video")
-      for (const video of surveyVideos) {
-        await syncSurveyVideo(video, { quietSuccess: true })
-      }
       const { data: surveyData, error: surveyError } = await supabase.from("deal_survey_answers").select("answers").eq("deal_id", deal.id).maybeSingle()
       if (surveyError) throw surveyError
       setSurveyAnswers(surveyData?.answers || {})
@@ -125,6 +119,22 @@ function CustomerDetail({
         if (metadataError) {
           await supabase.storage.from("deal-documents").remove([path])
           throw metadataError
+        }
+        if (category === "survey_video") {
+          const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+          if (sessionError) throw sessionError
+          const response = await fetch("/api/deals/sync-survey-video", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${sessionData?.session?.access_token || ""}`,
+            },
+            body: JSON.stringify({ deal_id: deal.id, document_id: savedDocument.id }),
+          })
+          const syncResult = await response.json().catch(() => ({}))
+          if (!response.ok || !syncResult.success) {
+            throw new Error(`Video uploaded to the CRM, but Pipedrive sync failed: ${syncResult.error || "Unknown error"}`)
+          }
         }
 
         uploadedCount += 1
