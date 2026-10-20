@@ -120,7 +120,7 @@ export default function TeamDiaryOutput({ onClose }) {
       if (entries.length) {
         lines.push(`${cursor.toLocaleDateString("en-GB", { weekday: "long" }).toLocaleUpperCase()} ${cursor.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`)
         entries.forEach((job, index) => {
-          const frames = formatFrames(job)
+          const frames = job.jobType === "Fit" ? formatFrames(job) : ""
           lines.push(`${job.jobType ? `[${job.jobType.toUpperCase()}] ` : ""}${job.customer_name || "Customer"} - ${job.postcode || "No postcode"} - ${job.contract_number || "No contract"}${frames ? ` - ${frames}` : ""}`)
           if (index < entries.length - 1) lines.push("&")
         })
