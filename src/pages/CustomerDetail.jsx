@@ -576,6 +576,35 @@ function CustomerDetail({
       {activeTab === "survey" && <>
       <div className="card" style={{ marginBottom: 18 }}>
         <div className="card-head"><div><h2>Solar Survey</h2><p>Upload and manage all solar survey information and supporting files</p></div></div>
+        {(() => {
+          const videoComplete = documents.some(document => document.category === "survey_video")
+          const billComplete = documents.some(document => document.category === "electricity_bill_epvs_waiver")
+          const answeredCount = surveyQuestions.filter(([, key]) => String(surveyAnswers[key] || "").trim()).length
+          const checklistComplete = answeredCount === surveyQuestions.length
+          const checklistStarted = answeredCount > 0
+          const photoSectionsComplete = surveyPhotoSections.filter(section =>
+            documents.some(document => document.category === "survey_photos" && document.survey_section === section) ||
+            pendingSurveyPhotos.some(photo => photo.section === section)
+          ).length
+          const photosComplete = photoSectionsComplete === surveyPhotoSections.length
+          const stages = [
+            { label: "1. Survey Video", complete: videoComplete, partial: false },
+            { label: "2. Electricity Bill", complete: billComplete, partial: false },
+            { label: "3. Checklist", complete: checklistComplete, partial: checklistStarted },
+            { label: "4. Photos", complete: photosComplete, partial: photoSectionsComplete > 0 },
+          ]
+          return <div aria-label="Solar survey progress" style={{ padding: "0 20px", marginTop: -4, marginBottom: 4 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8 }}>
+              {stages.map(stage => {
+                const color = stage.complete ? "#16845b" : stage.partial ? "#f59e0b" : "#e5eaf0"
+                return <div key={stage.label} style={{ minWidth: 0 }}>
+                  <div title={stage.label} style={{ height: 8, borderRadius: 99, background: color, transition: "background .2s" }} />
+                  <div style={{ marginTop: 6, fontSize: 10, lineHeight: 1.35, color: stage.complete ? "#16845b" : stage.partial ? "#b86a00" : "#64748b", fontWeight: stage.complete || stage.partial ? 600 : 500, overflowWrap: "anywhere" }}>{stage.label}</div>
+                </div>
+              })}
+            </div>
+          </div>
+        })()}
         <div style={{ padding: "0 20px 20px", display: "grid", gap: 16 }}>
           {documentError && <div role="alert" style={{ padding: "10px 12px", borderRadius: 7, background: "#fff0f0", color: "#a33b3b", fontSize: 11 }}>{documentError}</div>}
           {documentNotice && <div role="status" style={{ padding: "10px 12px", borderRadius: 7, background: "#e8f4ed", color: "#28734c", fontSize: 11 }}>{documentNotice}</div>}
