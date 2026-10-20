@@ -50,29 +50,48 @@ export default function TeamDiaryOutput({ onClose }) {
     setLoading(true)
     setError("")
     try {
-      const { data, error: queryError } = await supabase
-        .from("deals")
-        .select('id,customer_name,postcode,contract_number,installation_start_date,fit_team_1,window_count,door_count,"sp/tl_count","fd/pd_count",velux_count')
-        .gte("installation_start_date", startDate)
-        .lte("installation_start_date", endDate)
-        .not("fit_team_1", "is", null)
-        .order("installation_start_date", { ascending: true })
-      if (queryError) throw queryError
-      setJobs((data || []).map((deal) => ({
-        ...deal,
-        date: String(deal.installation_start_date || "").slice(0, 10),
-      })).filter((deal) => deal.date >= startDate && deal.date <= endDate))
+      const select = 'id,customer_name,postcode,contract_number,installation_start_date,fit_team_1,window_count,door_count,"sp/tl_count","fd/pd_count",velux_count,installation_roof_start_date,installation_roof_team,installation_electrics_start_date,installation_electrics_team,remedial_start_date,remedial_fit_team,installations_issues_start_date,installation_issues_fit_team'
+      const jobsResult = []
+      const jobSources = [
+        ["Fit", "installation_start_date", "fit_team_1"],
+        ["Roofer", "installation_roof_start_date", "installation_roof_team"],
+        ["Electrics", "installation_electrics_start_date", "installation_electrics_team"],
+        ["Remedial", "remedial_start_date", "remedial_fit_team"],
+        ["Issue", "installations_issues_start_date", "installation_issues_fit_team"],
+      ]
+      for (const [type, dateField, teamField] of jobSources) {
+        let from = 0
+        while (true) {
+          const { data, error: queryError } = await supabase
+            .from("deals")
+            .select(select)
+            .gte(dateField, startDate)
+            .lte(dateField, endDate)
+            .not(teamField, "is", null)
+            .order(dateField, { ascending: true })
+            .range(from, from + 999)
+          if (queryError) throw queryError
+          ;(data || []).forEach((deal) => {
+            const date = String(deal[dateField] || "").slice(0, 10)
+            if (date >= startDate && date <= endDate && String(deal[teamField] || "").trim()) {
+              jobsResult.push({ ...deal, date, jobType: type, team: String(deal[teamField]).trim() })
+            }
+          })
+          if (!data || data.length < 1000) break
+          from += 1000
+        }
+      }
+      setJobs(jobsResult)
     } catch (e) {
-      setError(e?.message || "Unable to load fitting jobs for this date range.")
+      setError(e?.message || "Unable to load team diary jobs for this date range.")
       setJobs([])
     } finally {
       setLoading(false)
     }
   }
-
   useEffect(() => { loadJobs() }, [])
 
-  const teams = useMemo(() => [...new Set(jobs.map((job) => String(job.fit_team_1 || "").trim()).filter(Boolean))]
+  const teams = useMemo(() => [...new Set(jobs.map((job) => String(job.team || "").trim()).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" })), [jobs])
 
   useEffect(() => {
@@ -81,7 +100,7 @@ export default function TeamDiaryOutput({ onClose }) {
   }, [teams, selectedTeam])
 
   const teamJobs = useMemo(() => jobs
-    .filter((job) => String(job.fit_team_1 || "").trim() === selectedTeam)
+    .filter((job) => String(job.team || "").trim() === selectedTeam)
     .sort((a, b) => a.date.localeCompare(b.date) || String(a.customer_name || "").localeCompare(String(b.customer_name || ""))),
   [jobs, selectedTeam])
 
@@ -102,7 +121,7 @@ export default function TeamDiaryOutput({ onClose }) {
         lines.push(`${cursor.toLocaleDateString("en-GB", { weekday: "long" }).toLocaleUpperCase()} ${cursor.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`)
         entries.forEach((job, index) => {
           const frames = formatFrames(job)
-          lines.push(`${job.customer_name || "Customer"} - ${job.postcode || "No postcode"} - ${job.contract_number || "No contract"}${frames ? ` - ${frames}` : ""}`)
+          lines.push(`${job.jobType ? `[${job.jobType.toUpperCase()}] ` : ""}${job.customer_name || "Customer"} - ${job.postcode || "No postcode"} - ${job.contract_number || "No contract"}${frames ? ` - ${frames}` : ""}`)
           if (index < entries.length - 1) lines.push("&")
         })
         lines.push("")
@@ -128,7 +147,7 @@ export default function TeamDiaryOutput({ onClose }) {
         <div>
           <button type="button" onClick={onClose} style={{ display: "inline-flex", alignItems: "center", gap: 6, border: 0, background: "transparent", color: "#475569", padding: "0 0 10px", cursor: "pointer" }}><ArrowLeft size={15} /> Back to Fit Sheet</button>
           <h2 style={{ margin: 0, color: "#172554", fontSize: 22 }}>Team Diary Output</h2>
-          <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 13 }}>Create a ready-to-send fitting diary for an individual team.</p>
+          <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 13 }}>Create a ready-to-send diary of all job types allocated to an individual team.</p>
         </div>
       </div>
 
@@ -152,7 +171,7 @@ export default function TeamDiaryOutput({ onClose }) {
         <button type="button" onClick={copyOutput} disabled={!output} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 13px", border: 0, borderRadius: 7, background: output ? "#166534" : "#94a3b8", color: "#fff", fontWeight: 700, cursor: output ? "pointer" : "not-allowed" }}><Copy size={14} /> {copied ? "Copied!" : "Copy team diary"}</button>
       </div>
       <textarea readOnly value={output || (loading ? "Loading jobs…" : "No jobs found for this team and date range.")} rows={Math.min(24, Math.max(8, output.split("\n").length))} style={{ width: "100%", boxSizing: "border-box", resize: "vertical", padding: 15, border: "1px solid #cbd5e1", borderRadius: 9, background: "#fff", color: "#0f172a", font: "13px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace" }} />
-      <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 12 }}>Frame counts are shown by type: W (windows), D (doors), SP/TL, FD/PD and Velux. Zero counts are omitted.</p>
+      <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 12 }}>Includes Fit, Roofer, Electrics, Remedial and Issue jobs allocated to the selected team. Frame counts are shown where available; zero counts are omitted.</p>
     </section>
   )
 }
