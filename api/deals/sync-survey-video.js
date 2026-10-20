@@ -52,11 +52,10 @@ export default async function handler(req, res) {
       return payload.data
     }
 
-    // Survey videos remain in the private bucket. Use a long-lived signed URL rather than making customer video files public.
-    const { data: signed, error: signedError } = await supabase.storage
-      .from("deal-documents").createSignedUrl(document.storage_path, 31536000)
-    if (signedError) throw signedError
-    if (!signed?.signedUrl) throw new Error("Supabase did not return a signed video URL.")
+    // Store a stable CRM URL in Pipedrive. The CRM route authenticates the user and
+    // generates a short-lived storage URL only when the video is opened.
+    const crmBaseUrl = String(process.env.CRM_BASE_URL || "https://crm.homeshield.ltd").replace(/\\/+$/, "")
+    const stableVideoUrl = `${crmBaseUrl}/survey-video/?document_id=${encodeURIComponent(document.id)}`
 
     const fields = await pipedriveRequest("dealFields")
     const surveyField = (fields || []).find(field => String(field.name || "").trim().toLowerCase() === "survey: file")
@@ -64,13 +63,13 @@ export default async function handler(req, res) {
 
     await pipedriveRequest(`deals/${encodeURIComponent(deal.pipedrive_deal_id)}`, {
       method: "PUT",
-      body: JSON.stringify({ [surveyField.key]: signed.signedUrl }),
+      body: JSON.stringify({ [surveyField.key]: stableVideoUrl }),
     })
 
     return json(res, 200, {
       success: true,
       message: 'Survey video URL saved to Pipedrive field "Survey: File".',
-      expires_in_days: 365,
+      url: stableVideoUrl,
     })
   } catch (error) {
     console.error("Unable to sync solar survey video to Pipedrive:", error)
