@@ -28,18 +28,51 @@ export default async function handler(req, res) {
     const documentId = String(body.document_id || "").trim()
     if (!dealId || !documentId) return json(res, 400, { error: "deal_id and document_id are required." })
 
+    const { data: logRow, error: logError } = await supabase.from("integration_event_logs").insert({
+      provider: "pipedrive",
+      integration_name: "Solar Survey Video Sync",
+      direction: "outbound",
+      event_name: "survey_video_sync",
+      event_type: "survey_video_url_update",
+      external_id: documentId,
+      status: "received",
+      received_at: new Date().toISOString(),
+      payload: { deal_id: dealId, document_id: documentId, triggered_by: authData.user.email || authData.user.id },
+    }).select("id").single()
+    if (logError) {
+      console.error("Unable to create survey video integration log:", logError.message)
+    }
+    const finishLog = async ({ status, httpStatus, errorMessage = null, result = {} }) => {
+      if (!logRow?.id) return
+      const { error } = await supabase.from("integration_event_logs").update({
+        status, http_status: httpStatus, error_message: errorMessage, result,
+        processed_at: new Date().toISOString(),
+      }).eq("id", logRow.id)
+      if (error) console.error("Unable to update survey video integration log:", error.message)
+    }
+
     const { data: document, error: documentError } = await supabase
       .from("deal_documents").select("id,deal_id,category,file_name,storage_path,mime_type")
       .eq("id", documentId).eq("deal_id", dealId).eq("category", "survey_video").maybeSingle()
     if (documentError) throw documentError
-    if (!document) return json(res, 404, { error: "Survey video was not found for this deal." })
+    if (!document) {
+      await finishLog({ status: "failed", httpStatus: 404, errorMessage: "Survey video was not found for this deal.", result: { success: false } })
+      return json(res, 404, { error: "Survey video was not found for this deal." })
+    }
 
     const { data: deal, error: dealError } = await supabase
       .from("deals").select("id,pipedrive_deal_id,customer_name,contract_number")
       .eq("id", dealId).maybeSingle()
     if (dealError) throw dealError
-    if (!deal) return json(res, 404, { error: "CRM deal not found." })
-    if (!deal.pipedrive_deal_id) return json(res, 409, { error: "This CRM deal is not linked to a Pipedrive deal, so the survey video could not be synced." })
+    if (!deal) {
+      await finishLog({ status: "failed", httpStatus: 404, errorMessage: "CRM deal not found.", result: { success: false } })
+      return json(res, 404, { error: "CRM deal not found." })
+    }
+    if (!deal.pipedrive_deal_id) {
+      const message = "This CRM deal is not linked to a Pipedrive deal, so the survey video could not be synced."
+      await finishLog({ status: "failed", httpStatus: 409, errorMessage: message, result: { success: false } })
+      return json(res, 409, { error: message })
+    }
 
     const pipedriveRequest = async (path, options = {}) => {
       const separator = path.includes("?") ? "&" : "?"
@@ -59,12 +92,18 @@ export default async function handler(req, res) {
 
     const fields = await pipedriveRequest("dealFields")
     const surveyField = (fields || []).find(field => String(field.name || "").trim().toLowerCase() === "survey: file")
-    if (!surveyField?.key) return json(res, 500, { error: 'Could not find the Pipedrive deal custom field named "Survey: File". Check its exact field name and that it is a deal field.' })
+    if (!surveyField?.key) {
+      const message = 'Could not find the Pipedrive deal custom field named "Survey: File". Check its exact field name and that it is a deal field.'
+      await finishLog({ status: "failed", httpStatus: 500, errorMessage: message, result: { success: false } })
+      return json(res, 500, { error: message })
+    }
 
     await pipedriveRequest(`deals/${encodeURIComponent(deal.pipedrive_deal_id)}`, {
       method: "PUT",
       body: JSON.stringify({ [surveyField.key]: stableVideoUrl }),
     })
+
+    await finishLog({ status: "success", httpStatus: 200, result: { success: true, pipedrive_deal_id: String(deal.pipedrive_deal_id), document_id: document.id, file_name: document.file_name, url: stableVideoUrl } })
 
     return json(res, 200, {
       success: true,
