@@ -19,6 +19,15 @@ export default async function handler(req, res) {
   if (!pipedriveToken) return json(res, 500, { error: "PIPEDRIVE_API_TOKEN is not configured." })
 
   const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } })
+  let logRowId = null
+  const finishLog = async ({ status, httpStatus, errorMessage = null, result = {} }) => {
+    if (!logRowId) return
+    const { error } = await supabase.from("integration_event_logs").update({
+      status, http_status: httpStatus, error_message: errorMessage, result,
+      processed_at: new Date().toISOString(),
+    }).eq("id", logRowId)
+    if (error) console.error("Unable to update survey video integration log:", error.message)
+  }
   try {
     const { data: authData, error: authError } = await supabase.auth.getUser(accessToken)
     if (authError || !authData?.user) return json(res, 401, { error: "Your session has expired. Please sign in again." })
@@ -42,14 +51,7 @@ export default async function handler(req, res) {
     if (logError) {
       console.error("Unable to create survey video integration log:", logError.message)
     }
-    const finishLog = async ({ status, httpStatus, errorMessage = null, result = {} }) => {
-      if (!logRow?.id) return
-      const { error } = await supabase.from("integration_event_logs").update({
-        status, http_status: httpStatus, error_message: errorMessage, result,
-        processed_at: new Date().toISOString(),
-      }).eq("id", logRow.id)
-      if (error) console.error("Unable to update survey video integration log:", error.message)
-    }
+    logRowId = logRow?.id || null
 
     const { data: document, error: documentError } = await supabase
       .from("deal_documents").select("id,deal_id,category,file_name,storage_path,mime_type")
@@ -112,6 +114,7 @@ export default async function handler(req, res) {
     })
   } catch (error) {
     console.error("Unable to sync solar survey video to Pipedrive:", error)
+    await finishLog({ status: "failed", httpStatus: 502, errorMessage: error?.message || "Unable to sync survey video to Pipedrive.", result: { success: false } })
     return json(res, 502, { error: error?.message || "Unable to sync survey video to Pipedrive." })
   }
 }
