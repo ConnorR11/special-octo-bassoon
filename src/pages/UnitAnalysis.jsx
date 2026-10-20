@@ -492,6 +492,6 @@ export default function UnitAnalysis() {
       <div className="unit-analysis-footnote">Includes ordered units from this page's current scope (unit_type = Window, department = SURVEY) where net_product_cost is positive and an appointment_id matches deals.appointment_row_id. COS is recorded unit net cost plus £200 per unit; COS% = COS ÷ deal net value × 100. Only jobs with positive net value and COS% strictly above 50% are shown. “Net value less units” is a comparison only; it is not gross profit because it excludes other job costs.</div>
     </section>
 
-    {lastUpdated && <div style={{fontSize:10,color:"#98a2b3",marginTop:10,textAlign:"right"}}>Last refreshed {lastUpdated.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</div>}}
+    {lastUpdated && <div style={{fontSize:10,color:"#98a2b3",marginTop:10,textAlign:"right"}}>Last refreshed {lastUpdated.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</div>}
   </div>
 }
