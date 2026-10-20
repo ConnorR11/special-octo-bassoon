@@ -179,6 +179,31 @@ function CustomerDetail({
       const blob=pdf.output("blob"),path=deal.id+"/survey_pdf/"+Date.now()+"-survey-photos.pdf";const {error:upErr}=await supabase.storage.from("deal-documents").upload(path,blob,{contentType:"application/pdf",upsert:false});if(upErr)throw upErr;const {data:u}=await supabase.auth.getUser();const {error:metaErr}=await supabase.from("deal_documents").insert({deal_id:deal.id,category:"survey_pdf",file_name:"Survey Photos.pdf",storage_path:path,mime_type:"application/pdf",file_size:blob.size,uploaded_by:u?.user?.id||null});if(metaErr){await supabase.storage.from("deal-documents").remove([path]);throw metaErr;}setPendingSurveyPhotos([]);await loadDocuments();setDocumentNotice("Checklist and photos saved. Survey PDF generated and saved to Deal documents.");
     }catch(e){console.error("Survey PDF generation failed",e);setDocumentError(e?.message||"Unable to generate survey PDF.");}finally{setGeneratingSurvey(false);}
   }
+  async function syncSurveyVideo(document) {
+    setOpeningDocument(document.id)
+    setDocumentError("")
+    setDocumentNotice("")
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError) throw sessionError
+      const response = await fetch("/api/deals/sync-survey-video", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionData?.session?.access_token || ""}`,
+        },
+        body: JSON.stringify({ deal_id: deal.id, document_id: document.id }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok || !result.success) throw new Error(result.error || "Unable to sync survey video to Pipedrive.")
+      setDocumentNotice('Survey video link synced to Pipedrive field "Survey: File".')
+    } catch (error) {
+      setDocumentError(error?.message || "Unable to sync survey video to Pipedrive.")
+    } finally {
+      setOpeningDocument("")
+    }
+  }
+
   async function openDocument(document) {
     setOpeningDocument(document.id)
     setDocumentError("")
@@ -572,7 +597,7 @@ function CustomerDetail({
                 {categoryDocuments.map(document => <div key={document.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #edf0f2" }}>
                   <div style={{ width: 32, height: 32, borderRadius: 7, background: "#eaf3f8", color: "#1676b8", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto" }}><ExternalLink size={15} /></div>
                   <div style={{ flex: 1, minWidth: 0 }}><div title={document.file_name} style={{ fontSize: 11, fontWeight: 600, color: "#263645", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{document.file_name}</div><div style={{ marginTop: 3, fontSize: 9, color: "#89939c" }}>{document.file_size ? (document.file_size >= 1048576 ? `${(document.file_size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(document.file_size / 1024))} KB`) : "Size unknown"} · {document.created_at ? new Date(document.created_at).toLocaleString("en-GB") : ""}</div></div>
-                  <button type="button" onClick={() => openDocument(document)} disabled={openingDocument === document.id} style={{ border: "1px solid #d7dee8", borderRadius: 6, padding: "7px 9px", background: "#fff", color: "#334155", fontSize: 10, cursor: "pointer" }}>{openingDocument === document.id ? "Opening…" : "Open"}</button>
+                  <button type="button" onClick={() => openDocument(document)} disabled={openingDocument === document.id} style={{ border: "1px solid #d7dee8", borderRadius: 6, padding: "7px 9px", background: "#fff", color: "#334155", fontSize: 10, cursor: "pointer" }}>{openingDocument === document.id ? "Working…" : "Open"}</button>{document.category === "survey_video" && <button type="button" onClick={() => syncSurveyVideo(document)} disabled={openingDocument === document.id} style={{ border: "1px solid #b9d7e8", borderRadius: 6, padding: "7px 9px", background: "#eff8ff", color: "#06456b", fontSize: 10, cursor: "pointer" }}>Sync to Pipedrive</button>}
                   <button type="button" onClick={() => deleteDocument(document)} aria-label={`Delete ${document.file_name}`} style={{ border: "1px solid #f0d4d4", borderRadius: 6, padding: 7, background: "#fff", color: "#a33b3b", cursor: "pointer" }}><Trash2 size={14} /></button>
                 </div>)}
                 {!categoryDocuments.length && <div style={{ fontSize: 10, color: "#89939c" }}>{documentsLoading ? "Loading files…" : "No files uploaded yet."}</div>}
