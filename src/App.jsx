@@ -255,7 +255,7 @@ function App() {
   } else if (page === "fit-sheet") {
     pageContent = <FitSheet setSelected={deal=>handleDealSelect(deal, page)}/>
   } else if (page === "contracts") {
-    pageContent = <Contracts contracts={filteredContracts} loading={loading} query={query} status={status} onSearchChange={handleSearchChange} onStatusChange={value=>{setStatus(value);loadContracts(0,query,value)}} onNext={()=>loadContracts(contractsPage+1)} onPrev={()=>loadContracts(Math.max(contractsPage-1,0))} hasNext={hasMoreContracts} hasPrev={contractsPage>0} onSelect={deal=>{setSelected(deal);setPage("contracts");window.history.pushState({},"",`/contracts/${deal.id}`)}} onNewContract={()=>{}}/>
+    pageContent = <Contracts contracts={filteredContracts} loading={loading} query={query} setQuery={handleSearchChange} page={contractsPage} pageSize={DEALS_PAGE_SIZE} hasMore={hasMoreContracts} onNextPage={()=>loadContracts(contractsPage+1)} onPreviousPage={()=>loadContracts(Math.max(contractsPage-1,0))} setSelected={deal=>{setSelected(deal);setPage("contracts");window.history.pushState({},"","/contracts/"+deal.id)}}/>
   } else if (page === "installations") {
     pageContent = <Installations/>
   } else if (page === "marketing-tv") {
