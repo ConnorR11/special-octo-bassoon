@@ -54,7 +54,7 @@ export default async function handler(req, res) {
 
     // Survey videos remain in the private bucket. Use a long-lived signed URL rather than making customer video files public.
     const { data: signed, error: signedError } = await supabase.storage
-      .from("deal-documents").createSignedUrl(document.storage_path, 31536000, { download: document.file_name })
+      .from("deal-documents").createSignedUrl(document.storage_path, 31536000)
     if (signedError) throw signedError
     if (!signed?.signedUrl) throw new Error("Supabase did not return a signed video URL.")
 
