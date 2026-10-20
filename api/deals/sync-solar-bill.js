@@ -92,6 +92,7 @@ export default async function handler(req, res) {
     const crmBaseUrl = (process.env.CRM_BASE_URL || "https://crm.homeshield.ltd").replace(/\/+$/, "")
     const stableBillUrl = `${crmBaseUrl}/solar-bill/?document_id=${encodeURIComponent(document.id)}`
 
+    // Resolve the exact Solar Energy Bill custom deal field before updating Pipedrive.
     const fields = await pipedriveRequest("dealFields")
     const surveyField = (fields || []).find(field => String(field.name || "").trim().toLowerCase() === "solar energy bill")
     if (!surveyField?.key) {
