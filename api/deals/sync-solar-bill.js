@@ -39,7 +39,7 @@ export default async function handler(req, res) {
 
     const { data: logRow, error: logError } = await supabase.from("integration_event_logs").insert({
       provider: "pipedrive",
-      integration_name: "Solar Solar Energy Bill Sync",
+      integration_name: "Solar Energy Bill Sync",
       direction: "outbound",
       event_name: "electricity_bill_epvs_waiver_sync",
       event_type: "electricity_bill_epvs_waiver_url_update",
@@ -58,7 +58,7 @@ export default async function handler(req, res) {
       .eq("id", documentId).eq("deal_id", dealId).eq("category", "electricity_bill_epvs_waiver").maybeSingle()
     if (documentError) throw documentError
     if (!document) {
-      await finishLog({ status: "failed", httpStatus: 404, errorMessage: "Survey video was not found for this deal.", result: { success: false } })
+      await finishLog({ status: "failed", httpStatus: 404, errorMessage: "Solar energy bill was not found for this deal.", result: { success: false } })
       return json(res, 404, { error: "Survey video was not found for this deal." })
     }
 
@@ -90,10 +90,10 @@ export default async function handler(req, res) {
     // Store a stable CRM URL in Pipedrive. The CRM route authenticates the user and
     // generates a short-lived storage URL only when the video is opened.
     const crmBaseUrl = (process.env.CRM_BASE_URL || "https://crm.homeshield.ltd").replace(/\/+$/, "")
-    const stableVideoUrl = `${crmBaseUrl}/solar-bill/?document_id=${encodeURIComponent(document.id)}`
+    const stableBillUrl = `${crmBaseUrl}/solar-bill/?document_id=${encodeURIComponent(document.id)}`
 
     const fields = await pipedriveRequest("dealFields")
-    const surveyField = (fields || []).find(field => String(field.name || "").trim().toLowerCase() === "survey: file")
+    const surveyField = (fields || []).find(field => String(field.name || "").trim().toLowerCase() === "solar energy bill")
     if (!surveyField?.key) {
       const message = 'Could not find the Pipedrive deal custom field named "Solar Energy Bill". Check its exact field name and that it is a deal field.'
       await finishLog({ status: "failed", httpStatus: 500, errorMessage: message, result: { success: false } })
@@ -102,18 +102,18 @@ export default async function handler(req, res) {
 
     await pipedriveRequest(`deals/${encodeURIComponent(deal.pipedrive_deal_id)}`, {
       method: "PUT",
-      body: JSON.stringify({ [surveyField.key]: stableVideoUrl }),
+      body: JSON.stringify({ [surveyField.key]: stableBillUrl }),
     })
 
-    await finishLog({ status: "success", httpStatus: 200, result: { success: true, pipedrive_deal_id: String(deal.pipedrive_deal_id), document_id: document.id, file_name: document.file_name, url: stableVideoUrl } })
+    await finishLog({ status: "success", httpStatus: 200, result: { success: true, pipedrive_deal_id: String(deal.pipedrive_deal_id), document_id: document.id, file_name: document.file_name, url: stableBillUrl } })
 
     return json(res, 200, {
       success: true,
-      message: 'Survey video URL saved to Pipedrive field "Solar Energy Bill".',
+      message: 'Solar energy bill URL saved to Pipedrive field "Solar Energy Bill".',
       url: stableVideoUrl,
     })
   } catch (error) {
-    console.error("Unable to sync solar solar energy bill to Pipedrive:", error)
+    console.error("Unable to sync solar energy bill to Pipedrive:", error)
     await finishLog({ status: "failed", httpStatus: 502, errorMessage: error?.message || "Unable to sync solar energy bill to Pipedrive.", result: { success: false } })
     return json(res, 502, { error: error?.message || "Unable to sync solar energy bill to Pipedrive." })
   }
