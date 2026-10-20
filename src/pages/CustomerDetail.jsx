@@ -112,13 +112,29 @@ function CustomerDetail({
         const { error: uploadError } = await supabase.storage.from("deal-documents").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false })
         if (uploadError) throw uploadError
         const { data: userData } = await supabase.auth.getUser()
-        const { error: metadataError } = await supabase.from("deal_documents").insert({
+        const { data: savedDocument, error: metadataError } = await supabase.from("deal_documents").insert({
           deal_id: deal.id, category, survey_section: category === "survey_photos" ? surveySection : null, file_name: file.name, storage_path: path,
           mime_type: file.type || null, file_size: file.size, uploaded_by: userData?.user?.id || null,
-        })
+        }).select("id").single()
         if (metadataError) {
           await supabase.storage.from("deal-documents").remove([path])
           throw metadataError
+        }
+        if (category === "survey_video") {
+          const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+          if (sessionError) throw sessionError
+          const response = await fetch("/api/deals/sync-survey-video", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${sessionData?.session?.access_token || ""}`,
+            },
+            body: JSON.stringify({ deal_id: deal.id, document_id: savedDocument.id }),
+          })
+          const syncResult = await response.json().catch(() => ({}))
+          if (!response.ok || !syncResult.success) {
+            throw new Error(`Video uploaded to the CRM, but Pipedrive sync failed: ${syncResult.error || "Unknown error"}`)
+          }
         }
         uploadedCount += 1
       }
