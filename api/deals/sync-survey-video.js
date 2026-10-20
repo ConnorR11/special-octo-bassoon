@@ -54,7 +54,7 @@ export default async function handler(req, res) {
 
     // Store a stable CRM URL in Pipedrive. The CRM route authenticates the user and
     // generates a short-lived storage URL only when the video is opened.
-    const crmBaseUrl = String(process.env.CRM_BASE_URL || "https://crm.homeshield.ltd").replace(/\\/+$/, "")
+    const crmBaseUrl = (process.env.CRM_BASE_URL || "https://crm.homeshield.ltd").replace(/\/+$/, "")
     const stableVideoUrl = `${crmBaseUrl}/survey-video/?document_id=${encodeURIComponent(document.id)}`
 
     const fields = await pipedriveRequest("dealFields")
