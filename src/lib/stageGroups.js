@@ -22,10 +22,11 @@ export const STAGE_GROUPS = [
   { key: "accounts", order: 5, label: "Accounts", stages: ["Cancelled - Awaiting Refund", "Fit Complete - Accounts To Check", "Admin Fee Outstanding", "Accounts To Check (S)", "Awaiting Balance", "Awaiting Balance (HES)", "Issues: Inspection", "Issues: Fitter Booked", "Payment Plan"], ...STAGE_GROUP_COLORS.accounts },
   { key: "remedials", order: 6, label: "Remedials", stages: ["Remedial To Check", "Remedial Ordered", "Engineer To Book (R)", "Engineer Booked (R)"], ...STAGE_GROUP_COLORS.remedials },
   { key: "complete", order: 7, label: "Complete", stages: ["Remedial Complete", "NAPIT Sign Off Complete", "Contract Complete"], ...STAGE_GROUP_COLORS.complete },
-  { key: "deal-lost", order: 8, label: "Deal Lost", stages: ["Customer Cancelled", "Decline"], ...STAGE_GROUP_COLORS.dealLost },
+  { key: "post-installations", order: 8, label: "Post Installations", stages: ["Paperwork - Sent", "Fit Complete - Balance to be Paid", "Balance To Be Paid (S)", "NAPIT Sign Off", "Legal"], ...STAGE_GROUP_COLORS.accounts },
+  { key: "deal-lost", order: 9, label: "Deal Lost", stages: ["Customer Cancelled", "Decline"], ...STAGE_GROUP_COLORS.dealLost },
 ]
 
-export const UNGROUPED_STAGE_GROUP = { key: "ungrouped", order: 9, label: "Ungrouped", ...STAGE_GROUP_COLORS.ungrouped }
+export const UNGROUPED_STAGE_GROUP = { key: "ungrouped", order: 10, label: "Ungrouped", ...STAGE_GROUP_COLORS.ungrouped }
 
 export function normalizeStage(value) {
   return String(value || "").trim().toLowerCase()
