@@ -128,7 +128,6 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={FileCheck} label="RTS List" active={isActive("rts-list")} onClick={() => navigate("rts-list")}/>
             <NavItem icon={PoundSterling} label="Commissions" active={isActive("commissions")} onClick={() => navigate("commissions")}/>
             <NavItem icon={Trophy} label="Sales KPI" active={isActive("sales-kpi")} onClick={() => navigate("sales-kpi")}/>
-            <NavItem icon={BarChart3} label="Sales Performance" active={isActive("sales-performance")} onClick={() => navigate("sales-performance")} disabled={!canAccessSalesPerformance} locked={!canAccessSalesPerformance}/>
           </Folder>
 
           <Folder visible={canSeeFolder("procurement")} title="Procurement" icon={Clipboard} open={openFolders.procurement} onClick={() => toggleFolder("procurement")}>
@@ -175,6 +174,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
 
           {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}>
             <NavItem icon={BarChart3} label="Data Dashboard" active={isActive("data-dashboard")} onClick={() => navigate("data-dashboard")}/>
+            <NavItem icon={BarChart3} label="Sales Performance" active={isActive("sales-performance")} onClick={() => navigate("sales-performance")} disabled={!canAccessSalesPerformance} locked={!canAccessSalesPerformance}/>
             <NavItem icon={Database} label="Data Clean" active={isActive("data-clean")} onClick={() => navigate("data-clean")}/>
             <NavItem icon={Sun} label="Solar Backend" active={isActive("solar-backend")} onClick={() => navigate("solar-backend")}/>
             <NavItem icon={Boxes} label="Unit Analysis" active={isActive("unit-analysis")} onClick={() => navigate("unit-analysis")}/>
