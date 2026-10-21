@@ -653,31 +653,29 @@ function CustomerDetail({
             </>
           })}
                       <div style={{padding:"0 12px 14px"}}>
-                        <div style={{display:"grid",gap:10}}>
-                          {surveyQuestionGroups.map((group,index) => {
-                            const groupQuestions = surveyQuestions.filter(([,key]) => group.keys.includes(key))
-                            const groupAnswered = groupQuestions.filter(([,key]) => String(surveyAnswers[key] || "").trim()).length
-                            const isOpen = expandedSurveySection === group.title
-                            return <div key={group.title} style={{border:"1px solid #e1e6eb",borderRadius:9,overflow:"hidden"}}>
-                              <button type="button" onClick={() => setExpandedSurveySection(isOpen ? "" : group.title)} aria-expanded={isOpen} style={{display:"flex",alignItems:"center",gap:12,width:"100%",padding:"14px",border:0,background:isOpen?"#f4f8fb":"#fff",textAlign:"left",cursor:"pointer"}}>
-                                <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:30,height:30,borderRadius:8,background:"#e8eef4",color:"#17364b",fontSize:12,fontWeight:700}}>{index+3}</span>
-                                <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:700,color:"#263645"}}>{group.title}</span><span style={{display:"block",marginTop:3,fontSize:10,color:"#75818b"}}>{groupAnswered} of {groupQuestions.length} answered</span></span>
-                                <span style={{fontSize:10,color:"#64748b",marginRight:5}}>{groupAnswered===groupQuestions.length ? "Complete" : "In progress"}</span>
-                                <span style={{fontSize:17,color:"#64748b"}}>{isOpen ? "−" : "+"}</span>
-                              </button>
-                              {isOpen && <div style={{padding:12,borderTop:"1px solid #e1e6eb",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:10}}>
-                                {groupQuestions.map(([question,key]) => {
-                                  const yesNoKeys = ["listed_conservation","south_wall","canopy_fireproof","wifi_reach","high_energy_appliances","loft_access","copex_consent","existing_solar","scaffolding"]
-                                  const isYesNo = yesNoKeys.includes(key)
-                                  const isFloor = key === "floor_type"
-                                  return <label key={key} style={{display:"grid",alignContent:"start",gap:6,fontSize:11,color:"#475569"}}>
-                                    <span>{question}</span>
-                                    {isYesNo || isFloor ? <select value={surveyAnswers[key] || ""} onChange={e=>setSurveyAnswers(current=>({...current,[key]:e.target.value}))} style={{boxSizing:"border-box",width:"100%",minHeight:38,padding:"8px 10px",border:"1px solid #d9dadd",borderRadius:7,font:"inherit",background:"#fff",color:surveyAnswers[key]?"#263645":"#89939c"}}><option value="">Select answer</option>{(isFloor ? ["Suspended","Concrete"] : ["Yes","No","Not sure"]).map(option=><option key={option} value={option}>{option}</option>)}</select> : <input value={surveyAnswers[key] || ""} onChange={e=>setSurveyAnswers(current=>({...current,[key]:e.target.value}))} placeholder="Enter answer" style={{boxSizing:"border-box",width:"100%",minHeight:38,padding:"8px 10px",border:"1px solid #d9dadd",borderRadius:7,font:"inherit"}} />}
-                                  </label>
-                                })}
-                              </div>}
-                            </div>
-                          })}
+                        <div style={{border:"1px solid #e1e6eb",borderRadius:9,overflow:"hidden"}}>
+                          <button type="button" onClick={() => setExpandedSurveySection(expandedSurveySection === "__all_checklist__" ? "" : "__all_checklist__")} aria-expanded={expandedSurveySection === "__all_checklist__"} style={{display:"flex",alignItems:"center",gap:12,width:"100%",padding:14,border:0,background:"#fff",textAlign:"left",cursor:"pointer"}}>
+                            <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:30,height:30,borderRadius:8,background:"#e8eef4",color:"#17364b",fontSize:12,fontWeight:700}}>3</span>
+                            <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:700,color:"#263645"}}>Survey Checklist</span><span style={{display:"block",marginTop:3,fontSize:10,color:"#75818b"}}>{surveyQuestions.filter(([,key]) => String(surveyAnswers[key] || "").trim()).length} of {surveyQuestions.length} answered</span></span>
+                            <span style={{fontSize:17,color:"#64748b"}}>{expandedSurveySection === "__all_checklist__" ? "−" : "+"}</span>
+                          </button>
+                          {expandedSurveySection === "__all_checklist__" && <div style={{padding:14,borderTop:"1px solid #e1e6eb",display:"grid",gap:18}}>
+                            {surveyQuestionGroups.map(group => {
+                              const groupQuestions = surveyQuestions.filter(([,key]) => group.keys.includes(key))
+                              const groupAnswered = groupQuestions.filter(([,key]) => String(surveyAnswers[key] || "").trim()).length
+                              return <div key={group.title}>
+                                <div style={{fontSize:12,fontWeight:750,color:"#263645",paddingBottom:8,marginBottom:10,borderBottom:"1px solid #e8edf2",display:"flex",justifyContent:"space-between",gap:10}}><span>{group.title}</span><span style={{fontSize:10,fontWeight:500,color:"#75818b"}}>{groupAnswered} of {groupQuestions.length}</span></div>
+                                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:10}}>
+                                  {groupQuestions.map(([question,key]) => {
+                                    const yesNoKeys = ["listed_conservation","south_wall","canopy_fireproof","wifi_reach","high_energy_appliances","loft_access","copex_consent","existing_solar","scaffolding"]
+                                    const isYesNo = yesNoKeys.includes(key)
+                                    const isFloor = key === "floor_type"
+                                    return <label key={key} style={{display:"grid",alignContent:"start",gap:6,fontSize:11,color:"#475569"}}><span>{question}</span>{isYesNo || isFloor ? <select value={surveyAnswers[key] || ""} onChange={e=>setSurveyAnswers(current=>({...current,[key]:e.target.value}))} style={{boxSizing:"border-box",width:"100%",minHeight:38,padding:"8px 10px",border:"1px solid #d9dadd",borderRadius:7,font:"inherit",background:"#fff",color:surveyAnswers[key]?"#263645":"#89939c"}}><option value="">Select answer</option>{(isFloor ? ["Suspended","Concrete"] : ["Yes","No","Not sure"]).map(option=><option key={option} value={option}>{option}</option>)}</select> : <input value={surveyAnswers[key] || ""} onChange={e=>setSurveyAnswers(current=>({...current,[key]:e.target.value}))} placeholder="Enter answer" style={{boxSizing:"border-box",width:"100%",minHeight:38,padding:"8px 10px",border:"1px solid #d9dadd",borderRadius:7,font:"inherit"}}/>}</label>
+                                  })}
+                                </div>
+                              </div>
+                            })}
+                          </div>}
                         </div>
                         <div style={{marginTop:16,border:"1px solid #e1e6eb",borderRadius:9,overflow:"hidden"}}>
                           <button type="button" onClick={()=>setSurveyPhotosExpanded(value=>!value)} aria-expanded={surveyPhotosExpanded} style={{display:"flex",alignItems:"center",gap:12,width:"100%",padding:14,border:0,background:surveyPhotosExpanded?"#f4f8fb":"#f8fafc",textAlign:"left",cursor:"pointer"}}>
