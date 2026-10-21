@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
-import { RefreshCw, Search, FileText, ClipboardCheck, AlertCircle, ExternalLink } from "lucide-react"
+import { RefreshCw, Search, FileText, ClipboardCheck, AlertCircle } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
 const styles = {
@@ -150,7 +150,9 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
       <style>{`
         .outstanding-surveys-table-wrap{overflow:auto}
         .outstanding-surveys-table{width:100%;border-collapse:collapse;min-width:850px}
-        .outstanding-surveys-table tbody tr:hover{background:#f8fbff}
+        .outstanding-surveys-table tbody tr:hover{background:#f0f7ff}
+        .outstanding-surveys-table tbody tr[data-clickable="true"]{cursor:pointer}
+        .outstanding-surveys-table tbody tr[data-clickable="true"]:focus{outline:2px solid #1684c7;outline-offset:-2px}
         .outstanding-surveys-open{border:0;background:transparent;color:#0877bd;font-size:11px;font-weight:750;display:inline-flex;align-items:center;gap:5px;cursor:pointer;padding:5px}
         @media(max-width:700px){.outstanding-surveys-page{padding:16px 10px!important}}
       `}</style>
@@ -191,11 +193,11 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
           <div className="outstanding-surveys-table-wrap">
             <table className="outstanding-surveys-table">
               <thead><tr>
-                <th style={styles.th}>Customer / Contract</th><th style={styles.th}>Postcode</th><th style={styles.th}>Pipedrive stage</th><th style={styles.th}>Sale date</th><th style={styles.th}>Salesperson</th><th style={styles.th}>Survey progress</th><th style={styles.th}>Action</th>
+                <th style={styles.th}>Customer / Contract</th><th style={styles.th}>Postcode</th><th style={styles.th}>Pipedrive stage</th><th style={styles.th}>Sale date</th><th style={styles.th}>Salesperson</th><th style={styles.th}>Survey progress</th>
               </tr></thead>
               <tbody>
                 {loading && <tr><td style={styles.td} colSpan={7}>Loading outstanding surveys…</td></tr>}
-                {!loading && filteredRows.map(deal => <tr key={deal.id}>
+                {!loading && filteredRows.map(deal => <tr key={deal.id} data-clickable={onSelectDeal ? "true" : "false"} onClick={() => onSelectDeal?.(deal)} onKeyDown={e => { if (onSelectDeal && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onSelectDeal(deal) } }} tabIndex={onSelectDeal ? 0 : undefined} role={onSelectDeal ? "button" : undefined}>
                   <td style={styles.td}><div style={{ fontWeight: 750, color: "#1e293b" }}>{deal.customer_name || "Unnamed customer"}</div><div style={{ color: "#94a3b8", fontSize: 10, marginTop: 4 }}>{deal.contract_number || deal.linked_contract_number || "No contract number"}</div></td>
                   <td style={styles.td}>{deal.postcode || "—"}</td>
                   <td style={styles.td}>{deal.stage || deal.pipedrive_stage || deal.pipedrive_data?.stage || deal.pipedrive_data?.stage_name || "—"}</td>
@@ -209,7 +211,6 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
                       </div>)}
                     </div>
                   </td>
-                  <td style={styles.td}><button type="button" className="outstanding-surveys-open" onClick={() => onSelectDeal?.(deal)}><ExternalLink size={13}/>Open deal</button></td>
                 </tr>)}
               </tbody>
             </table>
