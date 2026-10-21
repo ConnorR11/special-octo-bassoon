@@ -53,6 +53,7 @@ function CustomerDetail({
   const [activeTab, setActiveTab] = useState("details")
   const [surveyAnswers, setSurveyAnswers] = useState({})
   const [surveySaving, setSurveySaving] = useState(false)
+  const [surveyAnswersLoaded, setSurveyAnswersLoaded] = useState(false)
   const [surveySection, setSurveySection] = useState("Front of Property")
   const [pendingSurveyPhotos, setPendingSurveyPhotos] = useState([])
   const [expandedSurveySection, setExpandedSurveySection] = useState("Property & installation")
@@ -90,6 +91,7 @@ function CustomerDetail({
       const { data: surveyData, error: surveyError } = await supabase.from("deal_survey_answers").select("answers").eq("deal_id", deal.id).maybeSingle()
       if (surveyError) throw surveyError
       setSurveyAnswers(surveyData?.answers || {})
+      setSurveyAnswersLoaded(true)
     } catch (err) {
       console.error("Unable to load deal documents:", err)
       setDocumentError(err?.message || "Unable to load deal documents.")
@@ -98,9 +100,34 @@ function CustomerDetail({
 
   useEffect(() => {
     setDocuments([])
+    setSurveyAnswersLoaded(false)
     setDocumentNotice("")
     loadDocuments()
   }, [deal?.id])
+
+  useEffect(() => {
+    if (!deal?.id || !surveyAnswersLoaded) return
+    const timer = setTimeout(async () => {
+      setSurveySaving(true)
+      setDocumentError("")
+      try {
+        const { data: userData } = await supabase.auth.getUser()
+        const { error } = await supabase.from("deal_survey_answers").upsert({
+          deal_id: deal.id,
+          answers: surveyAnswers,
+          updated_by: userData?.user?.id || null,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "deal_id" })
+        if (error) throw error
+        setDocumentNotice("Checklist answers saved automatically.")
+      } catch (error) {
+        setDocumentError(error?.message || "Unable to save checklist answers.")
+      } finally {
+        setSurveySaving(false)
+      }
+    }, 700)
+    return () => clearTimeout(timer)
+  }, [surveyAnswers, surveyAnswersLoaded, deal?.id])
 
   async function uploadDocuments(category, fileList) {
     const files = Array.from(fileList || [])
@@ -726,8 +753,8 @@ function CustomerDetail({
                           </div>
                           </>}
                         </div>
-                        <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:16}}>
-                          <button type="button" onClick={saveSurveyAnswers} disabled={surveySaving} style={{border:0,borderRadius:7,padding:"10px 14px",background:"#e8eef4",color:"#172554",fontWeight:700,cursor:"pointer"}}>{surveySaving?"Saving checklist…":"Save checklist"}</button>
+                        <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center",marginTop:16}}>
+                          <span style={{fontSize:10,color:"#64748b"}}>{surveySaving ? "Saving checklist…" : "Checklist answers save automatically"}</span>
                           <button type="button" onClick={generateSurveyPdf} disabled={generatingSurvey} style={{border:0,borderRadius:7,padding:"10px 14px",background:"#002d49",color:"#fff",fontWeight:700,cursor:"pointer"}}>{generatingSurvey?"Generating PDF…":"Generate full survey PDF"}</button>
                         </div>
                       </div>
