@@ -88,8 +88,8 @@ function ChartCard({ title, subtitle, data, series, dataKey }) {
 function SalesChart({ contracts = [] }) {
   const [selectedProduct, setSelectedProduct] = useState("All products")
   const [selectedYear, setSelectedYear] = useState("all")
-  const [timeGrouping, setTimeGrouping] = useState("month")
-  const [salesChartMode, setSalesChartMode] = useState("result")
+  const [timeGrouping, setTimeGrouping] = useState("yearToDate")
+  const [salesChartMode, setSalesChartMode] = useState("product")
   const yearToDate = timeGrouping === "yearToDate"
   const [cpsSelectedYear, setCpsSelectedYear] = useState("all")
   const [cpsTimeGrouping, setCpsTimeGrouping] = useState("month")
