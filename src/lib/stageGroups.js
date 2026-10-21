@@ -1,30 +1,29 @@
-
 /**
  * Shared stage-group presentation tokens.
- * Import getStageGroup() wherever CRM pages need consistent labels and colours.
+ * These are the exact colours used by the Installations Kanban headers.
  */
 export const STAGE_GROUP_COLORS = Object.freeze({
-  sales: Object.freeze({ ...STAGE_GROUP_COLORS.sales }),
-  surveys: Object.freeze({ ...STAGE_GROUP_COLORS.surveys }),
-  procurement: Object.freeze({ ...STAGE_GROUP_COLORS.procurement }),
-  accounts: Object.freeze({ ...STAGE_GROUP_COLORS.accounts }),
-  remedials: Object.freeze({ ...STAGE_GROUP_COLORS.remedials }),
-  complete: Object.freeze({ ...STAGE_GROUP_COLORS.complete }),
-  dealLost: Object.freeze({ ...STAGE_GROUP_COLORS.dealLost }),
-  ungrouped: Object.freeze({ ...STAGE_GROUP_COLORS.ungrouped }),
+  sales: Object.freeze({ background: "#e0f2fe", border: "#bae6fd", text: "#075985", badge: "#bae6fd" }),
+  surveys: Object.freeze({ background: "#dcfce7", border: "#bbf7d0", text: "#166534", badge: "#bbf7d0" }),
+  procurement: Object.freeze({ background: "#ffedd5", border: "#fed7aa", text: "#9a3412", badge: "#fed7aa" }),
+  accounts: Object.freeze({ background: "#f3e8ff", border: "#e9d5ff", text: "#7e22ce", badge: "#e9d5ff" }),
+  remedials: Object.freeze({ background: "#fef3c7", border: "#fde68a", text: "#92400e", badge: "#fde68a" }),
+  complete: Object.freeze({ background: "#e0e7ff", border: "#c7d2fe", text: "#4338ca", badge: "#c7d2fe" }),
+  dealLost: Object.freeze({ background: "#fee2e2", border: "#fecaca", text: "#b91c1c", badge: "#fecaca" }),
+  ungrouped: Object.freeze({ background: "#f1f5f9", border: "#e2e8f0", text: "#334155", badge: "#e2e8f0" }),
 })
 
 export const STAGE_GROUPS = [
-  { key: "rts", label: "Sales", stages: ["Awaiting Funds", "Returned To Sales", "Pending Cancellation", "Long Term", "On Hold"], background: "#e0f2fe", border: "#bae6fd", text: "#075985", badge: "#bae6fd" },
-  { key: "surveys", label: "Surveys", stages: ["Book for Survey", "Book for Survey (S)", "Survey Booked", "Survey Booked (S)"], background: "#dcfce7", border: "#bbf7d0", text: "#166534", badge: "#bbf7d0" },
-  { key: "procurement", label: "Procurement", stages: ["Costing", "To Order", "To Be Ordered", "Awaiting Customer Confirmation", "Awaiting Manufacture Date"], background: "#ffedd5", border: "#fed7aa", text: "#9a3412", badge: "#fed7aa" },
-  { key: "accounts", label: "Accounts", stages: ["Cancelled - Awaiting Refund", "Fit Complete - Accounts To Check", "Admin Fee Outstanding", "Accounts To Check (S)"], background: "#f3e8ff", border: "#e9d5ff", text: "#7e22ce", badge: "#e9d5ff" },
-  { key: "remedials", label: "Remedials", stages: ["Remedial To Check", "Remedial Ordered", "Engineer To Book (R)", "Engineer Booked (R)"], background: "#fef3c7", border: "#fde68a", text: "#92400e", badge: "#fde68a" },
-  { key: "complete", label: "Complete", stages: ["Remedial Complete", "NAPIT Sign Off Complete", "Contract Complete"], background: "#e0e7ff", border: "#c7d2fe", text: "#4338ca", badge: "#c7d2fe" },
-  { key: "deal-lost", label: "Deal Lost", stages: ["Customer Cancelled", "Decline"], background: "#fee2e2", border: "#fecaca", text: "#b91c1c", badge: "#fecaca" },
+  { key: "rts", label: "Sales", stages: ["Awaiting Funds", "Returned To Sales", "Pending Cancellation", "Long Term", "On Hold"], ...STAGE_GROUP_COLORS.sales },
+  { key: "surveys", label: "Surveys", stages: ["Book for Survey", "Book for Survey (S)", "Survey Booked", "Survey Booked (S)"], ...STAGE_GROUP_COLORS.surveys },
+  { key: "procurement", label: "Procurement", stages: ["Costing", "To Order", "To Be Ordered", "Awaiting Customer Confirmation", "Awaiting Manufacture Date"], ...STAGE_GROUP_COLORS.procurement },
+  { key: "accounts", label: "Accounts", stages: ["Cancelled - Awaiting Refund", "Fit Complete - Accounts To Check", "Admin Fee Outstanding", "Accounts To Check (S)"], ...STAGE_GROUP_COLORS.accounts },
+  { key: "remedials", label: "Remedials", stages: ["Remedial To Check", "Remedial Ordered", "Engineer To Book (R)", "Engineer Booked (R)"], ...STAGE_GROUP_COLORS.remedials },
+  { key: "complete", label: "Complete", stages: ["Remedial Complete", "NAPIT Sign Off Complete", "Contract Complete"], ...STAGE_GROUP_COLORS.complete },
+  { key: "deal-lost", label: "Deal Lost", stages: ["Customer Cancelled", "Decline"], ...STAGE_GROUP_COLORS.dealLost },
 ]
 
-export const UNGROUPED_STAGE_GROUP = { key: "ungrouped", label: "Ungrouped", background: "#f1f5f9", border: "#e2e8f0", text: "#334155", badge: "#e2e8f0" }
+export const UNGROUPED_STAGE_GROUP = { key: "ungrouped", label: "Ungrouped", ...STAGE_GROUP_COLORS.ungrouped }
 
 export function normalizeStage(value) {
   return String(value || "").trim().toLowerCase()
