@@ -14,16 +14,16 @@ export const STAGE_GROUP_COLORS = Object.freeze({
 })
 
 export const STAGE_GROUPS = [
-  { key: "rts", label: "Sales", stages: ["Awaiting Funds", "Returned To Sales", "Pending Cancellation", "Long Term", "On Hold"], ...STAGE_GROUP_COLORS.sales },
-  { key: "surveys", label: "Surveys", stages: ["Book for Survey", "Book for Survey (S)", "Survey Booked", "Survey Booked (S)"], ...STAGE_GROUP_COLORS.surveys },
-  { key: "procurement", label: "Procurement", stages: ["Costing", "To Order", "To Be Ordered", "Awaiting Customer Confirmation", "Awaiting Manufacture Date"], ...STAGE_GROUP_COLORS.procurement },
-  { key: "accounts", label: "Accounts", stages: ["Cancelled - Awaiting Refund", "Fit Complete - Accounts To Check", "Admin Fee Outstanding", "Accounts To Check (S)"], ...STAGE_GROUP_COLORS.accounts },
-  { key: "remedials", label: "Remedials", stages: ["Remedial To Check", "Remedial Ordered", "Engineer To Book (R)", "Engineer Booked (R)"], ...STAGE_GROUP_COLORS.remedials },
-  { key: "complete", label: "Complete", stages: ["Remedial Complete", "NAPIT Sign Off Complete", "Contract Complete"], ...STAGE_GROUP_COLORS.complete },
-  { key: "deal-lost", label: "Deal Lost", stages: ["Customer Cancelled", "Decline"], ...STAGE_GROUP_COLORS.dealLost },
+  { key: "rts", order: 1, label: "Sales", stages: ["Awaiting Funds", "Returned To Sales", "Pending Cancellation", "Long Term", "On Hold"], ...STAGE_GROUP_COLORS.sales },
+  { key: "surveys", order: 2, label: "Surveys", stages: ["Book for Survey", "Book for Survey (S)", "Survey Booked", "Survey Booked (S)"], ...STAGE_GROUP_COLORS.surveys },
+  { key: "procurement", order: 3, label: "Procurement", stages: ["Costing", "To Order", "To Be Ordered", "Awaiting Customer Confirmation", "Awaiting Manufacture Date"], ...STAGE_GROUP_COLORS.procurement },
+  { key: "accounts", order: 4, label: "Accounts", stages: ["Cancelled - Awaiting Refund", "Fit Complete - Accounts To Check", "Admin Fee Outstanding", "Accounts To Check (S)"], ...STAGE_GROUP_COLORS.accounts },
+  { key: "remedials", order: 5, label: "Remedials", stages: ["Remedial To Check", "Remedial Ordered", "Engineer To Book (R)", "Engineer Booked (R)"], ...STAGE_GROUP_COLORS.remedials },
+  { key: "complete", order: 6, label: "Complete", stages: ["Remedial Complete", "NAPIT Sign Off Complete", "Contract Complete"], ...STAGE_GROUP_COLORS.complete },
+  { key: "deal-lost", order: 7, label: "Deal Lost", stages: ["Customer Cancelled", "Decline"], ...STAGE_GROUP_COLORS.dealLost },
 ]
 
-export const UNGROUPED_STAGE_GROUP = { key: "ungrouped", label: "Ungrouped", ...STAGE_GROUP_COLORS.ungrouped }
+export const UNGROUPED_STAGE_GROUP = { key: "ungrouped", order: 8, label: "Ungrouped", ...STAGE_GROUP_COLORS.ungrouped }
 
 export function normalizeStage(value) {
   return String(value || "").trim().toLowerCase()
