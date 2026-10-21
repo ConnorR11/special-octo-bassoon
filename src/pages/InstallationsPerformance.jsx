@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react"
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts"
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell } from "recharts"
 import { CalendarDays, RefreshCw, TrendingUp } from "lucide-react"
 
 function parseLocalDate(value) {
@@ -54,6 +54,7 @@ function makeBuckets(dates, grouping) {
 }
 
 const SERIES_COLORS = ["#1683c7", "#f59e0b", "#7c3aed", "#10b981", "#ef4444", "#64748b", "#db2777", "#84cc16", "#0d9488", "#a16207"]
+const STAGE_COLORS = ["#1683c7", "#f59e0b", "#7c3aed", "#10b981", "#ef4444", "#64748b", "#db2777", "#0d9488", "#a16207", "#84cc16"]
 
 function productLabel(deal) {
   return String(deal.product || "").trim() || "Unspecified"
@@ -115,6 +116,19 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
   const upcoming = datedDeals.filter(deal => dateKey(deal.parsedInstallationDate) >= todayKey).length
   const thisYear = datedDeals.filter(deal => deal.parsedInstallationDate.getFullYear() === new Date().getFullYear()).length
   const total = filteredDeals.length
+  const balanceByStage = useMemo(() => {
+    const stages = new Map()
+    ;(Array.isArray(deals) ? deals : []).forEach(deal => {
+      const stage = String(deal.pipedrive_stage || "Unknown stage").trim() || "Unknown stage"
+      const balance = Number(String(deal.balance_outstanding ?? 0).replace(/[^0-9.-]/g, "")) || 0
+      if (balance <= 0 || ["customer cancelled", "decline"].includes(stage.toLowerCase())) return
+      const current = stages.get(stage) || { stage, jobs: 0, balance: 0 }
+      current.jobs += 1
+      current.balance += balance
+      stages.set(stage, current)
+    })
+    return [...stages.values()].sort((a, b) => b.jobs - a.jobs)
+  }, [deals])
 
   const cardStyle = { background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "18px 20px", minWidth: 0 }
   const selectStyle = { border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }
@@ -131,6 +145,13 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
       <div style={cardStyle}><div style={{ display: "flex", alignItems: "center", gap: 8, color: "#64748b", fontSize: 11 }}><CalendarDays size={16}/> Jobs with start dates {yearFilter !== "all" ? `· ${yearFilter}` : "· all time"}</div><div style={{ marginTop: 10, fontSize: 30, fontWeight: 750, color: "#17212b" }}>{loading ? "—" : total.toLocaleString("en-GB")}</div></div>
       <div style={cardStyle}><div style={{ display: "flex", alignItems: "center", gap: 8, color: "#64748b", fontSize: 11 }}><TrendingUp size={16}/> Scheduled this year</div><div style={{ marginTop: 10, fontSize: 30, fontWeight: 750, color: "#17212b" }}>{loading ? "—" : thisYear.toLocaleString("en-GB")}</div></div>
       <div style={cardStyle}><div style={{ display: "flex", alignItems: "center", gap: 8, color: "#64748b", fontSize: 11 }}><CalendarDays size={16}/> Upcoming jobs</div><div style={{ marginTop: 10, fontSize: 30, fontWeight: 750, color: "#17212b" }}>{loading ? "—" : upcoming.toLocaleString("en-GB")}</div></div>
+    </div>
+    <div style={{ background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "20px 18px", marginBottom: 18, minWidth: 0, boxSizing: "border-box" }}>
+      <div style={{ marginBottom: 12 }}><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Outstanding balances by stage</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Jobs with a balance outstanding above £0, excluding Customer Cancelled and Decline.</p></div>
+      {loading ? <div style={{ padding: 32, textAlign: "center", color: "#818891", fontSize: 12 }}>Loading balance data…</div> : balanceByStage.length === 0 ? <div style={{ padding: 32, textAlign: "center", color: "#818891", fontSize: 12 }}>No outstanding balances found for the included stages.</div> : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16, alignItems: "center" }}>
+        <ResponsiveContainer width="100%" height={280}><PieChart><Pie data={balanceByStage} dataKey="jobs" nameKey="stage" cx="50%" cy="50%" outerRadius={95} paddingAngle={2}>{balanceByStage.map((entry, index) => <Cell key={entry.stage} fill={STAGE_COLORS[index % STAGE_COLORS.length]}/>)}</Pie><Tooltip formatter={(value, name, props) => [Number(value).toLocaleString("en-GB") + " jobs · " + Number(props.payload.balance).toLocaleString("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }) + " outstanding", name]}/><Legend verticalAlign="bottom" height={44} wrapperStyle={{ fontSize: 11 }}/></PieChart></ResponsiveContainer>
+        <div style={{ display: "grid", gap: 8 }}>{balanceByStage.map((entry, index) => <div key={entry.stage} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, borderBottom: "1px solid #eef1f3", padding: "8px 0", fontSize: 12 }}><span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><span style={{ width: 9, height: 9, borderRadius: 3, background: STAGE_COLORS[index % STAGE_COLORS.length], flex: "0 0 auto" }}/><span>{entry.stage}</span></span><span style={{ textAlign: "right", whiteSpace: "nowrap", color: "#475569" }}><strong>{entry.jobs.toLocaleString("en-GB")} jobs</strong><br/>{entry.balance.toLocaleString("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 })}</span></div>)}</div>
+      </div>}
     </div>
     <div style={{ background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "20px 18px 10px", minWidth: 0, boxSizing: "border-box" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
