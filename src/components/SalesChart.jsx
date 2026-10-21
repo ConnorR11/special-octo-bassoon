@@ -89,7 +89,7 @@ function SalesChart({ contracts = [] }) {
   const [selectedProduct, setSelectedProduct] = useState("All products")
   const [selectedYear, setSelectedYear] = useState("all")
   const [timeGrouping, setTimeGrouping] = useState("month")
-  const yearOnYear = timeGrouping === "yearOnYear"
+  const yearToDate = timeGrouping === "yearToDate"
   const [cpsSelectedYear, setCpsSelectedYear] = useState("all")
   const [cpsTimeGrouping, setCpsTimeGrouping] = useState("month")
   const [cpsSelectedProduct, setCpsSelectedProduct] = useState("All products")
@@ -163,26 +163,28 @@ function SalesChart({ contracts = [] }) {
   }), [contracts, years, currentMonth, currentDay])
 
   const monthlyBalanceData = useMemo(() => {
-    if (yearOnYear) {
-      const compareYears = availableYears.slice().sort((a, b) => a - b)
-      const rows = Array.from({ length: 12 }, (_, monthIndex) => {
-        const row = { bucketKey: String(monthIndex), month: new Date(2020, monthIndex, 1).toLocaleDateString("en-GB", { month: "short" }), total: 0, totalSold: 0, notSolidPercent: 0 }
-        compareYears.forEach(year => RESULT_SERIES.forEach(series => { row[`${year} ${series.key}`] = 0 }))
-        return row
-      })
+    if (yearToDate) {
+      const rows = Array.from({ length: currentMonth + 1 }, (_, monthIndex) => ({
+        bucketKey: String(monthIndex),
+        month: new Date(currentYear, monthIndex, 1).toLocaleDateString("en-GB", { month: "short" }),
+        hoverLabel: new Date(currentYear, monthIndex, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" }),
+        Solid: 0, Decline: 0, Cancelled: 0, "Missing stage": 0,
+        total: 0, totalSold: 0, notSolidPercent: 0,
+      }))
       contracts.forEach(deal => {
         if (!deal?.sale_date) return
         const date = new Date(`${String(deal.sale_date).slice(0, 10)}T00:00:00`)
-        if (Number.isNaN(date.getTime()) || date.getFullYear() < 2020 || date.getFullYear() > currentYear) return
-        if (date.getFullYear() === currentYear && (date.getMonth() > currentMonth || (date.getMonth() === currentMonth && date.getDate() > currentDay))) return
+        if (Number.isNaN(date.getTime()) || date.getFullYear() !== currentYear || date > new Date(currentYear, currentMonth, currentDay)) return
         if (selectedProduct !== "All products" && selectedProduct !== normaliseProduct(deal.product)) return
         const amount = Number(deal.net_value || 0)
         if (!Number.isFinite(amount) || amount <= 0) return
         const row = rows[date.getMonth()]
-        row[`${date.getFullYear()} ${normaliseResult(deal)}`] += amount
+        if (!row) return
+        row[normaliseResult(deal)] += amount
         row.total += amount
         row.totalSold += 1
       })
+      rows.forEach(row => { row.notSolidPercent = row.total > 0 ? ((row.Decline + row.Cancelled) / row.total) * 100 : 0 })
       return rows
     }
     const start = selectedYear === "all" ? new Date(2020, 0, 1) : new Date(Number(selectedYear), 0, 1)
@@ -234,7 +236,7 @@ function SalesChart({ contracts = [] }) {
     })
     rows.forEach((row) => { row.notSolidPercent = row.total > 0 ? ((row.Decline + row.Cancelled) / row.total) * 100 : 0 })
     return rows
-  }, [contracts, currentYear, currentMonth, currentDay, selectedProduct, selectedYear, timeGrouping, yearOnYear, availableYears])
+  }, [contracts, currentYear, currentMonth, currentDay, selectedProduct, selectedYear, timeGrouping, yearToDate, availableYears])
 
   const conversionData = useMemo(() => {
     const start = cpsSelectedYear === "all" ? new Date(2025, 0, 1) : new Date(Math.max(2025, Number(cpsSelectedYear)), 0, 1)
@@ -316,7 +318,7 @@ function SalesChart({ contracts = [] }) {
           <div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Net Sales Value by Month</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Net sales value by deal result · January 2020 onwards</p></div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, color: "#475569" }}>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Year<select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="all">All time</option>{availableYears.map((year) => <option key={year} value={String(year)}>{year}</option>)}</select></label>
-            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Period<select value={timeGrouping} onChange={(event) => setTimeGrouping(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="year">Year</option><option value="quarter">Quarter</option><option value="month">Month</option><option value="week">Week</option><option value="yearOnYear">Year on year</option></select></label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Period<select value={timeGrouping} onChange={(event) => setTimeGrouping(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="year">Year</option><option value="quarter">Quarter</option><option value="month">Month</option><option value="week">Week</option><option value="yearToDate">Year to date</option></select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Products<select value={selectedProduct} onChange={(event) => setSelectedProduct(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", minWidth: 145 }}><option value="All products">All products</option>{PRODUCT_FILTER_OPTIONS.map((product) => <option key={product} value={product}>{product}</option>)}</select></label>
           </div>
         </div>
