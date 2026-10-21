@@ -14,7 +14,7 @@ export const STAGE_GROUP_COLORS = Object.freeze({
 })
 
 export const STAGE_GROUPS = [
-  { key: "rts", order: 1, label: "Sales", stages: ["Awaiting Funds", "Returned To Sales", "Pending Cancellation", "Long Term", "On Hold"], ...STAGE_GROUP_COLORS.sales },
+  { key: "rts", order: 1, label: "Sales", stages: ["Awaiting Funds", "Secured - Awaiting Funds", "Returned To Sales", "Pending Cancellation", "Long Term", "On Hold"], ...STAGE_GROUP_COLORS.sales },
   { key: "surveys", order: 2, label: "Surveys", stages: ["Book for Survey", "Book for Survey (S)", "Survey Booked", "Survey Booked (S)"], ...STAGE_GROUP_COLORS.surveys },
   { key: "procurement", order: 3, label: "Procurement", stages: ["Costing", "To Order", "To Be Ordered", "Awaiting Customer Confirmation", "Awaiting Manufacture Date", "Awaiting EPVS (S)", "Planning"], ...STAGE_GROUP_COLORS.procurement },
   { key: "accounts", order: 4, label: "Accounts", stages: ["Cancelled - Awaiting Refund", "Fit Complete - Accounts To Check", "Admin Fee Outstanding", "Accounts To Check (S)"], ...STAGE_GROUP_COLORS.accounts },
