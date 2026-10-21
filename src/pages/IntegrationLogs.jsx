@@ -74,7 +74,15 @@ export default function IntegrationLogs({ setMobile }) {
       if (execute) params.set("execute", "true")
       const response = await fetch("/api/admin/bulk-updates?" + params.toString(), { headers: { Authorization: "Bearer " + accessToken, Accept: "application/json" } })
       const result = await response.json().catch(() => ({}))
-      if (!response.ok && response.status !== 207) throw new Error(result.error || "Backfill request failed (HTTP " + response.status + ")")
+      if (!response.ok && response.status !== 207) {
+        const rawError = result?.error
+        const errorMessage = typeof rawError === "string"
+          ? rawError
+          : rawError && typeof rawError === "object"
+            ? (rawError.message || rawError.details || rawError.hint || JSON.stringify(rawError))
+            : "Backfill request failed (HTTP " + response.status + ")"
+        throw new Error(errorMessage)
+      }
       setDateBackfillPreview(result)
       setDateBackfillMessage(execute ? ("Batch complete: " + (result.updated || 0) + " updated, " + (result.skipped || 0) + " skipped, " + (result.failed || 0) + " failed.") : ("Preview ready: " + (result.previewed || 0) + " installation dates found, " + (result.failed || 0) + " unable to resolve. No deals were changed."))
       if (execute) { loadProviders(); loadLogs(); loadStats(); loadChartLogs() }
