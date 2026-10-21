@@ -23,7 +23,7 @@ function isSolarDeal(deal) {
 }
 
 function getPipedriveStage(deal) {
-  return String(deal?.stage || deal?.pipedrive_stage || deal?.pipedrive_data?.stage || deal?.pipedrive_data?.stage_name || "").trim()
+  return String(deal?.pipedrive_stage || deal?.stage || deal?.pipedrive_data?.pipedrive_stage || deal?.pipedrive_data?.stage || deal?.pipedrive_data?.stage_name || "").trim()
 }
 
 function hasDigitalContract(appointment) {
