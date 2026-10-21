@@ -106,7 +106,7 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
       const row = rowMap.get(bucket.key)
       if (row) {
         const product = productLabel(deal)
-        row[product] = (row[product] || 0) + 1
+        row[product] = (row[product] || 0) + (metric === "value" ? (Number(deal.net_value) || 0) : 1)
       }
     })
     return rows
