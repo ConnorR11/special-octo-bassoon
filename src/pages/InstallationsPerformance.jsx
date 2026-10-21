@@ -117,6 +117,7 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
   const upcoming = datedDeals.filter(deal => dateKey(deal.parsedInstallationDate) >= todayKey).length
   const thisYear = datedDeals.filter(deal => deal.parsedInstallationDate.getFullYear() === new Date().getFullYear()).length
   const total = filteredDeals.length
+  const [expandedBalanceGroups, setExpandedBalanceGroups] = useState({})
   const balanceByStage = useMemo(() => {
     const groups = new Map()
     ;(Array.isArray(deals) ? deals : []).forEach(deal => {
@@ -125,13 +126,16 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
       if (balance <= 0 || ["customer cancelled", "decline"].includes(stage.toLowerCase())) return
       const group = getStageGroup(stage)
       const key = group.key
-      const current = groups.get(key) || { key, stage: group.label, label: group.label, jobs: 0, balance: 0, color: group.text, stages: new Set() }
+      const current = groups.get(key) || { key, stage: group.label, label: group.label, jobs: 0, balance: 0, color: group.text, stages: new Map() }
       current.jobs += 1
       current.balance += balance
-      current.stages.add(stage)
+      const stageEntry = current.stages.get(stage) || { stage, jobs: 0, balance: 0 }
+      stageEntry.jobs += 1
+      stageEntry.balance += balance
+      current.stages.set(stage, stageEntry)
       groups.set(key, current)
     })
-    return [...groups.values()].map(group => ({ ...group, stages: [...group.stages] })).sort((a, b) => b.jobs - a.jobs)
+    return [...groups.values()].map(group => ({ ...group, stages: [...group.stages.values()].sort((a, b) => b.jobs - a.jobs) })).sort((a, b) => b.jobs - a.jobs)
   }, [deals])
 
   const cardStyle = { background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "18px 20px", minWidth: 0 }
@@ -154,7 +158,7 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 12 }}><div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Outstanding balances by stage</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Jobs with a balance outstanding above £0, excluding Customer Cancelled and Decline.</p></div><div style={{ textAlign: "right", padding: "8px 12px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 9, flex: "0 0 auto" }}><div style={{ fontSize: 10, color: "#64748b", marginBottom: 3 }}>TOTAL OUTSTANDING</div><div style={{ fontSize: 19, fontWeight: 750, color: "#17212b" }}>{balanceByStage.reduce((sum, entry) => sum + entry.balance, 0).toLocaleString("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 })}</div></div></div>
       {loading ? <div style={{ padding: 32, textAlign: "center", color: "#818891", fontSize: 12 }}>Loading balance data…</div> : balanceByStage.length === 0 ? <div style={{ padding: 32, textAlign: "center", color: "#818891", fontSize: 12 }}>No outstanding balances found for the included stages.</div> : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16, alignItems: "center" }}>
         <ResponsiveContainer width="100%" height={280}><PieChart><Pie data={balanceByStage} dataKey="jobs" nameKey="stage" cx="50%" cy="50%" outerRadius={95} paddingAngle={2}>{balanceByStage.map((entry, index) => <Cell key={entry.stage} fill={entry.color}/>)}</Pie><Tooltip formatter={(value, name, props) => [Number(value).toLocaleString("en-GB") + " jobs · " + Number(props.payload.balance).toLocaleString("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }) + " outstanding", name]}/><Legend verticalAlign="bottom" height={44} wrapperStyle={{ fontSize: 11 }}/></PieChart></ResponsiveContainer>
-        <div style={{ display: "grid", gap: 8 }}>{balanceByStage.map((entry, index) => <div key={entry.stage} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, borderBottom: "1px solid #eef1f3", padding: "8px 0", fontSize: 12 }}><span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><span style={{ width: 9, height: 9, borderRadius: 3, background: entry.color, flex: "0 0 auto" }}/><span>{entry.stage}</span></span><span style={{ textAlign: "right", whiteSpace: "nowrap", color: "#475569" }}><strong>{entry.jobs.toLocaleString("en-GB")} jobs</strong><br/>{entry.balance.toLocaleString("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 })}</span></div>)}</div>
+        <div style={{ display: "grid", gap: 6 }}>{balanceByStage.map(entry => <div key={entry.key} style={{ borderBottom: "1px solid #eef1f3" }}><button type="button" onClick={() => setExpandedBalanceGroups(current => ({ ...current, [entry.key]: !current[entry.key] }))} aria-expanded={!!expandedBalanceGroups[entry.key]} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 2px", border: 0, background: "transparent", cursor: "pointer", textAlign: "left", fontFamily: "inherit", fontSize: 12 }}><span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><span style={{ width: 9, height: 9, borderRadius: 3, background: entry.color, flex: "0 0 auto" }}/><span style={{ fontWeight: 700 }}>{expandedBalanceGroups[entry.key] ? "▾" : "▸"} {entry.label}</span></span><span style={{ textAlign: "right", whiteSpace: "nowrap", color: "#475569" }}><strong>{entry.jobs.toLocaleString("en-GB")} deals</strong><br/>{entry.balance.toLocaleString("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 })}</span></button>{expandedBalanceGroups[entry.key] && <div style={{ padding: "0 0 8px 18px", display: "grid", gap: 2 }}>{entry.stages.map(stage => <div key={stage.stage} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "7px 8px", background: "#f8fafc", borderRadius: 6, fontSize: 11 }}><span style={{ color: "#475569" }}>{stage.stage}</span><span style={{ textAlign: "right", whiteSpace: "nowrap", color: "#475569" }}><strong>{stage.jobs.toLocaleString("en-GB")} deals</strong><br/>{stage.balance.toLocaleString("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 })}</span></div>)}</div>}</div>)}</div>
       </div>}
     </div>
     <div style={{ background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "20px 18px 10px", minWidth: 0, boxSizing: "border-box" }}>
