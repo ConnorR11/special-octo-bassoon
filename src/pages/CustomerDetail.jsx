@@ -207,6 +207,42 @@ function CustomerDetail({
     } finally { setUploadingCategory("") }
   }
 
+  async function uploadSurveyPhotos(files, section) {
+    const selectedFiles = Array.from(files || [])
+    if (!selectedFiles.length || !deal?.id) return
+    setUploadingCategory("survey_photos")
+    setDocumentError("")
+    setDocumentNotice("")
+    let uploadedCount = 0
+    try {
+      const { data: userData } = await supabase.auth.getUser()
+      for (const file of selectedFiles) {
+        if (file.size > 250 * 1024 * 1024) throw new Error('"' + file.name + '" exceeds the 250 MB upload limit.')
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-140) || "survey-photo"
+        const path = deal.id + "/survey_photos/" + Date.now() + "-" + Math.random().toString(36).slice(2, 9) + "-" + safeName
+        const { error: uploadError } = await supabase.storage.from("deal-documents").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false })
+        if (uploadError) throw uploadError
+        const { error: metadataError } = await supabase.from("deal_documents").insert({
+          deal_id: deal.id, category: "survey_photos", survey_section: section, file_name: file.name,
+          storage_path: path, mime_type: file.type || null, file_size: file.size, uploaded_by: userData?.user?.id || null,
+        })
+        if (metadataError) {
+          await supabase.storage.from("deal-documents").remove([path])
+          throw metadataError
+        }
+        uploadedCount += 1
+      }
+      await loadDocuments()
+      setDocumentNotice(uploadedCount + " photo" + (uploadedCount === 1 ? "" : "s") + " uploaded and saved automatically.")
+    } catch (error) {
+      console.error("Unable to upload survey photos:", error)
+      setDocumentError(error?.message || "Unable to upload survey photos. Please try again.")
+      await loadDocuments()
+    } finally {
+      setUploadingCategory("")
+    }
+  }
+
   async function saveSurveyAnswers() {
     setSurveySaving(true); setDocumentError("");
     try { const { data: u } = await supabase.auth.getUser(); const { error } = await supabase.from("deal_survey_answers").upsert({ deal_id: deal.id, answers: surveyAnswers, updated_by: u?.user?.id || null, updated_at: new Date().toISOString() }, { onConflict: "deal_id" }); if (error) throw error; setDocumentNotice("Survey checklist saved."); }
@@ -751,14 +787,14 @@ function CustomerDetail({
                           <button type="button" onClick={()=>setSurveyPhotosExpanded(value=>!value)} aria-expanded={surveyPhotosExpanded} style={{display:"flex",alignItems:"center",gap:12,width:"100%",minHeight:60,boxSizing:"border-box",padding:"12px 14px",border:0,background:"#fff",textAlign:"left",cursor:"pointer"}}>
                             <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:30,height:30,borderRadius:8,background:"#e8eef4",color:"#17364b",fontSize:12,fontWeight:700,flex:"0 0 auto"}}>4</span>
                             <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:700,color:"#263645"}}>Photos</span><span style={{display:"block",marginTop:4,fontSize:10,color:"#75818b"}}>Add photos to each section. Photos are saved and included in the PDF when you generate the full survey PDF.</span></span>
-                            <span style={{fontSize:10,color:"#64748b",whiteSpace:"nowrap"}}>{documents.filter(d=>d.category==="survey_photos").length} saved · {pendingSurveyPhotos.length} new</span>
+                            <span style={{fontSize:10,color:"#64748b",whiteSpace:"nowrap"}}>{documents.filter(d=>d.category==="survey_photos").length} saved</span>
                             <span style={{fontSize:17,color:"#64748b"}}>{surveyPhotosExpanded?"−":"+"}</span>
                           </button>
                           {surveyPhotosExpanded && <>
                           <div style={{padding:14,background:"#f8fafc",borderTop:"1px solid #e1e6eb",borderBottom:"1px solid #e1e6eb"}}>
 
                             <div style={{fontSize:10,color:"#75818b"}}>Add photos to each section. They will be saved and included in the PDF when you generate it.</div>
-                            <div style={{fontSize:10,color:"#75818b",marginTop:5}}>{documents.filter(d=>d.category==="survey_photos").length} saved photos · {pendingSurveyPhotos.length} new photos waiting to be saved</div>
+                            <div style={{fontSize:10,color:"#75818b",marginTop:5}}>{documents.filter(d=>d.category==="survey_photos").length} saved photos · uploads save automatically</div>
                           </div>
                           <div style={{padding:12,display:"block"}}>
                             {surveyPhotoSectionGroups.map(group => <div key={group.title} style={{marginBottom:18}}>
@@ -778,7 +814,7 @@ function CustomerDetail({
                                     <div style={{padding:11,display:"grid",gap:8}}>
                                       <label style={{display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,padding:"9px 10px",border:"1px dashed #b9c7d4",borderRadius:7,background:"#fff",color:"#263645",fontSize:10,fontWeight:700,cursor:generatingSurvey?"wait":"pointer",opacity:generatingSurvey?.6:1}}>
                                         <FileUp size={14}/>Add photos to this section
-                                        <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={generatingSurvey} onChange={event=>{const files=Array.from(event.target.files||[]);setPendingSurveyPhotos(current=>[...current,...files.map(file=>({file,section}))]);event.target.value=""}} style={{display:"none"}}/>
+                                        <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={generatingSurvey || uploadingCategory === "survey_photos"} onChange={event=>{const files=Array.from(event.target.files||[]);void uploadSurveyPhotos(files,section);event.target.value=""}} style={{display:"none"}}/>
                                       </label>
                                       {savedPhotos.map(document=><div key={document.id} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,color:"#475569"}}><FileUp size={13}/><span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={document.file_name}>{document.file_name}</span><button type="button" onClick={()=>openDocument(document)} disabled={openingDocument===document.id} style={{border:"1px solid #d7dee8",borderRadius:5,padding:"4px 6px",background:"#fff",color:"#334155",fontSize:9,cursor:"pointer"}}>Open</button><button type="button" onClick={()=>deleteDocument(document)} aria-label={`Delete ${document.file_name}`} style={{border:"1px solid #f0d4d4",borderRadius:5,padding:"4px 6px",background:"#fff",color:"#a33b3b",fontSize:9,cursor:"pointer"}}>×</button></div>)}
                                       {pendingPhotos.map(item=><div key={item.pendingIndex} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,color:"#475569"}}><FileUp size={13}/><span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={item.file.name}>{item.file.name}</span><button type="button" onClick={()=>setPendingSurveyPhotos(current=>current.filter((_,i)=>i!==item.pendingIndex))} disabled={generatingSurvey} style={{border:"1px solid #f0d4d4",borderRadius:5,padding:"4px 6px",background:"#fff",color:"#a33b3b",fontSize:9,cursor:"pointer"}}>Remove</button></div>)}
