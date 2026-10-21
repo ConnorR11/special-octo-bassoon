@@ -87,6 +87,7 @@ function ChartCard({ title, subtitle, data, series, dataKey }) {
 
 function SalesChart({ contracts = [] }) {
   const [selectedProduct, setSelectedProduct] = useState("All products")
+  const [selectedBranch, setSelectedBranch] = useState("All branches")
   const [selectedYear, setSelectedYear] = useState("all")
   const [timeGrouping, setTimeGrouping] = useState("yearToDate")
   const [salesChartMode, setSalesChartMode] = useState("product")
@@ -110,6 +111,8 @@ function SalesChart({ contracts = [] }) {
   const currentMonth = today.getMonth()
   const currentDay = today.getDate()
   const years = useMemo(() => Array.from({ length: Math.max(0, currentYear - 2019) }, (_, i) => 2020 + i), [currentYear])
+
+  const availableBranches = useMemo(() => [...new Set(contracts.map(deal => String(deal?.branch || deal?.branch_name || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [contracts])
 
   const availableYears = useMemo(() => {
     const values = new Set()
@@ -153,6 +156,8 @@ function SalesChart({ contracts = [] }) {
       if (!deal?.sale_date) return
       const date = new Date(`${String(deal.sale_date).slice(0, 10)}T00:00:00`)
       if (Number.isNaN(date.getTime()) || date.getFullYear() !== year) return
+      const dealBranch = String(deal?.branch || deal?.branch_name || "").trim()
+      if (selectedBranch !== "All branches" && dealBranch !== selectedBranch) return
       const yesterday = new Date(currentYear, currentMonth, currentDay)
       yesterday.setDate(yesterday.getDate() - 1)
       if (date > yesterday) return
@@ -163,7 +168,7 @@ function SalesChart({ contracts = [] }) {
       row.total += value
     })
     return row
-  }), [contracts, years, currentYear, currentMonth, currentDay])
+  }), [contracts, years, currentYear, currentMonth, currentDay, selectedBranch])
 
   const monthlyBalanceData = useMemo(() => {
     if (yearToDate) {
@@ -195,6 +200,8 @@ function SalesChart({ contracts = [] }) {
             if (Number.isNaN(date.getTime()) || date.getFullYear() !== year || date > cutoff ||
                 date.getMonth() > cutoffMonth || (date.getMonth() === cutoffMonth && date.getDate() > cutoffDay)) return
             if (selectedProduct !== "All products" && selectedProduct !== normaliseProduct(deal.product)) return
+            const dealBranch = String(deal?.branch || deal?.branch_name || "").trim()
+            if (selectedBranch !== "All branches" && dealBranch !== selectedBranch) return
             const amount = Number(deal.net_value || 0)
             if (!Number.isFinite(amount) || amount <= 0) return
             row[normaliseResult(deal)] += amount
@@ -244,6 +251,8 @@ function SalesChart({ contracts = [] }) {
       const date = new Date(`${String(deal.sale_date).slice(0, 10)}T00:00:00`)
       if (Number.isNaN(date.getTime()) || date < start || date > end) return
       if (selectedProduct !== "All products" && selectedProduct !== normaliseProduct(deal.product)) return
+      const dealBranch = String(deal?.branch || deal?.branch_name || "").trim()
+      if (selectedBranch !== "All branches" && dealBranch !== selectedBranch) return
       const bucket = getBucket(date)
       const row = rowByKey.get(bucket.key)
       if (!row) return
@@ -256,7 +265,7 @@ function SalesChart({ contracts = [] }) {
     })
     rows.forEach((row) => { row.notSolidPercent = row.total > 0 ? ((row.Decline + row.Cancelled) / row.total) * 100 : 0 })
     return rows
-  }, [contracts, currentYear, currentMonth, currentDay, selectedProduct, selectedYear, timeGrouping, yearToDate, availableYears])
+  }, [contracts, currentYear, currentMonth, currentDay, selectedProduct, selectedBranch, selectedYear, timeGrouping, yearToDate, availableYears])
 
   const conversionData = useMemo(() => {
     const start = cpsSelectedYear === "all" ? new Date(2025, 0, 1) : new Date(Math.max(2025, Number(cpsSelectedYear)), 0, 1)
@@ -337,6 +346,7 @@ function SalesChart({ contracts = [] }) {
             <label style={{ display: "flex", alignItems: "center", gap: 6 }}>View<select value={salesChartMode} onChange={event => setSalesChartMode(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="result">Sold by Status</option><option value="product">Solid by Product</option></select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Year<select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="all">All time</option>{availableYears.map((year) => <option key={year} value={String(year)}>{year}</option>)}</select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Period<select value={timeGrouping} onChange={(event) => setTimeGrouping(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="year">Year</option><option value="quarter">Quarter</option><option value="month">Month</option><option value="week">Week</option><option value="yearToDate">Year to date</option></select></label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Branch<select value={selectedBranch} onChange={event => setSelectedBranch(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", minWidth: 145 }}><option value="All branches">All branches</option>{availableBranches.map(branch => <option key={branch} value={branch}>{branch}</option>)}</select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Products<select value={selectedProduct} onChange={(event) => setSelectedProduct(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", minWidth: 145 }}><option value="All products">All products</option>{PRODUCT_FILTER_OPTIONS.map((product) => <option key={product} value={product}>{product}</option>)}</select></label>
           </div>
         </div>
