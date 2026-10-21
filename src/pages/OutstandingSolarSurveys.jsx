@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { RefreshCw, Search, FileText, ClipboardCheck, AlertCircle } from "lucide-react"
 import { supabase } from "../lib/supabase"
+import SurveyProgressBar from "../components/SurveyProgressBar"
 
 const styles = {
   page: { padding: "24px 28px 40px", color: "#17212b", minHeight: "100%", background: "#f6f8fb", boxSizing: "border-box" },
@@ -105,7 +106,7 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
       const generatedSurveyDealIds = new Set(surveyDocumentRows.map(item => String(item.deal_id)))
       const allProgressDocs = surveyProgressRows.flatMap(batch => batch.docs)
       const allProgressAnswers = new Map(surveyProgressRows.flatMap(batch => batch.answers).map(item => [String(item.deal_id), item.answers || {}]))
-      const photoSections = ["Front of Property", "Inverter Location", "Consumer Unit", "Roof", "Loft"]
+      const photoSections = ["Front of Property", "Rear of Property", "Side of Property", "Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Loft Access Point", "Loft Roof Truss", "Internet DC Route", "External DC Route", "Proposed Inverter Location", "Proposed Battery Location", "Proposed Canopy Location", "Proposed Panel Layout", "Alternative Roof Elevations", "Existing Solar Equipment", "Existing EV Charger", "High Electrical Usage Items", "Shading Issues"]
       const excludedStages = new Set(["customer cancelled", "decline"])
       const outstanding = solarDeals
         .filter(deal => !excludedStages.has(getPipedriveStage(deal).toLowerCase()))
@@ -117,16 +118,17 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
           const dealDocs = allProgressDocs.filter(doc => String(doc.deal_id) === String(deal.id))
           const answers = allProgressAnswers.get(String(deal.id)) || {}
           const answeredCount = Object.values(answers).filter(value => String(value || "").trim()).length
-          const checklistComplete = answeredCount > 0 && answeredCount >= 10
+          const checklistComplete = answeredCount >= 27
           const photoSectionsComplete = new Set(dealDocs.filter(doc => doc.category === "survey_photos").map(doc => doc.survey_section || "Front of Property"))
+          const photoCount = dealDocs.filter(doc => doc.category === "survey_photos").length
           return {
             ...deal,
             linked_contract_number: appointmentsById.get(String(deal.appointment_row_id || ""))?.contract_number || "",
             surveyProgress: [
-              dealDocs.some(doc => doc.category === "survey_video"),
-              dealDocs.some(doc => doc.category === "electricity_bill_epvs_waiver"),
-              checklistComplete,
-              photoSections.every(section => photoSectionsComplete.has(section)),
+              dealDocs.some(doc => doc.category === "survey_video") ? "complete" : "outstanding",
+              dealDocs.some(doc => doc.category === "electricity_bill_epvs_waiver") ? "complete" : "outstanding",
+              checklistComplete ? "complete" : answeredCount > 0 ? "in-progress" : "outstanding",
+              photoSections.every(section => photoSectionsComplete.has(section)) ? "complete" : photoCount > 0 ? "in-progress" : "outstanding",
             ],
           }
         })
@@ -210,12 +212,7 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
                   <td style={styles.td}>{formatDate(deal.sale_date)}</td>
                   <td style={styles.td}>{deal.salesperson_name || deal.salesperson || "—"}</td>
                   <td style={styles.td}>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(24px,1fr))",gap:5,minWidth:140}}>
-                      {["Video","Bill","Checklist","Photos"].map((label,index) => <div key={label} title={label + (deal.surveyProgress?.[index] ? " complete" : " outstanding")}>
-                        <div style={{height:7,borderRadius:99,background:deal.surveyProgress?.[index] ? "#16845b" : "#e5eaf0"}} />
-                        <div style={{fontSize:9,color:deal.surveyProgress?.[index] ? "#16845b" : "#64748b",marginTop:4}}>{label}</div>
-                      </div>)}
-                    </div>
+<SurveyProgressBar progress={deal.surveyProgress} compact />
                   </td>
                 </tr>)}
               </tbody>
