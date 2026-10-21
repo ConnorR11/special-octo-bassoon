@@ -13,10 +13,10 @@ import { supabase } from "../lib/supabase"
 import SurveyProgressBar from "../components/SurveyProgressBar"
 
 const surveyPhotoSectionGroups = [
-  { title: "Property & installation", sections: ["Front of Property", "Rear of Property", "Side of Property", "Proposed Canopy Location", "Loft Access Point", "Loft Roof Truss"] },
-  { title: "Electrical & battery", sections: ["Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Internet DC Route", "External DC Route", "Proposed Inverter Location", "Proposed Battery Location", "Existing EV Charger", "High Electrical Usage Items"] },
-  { title: "Roof & solar panels", sections: ["Proposed Panel Layout", "Alternative Roof Elevations", "Existing Solar Equipment", "Shading Issues"] },
-  { title: "Measurements & access", sections: [] },
+  { title: "Property & installation", sections: ["Front of Property", "Rear of Property", "Side of Property", "Proposed Canopy Location"] },
+  { title: "Electrical & battery", sections: ["Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Internet DC Route", "External DC Route", "Existing EV Charger", "High Electrical Usage Items"] },
+  { title: "Roof & solar panels", sections: ["Loft Roof Truss", "Proposed Panel Layout", "Alternative Roof Elevations", "Existing Solar Equipment", "Shading Issues"] },
+  { title: "Measurements & access", sections: ["Loft Access Point", "Proposed Inverter Location", "Proposed Battery Location"] },
 ]
 
 function formatDate(value) {
