@@ -165,26 +165,17 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
         @media(max-width:700px){.outstanding-surveys-page{padding:16px 10px!important}}
       `}</style>
       <div className="outstanding-surveys-page" style={styles.container}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 11, background: "#fff0dc", color: "#b96b08", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto" }}><ClipboardCheck size={23}/></div>
-            <div>
-              <div style={{ color: "#b96b08", fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 4 }}>Solar</div>
-              <h1 style={{ margin: 0, fontSize: 27, letterSpacing: "-.025em" }}>Outstanding Solar Surveys</h1>
-              <p style={{ margin: "6px 0 0", color: "#64748b", fontSize: 12 }}>Solar deals with a completed digital contract but no generated survey PDF.</p>
-            </div>
-          </div>
-          <button type="button" style={styles.button} onClick={load} disabled={loading}><RefreshCw size={14}/>{loading ? "Refreshing…" : "Refresh list"}</button>
-        </div>
-
         <div style={styles.panel}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: 16, flexWrap: "wrap", borderBottom: "1px solid #e8edf2" }}>
             <div style={{ fontSize: 12, fontWeight: 750, color: "#334155", whiteSpace: "nowrap" }}>Outstanding surveys <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 22, height: 22, padding: "0 6px", marginLeft: 5, boxSizing: "border-box", borderRadius: 999, background: "#e8eef4", color: "#17364b", fontSize: 11 }}>{loading ? "…" : rows.length.toLocaleString("en-GB")}</span></div>
-            <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginLeft: "auto" }}>
+              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
               <Search size={15} style={{ position: "absolute", left: 11, color: "#94a3b8" }}/>
               <input aria-label="Search outstanding surveys" placeholder="Search customer, contract, postcode…" value={search} onChange={e => setSearch(e.target.value)} style={{ ...styles.input, paddingLeft: 34, width: 310, maxWidth: "75vw" }}/>
+              </div>
+              <span style={{ color: "#94a3b8", fontSize: 10, whiteSpace: "nowrap" }}>{lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : ""}</span>
+              <button type="button" style={styles.button} onClick={load} disabled={loading}><RefreshCw size={14}/>{loading ? "Refreshing…" : "Refresh list"}</button>
             </div>
-            <span style={{ color: "#94a3b8", fontSize: 10 }}>{lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : ""}</span>
           </div>
           {error && <div style={{ margin: 16, padding: 12, borderRadius: 8, background: "#fff1f0", color: "#a12b23", fontSize: 12, display: "flex", gap: 8, alignItems: "center" }}><AlertCircle size={16}/>{error}</div>}
           {!error && !loading && filteredRows.length === 0 && <div style={{ padding: "46px 20px", textAlign: "center", color: "#64748b" }}><FileText size={26} style={{ marginBottom: 9, color: "#94a3b8" }}/><div style={{ fontSize: 13, fontWeight: 750, color: "#334155" }}>No outstanding surveys found</div><div style={{ marginTop: 5, fontSize: 11 }}>All matching solar deals have a survey PDF, or there are no qualifying digital contracts.</div></div>}
