@@ -37,6 +37,7 @@ import AdminUserPreview from "./components/AdminUserPreview"
 import ContractFile from "./pages/ContractFile"
 import OverstayFormFile from "./pages/OverstayFormFile"
 import SurveyVideoFile from "./pages/SurveyVideoFile"
+import SurveyPdfFile from "./pages/SurveyPdfFile"
 import SolarBillFile from "./pages/SolarBillFile"
 import UnitAnalysis from "./pages/UnitAnalysis"
 import EPVSApplications from "./pages/EPVSApplications"
@@ -191,6 +192,7 @@ function App() {
       if (path === "/contract-file/") { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("contract-file"); return }
       if (path === "/overstay-form/") { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("overstay-form"); return }
       if (path === "/survey-video/") { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("survey-video"); return }
+      if (path === "/survey-pdf/") { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("survey-pdf"); return }
       if (path === "/solar-bill/") { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("solar-bill"); return }
       const appointmentMatch=path.match(/^\/appointments\/([^/]+)$/)
       if(appointmentMatch){loadAppointmentFromUrl(decodeURIComponent(appointmentMatch[1]));return}
@@ -227,6 +229,8 @@ function App() {
     pageContent = <OverstayFormFile />
   } else if (page === "survey-video") {
     pageContent = <SurveyVideoFile />
+  } else if (page === "survey-pdf") {
+    pageContent = <SurveyPdfFile />
   } else if (page === "solar-bill") {
     pageContent = <SolarBillFile />
   } else if (pickupAppointment) {
