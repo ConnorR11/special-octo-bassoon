@@ -326,7 +326,17 @@ async function runInstallationDateBackfill(config, { limit, offset, dryRun }) {
       const dealId = String(row.pipedrive_deal_id)
       try {
         const found = await fetchPipedriveInstallationDate(config.pipedriveToken, dealId)
-        if (!found.date) { results[index] = { dealId, contractNumber: row.contract_number, customerName: row.customer_name, status: "failed", error: found.error }; continue }
+        if (!found.date) {
+          const confirmedEmpty = String(found.error || "").includes("field was not present or is blank")
+          results[index] = {
+            dealId,
+            contractNumber: row.contract_number,
+            customerName: row.customer_name,
+            status: confirmedEmpty ? "skipped" : "failed",
+            error: confirmedEmpty ? "No Installation: Start Date in Pipedrive — skipped for this run" : found.error,
+          }
+          continue
+        }
         if (dryRun) { results[index] = { dealId, contractNumber: row.contract_number, customerName: row.customer_name, status: "preview", installationStartDate: found.date }; continue }
         const update = await updateInstallationDateIfStillMissing(config, row, found.date)
         results[index] = { dealId, contractNumber: row.contract_number, customerName: row.customer_name, status: update.success ? "updated" : update.skipped ? "skipped" : "failed", installationStartDate: found.date, ...(update.error ? { error: update.error } : {}) }
