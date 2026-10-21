@@ -263,14 +263,35 @@ async function getMissingInstallationDateRows(config, limit, offset) {
   return { rows, total: totalMatch ? Number(totalMatch[1]) : null }
 }
 async function fetchPipedriveInstallationDate(token, dealId) {
-  const url = "https://api.pipedrive.com/api/v2/deals/" + encodeURIComponent(dealId) + "?api_token=" + encodeURIComponent(token)
-  const response = await fetchPipedriveWithRateLimitRetry(url, { headers: { Accept: "application/json" } })
-  const json = await responseJson(response)
-  if (!response.ok || !json?.success || !json?.data) return { date: null, error: "Pipedrive deal lookup failed (HTTP " + response.status + ")" }
-  const deal = json.data
-  const fields = deal.custom_fields && typeof deal.custom_fields === "object" ? deal.custom_fields : deal
-  const date = normalisePipedriveDate(fields[INSTALLATION_START_DATE_FIELD_KEY] ?? deal[INSTALLATION_START_DATE_FIELD_KEY])
-  return date ? { date } : { date: null, error: "No valid Installation: Start Date returned by Pipedrive" }
+  // Try v2 first, then v1: custom deal fields can be represented differently
+  // between API versions and the v1 response exposes fields by their field key.
+  const endpoints = [
+    "https://api.pipedrive.com/api/v2/deals/" + encodeURIComponent(dealId) + "?api_token=" + encodeURIComponent(token),
+    "https://api.pipedrive.com/v1/deals/" + encodeURIComponent(dealId) + "?api_token=" + encodeURIComponent(token),
+  ]
+  let lastHttpStatus = null
+  let fieldWasPresent = false
+  for (const url of endpoints) {
+    const response = await fetchPipedriveWithRateLimitRetry(url, { headers: { Accept: "application/json" } })
+    const json = await responseJson(response)
+    lastHttpStatus = response.status
+    if (!response.ok || !json?.success || !json?.data) continue
+    const deal = json.data
+    const fields = deal.custom_fields && typeof deal.custom_fields === "object" ? deal.custom_fields : deal
+    const raw = fields[INSTALLATION_START_DATE_FIELD_KEY] ?? deal[INSTALLATION_START_DATE_FIELD_KEY]
+    if (raw !== undefined && raw !== null && raw !== "") fieldWasPresent = true
+    const date = normalisePipedriveDate(raw)
+    if (date) return { date }
+  }
+  if (lastHttpStatus !== null && lastHttpStatus >= 400) {
+    return { date: null, error: "Pipedrive deal lookup failed (HTTP " + lastHttpStatus + ")" }
+  }
+  return {
+    date: null,
+    error: fieldWasPresent
+      ? "Installation: Start Date field was returned by Pipedrive but was not a valid date"
+      : "Installation: Start Date field was not present or is blank in both Pipedrive API responses",
+  }
 }
 async function updateInstallationDateIfStillMissing(config, row, date) {
   const url = new URL(config.supabaseUrl + "/rest/v1/deals")
