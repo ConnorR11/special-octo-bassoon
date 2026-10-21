@@ -1601,9 +1601,6 @@ export default async function handler(req, res) {
       customer_name:
         customerName,
 
-      contract_number:
-        contractNumber,
-
       salesperson,
 
       installation_start_date:
@@ -1683,6 +1680,11 @@ export default async function handler(req, res) {
 
       updated_at:
         new Date().toISOString(),
+    }
+
+    // Preserve the existing CRM value when Pipedrive returns no contract number.
+    if (contractNumber !== null && contractNumber !== undefined && String(contractNumber).trim() !== "") {
+      updatePayload.contract_number = contractNumber
     }
 
     const updateResponse =
