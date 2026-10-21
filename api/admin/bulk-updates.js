@@ -222,8 +222,95 @@ async function logBulkRun(config, { jobName, status, httpStatus, errorMessage = 
   }
 }
 
+
+const INSTALLATION_START_DATE_FIELD_KEY = "55177af32aecef5d2f250bd701c2bbee064136fc"
+function normalisePipedriveDate(value) {
+  let current = value
+  for (let i = 0; i < 5; i += 1) {
+    if (current === null || current === undefined || current === "") return null
+    if (typeof current !== "object" || Array.isArray(current)) break
+    if (Object.prototype.hasOwnProperty.call(current, "value")) current = current.value
+    else if (Object.prototype.hasOwnProperty.call(current, "date")) current = current.date
+    else if (Object.prototype.hasOwnProperty.call(current, "start_date")) current = current.start_date
+    else break
+  }
+  if (current === null || current === undefined || current === "") return null
+  const text = String(current).trim()
+  const iso = text.match(/^(\d{4}-\d{2}-\d{2})/)
+  if (iso) return iso[1]
+  const uk = text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+  if (uk) return uk[3] + "-" + uk[2].padStart(2, "0") + "-" + uk[1].padStart(2, "0")
+  const parsed = new Date(text)
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10)
+}
+async function getMissingInstallationDateRows(config, limit, offset) {
+  const url = new URL(config.supabaseUrl + "/rest/v1/deals")
+  url.searchParams.set("select", "id,pipedrive_deal_id,installation_start_date,contract_number,customer_name")
+  url.searchParams.set("pipedrive_deal_id", "not.is.null")
+  url.searchParams.set("or", "(installation_start_date.is.null,installation_start_date.eq.)")
+  url.searchParams.set("order", "sale_date.desc.nullslast,id.asc")
+  url.searchParams.set("limit", String(limit))
+  url.searchParams.set("offset", String(offset))
+  const response = await fetch(url, { headers: { apikey: config.serviceKey, Authorization: "Bearer " + config.serviceKey, Accept: "application/json", Prefer: "count=exact" } })
+  const rows = await responseJson(response)
+  if (!response.ok || !Array.isArray(rows)) throw new Error("Supabase lookup failed (HTTP " + response.status + ")")
+  const totalMatch = String(response.headers.get("content-range") || "").match(/\/(\d+)$/)
+  return { rows, total: totalMatch ? Number(totalMatch[1]) : null }
+}
+async function fetchPipedriveInstallationDate(token, dealId) {
+  const url = "https://api.pipedrive.com/api/v2/deals/" + encodeURIComponent(dealId) + "?api_token=" + encodeURIComponent(token)
+  const response = await fetchPipedriveWithRateLimitRetry(url, { headers: { Accept: "application/json" } })
+  const json = await responseJson(response)
+  if (!response.ok || !json?.success || !json?.data) return { date: null, error: "Pipedrive deal lookup failed (HTTP " + response.status + ")" }
+  const deal = json.data
+  const fields = deal.custom_fields && typeof deal.custom_fields === "object" ? deal.custom_fields : deal
+  const date = normalisePipedriveDate(fields[INSTALLATION_START_DATE_FIELD_KEY] ?? deal[INSTALLATION_START_DATE_FIELD_KEY])
+  return date ? { date } : { date: null, error: "No valid Installation: Start Date returned by Pipedrive" }
+}
+async function updateInstallationDateIfStillMissing(config, row, date) {
+  const url = new URL(config.supabaseUrl + "/rest/v1/deals")
+  url.searchParams.set("id", "eq." + row.id)
+  url.searchParams.set("pipedrive_deal_id", "eq." + row.pipedrive_deal_id)
+  url.searchParams.set("or", "(installation_start_date.is.null,installation_start_date.eq.)")
+  const response = await fetch(url, {
+    method: "PATCH",
+    headers: { apikey: config.serviceKey, Authorization: "Bearer " + config.serviceKey, "Content-Type": "application/json", Prefer: "return=representation" },
+    body: JSON.stringify({ installation_start_date: date, updated_at: new Date().toISOString() }),
+  })
+  const updated = await responseJson(response)
+  if (!response.ok || !Array.isArray(updated)) return { success: false, error: "Supabase update failed (HTTP " + response.status + ")" }
+  return { success: updated.length === 1, skipped: updated.length === 0 }
+}
+async function runInstallationDateBackfill(config, { limit, offset, dryRun }) {
+  const { rows, total } = await getMissingInstallationDateRows(config, limit, offset)
+  if (!rows.length) return { job: "backfill-installation-start-dates", dryRun, requested: 0, previewed: 0, updated: 0, skipped: 0, failed: 0, totalMissing: total, nextOffset: null, results: [] }
+  const results = new Array(rows.length)
+  let cursor = 0
+  const worker = async () => {
+    while (true) {
+      const index = cursor++
+      if (index >= rows.length) return
+      const row = rows[index]
+      const dealId = String(row.pipedrive_deal_id)
+      try {
+        const found = await fetchPipedriveInstallationDate(config.pipedriveToken, dealId)
+        if (!found.date) { results[index] = { dealId, contractNumber: row.contract_number, customerName: row.customer_name, status: "failed", error: found.error }; continue }
+        if (dryRun) { results[index] = { dealId, contractNumber: row.contract_number, customerName: row.customer_name, status: "preview", installationStartDate: found.date }; continue }
+        const update = await updateInstallationDateIfStillMissing(config, row, found.date)
+        results[index] = { dealId, contractNumber: row.contract_number, customerName: row.customer_name, status: update.success ? "updated" : update.skipped ? "skipped" : "failed", installationStartDate: found.date, ...(update.error ? { error: update.error } : {}) }
+      } catch { results[index] = { dealId, contractNumber: row.contract_number, customerName: row.customer_name, status: "failed", error: "Unexpected error processing this deal" } }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(6, rows.length) }, () => worker()))
+  const updated = results.filter(item => item.status === "updated").length
+  const skipped = results.filter(item => item.status === "skipped").length
+  const failed = results.filter(item => item.status === "failed").length
+  return { job: "backfill-installation-start-dates", dryRun, requested: rows.length, updated, previewed: results.filter(item => item.status === "preview").length, skipped, failed, totalMissing: total, nextOffset: rows.length === limit && (total === null || total > 0) ? 0 : null, results }
+}
+
 const JOBS = {
   "backfill-pipedrive-stages": runBackfill,
+  "backfill-installation-start-dates": runInstallationDateBackfill,
 }
 
 export default async function handler(req, res) {
