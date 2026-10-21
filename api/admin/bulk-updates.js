@@ -247,6 +247,8 @@ async function getMissingInstallationDateRows(config, limit, offset) {
   const url = new URL(config.supabaseUrl + "/rest/v1/deals")
   url.searchParams.set("select", "id,pipedrive_deal_id,installation_start_date,contract_number,customer_name")
   url.searchParams.set("pipedrive_deal_id", "not.is.null")
+  // Temporarily limit this backfill to deals at the Contract Complete stage.
+  url.searchParams.set("pipedrive_stage", "eq.Contract Complete")
   // installation_start_date is a date column, so missing values are SQL NULL.
   // Avoid an empty-string OR filter, which PostgREST rejects for date columns.
   url.searchParams.set("installation_start_date", "is.null")
