@@ -310,6 +310,8 @@ function CustomerDetail({
   }
 
   const pipedriveStage = String(deal?.pipedrive_stage || "").trim() || "—"
+  const isSolarDeal = /solar/i.test(String(deal?.product || deal?.pipedrive_data?.product || ""))
+  const epvsStatus = String(deal?.epvs_status || deal?.pipedrive_data?.epvs_status || "").trim()
 
   return (
     <section>
@@ -453,6 +455,11 @@ function CustomerDetail({
                 {pipedriveStage}
               </span>
             </div>
+
+            {isSolarDeal && <div style={{ marginTop: "10px", display: "flex", alignItems: "center", gap: "7px" }}>
+              <span style={{ fontSize: "11px", color: "#888" }}>EPVS status</span>
+              <span style={{ display: "inline-flex", alignItems: "center", padding: "5px 9px", borderRadius: "6px", background: "#eef6fb", color: "#1676b8", fontSize: "10px", fontWeight: 700 }}>{epvsStatus || "—"}</span>
+            </div>}
 
             {fullAddress && (
               <div
