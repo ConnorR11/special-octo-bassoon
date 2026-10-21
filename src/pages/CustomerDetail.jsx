@@ -760,8 +760,8 @@ function CustomerDetail({
                             <div style={{fontSize:10,color:"#75818b"}}>Add photos to each section. They will be saved and included in the PDF when you generate it.</div>
                             <div style={{fontSize:10,color:"#75818b",marginTop:5}}>{documents.filter(d=>d.category==="survey_photos").length} saved photos · {pendingSurveyPhotos.length} new photos waiting to be saved</div>
                           </div>
-                          <div style={{padding:12,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:10}}>
-                            {surveyPhotoSectionGroups.map(group => <div key={group.title}>
+                          <div style={{padding:12,display:"block"}}>
+                            {surveyPhotoSectionGroups.map(group => <div key={group.title} style={{marginBottom:18}}>
                               <div style={{fontSize:12,fontWeight:750,color:"#fff",background:"#002d49",padding:"10px 12px",marginBottom:10,borderBottom:"1px solid #002d49",display:"flex",justifyContent:"space-between",gap:10,borderRadius:5}}><span>{group.title}</span><span style={{fontSize:10,fontWeight:500,color:"#dbe7f0"}}>{group.sections.filter(section=>documents.some(d=>d.category==="survey_photos"&&d.survey_section===section)||pendingSurveyPhotos.some(item=>item.section===section)).length} of {group.sections.length}</span></div>
                               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:10,marginBottom:18}}>
                                 {group.sections.map(section=>{
