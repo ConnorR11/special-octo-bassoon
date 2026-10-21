@@ -513,30 +513,37 @@ async function getStageName(
   )
 }
 
-async function getContractNumberFromPerson(pipedriveToken, personId) {
-  if (!personId) return null
+async function getContractNumberFromDeal(pipedriveToken, deal) {
+  if (!deal || typeof deal !== "object") return null
+
+  // Contract Number is a deal custom field, so resolve it from dealFields
+  // and read it directly from the Pipedrive deal payload.
   const token = encodeURIComponent(pipedriveToken)
   const requests = [
-    "https://api.pipedrive.com/api/v2/personFields?limit=500&api_token=" + token,
-    "https://api.pipedrive.com/v1/personFields?start=0&limit=500&api_token=" + token,
+    "https://api.pipedrive.com/api/v2/dealFields?limit=500&api_token=" + token,
+    "https://api.pipedrive.com/v1/dealFields?start=0&limit=500&api_token=" + token,
   ]
   let fields = []
   for (const url of requests) {
     const response = await fetch(url, { headers: { Accept: "application/json" } })
     const json = await response.json().catch(() => ({}))
-    if (response.ok && json?.success && Array.isArray(json.data)) { fields = json.data; break }
+    if (response.ok && json?.success && Array.isArray(json.data)) {
+      fields = json.data
+      break
+    }
   }
-  const normaliseFieldName = value => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "")
+
+  const normaliseFieldName = value =>
+    String(value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "")
   const matchingFields = fields.filter(item =>
     [item?.name, item?.field_name, item?.label]
       .some(name => normaliseFieldName(name) === "contractnumber")
   )
   const field = matchingFields[0] || null
-  const fieldKey = String(field?.key || field?.field_code || field?.id || "").trim()
+  const fieldKey = String(field?.key || field?.field_code || "").trim()
 
-  // Diagnostic only: log field metadata and person response shape, never field values or API tokens.
-  console.log("Pipedrive Contract Number field diagnostic", {
-    personId: String(personId),
+  console.log("Pipedrive Contract Number deal-field diagnostic", {
+    dealId: String(deal.id ?? ""),
     fieldsEndpointCount: fields.length,
     matchingFields: matchingFields.map(item => ({
       name: item?.name || null,
@@ -544,42 +551,31 @@ async function getContractNumberFromPerson(pipedriveToken, personId) {
       label: item?.label || null,
       key: item?.key || null,
       field_code: item?.field_code || null,
-      id: item?.id || null,
       field_type: item?.field_type || item?.type || null,
     })),
     resolvedFieldKey: fieldKey || null,
+    dealHasCustomFields: Boolean(deal?.custom_fields),
   })
 
-  const personUrls = [
-    "https://api.pipedrive.com/api/v2/persons/" + encodeURIComponent(personId) + "?api_token=" + token,
-    "https://api.pipedrive.com/v1/persons/" + encodeURIComponent(personId) + "?api_token=" + token,
+  const customFields = deal.custom_fields && typeof deal.custom_fields === "object"
+    ? deal.custom_fields
+    : deal
+  const candidates = [
+    fieldKey ? customFields[fieldKey] : null,
+    fieldKey ? deal[fieldKey] : null,
+    deal.contract_number,
+    deal.contractNumber,
   ]
-  for (const url of personUrls) {
-    const response = await fetch(url, { headers: { Accept: "application/json" } })
-    const json = await response.json().catch(() => ({}))
-    if (!response.ok || !json?.success || !json?.data) continue
-    const person = json.data
-    const customFields = person.custom_fields || person
-    console.log("Pipedrive Contract Number person diagnostic", {
-      endpoint: url.split("?")[0],
-      personId: String(personId),
-      topLevelKeys: Object.keys(person || {}),
-      customFieldsPresent: Boolean(person?.custom_fields),
-      resolvedFieldKeyPresent: Boolean(fieldKey && (
-        Object.prototype.hasOwnProperty.call(customFields, fieldKey) ||
-        Object.prototype.hasOwnProperty.call(person, fieldKey)
-      )),
-    })
-    const candidates = [
-      fieldKey ? customFields[fieldKey] : null,
-      fieldKey ? person[fieldKey] : null,
-      person.contract_number,
-      person.contractNumber,
-    ]
-    const value = candidates.map(normaliseText).find(Boolean)
-    if (value) return value
-  }
-  return null
+  const value = candidates.map(normaliseText).find(Boolean)
+  console.log("Pipedrive Contract Number deal-value diagnostic", {
+    dealId: String(deal.id ?? ""),
+    resolvedFieldKeyPresent: Boolean(fieldKey && (
+      Object.prototype.hasOwnProperty.call(customFields, fieldKey) ||
+      Object.prototype.hasOwnProperty.call(deal, fieldKey)
+    )),
+    contractNumberFound: Boolean(value),
+  })
+  return value || null
 }
 async function getPersonName(
   pipedriveToken,
@@ -1354,7 +1350,7 @@ export default async function handler(req, res) {
       ).trim() ||
       null
 
-    const contractNumber = await getContractNumberFromPerson(pipedriveToken, personId)
+    const contractNumber = await getContractNumberFromDeal(pipedriveToken, deal)
 
     /*
     |--------------------------------------------------------------------------
