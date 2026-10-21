@@ -102,7 +102,10 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
       const allProgressDocs = surveyProgressRows.flatMap(batch => batch.docs)
       const allProgressAnswers = new Map(surveyProgressRows.flatMap(batch => batch.answers).map(item => [String(item.deal_id), item.answers || {}]))
       const photoSections = ["Front of Property", "Inverter Location", "Consumer Unit", "Roof", "Loft"]
+      const getPipedriveStage = deal => String(deal.stage || deal.pipedrive_stage || deal.pipedrive_data?.stage || deal.pipedrive_data?.stage_name || "").trim()
+      const excludedStages = new Set(["customer cancelled", "decline"])
       const outstanding = solarDeals
+        .filter(deal => !excludedStages.has(getPipedriveStage(deal).toLowerCase()))
         .filter(deal => {
           const appointment = appointmentsById.get(String(deal.appointment_row_id || ""))
           return hasDigitalContract(appointment) && !generatedSurveyDealIds.has(String(deal.id))
@@ -200,7 +203,7 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
                 {!loading && filteredRows.map(deal => <tr key={deal.id} data-clickable={onSelectDeal ? "true" : "false"} onClick={() => onSelectDeal?.(deal)} onKeyDown={e => { if (onSelectDeal && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onSelectDeal(deal) } }} tabIndex={onSelectDeal ? 0 : undefined} role={onSelectDeal ? "button" : undefined}>
                   <td style={styles.td}><div style={{ fontWeight: 750, color: "#1e293b" }}>{deal.customer_name || "Unnamed customer"}</div><div style={{ color: "#94a3b8", fontSize: 10, marginTop: 4 }}>{deal.contract_number || deal.linked_contract_number || "No contract number"}</div></td>
                   <td style={styles.td}>{deal.postcode || "—"}</td>
-                  <td style={styles.td}>{deal.stage || deal.pipedrive_stage || deal.pipedrive_data?.stage || deal.pipedrive_data?.stage_name || "—"}</td>
+                  <td style={styles.td}>{getPipedriveStage(deal) || "—"}</td>
                   <td style={styles.td}>{formatDate(deal.sale_date)}</td>
                   <td style={styles.td}>{deal.salesperson_name || deal.salesperson || "—"}</td>
                   <td style={styles.td}>
