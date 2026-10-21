@@ -86,7 +86,7 @@ function CustomerDetail({
       setDocuments(data || [])
       const { data: epvsData, error: epvsError } = await supabase.from("epvs_submissions").select("status,updated_at,created_at").eq("linked_deal_id", deal.id).order("updated_at", { ascending: false }).limit(1).maybeSingle()
       if (epvsError) throw epvsError
-      setEpvsStatus(String(epvsData?.status || ""))
+      setEpvsStatus(String(epvsData?.status || "Not Submitted"))
       const { data: surveyData, error: surveyError } = await supabase.from("deal_survey_answers").select("answers").eq("deal_id", deal.id).maybeSingle()
       if (surveyError) throw surveyError
       setSurveyAnswers(surveyData?.answers || {})
@@ -462,7 +462,7 @@ function CustomerDetail({
 
             {isSolarDeal && <div style={{ marginTop: "10px", display: "flex", alignItems: "center", gap: "7px" }}>
               <span style={{ fontSize: "11px", color: "#888" }}>EPVS status</span>
-              <span style={{ display: "inline-flex", alignItems: "center", padding: "5px 9px", borderRadius: "6px", background: "#eef6fb", color: "#1676b8", fontSize: "10px", fontWeight: 700 }}>{epvsStatus || "—"}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", padding: "5px 9px", borderRadius: "6px", background: "#eef6fb", color: "#1676b8", fontSize: "10px", fontWeight: 700 }}>{epvsStatus || "Not Submitted"}</span>
             </div>}
 
             {fullAddress && (
