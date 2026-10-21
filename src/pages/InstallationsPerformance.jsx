@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react"
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell } from "recharts"
 import { CalendarDays, RefreshCw, TrendingUp } from "lucide-react"
+import { STAGE_GROUPS, getStageGroup } from "../lib/stageGroups"
 
 function parseLocalDate(value) {
   if (!value) return null
@@ -117,17 +118,20 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
   const thisYear = datedDeals.filter(deal => deal.parsedInstallationDate.getFullYear() === new Date().getFullYear()).length
   const total = filteredDeals.length
   const balanceByStage = useMemo(() => {
-    const stages = new Map()
+    const groups = new Map()
     ;(Array.isArray(deals) ? deals : []).forEach(deal => {
       const stage = String(deal.pipedrive_stage || "Unknown stage").trim() || "Unknown stage"
       const balance = Number(String(deal.balance_outstanding ?? 0).replace(/[^0-9.-]/g, "")) || 0
       if (balance <= 0 || ["customer cancelled", "decline"].includes(stage.toLowerCase())) return
-      const current = stages.get(stage) || { stage, jobs: 0, balance: 0 }
+      const group = getStageGroup(stage)
+      const key = group.key
+      const current = groups.get(key) || { key, stage: group.label, label: group.label, jobs: 0, balance: 0, color: group.text, stages: new Set() }
       current.jobs += 1
       current.balance += balance
-      stages.set(stage, current)
+      current.stages.add(stage)
+      groups.set(key, current)
     })
-    return [...stages.values()].sort((a, b) => b.jobs - a.jobs)
+    return [...groups.values()].map(group => ({ ...group, stages: [...group.stages] })).sort((a, b) => b.jobs - a.jobs)
   }, [deals])
 
   const cardStyle = { background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "18px 20px", minWidth: 0 }
