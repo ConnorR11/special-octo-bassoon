@@ -47,19 +47,48 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
     setLoading(true)
     setError("")
     try {
-      const [dealsResult, appointmentsResult, documentsResult] = await Promise.all([
-        supabase.from("deals").select("*").order("sale_date", { ascending: false }).range(0, 9999),
-        supabase.from("appointments").select("appointment_row_id,contract_number,signature_path,express_fit_signature_path,seg_disclaimer_signature_path"),
-        supabase.from("deal_documents").select("deal_id").eq("category", "survey_pdf"),
-      ])
-      if (dealsResult.error) throw dealsResult.error
-      if (appointmentsResult.error) throw appointmentsResult.error
-      if (documentsResult.error) throw documentsResult.error
+      const solarDeals = []
+      let dealOffset = 0
+      while (true) {
+        const { data, error: dealsError } = await supabase
+          .from("deals")
+          .select("*")
+          .ilike("product", "%solar%")
+          .order("sale_date", { ascending: false })
+          .range(dealOffset, dealOffset + 999)
+        if (dealsError) throw dealsError
+        const batch = data || []
+        solarDeals.push(...batch)
+        if (batch.length < 1000) break
+        dealOffset += 1000
+      }
 
-      const appointmentsById = new Map((appointmentsResult.data || []).map(item => [String(item.appointment_row_id), item]))
-      const generatedSurveyDealIds = new Set((documentsResult.data || []).map(item => String(item.deal_id)))
-      const outstanding = (dealsResult.data || [])
-        .filter(isSolarDeal)
+      const appointmentIds = [...new Set(solarDeals.map(deal => String(deal.appointment_row_id || "")).filter(Boolean))]
+      const appointmentRows = []
+      for (let offset = 0; offset < appointmentIds.length; offset += 500) {
+        const { data, error: appointmentsError } = await supabase
+          .from("appointments")
+          .select("appointment_row_id,contract_number,signature_path,express_fit_signature_path,seg_disclaimer_signature_path")
+          .in("appointment_row_id", appointmentIds.slice(offset, offset + 500))
+        if (appointmentsError) throw appointmentsError
+        appointmentRows.push(...(data || []))
+      }
+
+      const solarDealIds = solarDeals.map(deal => String(deal.id))
+      const surveyDocumentRows = []
+      for (let offset = 0; offset < solarDealIds.length; offset += 500) {
+        const { data, error: documentsError } = await supabase
+          .from("deal_documents")
+          .select("deal_id")
+          .eq("category", "survey_pdf")
+          .in("deal_id", solarDealIds.slice(offset, offset + 500))
+        if (documentsError) throw documentsError
+        surveyDocumentRows.push(...(data || []))
+      }
+
+      const appointmentsById = new Map(appointmentRows.map(item => [String(item.appointment_row_id), item]))
+      const generatedSurveyDealIds = new Set(surveyDocumentRows.map(item => String(item.deal_id)))
+      const outstanding = solarDeals
         .filter(deal => {
           const appointment = appointmentsById.get(String(deal.appointment_row_id || ""))
           return hasDigitalContract(appointment) && !generatedSurveyDealIds.has(String(deal.id))
