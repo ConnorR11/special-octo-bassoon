@@ -89,6 +89,7 @@ function SalesChart({ contracts = [] }) {
   const [selectedProduct, setSelectedProduct] = useState("All products")
   const [selectedYear, setSelectedYear] = useState("all")
   const [timeGrouping, setTimeGrouping] = useState("month")
+  const [yearOnYear, setYearOnYear] = useState(false)
   const [cpsSelectedYear, setCpsSelectedYear] = useState("all")
   const [cpsTimeGrouping, setCpsTimeGrouping] = useState("month")
   const [cpsSelectedProduct, setCpsSelectedProduct] = useState("All products")
@@ -162,6 +163,28 @@ function SalesChart({ contracts = [] }) {
   }), [contracts, years, currentMonth, currentDay])
 
   const monthlyBalanceData = useMemo(() => {
+    if (yearOnYear) {
+      const compareYears = availableYears.slice().sort((a, b) => a - b)
+      const rows = Array.from({ length: 12 }, (_, monthIndex) => {
+        const row = { bucketKey: String(monthIndex), month: new Date(2020, monthIndex, 1).toLocaleDateString("en-GB", { month: "short" }), total: 0, totalSold: 0, notSolidPercent: 0 }
+        compareYears.forEach(year => RESULT_SERIES.forEach(series => { row[`${year} ${series.key}`] = 0 }))
+        return row
+      })
+      contracts.forEach(deal => {
+        if (!deal?.sale_date) return
+        const date = new Date(`${String(deal.sale_date).slice(0, 10)}T00:00:00`)
+        if (Number.isNaN(date.getTime()) || date.getFullYear() < 2020 || date.getFullYear() > currentYear) return
+        if (date.getFullYear() === currentYear && (date.getMonth() > currentMonth || (date.getMonth() === currentMonth && date.getDate() > currentDay))) return
+        if (selectedProduct !== "All products" && selectedProduct !== normaliseProduct(deal.product)) return
+        const amount = Number(deal.net_value || 0)
+        if (!Number.isFinite(amount) || amount <= 0) return
+        const row = rows[date.getMonth()]
+        row[`${date.getFullYear()} ${normaliseResult(deal)}`] += amount
+        row.total += amount
+        row.totalSold += 1
+      })
+      return rows
+    }
     const start = selectedYear === "all" ? new Date(2020, 0, 1) : new Date(Number(selectedYear), 0, 1)
     const yearEnd = selectedYear === "all" ? new Date(currentYear, currentMonth, currentDay) : new Date(Number(selectedYear), 11, 31)
     const end = yearEnd > new Date(currentYear, currentMonth, currentDay) ? new Date(currentYear, currentMonth, currentDay) : yearEnd
@@ -211,7 +234,7 @@ function SalesChart({ contracts = [] }) {
     })
     rows.forEach((row) => { row.notSolidPercent = row.total > 0 ? ((row.Decline + row.Cancelled) / row.total) * 100 : 0 })
     return rows
-  }, [contracts, currentYear, currentMonth, currentDay, selectedProduct, selectedYear, timeGrouping])
+  }, [contracts, currentYear, currentMonth, currentDay, selectedProduct, selectedYear, timeGrouping, yearOnYear, availableYears])
 
   const conversionData = useMemo(() => {
     const start = cpsSelectedYear === "all" ? new Date(2025, 0, 1) : new Date(Math.max(2025, Number(cpsSelectedYear)), 0, 1)
@@ -293,6 +316,7 @@ function SalesChart({ contracts = [] }) {
           <div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Net Sales Value by Month</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Net sales value by deal result · January 2020 onwards</p></div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, color: "#475569" }}>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Year<select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="all">All time</option>{availableYears.map((year) => <option key={year} value={String(year)}>{year}</option>)}</select></label>
+            <label style={{ display: "flex", alignItems: "center", gap: 6 }}><input type="checkbox" checked={yearOnYear} onChange={event => setYearOnYear(event.target.checked)} /> Year on year</label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Period<select value={timeGrouping} onChange={(event) => setTimeGrouping(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="year">Year</option><option value="quarter">Quarter</option><option value="month">Month</option><option value="week">Week</option></select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Products<select value={selectedProduct} onChange={(event) => setSelectedProduct(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", minWidth: 145 }}><option value="All products">All products</option>{PRODUCT_FILTER_OPTIONS.map((product) => <option key={product} value={product}>{product}</option>)}</select></label>
           </div>
@@ -305,10 +329,12 @@ function SalesChart({ contracts = [] }) {
             <YAxis yAxisId="percent" orientation="right" axisLine={false} tickLine={false} domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} tickFormatter={(value) => `${value}%`} tick={{ fill: "#64748b", fontSize: 10 }} width={48} />
             <Tooltip content={({ active, payload, label }) => { if (!active || !payload?.length) return null; const row = payload[0]?.payload || {}; const displayLabel = timeGrouping === "week" ? (row.hoverLabel || label) : label; const total = Number(row.total || 0); const moneyShare = value => { const amount = Number(value || 0); return `${money(amount)} (${total > 0 ? (amount / total * 100).toFixed(1) : "0.0"}%)`; }; const style = { fontSize: 11, marginTop: 5 }; return <div style={{ background: "#fff", border: "1px solid #e2e5e8", borderRadius: 8, padding: "10px 12px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}><div style={{ color: "#17212b", fontWeight: 600, marginBottom: 6 }}>{displayLabel} · Total sold: {Number(row.totalSold || 0).toLocaleString("en-GB")}</div><div style={{ ...style, color: "#64748b" }}>Missing stage: {moneyShare(row["Missing stage"])}</div><div style={{ ...style, color: "#ff0000" }}>Cancelled: {moneyShare(row.Cancelled ?? row["Cancelled"] ?? row["Net Sales/Cancel"] ?? row.Cancel)}</div><div style={{ ...style, color: "#ff9900" }}>Decline: {moneyShare(row.Decline ?? row["Net Sales/Decline"])}</div><div style={{ ...style, color: "#008000" }}>Solid: {moneyShare(row.Solid ?? row["Net Sales/Solid"])}</div><div style={{ borderTop: "1px solid #d1d5db", marginTop: 8, paddingTop: 7, fontSize: 11, fontWeight: 600, color: "#17212b" }}>Total net value: {money(Number(row.total || 0))}</div></div> }} />
             <Legend verticalAlign="bottom" height={32} iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-            <Bar yAxisId="sales" dataKey="Solid" name="Net Sales/Solid" stackId="balance" fill="#008000" />
-            <Bar yAxisId="sales" dataKey="Decline" name="Net Sales/Decline" stackId="balance" fill="#ff9900" />
-            <Bar yAxisId="sales" dataKey="Cancelled" name="Net Sales/Cancel" stackId="balance" fill="#ff0000" />
-            <Bar yAxisId="sales" dataKey="Missing stage" name="Missing stage" stackId="balance" fill="#64748b" />
+            {yearOnYear ? availableYears.slice().sort((a, b) => a - b).map(year => RESULT_SERIES.map(series => <Bar key={`${year}-${series.key}`} yAxisId="sales" dataKey={`${year} ${series.key}`} name={`${year} · ${series.key}`} stackId={String(year)} fill={series.colour} />)) : <>
+              <Bar yAxisId="sales" dataKey="Solid" name="Net Sales/Solid" stackId="balance" fill="#008000" />
+              <Bar yAxisId="sales" dataKey="Decline" name="Net Sales/Decline" stackId="balance" fill="#ff9900" />
+              <Bar yAxisId="sales" dataKey="Cancelled" name="Net Sales/Cancel" stackId="balance" fill="#ff0000" />
+              <Bar yAxisId="sales" dataKey="Missing stage" name="Missing stage" stackId="balance" fill="#64748b" />
+            </>}
             <Line yAxisId="percent" type="monotone" dataKey="notSolidPercent" name="Drop Off" stroke="#111827" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
           </BarChart>
         </ResponsiveContainer>
