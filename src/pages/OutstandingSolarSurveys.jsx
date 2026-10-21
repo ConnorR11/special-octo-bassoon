@@ -22,6 +22,10 @@ function isSolarDeal(deal) {
   return /solar/i.test(String(deal?.product || "")) || /solar/i.test(String(deal?.pipedrive_data?.product || ""))
 }
 
+function getPipedriveStage(deal) {
+  return String(deal?.stage || deal?.pipedrive_stage || deal?.pipedrive_data?.stage || deal?.pipedrive_data?.stage_name || "").trim()
+}
+
 function hasDigitalContract(appointment) {
   return Boolean(
     String(appointment?.contract_number || "").trim() &&
@@ -102,7 +106,6 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
       const allProgressDocs = surveyProgressRows.flatMap(batch => batch.docs)
       const allProgressAnswers = new Map(surveyProgressRows.flatMap(batch => batch.answers).map(item => [String(item.deal_id), item.answers || {}]))
       const photoSections = ["Front of Property", "Inverter Location", "Consumer Unit", "Roof", "Loft"]
-      const getPipedriveStage = deal => String(deal.stage || deal.pipedrive_stage || deal.pipedrive_data?.stage || deal.pipedrive_data?.stage_name || "").trim()
       const excludedStages = new Set(["customer cancelled", "decline"])
       const outstanding = solarDeals
         .filter(deal => !excludedStages.has(getPipedriveStage(deal).toLowerCase()))
