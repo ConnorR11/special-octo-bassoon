@@ -164,28 +164,42 @@ function SalesChart({ contracts = [] }) {
 
   const monthlyBalanceData = useMemo(() => {
     if (yearToDate) {
-      const rows = Array.from({ length: currentMonth + 1 }, (_, monthIndex) => ({
-        bucketKey: String(monthIndex),
-        month: new Date(currentYear, monthIndex, 1).toLocaleDateString("en-GB", { month: "short" }),
-        hoverLabel: new Date(currentYear, monthIndex, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" }),
-        Solid: 0, Decline: 0, Cancelled: 0, "Missing stage": 0,
-        total: 0, totalSold: 0, notSolidPercent: 0,
-      }))
-      contracts.forEach(deal => {
-        if (!deal?.sale_date) return
-        const date = new Date(`${String(deal.sale_date).slice(0, 10)}T00:00:00`)
-        if (Number.isNaN(date.getTime()) || date.getFullYear() !== currentYear || date > new Date(currentYear, currentMonth, currentDay)) return
-        if (selectedProduct !== "All products" && selectedProduct !== normaliseProduct(deal.product)) return
-        const amount = Number(deal.net_value || 0)
-        if (!Number.isFinite(amount) || amount <= 0) return
-        const row = rows[date.getMonth()]
-        if (!row) return
-        row[normaliseResult(deal)] += amount
-        row.total += amount
-        row.totalSold += 1
-      })
-      rows.forEach(row => { row.notSolidPercent = row.total > 0 ? ((row.Decline + row.Cancelled) / row.total) * 100 : 0 })
-      return rows
+      const yesterday = new Date(currentYear, currentMonth, currentDay)
+      yesterday.setDate(yesterday.getDate() - 1)
+      const cutoffMonth = yesterday.getMonth()
+      const cutoffDay = yesterday.getDate()
+      const allYears = [...new Set(contracts
+        .filter(deal => deal?.sale_date)
+        .map(deal => new Date(`${String(deal.sale_date).slice(0, 10)}T00:00:00`))
+        .filter(date => !Number.isNaN(date.getTime()))
+        .map(date => date.getFullYear())
+        .filter(year => year >= 2020 && year <= currentYear))].sort((a, b) => a - b)
+      return allYears
+        .filter(year => selectedYear === "all" || String(year) === selectedYear)
+        .map(year => {
+          const cutoff = new Date(year, cutoffMonth, cutoffDay)
+          const row = {
+            bucketKey: String(year),
+            month: String(year),
+            hoverLabel: `1 Jan – ${cutoff.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} ${year}`,
+            Solid: 0, Decline: 0, Cancelled: 0, "Missing stage": 0,
+            total: 0, totalSold: 0, notSolidPercent: 0,
+          }
+          contracts.forEach(deal => {
+            if (!deal?.sale_date) return
+            const date = new Date(`${String(deal.sale_date).slice(0, 10)}T00:00:00`)
+            if (Number.isNaN(date.getTime()) || date.getFullYear() !== year || date > cutoff ||
+                date.getMonth() > cutoffMonth || (date.getMonth() === cutoffMonth && date.getDate() > cutoffDay)) return
+            if (selectedProduct !== "All products" && selectedProduct !== normaliseProduct(deal.product)) return
+            const amount = Number(deal.net_value || 0)
+            if (!Number.isFinite(amount) || amount <= 0) return
+            row[normaliseResult(deal)] += amount
+            row.total += amount
+            row.totalSold += 1
+          })
+          row.notSolidPercent = row.total > 0 ? ((row.Decline + row.Cancelled) / row.total) * 100 : 0
+          return row
+        })
     }
     const start = selectedYear === "all" ? new Date(2020, 0, 1) : new Date(Number(selectedYear), 0, 1)
     const yearEnd = selectedYear === "all" ? new Date(currentYear, currentMonth, currentDay) : new Date(Number(selectedYear), 11, 31)
