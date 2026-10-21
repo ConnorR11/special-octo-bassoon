@@ -23,6 +23,10 @@ export default function IntegrationLogs({ setMobile }) {
   const [backfillBusy, setBackfillBusy] = React.useState(false)
   const [backfillError, setBackfillError] = React.useState("")
   const [backfillMessage, setBackfillMessage] = React.useState("")
+  const [dateBackfillPreview, setDateBackfillPreview] = React.useState(null)
+  const [dateBackfillBusy, setDateBackfillBusy] = React.useState(false)
+  const [dateBackfillError, setDateBackfillError] = React.useState("")
+  const [dateBackfillMessage, setDateBackfillMessage] = React.useState("")
 
   React.useEffect(() => { loadProviders() }, [])
   React.useEffect(() => { setPage(1) }, [status, provider, search, dateFrom, dateTo])
@@ -55,6 +59,27 @@ export default function IntegrationLogs({ setMobile }) {
     } finally {
       setBackfillBusy(false)
     }
+  }
+
+  async function runInstallationDateBackfill(execute) {
+    setDateBackfillBusy(true)
+    setDateBackfillError("")
+    setDateBackfillMessage("")
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError) throw sessionError
+      const accessToken = sessionData?.session?.access_token
+      if (!accessToken) throw new Error("Your session has expired. Sign in again.")
+      const params = new URLSearchParams({ job: "backfill-installation-start-dates", limit: "250", offset: "0" })
+      if (execute) params.set("execute", "true")
+      const response = await fetch("/api/admin/bulk-updates?" + params.toString(), { headers: { Authorization: "Bearer " + accessToken, Accept: "application/json" } })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok && response.status !== 207) throw new Error(result.error || "Backfill request failed (HTTP " + response.status + ")")
+      setDateBackfillPreview(result)
+      setDateBackfillMessage(execute ? ("Batch complete: " + (result.updated || 0) + " updated, " + (result.skipped || 0) + " skipped, " + (result.failed || 0) + " failed.") : ("Preview ready: " + (result.previewed || 0) + " installation dates found, " + (result.failed || 0) + " unable to resolve. No deals were changed."))
+      if (execute) { loadProviders(); loadLogs(); loadStats(); loadChartLogs() }
+    } catch (error) { setDateBackfillError(error?.message || "Could not run the installation start date backfill.") }
+    finally { setDateBackfillBusy(false) }
   }
 
   function escapeSearch(value) {
@@ -266,6 +291,28 @@ export default function IntegrationLogs({ setMobile }) {
         {backfillError&&<p style={{margin:"12px 0 0",fontSize:13,color:"#b42318"}}>{backfillError}</p>}
         {backfillMessage&&<p style={{margin:"12px 0 0",fontSize:13,color:"#027a48"}}>{backfillMessage}</p>}
         {backfillPreview?.results?.length>0&&<div style={{marginTop:14,maxHeight:260,overflow:"auto",border:"1px solid #eaecf0",borderRadius:8}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr>{["Deal ID","Contract","Customer","Stage","Status","Error"].map(h=><th key={h} style={{position:"sticky",top:0,textAlign:"left",padding:9,background:"#f9fafb",borderBottom:"1px solid #eaecf0"}}>{h}</th>)}</tr></thead><tbody>{backfillPreview.results.map((r,i)=><tr key={r.dealId||i}>{[r.dealId,r.contractNumber,r.customerName,r.stage,r.status,r.error].map((v,j)=><td key={j} style={{padding:9,borderBottom:"1px solid #f2f4f7",color:j===5&&v?"#b42318":"inherit",whiteSpace:j===5?"normal":"nowrap"}}>{v??"—"}</td>)}</tr>)}</tbody></table></div>}
+      </div>
+
+
+      <div style={{background:"#fff",border:"1px solid #d0d5dd",borderRadius:12,padding:20,marginBottom:20}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:16,flexWrap:"wrap"}}>
+          <div style={{maxWidth:760}}>
+            <h2 style={{margin:"0 0 6px",fontSize:18}}>Installation Start Date Backfill</h2>
+            <p style={{margin:"0 0 8px",fontSize:13,color:"#475467"}}>Find CRM deals with no installation start date and look up the date in Pipedrive. Each batch is limited to 250 deals. Existing CRM dates are never overwritten.</p>
+            <p style={{margin:0,fontSize:12,color:"#667085"}}>Preview the results first, then explicitly confirm the update. Each run is recorded in Integration Activity below.</p>
+          </div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            <button type="button" className="integration-logs-refresh" disabled={dateBackfillBusy} onClick={()=>runInstallationDateBackfill(false)}>Preview missing dates</button>
+            <button type="button" disabled={dateBackfillBusy||!dateBackfillPreview||dateBackfillPreview.dryRun!==true||!dateBackfillPreview.results?.some(r=>r.status==="preview")} onClick={()=>{if(window.confirm("Fill blank installation start dates for the previewed deals using Pipedrive? Existing CRM dates will not be overwritten."))runInstallationDateBackfill(true)}} style={{padding:"9px 12px",border:"1px solid #175cd3",borderRadius:8,background:dateBackfillBusy||!dateBackfillPreview||dateBackfillPreview.dryRun!==true?"#eaecf0":"#175cd3",color:dateBackfillBusy||!dateBackfillPreview||dateBackfillPreview.dryRun!==true?"#667085":"#fff",cursor:dateBackfillBusy||!dateBackfillPreview||dateBackfillPreview.dryRun!==true?"not-allowed":"pointer",fontWeight:600}}>Execute previewed batch</button>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:18,flexWrap:"wrap",marginTop:16,fontSize:13,color:"#344054"}}>
+          {dateBackfillPreview&&<><span><strong>Deals checked:</strong> {(dateBackfillPreview.requested||0).toLocaleString("en-GB")}</span><span><strong>Missing in CRM:</strong> {dateBackfillPreview.totalMissing==null?"—":dateBackfillPreview.totalMissing.toLocaleString("en-GB")}</span>{dateBackfillPreview.dryRun===false&&<><span><strong>Updated:</strong> {dateBackfillPreview.updated||0}</span><span><strong>Skipped:</strong> {dateBackfillPreview.skipped||0}</span><span><strong>Failed:</strong> {dateBackfillPreview.failed||0}</span></>}</>}
+        </div>
+        {dateBackfillBusy&&<p style={{margin:"12px 0 0",fontSize:13,color:"#175cd3"}}>Checking Pipedrive and writing integration logs…</p>}
+        {dateBackfillError&&<p style={{margin:"12px 0 0",fontSize:13,color:"#b42318"}}>{dateBackfillError}</p>}
+        {dateBackfillMessage&&<p style={{margin:"12px 0 0",fontSize:13,color:"#027a48"}}>{dateBackfillMessage}</p>}
+        {dateBackfillPreview?.results?.length>0&&<div style={{marginTop:14,maxHeight:260,overflow:"auto",border:"1px solid #eaecf0",borderRadius:8}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr>{["Deal ID","Contract","Customer","Installation Start Date","Status","Error"].map(h=><th key={h} style={{position:"sticky",top:0,textAlign:"left",padding:9,background:"#f9fafb",borderBottom:"1px solid #eaecf0"}}>{h}</th>)}</tr></thead><tbody>{dateBackfillPreview.results.map((r,i)=><tr key={r.dealId||i}>{[r.dealId,r.contractNumber,r.customerName,r.installationStartDate,r.status,r.error].map((v,j)=><td key={j} style={{padding:9,borderBottom:"1px solid #f2f4f7",color:j===5&&v?"#b42318":"inherit",whiteSpace:"nowrap"}}>{v||"—"}</td>)}</tr>)}</tbody></table></div>}
       </div>
 
       <div className="integration-logs-stats"><Stat title="Total Runs" value={runStats.total.toLocaleString("en-GB")}/><Stat title="Successful" value={runStats.success.toLocaleString("en-GB")}/><Stat title="Failed" value={runStats.failed.toLocaleString("en-GB")}/><Stat title="Success Rate" value={`${successRate.toFixed(1)}%`} subtitle={`${runStats.received.toLocaleString("en-GB")} processing · ${runStats.ignored.toLocaleString("en-GB")} ignored`}/></div>
