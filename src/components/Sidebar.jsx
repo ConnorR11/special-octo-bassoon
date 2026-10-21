@@ -50,7 +50,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
   const canAccessBalances = numericPermissionLevel >= 4
 
   const [openFolders, setOpenFolders] = React.useState({
-    sales: false, marketing: false, installation: false, finance: false,
+    sales: false, marketing: false, solar: false, installation: false, finance: false,
     customerService: false, admin: false, procurement: false,
     headOffice: false, digitalTeam: false,
   })
@@ -128,6 +128,10 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={FileCheck} label="RTS List" active={isActive("rts-list")} onClick={() => navigate("rts-list")}/>
             <NavItem icon={PoundSterling} label="Commissions" active={isActive("commissions")} onClick={() => navigate("commissions")}/>
             <NavItem icon={Trophy} label="Sales KPI" active={isActive("sales-kpi")} onClick={() => navigate("sales-kpi")}/>
+          </Folder>
+
+          <Folder visible={canSeeFolder("solar")} title="Solar" icon={Sun} open={openFolders.solar} onClick={() => toggleFolder("solar")}>
+            <NavItem icon={ClipboardCheck} label="Outstanding Solar Surveys" active={isActive("outstanding-solar-surveys")} onClick={() => navigate("outstanding-solar-surveys")}/>
           </Folder>
 
           <Folder visible={canSeeFolder("procurement")} title="Procurement" icon={Clipboard} open={openFolders.procurement} onClick={() => toggleFolder("procurement")}>
