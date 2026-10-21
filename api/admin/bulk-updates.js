@@ -243,15 +243,17 @@ function normalisePipedriveDate(value) {
   const parsed = new Date(text)
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10)
 }
-async function getMissingInstallationDateRows(config, limit, offset) {
+async function getMissingInstallationDateRows(config, limit, offset, excludeIds = []) {
   const url = new URL(config.supabaseUrl + "/rest/v1/deals")
-  url.searchParams.set("select", "id,pipedrive_deal_id,installation_start_date,contract_number,customer_name")
+  url.searchParams.set("select", "id,pipedrive_deal_id,installation_start_date,contract_number,customer_name,sale_date")
   url.searchParams.set("pipedrive_deal_id", "not.is.null")
   // Temporarily limit this backfill to deals at the Contract Complete stage.
   url.searchParams.set("pipedrive_stage", "eq.Contract Complete")
   // installation_start_date is a date column, so missing values are SQL NULL.
-  // Avoid an empty-string OR filter, which PostgREST rejects for date columns.
   url.searchParams.set("installation_start_date", "is.null")
+  if (excludeIds.length) {
+    url.searchParams.set("id", "not.in.(" + excludeIds.map(id => JSON.stringify(String(id))).join(",") + ")")
+  }
   url.searchParams.set("order", "sale_date.asc.nullslast,id.asc")
   url.searchParams.set("limit", String(limit))
   url.searchParams.set("offset", String(offset))
@@ -261,7 +263,7 @@ async function getMissingInstallationDateRows(config, limit, offset) {
     const detail = rows && typeof rows === "object" ? (rows.message || rows.details || rows.hint || rows.error) : null
     throw new Error("Supabase lookup failed (HTTP " + response.status + ")" + (detail ? ": " + String(detail).slice(0, 300) : ""))
   }
-  const totalMatch = String(response.headers.get("content-range") || "").match(/\/(\d+)$/)
+  const totalMatch = String(response.headers.get("content-range") || "").match(/\\/(\\d+)$/)
   return { rows, total: totalMatch ? Number(totalMatch[1]) : null }
 }
 async function fetchPipedriveInstallationDate(token, dealId) {
@@ -314,40 +316,95 @@ async function updateInstallationDateIfStillMissing(config, row, date) {
   return { success: updated.length === 1, skipped: updated.length === 0 }
 }
 async function runInstallationDateBackfill(config, { limit, offset, dryRun }) {
-  const { rows, total } = await getMissingInstallationDateRows(config, limit, offset)
-  if (!rows.length) return { job: "backfill-installation-start-dates", dryRun, requested: 0, previewed: 0, updated: 0, skipped: 0, failed: 0, totalMissing: total, nextOffset: null, results: [] }
-  const results = new Array(rows.length)
-  let cursor = 0
-  const worker = async () => {
-    while (true) {
-      const index = cursor++
-      if (index >= rows.length) return
-      const row = rows[index]
-      const dealId = String(row.pipedrive_deal_id)
-      try {
-        const found = await fetchPipedriveInstallationDate(config.pipedriveToken, dealId)
-        if (!found.date) {
-          const confirmedEmpty = String(found.error || "").includes("field was not present or is blank")
-          results[index] = {
-            dealId,
-            contractNumber: row.contract_number,
-            customerName: row.customer_name,
-            status: confirmedEmpty ? "skipped" : "failed",
-            error: confirmedEmpty ? "No Installation: Start Date in Pipedrive — skipped for this run" : found.error,
-          }
-          continue
+  // Scan in chunks until we have a full batch of deals with actual dates, or
+  // have exhausted the eligible rows. Empty-date rows are excluded from later
+  // chunks in this run only; no Supabase flags or schema changes are needed.
+  const batchSize = Math.min(250, limit)
+  const seenIds = new Set()
+  const candidates = []
+  const results = []
+  let scanOffset = offset
+  let total = null
+  let hasMore = true
+
+  while (candidates.length < batchSize && hasMore) {
+    const remaining = batchSize - candidates.length
+    const { rows, total: count } = await getMissingInstallationDateRows(config, Math.max(batchSize, remaining), scanOffset, [...seenIds])
+    if (total === null) total = count
+    if (!rows.length) break
+    for (const row of rows) seenIds.add(row.id)
+    scanOffset += rows.length
+
+    const lookedUp = new Array(rows.length)
+    let cursor = 0
+    const worker = async () => {
+      while (true) {
+        const index = cursor++
+        if (index >= rows.length) return
+        const row = rows[index]
+        try {
+          const found = await fetchPipedriveInstallationDate(config.pipedriveToken, String(row.pipedrive_deal_id))
+          lookedUp[index] = { row, found }
+        } catch {
+          lookedUp[index] = { row, found: { date: null, error: "Unexpected error processing this deal" } }
         }
-        if (dryRun) { results[index] = { dealId, contractNumber: row.contract_number, customerName: row.customer_name, status: "preview", installationStartDate: found.date }; continue }
-        const update = await updateInstallationDateIfStillMissing(config, row, found.date)
-        results[index] = { dealId, contractNumber: row.contract_number, customerName: row.customer_name, status: update.success ? "updated" : update.skipped ? "skipped" : "failed", installationStartDate: found.date, ...(update.error ? { error: update.error } : {}) }
-      } catch { results[index] = { dealId, contractNumber: row.contract_number, customerName: row.customer_name, status: "failed", error: "Unexpected error processing this deal" } }
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(6, rows.length) }, () => worker()))
+
+    for (const item of lookedUp) {
+      const { row, found } = item
+      if (!found.date) {
+        const confirmedEmpty = String(found.error || "").includes("field was not present or is blank")
+        results.push({
+          dealId: String(row.pipedrive_deal_id),
+          contractNumber: row.contract_number,
+          customerName: row.customer_name,
+          status: confirmedEmpty ? "skipped" : "failed",
+          error: confirmedEmpty ? "No Installation: Start Date in Pipedrive — excluded from this batch" : found.error,
+        })
+      } else if (candidates.length < batchSize) {
+        candidates.push({ row, date: found.date })
+        results.push({
+          dealId: String(row.pipedrive_deal_id),
+          contractNumber: row.contract_number,
+          customerName: row.customer_name,
+          status: dryRun ? "preview" : "pending",
+          installationStartDate: found.date,
+        })
+      }
+    }
+    hasMore = rows.length === Math.max(batchSize, remaining)
+    if (rows.length < Math.max(batchSize, remaining)) hasMore = false
+  }
+
+  // Only the batch of candidates with real dates can be updated.
+  if (!dryRun) {
+    for (const candidate of candidates) {
+      const update = await updateInstallationDateIfStillMissing(config, candidate.row, candidate.date)
+      const result = results.find(item => item.dealId === String(candidate.row.pipedrive_deal_id) && item.status === "pending")
+      if (result) {
+        result.status = update.success ? "updated" : update.skipped ? "skipped" : "failed"
+        if (update.error) result.error = update.error
+      }
     }
   }
-  await Promise.all(Array.from({ length: Math.min(6, rows.length) }, () => worker()))
+
   const updated = results.filter(item => item.status === "updated").length
   const skipped = results.filter(item => item.status === "skipped").length
   const failed = results.filter(item => item.status === "failed").length
-  return { job: "backfill-installation-start-dates", dryRun, requested: rows.length, updated, previewed: results.filter(item => item.status === "preview").length, skipped, failed, totalMissing: total, nextOffset: rows.length === limit && (total === null || total > 0) ? 0 : null, results }
+  return {
+    job: "backfill-installation-start-dates",
+    dryRun,
+    requested: seenIds.size,
+    updated,
+    previewed: results.filter(item => item.status === "preview").length,
+    skipped,
+    failed,
+    totalMissing: total,
+    nextOffset: hasMore ? 0 : null,
+    results,
+  }
 }
 
 const JOBS = {
