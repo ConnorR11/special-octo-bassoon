@@ -267,8 +267,12 @@ async function getMissingInstallationDateRows(config, limit, offset) {
 async function fetchPipedriveInstallationDate(token, dealId) {
   // Try v2 first, then v1: custom deal fields can be represented differently
   // between API versions and the v1 response exposes fields by their field key.
+  const v2Url = new URL("https://api.pipedrive.com/api/v2/deals/" + encodeURIComponent(dealId))
+  v2Url.searchParams.set("api_token", token)
+  // Pipedrive v2 requires custom fields to be explicitly requested.
+  v2Url.searchParams.set("custom_fields", INSTALLATION_START_DATE_FIELD_KEY)
   const endpoints = [
-    "https://api.pipedrive.com/api/v2/deals/" + encodeURIComponent(dealId) + "?api_token=" + encodeURIComponent(token),
+    v2Url.toString(),
     "https://api.pipedrive.com/v1/deals/" + encodeURIComponent(dealId) + "?api_token=" + encodeURIComponent(token),
   ]
   let lastHttpStatus = null
