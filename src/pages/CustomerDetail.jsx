@@ -681,7 +681,7 @@ function CustomerDetail({
                         </div>
                         <div style={{marginTop:16,border:"1px solid #e1e6eb",borderRadius:9,overflow:"hidden"}}>
                           <button type="button" onClick={()=>setSurveyPhotosExpanded(value=>!value)} aria-expanded={surveyPhotosExpanded} style={{display:"flex",alignItems:"center",gap:12,width:"100%",padding:14,border:0,background:surveyPhotosExpanded?"#f4f8fb":"#f8fafc",textAlign:"left",cursor:"pointer"}}>
-                            <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:25,height:25,borderRadius:7,background:"#e8eef4",color:"#17364b",fontSize:10,fontWeight:700,flex:"0 0 auto"}}>7</span>
+                            <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:30,height:30,borderRadius:8,background:"#e8eef4",color:"#17364b",fontSize:12,fontWeight:700,flex:"0 0 auto"}}>4</span>
                             <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:12,fontWeight:700,color:"#263645"}}>Photos</span><span style={{display:"block",marginTop:4,fontSize:10,color:"#75818b"}}>Add photos to each section. Photos are saved and included in the PDF when you generate the full survey PDF.</span></span>
                             <span style={{fontSize:10,color:"#64748b",whiteSpace:"nowrap"}}>{documents.filter(d=>d.category==="survey_photos").length} saved · {pendingSurveyPhotos.length} new</span>
                             <span style={{fontSize:17,color:"#64748b"}}>{surveyPhotosExpanded?"−":"+"}</span>
