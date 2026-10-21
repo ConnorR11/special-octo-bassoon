@@ -63,6 +63,7 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
   const [grouping, setGrouping] = useState("month")
   const [yearFilter, setYearFilter] = useState("all")
   const [productFilter, setProductFilter] = useState("all")
+  const [metric, setMetric] = useState("count")
   const datedDeals = useMemo(() => (Array.isArray(deals) ? deals : []).map(deal => ({ ...deal, parsedInstallationDate: parseLocalDate(deal.installation_start_date) })).filter(deal => deal.parsedInstallationDate), [deals])
   const years = useMemo(() => [...new Set(datedDeals.map(deal => String(deal.parsedInstallationDate.getFullYear())))].sort((a, b) => Number(b) - Number(a)), [datedDeals])
   const products = useMemo(() => [...new Set(datedDeals.map(productLabel))].sort((a, b) => {
@@ -93,7 +94,7 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
             if (date.getFullYear() !== year || date > cutoff || date.getMonth() > cutoffMonth || (date.getMonth() === cutoffMonth && date.getDate() > cutoffDay)) return
             if (productFilter !== "all" && productLabel(deal) !== productFilter) return
             const product = productLabel(deal)
-            row[product] = (row[product] || 0) + 1
+            row[product] = (row[product] || 0) + (metric === "value" ? (Number(deal.net_value) || 0) : 1)
           })
           return row
         })
@@ -109,7 +110,7 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
       }
     })
     return rows
-  }, [datedDeals, filteredDeals, grouping, yearFilter, productFilter])
+  }, [datedDeals, filteredDeals, grouping, yearFilter, productFilter, metric])
   const todayKey = dateKey(new Date())
   const upcoming = datedDeals.filter(deal => dateKey(deal.parsedInstallationDate) >= todayKey).length
   const thisYear = datedDeals.filter(deal => deal.parsedInstallationDate.getFullYear() === new Date().getFullYear()).length
@@ -133,10 +134,11 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
     </div>
     <div style={{ background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "20px 18px 10px", minWidth: 0, boxSizing: "border-box" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
-        <div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Jobs by installation start date</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Counts deals with a populated installation_start_date field, stacked by product. Year to date compares each year through the same date (yesterday).</p></div>
+        <div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Jobs by installation start date</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Compare installation job counts or net value, stacked by product. Year to date compares each year through the same date (yesterday).</p></div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 12, color: "#475569" }}>
           <label style={{ display: "flex", alignItems: "center", gap: 7 }}>Period<select value={grouping} onChange={event => setGrouping(event.target.value)} style={selectStyle}><option value="week">Week</option><option value="month">Month</option><option value="quarter">Quarter</option><option value="year">Year</option><option value="ytd">Year to date</option></select></label>
           <label style={{ display: "flex", alignItems: "center", gap: 7 }}>Year<select value={yearFilter} onChange={event => setYearFilter(event.target.value)} style={selectStyle}><option value="all">All time</option>{years.map(year => <option key={year} value={year}>{year}</option>)}</select></label>
+          <label style={{ display: "flex", alignItems: "center", gap: 7 }}>Display<select value={metric} onChange={event => setMetric(event.target.value)} style={selectStyle}><option value="count">Job count</option><option value="value">Net value</option></select></label>
           <label style={{ display: "flex", alignItems: "center", gap: 7 }}>Product<select value={productFilter} onChange={event => setProductFilter(event.target.value)} style={selectStyle}><option value="all">All products</option>{products.map(product => <option key={product} value={product}>{product}</option>)}</select></label>
         </div>
       </div>
@@ -144,15 +146,15 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
         <BarChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 6 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb"/>
           <XAxis dataKey="period" interval="preserveStartEnd" minTickGap={24} axisLine={false} tickLine={false} tick={{ fill: "#8a8a8a", fontSize: 10 }}/>
-          <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: "#777", fontSize: 10 }} width={42}/>
+          <YAxis allowDecimals={metric === "value"} tickFormatter={value => metric === "value" ? new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", notation: "compact", maximumFractionDigits: 1 }).format(value) : value} axisLine={false} tickLine={false} tick={{ fill: "#777", fontSize: 10 }} width={metric === "value" ? 64 : 42}/>
           <Tooltip content={({ active, payload, label }) => {
             if (!active || !payload?.length) return null
             const row = payload[0].payload
             const entries = payload.filter(item => Number(item.value) > 0)
             return <div style={{ background: "#fff", border: "1px solid #e2e5e8", borderRadius: 8, padding: "10px 12px", fontSize: 11, boxShadow: "0 2px 8px rgba(0,0,0,.08)", maxWidth: 240 }}>
               <div style={{ fontWeight: 700, marginBottom: 6, color: "#17212b" }}>{row.hoverLabel || label}</div>
-              {entries.map(item => <div key={item.dataKey} style={{ color: item.color, display: "flex", justifyContent: "space-between", gap: 16, marginTop: 3 }}><span>{item.name}</span><strong>{Number(item.value).toLocaleString("en-GB")}</strong></div>)}
-              <div style={{ borderTop: "1px solid #e5e7eb", marginTop: 7, paddingTop: 6, fontWeight: 700 }}>Total: {entries.reduce((sum, item) => sum + Number(item.value || 0), 0).toLocaleString("en-GB")}</div>
+              {entries.map(item => <div key={item.dataKey} style={{ color: item.color, display: "flex", justifyContent: "space-between", gap: 16, marginTop: 3 }}><span>{item.name}</span><strong>{metric === "value" ? Number(item.value).toLocaleString("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }) : Number(item.value).toLocaleString("en-GB")}</strong></div>)}
+              <div style={{ borderTop: "1px solid #e5e7eb", marginTop: 7, paddingTop: 6, fontWeight: 700 }}>Total: {metric === "value" ? entries.reduce((sum, item) => sum + Number(item.value || 0), 0).toLocaleString("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }) : entries.reduce((sum, item) => sum + Number(item.value || 0), 0).toLocaleString("en-GB")}</div>
             </div>
           }}/>
           <Legend verticalAlign="bottom" height={34} wrapperStyle={{ fontSize: 11, paddingTop: 8 }}/>
