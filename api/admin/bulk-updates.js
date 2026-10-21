@@ -247,13 +247,18 @@ async function getMissingInstallationDateRows(config, limit, offset) {
   const url = new URL(config.supabaseUrl + "/rest/v1/deals")
   url.searchParams.set("select", "id,pipedrive_deal_id,installation_start_date,contract_number,customer_name")
   url.searchParams.set("pipedrive_deal_id", "not.is.null")
-  url.searchParams.set("or", "(installation_start_date.is.null,installation_start_date.eq.)")
-  url.searchParams.set("order", "sale_date.desc.nullslast,id.asc")
+  // installation_start_date is a date column, so missing values are SQL NULL.
+  // Avoid an empty-string OR filter, which PostgREST rejects for date columns.
+  url.searchParams.set("installation_start_date", "is.null")
+  url.searchParams.set("order", "sale_date.asc.nullslast,id.asc")
   url.searchParams.set("limit", String(limit))
   url.searchParams.set("offset", String(offset))
   const response = await fetch(url, { headers: { apikey: config.serviceKey, Authorization: "Bearer " + config.serviceKey, Accept: "application/json", Prefer: "count=exact" } })
   const rows = await responseJson(response)
-  if (!response.ok || !Array.isArray(rows)) throw new Error("Supabase lookup failed (HTTP " + response.status + ")")
+  if (!response.ok || !Array.isArray(rows)) {
+    const detail = rows && typeof rows === "object" ? (rows.message || rows.details || rows.hint || rows.error) : null
+    throw new Error("Supabase lookup failed (HTTP " + response.status + ")" + (detail ? ": " + String(detail).slice(0, 300) : ""))
+  }
   const totalMatch = String(response.headers.get("content-range") || "").match(/\/(\d+)$/)
   return { rows, total: totalMatch ? Number(totalMatch[1]) : null }
 }
