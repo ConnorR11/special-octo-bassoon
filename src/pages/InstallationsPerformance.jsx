@@ -126,7 +126,7 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
       if (balance <= 0 || ["customer cancelled", "decline"].includes(stage.toLowerCase())) return
       const group = getStageGroup(stage)
       const key = group.key
-      const current = groups.get(key) || { key, stage: group.label, label: group.label, jobs: 0, balance: 0, color: group.text, stages: new Map() }
+      const current = groups.get(key) || { key, stage: group.label, label: group.label, jobs: 0, balance: 0, color: group.background, stages: new Map() }
       current.jobs += 1
       current.balance += balance
       const stageEntry = current.stages.get(stage) || { stage, jobs: 0, balance: 0 }
