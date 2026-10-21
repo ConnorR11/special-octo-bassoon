@@ -234,7 +234,7 @@ export default async function handler(req, res) {
       "Solar: Number of Batteries": batteryQuantity,
       "Solar: Battery Size": batteryCapacity,
       "Solar: Number Of Solar Panels": panelCount,
-      "Glide: Appointment Table Row": appointment.appointment_row_id,
+      "Glide: Appointment Table Row ID": appointment.appointment_row_id,
       "Deposit: Amount": firstValue(data.deposit, null),
       "Contract: Payment Method": firstValue(data.paymentMethod, null),
       "AF: Price": adminFee,
