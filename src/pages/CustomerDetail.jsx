@@ -787,7 +787,7 @@ function CustomerDetail({
                                   </div>
                                 })}
                               </div>
-                            </div>)}}
+                            </div>)}
                           </div>
                           </>}
                         </div>
