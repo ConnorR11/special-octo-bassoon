@@ -965,6 +965,16 @@ export default async function handler(req, res) {
       ([, field]) => Boolean(field.key)
     )
 
+    // Contract Number is not part of the general field map above, but must
+    // be requested explicitly from Pipedrive when fetching the deal.
+    customFieldEntries.push([
+      "contractNumber",
+      {
+        name: "Contract Number",
+        key: "78815edc4c4a039c53f5872262413cf19a855142",
+      },
+    ])
+
     const fieldBatches = []
 
     for (
