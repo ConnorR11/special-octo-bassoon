@@ -527,8 +527,29 @@ async function getContractNumberFromPerson(pipedriveToken, personId) {
     if (response.ok && json?.success && Array.isArray(json.data)) { fields = json.data; break }
   }
   const normaliseFieldName = value => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "")
-  const field = fields.find(item => normaliseFieldName(item?.name || item?.field_name || item?.label) === "contractnumber")
+  const matchingFields = fields.filter(item =>
+    [item?.name, item?.field_name, item?.label]
+      .some(name => normaliseFieldName(name) === "contractnumber")
+  )
+  const field = matchingFields[0] || null
   const fieldKey = String(field?.key || field?.field_code || field?.id || "").trim()
+
+  // Diagnostic only: log field metadata and person response shape, never field values or API tokens.
+  console.log("Pipedrive Contract Number field diagnostic", {
+    personId: String(personId),
+    fieldsEndpointCount: fields.length,
+    matchingFields: matchingFields.map(item => ({
+      name: item?.name || null,
+      field_name: item?.field_name || null,
+      label: item?.label || null,
+      key: item?.key || null,
+      field_code: item?.field_code || null,
+      id: item?.id || null,
+      field_type: item?.field_type || item?.type || null,
+    })),
+    resolvedFieldKey: fieldKey || null,
+  })
+
   const personUrls = [
     "https://api.pipedrive.com/api/v2/persons/" + encodeURIComponent(personId) + "?api_token=" + token,
     "https://api.pipedrive.com/v1/persons/" + encodeURIComponent(personId) + "?api_token=" + token,
@@ -539,6 +560,16 @@ async function getContractNumberFromPerson(pipedriveToken, personId) {
     if (!response.ok || !json?.success || !json?.data) continue
     const person = json.data
     const customFields = person.custom_fields || person
+    console.log("Pipedrive Contract Number person diagnostic", {
+      endpoint: url.split("?")[0],
+      personId: String(personId),
+      topLevelKeys: Object.keys(person || {}),
+      customFieldsPresent: Boolean(person?.custom_fields),
+      resolvedFieldKeyPresent: Boolean(fieldKey && (
+        Object.prototype.hasOwnProperty.call(customFields, fieldKey) ||
+        Object.prototype.hasOwnProperty.call(person, fieldKey)
+      )),
+    })
     const candidates = [
       fieldKey ? customFields[fieldKey] : null,
       fieldKey ? person[fieldKey] : null,
