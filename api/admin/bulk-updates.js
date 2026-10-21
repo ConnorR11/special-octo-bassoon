@@ -263,7 +263,7 @@ async function getMissingInstallationDateRows(config, limit, offset, excludeIds 
     const detail = rows && typeof rows === "object" ? (rows.message || rows.details || rows.hint || rows.error) : null
     throw new Error("Supabase lookup failed (HTTP " + response.status + ")" + (detail ? ": " + String(detail).slice(0, 300) : ""))
   }
-  const totalMatch = String(response.headers.get("content-range") || "").match(/\\/(\\d+)$/)
+  const totalMatch = String(response.headers.get("content-range") || "").match(/\/(\d+)$/)
   return { rows, total: totalMatch ? Number(totalMatch[1]) : null }
 }
 async function fetchPipedriveInstallationDate(token, dealId) {
@@ -305,7 +305,7 @@ async function updateInstallationDateIfStillMissing(config, row, date) {
   const url = new URL(config.supabaseUrl + "/rest/v1/deals")
   url.searchParams.set("id", "eq." + row.id)
   url.searchParams.set("pipedrive_deal_id", "eq." + row.pipedrive_deal_id)
-  url.searchParams.set("or", "(installation_start_date.is.null,installation_start_date.eq.)")
+  url.searchParams.set("installation_start_date", "is.null")
   const response = await fetch(url, {
     method: "PATCH",
     headers: { apikey: config.serviceKey, Authorization: "Bearer " + config.serviceKey, "Content-Type": "application/json", Prefer: "return=representation" },
