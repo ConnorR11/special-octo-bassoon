@@ -11,7 +11,7 @@ export const STAGE_GROUP_COLORS = Object.freeze({
   remedials: Object.freeze({ background: "#fef3c7", border: "#fde68a", text: "#92400e", badge: "#fde68a" }),
   complete: Object.freeze({ background: "#e0e7ff", border: "#c7d2fe", text: "#4338ca", badge: "#c7d2fe" }),
   dealLost: Object.freeze({ background: "#fee2e2", border: "#fecaca", text: "#b91c1c", badge: "#fecaca" }),
-  postInstallations: Object.freeze({ background: "#f3e8ff", border: "#e9d5ff", text: "#9333ea", badge: "#e9d5ff" }),
+  postInstallations: Object.freeze({ background: "#ffe4e6", border: "#fecdd3", text: "#be123c", badge: "#fecdd3" }),
   ungrouped: Object.freeze({ background: "#f1f5f9", border: "#e2e8f0", text: "#334155", badge: "#e2e8f0" }),
 })
 
