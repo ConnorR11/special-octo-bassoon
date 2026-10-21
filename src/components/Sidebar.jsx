@@ -73,7 +73,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
       "canvasser-kpi": 3,
       balances: 4,
       mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4,
-      templates: 4, "integration-logs": 4, "data-dashboard": 4, "data-clean": 4, "solar-backend": 4, "unit-analysis": 4, "map-of-installs": 4, "epvs-applications": 4,
+      templates: 4, "integration-logs": 4, "data-dashboard": 4, "data-clean": 4, "solar-backend": 4, "unit-analysis": 4, "map-of-installs": 4, "epvs-applications": 4, "installations-performance": 4,
     }[route]
     return !requiredPermission || numericPermissionLevel >= requiredPermission
   }
@@ -177,6 +177,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
           {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}>
             <NavItem icon={BarChart3} label="Data Dashboard" active={isActive("data-dashboard")} onClick={() => navigate("data-dashboard")}/>
             <NavItem icon={BarChart3} label="Sales Performance" active={isActive("sales-performance")} onClick={() => navigate("sales-performance")} disabled={!canAccessSalesPerformance} locked={!canAccessSalesPerformance}/>
+            <NavItem icon={CalendarDays} label="Installations Performance" active={isActive("installations-performance")} onClick={() => navigate("installations-performance")}/>
             <NavItem icon={Database} label="Data Clean" active={isActive("data-clean")} onClick={() => navigate("data-clean")}/>
             <NavItem icon={Sun} label="Solar Backend" active={isActive("solar-backend")} onClick={() => navigate("solar-backend")}/>
             <NavItem icon={Boxes} label="Unit Analysis" active={isActive("unit-analysis")} onClick={() => navigate("unit-analysis")}/>
