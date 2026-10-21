@@ -513,6 +513,21 @@ async function getStageName(
   )
 }
 
+async function getContractNumberFromPerson(pipedriveToken, personId) {
+  if (!personId) return null
+  const fieldsResponse = await fetch("https://api.pipedrive.com/api/v2/personFields?limit=500&api_token=" + encodeURIComponent(pipedriveToken), { headers: { Accept: "application/json" } })
+  const fieldsJson = await fieldsResponse.json().catch(() => ({}))
+  if (!fieldsResponse.ok || !fieldsJson?.success) throw new Error(fieldsJson?.error || "Pipedrive person fields lookup failed with HTTP " + fieldsResponse.status + ".")
+  const personFields = Array.isArray(fieldsJson.data) ? fieldsJson.data : []
+  const field = personFields.find(item => String(item?.name || item?.field_name || "").trim().toLowerCase() === "contract number")
+  const fieldKey = String(field?.key || field?.field_code || "").trim()
+  if (!fieldKey) return null
+  const response = await fetch("https://api.pipedrive.com/api/v2/persons/" + encodeURIComponent(personId) + "?api_token=" + encodeURIComponent(pipedriveToken), { headers: { Accept: "application/json" } })
+  const json = await response.json().catch(() => ({}))
+  if (!response.ok || !json?.success) throw new Error(json?.error || "Pipedrive customer lookup failed with HTTP " + response.status + ".")
+  const person = json.data || {}
+  return normaliseText(person.custom_fields?.[fieldKey] ?? person[fieldKey] ?? null)
+}
 async function getPersonName(
   pipedriveToken,
   personId
@@ -1286,6 +1301,8 @@ export default async function handler(req, res) {
       ).trim() ||
       null
 
+    const contractNumber = await getContractNumberFromPerson(pipedriveToken, personId)
+
     /*
     |--------------------------------------------------------------------------
     | FRIENDLY LOG DATA
@@ -1294,6 +1311,8 @@ export default async function handler(req, res) {
 
     const friendlyFields = {
       Customer: customerName,
+
+      "Contract Number": contractNumber,
 
       "Installation: Start Date":
         installationStartDate,
@@ -1420,6 +1439,7 @@ export default async function handler(req, res) {
         "id",
         "pipedrive_deal_id",
         "customer_name",
+        "contract_number",
         "installation_start_date",
         "fit_team_1",
         "installation_issues_fit_team",
@@ -1516,6 +1536,7 @@ export default async function handler(req, res) {
           "No matching CRM deal by Pipedrive deal ID",
         dealId,
         customerName,
+        contractNumber,
         installationStartDate,
         fitTeam1,
         installationIssuesFitTeam,
@@ -1579,6 +1600,9 @@ export default async function handler(req, res) {
 
       customer_name:
         customerName,
+
+      contract_number:
+        contractNumber,
 
       salesperson,
 
@@ -1741,6 +1765,8 @@ export default async function handler(req, res) {
         "pipedrive_deal_id",
 
       customerName,
+
+      contractNumber,
 
       salesperson,
 
