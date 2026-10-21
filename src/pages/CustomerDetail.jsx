@@ -652,7 +652,7 @@ function CustomerDetail({
 
             </>
           })}
-                      <div style={{padding:"0 12px 14px",display:"grid",gap:12}}>
+                      <div style={{padding:"0 0 14px",display:"grid",gap:8}}>
                         <div style={{border:"1px solid #e1e6eb",borderRadius:9,overflow:"hidden"}}>
                           <button type="button" onClick={() => setExpandedSurveySection(expandedSurveySection === "__all_checklist__" ? "" : "__all_checklist__")} aria-expanded={expandedSurveySection === "__all_checklist__"} style={{display:"flex",alignItems:"center",gap:12,width:"100%",padding:14,border:0,background:"#fff",textAlign:"left",cursor:"pointer"}}>
                             <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:30,height:30,borderRadius:8,background:"#e8eef4",color:"#17364b",fontSize:12,fontWeight:700}}>3</span>
