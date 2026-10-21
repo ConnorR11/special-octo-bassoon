@@ -20,10 +20,10 @@ export const STAGE_GROUPS = [
   { key: "surveys", order: 2, label: "Surveys", stages: ["Book for Survey", "Book for Survey (S)", "Survey Booked", "Survey Booked (S)"], ...STAGE_GROUP_COLORS.surveys },
   { key: "procurement", order: 3, label: "Procurement", stages: ["Costing", "To Order", "To Be Ordered", "Awaiting Customer Confirmation", "Awaiting Manufacture Date", "Awaiting EPVS (S)", "Planning", "To Book For Fit (S)", "Future Fit", "Awaiting HES Email", "Drawdown To Claim"], ...STAGE_GROUP_COLORS.procurement },
   { key: "installations", order: 4, label: "Installations", stages: ["Fit Allocated (In Manufacture)", "In Manufacture (To Book)", "Fit Booked (S)", "Fit Allocated (In Stock)", "Fit Booked", "Issues: Fitter To Book", "Remedial Complete"], ...STAGE_GROUP_COLORS.installations },
-  { key: "accounts", order: 5, label: "Accounts", stages: ["Cancelled - Awaiting Refund", "Fit Complete - Accounts To Check", "Admin Fee Outstanding", "Accounts To Check (S)", "Awaiting Balance", "Awaiting Balance (HES)", "Issues: Inspection", "Issues: Fitter Booked"], ...STAGE_GROUP_COLORS.accounts },
-  { key: "remedials", order: 6, label: "Remedials", stages: ["Remedial To Check", "Remedial Ordered", "Engineer To Book (R)", "Engineer Booked (R)"], ...STAGE_GROUP_COLORS.remedials },
+  { key: "accounts", order: 6, label: "Accounts", stages: ["Cancelled - Awaiting Refund", "Fit Complete - Accounts To Check", "Admin Fee Outstanding", "Accounts To Check (S)", "Awaiting Balance", "Awaiting Balance (HES)", "Issues: Inspection", "Issues: Fitter Booked"], ...STAGE_GROUP_COLORS.accounts },
+  { key: "remedials", order: 7, label: "Remedials", stages: ["Remedial To Check", "Remedial Ordered", "Engineer To Book (R)", "Engineer Booked (R)"], ...STAGE_GROUP_COLORS.remedials },
 
-  { key: "post-installations", order: 8, label: "Post Installations", stages: ["Paperwork - Sent", "Fit Complete - Balance to be Paid", "Balance To Be Paid (S)", "NAPIT Sign Off", "Legal", "Payment Plan"], ...STAGE_GROUP_COLORS.postInstallations },
+  { key: "post-installations", order: 5, label: "Post Installations", stages: ["Paperwork - Sent", "Fit Complete - Balance to be Paid", "Balance To Be Paid (S)", "NAPIT Sign Off", "Legal", "Payment Plan"], ...STAGE_GROUP_COLORS.postInstallations },
   { key: "deal-lost", order: 9, label: "Deal Lost", stages: ["Customer Cancelled", "Decline"], ...STAGE_GROUP_COLORS.dealLost },
 ]
 
