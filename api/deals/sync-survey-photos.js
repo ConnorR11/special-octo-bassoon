@@ -75,14 +75,21 @@ export default async function handler(req, res) {
       return payload.data
     }
     const fields = await pipedriveRequest("dealFields")
-    const field = (fields || []).find(item => String(item.name || "").trim().toLowerCase() === "survey: photos")
-    if (!field?.key) return json(res, 500, { error: 'Could not find the Pipedrive deal custom field named "Survey: Photos". Check the exact field name and that it is a deal field.' })
+    const normaliseFieldName = value => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "")
+    const field = (fields || []).find(item => normaliseFieldName(item.name || item.field_name || item.label) === "surveyphotos")
+    if (!field?.key) {
+      const message = 'Could not find the Pipedrive deal custom field named "Survey: Photos".'
+      await finishLog({ status: "failed", httpStatus: 500, errorMessage: message, result: { success: false, surveyFieldsFound: (fields || []).filter(item => normaliseFieldName(item.name || item.field_name || item.label).includes("survey")).map(item => ({ name: item.name || item.field_name || item.label, key: item.key || null })) } })
+      return json(res, 500, { error: message })
+    }
     const baseUrl = (process.env.CRM_BASE_URL || "https://crm.homeshield.ltd").replace(/\\/+$/, "")
     const stableUrl = `${baseUrl}/survey-pdf/?document_id=${encodeURIComponent(document.id)}`
-    await pipedriveRequest(`deals/${encodeURIComponent(deal.pipedrive_deal_id)}`, { method: "PUT", body: JSON.stringify({ [field.key]: stableUrl }) })
+    const updateResult = await pipedriveRequest(`deals/${encodeURIComponent(deal.pipedrive_deal_id)}`, { method: "PUT", body: JSON.stringify({ [field.key]: stableUrl }) })
+    await finishLog({ status: "success", httpStatus: 200, result: { success: true, pipedrive_deal_id: deal.pipedrive_deal_id, field_name: field.name || field.field_name || field.label || "Survey: Photos", field_key: field.key, url: stableUrl, pipedrive_updated: Boolean(updateResult) } })
     return json(res, 200, { success: true, url: stableUrl, message: 'Survey PDF URL saved to Pipedrive field "Survey: Photos".' })
   } catch (error) {
     console.error("Unable to sync survey PDF URL to Pipedrive:", error?.message || error)
+    await finishLog({ status: "failed", httpStatus: 502, errorMessage: error?.message || "Unable to sync survey PDF URL to Pipedrive.", result: { success: false } })
     return json(res, 502, { error: error?.message || "Unable to sync survey PDF URL to Pipedrive." })
   }
 }
