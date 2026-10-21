@@ -88,6 +88,7 @@ function ChartCard({ title, subtitle, data, series, dataKey }) {
 function SalesChart({ contracts = [] }) {
   const [selectedProduct, setSelectedProduct] = useState("All products")
   const [selectedBranch, setSelectedBranch] = useState("All branches")
+  const [selectedBranch, setSelectedBranch] = useState("All branches")
   const [selectedYear, setSelectedYear] = useState("all")
   const [timeGrouping, setTimeGrouping] = useState("yearToDate")
   const [salesChartMode, setSalesChartMode] = useState("product")
@@ -111,6 +112,8 @@ function SalesChart({ contracts = [] }) {
   const currentMonth = today.getMonth()
   const currentDay = today.getDate()
   const years = useMemo(() => Array.from({ length: Math.max(0, currentYear - 2019) }, (_, i) => 2020 + i), [currentYear])
+
+  const availableBranches = useMemo(() => [...new Set(contracts.map(deal => String(deal?.branch || deal?.branch_name || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [contracts])
 
   const availableBranches = useMemo(() => [...new Set(contracts.map(deal => String(deal?.branch || deal?.branch_name || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [contracts])
 
