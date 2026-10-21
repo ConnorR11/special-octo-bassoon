@@ -515,18 +515,40 @@ async function getStageName(
 
 async function getContractNumberFromPerson(pipedriveToken, personId) {
   if (!personId) return null
-  const fieldsResponse = await fetch("https://api.pipedrive.com/api/v2/personFields?limit=500&api_token=" + encodeURIComponent(pipedriveToken), { headers: { Accept: "application/json" } })
-  const fieldsJson = await fieldsResponse.json().catch(() => ({}))
-  if (!fieldsResponse.ok || !fieldsJson?.success) throw new Error(fieldsJson?.error || "Pipedrive person fields lookup failed with HTTP " + fieldsResponse.status + ".")
-  const personFields = Array.isArray(fieldsJson.data) ? fieldsJson.data : []
-  const field = personFields.find(item => String(item?.name || item?.field_name || "").trim().toLowerCase() === "contract number")
-  const fieldKey = String(field?.key || field?.field_code || "").trim()
-  if (!fieldKey) return null
-  const response = await fetch("https://api.pipedrive.com/api/v2/persons/" + encodeURIComponent(personId) + "?api_token=" + encodeURIComponent(pipedriveToken), { headers: { Accept: "application/json" } })
-  const json = await response.json().catch(() => ({}))
-  if (!response.ok || !json?.success) throw new Error(json?.error || "Pipedrive customer lookup failed with HTTP " + response.status + ".")
-  const person = json.data || {}
-  return normaliseText(person.custom_fields?.[fieldKey] ?? person[fieldKey] ?? null)
+  const token = encodeURIComponent(pipedriveToken)
+  const requests = [
+    "https://api.pipedrive.com/api/v2/personFields?limit=500&api_token=" + token,
+    "https://api.pipedrive.com/v1/personFields?start=0&limit=500&api_token=" + token,
+  ]
+  let fields = []
+  for (const url of requests) {
+    const response = await fetch(url, { headers: { Accept: "application/json" } })
+    const json = await response.json().catch(() => ({}))
+    if (response.ok && json?.success && Array.isArray(json.data)) { fields = json.data; break }
+  }
+  const normaliseFieldName = value => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "")
+  const field = fields.find(item => normaliseFieldName(item?.name || item?.field_name || item?.label) === "contractnumber")
+  const fieldKey = String(field?.key || field?.field_code || field?.id || "").trim()
+  const personUrls = [
+    "https://api.pipedrive.com/api/v2/persons/" + encodeURIComponent(personId) + "?api_token=" + token,
+    "https://api.pipedrive.com/v1/persons/" + encodeURIComponent(personId) + "?api_token=" + token,
+  ]
+  for (const url of personUrls) {
+    const response = await fetch(url, { headers: { Accept: "application/json" } })
+    const json = await response.json().catch(() => ({}))
+    if (!response.ok || !json?.success || !json?.data) continue
+    const person = json.data
+    const customFields = person.custom_fields || person
+    const candidates = [
+      fieldKey ? customFields[fieldKey] : null,
+      fieldKey ? person[fieldKey] : null,
+      person.contract_number,
+      person.contractNumber,
+    ]
+    const value = candidates.map(normaliseText).find(Boolean)
+    if (value) return value
+  }
+  return null
 }
 async function getPersonName(
   pipedriveToken,
