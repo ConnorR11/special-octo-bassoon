@@ -191,14 +191,14 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
           <div className="outstanding-surveys-table-wrap">
             <table className="outstanding-surveys-table">
               <thead><tr>
-                <th style={styles.th}>Customer / Contract</th><th style={styles.th}>Postcode</th><th style={styles.th}>Product</th><th style={styles.th}>Sale date</th><th style={styles.th}>Salesperson</th><th style={styles.th}>Survey progress</th><th style={styles.th}>Action</th>
+                <th style={styles.th}>Customer / Contract</th><th style={styles.th}>Postcode</th><th style={styles.th}>Pipedrive stage</th><th style={styles.th}>Sale date</th><th style={styles.th}>Salesperson</th><th style={styles.th}>Survey progress</th><th style={styles.th}>Action</th>
               </tr></thead>
               <tbody>
                 {loading && <tr><td style={styles.td} colSpan={7}>Loading outstanding surveys…</td></tr>}
                 {!loading && filteredRows.map(deal => <tr key={deal.id}>
                   <td style={styles.td}><div style={{ fontWeight: 750, color: "#1e293b" }}>{deal.customer_name || "Unnamed customer"}</div><div style={{ color: "#94a3b8", fontSize: 10, marginTop: 4 }}>{deal.contract_number || deal.linked_contract_number || "No contract number"}</div></td>
                   <td style={styles.td}>{deal.postcode || "—"}</td>
-                  <td style={styles.td}>{deal.product || "Solar"}</td>
+                  <td style={styles.td}>{deal.stage || deal.pipedrive_stage || deal.pipedrive_data?.stage || deal.pipedrive_data?.stage_name || "—"}</td>
                   <td style={styles.td}>{formatDate(deal.sale_date)}</td>
                   <td style={styles.td}>{deal.salesperson_name || deal.salesperson || "—"}</td>
                   <td style={styles.td}>
