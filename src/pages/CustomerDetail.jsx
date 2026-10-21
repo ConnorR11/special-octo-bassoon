@@ -210,6 +210,15 @@ function CustomerDetail({
   async function uploadSurveyPhotos(files, section) {
     const selectedFiles = Array.from(files || [])
     if (!selectedFiles.length || !deal?.id) return
+    const existingSectionPhoto = documents.some(document => document.category === "survey_photos" && document.survey_section === section)
+    if (existingSectionPhoto) {
+      setDocumentError("This section already has a photo. Delete it before uploading a replacement.")
+      return
+    }
+    if (selectedFiles.length > 1) {
+      setDocumentError("Only one photo can be uploaded per survey section. Please select a single photo.")
+      return
+    }
     setUploadingCategory("survey_photos")
     setDocumentError("")
     setDocumentNotice("")
@@ -812,10 +821,10 @@ function CustomerDetail({
                                       <span style={{fontSize:9,color:"#526d82"}}>{hasPhotos?"Photos added":"No photos"}</span>
                                     </div>
                                     <div style={{padding:11,display:"grid",gap:8}}>
-                                      <label style={{display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,padding:"9px 10px",border:"1px dashed #b9c7d4",borderRadius:7,background:"#fff",color:"#263645",fontSize:10,fontWeight:700,cursor:generatingSurvey?"wait":"pointer",opacity:generatingSurvey?.6:1}}>
-                                        <FileUp size={14}/>Add photos to this section
-                                        <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={generatingSurvey || uploadingCategory === "survey_photos"} onChange={event=>{const files=Array.from(event.target.files||[]);void uploadSurveyPhotos(files,section);event.target.value=""}} style={{display:"none"}}/>
-                                      </label>
+                                      {hasPhotos ? <div style={{display:"flex",alignItems:"center",gap:7,padding:"9px 10px",border:"1px solid #d5e3ef",borderRadius:7,background:"#f5f9fc",color:"#17364b",fontSize:10,fontWeight:700,minWidth:0}}><FileUp size={14}/><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={savedPhotos[0]?.file_name || pendingPhotos[0]?.file?.name}>{savedPhotos[0]?.file_name || pendingPhotos[0]?.file?.name}</span></div> : <label style={{display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,padding:"9px 10px",border:"1px dashed #b9c7d4",borderRadius:7,background:"#fff",color:"#263645",fontSize:10,fontWeight:700,cursor:generatingSurvey?"wait":"pointer",opacity:generatingSurvey?.6:1}}>
+                                        <FileUp size={14}/>Add photo to this section
+                                        <input type="file" accept="image/jpeg,image/png,image/webp" disabled={generatingSurvey || uploadingCategory === "survey_photos"} onChange={event=>{const files=Array.from(event.target.files||[]);void uploadSurveyPhotos(files,section);event.target.value=""}} style={{display:"none"}}/>
+                                      </label>}
                                       {savedPhotos.map(document=><div key={document.id} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,color:"#475569"}}><FileUp size={13}/><span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={document.file_name}>{document.file_name}</span><button type="button" onClick={()=>openDocument(document)} disabled={openingDocument===document.id} style={{border:"1px solid #d7dee8",borderRadius:5,padding:"4px 6px",background:"#fff",color:"#334155",fontSize:9,cursor:"pointer"}}>Open</button><button type="button" onClick={()=>deleteDocument(document)} aria-label={`Delete ${document.file_name}`} style={{border:"1px solid #f0d4d4",borderRadius:5,padding:"4px 6px",background:"#fff",color:"#a33b3b",fontSize:9,cursor:"pointer"}}>×</button></div>)}
                                       {pendingPhotos.map(item=><div key={item.pendingIndex} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,color:"#475569"}}><FileUp size={13}/><span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={item.file.name}>{item.file.name}</span><button type="button" onClick={()=>setPendingSurveyPhotos(current=>current.filter((_,i)=>i!==item.pendingIndex))} disabled={generatingSurvey} style={{border:"1px solid #f0d4d4",borderRadius:5,padding:"4px 6px",background:"#fff",color:"#a33b3b",fontSize:9,cursor:"pointer"}}>Remove</button></div>)}
                                       {!hasPhotos&&<div style={{fontSize:10,color:"#89939c"}}>No photos added for this section yet.</div>}
