@@ -610,7 +610,7 @@ function CustomerDetail({
           {documentError && <div role="alert" style={{ padding: "10px 12px", borderRadius: 7, background: "#fff0f0", color: "#a33b3b", fontSize: 11 }}>{documentError}</div>}
           {documentNotice && <div role="status" style={{ padding: "10px 12px", borderRadius: 7, background: "#e8f4ed", color: "#28734c", fontSize: 11 }}>{documentNotice}</div>}
             <>
-                    <div style={{ borderTop: "1px solid #e1e6eb", paddingTop: 0 }}>
+                    <div style={{ display: "grid", gap: 8, paddingTop: 0 }}>
           {documentCategories.filter(category => category.key !== "survey_photos").map(category => {
             const categoryDocuments = documents.filter(document => document.category === category.key)
             const busy = uploadingCategory === category.key
