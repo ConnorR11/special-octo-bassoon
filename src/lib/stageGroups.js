@@ -11,6 +11,7 @@ export const STAGE_GROUP_COLORS = Object.freeze({
   remedials: Object.freeze({ background: "#fef3c7", border: "#fde68a", text: "#92400e", badge: "#fde68a" }),
   complete: Object.freeze({ background: "#e0e7ff", border: "#c7d2fe", text: "#4338ca", badge: "#c7d2fe" }),
   dealLost: Object.freeze({ background: "#fee2e2", border: "#fecaca", text: "#b91c1c", badge: "#fecaca" }),
+  postInstallations: Object.freeze({ background: "#f3e8ff", border: "#e9d5ff", text: "#9333ea", badge: "#e9d5ff" }),
   ungrouped: Object.freeze({ background: "#f1f5f9", border: "#e2e8f0", text: "#334155", badge: "#e2e8f0" }),
 })
 
@@ -22,7 +23,7 @@ export const STAGE_GROUPS = [
   { key: "accounts", order: 5, label: "Accounts", stages: ["Cancelled - Awaiting Refund", "Fit Complete - Accounts To Check", "Admin Fee Outstanding", "Accounts To Check (S)", "Awaiting Balance", "Awaiting Balance (HES)", "Issues: Inspection", "Issues: Fitter Booked"], ...STAGE_GROUP_COLORS.accounts },
   { key: "remedials", order: 6, label: "Remedials", stages: ["Remedial To Check", "Remedial Ordered", "Engineer To Book (R)", "Engineer Booked (R)"], ...STAGE_GROUP_COLORS.remedials },
   { key: "complete", order: 7, label: "Complete", stages: ["Remedial Complete", "NAPIT Sign Off Complete", "Contract Complete"], ...STAGE_GROUP_COLORS.complete },
-  { key: "post-installations", order: 8, label: "Post Installations", stages: ["Paperwork - Sent", "Fit Complete - Balance to be Paid", "Balance To Be Paid (S)", "NAPIT Sign Off", "Legal", "Payment Plan"], ...STAGE_GROUP_COLORS.accounts },
+  { key: "post-installations", order: 8, label: "Post Installations", stages: ["Paperwork - Sent", "Fit Complete - Balance to be Paid", "Balance To Be Paid (S)", "NAPIT Sign Off", "Legal", "Payment Plan"], ...STAGE_GROUP_COLORS.postInstallations },
   { key: "deal-lost", order: 9, label: "Deal Lost", stages: ["Customer Cancelled", "Decline"], ...STAGE_GROUP_COLORS.dealLost },
 ]
 
