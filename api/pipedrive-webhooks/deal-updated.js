@@ -1704,8 +1704,9 @@ export default async function handler(req, res) {
       estimated_payment_date:
         estimatedPaymentDate,
 
-      pipedrive_stage:
-        pipedriveStage,
+      // Only overwrite the saved stage when Pipedrive returned a resolvable
+      // stage name. A failed lookup must not erase a valid CRM stage.
+      ...(pipedriveStage ? { pipedrive_stage: pipedriveStage } : {}),
 
       /*
       |--------------------------------------------------------------------------
