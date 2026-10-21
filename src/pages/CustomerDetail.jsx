@@ -696,10 +696,10 @@ function CustomerDetail({
                               const pendingPhotos=pendingSurveyPhotos.map((item,pendingIndex)=>({...item,pendingIndex})).filter(item=>item.section===section)
                               const hasPhotos=savedPhotos.length>0||pendingPhotos.length>0
                               return <div key={section} style={{border:"1px solid #e1e6eb",borderRadius:9,overflow:"hidden",background:"#fff"}}>
-                                <div style={{display:"flex",alignItems:"center",gap:9,padding:"11px 12px",background:hasPhotos?"#f2f8f5":"#f8fafc",borderBottom:"1px solid #edf0f2"}}>
-                                  <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:25,height:25,borderRadius:7,background:hasPhotos?"#d9f0e4":"#e8eef4",color:hasPhotos?"#18734b":"#17364b",fontSize:10,fontWeight:700}}>{index+1}</span>
-                                  <span style={{flex:1,fontSize:11,fontWeight:700,color:"#263645"}}>{section}</span>
-                                  <span style={{fontSize:9,color:hasPhotos?"#18734b":"#89939c"}}>{hasPhotos?"Photos added":"No photos"}</span>
+                                <div style={{display:"flex",alignItems:"center",gap:9,padding:"11px 12px",background:"#002d49",borderBottom:"1px solid #002d49"}}>
+                                  <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:25,height:25,borderRadius:7,background:"rgba(255,255,255,0.14)",color:"#fff",fontSize:10,fontWeight:700}}>{index+1}</span>
+                                  <span style={{flex:1,fontSize:11,fontWeight:700,color:"#fff"}}>{section}</span>
+                                  <span style={{fontSize:9,color:"#dbe7f0"}}>{hasPhotos?"Photos added":"No photos"}</span>
                                 </div>
                                 <div style={{padding:11,display:"grid",gap:8}}>
                                   <label style={{display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,padding:"9px 10px",border:"1px dashed #b9c7d4",borderRadius:7,background:"#fff",color:"#263645",fontSize:10,fontWeight:700,cursor:generatingSurvey?"wait":"pointer",opacity:generatingSurvey?.6:1}}>
