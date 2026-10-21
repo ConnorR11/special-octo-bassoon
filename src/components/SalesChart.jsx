@@ -89,6 +89,7 @@ function SalesChart({ contracts = [] }) {
   const [selectedProduct, setSelectedProduct] = useState("All products")
   const [selectedYear, setSelectedYear] = useState("all")
   const [timeGrouping, setTimeGrouping] = useState("month")
+  const [salesChartMode, setSalesChartMode] = useState("result")
   const yearToDate = timeGrouping === "yearToDate"
   const [cpsSelectedYear, setCpsSelectedYear] = useState("all")
   const [cpsTimeGrouping, setCpsTimeGrouping] = useState("month")
@@ -185,6 +186,7 @@ function SalesChart({ contracts = [] }) {
             month: String(year),
             hoverLabel: `1 Jan – ${cutoff.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} ${year}`,
             Solid: 0, Decline: 0, Cancelled: 0, "Missing stage": 0,
+            Windows: 0, Solar: 0, ASHP: 0, Other: 0,
             total: 0, totalSold: 0, notSolidPercent: 0,
           }
           contracts.forEach(deal => {
@@ -196,6 +198,7 @@ function SalesChart({ contracts = [] }) {
             const amount = Number(deal.net_value || 0)
             if (!Number.isFinite(amount) || amount <= 0) return
             row[normaliseResult(deal)] += amount
+            row[normaliseProduct(deal.product)] += amount
             row.total += amount
             row.totalSold += 1
           })
@@ -229,7 +232,7 @@ function SalesChart({ contracts = [] }) {
     const cursor = new Date(start)
     while (cursor <= end) {
       const bucket = getBucket(cursor)
-      if (!rows.some((row) => row.bucketKey === bucket.key)) rows.push({ bucketKey: bucket.key, month: bucket.label, hoverLabel: bucket.hoverLabel || bucket.label, bucketStart: bucket.start.getTime(), Solid: 0, Decline: 0, Cancelled: 0, "Missing stage": 0, total: 0, totalSold: 0, notSolidPercent: 0 })
+      if (!rows.some((row) => row.bucketKey === bucket.key)) rows.push({ bucketKey: bucket.key, month: bucket.label, hoverLabel: bucket.hoverLabel || bucket.label, bucketStart: bucket.start.getTime(), Solid: 0, Decline: 0, Cancelled: 0, "Missing stage": 0, Windows: 0, Solar: 0, ASHP: 0, Other: 0, total: 0, totalSold: 0, notSolidPercent: 0 })
       if (timeGrouping === "year") cursor.setFullYear(cursor.getFullYear() + 1)
       else if (timeGrouping === "quarter") cursor.setMonth(cursor.getMonth() + 3, 1)
       else if (timeGrouping === "week") cursor.setDate(cursor.getDate() + 7)
@@ -247,6 +250,7 @@ function SalesChart({ contracts = [] }) {
       const amount = Number(deal.net_value || 0)
       if (!Number.isFinite(amount) || amount <= 0) return
       row[normaliseResult(deal)] += amount
+      row[normaliseProduct(deal.product)] += amount
       row.total += amount
       row.totalSold += 1
     })
@@ -330,8 +334,9 @@ function SalesChart({ contracts = [] }) {
       </div>
       <div style={{ marginTop: 18, background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "20px 18px 10px", minWidth: 0, boxSizing: "border-box" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
-          <div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Net Sales Value by Month</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Net sales value by deal result · January 2020 onwards</p></div>
+          <div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Net Sales Value by Month</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Net sales value · January 2020 onwards</p></div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, color: "#475569" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6 }}>View<select value={salesChartMode} onChange={event => setSalesChartMode(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="result">By result</option><option value="product">By product</option></select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Year<select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="all">All time</option>{availableYears.map((year) => <option key={year} value={String(year)}>{year}</option>)}</select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Period<select value={timeGrouping} onChange={(event) => setTimeGrouping(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="year">Year</option><option value="quarter">Quarter</option><option value="month">Month</option><option value="week">Week</option><option value="yearToDate">Year to date</option></select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Products<select value={selectedProduct} onChange={(event) => setSelectedProduct(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", minWidth: 145 }}><option value="All products">All products</option>{PRODUCT_FILTER_OPTIONS.map((product) => <option key={product} value={product}>{product}</option>)}</select></label>
@@ -345,10 +350,12 @@ function SalesChart({ contracts = [] }) {
             <YAxis yAxisId="percent" orientation="right" axisLine={false} tickLine={false} domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} tickFormatter={(value) => `${value}%`} tick={{ fill: "#64748b", fontSize: 10 }} width={48} />
             <Tooltip content={({ active, payload, label }) => { if (!active || !payload?.length) return null; const row = payload[0]?.payload || {}; const displayLabel = timeGrouping === "week" ? (row.hoverLabel || label) : label; const total = Number(row.total || 0); const moneyShare = value => { const amount = Number(value || 0); return `${money(amount)} (${total > 0 ? (amount / total * 100).toFixed(1) : "0.0"}%)`; }; const style = { fontSize: 11, marginTop: 5 }; return <div style={{ background: "#fff", border: "1px solid #e2e5e8", borderRadius: 8, padding: "10px 12px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}><div style={{ color: "#17212b", fontWeight: 600, marginBottom: 6 }}>{displayLabel} · Total sold: {Number(row.totalSold || 0).toLocaleString("en-GB")}</div><div style={{ ...style, color: "#64748b" }}>Missing stage: {moneyShare(row["Missing stage"])}</div><div style={{ ...style, color: "#ff0000" }}>Cancelled: {moneyShare(row.Cancelled ?? row["Cancelled"] ?? row["Net Sales/Cancel"] ?? row.Cancel)}</div><div style={{ ...style, color: "#ff9900" }}>Decline: {moneyShare(row.Decline ?? row["Net Sales/Decline"])}</div><div style={{ ...style, color: "#008000" }}>Solid: {moneyShare(row.Solid ?? row["Net Sales/Solid"])}</div><div style={{ borderTop: "1px solid #d1d5db", marginTop: 8, paddingTop: 7, fontSize: 11, fontWeight: 600, color: "#17212b" }}>Total net value: {money(Number(row.total || 0))}</div></div> }} />
             <Legend verticalAlign="bottom" height={32} iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-            <Bar yAxisId="sales" dataKey="Solid" name="Net Sales/Solid" stackId="balance" fill="#008000" />
-            <Bar yAxisId="sales" dataKey="Decline" name="Net Sales/Decline" stackId="balance" fill="#ff9900" />
-            <Bar yAxisId="sales" dataKey="Cancelled" name="Net Sales/Cancel" stackId="balance" fill="#ff0000" />
-            <Bar yAxisId="sales" dataKey="Missing stage" name="Missing stage" stackId="balance" fill="#64748b" />
+            {salesChartMode === "result" ? <>
+              <Bar yAxisId="sales" dataKey="Solid" name="Net Sales/Solid" stackId="balance" fill="#008000" />
+              <Bar yAxisId="sales" dataKey="Decline" name="Net Sales/Decline" stackId="balance" fill="#ff9900" />
+              <Bar yAxisId="sales" dataKey="Cancelled" name="Net Sales/Cancel" stackId="balance" fill="#ff0000" />
+              <Bar yAxisId="sales" dataKey="Missing stage" name="Missing stage" stackId="balance" fill="#64748b" />
+            </> : PRODUCT_SERIES.map(series => <Bar key={series.key} yAxisId="sales" dataKey={series.key} name={series.key} stackId="balance" fill={series.colour} />)}
             <Line yAxisId="percent" type="monotone" dataKey="notSolidPercent" name="Drop Off" stroke="#111827" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
           </BarChart>
         </ResponsiveContainer>
