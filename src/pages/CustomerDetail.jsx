@@ -12,6 +12,13 @@ import {
 import { supabase } from "../lib/supabase"
 import SurveyProgressBar from "../components/SurveyProgressBar"
 
+const surveyPhotoSectionGroups = [
+  { title: "Property & installation", sections: ["Front of Property", "Rear of Property", "Side of Property", "Proposed Canopy Location", "Loft Access Point", "Loft Roof Truss"] },
+  { title: "Electrical & battery", sections: ["Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Internet DC Route", "External DC Route", "Proposed Inverter Location", "Proposed Battery Location", "Existing EV Charger", "High Electrical Usage Items"] },
+  { title: "Roof & solar panels", sections: ["Proposed Panel Layout", "Alternative Roof Elevations", "Existing Solar Equipment", "Shading Issues"] },
+  { title: "Measurements & access", sections: [] },
+]
+
 function formatDate(value) {
   if (!value) return "—"
 
@@ -754,27 +761,33 @@ function CustomerDetail({
                             <div style={{fontSize:10,color:"#75818b",marginTop:5}}>{documents.filter(d=>d.category==="survey_photos").length} saved photos · {pendingSurveyPhotos.length} new photos waiting to be saved</div>
                           </div>
                           <div style={{padding:12,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:10}}>
-                            {surveyPhotoSections.map((section,index)=>{
-                              const savedPhotos=documents.filter(d=>d.category==="survey_photos"&&d.survey_section===section)
-                              const pendingPhotos=pendingSurveyPhotos.map((item,pendingIndex)=>({...item,pendingIndex})).filter(item=>item.section===section)
-                              const hasPhotos=savedPhotos.length>0||pendingPhotos.length>0
-                              return <div key={section} style={{border:"1px solid #e1e6eb",borderRadius:9,overflow:"hidden",background:"#fff"}}>
-                                <div style={{display:"flex",alignItems:"center",gap:9,padding:"11px 12px",background:"#002d49",borderBottom:"1px solid #002d49"}}>
-                                  <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:25,height:25,borderRadius:7,background:"rgba(255,255,255,0.14)",color:"#fff",fontSize:10,fontWeight:700}}>{index+1}</span>
-                                  <span style={{flex:1,fontSize:11,fontWeight:700,color:"#fff"}}>{section}</span>
-                                  <span style={{fontSize:9,color:"#dbe7f0"}}>{hasPhotos?"Photos added":"No photos"}</span>
-                                </div>
-                                <div style={{padding:11,display:"grid",gap:8}}>
-                                  <label style={{display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,padding:"9px 10px",border:"1px dashed #b9c7d4",borderRadius:7,background:"#fff",color:"#263645",fontSize:10,fontWeight:700,cursor:generatingSurvey?"wait":"pointer",opacity:generatingSurvey?.6:1}}>
-                                    <FileUp size={14}/>Add photos to this section
-                                    <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={generatingSurvey} onChange={event=>{const files=Array.from(event.target.files||[]);setPendingSurveyPhotos(current=>[...current,...files.map(file=>({file,section}))]);event.target.value=""}} style={{display:"none"}}/>
-                                  </label>
-                                  {savedPhotos.map(document=><div key={document.id} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,color:"#475569"}}><FileUp size={13}/><span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={document.file_name}>{document.file_name}</span><button type="button" onClick={()=>openDocument(document)} disabled={openingDocument===document.id} style={{border:"1px solid #d7dee8",borderRadius:5,padding:"4px 6px",background:"#fff",color:"#334155",fontSize:9,cursor:"pointer"}}>Open</button><button type="button" onClick={()=>deleteDocument(document)} aria-label={`Delete ${document.file_name}`} style={{border:"1px solid #f0d4d4",borderRadius:5,padding:"4px 6px",background:"#fff",color:"#a33b3b",fontSize:9,cursor:"pointer"}}>×</button></div>)}
-                                  {pendingPhotos.map(item=><div key={item.pendingIndex} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,color:"#475569"}}><FileUp size={13}/><span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={item.file.name}>{item.file.name}</span><button type="button" onClick={()=>setPendingSurveyPhotos(current=>current.filter((_,i)=>i!==item.pendingIndex))} disabled={generatingSurvey} style={{border:"1px solid #f0d4d4",borderRadius:5,padding:"4px 6px",background:"#fff",color:"#a33b3b",fontSize:9,cursor:"pointer"}}>Remove</button></div>)}
-                                  {!hasPhotos&&<div style={{fontSize:10,color:"#89939c"}}>No photos added for this section yet.</div>}
-                                </div>
+                            {surveyPhotoSectionGroups.map(group => <div key={group.title}>
+                              <div style={{fontSize:12,fontWeight:750,color:"#fff",background:"#002d49",padding:"10px 12px",marginBottom:10,borderBottom:"1px solid #002d49",display:"flex",justifyContent:"space-between",gap:10,borderRadius:5}}><span>{group.title}</span><span style={{fontSize:10,fontWeight:500,color:"#dbe7f0"}}>{group.sections.filter(section=>documents.some(d=>d.category==="survey_photos"&&d.survey_section===section)||pendingSurveyPhotos.some(item=>item.section===section)).length} of {group.sections.length}</span></div>
+                              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:10,marginBottom:18}}>
+                                {group.sections.map(section=>{
+                                  const index=surveyPhotoSections.indexOf(section)
+                                  const savedPhotos=documents.filter(d=>d.category==="survey_photos"&&d.survey_section===section)
+                                  const pendingPhotos=pendingSurveyPhotos.map((item,pendingIndex)=>({...item,pendingIndex})).filter(item=>item.section===section)
+                                  const hasPhotos=savedPhotos.length>0||pendingPhotos.length>0
+                                  return <div key={section} style={{border:"1px solid #e1e6eb",borderRadius:9,overflow:"hidden",background:"#fff"}}>
+                                    <div style={{display:"flex",alignItems:"center",gap:9,padding:"11px 12px",background:"#002d49",borderBottom:"1px solid #002d49"}}>
+                                      <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:25,height:25,borderRadius:7,background:"rgba(255,255,255,0.14)",color:"#fff",fontSize:10,fontWeight:700}}>{index+1}</span>
+                                      <span style={{flex:1,fontSize:11,fontWeight:700,color:"#fff"}}>{section}</span>
+                                      <span style={{fontSize:9,color:"#dbe7f0"}}>{hasPhotos?"Photos added":"No photos"}</span>
+                                    </div>
+                                    <div style={{padding:11,display:"grid",gap:8}}>
+                                      <label style={{display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,padding:"9px 10px",border:"1px dashed #b9c7d4",borderRadius:7,background:"#fff",color:"#263645",fontSize:10,fontWeight:700,cursor:generatingSurvey?"wait":"pointer",opacity:generatingSurvey?.6:1}}>
+                                        <FileUp size={14}/>Add photos to this section
+                                        <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={generatingSurvey} onChange={event=>{const files=Array.from(event.target.files||[]);setPendingSurveyPhotos(current=>[...current,...files.map(file=>({file,section}))]);event.target.value=""}} style={{display:"none"}}/>
+                                      </label>
+                                      {savedPhotos.map(document=><div key={document.id} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,color:"#475569"}}><FileUp size={13}/><span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={document.file_name}>{document.file_name}</span><button type="button" onClick={()=>openDocument(document)} disabled={openingDocument===document.id} style={{border:"1px solid #d7dee8",borderRadius:5,padding:"4px 6px",background:"#fff",color:"#334155",fontSize:9,cursor:"pointer"}}>Open</button><button type="button" onClick={()=>deleteDocument(document)} aria-label={`Delete ${document.file_name}`} style={{border:"1px solid #f0d4d4",borderRadius:5,padding:"4px 6px",background:"#fff",color:"#a33b3b",fontSize:9,cursor:"pointer"}}>×</button></div>)}
+                                      {pendingPhotos.map(item=><div key={item.pendingIndex} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,color:"#475569"}}><FileUp size={13}/><span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={item.file.name}>{item.file.name}</span><button type="button" onClick={()=>setPendingSurveyPhotos(current=>current.filter((_,i)=>i!==item.pendingIndex))} disabled={generatingSurvey} style={{border:"1px solid #f0d4d4",borderRadius:5,padding:"4px 6px",background:"#fff",color:"#a33b3b",fontSize:9,cursor:"pointer"}}>Remove</button></div>)}
+                                      {!hasPhotos&&<div style={{fontSize:10,color:"#89939c"}}>No photos added for this section yet.</div>}
+                                    </div>
+                                  </div>
+                                })}
                               </div>
-                            })}
+                            </div>)}}
                           </div>
                           </>}
                         </div>
