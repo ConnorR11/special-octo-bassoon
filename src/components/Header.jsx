@@ -19,6 +19,7 @@ function Header({ page, setMobile }) {
 
   const pageTitle = {
     "sales-performance": "Sales Performance",
+    "outstanding-solar-surveys": "Outstanding Solar Surveys",
     contracts: "Deals",
     balances: "Balances",
     "rts-list": "RTS List",
@@ -27,6 +28,7 @@ function Header({ page, setMobile }) {
 
   const pageSubtitle = {
     "sales-performance": "Overview of your sales performance and activity",
+    "outstanding-solar-surveys": "Solar deals with a digital contract but no generated survey",
     contracts: "Search and manage deals",
     balances: "Jobs with an outstanding balance",
     "rts-list": "Deals currently in the RTS sales stages",
