@@ -664,7 +664,7 @@ function CustomerDetail({
                               const groupQuestions = surveyQuestions.filter(([,key]) => group.keys.includes(key))
                               const groupAnswered = groupQuestions.filter(([,key]) => String(surveyAnswers[key] || "").trim()).length
                               return <div key={group.title}>
-                                <div style={{fontSize:12,fontWeight:750,color:"#263645",paddingBottom:8,marginBottom:10,borderBottom:"1px solid #e8edf2",display:"flex",justifyContent:"space-between",gap:10}}><span>{group.title}</span><span style={{fontSize:10,fontWeight:500,color:"#75818b"}}>{groupAnswered} of {groupQuestions.length}</span></div>
+                                <div style={{fontSize:12,fontWeight:750,color:"#fff",background:"#002d49",padding:"10px 12px",margin:"0 -14px 10px",borderBottom:"1px solid #002d49",display:"flex",justifyContent:"space-between",gap:10,borderRadius:5}}><span>{group.title}</span><span style={{fontSize:10,fontWeight:500,color:"#75818b"}}>{groupAnswered} of {groupQuestions.length}</span></div>
                                 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:10}}>
                                   {groupQuestions.map(([question,key]) => {
                                     const yesNoKeys = ["listed_conservation","south_wall","canopy_fireproof","wifi_reach","high_energy_appliances","loft_access","copex_consent","existing_solar","scaffolding"]
