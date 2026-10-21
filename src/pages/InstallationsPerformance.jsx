@@ -56,9 +56,15 @@ function makeBuckets(dates, grouping) {
 export default function InstallationsPerformance({ deals = [], loading = false, onRefresh }) {
   const [grouping, setGrouping] = useState("month")
   const [yearFilter, setYearFilter] = useState("all")
+  const [productFilter, setProductFilter] = useState("all")
   const datedDeals = useMemo(() => (Array.isArray(deals) ? deals : []).map(deal => ({ ...deal, parsedInstallationDate: parseLocalDate(deal.installation_start_date) })).filter(deal => deal.parsedInstallationDate), [deals])
   const years = useMemo(() => [...new Set(datedDeals.map(deal => String(deal.parsedInstallationDate.getFullYear())))].sort((a, b) => Number(b) - Number(a)), [datedDeals])
-  const filteredDeals = useMemo(() => yearFilter === "all" ? datedDeals : datedDeals.filter(deal => String(deal.parsedInstallationDate.getFullYear()) === yearFilter), [datedDeals, yearFilter])
+  const products = useMemo(() => [...new Set(datedDeals.map(deal => String(deal.product || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [datedDeals])
+  const filteredDeals = useMemo(() => datedDeals.filter(deal => {
+    const matchesYear = yearFilter === "all" || String(deal.parsedInstallationDate.getFullYear()) === yearFilter
+    const matchesProduct = productFilter === "all" || String(deal.product || "").trim() === productFilter
+    return matchesYear && matchesProduct
+  }), [datedDeals, yearFilter, productFilter])
   const chartData = useMemo(() => {
     const rows = makeBuckets(filteredDeals.map(deal => deal.parsedInstallationDate), grouping)
     const rowMap = new Map(rows.map(row => [row.key, row]))
@@ -96,6 +102,7 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 12, color: "#475569" }}>
           <label style={{ display: "flex", alignItems: "center", gap: 7 }}>Period<select value={grouping} onChange={event => setGrouping(event.target.value)} style={selectStyle}><option value="week">Week</option><option value="month">Month</option><option value="quarter">Quarter</option><option value="year">Year</option></select></label>
           <label style={{ display: "flex", alignItems: "center", gap: 7 }}>Year<select value={yearFilter} onChange={event => setYearFilter(event.target.value)} style={selectStyle}><option value="all">All time</option>{years.map(year => <option key={year} value={year}>{year}</option>)}</select></label>
+          <label style={{ display: "flex", alignItems: "center", gap: 7 }}>Product<select value={productFilter} onChange={event => setProductFilter(event.target.value)} style={selectStyle}><option value="all">All products</option>{products.map(product => <option key={product} value={product}>{product}</option>)}</select></label>
         </div>
       </div>
       {loading ? <div style={{ padding: 48, textAlign: "center", color: "#818891", fontSize: 12 }}>Loading installation data…</div> : chartData.length === 0 ? <div style={{ padding: 48, textAlign: "center", color: "#818891", fontSize: 12 }}>No jobs have an installation start date for this selection.</div> : <ResponsiveContainer width="100%" height={360}>
