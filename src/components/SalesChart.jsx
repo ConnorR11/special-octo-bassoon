@@ -89,7 +89,7 @@ function SalesChart({ contracts = [] }) {
   const [selectedProduct, setSelectedProduct] = useState("All products")
   const [selectedYear, setSelectedYear] = useState("all")
   const [timeGrouping, setTimeGrouping] = useState("month")
-  const [yearOnYear, setYearOnYear] = useState(false)
+  const yearOnYear = timeGrouping === "yearOnYear"
   const [cpsSelectedYear, setCpsSelectedYear] = useState("all")
   const [cpsTimeGrouping, setCpsTimeGrouping] = useState("month")
   const [cpsSelectedProduct, setCpsSelectedProduct] = useState("All products")
@@ -316,8 +316,7 @@ function SalesChart({ contracts = [] }) {
           <div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Net Sales Value by Month</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Net sales value by deal result · January 2020 onwards</p></div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, color: "#475569" }}>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Year<select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="all">All time</option>{availableYears.map((year) => <option key={year} value={String(year)}>{year}</option>)}</select></label>
-            <label style={{ display: "flex", alignItems: "center", gap: 6 }}><input type="checkbox" checked={yearOnYear} onChange={event => setYearOnYear(event.target.checked)} /> Year on year</label>
-            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Period<select value={timeGrouping} onChange={(event) => setTimeGrouping(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="year">Year</option><option value="quarter">Quarter</option><option value="month">Month</option><option value="week">Week</option></select></label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Period<select value={timeGrouping} onChange={(event) => setTimeGrouping(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="year">Year</option><option value="quarter">Quarter</option><option value="month">Month</option><option value="week">Week</option><option value="yearOnYear">Year on year</option></select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Products<select value={selectedProduct} onChange={(event) => setSelectedProduct(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", minWidth: 145 }}><option value="All products">All products</option>{PRODUCT_FILTER_OPTIONS.map((product) => <option key={product} value={product}>{product}</option>)}</select></label>
           </div>
         </div>
