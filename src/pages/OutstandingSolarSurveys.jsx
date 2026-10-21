@@ -177,19 +177,9 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
           <button type="button" style={styles.button} onClick={load} disabled={loading}><RefreshCw size={14}/>{loading ? "Refreshing…" : "Refresh list"}</button>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12, marginBottom: 16 }}>
-          <div style={{ ...styles.panel, padding: "16px 18px" }}>
-            <div style={{ color: "#64748b", fontSize: 10, fontWeight: 750, textTransform: "uppercase" }}>Outstanding surveys</div>
-            <div style={{ fontSize: 28, fontWeight: 800, marginTop: 7 }}>{loading ? "—" : rows.length.toLocaleString("en-GB")}</div>
-          </div>
-          <div style={{ ...styles.panel, padding: "16px 18px" }}>
-            <div style={{ color: "#64748b", fontSize: 10, fontWeight: 750, textTransform: "uppercase" }}>Matching records</div>
-            <div style={{ fontSize: 28, fontWeight: 800, marginTop: 7 }}>{loading ? "—" : filteredRows.length.toLocaleString("en-GB")}</div>
-          </div>
-        </div>
-
         <div style={styles.panel}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: 16, flexWrap: "wrap", borderBottom: "1px solid #e8edf2" }}>
+            <div style={{ fontSize: 12, fontWeight: 750, color: "#334155", whiteSpace: "nowrap" }}>Outstanding surveys <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 22, height: 22, padding: "0 6px", marginLeft: 5, boxSizing: "border-box", borderRadius: 999, background: "#e8eef4", color: "#17364b", fontSize: 11 }}>{loading ? "…" : rows.length.toLocaleString("en-GB")}</span></div>
             <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
               <Search size={15} style={{ position: "absolute", left: 11, color: "#94a3b8" }}/>
               <input aria-label="Search outstanding surveys" placeholder="Search customer, contract, postcode…" value={search} onChange={e => setSearch(e.target.value)} style={{ ...styles.input, paddingLeft: 34, width: 310, maxWidth: "75vw" }}/>
