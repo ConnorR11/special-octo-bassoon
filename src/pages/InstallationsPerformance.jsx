@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react"
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell } from "recharts"
 import { CalendarDays, RefreshCw, TrendingUp } from "lucide-react"
-import { getStageGroup } from "../lib/stageGroups"
+import { STAGE_GROUPS, getStageGroup } from "../lib/stageGroups"
 
 function parseLocalDate(value) {
   if (!value) return null
@@ -135,7 +135,7 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
       current.stages.set(stage, stageEntry)
       groups.set(key, current)
     })
-    return [...groups.values()].map(group => ({ ...group, stages: [...group.stages.values()].sort((a, b) => b.jobs - a.jobs) })).sort((a, b) => b.jobs - a.jobs)
+    return [...groups.values()].map(group => ({ ...group, stages: [...group.stages.values()].sort((a, b) => b.jobs - a.jobs) })).sort((a, b) => { const aIndex = a.key === "ungrouped" ? STAGE_GROUPS.length : STAGE_GROUPS.findIndex(group => group.key === a.key); const bIndex = b.key === "ungrouped" ? STAGE_GROUPS.length : STAGE_GROUPS.findIndex(group => group.key === b.key); return aIndex - bIndex })
   }, [deals])
 
   const cardStyle = { background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "18px 20px", minWidth: 0 }
