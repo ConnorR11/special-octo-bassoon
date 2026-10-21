@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react"
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts"
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts"
 import { CalendarDays, RefreshCw, TrendingUp } from "lucide-react"
 
 function parseLocalDate(value) {
@@ -44,7 +44,7 @@ function makeBuckets(dates, grouping) {
   const cursor = new Date(first)
   while (cursor <= last) {
     const bucket = getBucket(cursor, grouping)
-    rows.push({ key: bucket.key, period: bucket.label, hoverLabel: bucket.hoverLabel || bucket.label, count: 0, start: bucket.start.getTime() })
+    rows.push({ key: bucket.key, period: bucket.label, hoverLabel: bucket.hoverLabel || bucket.label, start: bucket.start.getTime() })
     if (grouping === "year") cursor.setFullYear(cursor.getFullYear() + 1)
     else if (grouping === "quarter") cursor.setMonth(cursor.getMonth() + 3, 1)
     else if (grouping === "week") cursor.setDate(cursor.getDate() + 7)
@@ -53,16 +53,26 @@ function makeBuckets(dates, grouping) {
   return rows
 }
 
+const SERIES_COLORS = ["#1683c7", "#f59e0b", "#7c3aed", "#10b981", "#ef4444", "#64748b", "#db2777", "#84cc16", "#0d9488", "#a16207"]
+
+function productLabel(deal) {
+  return String(deal.product || "").trim() || "Unspecified"
+}
+
 export default function InstallationsPerformance({ deals = [], loading = false, onRefresh }) {
   const [grouping, setGrouping] = useState("month")
   const [yearFilter, setYearFilter] = useState("all")
   const [productFilter, setProductFilter] = useState("all")
   const datedDeals = useMemo(() => (Array.isArray(deals) ? deals : []).map(deal => ({ ...deal, parsedInstallationDate: parseLocalDate(deal.installation_start_date) })).filter(deal => deal.parsedInstallationDate), [deals])
   const years = useMemo(() => [...new Set(datedDeals.map(deal => String(deal.parsedInstallationDate.getFullYear())))].sort((a, b) => Number(b) - Number(a)), [datedDeals])
-  const products = useMemo(() => [...new Set(datedDeals.map(deal => String(deal.product || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [datedDeals])
+  const products = useMemo(() => [...new Set(datedDeals.map(productLabel))].sort((a, b) => {
+    if (a.toLowerCase().includes("window")) return b.toLowerCase().includes("window") ? a.localeCompare(b) : -1
+    if (b.toLowerCase().includes("window")) return 1
+    return a.localeCompare(b)
+  }), [datedDeals])
   const filteredDeals = useMemo(() => datedDeals.filter(deal => {
     const matchesYear = yearFilter === "all" || String(deal.parsedInstallationDate.getFullYear()) === yearFilter
-    const matchesProduct = productFilter === "all" || String(deal.product || "").trim() === productFilter
+    const matchesProduct = productFilter === "all" || productLabel(deal) === productFilter
     return matchesYear && matchesProduct
   }), [datedDeals, yearFilter, productFilter])
   const chartData = useMemo(() => {
@@ -71,7 +81,10 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
     filteredDeals.forEach(deal => {
       const bucket = getBucket(deal.parsedInstallationDate, grouping)
       const row = rowMap.get(bucket.key)
-      if (row) row.count += 1
+      if (row) {
+        const product = productLabel(deal)
+        row[product] = (row[product] || 0) + 1
+      }
     })
     return rows
   }, [filteredDeals, grouping])
@@ -98,20 +111,30 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
     </div>
     <div style={{ background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "20px 18px 10px", minWidth: 0, boxSizing: "border-box" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
-        <div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Jobs by installation start date</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Counts deals with a populated installation_start_date field</p></div>
+        <div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Jobs by installation start date</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Counts deals with a populated installation_start_date field, stacked by product</p></div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 12, color: "#475569" }}>
           <label style={{ display: "flex", alignItems: "center", gap: 7 }}>Period<select value={grouping} onChange={event => setGrouping(event.target.value)} style={selectStyle}><option value="week">Week</option><option value="month">Month</option><option value="quarter">Quarter</option><option value="year">Year</option></select></label>
           <label style={{ display: "flex", alignItems: "center", gap: 7 }}>Year<select value={yearFilter} onChange={event => setYearFilter(event.target.value)} style={selectStyle}><option value="all">All time</option>{years.map(year => <option key={year} value={year}>{year}</option>)}</select></label>
           <label style={{ display: "flex", alignItems: "center", gap: 7 }}>Product<select value={productFilter} onChange={event => setProductFilter(event.target.value)} style={selectStyle}><option value="all">All products</option>{products.map(product => <option key={product} value={product}>{product}</option>)}</select></label>
         </div>
       </div>
-      {loading ? <div style={{ padding: 48, textAlign: "center", color: "#818891", fontSize: 12 }}>Loading installation data…</div> : chartData.length === 0 ? <div style={{ padding: 48, textAlign: "center", color: "#818891", fontSize: 12 }}>No jobs have an installation start date for this selection.</div> : <ResponsiveContainer width="100%" height={360}>
+      {loading ? <div style={{ padding: 48, textAlign: "center", color: "#818891", fontSize: 12 }}>Loading installation data…</div> : chartData.length === 0 ? <div style={{ padding: 48, textAlign: "center", color: "#818891", fontSize: 12 }}>No jobs have an installation start date for this selection.</div> : <ResponsiveContainer width="100%" height={380}>
         <BarChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 6 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb"/>
           <XAxis dataKey="period" interval="preserveStartEnd" minTickGap={24} axisLine={false} tickLine={false} tick={{ fill: "#8a8a8a", fontSize: 10 }}/>
           <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: "#777", fontSize: 10 }} width={42}/>
-          <Tooltip content={({ active, payload, label }) => { if (!active || !payload?.length) return null; const row = payload[0].payload; return <div style={{ background: "#fff", border: "1px solid #e2e5e8", borderRadius: 8, padding: "10px 12px", fontSize: 11, boxShadow: "0 2px 8px rgba(0,0,0,.08)" }}><div style={{ fontWeight: 700, marginBottom: 5, color: "#17212b" }}>{row.hoverLabel || label}</div><div style={{ color: "#1683c7" }}>Jobs with start dates: {Number(row.count).toLocaleString("en-GB")}</div></div> }}/>
-          <Bar dataKey="count" name="Jobs" fill="#1683c7" radius={[4, 4, 0, 0]}/>
+          <Tooltip content={({ active, payload, label }) => {
+            if (!active || !payload?.length) return null
+            const row = payload[0].payload
+            const entries = payload.filter(item => Number(item.value) > 0)
+            return <div style={{ background: "#fff", border: "1px solid #e2e5e8", borderRadius: 8, padding: "10px 12px", fontSize: 11, boxShadow: "0 2px 8px rgba(0,0,0,.08)", maxWidth: 240 }}>
+              <div style={{ fontWeight: 700, marginBottom: 6, color: "#17212b" }}>{row.hoverLabel || label}</div>
+              {entries.map(item => <div key={item.dataKey} style={{ color: item.color, display: "flex", justifyContent: "space-between", gap: 16, marginTop: 3 }}><span>{item.name}</span><strong>{Number(item.value).toLocaleString("en-GB")}</strong></div>)}
+              <div style={{ borderTop: "1px solid #e5e7eb", marginTop: 7, paddingTop: 6, fontWeight: 700 }}>Total: {entries.reduce((sum, item) => sum + Number(item.value || 0), 0).toLocaleString("en-GB")}</div>
+            </div>
+          }}/>
+          <Legend verticalAlign="bottom" height={34} wrapperStyle={{ fontSize: 11, paddingTop: 8 }}/>
+          {products.filter(product => productFilter === "all" || product === productFilter).map((product, index) => <Bar key={product} dataKey={product} name={product} stackId="products" fill={SERIES_COLORS[index % SERIES_COLORS.length]} radius={product.toLowerCase().includes("window") ? [0, 0, 0, 0] : [3, 3, 0, 0]}/>)}
         </BarChart>
       </ResponsiveContainer>}
     </div>
