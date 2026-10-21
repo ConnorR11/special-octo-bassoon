@@ -763,17 +763,17 @@ function CustomerDetail({
                           <div style={{padding:12,display:"block"}}>
                             {surveyPhotoSectionGroups.map(group => <div key={group.title} style={{marginBottom:18}}>
                               <div style={{fontSize:12,fontWeight:750,color:"#fff",background:"#002d49",padding:"10px 12px",marginBottom:10,borderBottom:"1px solid #002d49",display:"flex",justifyContent:"space-between",gap:10,borderRadius:5}}><span>{group.title}</span><span style={{fontSize:10,fontWeight:500,color:"#dbe7f0"}}>{group.sections.filter(section=>documents.some(d=>d.category==="survey_photos"&&d.survey_section===section)||pendingSurveyPhotos.some(item=>item.section===section)).length} of {group.sections.length}</span></div>
-                              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:10,marginBottom:18}}>
+                              <div style={{display:"grid",gridTemplateColumns:group.title==="Electrical & battery"?"repeat(4,minmax(0,1fr))":"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:10,marginBottom:18}}>
                                 {group.sections.map(section=>{
                                   const index=surveyPhotoSections.indexOf(section)
                                   const savedPhotos=documents.filter(d=>d.category==="survey_photos"&&d.survey_section===section)
                                   const pendingPhotos=pendingSurveyPhotos.map((item,pendingIndex)=>({...item,pendingIndex})).filter(item=>item.section===section)
                                   const hasPhotos=savedPhotos.length>0||pendingPhotos.length>0
                                   return <div key={section} style={{border:"1px solid #e1e6eb",borderRadius:9,overflow:"hidden",background:"#fff"}}>
-                                    <div style={{display:"flex",alignItems:"center",gap:9,padding:"11px 12px",background:"#002d49",borderBottom:"1px solid #002d49"}}>
-                                      <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:25,height:25,borderRadius:7,background:"rgba(255,255,255,0.14)",color:"#fff",fontSize:10,fontWeight:700}}>{index+1}</span>
-                                      <span style={{flex:1,fontSize:11,fontWeight:700,color:"#fff"}}>{section}</span>
-                                      <span style={{fontSize:9,color:"#dbe7f0"}}>{hasPhotos?"Photos added":"No photos"}</span>
+                                    <div style={{display:"flex",alignItems:"center",gap:9,padding:"11px 12px",background:"#e8f1f8",borderBottom:"1px solid #d5e3ef"}}>
+                                      <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:25,height:25,borderRadius:7,background:"#d2e3f0",color:"#17364b",fontSize:10,fontWeight:700}}>{index+1}</span>
+                                      <span style={{flex:1,fontSize:11,fontWeight:700,color:"#17364b"}}>{section}</span>
+                                      <span style={{fontSize:9,color:"#526d82"}}>{hasPhotos?"Photos added":"No photos"}</span>
                                     </div>
                                     <div style={{padding:11,display:"grid",gap:8}}>
                                       <label style={{display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,padding:"9px 10px",border:"1px dashed #b9c7d4",borderRadius:7,background:"#fff",color:"#263645",fontSize:10,fontWeight:700,cursor:generatingSurvey?"wait":"pointer",opacity:generatingSurvey?.6:1}}>
