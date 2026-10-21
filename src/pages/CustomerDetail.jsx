@@ -44,6 +44,7 @@ function CustomerDetail({
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
   const [documents, setDocuments] = useState([])
+  const [epvsStatus, setEpvsStatus] = useState("")
   const [documentsLoading, setDocumentsLoading] = useState(false)
   const [uploadingCategory, setUploadingCategory] = useState("")
   const [documentError, setDocumentError] = useState("")
@@ -83,6 +84,9 @@ function CustomerDetail({
       const { data, error } = await supabase.from("deal_documents").select("*").eq("deal_id", deal.id).order("created_at", { ascending: false })
       if (error) throw error
       setDocuments(data || [])
+      const { data: epvsData, error: epvsError } = await supabase.from("epvs_submissions").select("status,updated_at,created_at").eq("linked_deal_id", deal.id).order("updated_at", { ascending: false }).limit(1).maybeSingle()
+      if (epvsError) throw epvsError
+      setEpvsStatus(String(epvsData?.status || ""))
       const { data: surveyData, error: surveyError } = await supabase.from("deal_survey_answers").select("answers").eq("deal_id", deal.id).maybeSingle()
       if (surveyError) throw surveyError
       setSurveyAnswers(surveyData?.answers || {})
@@ -311,7 +315,7 @@ function CustomerDetail({
 
   const pipedriveStage = String(deal?.pipedrive_stage || "").trim() || "—"
   const isSolarDeal = /solar/i.test(String(deal?.product || deal?.pipedrive_data?.product || ""))
-  const epvsStatus = String(deal?.epvs_status || deal?.pipedrive_data?.epvs_status || "").trim()
+
 
   return (
     <section>
