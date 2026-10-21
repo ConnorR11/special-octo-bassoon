@@ -4,14 +4,14 @@
  * Import getStageGroup() wherever CRM pages need consistent labels and colours.
  */
 export const STAGE_GROUP_COLORS = Object.freeze({
-  sales: Object.freeze({ background: "#e0f2fe", border: "#bae6fd", text: "#075985", badge: "#bae6fd" }),
-  surveys: Object.freeze({ background: "#dcfce7", border: "#bbf7d0", text: "#166534", badge: "#bbf7d0" }),
-  procurement: Object.freeze({ background: "#ffedd5", border: "#fed7aa", text: "#9a3412", badge: "#fed7aa" }),
-  accounts: Object.freeze({ background: "#f3e8ff", border: "#e9d5ff", text: "#7e22ce", badge: "#e9d5ff" }),
-  remedials: Object.freeze({ background: "#fef3c7", border: "#fde68a", text: "#92400e", badge: "#fde68a" }),
-  complete: Object.freeze({ background: "#e0e7ff", border: "#c7d2fe", text: "#4338ca", badge: "#c7d2fe" }),
-  dealLost: Object.freeze({ background: "#fee2e2", border: "#fecaca", text: "#b91c1c", badge: "#fecaca" }),
-  ungrouped: Object.freeze({ background: "#f1f5f9", border: "#e2e8f0", text: "#334155", badge: "#e2e8f0" }),
+  sales: Object.freeze({ ...STAGE_GROUP_COLORS.sales }),
+  surveys: Object.freeze({ ...STAGE_GROUP_COLORS.surveys }),
+  procurement: Object.freeze({ ...STAGE_GROUP_COLORS.procurement }),
+  accounts: Object.freeze({ ...STAGE_GROUP_COLORS.accounts }),
+  remedials: Object.freeze({ ...STAGE_GROUP_COLORS.remedials }),
+  complete: Object.freeze({ ...STAGE_GROUP_COLORS.complete }),
+  dealLost: Object.freeze({ ...STAGE_GROUP_COLORS.dealLost }),
+  ungrouped: Object.freeze({ ...STAGE_GROUP_COLORS.ungrouped }),
 })
 
 export const STAGE_GROUPS = [
