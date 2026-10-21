@@ -76,6 +76,7 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
 
       const solarDealIds = solarDeals.map(deal => String(deal.id))
       const surveyDocumentRows = []
+      const surveyProgressRows = []
       for (let offset = 0; offset < solarDealIds.length; offset += 500) {
         const { data, error: documentsError } = await supabase
           .from("deal_documents")
@@ -85,15 +86,44 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
         if (documentsError) throw documentsError
         surveyDocumentRows.push(...(data || []))
       }
+      for (let offset = 0; offset < solarDealIds.length; offset += 500) {
+        const ids = solarDealIds.slice(offset, offset + 500)
+        const [{ data: docs, error: docsError }, { data: answers, error: answersError }] = await Promise.all([
+          supabase.from("deal_documents").select("deal_id,category,survey_section").in("deal_id", ids),
+          supabase.from("deal_survey_answers").select("deal_id,answers").in("deal_id", ids),
+        ])
+        if (docsError) throw docsError
+        if (answersError) throw answersError
+        surveyProgressRows.push({ docs: docs || [], answers: answers || [] })
+      }
 
       const appointmentsById = new Map(appointmentRows.map(item => [String(item.appointment_row_id), item]))
       const generatedSurveyDealIds = new Set(surveyDocumentRows.map(item => String(item.deal_id)))
+      const allProgressDocs = surveyProgressRows.flatMap(batch => batch.docs)
+      const allProgressAnswers = new Map(surveyProgressRows.flatMap(batch => batch.answers).map(item => [String(item.deal_id), item.answers || {}]))
+      const photoSections = ["Front of Property", "Inverter Location", "Consumer Unit", "Roof", "Loft"]
       const outstanding = solarDeals
         .filter(deal => {
           const appointment = appointmentsById.get(String(deal.appointment_row_id || ""))
           return hasDigitalContract(appointment) && !generatedSurveyDealIds.has(String(deal.id))
         })
-        .map(deal => ({ ...deal, linked_contract_number: appointmentsById.get(String(deal.appointment_row_id || ""))?.contract_number || "" }))
+        .map(deal => {
+          const dealDocs = allProgressDocs.filter(doc => String(doc.deal_id) === String(deal.id))
+          const answers = allProgressAnswers.get(String(deal.id)) || {}
+          const answeredCount = Object.values(answers).filter(value => String(value || "").trim()).length
+          const checklistComplete = answeredCount > 0 && answeredCount >= 10
+          const photoSectionsComplete = new Set(dealDocs.filter(doc => doc.category === "survey_photos").map(doc => doc.survey_section || "Front of Property"))
+          return {
+            ...deal,
+            linked_contract_number: appointmentsById.get(String(deal.appointment_row_id || ""))?.contract_number || "",
+            surveyProgress: [
+              dealDocs.some(doc => doc.category === "survey_video"),
+              dealDocs.some(doc => doc.category === "electricity_bill_epvs_waiver"),
+              checklistComplete,
+              photoSections.every(section => photoSectionsComplete.has(section)),
+            ],
+          }
+        })
       setRows(outstanding)
       setLastUpdated(new Date())
     } catch (e) {
@@ -161,7 +191,7 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
           <div className="outstanding-surveys-table-wrap">
             <table className="outstanding-surveys-table">
               <thead><tr>
-                <th style={styles.th}>Customer / Contract</th><th style={styles.th}>Postcode</th><th style={styles.th}>Product</th><th style={styles.th}>Sale date</th><th style={styles.th}>Salesperson</th><th style={styles.th}>Branch</th><th style={styles.th}>Action</th>
+                <th style={styles.th}>Customer / Contract</th><th style={styles.th}>Postcode</th><th style={styles.th}>Product</th><th style={styles.th}>Sale date</th><th style={styles.th}>Salesperson</th><th style={styles.th}>Survey progress</th><th style={styles.th}>Action</th>
               </tr></thead>
               <tbody>
                 {loading && <tr><td style={styles.td} colSpan={7}>Loading outstanding surveys…</td></tr>}
@@ -171,7 +201,14 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
                   <td style={styles.td}>{deal.product || "Solar"}</td>
                   <td style={styles.td}>{formatDate(deal.sale_date)}</td>
                   <td style={styles.td}>{deal.salesperson_name || deal.salesperson || "—"}</td>
-                  <td style={styles.td}>{deal.branch || "—"}</td>
+                  <td style={styles.td}>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(24px,1fr))",gap:5,minWidth:140}}>
+                      {["Video","Bill","Checklist","Photos"].map((label,index) => <div key={label} title={label + (deal.surveyProgress?.[index] ? " complete" : " outstanding")}>
+                        <div style={{height:7,borderRadius:99,background:deal.surveyProgress?.[index] ? "#16845b" : "#e5eaf0"}} />
+                        <div style={{fontSize:9,color:deal.surveyProgress?.[index] ? "#16845b" : "#64748b",marginTop:4}}>{label}</div>
+                      </div>)}
+                    </div>
+                  </td>
                   <td style={styles.td}><button type="button" className="outstanding-surveys-open" onClick={() => onSelectDeal?.(deal)}><ExternalLink size={13}/>Open deal</button></td>
                 </tr>)}
               </tbody>
