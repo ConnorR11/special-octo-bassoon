@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 
 import { supabase } from "../lib/supabase"
+import SurveyProgressBar from "../components/SurveyProgressBar"
 
 function formatDate(value) {
   if (!value) return "—"
@@ -45,6 +46,7 @@ function CustomerDetail({
   const [message, setMessage] = useState("")
   const [documents, setDocuments] = useState([])
   const [epvsStatus, setEpvsStatus] = useState("")
+  const [surveyProgress, setSurveyProgress] = useState(["outstanding", "outstanding", "outstanding", "outstanding"])
   const [documentsLoading, setDocumentsLoading] = useState(false)
   const [uploadingCategory, setUploadingCategory] = useState("")
   const [documentError, setDocumentError] = useState("")
@@ -85,6 +87,24 @@ function CustomerDetail({
       const { data, error } = await supabase.from("deal_documents").select("*").eq("deal_id", deal.id).order("created_at", { ascending: false })
       if (error) throw error
       setDocuments(data || [])
+      const [{ data: surveyDocs, error: surveyDocsError }, { data: surveyAnswerRow, error: surveyAnswerError }] = await Promise.all([
+        supabase.from("deal_documents").select("category,survey_section").eq("deal_id", deal.id),
+        supabase.from("deal_survey_answers").select("answers").eq("deal_id", deal.id).maybeSingle(),
+      ])
+      if (surveyDocsError) throw surveyDocsError
+      if (surveyAnswerError) throw surveyAnswerError
+      const docRows = surveyDocs || []
+      const answerValues = Object.values(surveyAnswerRow?.answers || {})
+      const answeredCount = answerValues.filter(value => String(value ?? "").trim()).length
+      const photoSections = ["Front of Property", "Rear of Property", "Side of Property", "Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Loft Access Point", "Loft Roof Truss", "Internet DC Route", "External DC Route", "Proposed Inverter Location", "Proposed Battery Location", "Proposed Canopy Location", "Proposed Panel Layout", "Alternative Roof Elevations", "Existing Solar Equipment", "Existing EV Charger", "High Electrical Usage Items", "Shading Issues"]
+      const savedPhotoSections = new Set(docRows.filter(doc => doc.category === "survey_photos").map(doc => doc.survey_section || "Front of Property"))
+      const photoCount = docRows.filter(doc => doc.category === "survey_photos").length
+      setSurveyProgress([
+        docRows.some(doc => doc.category === "survey_video") ? "complete" : "outstanding",
+        docRows.some(doc => doc.category === "electricity_bill_epvs_waiver") ? "complete" : "outstanding",
+        answeredCount >= 27 ? "complete" : answeredCount > 0 ? "in-progress" : "outstanding",
+        photoSections.every(section => savedPhotoSections.has(section)) ? "complete" : photoCount > 0 ? "in-progress" : "outstanding",
+      ])
       const { data: epvsData, error: epvsError } = await supabase.from("epvs_submissions").select("status,updated_at,created_at").eq("linked_deal_id", deal.id).order("updated_at", { ascending: false }).limit(1).maybeSingle()
       if (epvsError) throw epvsError
       setEpvsStatus(String(epvsData?.status || "Not Submitted"))
@@ -486,6 +506,11 @@ function CustomerDetail({
                 {pipedriveStage}
               </span>
             </div>
+
+            {isSolarDeal && <div style={{ marginTop: "10px", display: "flex", alignItems: "flex-start", gap: "7px" }}>
+              <span style={{ fontSize: "11px", color: "#888", paddingTop: 2, whiteSpace: "nowrap" }}>Survey progress</span>
+              <div style={{ flex: 1, minWidth: 0, maxWidth: 300 }}><SurveyProgressBar progress={surveyProgress} compact /></div>
+            </div>}
 
             {isSolarDeal && <div style={{ marginTop: "10px", display: "flex", alignItems: "center", gap: "7px" }}>
               <span style={{ fontSize: "11px", color: "#888" }}>EPVS status</span>
