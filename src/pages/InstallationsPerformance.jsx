@@ -76,6 +76,28 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
     return matchesYear && matchesProduct
   }), [datedDeals, yearFilter, productFilter])
   const chartData = useMemo(() => {
+    if (grouping === "ytd") {
+      const yesterday = new Date()
+      yesterday.setHours(0, 0, 0, 0)
+      yesterday.setDate(yesterday.getDate() - 1)
+      const cutoffMonth = yesterday.getMonth()
+      const cutoffDay = yesterday.getDate()
+      const allYears = [...new Set(datedDeals.map(deal => deal.parsedInstallationDate.getFullYear()))].sort((a, b) => a - b)
+      return allYears
+        .filter(year => yearFilter === "all" || String(year) === yearFilter)
+        .map(year => {
+          const cutoff = new Date(year, cutoffMonth, cutoffDay)
+          const row = { key: String(year), period: String(year), hoverLabel: `1 Jan – ${cutoff.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} ${year}`, start: new Date(year, 0, 1).getTime() }
+          datedDeals.forEach(deal => {
+            const date = deal.parsedInstallationDate
+            if (date.getFullYear() !== year || date > cutoff || date.getMonth() > cutoffMonth || (date.getMonth() === cutoffMonth && date.getDate() > cutoffDay)) return
+            if (productFilter !== "all" && productLabel(deal) !== productFilter) return
+            const product = productLabel(deal)
+            row[product] = (row[product] || 0) + 1
+          })
+          return row
+        })
+    }
     const rows = makeBuckets(filteredDeals.map(deal => deal.parsedInstallationDate), grouping)
     const rowMap = new Map(rows.map(row => [row.key, row]))
     filteredDeals.forEach(deal => {
@@ -87,7 +109,7 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
       }
     })
     return rows
-  }, [filteredDeals, grouping])
+  }, [datedDeals, filteredDeals, grouping, yearFilter, productFilter])
   const todayKey = dateKey(new Date())
   const upcoming = datedDeals.filter(deal => dateKey(deal.parsedInstallationDate) >= todayKey).length
   const thisYear = datedDeals.filter(deal => deal.parsedInstallationDate.getFullYear() === new Date().getFullYear()).length
@@ -111,9 +133,9 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
     </div>
     <div style={{ background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "20px 18px 10px", minWidth: 0, boxSizing: "border-box" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
-        <div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Jobs by installation start date</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Counts deals with a populated installation_start_date field, stacked by product</p></div>
+        <div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Jobs by installation start date</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Counts deals with a populated installation_start_date field, stacked by product. Year to date compares each year through the same date (yesterday).</p></div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 12, color: "#475569" }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 7 }}>Period<select value={grouping} onChange={event => setGrouping(event.target.value)} style={selectStyle}><option value="week">Week</option><option value="month">Month</option><option value="quarter">Quarter</option><option value="year">Year</option></select></label>
+          <label style={{ display: "flex", alignItems: "center", gap: 7 }}>Period<select value={grouping} onChange={event => setGrouping(event.target.value)} style={selectStyle}><option value="week">Week</option><option value="month">Month</option><option value="quarter">Quarter</option><option value="year">Year</option><option value="ytd">Year to date</option></select></label>
           <label style={{ display: "flex", alignItems: "center", gap: 7 }}>Year<select value={yearFilter} onChange={event => setYearFilter(event.target.value)} style={selectStyle}><option value="all">All time</option>{years.map(year => <option key={year} value={year}>{year}</option>)}</select></label>
           <label style={{ display: "flex", alignItems: "center", gap: 7 }}>Product<select value={productFilter} onChange={event => setProductFilter(event.target.value)} style={selectStyle}><option value="all">All products</option>{products.map(product => <option key={product} value={product}>{product}</option>)}</select></label>
         </div>
