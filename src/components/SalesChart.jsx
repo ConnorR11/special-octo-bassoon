@@ -152,7 +152,9 @@ function SalesChart({ contracts = [] }) {
       if (!deal?.sale_date) return
       const date = new Date(`${String(deal.sale_date).slice(0, 10)}T00:00:00`)
       if (Number.isNaN(date.getTime()) || date.getFullYear() !== year) return
-      if (date.getMonth() > currentMonth || (date.getMonth() === currentMonth && date.getDate() > currentDay)) return
+      const yesterday = new Date(currentYear, currentMonth, currentDay)
+      yesterday.setDate(yesterday.getDate() - 1)
+      if (date > yesterday) return
       const value = Number(deal.net_value || 0)
       if (!Number.isFinite(value) || value <= 0) return
       row[normaliseResult(deal)] += value
@@ -160,7 +162,7 @@ function SalesChart({ contracts = [] }) {
       row.total += value
     })
     return row
-  }), [contracts, years, currentMonth, currentDay])
+  }), [contracts, years, currentYear, currentMonth, currentDay])
 
   const monthlyBalanceData = useMemo(() => {
     if (yearToDate) {
