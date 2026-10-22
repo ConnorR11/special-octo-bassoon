@@ -62,7 +62,7 @@ export default function SolarRework({ onSelectAppointment }) {
   async function saveOpenSolarId(row) {
     const value = normalise(rowEdits[row.appointment_row_id])
     if (!value) { setError("Enter an OpenSolar ID before saving."); return }
-    if (!/^\\d+$/.test(value)) { setError("OpenSolar ID must contain digits only."); return }
+    if (!/^\d+$/.test(value)) { setError("OpenSolar ID must contain digits only."); return }
     setSavingId(row.appointment_row_id)
     setError("")
     try {
