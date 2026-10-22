@@ -72,7 +72,8 @@ export default function SolarRework({ onSelectAppointment }) {
         .or("result.is.null,result.neq.SOLD")
         .order("appointment_date", { ascending: false, nullsFirst: false })
         .order("appointment_row_id", { ascending: false })
-        .range(targetPage * PAGE_SIZE, (targetPage + 1) * PAGE_SIZE)
+      if (activeTab === "unlinked") request = request.range(targetPage * PAGE_SIZE, (targetPage + 1) * PAGE_SIZE)
+      else request = request.limit(1000)
       request = activeTab === "unlinked" ? request.is("open_solar_id", null) : request.not("open_solar_id", "is", null)
       const needle = normalise(query).replace(/[%_,()]/g, " ")
       if (needle) request = request.or("name.ilike.%" + needle + "%,postcode.ilike.%" + needle + "%,address.ilike.%" + needle + "%,phone_number_1.ilike.%" + needle + "%,secondary_phone_number.ilike.%" + needle + "%,email_address.ilike.%" + needle + "%,product.ilike.%" + needle + "%,result.ilike.%" + needle + "%")
@@ -107,8 +108,14 @@ export default function SolarRework({ onSelectAppointment }) {
       setTotalCount(allEligibleCount !== null && linkedEligibleCount !== null
         ? Math.max(0, allEligibleCount - linkedEligibleCount)
         : (count ?? 0))
-      setHasMore(batch.length > PAGE_SIZE)
-      setRows(batch.slice(0, PAGE_SIZE).filter(row => normalise(row.job_type).toLowerCase() === "solar" && normaliseResult(row.result) !== "SOLD" && (activeTab !== "unlinked" ? Boolean(normalise(row.open_solar_id)) : !normalise(row.open_solar_id))))
+      const eligibleBatch = batch.filter(row => normalise(row.job_type).toLowerCase() === "solar" && normaliseResult(row.result) !== "SOLD" && (activeTab !== "unlinked" ? Boolean(normalise(row.open_solar_id)) : !normalise(row.open_solar_id)))
+      const readinessFiltered = activeTab === "ready"
+        ? eligibleBatch.filter(row => getQuoteStages(row).every(stage => stage.complete))
+        : activeTab === "not-ready"
+          ? eligibleBatch.filter(row => !getQuoteStages(row).every(stage => stage.complete))
+          : eligibleBatch
+      setHasMore(activeTab === "unlinked" ? batch.length > PAGE_SIZE : (targetPage + 1) * PAGE_SIZE < readinessFiltered.length)
+      setRows(activeTab === "unlinked" ? eligibleBatch.slice(0, PAGE_SIZE) : readinessFiltered.slice(targetPage * PAGE_SIZE, (targetPage + 1) * PAGE_SIZE))
     } catch (err) {
       console.error("Solar Rework load failed:", err)
       setError(err?.message || "Unable to load historical solar appointments.")
