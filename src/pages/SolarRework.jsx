@@ -32,10 +32,12 @@ export default function SolarRework({ onSelectAppointment }) {
     setError("")
     try {
       let request = supabase.from("appointments")
-        .select("appointment_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,open_solar_id,epvs_calculation")
+        .select("appointment_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,open_solar_id,epvs_calculation,rep_allocated")
         .eq("job_type", "Solar")
         .gte("appointment_date", "2022-11-30")
         .is("open_solar_id", null)
+        .not("rep_allocated", "is", null)
+        .neq("rep_allocated", "")
         .or("result.is.null,result.neq.SOLD")
         .order("appointment_date", { ascending: false, nullsFirst: false })
         .order("appointment_row_id", { ascending: false })
