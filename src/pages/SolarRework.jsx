@@ -80,7 +80,7 @@ export default function SolarRework({ onSelectAppointment }) {
         .order("appointment_date", { ascending: false, nullsFirst: false })
         .order("appointment_row_id", { ascending: false })
       if (activeTab === "unlinked") request = request.range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE)
-      else request = request.limit(1000)
+      else request = request.limit(150)
       request = activeTab === "unlinked" ? request.is("open_solar_id", null) : request.not("open_solar_id", "is", null)
       const needle = normalise(query).replace(/[%_,()]/g, " ")
       if (needle) request = request.or("name.ilike.%" + needle + "%,postcode.ilike.%" + needle + "%,address.ilike.%" + needle + "%,phone_number_1.ilike.%" + needle + "%,secondary_phone_number.ilike.%" + needle + "%,email_address.ilike.%" + needle + "%,product.ilike.%" + needle + "%,result.ilike.%" + needle + "%")
@@ -99,7 +99,7 @@ export default function SolarRework({ onSelectAppointment }) {
       setReadyCount(readyRows.length)
       setNotReadyCount(notReadyRows.length)
       const readinessFiltered = activeTab === "ready" ? readyRows : activeTab === "not-ready" ? notReadyRows : eligibleBatch
-      setHasMore(activeTab === "unlinked" ? batch.length > PAGE_SIZE : (targetPage + 1) * PAGE_SIZE < readinessFiltered.length)
+      setHasMore(activeTab === "unlinked" ? batch.length > PAGE_SIZE : batch.length === 150 || (targetPage + 1) * PAGE_SIZE < readinessFiltered.length)
       setRows(activeTab === "unlinked" ? eligibleBatch.slice(0, PAGE_SIZE) : readinessFiltered.slice(targetPage * PAGE_SIZE, (targetPage + 1) * PAGE_SIZE))
     } catch (err) {
       if (requestId !== loadRequestId.current) return
@@ -140,7 +140,7 @@ export default function SolarRework({ onSelectAppointment }) {
             .or("result.is.null,result.neq.SOLD")
             .not("open_solar_id", "is", null)
             .order("appointment_row_id", { ascending: false })
-            .limit(5000)
+            .limit(150)
         ])
         if (unlinkedResult.error) throw unlinkedResult.error
         if (linkedResult.error) throw linkedResult.error
