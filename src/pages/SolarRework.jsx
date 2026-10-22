@@ -68,7 +68,7 @@ export default function SolarRework({ onSelectAppointment }) {
         .or("result.is.null,result.neq.SOLD")
       const [allCountResult, linkedResult, epvsResult] = await Promise.all([
         baseEligible(),
-        baseEligible().not("open_solar_id", "is", null).neq("open_solar_id", ""),
+        baseEligible().not("open_solar_id", "is", null),
         baseEligible().not("epvs_calculation", "is", null),
       ])
       const statsError = allCountResult.error || linkedResult.error || epvsResult.error
