@@ -125,7 +125,7 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
   const total = filteredDeals.length
   const [leadTimeGrouping, setLeadTimeGrouping] = useState("year")
   const [leadTimeYearFilter, setLeadTimeYearFilter] = useState("all")
-  const leadTimeYears = useMemo(() => [...new Set((Array.isArray(deals) ? deals : []).map(deal => parseLocalDate(deal.installation_start_date)).filter(Boolean).map(date => String(date.getFullYear())))].sort((a, b) => Number(b) - Number(a)), [deals])
+  const leadTimeYears = useMemo(() => [...new Set((Array.isArray(deals) ? deals : []).map(deal => parseLocalDate(deal.sale_date)).filter(Boolean).map(date => String(date.getFullYear())))].sort((a, b) => Number(b) - Number(a)), [deals])
   const leadTimeByYear = useMemo(() => {
     const byPeriod = new Map()
     const lineProducts = ["Windows", "Solar", "ASHP", "Other"]
@@ -133,9 +133,9 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
       const soldDate = parseLocalDate(deal.sale_date)
       const fitDate = parseLocalDate(deal.installation_start_date)
       if (!soldDate || !fitDate || fitDate < soldDate) return
-      if (leadTimeYearFilter !== "all" && String(fitDate.getFullYear()) !== leadTimeYearFilter) return
+      if (leadTimeYearFilter !== "all" && String(soldDate.getFullYear()) !== leadTimeYearFilter) return
       const product = productLabel(deal)
-      const bucket = getBucket(fitDate, leadTimeGrouping)
+      const bucket = getBucket(soldDate, leadTimeGrouping)
       const days = Math.round((fitDate.getTime() - soldDate.getTime()) / 86400000)
       const current = byPeriod.get(bucket.key) || { key: bucket.key, period: bucket.label, hoverLabel: bucket.hoverLabel || bucket.label, start: bucket.start.getTime(), jobs: {}, totalDays: {} }
       current.jobs[product] = (current.jobs[product] || 0) + 1
@@ -231,7 +231,7 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
         <div>
           <h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Average days from sale to fit start</h2>
-          <p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Average calendar days between sold date and installation start date. Jobs without both dates, or with a fit date before the sold date, are excluded.</p>
+          <p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Average calendar days from sale to installation start, grouped and filtered by sale date. Jobs without both dates, or with a fit date before the sold date, are excluded.</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 12, color: "#475569" }}>
           <label style={{ display: "flex", alignItems: "center", gap: 7 }}>Period<select value={leadTimeGrouping} onChange={event => setLeadTimeGrouping(event.target.value)} style={selectStyle}><option value="week">Week</option><option value="month">Month</option><option value="quarter">Quarter</option><option value="year">Year</option></select></label>
