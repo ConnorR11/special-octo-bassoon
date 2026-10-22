@@ -129,7 +129,6 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={PoundSterling} label="Commissions" active={isActive("commissions")} onClick={() => navigate("commissions")}/>
             <NavItem icon={Trophy} label="Sales KPI" active={isActive("sales-kpi")} onClick={() => navigate("sales-kpi")}/>
             <NavItem icon={ClipboardCheck} label="Outstanding Solar Surveys" active={isActive("outstanding-solar-surveys")} onClick={() => navigate("outstanding-solar-surveys")}/>
-            <NavItem icon={Sun} label="Solar Rework" active={isActive("solar-rework")} onClick={() => navigate("solar-rework")}/>
           </Folder>
 
 
@@ -181,6 +180,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={CalendarDays} label="Installations Performance" active={isActive("installations-performance")} onClick={() => navigate("installations-performance")}/>
             <NavItem icon={Database} label="Data Clean" active={isActive("data-clean")} onClick={() => navigate("data-clean")}/>
             <NavItem icon={Sun} label="Solar Backend" active={isActive("solar-backend")} onClick={() => navigate("solar-backend")}/>
+            <NavItem icon={Sun} label="Solar Rework" active={isActive("solar-rework")} onClick={() => navigate("solar-rework")}/>
             <NavItem icon={Boxes} label="Unit Analysis" active={isActive("unit-analysis")} onClick={() => navigate("unit-analysis")}/>
             <NavItem icon={UserCog} label="Users" active={isActive("users")} onClick={() => navigate("users")}/>
             <NavItem icon={ClipboardList} label="Tasks" active={isActive("tasks")} onClick={() => navigate("tasks")}/>
