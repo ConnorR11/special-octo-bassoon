@@ -217,7 +217,7 @@ export default function SolarRework({ onSelectAppointment }) {
       <div style={{ overflowX: "auto" }}>
         <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 1080, fontSize: 12 }}>
           <thead><tr style={{ background: "#f8fafc", textAlign: "left", color: "#475569" }}>
-            {["Appointment / customer","Date",activeTab === "linked" ? "Quote readiness" : "Result / suitability","Contact","OpenSolar","EPVS data",""].map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
+            {["Appointment / customer","Date",activeTab === "linked" ? "Quote readiness" : "Result / suitability","Contact","OpenSolar","Result",""].map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
           </tr></thead>
           <tbody>
             {!loading && visibleRows.length === 0 && <tr><td colSpan={7} style={{ padding: 28, textAlign: "center", color: "#64748b" }}>{"No appointments match these filters."}</td></tr>}
@@ -225,8 +225,7 @@ export default function SolarRework({ onSelectAppointment }) {
               const result = normaliseResult(row.result)
               const unsuitable = UNSUITABLE_RESULTS.has(result)
               const linked = row.open_solar_id !== null && row.open_solar_id !== undefined && String(row.open_solar_id).trim() !== ""
-              const hasEpvs = row.epvs_calculation !== null && row.epvs_calculation !== undefined
-              return <tr key={row.appointment_row_id} style={{ borderBottom: "1px solid #edf2f7" }}>
+                            return <tr key={row.appointment_row_id} style={{ borderBottom: "1px solid #edf2f7" }}>
                 <td style={{ padding: "12px 13px", maxWidth: 240 }}>
                   <div style={{ fontWeight: 700, color: "#0f172a" }}>{normalise(row.name) || "Name missing"}</div>
                   <div style={{ ...muted, marginTop: 4 }}>{normalise(row.address)}{row.address && row.postcode ? ", " : ""}{normalise(row.postcode)}</div>
@@ -266,7 +265,7 @@ export default function SolarRework({ onSelectAppointment }) {
                     </button>
                   </div>}
                 </td>
-                <td style={{ padding: "12px 13px" }}>{hasEpvs ? <span style={{ color: "#047857" }}>Present</span> : <span style={{ color: "#64748b" }}>Missing</span>}</td>
+                <td style={{ padding: "12px 13px", minWidth: 100 }}><span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, background: "#f1f5f9", color: "#475569", fontSize: 11, fontWeight: 700 }}>{formatStatus(row)}</span></td>
                 <td style={{ padding: "12px 13px" }}>
                   <button onClick={() => onSelectAppointment?.(row)} style={{ border: "1px solid #cbd5e1", borderRadius: 7, padding: "7px 9px", background: "#fff", color: "#0f172a", display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", cursor: "pointer", fontSize: 11, fontWeight: 650 }}>
                     <UserRound size={13}/> Open appointment <ExternalLink size={11}/>
