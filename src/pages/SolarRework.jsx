@@ -62,6 +62,7 @@ export default function SolarRework({ onSelectAppointment }) {
 
   async function loadRows(targetPage = page) {
     const requestId = ++loadRequestId.current
+    if (activeTab === "quotes-sent") { setRows([]); setHasMore(false); setError(""); setLoading(false); return }
     if (!supabase) { setError("Supabase is not configured."); setLoading(false); return }
     setLoading(true)
     setRows([])
@@ -170,6 +171,7 @@ export default function SolarRework({ onSelectAppointment }) {
         { value: "unlinked", label: "Unlinked appointments" },
         { value: "not-ready", label: "Linked · Not ready" },
         { value: "ready", label: "Linked · Ready to quote" },
+        { value: "quotes-sent", label: "Quotes Sent" },
       ].map(tab => <button key={tab.value} onClick={() => { if (tab.value !== activeTab) { setRows([]); setLoading(true); setActiveTab(tab.value); setPage(0) } }} style={{ border: "1px solid " + (activeTab === tab.value ? "#0f766e" : "#d7dee5"), borderBottom: activeTab === tab.value ? "3px solid #0f766e" : "1px solid #d7dee5", borderRadius: "8px 8px 0 0", padding: "10px 14px", background: activeTab === tab.value ? "#f0fdfa" : "#fff", color: activeTab === tab.value ? "#0f766e" : "#475569", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{tab.label}</button>)}
     </div>
 
@@ -195,7 +197,7 @@ export default function SolarRework({ onSelectAppointment }) {
 
     <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap" }}>
-        <div style={{ fontWeight: 700, fontSize: 13 }}>{loading ? "Loading appointments…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${page * PAGE_SIZE + rows.length} ${activeTab !== "unlinked" ? "linked" : "unlinked"} appointments`}</div>
+        <div style={{ fontWeight: 700, fontSize: 13 }}>{activeTab === "quotes-sent" ? "Quotes Sent" : loading ? "Loading appointments…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${page * PAGE_SIZE + rows.length} ${activeTab !== "unlinked" ? "linked" : "unlinked"} appointments`}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button disabled={page === 0 || loading} onClick={() => setPage(value => Math.max(0, value - 1))} style={{ ...selectStyle, padding: "0 12px" }}>Previous</button>
           <span style={muted}>Page {page + 1} of {pageCount}</span>
@@ -208,7 +210,9 @@ export default function SolarRework({ onSelectAppointment }) {
             {["Appointment / customer","Date",activeTab !== "unlinked" ? "Quote readiness" : "Result / suitability","Contact","OpenSolar","Result",""].map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
           </tr></thead>
           <tbody>
-            {!loading && visibleRows.length === 0 && <tr><td colSpan={7} style={{ padding: 28, textAlign: "center", color: "#64748b" }}>{"No appointments match these filters."}</td></tr>}
+            {activeTab === "quotes-sent" && <tr><td colSpan={7} style={{ padding: 36, textAlign: "center", color: "#64748b" }}><div style={{ fontWeight: 700, color: "#334155", marginBottom: 6 }}>Quotes Sent is not set up yet</div><div>Once quote sending is implemented, this tab will show appointments with quotes sent.</div></td></tr>}
+            {activeTab !== "quotes-sent" && !loading && visibleRows.length === 0 && <tr><td colSpan={7} style={{ padding: 28, textAlign: "center", color: "#64748b" }}>{"No appointments match these filters."}</td></tr>}
+            {activeTab !== "quotes-sent" && visibleRows.map(row => {
             {visibleRows.map(row => {
               const result = normaliseResult(row.result)
               const unsuitable = UNSUITABLE_RESULTS.has(result)
