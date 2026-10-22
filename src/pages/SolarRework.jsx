@@ -44,7 +44,7 @@ export default function SolarRework({ onSelectAppointment }) {
         if (batch.length < FETCH_SIZE) break
         from += FETCH_SIZE
       }
-      setRows(fetched.filter(row => normaliseResult(row.result) !== "SOLD"))
+      setRows(fetched.filter(row => normalise(row.job_type).toLowerCase() === "solar" && normaliseResult(row.result) !== "SOLD"))
     } catch (err) {
       setError(err?.message || "Unable to load historical solar appointments.")
       setRows([])
