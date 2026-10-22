@@ -87,33 +87,17 @@ export default function SolarRework({ onSelectAppointment }) {
       if (queryError) throw queryError
       const batch = data || []
 
-      // Summary cards use exact counts across the full eligible 2026 dataset, not just this page.
-      const baseEligible = () => supabase.from("appointments")
-        .select("appointment_row_id", { count: "exact", head: true })
-        .eq("job_type", "Solar")
-        .gte("appointment_date", "2026-01-01")
-        .lt("appointment_date", "2027-01-01")
-        .not("rep_allocated", "is", null)
-        .neq("rep_allocated", "")
-        .or("result.is.null,result.neq.SOLD")
-      const [allCountResult, linkedResult, epvsResult] = await Promise.all([
-        baseEligible(),
-        baseEligible().not("open_solar_id", "is", null),
-        baseEligible().not("epvs_calculation", "is", null),
-      ])
-      const statsError = allCountResult.error || linkedResult.error || epvsResult.error
-      const allEligibleCount = allCountResult.error ? null : (allCountResult.count ?? 0)
-      const linkedEligibleCount = linkedResult.error ? null : (linkedResult.count ?? 0)
-      setLinkedCount(linkedEligibleCount ?? 0)
-      setEpvsCount(epvsResult.error ? 0 : (epvsResult.count ?? 0))
-      setTotalCount(allEligibleCount !== null && linkedEligibleCount !== null
-        ? Math.max(0, allEligibleCount - linkedEligibleCount)
-        : totalCount)
+      // Avoid expensive exact-count queries; derive tab counts from the returned linked set.
+      const linkedForCounts = activeTab === "unlinked" ? [] : batch.filter(row => normalise(row.open_solar_id))
+      const readyForCounts = linkedForCounts.filter(row => getQuoteStages(row).every(stage => stage.complete))
+      setLinkedCount(linkedForCounts.length)
+      setReadyCount(readyForCounts.length)
+      setNotReadyCount(linkedForCounts.length - readyForCounts.length)
+      setEpvsCount(batch.filter(row => row.epvs_calculation !== null && row.epvs_calculation !== undefined).length)
+      if (activeTab === "unlinked") setTotalCount(Math.max(totalCount, targetPage * PAGE_SIZE + batch.length))
       const eligibleBatch = batch.filter(row => normalise(row.job_type).toLowerCase() === "solar" && normaliseResult(row.result) !== "SOLD" && (activeTab !== "unlinked" ? Boolean(normalise(row.open_solar_id)) : !normalise(row.open_solar_id)))
       const readyRows = eligibleBatch.filter(row => getQuoteStages(row).every(stage => stage.complete))
       const notReadyRows = eligibleBatch.filter(row => !getQuoteStages(row).every(stage => stage.complete))
-      setReadyCount(readyRows.length)
-      setNotReadyCount(notReadyRows.length)
       const readinessFiltered = activeTab === "ready" ? readyRows : activeTab === "not-ready" ? notReadyRows : eligibleBatch
       setHasMore(activeTab === "unlinked" ? batch.length > PAGE_SIZE : (targetPage + 1) * PAGE_SIZE < readinessFiltered.length)
       setRows(activeTab === "unlinked" ? eligibleBatch.slice(0, PAGE_SIZE) : readinessFiltered.slice(targetPage * PAGE_SIZE, (targetPage + 1) * PAGE_SIZE))
