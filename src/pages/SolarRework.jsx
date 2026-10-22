@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import { AlertCircle, CheckCircle2, ExternalLink, Link2, RefreshCw, Search, Sun, UserRound } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
@@ -58,10 +58,13 @@ export default function SolarRework({ onSelectAppointment }) {
   const [page, setPage] = useState(0)
   const [activeTab, setActiveTab] = useState("unlinked")
   const [linkedReadinessTab, setLinkedReadinessTab] = useState("not-ready")
+  const loadRequestId = useRef(0)
 
   async function loadRows(targetPage = page) {
+    const requestId = ++loadRequestId.current
     if (!supabase) { setError("Supabase is not configured."); setLoading(false); return }
     setLoading(true)
+    setRows([])
     setError("")
     try {
       let request = supabase.from("appointments")
@@ -84,6 +87,7 @@ export default function SolarRework({ onSelectAppointment }) {
       if (suitabilityFilter === "unsuitable") request = request.in("result", ["DELETED", "REMOVED", "INVALID", "DUPLICATE", "NO COVER", "SINGLEHEAD"])
       if (suitabilityFilter === "suitable") request = request.not("result", "in", "(DELETED,REMOVED,INVALID,DUPLICATE,NO COVER,SINGLEHEAD)")
       const { data, error: queryError } = await request
+      if (requestId !== loadRequestId.current) return
       if (queryError) throw queryError
       const batch = data || []
 
@@ -96,12 +100,15 @@ export default function SolarRework({ onSelectAppointment }) {
       setHasMore(activeTab === "unlinked" ? batch.length > PAGE_SIZE : (targetPage + 1) * PAGE_SIZE < readinessFiltered.length)
       setRows(activeTab === "unlinked" ? eligibleBatch.slice(0, PAGE_SIZE) : readinessFiltered.slice(targetPage * PAGE_SIZE, (targetPage + 1) * PAGE_SIZE))
     } catch (err) {
+      if (requestId !== loadRequestId.current) return
       console.error("Solar Rework load failed:", err)
       setError(err?.message || "Unable to load historical solar appointments.")
       setRows([])
       setTotalCount(0)
       setHasMore(false)
-    } finally { setLoading(false) }
+    } finally {
+      if (requestId === loadRequestId.current) setLoading(false)
+    }
   }
 
 
@@ -163,7 +170,7 @@ export default function SolarRework({ onSelectAppointment }) {
         { value: "unlinked", label: "Unlinked appointments" },
         { value: "not-ready", label: "Linked · Not ready" },
         { value: "ready", label: "Linked · Ready to quote" },
-      ].map(tab => <button key={tab.value} onClick={() => { setActiveTab(tab.value); setPage(0) }} style={{ border: "1px solid " + (activeTab === tab.value ? "#0f766e" : "#d7dee5"), borderBottom: activeTab === tab.value ? "3px solid #0f766e" : "1px solid #d7dee5", borderRadius: "8px 8px 0 0", padding: "10px 14px", background: activeTab === tab.value ? "#f0fdfa" : "#fff", color: activeTab === tab.value ? "#0f766e" : "#475569", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{tab.label}</button>)}
+      ].map(tab => <button key={tab.value} onClick={() => { if (tab.value !== activeTab) { setRows([]); setLoading(true); setActiveTab(tab.value); setPage(0) } }} style={{ border: "1px solid " + (activeTab === tab.value ? "#0f766e" : "#d7dee5"), borderBottom: activeTab === tab.value ? "3px solid #0f766e" : "1px solid #d7dee5", borderRadius: "8px 8px 0 0", padding: "10px 14px", background: activeTab === tab.value ? "#f0fdfa" : "#fff", color: activeTab === tab.value ? "#0f766e" : "#475569", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{tab.label}</button>)}
     </div>
 
     <div style={{ ...cardStyle, padding: 13, marginBottom: 14 }}>
