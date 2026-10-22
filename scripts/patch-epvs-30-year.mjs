@@ -64,8 +64,14 @@ if (source.includes("function drawThirtyYearBreakdown")) {
 }
 
 const helper = String.raw`
-function drawThirtyYearBreakdown(pdf, page, ctx, epvs) {
+function drawThirtyYearBreakdown(pdf, page, ctx, epvs, appointment) {
   const projection = epvs?.thirtyYearProjection || {}
+  // Match the EPVS calculator: the admin fee is a Year 1 cost for both
+  // cash and finance contracts, even when the saved projection predates it.
+  const savedAdminFee = epvs?.data?.adminFee ?? appointment?.admin_fee_amount
+  const adminFee = savedAdminFee !== null && savedAdminFee !== undefined && String(savedAdminFee).trim() !== ""
+    ? Math.max(0, Number(savedAdminFee) || 0)
+    : 399
   const scenario = projection?.scenarios?.averageInflation
   const rows = Array.isArray(scenario?.rows)
     ? scenario.rows
@@ -141,8 +147,12 @@ function drawThirtyYearBreakdown(pdf, page, ctx, epvs) {
     x += widths[index]
   })
 
+  const paymentValue = (row) =>
+    valueFrom(row, "yearlyPayment", "payment") -
+    (Number(row?.year) === 1 ? adminFee : 0)
+
   const totalPayments = rows.reduce(
-    (total, row) => total + valueFrom(row, "yearlyPayment", "payment"),
+    (total, row) => total + paymentValue(row),
     0
   )
 
@@ -174,7 +184,7 @@ function drawThirtyYearBreakdown(pdf, page, ctx, epvs) {
     const battery = batteryValue(row)
     const exportBenefit = exportValue(row)
     const benefit = solar + battery + exportBenefit
-    const payment = valueFrom(row, "yearlyPayment", "payment")
+    const payment = paymentValue(row)
     const netAnnual = benefit + payment
     cumulativeBenefit += benefit
     const netPosition = totalPayments + cumulativeBenefit
@@ -258,7 +268,7 @@ if (!source.includes(renderMarker)) {
 let updated = source.replace(renderMarker, helper + "\n" + renderMarker)
 
 const pageMarker = `  title(pdf, page, ctx)\n  let y = ctx.y + 28\n  const width = ctx.width - ctx.padding * 2\n`
-const pageReplacement = `${pageMarker}\n  const pageTitle = String(page?.title || "").trim().toLowerCase()\n  if (pageTitle === "epvs calculations cont." || kind === "epvs_cont" || kind === "epvs_continuation") {\n    drawThirtyYearBreakdown(pdf, page, ctx, epvs)\n    return\n  }\n`
+const pageReplacement = `${pageMarker}\n  const pageTitle = String(page?.title || "").trim().toLowerCase()\n  if (pageTitle === "epvs calculations cont." || kind === "epvs_cont" || kind === "epvs_continuation") {\n    drawThirtyYearBreakdown(pdf, page, ctx, epvs, appointment)\n    return\n  }\n`
 
 if (!updated.includes(pageMarker)) {
   throw new Error("Could not locate the renderPage content marker in GenerateSolarContract.js")
