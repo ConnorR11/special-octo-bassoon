@@ -87,14 +87,6 @@ export default function SolarRework({ onSelectAppointment }) {
       if (queryError) throw queryError
       const batch = data || []
 
-      // One lightweight database-side aggregate supplies the global summary counts.
-      const { data: summary, error: summaryError } = await supabase.rpc("solar_rework_summary_counts")
-      if (summaryError) console.warn("Solar Rework summary counts unavailable:", summaryError.message)
-      if (summary && !summaryError) {
-        setTotalCount(Number(summary.unlinked ?? 0))
-        setLinkedCount(Number(summary.linked ?? 0))
-        setEpvsCount(Number(summary.with_epvs ?? 0))
-      }
       const eligibleBatch = batch.filter(row => normalise(row.job_type).toLowerCase() === "solar" && normaliseResult(row.result) !== "SOLD" && (activeTab !== "unlinked" ? Boolean(normalise(row.open_solar_id)) : !normalise(row.open_solar_id)))
       const readyRows = eligibleBatch.filter(row => getQuoteStages(row).every(stage => stage.complete))
       const notReadyRows = eligibleBatch.filter(row => !getQuoteStages(row).every(stage => stage.complete))
