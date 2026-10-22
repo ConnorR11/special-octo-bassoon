@@ -3,7 +3,7 @@ import { AlertCircle, CheckCircle2, ExternalLink, Link2, RefreshCw, Search, Sun,
 import { supabase } from "../lib/supabase"
 
 const PAGE_SIZE = 100
-const FETCH_SIZE = 1000
+const FETCH_SIZE = 250
 const UNSUITABLE_RESULTS = new Set(["DELETED", "REMOVED", "INVALID", "DUPLICATE", "NO COVER", "SINGLEHEAD"])
 
 function normalise(value) { return String(value ?? "").trim() }
@@ -32,20 +32,27 @@ export default function SolarRework({ onSelectAppointment }) {
       const fetched = []
       let from = 0
       while (true) {
+        // Exact case-insensitive match and database-side link filtering avoid scanning unrelated appointments.
         const { data, error: queryError } = await supabase
           .from("appointments")
           .select("appointment_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,open_solar_id,epvs_calculation")
-          .ilike("job_type", "%solar%")
+          .ilike("job_type", "solar")
+          .or("open_solar_id.is.null,open_solar_id.eq.")
           .order("appointment_date", { ascending: false, nullsFirst: false })
           .range(from, from + FETCH_SIZE - 1)
         if (queryError) throw queryError
         const batch = data || []
-        fetched.push(...batch)
+        fetched.push(...batch.filter(row =>
+          normalise(row.job_type).toLowerCase() === "solar" &&
+          normaliseResult(row.result) !== "SOLD" &&
+          !normalise(row.open_solar_id)
+        ))
         if (batch.length < FETCH_SIZE) break
         from += FETCH_SIZE
       }
-      setRows(fetched.filter(row => normalise(row.job_type).toLowerCase() === "solar" && normaliseResult(row.result) !== "SOLD" && (row.open_solar_id === null || row.open_solar_id === undefined || String(row.open_solar_id).trim() === "")))
+      setRows(fetched)
     } catch (err) {
+      console.error("Solar Rework load failed:", err)
       setError(err?.message || "Unable to load historical solar appointments.")
       setRows([])
     } finally {
@@ -124,7 +131,7 @@ export default function SolarRework({ onSelectAppointment }) {
           <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search name, postcode, phone, email…" style={{ ...inputStyle, width: "100%", paddingLeft: 33, boxSizing: "border-box" }} />
         </div>
         <select value={linkFilter} onChange={event => setLinkFilter(event.target.value)} style={selectStyle}>
-          <option value="all">All OpenSolar links</option><option value="unlinked">Unlinked — manual matching</option><option value="linked">Already linked</option>
+          <option value="all">All unlinked OpenSolar appointments</option><option value="unlinked">Unlinked — manual matching</option>
         </select>
         <select value={suitabilityFilter} onChange={event => setSuitabilityFilter(event.target.value)} style={selectStyle}>
           <option value="all">All suitability statuses</option><option value="suitable">Potentially reworkable</option><option value="unsuitable">Unsuitable status</option>
