@@ -65,7 +65,7 @@ export default function SolarRework({ onSelectAppointment }) {
     setError("")
     try {
       let request = supabase.from("appointments")
-        .select("appointment_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,open_solar_id,epvs_calculation,rep_allocated", { count: "exact" })
+        .select("appointment_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,open_solar_id,epvs_calculation,rep_allocated")
         .eq("job_type", "Solar")
         .gte("appointment_date", "2026-01-01")
         .lt("appointment_date", "2027-01-01")
@@ -74,7 +74,7 @@ export default function SolarRework({ onSelectAppointment }) {
         .or("result.is.null,result.neq.SOLD")
         .order("appointment_date", { ascending: false, nullsFirst: false })
         .order("appointment_row_id", { ascending: false })
-      if (activeTab === "unlinked") request = request.range(targetPage * PAGE_SIZE, (targetPage + 1) * PAGE_SIZE)
+      if (activeTab === "unlinked") request = request.range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE)
       else request = request.limit(1000)
       request = activeTab === "unlinked" ? request.is("open_solar_id", null) : request.not("open_solar_id", "is", null)
       const needle = normalise(query).replace(/[%_,()]/g, " ")
@@ -83,10 +83,9 @@ export default function SolarRework({ onSelectAppointment }) {
       else if (resultFilter !== "all") request = request.eq("result", resultFilter)
       if (suitabilityFilter === "unsuitable") request = request.in("result", ["DELETED", "REMOVED", "INVALID", "DUPLICATE", "NO COVER", "SINGLEHEAD"])
       if (suitabilityFilter === "suitable") request = request.not("result", "in", "(DELETED,REMOVED,INVALID,DUPLICATE,NO COVER,SINGLEHEAD)")
-      const { data, count, error: queryError } = await request
+      const { data, error: queryError } = await request
       if (queryError) throw queryError
       const batch = data || []
-      setTotalCount(count ?? 0)
 
       // Summary cards use exact counts across the full eligible 2026 dataset, not just this page.
       const baseEligible = () => supabase.from("appointments")
@@ -109,7 +108,7 @@ export default function SolarRework({ onSelectAppointment }) {
       setEpvsCount(epvsResult.error ? 0 : (epvsResult.count ?? 0))
       setTotalCount(allEligibleCount !== null && linkedEligibleCount !== null
         ? Math.max(0, allEligibleCount - linkedEligibleCount)
-        : (count ?? 0))
+        : totalCount)
       const eligibleBatch = batch.filter(row => normalise(row.job_type).toLowerCase() === "solar" && normaliseResult(row.result) !== "SOLD" && (activeTab !== "unlinked" ? Boolean(normalise(row.open_solar_id)) : !normalise(row.open_solar_id)))
       const readyRows = eligibleBatch.filter(row => getQuoteStages(row).every(stage => stage.complete))
       const notReadyRows = eligibleBatch.filter(row => !getQuoteStages(row).every(stage => stage.complete))
