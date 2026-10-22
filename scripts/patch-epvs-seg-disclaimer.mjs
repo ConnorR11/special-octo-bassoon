@@ -95,13 +95,13 @@ if (!source.includes(renderMarker)) throw new Error("Could not locate renderPage
 source = source.replace(renderMarker, helper + "\n" + renderMarker)
 
 const pageMarker = `  if (pageTitle === "epvs calculations cont." || kind === "epvs_cont" || kind === "epvs_continuation") {
-    drawThirtyYearBreakdown(pdf, page, ctx, epvs)
+    drawThirtyYearBreakdown(pdf, page, ctx, epvs, appointment)
     return
   }`
 if (!source.includes(pageMarker)) throw new Error("Could not locate EPVS continuation render block")
 
 const replacement = `  if (pageTitle === "epvs calculations cont." || kind === "epvs_cont" || kind === "epvs_continuation") {
-    drawThirtyYearBreakdown(pdf, page, ctx, epvs)
+    drawThirtyYearBreakdown(pdf, page, ctx, epvs, appointment)
     await drawSegDisclaimer(pdf, ctx, appointment)
     return
   }`
