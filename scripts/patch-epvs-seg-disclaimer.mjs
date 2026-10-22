@@ -82,8 +82,8 @@ async function drawSegDisclaimer(pdf, ctx, appointment) {
     pdf.setFont("helvetica", "normal")
     pdf.setFontSize(4.8)
     const auditX = signatureBoxX + signatureBoxW + 4
-    if (audit.signer) pdf.text(`Signed by: ${audit.signer}`, auditX, signatureBoxY + 4)
-    if (audit.timestamp) pdf.text(`Signed: ${audit.timestamp}`, auditX, signatureBoxY + 8)
+    if (audit.signer) pdf.text(`Signed by: \${audit.signer}`, auditX, signatureBoxY + 4)
+    if (audit.timestamp) pdf.text(`Signed: \${audit.timestamp}`, auditX, signatureBoxY + 8)
   } catch (error) {
     console.error("Unable to add SEG disclaimer signature to contract:", error)
   }
