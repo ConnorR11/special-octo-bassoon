@@ -15,7 +15,7 @@ function dateLabel(value) {
 
 export default function SolarRework({ onSelectAppointment }) {
   const [rows, setRows] = useState([])
-  const [totalRows, setTotalRows] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [query, setQuery] = useState("")
@@ -30,40 +30,41 @@ export default function SolarRework({ onSelectAppointment }) {
     setError("")
     try {
       let request = supabase.from("appointments")
-        .select("appointment_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,open_solar_id,epvs_calculation", { count: "exact" })
+        .select("appointment_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,open_solar_id,epvs_calculation")
         .ilike("job_type", "solar")
         .is("open_solar_id", null)
         .or("result.is.null,result.neq.SOLD")
         .order("appointment_date", { ascending: false, nullsFirst: false })
         .order("appointment_row_id", { ascending: false })
-        .range(targetPage * PAGE_SIZE, (targetPage + 1) * PAGE_SIZE - 1)
+        .range(targetPage * PAGE_SIZE, (targetPage + 1) * PAGE_SIZE)
       const needle = normalise(query).replace(/[%_,()]/g, " ")
       if (needle) request = request.or("name.ilike.%" + needle + "%,postcode.ilike.%" + needle + "%,address.ilike.%" + needle + "%,phone_number_1.ilike.%" + needle + "%,secondary_phone_number.ilike.%" + needle + "%,email_address.ilike.%" + needle + "%,product.ilike.%" + needle + "%,result.ilike.%" + needle + "%")
       if (resultFilter === "No result") request = request.is("result", null)
       else if (resultFilter !== "all") request = request.eq("result", resultFilter)
       if (suitabilityFilter === "unsuitable") request = request.in("result", ["DELETED", "REMOVED", "INVALID", "DUPLICATE", "NO COVER", "SINGLEHEAD"])
       if (suitabilityFilter === "suitable") request = request.not("result", "in", "(DELETED,REMOVED,INVALID,DUPLICATE,NO COVER,SINGLEHEAD)")
-      const { data, error: queryError, count } = await request
+      const { data, error: queryError } = await request
       if (queryError) throw queryError
-      setRows((data || []).filter(row => normalise(row.job_type).toLowerCase() === "solar" && normaliseResult(row.result) !== "SOLD" && !normalise(row.open_solar_id)))
-      setTotalRows(count || 0)
+      const batch = data || []
+      setHasMore(batch.length > PAGE_SIZE)
+      setRows(batch.slice(0, PAGE_SIZE).filter(row => normalise(row.job_type).toLowerCase() === "solar" && normaliseResult(row.result) !== "SOLD" && !normalise(row.open_solar_id)))
     } catch (err) {
       console.error("Solar Rework load failed:", err)
       setError(err?.message || "Unable to load historical solar appointments.")
       setRows([])
-      setTotalRows(0)
+      setHasMore(false)
     } finally { setLoading(false) }
   }
 
   useEffect(() => { loadRows(page) }, [page, query, resultFilter, suitabilityFilter])
   useEffect(() => { setPage(0) }, [query, resultFilter, linkFilter, suitabilityFilter])
   const filteredRows = rows
-  const pageCount = Math.max(1, Math.ceil(totalRows / PAGE_SIZE))
+  const pageCount = hasMore ? page + 2 : page + 1
   const visibleRows = filteredRows
   const linkedCount = 0
   const epvsCount = rows.filter(row => row.epvs_calculation !== null && row.epvs_calculation !== undefined).length
   const unsuitableCount = rows.filter(row => UNSUITABLE_RESULTS.has(normaliseResult(row.result))).length
-  const unlinkedCount = totalRows
+  const unlinkedCount = rows.length
   const formatStatus = row => {
     const result = normaliseResult(row.result)
     return result || "No result"
@@ -120,11 +121,11 @@ export default function SolarRework({ onSelectAppointment }) {
 
     <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap" }}>
-        <div style={{ fontWeight: 700, fontSize: 13 }}>{loading ? "Loading appointments…" : `Showing ${totalRows ? page * PAGE_SIZE + 1 : 0}–${Math.min((page + 1) * PAGE_SIZE, totalRows)} of ${totalRows.toLocaleString("en-GB")} appointments`}</div>
+        <div style={{ fontWeight: 700, fontSize: 13 }}>{loading ? "Loading appointments…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${page * PAGE_SIZE + rows.length} appointments`}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button disabled={page === 0 || loading} onClick={() => setPage(value => Math.max(0, value - 1))} style={{ ...selectStyle, padding: "0 12px" }}>Previous</button>
           <span style={muted}>Page {page + 1} of {pageCount}</span>
-          <button disabled={page + 1 >= pageCount || loading} onClick={() => setPage(value => Math.min(pageCount - 1, value + 1))} style={{ ...selectStyle, padding: "0 12px" }}>Next</button>
+          <button disabled={!hasMore || loading} onClick={() => setPage(value => Math.min(pageCount - 1, value + 1))} style={{ ...selectStyle, padding: "0 12px" }}>Next</button>
         </div>
       </div>
       <div style={{ overflowX: "auto" }}>
