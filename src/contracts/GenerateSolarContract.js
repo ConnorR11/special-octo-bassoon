@@ -568,6 +568,16 @@ function body(pdf, content, x, y, width, textRgb, appointment, epvs) {
   return y
 }
 
+function getSignatureAuditText(appointment) {
+  const signer = String(appointment?.customer_signature_name || appointment?.name || "").trim()
+  const rawDate = appointment?.customer_signed_at
+  const date = rawDate ? new Date(rawDate) : null
+  const timestamp = date && !Number.isNaN(date.getTime())
+    ? date.toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Europe/London" })
+    : ""
+  return { signer, timestamp }
+}
+
 async function getExpressFitSignatureImageUrl(appointment) {
   const path = String(appointment?.express_fit_signature_path || "").trim()
   if (!path) return null
@@ -594,6 +604,7 @@ async function drawContractTotalAndSignature(pdf, ctx, data, results, appointmen
   pdf.setFillColor(...ctx.accent)
   pdf.roundedRect(ctx.padding, y, width, cardHeight, 3, 3, "F")
 
+  const signatureAudit = getSignatureAuditText(appointment)
   const signatureUrl = await getSignatureImageUrl(appointment)
   if (signatureUrl) {
     try {
@@ -622,6 +633,13 @@ async function drawContractTotalAndSignature(pdf, ctx, data, results, appointmen
       console.error("Unable to add customer signature to contract:", error)
     }
   }
+  // Keep signer identity and the recorded signing timestamp adjacent to the
+  // signature, using the timestamp captured by the signing workflow.
+  pdf.setTextColor(255, 255, 255)
+  pdf.setFont("helvetica", "normal")
+  pdf.setFontSize(5.2)
+  if (signatureAudit.signer) pdf.text(`Signed by: ${signatureAudit.signer}`, ctx.padding + 7, y + 30)
+  if (signatureAudit.timestamp) pdf.text(`Signed: ${signatureAudit.timestamp}`, ctx.padding + 7, y + 34)
 
   const tableLeft = ctx.padding + width * 0.61
   const tableRight = ctx.padding + width - 7
@@ -739,6 +757,7 @@ async function drawExpressFitSection(pdf, ctx, appointment, y) {
   pdf.setFillColor(255, 255, 255)
   pdf.roundedRect(signatureX, signatureLabelY + 1.5, signatureBoxWidth, signatureBoxHeight, 1.3, 1.3, "F")
 
+  const signatureAudit = getSignatureAuditText(appointment)
   const signatureUrl = await getExpressFitSignatureImageUrl(appointment)
   if (signatureUrl) {
     try {
@@ -756,6 +775,17 @@ async function drawExpressFitSection(pdf, ctx, appointment, y) {
     } catch (error) {
       console.error("Unable to add Express Fit signature to contract:", error)
     }
+  }
+  pdf.setTextColor(...ctx.text)
+  pdf.setFont("helvetica", "normal")
+  pdf.setFontSize(4.5)
+  const auditLines = [
+    signatureAudit.signer ? `Signed by: ${signatureAudit.signer}` : "",
+    signatureAudit.timestamp ? `Signed: ${signatureAudit.timestamp}` : "",
+  ].filter(Boolean)
+  if (auditLines.length) {
+    const auditY = Math.max(top + 7, signatureLabelY - 5)
+    pdf.text(auditLines, signatureX, auditY)
   }
   return top + cardHeight
 }
