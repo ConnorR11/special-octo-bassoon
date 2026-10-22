@@ -94,7 +94,6 @@ function SalesChart({ contracts = [] }) {
   const yearToDate = timeGrouping === "yearToDate"
   const [cpsSelectedYear, setCpsSelectedYear] = useState("all")
   const [cpsTimeGrouping, setCpsTimeGrouping] = useState("month")
-  const [cpsYearToDate, setCpsYearToDate] = useState(false)
   const [cpsSelectedProduct, setCpsSelectedProduct] = useState("All products")
   const [cpsSelectedBranch, setCpsSelectedBranch] = useState("All branches")
   const [showCpsBars, setShowCpsBars] = useState(true)
@@ -269,13 +268,15 @@ function SalesChart({ contracts = [] }) {
   }, [contracts, currentYear, currentMonth, currentDay, selectedProduct, selectedBranch, selectedYear, timeGrouping, yearToDate, availableYears])
 
   const conversionData = useMemo(() => {
-    const todayEnd = new Date(currentYear, currentMonth, currentDay, 23, 59, 59, 999)
+    const yesterdayEnd = new Date(currentYear, currentMonth, currentDay - 1, 23, 59, 59, 999)
     const start = cpsSelectedYear === "all" ? new Date(2025, 0, 1) : new Date(Math.max(2025, Number(cpsSelectedYear)), 0, 1)
-    const requestedEnd = cpsYearToDate ? new Date(Number(cpsSelectedYear === "all" ? currentYear : cpsSelectedYear), currentMonth, currentDay, 23, 59, 59, 999) : (cpsSelectedYear === "all" ? todayEnd : new Date(Number(cpsSelectedYear), 11, 31, 23, 59, 59, 999))
-    const end = requestedEnd > todayEnd ? todayEnd : requestedEnd
+    const selectedYear = cpsSelectedYear === "all" ? currentYear : Number(cpsSelectedYear)
+    const requestedEnd = cpsTimeGrouping === "yearToDate" ? new Date(selectedYear, currentMonth, currentDay - 1, 23, 59, 59, 999) : (cpsSelectedYear === "all" ? yesterdayEnd : new Date(Number(cpsSelectedYear), 11, 31, 23, 59, 59, 999))
+    const end = requestedEnd > yesterdayEnd ? yesterdayEnd : requestedEnd
     const rows = []
     const getBucket = (date) => {
       const year = date.getFullYear()
+      if (cpsTimeGrouping === "yearToDate") return { key: String(year), label: String(year), start: new Date(year, 0, 1) }
       if (cpsTimeGrouping === "year") return { key: String(year), label: String(year), start: new Date(year, 0, 1) }
       if (cpsTimeGrouping === "quarter") {
         const quarter = Math.floor(date.getMonth() / 3) + 1
@@ -296,7 +297,7 @@ function SalesChart({ contracts = [] }) {
       while (cursor <= end) {
         const bucket = getBucket(cursor)
         if (!rows.some(row => row.bucketKey === bucket.key)) rows.push({ bucketKey: bucket.key, month: bucket.label, hoverLabel: bucket.hoverLabel || bucket.label, confirmedOnly: 0, priceOnly: 0, sold: 0, confirmed: 0, confirmedTotal: 0, priceTotal: 0, soldTotal: 0, soldNetValue: 0, solidNetValue: 0, conversionPercent: 0, boPercent: 0, dropOffPercent: 0 })
-        if (cpsTimeGrouping === "year") cursor.setFullYear(cursor.getFullYear() + 1)
+        if (cpsTimeGrouping === "year" || cpsTimeGrouping === "yearToDate") cursor.setFullYear(cursor.getFullYear() + 1)
         else if (cpsTimeGrouping === "quarter") cursor.setMonth(cursor.getMonth() + 3, 1)
         else if (cpsTimeGrouping === "week") cursor.setDate(cursor.getDate() + 7)
         else cursor.setMonth(cursor.getMonth() + 1, 1)
@@ -323,7 +324,7 @@ function SalesChart({ contracts = [] }) {
     })
     rows.forEach(row => { const barC = Math.max(0, row.confirmedTotal); const barP = Math.min(barC, Math.max(0, row.priceTotal)); const barS = Math.min(barP, Math.max(0, row.soldTotal)); row.confirmedOnly = barC - barP; row.priceOnly = barP - barS; row.sold = barS; row.conversionPercent = row.priceTotal > 0 ? row.soldTotal / row.priceTotal * 100 : 0; row.boPercent = row.confirmedTotal > 0 ? ((row.confirmedTotal - row.priceTotal) / row.confirmedTotal) * 100 : 0; row.dropOffPercent = row.soldNetValue > 0 ? ((row.soldNetValue - row.solidNetValue) / row.soldNetValue) * 100 : 0; row.totalPriced = barP })
     return rows
-  }, [cpsAppointments, cpsSelectedProduct, cpsSelectedBranch, cpsSelectedYear, cpsTimeGrouping, cpsYearToDate, currentYear, currentMonth, currentDay])
+  }, [cpsAppointments, cpsSelectedProduct, cpsSelectedBranch, cpsSelectedYear, cpsTimeGrouping, currentYear, currentMonth, currentDay])
 
   const conversionTrendData = useMemo(() => {
     let rows = conversionData
@@ -374,8 +375,7 @@ function SalesChart({ contracts = [] }) {
           <div><h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Sales Conversion by Month</h2><p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Confirmed (C), price left (P) and sold (S) · 2025 onwards · conversion is sold ÷ price left</p></div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, color: "#475569" }}>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Year<select value={cpsSelectedYear} onChange={(event) => setCpsSelectedYear(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="all">All Time</option><option value="2026">2026</option><option value="2025">2025</option></select></label>
-            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Period<select value={cpsTimeGrouping} onChange={(event) => setCpsTimeGrouping(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="year">Year</option><option value="quarter">Quarter</option><option value="month">Month</option><option value="week">Week</option></select></label>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}><input type="checkbox" checked={cpsYearToDate} onChange={event => setCpsYearToDate(event.target.checked)} /> <span>Year to date</span></label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Period<select value={cpsTimeGrouping} onChange={(event) => setCpsTimeGrouping(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b" }}><option value="year">Year</option><option value="quarter">Quarter</option><option value="month">Month</option><option value="week">Week</option><option value="yearToDate">Year to date</option></select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Products<select value={cpsSelectedProduct} onChange={(event) => setCpsSelectedProduct(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", minWidth: 145 }}><option value="All products">All products</option>{["Windows", "Solar & ASHP", "Other"].map(product => <option key={product} value={product}>{product}</option>)}</select></label>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>Branch<select value={cpsSelectedBranch} onChange={event => setCpsSelectedBranch(event.target.value)} style={{ border: "1px solid #d1d5db", borderRadius: 8, background: "#fff", padding: "8px 10px", fontSize: 12, color: "#17212b", minWidth: 145 }}><option value="All branches">All branches</option>{["Central Solar", "Central Windows", "Clearline", "Grampian", "HES"].map(branch => <option key={branch} value={branch}>{branch}</option>)}</select></label>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "4px 8px", border: "1px solid #e2e5e8", borderRadius: 8, background: "#f8fafc" }}><span style={{ fontWeight: 600, color: "#475569" }}>Display</span><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsBars} onChange={event => setShowCpsBars(event.target.checked)} /> <span>Bars</span></label><span style={{ color: "#cbd5e1" }}>|</span><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsBoLine} onChange={event => setShowCpsBoLine(event.target.checked)} /> <span style={{ color: "#2563eb" }}>BO%</span></label><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsConversionLine} onChange={event => setShowCpsConversionLine(event.target.checked)} /> <span style={{ color: "#111827" }}>Conv</span></label><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsDropOffLine} onChange={event => setShowCpsDropOffLine(event.target.checked)} /> <span style={{ color: "#dc2626" }}>Drop Off</span></label><span style={{ color: "#cbd5e1" }}>|</span><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsBoTrend} onChange={event => setShowCpsBoTrend(event.target.checked)} /> <span style={{ color: "#2563eb" }}>BO% trend</span></label><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsConversionTrend} onChange={event => setShowCpsConversionTrend(event.target.checked)} /> <span style={{ color: "#111827" }}>Conv trend</span></label><label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}><input type="checkbox" checked={showCpsDropOffTrend} onChange={event => setShowCpsDropOffTrend(event.target.checked)} /> <span style={{ color: "#dc2626" }}>Drop Off trend</span></label></div>
