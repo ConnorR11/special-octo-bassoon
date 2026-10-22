@@ -31,7 +31,7 @@ export default function SolarRework({ onSelectAppointment }) {
     try {
       let request = supabase.from("appointments")
         .select("appointment_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,open_solar_id,epvs_calculation")
-        .ilike("job_type", "solar")
+        .eq("job_type", "solar")
         .is("open_solar_id", null)
         .or("result.is.null,result.neq.SOLD")
         .order("appointment_date", { ascending: false, nullsFirst: false })
