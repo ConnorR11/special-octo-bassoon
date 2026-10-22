@@ -7,6 +7,32 @@ const UNSUITABLE_RESULTS = new Set(["DELETED", "REMOVED", "INVALID", "DUPLICATE"
 
 function normalise(value) { return String(value ?? "").trim() }
 function normaliseResult(value) { return normalise(value).replace(/\s+/g, " ").toUpperCase() }
+function getQuoteStages(row) {
+  let calculation = row?.epvs_calculation || null
+  if (typeof calculation === "string") {
+    try { calculation = JSON.parse(calculation) } catch { calculation = null }
+  }
+  const data = calculation?.data || {}
+  const present = key => data[key] !== null && data[key] !== undefined && String(data[key]).trim() !== ""
+  const electricityComplete = ["annualConsumption", "importRate", "exportRate", "standingCharge"].every(present) &&
+    Number(data.annualConsumption) > 0 &&
+    ["importRate", "exportRate", "standingCharge"].every(key => Number.isFinite(Number(data[key])) && Number(data[key]) >= 0) &&
+    (!data.existingSolar || (present("existingGeneration") && Number(data.existingGeneration) >= 0))
+  const openSolar = data.openSolar || {}
+  const osArrays = Array.isArray(openSolar.arrays) ? openSolar.arrays : []
+  const arrays = Array.isArray(data.arrays) ? data.arrays : []
+  const designComplete = [...osArrays, ...arrays].some(array => Number(array?.panelCount || 0) > 0 && Number(array?.panelWattage || array?.panel_wattage || 0) > 0)
+  const rateKeys = ["fluxDayImport", "fluxDayExport", "fluxImport", "fluxExport", "fluxPeakImport", "fluxPeakExport", "fluxStandingCharge"]
+  const hasRates = rateKeys.some(key => present(key) && Number.isFinite(Number(data[key])) && Number(data[key]) > 0)
+  const octopusComplete = Boolean(data.fluxRatesRetrievedAt || data.fluxImportTariffCode || data.fluxExportTariffCode) && hasRates
+  const systemCostComplete = present("systemCost") && Number.isFinite(Number(data.systemCost)) && Number(data.systemCost) > 0
+  return [
+    { label: "Current electricity", complete: electricityComplete },
+    { label: "OpenSolar design", complete: designComplete },
+    { label: "Octopus rates", complete: octopusComplete },
+    { label: "System cost", complete: systemCostComplete },
+  ]
+}
 function dateLabel(value) {
   if (!value) return "—"
   const date = new Date(value)
@@ -191,7 +217,7 @@ export default function SolarRework({ onSelectAppointment }) {
       <div style={{ overflowX: "auto" }}>
         <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 1080, fontSize: 12 }}>
           <thead><tr style={{ background: "#f8fafc", textAlign: "left", color: "#475569" }}>
-            {["Appointment / customer","Date","Result / suitability","Contact","OpenSolar","EPVS data",""].map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
+            {["Appointment / customer","Date",activeTab === "linked" ? "Quote readiness" : "Result / suitability","Contact","OpenSolar","EPVS data",""].map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
           </tr></thead>
           <tbody>
             {!loading && visibleRows.length === 0 && <tr><td colSpan={7} style={{ padding: 28, textAlign: "center", color: "#64748b" }}>{"No appointments match these filters."}</td></tr>}
@@ -208,10 +234,25 @@ export default function SolarRework({ onSelectAppointment }) {
                 </td>
                 <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>{dateLabel(row.appointment_date)}</td>
                 <td style={{ padding: "12px 13px" }}>
+                  {activeTab === "linked" ? (() => {
+                    const stages = getQuoteStages(row)
+                    const completed = stages.filter(stage => stage.complete).length
+                    const ready = completed === 4
+                    return <div style={{ minWidth: 190 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(28px,1fr))", gap: 5, marginBottom: 7 }}>
+                        {stages.map(stage => <div key={stage.label} title={stage.label + (stage.complete ? " — complete" : " — incomplete")} style={{ height: 7, borderRadius: 999, background: stage.complete ? "#16a34a" : "#dbe2ea" }} />)}
+                      </div>
+                      <div style={{ fontSize: 10, color: ready ? "#15803d" : "#64748b", fontWeight: 700 }}>{completed}/4 stages complete · {ready ? "Ready to quote" : "Not ready"}</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "3px 8px", marginTop: 5 }}>
+                        {stages.map(stage => <span key={stage.label} title={stage.label} style={{ fontSize: 9, color: stage.complete ? "#15803d" : "#94a3b8" }}>{stage.complete ? "✓" : "○"} {stage.label}</span>)}
+                      </div>
+                    </div>
+                  })() : <>
                   <div style={{ fontWeight: 650 }}>{formatStatus(row)}</div>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 5, borderRadius: 999, padding: "3px 7px", fontSize: 10, fontWeight: 700, background: unsuitable ? "#fff1f2" : "#ecfdf5", color: unsuitable ? "#be123c" : "#047857" }}>
                     {unsuitable ? <AlertCircle size={11}/> : <CheckCircle2 size={11}/>} {unsuitable ? "Unsuitable — retained" : "Potentially reworkable"}
                   </span>
+                  </>}
                 </td>
                 <td style={{ padding: "12px 13px", minWidth: 160 }}>
                   <div>{normalise(row.phone_number_1) || normalise(row.secondary_phone_number) || "No phone"}</div>
