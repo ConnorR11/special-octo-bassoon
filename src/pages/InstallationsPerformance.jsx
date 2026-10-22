@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react"
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell } from "recharts"
+import { ResponsiveContainer, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell } from "recharts"
 import { CalendarDays, RefreshCw, TrendingUp } from "lucide-react"
 import { STAGE_GROUPS, getStageGroup } from "../lib/stageGroups"
 
@@ -117,6 +117,27 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
   const upcoming = datedDeals.filter(deal => dateKey(deal.parsedInstallationDate) >= todayKey).length
   const thisYear = datedDeals.filter(deal => deal.parsedInstallationDate.getFullYear() === new Date().getFullYear()).length
   const total = filteredDeals.length
+  const leadTimeByYear = useMemo(() => {
+    const byYear = new Map()
+    ;(Array.isArray(deals) ? deals : []).forEach(deal => {
+      const soldDate = parseLocalDate(deal.sale_date)
+      const fitDate = parseLocalDate(deal.installation_start_date)
+      if (!soldDate || !fitDate || fitDate < soldDate) return
+      if (productFilter !== "all" && productLabel(deal) !== productFilter) return
+      const year = fitDate.getFullYear()
+      const days = Math.round((fitDate.getTime() - soldDate.getTime()) / 86400000)
+      const current = byYear.get(year) || { year, totalDays: 0, jobs: 0 }
+      current.totalDays += days
+      current.jobs += 1
+      byYear.set(year, current)
+    })
+    return [...byYear.values()].sort((a, b) => a.year - b.year).map(row => ({
+      year: String(row.year),
+      averageDays: row.jobs ? Math.round((row.totalDays / row.jobs) * 10) / 10 : 0,
+      jobs: row.jobs,
+    }))
+  }, [deals, productFilter])
+
   const [expandedBalanceGroups, setExpandedBalanceGroups] = useState({})
   const balanceByStage = useMemo(() => {
     const groups = new Map()
@@ -189,6 +210,21 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
           <Legend verticalAlign="bottom" height={34} wrapperStyle={{ fontSize: 11, paddingTop: 8 }}/>
           {products.filter(product => productFilter === "all" || product === productFilter).map((product, index) => <Bar key={product} dataKey={product} name={product} stackId="products" fill={SERIES_COLORS[index % SERIES_COLORS.length]} radius={product.toLowerCase().includes("window") ? [0, 0, 0, 0] : [3, 3, 0, 0]}/>)}
         </BarChart>
+      </ResponsiveContainer>}
+    </div>
+    <div style={{ background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "20px 18px 10px", marginTop: 18, minWidth: 0, boxSizing: "border-box" }}>
+      <div style={{ marginBottom: 12 }}>
+        <h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Average days from sale to fit start</h2>
+        <p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Average calendar days between sold date and installation start date, grouped by fit start year. Jobs without both dates, or with a fit date before the sold date, are excluded.</p>
+      </div>
+      {loading ? <div style={{ padding: 40, textAlign: "center", color: "#818891", fontSize: 12 }}>Loading installation data…</div> : leadTimeByYear.length === 0 ? <div style={{ padding: 40, textAlign: "center", color: "#818891", fontSize: 12 }}>No jobs have both a sold date and fit start date.</div> : <ResponsiveContainer width="100%" height={300}>
+        <LineChart data={leadTimeByYear} margin={{ top: 8, right: 18, left: 0, bottom: 8 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb"/>
+          <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fill: "#777", fontSize: 11 }}/>
+          <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: "#777", fontSize: 10 }} width={48} label={{ value: "Average days", angle: -90, position: "insideLeft", style: { fill: "#64748b", fontSize: 11 } }}/>
+          <Tooltip formatter={(value, name, props) => [Number(value).toLocaleString("en-GB", { maximumFractionDigits: 1 }) + " days (" + props.payload.jobs + " jobs)", "Average time to fit"]} labelFormatter={label => "Fit start year: " + label}/>
+          <Line type="monotone" dataKey="averageDays" name="Average days to fit" stroke="#1683c7" strokeWidth={3} dot={{ r: 4, fill: "#1683c7" }} activeDot={{ r: 6 }}/>
+        </LineChart>
       </ResponsiveContainer>}
     </div>
   </section>
