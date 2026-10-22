@@ -168,9 +168,9 @@ export default function SolarRework({ onSelectAppointment }) {
 
     <div style={{ display: "flex", gap: 8, marginBottom: 12, borderBottom: "1px solid #dbe3ea", flexWrap: "wrap" }}>
       {[
-        { value: "unlinked", label: `Unlinked appointments (${totalCount.toLocaleString("en-GB")})` },
-        { value: "not-ready", label: `Linked · Not ready (${notReadyCount.toLocaleString("en-GB")})` },
-        { value: "ready", label: `Linked · Ready to quote (${readyCount.toLocaleString("en-GB")})` },
+        { value: "unlinked", label: "Unlinked appointments" },
+        { value: "not-ready", label: "Linked · Not ready" },
+        { value: "ready", label: "Linked · Ready to quote" },
       ].map(tab => <button key={tab.value} onClick={() => { setActiveTab(tab.value); setPage(0) }} style={{ border: "1px solid " + (activeTab === tab.value ? "#0f766e" : "#d7dee5"), borderBottom: activeTab === tab.value ? "3px solid #0f766e" : "1px solid #d7dee5", borderRadius: "8px 8px 0 0", padding: "10px 14px", background: activeTab === tab.value ? "#f0fdfa" : "#fff", color: activeTab === tab.value ? "#0f766e" : "#475569", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{tab.label}</button>)}
     </div>
 
