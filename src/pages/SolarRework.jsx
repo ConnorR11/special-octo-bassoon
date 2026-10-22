@@ -36,7 +36,7 @@ export default function SolarRework({ onSelectAppointment }) {
         .eq("job_type", "Solar")
         .is("open_solar_id", null)
         .or("result.is.null,result.neq.SOLD")
-        .order("appointment_date", { ascending: false, nullsFirst: false })
+        .order("appointment_date", { ascending: true, nullsFirst: false })
         .order("appointment_row_id", { ascending: false })
         .range(targetPage * PAGE_SIZE, (targetPage + 1) * PAGE_SIZE)
       const needle = normalise(query).replace(/[%_,()]/g, " ")
