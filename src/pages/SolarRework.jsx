@@ -16,6 +16,8 @@ function dateLabel(value) {
 export default function SolarRework({ onSelectAppointment }) {
   const [rows, setRows] = useState([])
   const [hasMore, setHasMore] = useState(false)
+  const [savingId, setSavingId] = useState(null)
+  const [rowEdits, setRowEdits] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [query, setQuery] = useState("")
@@ -56,6 +58,27 @@ export default function SolarRework({ onSelectAppointment }) {
     } finally { setLoading(false) }
   }
 
+  async function saveOpenSolarId(row) {
+    const value = normalise(rowEdits[row.appointment_row_id])
+    if (!value) { setError("Enter an OpenSolar ID before saving."); return }
+    if (!/^\\d+$/.test(value)) { setError("OpenSolar ID must contain digits only."); return }
+    setSavingId(row.appointment_row_id)
+    setError("")
+    try {
+      const { error: updateError } = await supabase
+        .from("appointments")
+        .update({ open_solar_id: value })
+        .eq("appointment_row_id", row.appointment_row_id)
+        .is("open_solar_id", null)
+      if (updateError) throw updateError
+      setRows(current => current.filter(item => item.appointment_row_id !== row.appointment_row_id))
+      setRowEdits(current => { const next = { ...current }; delete next[row.appointment_row_id]; return next })
+      await loadRows(page)
+    } catch (err) {
+      console.error("Unable to save OpenSolar ID:", err)
+      setError(err?.message || "Could not save the OpenSolar ID.")
+    } finally { setSavingId(null) }
+  }
   useEffect(() => { loadRows(page) }, [page, query, resultFilter, suitabilityFilter])
   useEffect(() => { setPage(0) }, [query, resultFilter, linkFilter, suitabilityFilter])
   const filteredRows = rows
@@ -157,8 +180,13 @@ export default function SolarRework({ onSelectAppointment }) {
                   <div>{normalise(row.phone_number_1) || normalise(row.secondary_phone_number) || "No phone"}</div>
                   <div style={{ ...muted, marginTop: 4, wordBreak: "break-word" }}>{normalise(row.email_address) || "No email"}</div>
                 </td>
-                <td style={{ padding: "12px 13px" }}>
-                  {linked ? <span style={{ color: "#047857", display: "inline-flex", gap: 5, alignItems: "center" }}><Link2 size={13}/> {row.open_solar_id}</span> : <span style={{ color: "#b45309", display: "inline-flex", gap: 5, alignItems: "center" }}><AlertCircle size={13}/> Unlinked</span>}
+                <td style={{ padding: "10px 12px", minWidth: 200 }}>
+                  {linked ? <span style={{ color: "#047857", display: "inline-flex", gap: 5, alignItems: "center" }}><Link2 size={13}/> {row.open_solar_id}</span> : <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <input value={rowEdits[row.appointment_row_id] ?? ""} onChange={event => setRowEdits(current => ({ ...current, [row.appointment_row_id]: event.target.value }))} placeholder="Enter OpenSolar ID" inputMode="numeric" aria-label={"OpenSolar ID for " + (normalise(row.name) || row.appointment_row_id)} style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} />
+                    <button onClick={() => saveOpenSolarId(row)} disabled={savingId === row.appointment_row_id || !normalise(rowEdits[row.appointment_row_id])} style={{ border: "1px solid #0f766e", borderRadius: 7, padding: "6px 9px", background: "#f0fdfa", color: "#0f766e", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>
+                      {savingId === row.appointment_row_id ? "Saving…" : "Save OpenSolar ID"}
+                    </button>
+                  </div>}
                 </td>
                 <td style={{ padding: "12px 13px" }}>{hasEpvs ? <span style={{ color: "#047857" }}>Present</span> : <span style={{ color: "#64748b" }}>Missing</span>}</td>
                 <td style={{ padding: "12px 13px" }}>
@@ -172,6 +200,6 @@ export default function SolarRework({ onSelectAppointment }) {
         </table>
       </div>
     </div>
-    <div style={{ ...muted, marginTop: 12 }}>This worklist is read-only for now. It does not create OpenSolar links or send messages; those will be added as separate, auditable steps after matching is reviewed.</div>
+    <div style={{ ...muted, marginTop: 12 }}>Saving an OpenSolar ID links the appointment in the CRM and removes it from this unlinked worklist. This does not create a project in OpenSolar.</div>
   </div>
 }
