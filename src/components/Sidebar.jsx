@@ -129,6 +129,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={PoundSterling} label="Commissions" active={isActive("commissions")} onClick={() => navigate("commissions")}/>
             <NavItem icon={Trophy} label="Sales KPI" active={isActive("sales-kpi")} onClick={() => navigate("sales-kpi")}/>
             <NavItem icon={ClipboardCheck} label="Outstanding Solar Surveys" active={isActive("outstanding-solar-surveys")} onClick={() => navigate("outstanding-solar-surveys")}/>
+            <NavItem icon={Sun} label="Solar Rework" active={isActive("solar-rework")} onClick={() => navigate("solar-rework")}/>
           </Folder>
 
 
