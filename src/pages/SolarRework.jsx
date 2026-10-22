@@ -72,12 +72,13 @@ export default function SolarRework({ onSelectAppointment }) {
         baseEligible().not("epvs_calculation", "is", null),
       ])
       const statsError = allCountResult.error || linkedResult.error || epvsResult.error
-      if (statsError) throw statsError
-      const allEligibleCount = allCountResult.count ?? 0
-      const linkedEligibleCount = linkedResult.count ?? 0
-      setLinkedCount(linkedEligibleCount)
-      setEpvsCount(epvsResult.count ?? 0)
-      setTotalCount(allEligibleCount - linkedEligibleCount)
+      const allEligibleCount = allCountResult.error ? null : (allCountResult.count ?? 0)
+      const linkedEligibleCount = linkedResult.error ? null : (linkedResult.count ?? 0)
+      setLinkedCount(linkedEligibleCount ?? 0)
+      setEpvsCount(epvsResult.error ? 0 : (epvsResult.count ?? 0))
+      setTotalCount(allEligibleCount !== null && linkedEligibleCount !== null
+        ? Math.max(0, allEligibleCount - linkedEligibleCount)
+        : (count ?? 0))
       setHasMore(batch.length > PAGE_SIZE)
       setRows(batch.slice(0, PAGE_SIZE).filter(row => normalise(row.job_type).toLowerCase() === "solar" && normaliseResult(row.result) !== "SOLD" && !normalise(row.open_solar_id)))
     } catch (err) {
