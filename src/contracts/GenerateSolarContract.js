@@ -747,7 +747,7 @@ async function drawExpressFitSection(pdf, ctx, appointment, y) {
   // Signature occupies its own column on the right and is anchored to the
   // bottom of the card, so the disclaimer text can never run underneath it.
   const signatureX = ctx.padding + width - signatureBoxWidth - side
-  const signatureLabelY = top + cardHeight - signatureBoxHeight - 7
+  const signatureLabelY = top + cardHeight - signatureBoxHeight - 9.5
   pdf.setTextColor(...ctx.text)
   pdf.setFont("helvetica", "bold")
   pdf.setFontSize(5.5)
@@ -778,13 +778,13 @@ async function drawExpressFitSection(pdf, ctx, appointment, y) {
   }
   pdf.setTextColor(...ctx.text)
   pdf.setFont("helvetica", "normal")
-  pdf.setFontSize(4.5)
+  pdf.setFontSize(6)
   const auditLines = [
     signatureAudit.signer ? `Signed by: ${signatureAudit.signer}` : "",
     signatureAudit.timestamp ? `Signed: ${signatureAudit.timestamp}` : "",
   ].filter(Boolean)
   if (auditLines.length) {
-    const auditY = Math.max(top + 7, signatureLabelY - 5)
+    const auditY = signatureLabelY + signatureBoxHeight + 4
     pdf.text(auditLines, signatureX, auditY)
   }
   return top + cardHeight
