@@ -34,6 +34,7 @@ export default function SolarRework({ onSelectAppointment }) {
       let request = supabase.from("appointments")
         .select("appointment_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,open_solar_id,epvs_calculation")
         .eq("job_type", "Solar")
+        .gte("appointment_date", "2022-11-30")
         .is("open_solar_id", null)
         .or("result.is.null,result.neq.SOLD")
         .order("appointment_date", { ascending: true, nullsFirst: false })
