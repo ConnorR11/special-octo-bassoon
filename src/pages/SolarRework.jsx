@@ -16,6 +16,8 @@ function dateLabel(value) {
 export default function SolarRework({ onSelectAppointment }) {
   const [rows, setRows] = useState([])
   const [totalCount, setTotalCount] = useState(0)
+  const [linkedCount, setLinkedCount] = useState(0)
+  const [epvsCount, setEpvsCount] = useState(0)
   const [hasMore, setHasMore] = useState(false)
   const [savingId, setSavingId] = useState(null)
   const [rowEdits, setRowEdits] = useState({})
@@ -54,6 +56,28 @@ export default function SolarRework({ onSelectAppointment }) {
       if (queryError) throw queryError
       const batch = data || []
       setTotalCount(count ?? 0)
+
+      // Summary cards use exact counts across the full eligible 2026 dataset, not just this page.
+      const baseEligible = () => supabase.from("appointments")
+        .select("appointment_row_id", { count: "exact", head: true })
+        .eq("job_type", "Solar")
+        .gte("appointment_date", "2026-01-01")
+        .lt("appointment_date", "2027-01-01")
+        .not("rep_allocated", "is", null)
+        .neq("rep_allocated", "")
+        .or("result.is.null,result.neq.SOLD")
+      const [allCountResult, linkedResult, epvsResult] = await Promise.all([
+        baseEligible(),
+        baseEligible().not("open_solar_id", "is", null).neq("open_solar_id", ""),
+        baseEligible().not("epvs_calculation", "is", null),
+      ])
+      const statsError = allCountResult.error || linkedResult.error || epvsResult.error
+      if (statsError) throw statsError
+      const allEligibleCount = allCountResult.count ?? 0
+      const linkedEligibleCount = linkedResult.count ?? 0
+      setLinkedCount(linkedEligibleCount)
+      setEpvsCount(epvsResult.count ?? 0)
+      setTotalCount(allEligibleCount - linkedEligibleCount)
       setHasMore(batch.length > PAGE_SIZE)
       setRows(batch.slice(0, PAGE_SIZE).filter(row => normalise(row.job_type).toLowerCase() === "solar" && normaliseResult(row.result) !== "SOLD" && !normalise(row.open_solar_id)))
     } catch (err) {
@@ -92,9 +116,6 @@ export default function SolarRework({ onSelectAppointment }) {
   const filteredRows = rows
   const pageCount = hasMore ? page + 2 : page + 1
   const visibleRows = filteredRows
-  const linkedCount = 0
-  const epvsCount = rows.filter(row => row.epvs_calculation !== null && row.epvs_calculation !== undefined).length
-  const unsuitableCount = rows.filter(row => UNSUITABLE_RESULTS.has(normaliseResult(row.result))).length
   const unlinkedCount = rows.length
   const formatStatus = row => {
     const result = normaliseResult(row.result)
@@ -127,7 +148,6 @@ export default function SolarRework({ onSelectAppointment }) {
       <div style={cardStyle}><div style={muted}>Unlinked to OpenSolar</div><div style={{ fontSize: 25, fontWeight: 750, marginTop: 6 }}>{loading ? "…" : totalCount.toLocaleString("en-GB")}</div><div style={muted}>Ready for manual matching</div></div>
       <div style={cardStyle}><div style={muted}>Already linked</div><div style={{ fontSize: 25, fontWeight: 750, marginTop: 6 }}>{loading ? "…" : linkedCount.toLocaleString("en-GB")}</div><div style={muted}>OpenSolar ID recorded</div></div>
       <div style={cardStyle}><div style={muted}>With EPVS data</div><div style={{ fontSize: 25, fontWeight: 750, marginTop: 6 }}>{loading ? "…" : epvsCount.toLocaleString("en-GB")}</div><div style={muted}>On this page</div></div>
-      <div style={cardStyle}><div style={muted}>Unsuitable statuses</div><div style={{ fontSize: 25, fontWeight: 750, marginTop: 6 }}>{loading ? "…" : unsuitableCount.toLocaleString("en-GB")}</div><div style={muted}>On this page</div></div>
     </div>
 
     <div style={{ ...cardStyle, padding: 13, marginBottom: 14 }}>
