@@ -90,8 +90,8 @@ export default function SolarRework({ onSelectAppointment }) {
       const eligibleBatch = batch.filter(row => normalise(row.job_type).toLowerCase() === "solar" && normaliseResult(row.result) !== "SOLD" && (activeTab !== "unlinked" ? Boolean(normalise(row.open_solar_id)) : !normalise(row.open_solar_id)))
       const readyRows = eligibleBatch.filter(row => getQuoteStages(row).every(stage => stage.complete))
       const notReadyRows = eligibleBatch.filter(row => !getQuoteStages(row).every(stage => stage.complete))
-      setReadyCount(Number(summary?.ready ?? readyRows.length))
-      setNotReadyCount(Number(summary?.not_ready ?? notReadyRows.length))
+      setReadyCount(readyRows.length)
+      setNotReadyCount(notReadyRows.length)
       const readinessFiltered = activeTab === "ready" ? readyRows : activeTab === "not-ready" ? notReadyRows : eligibleBatch
       setHasMore(activeTab === "unlinked" ? batch.length > PAGE_SIZE : (targetPage + 1) * PAGE_SIZE < readinessFiltered.length)
       setRows(activeTab === "unlinked" ? eligibleBatch.slice(0, PAGE_SIZE) : readinessFiltered.slice(targetPage * PAGE_SIZE, (targetPage + 1) * PAGE_SIZE))
