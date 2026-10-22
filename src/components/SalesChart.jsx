@@ -308,6 +308,8 @@ function SalesChart({ contracts = [] }) {
       if (!appointment?.appointment_day) return
       const date = new Date(`${String(appointment.appointment_day).slice(0, 10)}T00:00:00`)
       if (Number.isNaN(date.getTime()) || date < start || date > end) return
+      // In YTD mode, compare every year through the same calendar day as yesterday.
+      if (cpsTimeGrouping === "yearToDate" && (date.getMonth() > yesterdayEnd.getMonth() || (date.getMonth() === yesterdayEnd.getMonth() && date.getDate() > yesterdayEnd.getDate()))) return
       if (cpsSelectedProduct !== "All products") { const jobType = normaliseProduct(appointment.job_type); if (cpsSelectedProduct === "Solar & ASHP" ? !["Solar", "ASHP"].includes(jobType) : cpsSelectedProduct !== jobType) return }
       if (cpsSelectedBranch !== "All branches" && appointment.branch !== cpsSelectedBranch) return
       const row = rowByKey.get(getBucket(date).key)
