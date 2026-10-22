@@ -149,6 +149,7 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
       return result
     })
   }, [deals])
+  const [visibleLeadTimeLines, setVisibleLeadTimeLines] = useState({ Windows: true, Solar: true, ASHP: true, Other: true })
   const [expandedBalanceGroups, setExpandedBalanceGroups] = useState({})
   const balanceByStage = useMemo(() => {
     const groups = new Map()
@@ -234,11 +235,11 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
           <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fill: "#777", fontSize: 11 }}/>
           <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: "#777", fontSize: 10 }} width={48} label={{ value: "Average days", angle: -90, position: "insideLeft", style: { fill: "#64748b", fontSize: 11 } }}/>
           <Tooltip formatter={(value, name, props) => [Number(value).toLocaleString("en-GB", { maximumFractionDigits: 1 }) + " days (" + (props.payload[`${name}Jobs`] || 0) + " jobs)", name]} labelFormatter={label => "Fit start year: " + label}/>
-          <Legend verticalAlign="bottom" height={30} wrapperStyle={{ fontSize: 11, paddingTop: 8 }}/>
-          <Line type="monotone" dataKey="Windows" name="Windows" stroke="#1683c7" strokeWidth={3} connectNulls dot={{ r: 4 }} activeDot={{ r: 6 }}/>
-          <Line type="monotone" dataKey="Solar" name="Solar" stroke="#f59e0b" strokeWidth={3} connectNulls dot={{ r: 4 }} activeDot={{ r: 6 }}/>
-          <Line type="monotone" dataKey="ASHP" name="ASHP" stroke="#7c3aed" strokeWidth={3} connectNulls dot={{ r: 4 }} activeDot={{ r: 6 }}/>
-          <Line type="monotone" dataKey="Other" name="Other" stroke="#10b981" strokeWidth={3} connectNulls dot={{ r: 4 }} activeDot={{ r: 6 }}/>
+          <Legend verticalAlign="bottom" height={30} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} onClick={entry => setVisibleLeadTimeLines(current => ({ ...current, [entry.dataKey]: !current[entry.dataKey] }))} formatter={value => <span style={{ color: visibleLeadTimeLines[value] ? "#475569" : "#b0b7c0", cursor: "pointer", textDecoration: visibleLeadTimeLines[value] ? "none" : "line-through" }}>{value}</span>}/>
+          <Line type="monotone" dataKey="Windows" name="Windows" stroke="#1683c7" strokeWidth={3} connectNulls dot={{ r: 4 }} activeDot={{ r: 6 }} hide={!visibleLeadTimeLines.Windows}/>
+          <Line type="monotone" dataKey="Solar" name="Solar" stroke="#f59e0b" strokeWidth={3} connectNulls dot={{ r: 4 }} activeDot={{ r: 6 }} hide={!visibleLeadTimeLines.Solar}/>
+          <Line type="monotone" dataKey="ASHP" name="ASHP" stroke="#7c3aed" strokeWidth={3} connectNulls dot={{ r: 4 }} activeDot={{ r: 6 }} hide={!visibleLeadTimeLines.ASHP}/>
+          <Line type="monotone" dataKey="Other" name="Other" stroke="#10b981" strokeWidth={3} connectNulls dot={{ r: 4 }} activeDot={{ r: 6 }} hide={!visibleLeadTimeLines.Other}/>
         </LineChart>
       </ResponsiveContainer>}
     </div>
