@@ -76,9 +76,10 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection, data = {} })
         exportBenefit
       const calculatedPayment = valueFrom(row, "yearlyPayment", "payment")
       const isCash = String(data.paymentMethod || "").trim().toLowerCase() === "cash"
+      const adminFee = Math.max(0, Number(data.adminFee || 0))
       const yearlyPayment = isCash
         ? Number(row.year) === 1
-          ? -Math.max(0, Number(data.systemCost || 0))
+          ? -Math.max(0, Number(data.systemCost || 0) + adminFee)
           : 0
         : calculatedPayment
 
@@ -110,7 +111,7 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection, data = {} })
         displayNetPosition: totalPayments + cumulativeBenefit,
       }
     })
-  }, [rows, data.paymentMethod, data.systemCost])
+  }, [rows, data.paymentMethod, data.systemCost, data.adminFee])
 
   const totals = useMemo(
     () =>
