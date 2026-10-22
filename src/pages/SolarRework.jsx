@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react"
-import { AlertCircle, CheckCircle2, ExternalLink, Link2, RefreshCw, Search, Sun, UserRound } from "lucide-react"
+import { ExternalLink, Link2, RefreshCw, Search, Sun, UserRound } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
 const PAGE_SIZE = 20
@@ -259,13 +259,12 @@ export default function SolarRework({ onSelectAppointment }) {
               const unsuitable = UNSUITABLE_RESULTS.has(result)
               const linked = row.open_solar_id !== null && row.open_solar_id !== undefined && String(row.open_solar_id).trim() !== ""
                             return <tr key={row.appointment_row_id} style={{ borderBottom: "1px solid #edf2f7" }}>
-                <td style={{ padding: "12px 13px", maxWidth: 240 }}>
+                <td style={{ padding: "7px 10px", maxWidth: 240 }}>
                   <div style={{ fontWeight: 700, color: "#0f172a" }}>{normalise(row.name) || "Name missing"}</div>
-                  <div style={{ ...muted, marginTop: 4 }}>{normalise(row.address)}{row.address && row.postcode ? ", " : ""}{normalise(row.postcode)}</div>
-                  <div style={{ ...muted, marginTop: 3 }}>ID: {row.appointment_row_id}</div>
+                  <div style={{ ...muted, marginTop: 2 }}>{normalise(row.address)}{row.address && row.postcode ? ", " : ""}{normalise(row.postcode)}</div>
                 </td>
-                <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>{dateLabel(row.appointment_date)}</td>
-                <td style={{ padding: "12px 13px" }}>
+                <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}>{dateLabel(row.appointment_date)}</td>
+                <td style={{ padding: "7px 10px" }}>
                   {activeTab !== "unlinked" ? (() => {
                     const stages = getQuoteStages(row)
                     const completed = stages.filter(stage => stage.complete).length
@@ -281,25 +280,22 @@ export default function SolarRework({ onSelectAppointment }) {
                     </div>
                   })() : <>
                   <div style={{ fontWeight: 650 }}>{formatStatus(row)}</div>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 5, borderRadius: 999, padding: "3px 7px", fontSize: 10, fontWeight: 700, background: unsuitable ? "#fff1f2" : "#ecfdf5", color: unsuitable ? "#be123c" : "#047857" }}>
-                    {unsuitable ? <AlertCircle size={11}/> : <CheckCircle2 size={11}/>} {unsuitable ? "Unsuitable — retained" : "Potentially reworkable"}
-                  </span>
+
                   </>}
                 </td>
-                <td style={{ padding: "12px 13px", minWidth: 160 }}>
-                  <div>{normalise(row.phone_number_1) || normalise(row.secondary_phone_number) || "No phone"}</div>
-                  <div style={{ ...muted, marginTop: 4, wordBreak: "break-word" }}>{normalise(row.email_address) || "No email"}</div>
+                <td style={{ padding: "7px 10px", minWidth: 160 }}>
+                  <div style={{ ...muted, wordBreak: "break-word" }}>{normalise(row.email_address) || "No email"}</div>
                 </td>
-                <td style={{ padding: "10px 12px", minWidth: 200 }}>
-                  {linked ? <span style={{ color: "#047857", display: "inline-flex", gap: 5, alignItems: "center" }}><Link2 size={13}/> {row.open_solar_id}</span> : <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <input value={rowEdits[row.appointment_row_id] ?? ""} onChange={event => setRowEdits(current => ({ ...current, [row.appointment_row_id]: event.target.value }))} placeholder="Enter OpenSolar ID" inputMode="numeric" aria-label={"OpenSolar ID for " + (normalise(row.name) || row.appointment_row_id)} style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} />
-                    <button onClick={() => saveOpenSolarId(row)} disabled={savingId === row.appointment_row_id || !normalise(rowEdits[row.appointment_row_id])} style={{ border: "1px solid #0f766e", borderRadius: 7, padding: "6px 9px", background: "#f0fdfa", color: "#0f766e", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>
-                      {savingId === row.appointment_row_id ? "Saving…" : "Save OpenSolar ID"}
+                <td style={{ padding: "6px 10px", minWidth: 260 }}>
+                  {linked ? <span style={{ color: "#047857", display: "inline-flex", gap: 5, alignItems: "center" }}><Link2 size={13}/> {row.open_solar_id}</span> : <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <input value={rowEdits[row.appointment_row_id] ?? ""} onChange={event => setRowEdits(current => ({ ...current, [row.appointment_row_id]: event.target.value }))} placeholder="Enter OpenSolar ID" inputMode="numeric" aria-label={"OpenSolar ID for " + (normalise(row.name) || row.appointment_row_id)} style={{ ...inputStyle, height: 32, flex: 1, width: "100%", boxSizing: "border-box" }} />
+                    <button onClick={() => saveOpenSolarId(row)} disabled={savingId === row.appointment_row_id || !normalise(rowEdits[row.appointment_row_id])} style={{ border: "1px solid #0f766e", borderRadius: 7, height: 32, padding: "0 10px", whiteSpace: "nowrap", background: "#f0fdfa", color: "#0f766e", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>
+                      {savingId === row.appointment_row_id ? "Saving…" : "Save"}
                     </button>
                   </div>}
                 </td>
-                <td style={{ padding: "12px 13px", minWidth: 100 }}><span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, background: "#f1f5f9", color: "#475569", fontSize: 11, fontWeight: 700 }}>{formatStatus(row)}</span></td>
-                <td style={{ padding: "12px 13px" }}>
+                <td style={{ padding: "7px 10px", minWidth: 100 }}><span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, background: "#f1f5f9", color: "#475569", fontSize: 11, fontWeight: 700 }}>{formatStatus(row)}</span></td>
+                <td style={{ padding: "7px 10px" }}>
                   <button onClick={() => onSelectAppointment?.(row)} style={{ border: "1px solid #cbd5e1", borderRadius: 7, padding: "7px 9px", background: "#fff", color: "#0f172a", display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", cursor: "pointer", fontSize: 11, fontWeight: 650 }}>
                     <UserRound size={13}/> Open appointment <ExternalLink size={11}/>
                   </button>
