@@ -2859,7 +2859,7 @@ export default function EPVSCalculator({
     </button>
   }
 >
-  <div style={{ ...styles.grid, gridTemplateColumns: "repeat(3, minmax(0, 1fr))", alignItems: "end" }}>
+  <div style={{ ...styles.grid, gridTemplateColumns: "repeat(4, minmax(0, 1fr))", alignItems: "end" }}>
 
     <Input
       label="System cost (£)"
@@ -2886,6 +2886,16 @@ export default function EPVSCalculator({
           value
         )
       }
+      min={0}
+    />
+
+    <Input
+      label="Admin fee (£)"
+      inputStyle={styles.paymentInput}
+      type="number"
+      value={data.adminFee}
+      readOnly
+      onChange={() => {}}
       min={0}
     />
 
