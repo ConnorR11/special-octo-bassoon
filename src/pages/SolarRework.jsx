@@ -247,58 +247,31 @@ export default function SolarRework({ onSelectAppointment }) {
         </div>
       </div>
       <div style={{ overflowX: "auto" }}>
-        <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 1080, fontSize: 12 }}>
+        <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 980, fontSize: 12 }}>
           <thead><tr style={{ background: "#f8fafc", textAlign: "left", color: "#475569" }}>
-            {["Appointment / customer","Date",activeTab !== "unlinked" ? "Quote readiness" : "Result / suitability","Contact","OpenSolar","Result",""].map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
+            {["Name","OpenSolar ID","Date","Result","Email","Open"].map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
           </tr></thead>
           <tbody>
-            {activeTab === "quotes-sent" && <tr><td colSpan={7} style={{ padding: 36, textAlign: "center", color: "#64748b" }}><div style={{ fontWeight: 700, color: "#334155", marginBottom: 6 }}>Quotes Sent is not set up yet</div><div>Once quote sending is implemented, this tab will show appointments with quotes sent.</div></td></tr>}
+            {activeTab === "quotes-sent" && <tr><td colSpan={6} style={{ padding: 36, textAlign: "center", color: "#64748b" }}><div style={{ fontWeight: 700, color: "#334155", marginBottom: 6 }}>Quotes Sent is not set up yet</div><div>Once quote sending is implemented, this tab will show appointments with quotes sent.</div></td></tr>}
             {activeTab !== "quotes-sent" && !loading && visibleRows.length === 0 && <tr><td colSpan={7} style={{ padding: 28, textAlign: "center", color: "#64748b" }}>{"No appointments match these filters."}</td></tr>}
             {activeTab !== "quotes-sent" && visibleRows.map(row => {
-              const result = normaliseResult(row.result)
-              const unsuitable = UNSUITABLE_RESULTS.has(result)
               const linked = row.open_solar_id !== null && row.open_solar_id !== undefined && String(row.open_solar_id).trim() !== ""
-                            return <tr key={row.appointment_row_id} style={{ borderBottom: "1px solid #edf2f7" }}>
-                <td style={{ padding: "7px 10px", maxWidth: 240 }}>
+              return <tr key={row.appointment_row_id} style={{ borderBottom: "1px solid #edf2f7" }}>
+                <td style={{ padding: "6px 10px", maxWidth: 240 }}>
                   <div style={{ fontWeight: 700, color: "#0f172a" }}>{normalise(row.name) || "Name missing"}</div>
                   <div style={{ ...muted, marginTop: 2 }}>{normalise(row.address)}{row.address && row.postcode ? ", " : ""}{normalise(row.postcode)}</div>
-                </td>
-                <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}>{dateLabel(row.appointment_date)}</td>
-                <td style={{ padding: "7px 10px" }}>
-                  {activeTab !== "unlinked" ? (() => {
-                    const stages = getQuoteStages(row)
-                    const completed = stages.filter(stage => stage.complete).length
-                    const ready = completed === 4
-                    return <div style={{ minWidth: 190 }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(28px,1fr))", gap: 5, marginBottom: 7 }}>
-                        {stages.map(stage => <div key={stage.label} title={stage.label + (stage.complete ? " — complete" : " — incomplete")} style={{ height: 7, borderRadius: 999, background: stage.complete ? "#16a34a" : "#dbe2ea" }} />)}
-                      </div>
-                      <div style={{ fontSize: 10, color: ready ? "#15803d" : "#64748b", fontWeight: 700 }}>{completed}/4 stages complete · {ready ? "Ready to quote" : "Not ready"}</div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "3px 8px", marginTop: 5 }}>
-                        {stages.map(stage => <span key={stage.label} title={stage.label} style={{ fontSize: 9, color: stage.complete ? "#15803d" : "#94a3b8" }}>{stage.complete ? "✓" : "○"} {stage.label}</span>)}
-                      </div>
-                    </div>
-                  })() : <>
-                  <div style={{ fontWeight: 650 }}>{formatStatus(row)}</div>
-
-                  </>}
-                </td>
-                <td style={{ padding: "7px 10px", minWidth: 160 }}>
-                  <div style={{ ...muted, wordBreak: "break-word" }}>{normalise(row.email_address) || "No email"}</div>
                 </td>
                 <td style={{ padding: "6px 10px", minWidth: 260 }}>
                   {linked ? <span style={{ color: "#047857", display: "inline-flex", gap: 5, alignItems: "center" }}><Link2 size={13}/> {row.open_solar_id}</span> : <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <input value={rowEdits[row.appointment_row_id] ?? ""} onChange={event => setRowEdits(current => ({ ...current, [row.appointment_row_id]: event.target.value }))} placeholder="Enter OpenSolar ID" inputMode="numeric" aria-label={"OpenSolar ID for " + (normalise(row.name) || row.appointment_row_id)} style={{ ...inputStyle, height: 32, flex: 1, width: "100%", boxSizing: "border-box" }} />
-                    <button onClick={() => saveOpenSolarId(row)} disabled={savingId === row.appointment_row_id || !normalise(rowEdits[row.appointment_row_id])} style={{ border: "1px solid #0f766e", borderRadius: 7, height: 32, padding: "0 10px", whiteSpace: "nowrap", background: "#f0fdfa", color: "#0f766e", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>
-                      {savingId === row.appointment_row_id ? "Saving…" : "Save"}
-                    </button>
+                    <button onClick={() => saveOpenSolarId(row)} disabled={savingId === row.appointment_row_id || !normalise(rowEdits[row.appointment_row_id])} style={{ border: "1px solid #0f766e", borderRadius: 7, height: 32, padding: "0 10px", whiteSpace: "nowrap", background: "#f0fdfa", color: "#0f766e", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>{savingId === row.appointment_row_id ? "Saving…" : "Save"}</button>
                   </div>}
                 </td>
-                <td style={{ padding: "7px 10px", minWidth: 100 }}><span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, background: "#f1f5f9", color: "#475569", fontSize: 11, fontWeight: 700 }}>{formatStatus(row)}</span></td>
-                <td style={{ padding: "7px 10px" }}>
-                  <button onClick={() => onSelectAppointment?.(row)} style={{ border: "1px solid #cbd5e1", borderRadius: 7, padding: "7px 9px", background: "#fff", color: "#0f172a", display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", cursor: "pointer", fontSize: 11, fontWeight: 650 }}>
-                    <UserRound size={13}/> Open appointment <ExternalLink size={11}/>
-                  </button>
+                <td style={{ padding: "6px 10px", whiteSpace: "nowrap" }}>{dateLabel(row.appointment_date)}</td>
+                <td style={{ padding: "6px 10px", minWidth: 100 }}><span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, background: "#f1f5f9", color: "#475569", fontSize: 11, fontWeight: 700 }}>{formatStatus(row)}</span></td>
+                <td style={{ padding: "6px 10px", minWidth: 160 }}><div style={{ ...muted, wordBreak: "break-word" }}>{normalise(row.email_address) || "No email"}</div></td>
+                <td style={{ padding: "6px 10px" }}>
+                  <button onClick={() => onSelectAppointment?.(row)} style={{ border: "1px solid #cbd5e1", borderRadius: 7, padding: "6px 8px", background: "#fff", color: "#0f172a", display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", cursor: "pointer", fontSize: 11, fontWeight: 650 }}><UserRound size={13}/> Open <ExternalLink size={11}/></button>
                 </td>
               </tr>
             })}
