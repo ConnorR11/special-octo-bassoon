@@ -43,6 +43,8 @@ export default function SolarRework({ onSelectAppointment }) {
   const [rows, setRows] = useState([])
   const [totalCount, setTotalCount] = useState(0)
   const [linkedCount, setLinkedCount] = useState(0)
+  const [readyCount, setReadyCount] = useState(0)
+  const [notReadyCount, setNotReadyCount] = useState(0)
   const [epvsCount, setEpvsCount] = useState(0)
   const [hasMore, setHasMore] = useState(false)
   const [savingId, setSavingId] = useState(null)
@@ -109,11 +111,11 @@ export default function SolarRework({ onSelectAppointment }) {
         ? Math.max(0, allEligibleCount - linkedEligibleCount)
         : (count ?? 0))
       const eligibleBatch = batch.filter(row => normalise(row.job_type).toLowerCase() === "solar" && normaliseResult(row.result) !== "SOLD" && (activeTab !== "unlinked" ? Boolean(normalise(row.open_solar_id)) : !normalise(row.open_solar_id)))
-      const readinessFiltered = activeTab === "ready"
-        ? eligibleBatch.filter(row => getQuoteStages(row).every(stage => stage.complete))
-        : activeTab === "not-ready"
-          ? eligibleBatch.filter(row => !getQuoteStages(row).every(stage => stage.complete))
-          : eligibleBatch
+      const readyRows = eligibleBatch.filter(row => getQuoteStages(row).every(stage => stage.complete))
+      const notReadyRows = eligibleBatch.filter(row => !getQuoteStages(row).every(stage => stage.complete))
+      setReadyCount(readyRows.length)
+      setNotReadyCount(notReadyRows.length)
+      const readinessFiltered = activeTab === "ready" ? readyRows : activeTab === "not-ready" ? notReadyRows : eligibleBatch
       setHasMore(activeTab === "unlinked" ? batch.length > PAGE_SIZE : (targetPage + 1) * PAGE_SIZE < readinessFiltered.length)
       setRows(activeTab === "unlinked" ? eligibleBatch.slice(0, PAGE_SIZE) : readinessFiltered.slice(targetPage * PAGE_SIZE, (targetPage + 1) * PAGE_SIZE))
     } catch (err) {
@@ -189,8 +191,8 @@ export default function SolarRework({ onSelectAppointment }) {
     <div style={{ display: "flex", gap: 8, marginBottom: 12, borderBottom: "1px solid #dbe3ea", flexWrap: "wrap" }}>
       {[
         { value: "unlinked", label: `Unlinked appointments (${totalCount.toLocaleString("en-GB")})` },
-        { value: "not-ready", label: "Linked · Not ready" },
-        { value: "ready", label: "Linked · Ready to quote" },
+        { value: "not-ready", label: `Linked · Not ready (${notReadyCount.toLocaleString("en-GB")})` },
+        { value: "ready", label: `Linked · Ready to quote (${readyCount.toLocaleString("en-GB")})` },
       ].map(tab => <button key={tab.value} onClick={() => { setActiveTab(tab.value); setPage(0) }} style={{ border: "1px solid " + (activeTab === tab.value ? "#0f766e" : "#d7dee5"), borderBottom: activeTab === tab.value ? "3px solid #0f766e" : "1px solid #d7dee5", borderRadius: "8px 8px 0 0", padding: "10px 14px", background: activeTab === tab.value ? "#f0fdfa" : "#fff", color: activeTab === tab.value ? "#0f766e" : "#475569", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{tab.label}</button>)}
     </div>
 
