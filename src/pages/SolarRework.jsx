@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react"
-import * as XLSX from "xlsx"
 import { AlertCircle, CheckCircle2, ExternalLink, Link2, RefreshCw, Search, Sun, UserRound } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
@@ -27,11 +26,6 @@ export default function SolarRework({ onSelectAppointment }) {
   const [linkFilter, setLinkFilter] = useState("all")
   const [suitabilityFilter, setSuitabilityFilter] = useState("all")
   const [page, setPage] = useState(0)
-  const [bulkProjects, setBulkProjects] = useState([])
-  const [bulkResults, setBulkResults] = useState([])
-  const [bulkError, setBulkError] = useState("")
-  const [bulkLoading, setBulkLoading] = useState(false)
-  const [bulkApplied, setBulkApplied] = useState(false)
 
   async function loadRows(targetPage = page) {
     if (!supabase) { setError("Supabase is not configured."); setLoading(false); return }
@@ -71,129 +65,6 @@ export default function SolarRework({ onSelectAppointment }) {
     } finally { setLoading(false) }
   }
 
-
-  function normaliseName(value) { return normalise(value).toLowerCase().replace(/[^a-z0-9]/g, "") }
-  function normaliseEmail(value) { return normalise(value).toLowerCase() }
-  function normalisePostcode(value) { return normalise(value).toUpperCase().replace(/[^A-Z0-9]/g, "") }
-  function normaliseHeader(value) { return String(value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "") }
-  function findColumn(headers, names) { return headers.find(header => names.includes(normaliseHeader(header))) }
-  function hasDesignEvidence(project) {
-    const v = String(project.designStatus ?? "").trim().toLowerCase()
-    if (project.designFlag !== undefined && project.designFlag !== null && String(project.designFlag).trim() !== "") {
-      const flag = String(project.designFlag).trim().toLowerCase()
-      return ["true", "yes", "1", "complete", "completed", "designed", "ready"].includes(flag) || (Number.isFinite(Number(flag)) && Number(flag) > 0)
-    }
-    if (v) return ["complete", "completed", "designed", "ready", "true", "yes", "has design"].some(x => v.includes(x))
-    return false
-  }
-  async function handleBulkFile(event) {
-    const file = event.target.files?.[0]
-    setBulkError(""); setBulkResults([]); setBulkProjects([]); setBulkApplied(false)
-    if (!file) return
-    setBulkLoading(true)
-    try {
-      const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" })
-      const sheet = workbook.Sheets[workbook.SheetNames[0]]
-      const records = XLSX.utils.sheet_to_json(sheet, { defval: "" })
-      if (!records.length) throw new Error("The file contains no project rows.")
-      const headers = Object.keys(records[0])
-      const idCol = findColumn(headers, ["projectid", "opensolarid", "id", "projectuuid"])
-      const nameCol = findColumn(headers, ["name", "customername", "clientname", "projectname", "contactname"])
-      const emailCol = findColumn(headers, ["email", "emailaddress", "customeremail", "clientemail", "contactemail"])
-      const postcodeCol = findColumn(headers, ["postcode", "postalcode", "zipcode", "customerpostcode", "clientpostcode"])
-      const designCol = findColumn(headers, ["hasdesign", "designavailable", "systemcount", "numberofsystems", "systems", "designstatus", "systemstatus", "design"])
-      if (!idCol || !nameCol || !emailCol || !postcodeCol) {
-        throw new Error("Could not identify the required columns. The file needs OpenSolar project ID, customer name, email and postcode columns.")
-      }
-      const projects = records.map(record => ({
-        projectId: normalise(record[idCol]),
-        name: normalise(record[nameCol]),
-        email: normalise(record[emailCol]),
-        postcode: normalise(record[postcodeCol]),
-        designFlag: designCol && !["designstatus", "systemstatus", "design"].includes(normaliseHeader(designCol)) ? record[designCol] : undefined,
-        designStatus: designCol && ["designstatus", "systemstatus", "design"].includes(normaliseHeader(designCol)) ? record[designCol] : ""
-      })).filter(project => project.projectId && project.name && project.email && project.postcode)
-      if (!projects.length) throw new Error("No usable project rows found. Check the column headers and data.")
-      setBulkProjects(projects)
-      const { data: batchData, error: batchError } = await supabase.from("appointments")
-        .select("appointment_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,open_solar_id,epvs_calculation,rep_allocated")
-        .eq("job_type", "Solar")
-        .gte("appointment_date", "2026-01-01")
-        .lt("appointment_date", "2027-01-01")
-        .is("open_solar_id", null)
-        .not("rep_allocated", "is", null)
-        .neq("rep_allocated", "")
-        .or("result.is.null,result.neq.SOLD")
-        .order("appointment_date", { ascending: false, nullsFirst: false })
-        .order("appointment_row_id", { ascending: false })
-        .limit(100)
-      if (batchError) throw batchError
-      const batchRows = (batchData || []).filter(row => normaliseResult(row.result) !== "SOLD" && !normalise(row.open_solar_id))
-      const results = batchRows.map(row => {
-        const candidates = projects.filter(project =>
-          normaliseName(project.name) === normaliseName(row.name) &&
-          normaliseEmail(project.email) === normaliseEmail(row.email_address) &&
-          normalisePostcode(project.postcode) === normalisePostcode(row.postcode)
-        )
-        if (candidates.length !== 1) return { row, status: candidates.length ? "Ambiguous" : "Unmatched", reason: candidates.length ? "More than one OpenSolar project matches all three fields." : "No project matches name, email and postcode." }
-        const project = candidates[0]
-        const duplicateCrm = batchRows.filter(other =>
-          normaliseName(other.name) === normaliseName(row.name) &&
-          normaliseEmail(other.email_address) === normaliseEmail(row.email_address) &&
-          normalisePostcode(other.postcode) === normalisePostcode(row.postcode)
-        ).length > 1
-        if (duplicateCrm) return { row, project, status: "Ambiguous", reason: "Multiple CRM appointments share these customer details." }
-        if (!hasDesignEvidence(project)) return { row, project, status: "Needs review", reason: "The imported file does not confirm that this project has a design/system." }
-        return { row, project, status: "Matched", reason: "Unique name, email and postcode match; design indicated in file." }
-      })
-      setBulkResults(results)
-    } catch (err) {
-      setBulkError(err?.message || "Unable to read this file.")
-    } finally {
-      setBulkLoading(false)
-      event.target.value = ""
-    }
-  }
-  async function applyBulkMatches() {
-    const matches = bulkResults.filter(result => result.status === "Matched" && /^\\d+$/.test(result.project?.projectId || ""))
-    if (!matches.length) { setBulkError("There are no confirmed matches with numeric OpenSolar IDs to apply."); return }
-    setBulkLoading(true); setBulkError("")
-    let saved = 0
-    try {
-      for (const match of matches) {
-        const { data, error: updateError } = await supabase.from("appointments")
-          .update({ open_solar_id: match.project.projectId })
-          .eq("appointment_row_id", match.row.appointment_row_id)
-          .is("open_solar_id", null)
-          .select("appointment_row_id")
-        if (updateError) throw updateError
-        if (data?.length) saved++
-      }
-      setBulkApplied(true)
-      setBulkError("")
-      await loadRows(page)
-      setBulkResults(current => current.map(result => result.status === "Matched" ? { ...result, status: "Applied", reason: "OpenSolar ID saved to CRM." } : result))
-      if (saved < matches.length) setBulkError(`Applied ${saved} of ${matches.length} matches. Some records may have been linked by another user or changed since preview.`)
-    } catch (err) {
-      setBulkError(err?.message || "Bulk update failed. Some earlier matches may already have been saved; refresh and preview again before retrying.")
-    } finally { setBulkLoading(false) }
-  }
-  function downloadBulkReport() {
-    const report = bulkResults.map(result => ({
-      appointment_row_id: result.row?.appointment_row_id,
-      crm_name: result.row?.name,
-      crm_email: result.row?.email_address,
-      crm_postcode: result.row?.postcode,
-      opensolar_project_id: result.project?.projectId || "",
-      opensolar_name: result.project?.name || "",
-      status: result.status,
-      reason: result.reason
-    }))
-    const worksheet = XLSX.utils.json_to_sheet(report)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Match report")
-    XLSX.writeFile(workbook, "solar-opensolar-match-report.xlsx")
-  }
 
   async function saveOpenSolarId(row) {
     const value = normalise(rowEdits[row.appointment_row_id])
@@ -251,38 +122,7 @@ export default function SolarRework({ onSelectAppointment }) {
 
     {error && <div style={{ marginBottom: 16, padding: 12, borderRadius: 8, background: "#fff1f2", color: "#be123c", fontSize: 12 }}>{error}</div>}
 
-    <div style={{ ...cardStyle, marginBottom: 16 }}>
-      <div style={{ fontSize: 16, fontWeight: 750 }}>Bulk match OpenSolar projects</div>
-      <p style={{ ...muted, marginTop: 6, marginBottom: 12 }}>Upload an OpenSolar CSV or Excel export containing project ID, customer name, email, postcode and a field confirming a design/system. This previews up to 100 appointments on the current page; nothing is written until you apply confirmed matches.</p>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <input type="file" accept=".csv,.xlsx,.xls" onChange={handleBulkFile} disabled={bulkLoading || loading} style={{ fontSize: 12, maxWidth: "100%" }} />
-        {bulkResults.length > 0 && <button onClick={downloadBulkReport} style={{ ...selectStyle, padding: "0 12px" }}>Download match report</button>}
-        {bulkResults.some(result => result.status === "Matched") && <button onClick={applyBulkMatches} disabled={bulkLoading || bulkApplied} style={{ ...selectStyle, background: "#0f766e", borderColor: "#0f766e", color: "#fff", padding: "0 14px", fontWeight: 750 }}>{bulkLoading ? "Processing…" : "Apply confirmed matches"}</button>}
-      </div>
-      {bulkError && <div style={{ marginTop: 10, color: "#be123c", fontSize: 12 }}>{bulkError}</div>}
-      {bulkLoading && <div style={{ marginTop: 10, ...muted }}>Processing file or saving confirmed matches…</div>}
-      {bulkResults.length > 0 && <>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 14, margin: "14px 0", fontSize: 12 }}>
-          <span><b>{bulkResults.filter(r => r.status === "Matched").length}</b> ready to apply</span>
-          <span><b>{bulkResults.filter(r => r.status === "Ambiguous").length}</b> ambiguous</span>
-          <span><b>{bulkResults.filter(r => r.status === "Needs review").length}</b> need design verification</span>
-          <span><b>{bulkResults.filter(r => r.status === "Unmatched").length}</b> unmatched</span>
-          <span><b>{bulkResults.filter(r => r.status === "Applied").length}</b> applied</span>
-        </div>
-        <div style={{ overflowX: "auto", maxHeight: 360 }}>
-          <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 850, fontSize: 12 }}>
-            <thead><tr style={{ textAlign: "left", background: "#f8fafc" }}>{["CRM customer", "Email", "Postcode", "OpenSolar ID", "Status", "Details"].map(h => <th key={h} style={{ padding: 9, borderBottom: "1px solid #e2e8f0" }}>{h}</th>)}</tr></thead>
-            <tbody>{bulkResults.map((r, i) => <tr key={r.row.appointment_row_id} style={{ borderBottom: "1px solid #edf2f7" }}>
-              <td style={{ padding: 9 }}>{r.row.name || "Name missing"}</td><td style={{ padding: 9 }}>{r.row.email_address || "—"}</td><td style={{ padding: 9 }}>{r.row.postcode || "—"}</td><td style={{ padding: 9 }}>{r.project?.projectId || "—"}</td>
-              <td style={{ padding: 9, fontWeight: 700, color: ["Matched", "Applied"].includes(r.status) ? "#047857" : "#b45309" }}>{r.status}</td><td style={{ padding: 9 }}>{r.reason}</td>
-            </tr>)}</tbody>
-          </table>
-        </div>
-      </>}
-    </div>
-
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 18 }}>
-      <div style={cardStyle}><div style={muted}>Non-sold solar appointments</div><div style={{ fontSize: 25, fontWeight: 750, marginTop: 6 }}>{loading ? "…" : totalCount.toLocaleString("en-GB")}</div><div style={muted}>Sold appointments excluded</div></div>
+    <div style={cardStyle}><div style={muted}>Non-sold solar appointments</div><div style={{ fontSize: 25, fontWeight: 750, marginTop: 6 }}>{loading ? "…" : totalCount.toLocaleString("en-GB")}</div><div style={muted}>Sold appointments excluded</div></div>
       <div style={cardStyle}><div style={muted}>Unlinked to OpenSolar</div><div style={{ fontSize: 25, fontWeight: 750, marginTop: 6 }}>{loading ? "…" : totalCount.toLocaleString("en-GB")}</div><div style={muted}>Ready for manual matching</div></div>
       <div style={cardStyle}><div style={muted}>Already linked</div><div style={{ fontSize: 25, fontWeight: 750, marginTop: 6 }}>{loading ? "…" : linkedCount.toLocaleString("en-GB")}</div><div style={muted}>OpenSolar ID recorded</div></div>
       <div style={cardStyle}><div style={muted}>With EPVS data</div><div style={{ fontSize: 25, fontWeight: 750, marginTop: 6 }}>{loading ? "…" : epvsCount.toLocaleString("en-GB")}</div><div style={muted}>On this page</div></div>
