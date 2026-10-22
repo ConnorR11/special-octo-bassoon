@@ -15,6 +15,7 @@ function dateLabel(value) {
 
 export default function SolarRework({ onSelectAppointment }) {
   const [rows, setRows] = useState([])
+  const [totalCount, setTotalCount] = useState(0)
   const [hasMore, setHasMore] = useState(false)
   const [savingId, setSavingId] = useState(null)
   const [rowEdits, setRowEdits] = useState({})
@@ -32,7 +33,7 @@ export default function SolarRework({ onSelectAppointment }) {
     setError("")
     try {
       let request = supabase.from("appointments")
-        .select("appointment_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,open_solar_id,epvs_calculation,rep_allocated")
+        .select("appointment_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,open_solar_id,epvs_calculation,rep_allocated", { count: "exact" })
         .eq("job_type", "Solar")
         .gte("appointment_date", "2026-01-01")
         .lt("appointment_date", "2027-01-01")
@@ -49,15 +50,17 @@ export default function SolarRework({ onSelectAppointment }) {
       else if (resultFilter !== "all") request = request.eq("result", resultFilter)
       if (suitabilityFilter === "unsuitable") request = request.in("result", ["DELETED", "REMOVED", "INVALID", "DUPLICATE", "NO COVER", "SINGLEHEAD"])
       if (suitabilityFilter === "suitable") request = request.not("result", "in", "(DELETED,REMOVED,INVALID,DUPLICATE,NO COVER,SINGLEHEAD)")
-      const { data, error: queryError } = await request
+      const { data, count, error: queryError } = await request
       if (queryError) throw queryError
       const batch = data || []
+      setTotalCount(count ?? 0)
       setHasMore(batch.length > PAGE_SIZE)
       setRows(batch.slice(0, PAGE_SIZE).filter(row => normalise(row.job_type).toLowerCase() === "solar" && normaliseResult(row.result) !== "SOLD" && !normalise(row.open_solar_id)))
     } catch (err) {
       console.error("Solar Rework load failed:", err)
       setError(err?.message || "Unable to load historical solar appointments.")
       setRows([])
+      setTotalCount(0)
       setHasMore(false)
     } finally { setLoading(false) }
   }
@@ -119,8 +122,8 @@ export default function SolarRework({ onSelectAppointment }) {
     {error && <div style={{ marginBottom: 16, padding: 12, borderRadius: 8, background: "#fff1f2", color: "#be123c", fontSize: 12 }}>{error}</div>}
 
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 18 }}>
-      <div style={cardStyle}><div style={muted}>Non-sold solar appointments</div><div style={{ fontSize: 25, fontWeight: 750, marginTop: 6 }}>{loading ? "…" : rows.length.toLocaleString("en-GB")}</div><div style={muted}>Sold appointments excluded</div></div>
-      <div style={cardStyle}><div style={muted}>Unlinked to OpenSolar</div><div style={{ fontSize: 25, fontWeight: 750, marginTop: 6 }}>{loading ? "…" : unlinkedCount.toLocaleString("en-GB")}</div><div style={muted}>Ready for manual matching</div></div>
+      <div style={cardStyle}><div style={muted}>Non-sold solar appointments</div><div style={{ fontSize: 25, fontWeight: 750, marginTop: 6 }}>{loading ? "…" : totalCount.toLocaleString("en-GB")}</div><div style={muted}>Sold appointments excluded</div></div>
+      <div style={cardStyle}><div style={muted}>Unlinked to OpenSolar</div><div style={{ fontSize: 25, fontWeight: 750, marginTop: 6 }}>{loading ? "…" : totalCount.toLocaleString("en-GB")}</div><div style={muted}>Ready for manual matching</div></div>
       <div style={cardStyle}><div style={muted}>Already linked</div><div style={{ fontSize: 25, fontWeight: 750, marginTop: 6 }}>{loading ? "…" : linkedCount.toLocaleString("en-GB")}</div><div style={muted}>OpenSolar ID recorded</div></div>
       <div style={cardStyle}><div style={muted}>With EPVS data</div><div style={{ fontSize: 25, fontWeight: 750, marginTop: 6 }}>{loading ? "…" : epvsCount.toLocaleString("en-GB")}</div><div style={muted}>On this page</div></div>
       <div style={cardStyle}><div style={muted}>Unsuitable statuses</div><div style={{ fontSize: 25, fontWeight: 750, marginTop: 6 }}>{loading ? "…" : unsuitableCount.toLocaleString("en-GB")}</div><div style={muted}>On this page</div></div>
