@@ -58,7 +58,13 @@ const SERIES_COLORS = ["#1683c7", "#f59e0b", "#7c3aed", "#10b981", "#ef4444", "#
 const STAGE_COLORS = ["#1683c7", "#f59e0b", "#7c3aed", "#10b981", "#ef4444", "#64748b", "#db2777", "#0d9488", "#a16207", "#84cc16"]
 
 function productLabel(deal) {
-  return String(deal.product || "").trim() || "Unspecified"
+  const value = String(deal.product || "").trim()
+  if (!value) return "Other"
+  const normalized = value.toLowerCase()
+  if (normalized.includes("window") || normalized.includes("door")) return "Windows"
+  if (normalized.includes("solar") || normalized.includes("pv")) return "Solar"
+  if (normalized.includes("ashp") || normalized.includes("air source") || normalized.includes("heat pump")) return "ASHP"
+  return "Other"
 }
 
 export default function InstallationsPerformance({ deals = [], loading = false, onRefresh }) {
@@ -119,25 +125,30 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
   const total = filteredDeals.length
   const leadTimeByYear = useMemo(() => {
     const byYear = new Map()
+    const lineProducts = ["Windows", "Solar", "ASHP", "Other"]
     ;(Array.isArray(deals) ? deals : []).forEach(deal => {
       const soldDate = parseLocalDate(deal.sale_date)
       const fitDate = parseLocalDate(deal.installation_start_date)
       if (!soldDate || !fitDate || fitDate < soldDate) return
-      if (productFilter !== "all" && productLabel(deal) !== productFilter) return
+      const product = productLabel(deal)
       const year = fitDate.getFullYear()
       const days = Math.round((fitDate.getTime() - soldDate.getTime()) / 86400000)
-      const current = byYear.get(year) || { year, totalDays: 0, jobs: 0 }
-      current.totalDays += days
-      current.jobs += 1
-      byYear.set(year, current)
+      const key = String(year)
+      const current = byYear.get(key) || { year: key, jobs: {}, totalDays: {} }
+      current.jobs[product] = (current.jobs[product] || 0) + 1
+      current.totalDays[product] = (current.totalDays[product] || 0) + days
+      byYear.set(key, current)
     })
-    return [...byYear.values()].sort((a, b) => a.year - b.year).map(row => ({
-      year: String(row.year),
-      averageDays: row.jobs ? Math.round((row.totalDays / row.jobs) * 10) / 10 : 0,
-      jobs: row.jobs,
-    }))
-  }, [deals, productFilter])
-
+    return [...byYear.values()].sort((a, b) => Number(a.year) - Number(b.year)).map(row => {
+      const result = { year: row.year }
+      lineProducts.forEach(product => {
+        const jobs = row.jobs[product] || 0
+        result[product] = jobs ? Math.round((row.totalDays[product] / jobs) * 10) / 10 : null
+        result[`${product}Jobs`] = jobs
+      })
+      return result
+    })
+  }, [deals])
   const [expandedBalanceGroups, setExpandedBalanceGroups] = useState({})
   const balanceByStage = useMemo(() => {
     const groups = new Map()
@@ -222,8 +233,12 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb"/>
           <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fill: "#777", fontSize: 11 }}/>
           <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: "#777", fontSize: 10 }} width={48} label={{ value: "Average days", angle: -90, position: "insideLeft", style: { fill: "#64748b", fontSize: 11 } }}/>
-          <Tooltip formatter={(value, name, props) => [Number(value).toLocaleString("en-GB", { maximumFractionDigits: 1 }) + " days (" + props.payload.jobs + " jobs)", "Average time to fit"]} labelFormatter={label => "Fit start year: " + label}/>
-          <Line type="monotone" dataKey="averageDays" name="Average days to fit" stroke="#1683c7" strokeWidth={3} dot={{ r: 4, fill: "#1683c7" }} activeDot={{ r: 6 }}/>
+          <Tooltip formatter={(value, name, props) => [Number(value).toLocaleString("en-GB", { maximumFractionDigits: 1 }) + " days (" + (props.payload[`${name}Jobs`] || 0) + " jobs)", name]} labelFormatter={label => "Fit start year: " + label}/>
+          <Legend verticalAlign="bottom" height={30} wrapperStyle={{ fontSize: 11, paddingTop: 8 }}/>
+          <Line type="monotone" dataKey="Windows" name="Windows" stroke="#1683c7" strokeWidth={3} connectNulls dot={{ r: 4 }} activeDot={{ r: 6 }}/>
+          <Line type="monotone" dataKey="Solar" name="Solar" stroke="#f59e0b" strokeWidth={3} connectNulls dot={{ r: 4 }} activeDot={{ r: 6 }}/>
+          <Line type="monotone" dataKey="ASHP" name="ASHP" stroke="#7c3aed" strokeWidth={3} connectNulls dot={{ r: 4 }} activeDot={{ r: 6 }}/>
+          <Line type="monotone" dataKey="Other" name="Other" stroke="#10b981" strokeWidth={3} connectNulls dot={{ r: 4 }} activeDot={{ r: 6 }}/>
         </LineChart>
       </ResponsiveContainer>}
     </div>
