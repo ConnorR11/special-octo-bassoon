@@ -569,7 +569,7 @@ function body(pdf, content, x, y, width, textRgb, appointment, epvs) {
 }
 
 function getSignatureAuditText(appointment, timestampField = "customer_signed_at") {
-  const signer = String(appointment?.customer_signature_name || appointment?.name || "").trim()
+  const signer = String(appointment?.signee_name || appointment?.customer_signature_name || appointment?.name || "").trim()
   const rawDate = appointment?.[timestampField]
   const date = rawDate ? new Date(rawDate) : null
   const timestamp = date && !Number.isNaN(date.getTime())
