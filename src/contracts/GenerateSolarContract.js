@@ -568,9 +568,9 @@ function body(pdf, content, x, y, width, textRgb, appointment, epvs) {
   return y
 }
 
-function getSignatureAuditText(appointment) {
+function getSignatureAuditText(appointment, timestampField = "customer_signed_at") {
   const signer = String(appointment?.customer_signature_name || appointment?.name || "").trim()
-  const rawDate = appointment?.customer_signed_at
+  const rawDate = appointment?.[timestampField]
   const date = rawDate ? new Date(rawDate) : null
   const timestamp = date && !Number.isNaN(date.getTime())
     ? date.toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Europe/London" })
@@ -757,7 +757,7 @@ async function drawExpressFitSection(pdf, ctx, appointment, y) {
   pdf.setFillColor(255, 255, 255)
   pdf.roundedRect(signatureX, signatureLabelY + 1.5, signatureBoxWidth, signatureBoxHeight, 1.3, 1.3, "F")
 
-  const signatureAudit = getSignatureAuditText(appointment)
+  const signatureAudit = getSignatureAuditText(appointment, "express_fit_signed_at")
   const signatureUrl = await getExpressFitSignatureImageUrl(appointment)
   if (signatureUrl) {
     try {
