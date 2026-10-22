@@ -46,6 +46,7 @@ export default function SolarRework({ onSelectAppointment }) {
   const [readyCount, setReadyCount] = useState(0)
   const [notReadyCount, setNotReadyCount] = useState(0)
   const [epvsCount, setEpvsCount] = useState(0)
+  const [tabCounts, setTabCounts] = useState({ unlinked: null, notReady: null, ready: null })
   const [hasMore, setHasMore] = useState(false)
   const [savingId, setSavingId] = useState(null)
   const [rowEdits, setRowEdits] = useState({})
@@ -113,6 +114,47 @@ export default function SolarRework({ onSelectAppointment }) {
   }
 
 
+  // Load tab totals independently from the table request so badge counts never block or reset the visible list.
+  useEffect(() => {
+    let cancelled = false
+    async function loadTabCounts() {
+      if (!supabase) return
+      try {
+        const base = () => supabase.from("appointments")
+          .select("appointment_row_id", { count: "exact", head: true })
+          .eq("job_type", "Solar")
+          .gte("appointment_date", "2026-01-01")
+          .lt("appointment_date", "2027-01-01")
+          .not("rep_allocated", "is", null)
+          .neq("rep_allocated", "")
+          .or("result.is.null,result.neq.SOLD")
+        const [unlinkedResult, linkedResult] = await Promise.all([
+          base().is("open_solar_id", null),
+          supabase.from("appointments")
+            .select("appointment_row_id,epvs_calculation")
+            .eq("job_type", "Solar")
+            .gte("appointment_date", "2026-01-01")
+            .lt("appointment_date", "2027-01-01")
+            .not("rep_allocated", "is", null)
+            .neq("rep_allocated", "")
+            .or("result.is.null,result.neq.SOLD")
+            .not("open_solar_id", "is", null)
+            .order("appointment_row_id", { ascending: false })
+            .limit(5000)
+        ])
+        if (unlinkedResult.error) throw unlinkedResult.error
+        if (linkedResult.error) throw linkedResult.error
+        const linkedRows = (linkedResult.data || []).filter(row => normalise(row.appointment_row_id))
+        const ready = linkedRows.filter(row => getQuoteStages(row).every(stage => stage.complete)).length
+        if (!cancelled) setTabCounts({ unlinked: unlinkedResult.count ?? 0, notReady: linkedRows.length - ready, ready })
+      } catch (err) {
+        console.warn("Solar Rework tab totals could not be loaded:", err)
+      }
+    }
+    loadTabCounts()
+    return () => { cancelled = true }
+  }, [])
+
   async function saveOpenSolarId(row) {
     const value = normalise(rowEdits[row.appointment_row_id])
     if (!value) { setError("Enter an OpenSolar ID before saving."); return }
@@ -168,11 +210,11 @@ export default function SolarRework({ onSelectAppointment }) {
 
     <div style={{ display: "flex", gap: 8, marginBottom: 12, borderBottom: "1px solid #dbe3ea", flexWrap: "wrap" }}>
       {[
-        { value: "unlinked", label: "Unlinked appointments" },
-        { value: "not-ready", label: "Linked · Not ready" },
-        { value: "ready", label: "Linked · Ready to quote" },
+        { value: "unlinked", label: "Unlinked appointments", count: tabCounts.unlinked },
+        { value: "not-ready", label: "Linked · Not ready", count: tabCounts.notReady },
+        { value: "ready", label: "Linked · Ready to quote", count: tabCounts.ready },
         { value: "quotes-sent", label: "Quotes Sent" },
-      ].map(tab => <button key={tab.value} onClick={() => { if (tab.value !== activeTab) { setRows([]); setLoading(true); setActiveTab(tab.value); setPage(0) } }} style={{ border: "1px solid " + (activeTab === tab.value ? "#0f766e" : "#d7dee5"), borderBottom: activeTab === tab.value ? "3px solid #0f766e" : "1px solid #d7dee5", borderRadius: "8px 8px 0 0", padding: "10px 14px", background: activeTab === tab.value ? "#f0fdfa" : "#fff", color: activeTab === tab.value ? "#0f766e" : "#475569", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{tab.label}</button>)}
+      ].map(tab => <button key={tab.value} onClick={() => { if (tab.value !== activeTab) { setRows([]); setLoading(true); setActiveTab(tab.value); setPage(0) } }} style={{ border: "1px solid " + (activeTab === tab.value ? "#0f766e" : "#d7dee5"), borderBottom: activeTab === tab.value ? "3px solid #0f766e" : "1px solid #d7dee5", borderRadius: "8px 8px 0 0", padding: "10px 14px", background: activeTab === tab.value ? "#f0fdfa" : "#fff", color: activeTab === tab.value ? "#0f766e" : "#475569", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{tab.label}{tab.count !== undefined && <span style={{ marginLeft: 7, display: "inline-flex", minWidth: 20, height: 20, alignItems: "center", justifyContent: "center", padding: "0 5px", borderRadius: 999, background: activeTab === tab.value ? "#ccfbf1" : "#eef2f6", color: activeTab === tab.value ? "#0f766e" : "#475569", fontSize: 10, fontWeight: 800 }}>{tab.count === null ? "…" : tab.count.toLocaleString("en-GB")}</span>}</button>)}
     </div>
 
     <div style={{ ...cardStyle, padding: 13, marginBottom: 14 }}>
