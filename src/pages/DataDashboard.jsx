@@ -450,17 +450,13 @@ function DataDashboard() {
   }, [prontoSidRows, prontoSidSearch, prontoStatusFilter])
 
   const totalLeads = useMemo(
-    () =>
-      rows.reduce(
-        (total, row) => total + row.lead_count,
-        0
-      ),
-    [rows]
+    () => rows.reduce((total, row) => total + (selectedLeadType ? Number(row[selectedLeadType] || 0) : Number(row.lead_count || 0)), 0),
+    [rows, selectedLeadType]
   )
 
   const monthsWithData = useMemo(
-    () => rows.filter((row) => row.lead_count > 0),
-    [rows]
+    () => rows.filter((row) => (selectedLeadType ? Number(row[selectedLeadType] || 0) : Number(row.lead_count || 0)) > 0),
+    [rows, selectedLeadType]
   )
 
   const averageMonthly = monthsWithData.length
@@ -982,7 +978,7 @@ function DataDashboard() {
                 }}
               />
               <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-              {[...typeNames].sort((a, b) => {
+              {[...typeNames].filter((type) => !selectedLeadType || type === selectedLeadType).sort((a, b) => {
                 const stackPriority = (type) => {
                   if (type === "Windows") return 0
                   if (type === "Solar") return 1
