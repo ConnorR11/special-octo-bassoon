@@ -730,6 +730,14 @@ export default function EPVSCalculator({
       customerName: saved.customerName || appointment?.name || "",
       address: saved.address || appointment?.address || "",
       postcode: saved.postcode || appointment?.postcode || "",
+      // Solar admin fee is a separate customer cost and is paid in Year 1,
+      // regardless of whether the system is purchased with cash or finance.
+      adminFee:
+        appointment?.admin_fee_amount !== null &&
+        appointment?.admin_fee_amount !== undefined &&
+        String(appointment.admin_fee_amount).trim() !== ""
+          ? Math.max(0, Number(appointment.admin_fee_amount) || 0)
+          : 399,
     }
   }, [appointment])
 
@@ -1263,6 +1271,7 @@ export default function EPVSCalculator({
   const thirtyYearProjection = useMemo(() => {
     const systemCost = Number(data.systemCost || 0)
     const deposit = Number(data.deposit || 0)
+    const adminFee = Math.max(0, Number(data.adminFee || 0))
     // EPVS panel degradation:
     // Year 1 uses the first-year manufacturer degradation figure.
     // Years 2+ use the ongoing annual degradation figure.
@@ -1355,14 +1364,15 @@ export default function EPVSCalculator({
         const isCashPayment = paymentMethod === "cash"
         // Calculate finance payments inline so this projection cannot
         // reference a missing block-scoped financeAnnualPayment variable.
-        // Cash pays the full system cost in Year 1, then zero.
+        // Cash pays the system cost in Year 1; the admin fee is also
+        // counted in Year 1 for both cash and finance purchases.
         const yearlyPayment = isCashPayment
-          ? (year === 1 ? systemCostValue : 0)
+          ? (year === 1 ? systemCostValue + adminFee : 0)
           : (
               !isCashPayment && year <= Number(data.financeTerm || 0)
                 ? monthlyPaymentForYear(data) * 12
                 : 0
-            ) + (year === 1 ? deposit : 0)
+            ) + (year === 1 ? deposit + adminFee : 0)
 
         const netAnnualBenefit = yearModel.annualSaving - yearlyPayment
         cumulativePosition += netAnnualBenefit
