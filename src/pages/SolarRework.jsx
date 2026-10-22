@@ -115,7 +115,20 @@ export default function SolarRework({ onSelectAppointment }) {
       })).filter(project => project.projectId && project.name && project.email && project.postcode)
       if (!projects.length) throw new Error("No usable project rows found. Check the column headers and data.")
       setBulkProjects(projects)
-      const batchRows = rows.slice(0, 100)
+      const { data: batchData, error: batchError } = await supabase.from("appointments")
+        .select("appointment_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,open_solar_id,epvs_calculation,rep_allocated")
+        .eq("job_type", "Solar")
+        .gte("appointment_date", "2026-01-01")
+        .lt("appointment_date", "2027-01-01")
+        .is("open_solar_id", null)
+        .not("rep_allocated", "is", null)
+        .neq("rep_allocated", "")
+        .or("result.is.null,result.neq.SOLD")
+        .order("appointment_date", { ascending: false, nullsFirst: false })
+        .order("appointment_row_id", { ascending: false })
+        .limit(100)
+      if (batchError) throw batchError
+      const batchRows = (batchData || []).filter(row => normaliseResult(row.result) !== "SOLD" && !normalise(row.open_solar_id))
       const results = batchRows.map(row => {
         const candidates = projects.filter(project =>
           normaliseName(project.name) === normaliseName(row.name) &&
