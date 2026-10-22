@@ -43,6 +43,7 @@ import SolarBillFile from "./pages/SolarBillFile"
 import UnitAnalysis from "./pages/UnitAnalysis"
 import EPVSApplications from "./pages/EPVSApplications"
 import OutstandingSolarSurveys from "./pages/OutstandingSolarSurveys"
+import SolarRework from "./pages/SolarRework"
 
 const DEALS_PAGE_SIZE = 50
 const REPORTING_PAGE_SIZE = 1000
@@ -258,6 +259,8 @@ function App() {
     pageContent = <SolarBackend onSelectAppointment={handleAppointmentSelect}/>
   } else if (page === "outstanding-solar-surveys") {
     pageContent = <OutstandingSolarSurveys onSelectDeal={deal => handleDealSelect(deal, page)}/>
+  } else if (page === "solar-rework") {
+    pageContent = <SolarRework onSelectAppointment={handleAppointmentSelect}/>
   } else if (page === "unit-analysis") {
     pageContent = <UnitAnalysis/>
   } else if (page === "epvs-applications") {
