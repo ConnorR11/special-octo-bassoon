@@ -213,7 +213,6 @@ export default function SolarRework({ onSelectAppointment }) {
             {activeTab === "quotes-sent" && <tr><td colSpan={7} style={{ padding: 36, textAlign: "center", color: "#64748b" }}><div style={{ fontWeight: 700, color: "#334155", marginBottom: 6 }}>Quotes Sent is not set up yet</div><div>Once quote sending is implemented, this tab will show appointments with quotes sent.</div></td></tr>}
             {activeTab !== "quotes-sent" && !loading && visibleRows.length === 0 && <tr><td colSpan={7} style={{ padding: 28, textAlign: "center", color: "#64748b" }}>{"No appointments match these filters."}</td></tr>}
             {activeTab !== "quotes-sent" && visibleRows.map(row => {
-            {visibleRows.map(row => {
               const result = normaliseResult(row.result)
               const unsuitable = UNSUITABLE_RESULTS.has(result)
               const linked = row.open_solar_id !== null && row.open_solar_id !== undefined && String(row.open_solar_id).trim() !== ""
