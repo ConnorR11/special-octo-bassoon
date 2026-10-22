@@ -15,3 +15,5 @@ if (!source.includes(oldBlock)) {
 source = source.replace(oldBlock, newBlock)
 fs.writeFileSync(filePath, source)
 console.log("Positioned SEG disclaimer card dynamically between EPVS table and footer")
+
+// Signature audit readability patch follows.
