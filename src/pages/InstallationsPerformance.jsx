@@ -123,24 +123,27 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
   const upcoming = datedDeals.filter(deal => dateKey(deal.parsedInstallationDate) >= todayKey).length
   const thisYear = datedDeals.filter(deal => deal.parsedInstallationDate.getFullYear() === new Date().getFullYear()).length
   const total = filteredDeals.length
+  const [leadTimeGrouping, setLeadTimeGrouping] = useState("year")
+  const [leadTimeYearFilter, setLeadTimeYearFilter] = useState("all")
+  const leadTimeYears = useMemo(() => [...new Set((Array.isArray(deals) ? deals : []).map(deal => parseLocalDate(deal.installation_start_date)).filter(Boolean).map(date => String(date.getFullYear())))].sort((a, b) => Number(b) - Number(a)), [deals])
   const leadTimeByYear = useMemo(() => {
-    const byYear = new Map()
+    const byPeriod = new Map()
     const lineProducts = ["Windows", "Solar", "ASHP", "Other"]
     ;(Array.isArray(deals) ? deals : []).forEach(deal => {
       const soldDate = parseLocalDate(deal.sale_date)
       const fitDate = parseLocalDate(deal.installation_start_date)
       if (!soldDate || !fitDate || fitDate < soldDate) return
+      if (leadTimeYearFilter !== "all" && String(fitDate.getFullYear()) !== leadTimeYearFilter) return
       const product = productLabel(deal)
-      const year = fitDate.getFullYear()
+      const bucket = getBucket(fitDate, leadTimeGrouping)
       const days = Math.round((fitDate.getTime() - soldDate.getTime()) / 86400000)
-      const key = String(year)
-      const current = byYear.get(key) || { year: key, jobs: {}, totalDays: {} }
+      const current = byPeriod.get(bucket.key) || { key: bucket.key, period: bucket.label, hoverLabel: bucket.hoverLabel || bucket.label, start: bucket.start.getTime(), jobs: {}, totalDays: {} }
       current.jobs[product] = (current.jobs[product] || 0) + 1
       current.totalDays[product] = (current.totalDays[product] || 0) + days
-      byYear.set(key, current)
+      byPeriod.set(bucket.key, current)
     })
-    return [...byYear.values()].sort((a, b) => Number(a.year) - Number(b.year)).map(row => {
-      const result = { year: row.year }
+    return [...byPeriod.values()].sort((a, b) => a.start - b.start).map(row => {
+      const result = { period: row.period, hoverLabel: row.hoverLabel }
       lineProducts.forEach(product => {
         const jobs = row.jobs[product] || 0
         result[product] = jobs ? Math.round((row.totalDays[product] / jobs) * 10) / 10 : null
@@ -148,7 +151,7 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
       })
       return result
     })
-  }, [deals])
+  }, [deals, leadTimeGrouping, leadTimeYearFilter])
   const [visibleLeadTimeLines, setVisibleLeadTimeLines] = useState({ Windows: true, Solar: true, ASHP: true, Other: true })
   const [expandedBalanceGroups, setExpandedBalanceGroups] = useState({})
   const balanceByStage = useMemo(() => {
@@ -225,16 +228,22 @@ export default function InstallationsPerformance({ deals = [], loading = false, 
       </ResponsiveContainer>}
     </div>
     <div style={{ background: "#fff", border: "1px solid #e2e5e8", borderRadius: 12, padding: "20px 18px 10px", marginTop: 18, minWidth: 0, boxSizing: "border-box" }}>
-      <div style={{ marginBottom: 12 }}>
-        <h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Average days from sale to fit start</h2>
-        <p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Average calendar days between sold date and installation start date, grouped by fit start year. Jobs without both dates, or with a fit date before the sold date, are excluded.</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+        <div>
+          <h2 style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#17212b" }}>Average days from sale to fit start</h2>
+          <p style={{ margin: 0, fontSize: 11, color: "#818891" }}>Average calendar days between sold date and installation start date. Jobs without both dates, or with a fit date before the sold date, are excluded.</p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 12, color: "#475569" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 7 }}>Period<select value={leadTimeGrouping} onChange={event => setLeadTimeGrouping(event.target.value)} style={selectStyle}><option value="week">Week</option><option value="month">Month</option><option value="quarter">Quarter</option><option value="year">Year</option></select></label>
+          <label style={{ display: "flex", alignItems: "center", gap: 7 }}>Year<select value={leadTimeYearFilter} onChange={event => setLeadTimeYearFilter(event.target.value)} style={selectStyle}><option value="all">All years</option>{leadTimeYears.map(year => <option key={year} value={year}>{year}</option>)}</select></label>
+        </div>
       </div>
       {loading ? <div style={{ padding: 40, textAlign: "center", color: "#818891", fontSize: 12 }}>Loading installation data…</div> : leadTimeByYear.length === 0 ? <div style={{ padding: 40, textAlign: "center", color: "#818891", fontSize: 12 }}>No jobs have both a sold date and fit start date.</div> : <ResponsiveContainer width="100%" height={300}>
         <LineChart data={leadTimeByYear} margin={{ top: 8, right: 18, left: 0, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb"/>
-          <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fill: "#777", fontSize: 11 }}/>
+          <XAxis dataKey="period" interval="preserveStartEnd" minTickGap={24} axisLine={false} tickLine={false} tick={{ fill: "#777", fontSize: 11 }}/>
           <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: "#777", fontSize: 10 }} width={48} label={{ value: "Average days", angle: -90, position: "insideLeft", style: { fill: "#64748b", fontSize: 11 } }}/>
-          <Tooltip formatter={(value, name, props) => [Number(value).toLocaleString("en-GB", { maximumFractionDigits: 1 }) + " days (" + (props.payload[`${name}Jobs`] || 0) + " jobs)", name]} labelFormatter={label => "Fit start year: " + label}/>
+          <Tooltip formatter={(value, name, props) => [Number(value).toLocaleString("en-GB", { maximumFractionDigits: 1 }) + " days (" + (props.payload[`${name}Jobs`] || 0) + " jobs)", name]} labelFormatter={(label, payload) => payload?.[0]?.payload?.hoverLabel || label}/>
           <Legend verticalAlign="bottom" height={30} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} onClick={entry => setVisibleLeadTimeLines(current => ({ ...current, [entry.dataKey]: !current[entry.dataKey] }))} formatter={value => <span style={{ color: visibleLeadTimeLines[value] ? "#475569" : "#b0b7c0", cursor: "pointer", textDecoration: visibleLeadTimeLines[value] ? "none" : "line-through" }}>{value}</span>}/>
           <Line type="monotone" dataKey="Windows" name="Windows" stroke="#1683c7" strokeWidth={3} connectNulls dot={{ r: 4 }} activeDot={{ r: 6 }} hide={!visibleLeadTimeLines.Windows}/>
           <Line type="monotone" dataKey="Solar" name="Solar" stroke="#f59e0b" strokeWidth={3} connectNulls dot={{ r: 4 }} activeDot={{ r: 6 }} hide={!visibleLeadTimeLines.Solar}/>
