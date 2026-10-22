@@ -1096,7 +1096,10 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
       ["Solar panels", panelCount > 0 ? `${num(panelCount)} × ${num(panelWattage)} W` : "—"],
       ["Inverter", data.inverterCapacity ? `${num(data.inverterCapacity, 1)} kW` : "—"],
       ["Battery", batteryCapacity > 0 ? `${num(batteryCapacity, 1)} kWh` : "Not included"],
-      ["Estimated generation", results.generation ? `${num(results.generation)} kWh / year` : "—"]
+      ["Estimated generation", results.generation ? `${num(results.generation)} kWh / year` : "—"],
+      ["Payment Method", data?.paymentMethod === "Finance"
+        ? `${num(data?.financeTerm, 0)} years at ${num(data?.financeRate, 2)}%`
+        : "Cash"]
     ]
     y = rows(pdf, rowsData, ctx.padding, y + 2, width, ctx.text)
     body(pdf, page.body, ctx.padding, y + 8, width, ctx.text, appointment, epvs)
