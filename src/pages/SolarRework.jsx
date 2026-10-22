@@ -37,7 +37,7 @@ export default function SolarRework({ onSelectAppointment }) {
           .from("appointments")
           .select("appointment_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,open_solar_id,epvs_calculation")
           .ilike("job_type", "solar")
-          .or("open_solar_id.is.null,open_solar_id.eq.")
+          .is("open_solar_id", null)
           .order("appointment_date", { ascending: false, nullsFirst: false })
           .range(from, from + FETCH_SIZE - 1)
         if (queryError) throw queryError
