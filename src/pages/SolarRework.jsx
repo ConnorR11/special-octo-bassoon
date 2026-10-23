@@ -236,6 +236,15 @@ export default function SolarRework({ onSelectAppointment }) {
         <div style={{ ...muted, display: "flex", alignItems: "center", padding: "0 10px" }}>
           {activeTab === "linked" ? "All linked OpenSolar appointments" : "All unlinked OpenSolar appointments"}
         </div>
+        {activeTab === "unlinked" && <>
+          <select value={yearFilter} onChange={event => setYearFilter(event.target.value)} style={selectStyle}>
+            <option value="all">All years</option>
+            {Array.from({ length: new Date().getFullYear() - 2019 }, (_, index) => String(new Date().getFullYear() - index)).map(year => <option key={year} value={year}>{year}</option>)}
+          </select>
+          <select value={unlinkedSortOrder} onChange={event => setUnlinkedSortOrder(event.target.value)} style={selectStyle}>
+            <option value="desc">Newest to oldest</option><option value="asc">Oldest to newest</option>
+          </select>
+        </>}
         <select value={suitabilityFilter} onChange={event => setSuitabilityFilter(event.target.value)} style={selectStyle}>
           <option value="all">All suitability statuses</option><option value="suitable">Potentially reworkable</option><option value="unsuitable">Unsuitable status</option>
         </select>
