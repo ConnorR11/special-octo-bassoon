@@ -327,7 +327,7 @@ export default function SolarRework({ onSelectAppointment }) {
       <div style={{ overflowX: "auto" }}>
         <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 980, fontSize: 12 }}>
           <thead><tr style={{ background: "#f8fafc", textAlign: "left", color: "#475569" }}>
-            {["Name", ...(activeTab === "unlinked" ? ["OpenSolar ID"] : []),"Date",activeTab === "unlinked" ? "Result" : "Quote readiness", ...(activeTab === "linked" ? ["Related appointment result"] : []),"Open"].map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
+            {["Name", ...(activeTab === "unlinked" ? ["OpenSolar ID"] : ["Design"]),"Date",activeTab === "unlinked" ? "Result" : "Quote readiness", ...(activeTab === "linked" ? ["Related appointment result"] : []),"Open"].map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
           </tr></thead>
           <tbody>
             {activeTab === "quotes-sent" && <tr><td colSpan={6} style={{ padding: 36, textAlign: "center", color: "#64748b" }}><div style={{ fontWeight: 700, color: "#334155", marginBottom: 6 }}>Quotes Sent is not set up yet</div><div>Once quote sending is implemented, this tab will show appointments with quotes sent.</div></td></tr>}
@@ -341,14 +341,6 @@ export default function SolarRework({ onSelectAppointment }) {
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 700, color: "#0f172a" }}>{normalise(row.name) || "Name missing"}</div>
                       <div style={{ ...muted, marginTop: 2 }}>{normalise(row.address)}{row.address && row.postcode ? ", " : ""}{normalise(row.postcode)}</div>
-                      {activeTab === "linked" && (() => {
-                        const metrics = getQuoteRowMetrics(row)
-                        return <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 9px", marginTop: 4, fontSize: 10, color: "#475569" }}>
-                          <span title="Annual electricity consumption">Usage: {metrics.annualConsumption !== null ? metrics.annualConsumption.toLocaleString("en-GB") + " kWh/yr" : "—"}</span>
-                          <span title="Number of solar panels">Panels: {metrics.panelCount !== null ? metrics.panelCount : "—"}</span>
-                          <span title="System cost">Cost: {metrics.systemCost !== null ? metrics.systemCost.toLocaleString("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }) : "—"}</span>
-                        </div>
-                      })()}
                     </div>
                   </div>
                 </td>
@@ -357,6 +349,16 @@ export default function SolarRework({ onSelectAppointment }) {
                     <input value={rowEdits[row.appointment_row_id] ?? ""} onChange={event => setRowEdits(current => ({ ...current, [row.appointment_row_id]: event.target.value }))} placeholder="Enter OpenSolar ID" inputMode="numeric" aria-label={"OpenSolar ID for " + (normalise(row.name) || row.appointment_row_id)} style={{ ...inputStyle, height: 32, flex: 1, width: "100%", boxSizing: "border-box" }} />
                     <button onClick={() => saveOpenSolarId(row)} disabled={savingId === row.appointment_row_id || !normalise(rowEdits[row.appointment_row_id])} style={{ border: "1px solid #0f766e", borderRadius: 7, height: 32, padding: "0 10px", whiteSpace: "nowrap", background: "#f0fdfa", color: "#0f766e", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>{savingId === row.appointment_row_id ? "Saving…" : "Save"}</button>
                   </div>
+                </td>}
+                {activeTab === "linked" && <td style={{ padding: "6px 10px", minWidth: 105, whiteSpace: "nowrap", verticalAlign: "middle" }}>
+                  {(() => {
+                    const metrics = getQuoteRowMetrics(row)
+                    return <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 10, color: "#475569" }}>
+                      <span title="Annual electricity consumption">Usage: {metrics.annualConsumption !== null ? metrics.annualConsumption.toLocaleString("en-GB") + " kWh/yr" : "—"}</span>
+                      <span title="Number of solar panels">Panels: {metrics.panelCount !== null ? metrics.panelCount : "—"}</span>
+                      <span title="System cost">Cost: {metrics.systemCost !== null ? metrics.systemCost.toLocaleString("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }) : "—"}</span>
+                    </div>
+                  })()}
                 </td>}
                 <td style={{ padding: "6px 10px", whiteSpace: "nowrap" }}>
                   <div>{dateLabel(row.appointment_date)}</div>
