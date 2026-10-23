@@ -305,7 +305,7 @@ export default function SolarRework({ onSelectAppointment }) {
     </div>
 
     <div style={{ ...cardStyle, padding: 13, marginBottom: 14 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(220px,2fr) repeat(2,minmax(145px,1fr))", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: activeTab === "linked" ? "minmax(220px,2fr) repeat(4,minmax(135px,1fr))" : activeTab === "unlinked" ? "minmax(220px,2fr) repeat(2,minmax(145px,1fr))" : "minmax(220px,2fr) minmax(145px,1fr)", gap: 10, alignItems: "center" }}>
         <div style={{ position: "relative" }}>
           <Search size={15} style={{ position: "absolute", left: 11, top: 12, color: "#64748b" }} />
           <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search name, postcode, phone, email…" style={{ ...inputStyle, width: "100%", paddingLeft: 33, boxSizing: "border-box" }} />
