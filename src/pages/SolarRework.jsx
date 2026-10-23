@@ -32,6 +32,25 @@ function getQuoteStages(row) {
     { label: "System cost", complete: systemCostComplete },
   ]
 }
+function getQuoteRowMetrics(row) {
+  let calculation = row?.epvs_calculation || null
+  if (typeof calculation === "string") {
+    try { calculation = JSON.parse(calculation) } catch { calculation = null }
+  }
+  const data = calculation?.data || {}
+  const annualConsumption = Number(data.annualConsumption)
+  const arrays = [
+    ...(Array.isArray(data.openSolar?.arrays) ? data.openSolar.arrays : []),
+    ...(Array.isArray(data.arrays) ? data.arrays : []),
+  ]
+  const panelCount = arrays.reduce((total, array) => total + (Number(array?.panelCount) || 0), 0)
+  const systemCost = Number(data.systemCost)
+  return {
+    annualConsumption: Number.isFinite(annualConsumption) && annualConsumption > 0 ? annualConsumption : null,
+    panelCount: panelCount > 0 ? panelCount : null,
+    systemCost: Number.isFinite(systemCost) && systemCost > 0 ? systemCost : null,
+  }
+}
 function getOpenSolarImageUrl(row) {
   let calculation = row?.epvs_calculation || null
   if (typeof calculation === "string") {
@@ -322,6 +341,14 @@ export default function SolarRework({ onSelectAppointment }) {
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 700, color: "#0f172a" }}>{normalise(row.name) || "Name missing"}</div>
                       <div style={{ ...muted, marginTop: 2 }}>{normalise(row.address)}{row.address && row.postcode ? ", " : ""}{normalise(row.postcode)}</div>
+                      {activeTab === "linked" && (() => {
+                        const metrics = getQuoteRowMetrics(row)
+                        return <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 9px", marginTop: 4, fontSize: 10, color: "#475569" }}>
+                          <span title="Annual electricity consumption">Usage: {metrics.annualConsumption !== null ? metrics.annualConsumption.toLocaleString("en-GB") + " kWh/yr" : "—"}</span>
+                          <span title="Number of solar panels">Panels: {metrics.panelCount !== null ? metrics.panelCount : "—"}</span>
+                          <span title="System cost">Cost: {metrics.systemCost !== null ? metrics.systemCost.toLocaleString("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }) : "—"}</span>
+                        </div>
+                      })()}
                     </div>
                   </div>
                 </td>
