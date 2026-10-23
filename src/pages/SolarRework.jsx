@@ -39,11 +39,17 @@ function getQuoteRowMetrics(row) {
   }
   const data = calculation?.data || {}
   const annualConsumption = Number(data.annualConsumption)
-  const arrays = [
-    ...(Array.isArray(data.openSolar?.arrays) ? data.openSolar.arrays : []),
-    ...(Array.isArray(data.arrays) ? data.arrays : []),
-  ]
-  const panelCount = arrays.reduce((total, array) => total + (Number(array?.panelCount) || 0), 0)
+  // Prefer the OpenSolar array list when available. data.arrays may be a duplicate
+  // copy of the same design, so never add both collections together.
+  const arrays = Array.isArray(data.openSolar?.arrays)
+    ? data.openSolar.arrays
+    : Array.isArray(data.arrays)
+      ? data.arrays
+      : []
+  const panelCount = arrays.reduce((total, array) => {
+    const count = Number(array?.panelCount ?? array?.panel_count ?? array?.numberOfPanels ?? array?.modules)
+    return total + (Number.isFinite(count) && count > 0 ? count : 0)
+  }, 0)
   const systemCost = Number(data.systemCost)
   return {
     annualConsumption: Number.isFinite(annualConsumption) && annualConsumption > 0 ? annualConsumption : null,
