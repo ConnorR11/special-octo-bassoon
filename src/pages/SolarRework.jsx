@@ -39,6 +39,42 @@ function getOpenSolarImageUrl(row) {
   }
   return String(calculation?.data?.openSolar?.imageUrl || calculation?.openSolar?.imageUrl || "").trim()
 }
+
+function OpenSolarThumbnail({ row }) {
+  const [imageUrl, setImageUrl] = useState(getOpenSolarImageUrl(row))
+  const [attempted, setAttempted] = useState(false)
+  const [visible, setVisible] = useState(false)
+  const hostRef = useRef(null)
+  useEffect(() => {
+    const node = hostRef.current
+    if (!node || imageUrl || visible) return
+    if (typeof IntersectionObserver === "undefined") { setVisible(true); return }
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        setVisible(true)
+        observer.disconnect()
+      }
+    }, { rootMargin: "120px" })
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [imageUrl, visible])
+  useEffect(() => {
+    if (!visible || imageUrl || attempted || !row?.open_solar_id || !supabase) return
+    let cancelled = false
+    setAttempted(true)
+    supabase.functions.invoke("opensolar-design", { body: { projectId: row.open_solar_id } })
+      .then(({ data, error }) => {
+        if (cancelled || error) return
+        const url = String(data?.imageUrl || data?.systemImageUrl || "").trim()
+        if (data?.success && url) setImageUrl(url)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [visible, imageUrl, attempted, row?.open_solar_id])
+  return <div ref={hostRef} style={{ width: 76, height: 54, flex: "0 0 76px", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", border: "1px solid #e2e8f0", borderRadius: 5, background: "#f8fafc" }}>
+    {imageUrl ? <img src={imageUrl} alt={"OpenSolar design for " + (normalise(row.name) || "appointment")} loading="lazy" onError={() => setImageUrl("")} style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <span style={{ fontSize: 9, color: "#94a3b8", textAlign: "center", padding: 3 }}>{attempted ? "No preview" : "Design preview"}</span>}
+  </div>
+}
 function startOfCurrentWeekISO() {
   const now = new Date()
   const day = (now.getDay() + 6) % 7
@@ -65,6 +101,7 @@ export default function SolarRework({ onSelectAppointment }) {
   const [query, setQuery] = useState("")
   const [yearFilter, setYearFilter] = useState("all")
   const [unlinkedSortOrder, setUnlinkedSortOrder] = useState("desc")
+  const [linkedSortOrder, setLinkedSortOrder] = useState("asc")
   const [linkedSoldFilter, setLinkedSoldFilter] = useState("all")
   const [page, setPage] = useState(0)
   const [activeTab, setActiveTab] = useState("unlinked")
@@ -86,7 +123,7 @@ export default function SolarRework({ onSelectAppointment }) {
         .neq("rep_allocated", "")
         .lt("appointment_date", startOfCurrentWeekISO())
         .in("result", ["PM", "PM DNH"])
-        .order("appointment_date", { ascending: activeTab === "linked" ? true : unlinkedSortOrder === "asc", nullsFirst: false })
+        .order("appointment_date", { ascending: activeTab === "linked" ? linkedSortOrder === "asc" : unlinkedSortOrder === "asc", nullsFirst: false })
         .order("appointment_row_id", { ascending: false })
       if (yearFilter !== "all") request = request.gte("appointment_date", yearFilter + "-01-01").lt("appointment_date", (Number(yearFilter) + 1) + "-01-01")
       if (activeTab === "unlinked") {
@@ -145,8 +182,8 @@ export default function SolarRework({ onSelectAppointment }) {
   }
 
 
-  useEffect(() => { loadRows(page) }, [page, query, activeTab, yearFilter, unlinkedSortOrder, linkedSoldFilter])
-  useEffect(() => { setPage(0) }, [query, activeTab, yearFilter, unlinkedSortOrder, linkedSoldFilter])
+  useEffect(() => { loadRows(page) }, [page, query, activeTab, yearFilter, unlinkedSortOrder, linkedSortOrder, linkedSoldFilter])
+  useEffect(() => { setPage(0) }, [query, activeTab, yearFilter, unlinkedSortOrder, linkedSortOrder, linkedSoldFilter])
 
   // Load tab totals independently from the table request so badge counts never block or reset the visible list.
   useEffect(() => {
@@ -248,6 +285,9 @@ export default function SolarRework({ onSelectAppointment }) {
         {activeTab === "unlinked" && <select value={unlinkedSortOrder} onChange={event => setUnlinkedSortOrder(event.target.value)} style={selectStyle}>
           <option value="desc">Newest to oldest</option><option value="asc">Oldest to newest</option>
         </select>}
+        {activeTab === "linked" && <select value={linkedSortOrder} onChange={event => setLinkedSortOrder(event.target.value)} style={selectStyle}>
+          <option value="desc">Newest to oldest</option><option value="asc">Oldest to newest</option>
+        </select>}
         {activeTab === "linked" && <select value={linkedSoldFilter} onChange={event => setLinkedSoldFilter(event.target.value)} style={selectStyle}>
           <option value="all">All linked appointments</option>
           <option value="sold">Since sold</option>
@@ -278,12 +318,7 @@ export default function SolarRework({ onSelectAppointment }) {
               return <tr key={row.appointment_row_id} style={{ borderBottom: "1px solid #edf2f7" }}>
                 <td style={{ padding: "6px 10px", maxWidth: 300 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
-                    {activeTab === "linked" && getOpenSolarImageUrl(row) && <img
-                      src={getOpenSolarImageUrl(row)}
-                      alt={"OpenSolar design for " + (normalise(row.name) || "appointment")}
-                      loading="lazy"
-                      style={{ width: 76, height: 54, flex: "0 0 76px", objectFit: "contain", border: "1px solid #e2e8f0", borderRadius: 5, background: "#f8fafc" }}
-                    />}
+                    {activeTab === "linked" && <OpenSolarThumbnail row={row} />}
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 700, color: "#0f172a" }}>{normalise(row.name) || "Name missing"}</div>
                       <div style={{ ...muted, marginTop: 2 }}>{normalise(row.address)}{row.address && row.postcode ? ", " : ""}{normalise(row.postcode)}</div>
