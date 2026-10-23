@@ -327,7 +327,7 @@ export default function SolarRework({ onSelectAppointment }) {
       <div style={{ overflowX: "auto" }}>
         <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 980, fontSize: 12 }}>
           <thead><tr style={{ background: "#f8fafc", textAlign: "left", color: "#475569" }}>
-            {["Name","OpenSolar ID","Date",activeTab === "unlinked" ? "Result" : "Quote readiness", ...(activeTab === "linked" ? ["Related appointment result"] : []),"Email","Open"].map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
+            {["Name", ...(activeTab === "unlinked" ? ["OpenSolar ID"] : []),"Date",activeTab === "unlinked" ? "Result" : "Quote readiness", ...(activeTab === "linked" ? ["Related appointment result"] : []),"Open"].map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
           </tr></thead>
           <tbody>
             {activeTab === "quotes-sent" && <tr><td colSpan={6} style={{ padding: 36, textAlign: "center", color: "#64748b" }}><div style={{ fontWeight: 700, color: "#334155", marginBottom: 6 }}>Quotes Sent is not set up yet</div><div>Once quote sending is implemented, this tab will show appointments with quotes sent.</div></td></tr>}
@@ -352,13 +352,15 @@ export default function SolarRework({ onSelectAppointment }) {
                     </div>
                   </div>
                 </td>
-                <td style={{ padding: "6px 8px", minWidth: activeTab === "linked" ? 105 : 260, width: activeTab === "linked" ? 120 : undefined }}>
-                  {linked ? <span style={{ color: "#047857", display: "inline-flex", gap: 5, alignItems: "center" }}><Link2 size={13}/> {row.open_solar_id}</span> : <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                {activeTab === "unlinked" && <td style={{ padding: "6px 8px", minWidth: 260 }}>
+<div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <input value={rowEdits[row.appointment_row_id] ?? ""} onChange={event => setRowEdits(current => ({ ...current, [row.appointment_row_id]: event.target.value }))} placeholder="Enter OpenSolar ID" inputMode="numeric" aria-label={"OpenSolar ID for " + (normalise(row.name) || row.appointment_row_id)} style={{ ...inputStyle, height: 32, flex: 1, width: "100%", boxSizing: "border-box" }} />
                     <button onClick={() => saveOpenSolarId(row)} disabled={savingId === row.appointment_row_id || !normalise(rowEdits[row.appointment_row_id])} style={{ border: "1px solid #0f766e", borderRadius: 7, height: 32, padding: "0 10px", whiteSpace: "nowrap", background: "#f0fdfa", color: "#0f766e", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>{savingId === row.appointment_row_id ? "Saving…" : "Save"}</button>
-                  </div>}
+                </td>}
+                <td style={{ padding: "6px 10px", whiteSpace: "nowrap" }}>
+                  <div>{dateLabel(row.appointment_date)}</div>
+                  {activeTab === "linked" && linked && <a href={"https://app.opensolar.com/projects/" + encodeURIComponent(String(row.open_solar_id))} target="_blank" rel="noreferrer" style={{ color: "#047857", display: "inline-flex", gap: 4, alignItems: "center", marginTop: 4, textDecoration: "none", fontSize: 10, fontWeight: 650 }}><Link2 size={12}/> {row.open_solar_id}</a>}
                 </td>
-                <td style={{ padding: "6px 10px", whiteSpace: "nowrap" }}>{dateLabel(row.appointment_date)}</td>
                 <td style={{ padding: "6px 10px", minWidth: activeTab === "unlinked" ? 100 : 210 }}>
                   {activeTab === "unlinked" ? <span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, background: "#f1f5f9", color: "#475569", fontSize: 11, fontWeight: 700 }}>{formatStatus(row)}</span> : (() => {
                     const stages = getQuoteStages(row)
@@ -383,7 +385,7 @@ export default function SolarRework({ onSelectAppointment }) {
                     </div>)}
                   </div> : <span style={muted}>No related appointment</span>}
                 </td>}
-                <td style={{ padding: "6px 10px", minWidth: 160 }}><div style={{ ...muted, wordBreak: "break-word" }}>{normalise(row.email_address) || "No email"}</div></td>
+
                 <td style={{ padding: "6px 10px" }}>
                   <button onClick={() => onSelectAppointment?.(row)} style={{ border: "1px solid #cbd5e1", borderRadius: 7, padding: "6px 8px", background: "#fff", color: "#0f172a", display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", cursor: "pointer", fontSize: 11, fontWeight: 650 }}><UserRound size={13}/> Open <ExternalLink size={11}/></button>
                 </td>
