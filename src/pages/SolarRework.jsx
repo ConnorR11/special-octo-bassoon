@@ -80,7 +80,7 @@ export default function SolarRework({ onSelectAppointment }) {
         .lt("appointment_date", startOfCurrentWeekISO())
         .not("rep_allocated", "is", null)
         .neq("rep_allocated", "")
-        .or("result.is.null,result.neq.SOLD")
+        .in("result", ["PM", "PM DNH"])
         .order("appointment_date", { ascending: false, nullsFirst: false })
         .order("appointment_row_id", { ascending: false })
       if (activeTab === "unlinked") {
@@ -129,7 +129,7 @@ export default function SolarRework({ onSelectAppointment }) {
         .lt("appointment_date", startOfCurrentWeekISO())
           .not("rep_allocated", "is", null)
           .neq("rep_allocated", "")
-          .or("result.is.null,result.neq.SOLD")
+          .in("result", ["PM", "PM DNH"])
         const [unlinkedResult, linkedResult] = await Promise.all([
           base().is("open_solar_id", null),
           base().not("open_solar_id", "is", null)
@@ -189,7 +189,7 @@ export default function SolarRework({ onSelectAppointment }) {
           <Sun size={23} color="#0f766e" />
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 750 }}>Solar Appointment Rework</h1>
         </div>
-        <p style={{ margin: "7px 0 0", color: "#64748b", fontSize: 13 }}>Historical non-sold solar appointments, OpenSolar matching and quote preparation.</p>
+        <p style={{ margin: "7px 0 0", color: "#64748b", fontSize: 13 }}>Solar appointments with result PM or PM DNH, dated before this week, for OpenSolar matching and quote preparation.</p>
       </div>
       <button onClick={() => loadRows(page)} disabled={loading} style={{ border: "1px solid #cbd5e1", background: "#fff", borderRadius: 8, padding: "9px 13px", display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 650, cursor: loading ? "wait" : "pointer" }}>
         <RefreshCw size={14} /> Refresh list
