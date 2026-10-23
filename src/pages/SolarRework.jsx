@@ -33,6 +33,13 @@ function getQuoteStages(row) {
     { label: "System cost", complete: systemCostComplete },
   ]
 }
+function startOfCurrentWeekISO() {
+  const now = new Date()
+  const day = (now.getDay() + 6) % 7
+  now.setDate(now.getDate() - day)
+  now.setHours(0, 0, 0, 0)
+  return now.toISOString().slice(0, 10)
+}
 function dateLabel(value) {
   if (!value) return "—"
   const date = new Date(value)
@@ -70,6 +77,7 @@ export default function SolarRework({ onSelectAppointment }) {
         .eq("job_type", "Solar")
         .not("rep_allocated", "is", null)
         .neq("rep_allocated", "")
+        .lt("appointment_date", startOfCurrentWeekISO())
         .in("result", ["PM", "PM DNH"])
         .order("appointment_date", { ascending: false, nullsFirst: false })
         .order("appointment_row_id", { ascending: false })
@@ -116,6 +124,7 @@ export default function SolarRework({ onSelectAppointment }) {
           .eq("job_type", "Solar")
               .not("rep_allocated", "is", null)
           .neq("rep_allocated", "")
+          .lt("appointment_date", startOfCurrentWeekISO())
           .in("result", ["PM", "PM DNH"])
         const [unlinkedResult, linkedResult] = await Promise.all([
           base().is("open_solar_id", null),
