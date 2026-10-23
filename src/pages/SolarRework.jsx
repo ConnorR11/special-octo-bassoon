@@ -128,6 +128,7 @@ export default function SolarRework({ onSelectAppointment }) {
   const [unlinkedSortOrder, setUnlinkedSortOrder] = useState("desc")
   const [linkedSortOrder, setLinkedSortOrder] = useState("asc")
   const [linkedSoldFilter, setLinkedSoldFilter] = useState("all")
+  const [linkedReadinessFilter, setLinkedReadinessFilter] = useState("all")
   const [page, setPage] = useState(0)
   const [activeTab, setActiveTab] = useState("unlinked")
   const [linkedReadinessTab, setLinkedReadinessTab] = useState("not-ready")
@@ -192,8 +193,14 @@ export default function SolarRework({ onSelectAppointment }) {
             return linkedSoldFilter === "sold" ? sold : !sold
           })
         : eligibleBatch
-      setHasMore(batch.length > PAGE_SIZE || (activeTab === "linked" && linkedSoldFilter !== "all" && soldFiltered.length === PAGE_SIZE))
-      setRows(soldFiltered.slice(0, PAGE_SIZE))
+      const readinessFiltered = activeTab === "linked" && linkedReadinessFilter !== "all"
+        ? soldFiltered.filter(row => {
+            const ready = getQuoteStages(row).every(stage => stage.complete)
+            return linkedReadinessFilter === "ready" ? ready : !ready
+          })
+        : soldFiltered
+      setHasMore(batch.length > PAGE_SIZE || (activeTab === "linked" && (linkedSoldFilter !== "all" || linkedReadinessFilter !== "all") && readinessFiltered.length === PAGE_SIZE))
+      setRows(readinessFiltered.slice(0, PAGE_SIZE))
     } catch (err) {
       if (requestId !== loadRequestId.current) return
       console.error("Solar Rework load failed:", err)
@@ -207,8 +214,8 @@ export default function SolarRework({ onSelectAppointment }) {
   }
 
 
-  useEffect(() => { loadRows(page) }, [page, query, activeTab, yearFilter, unlinkedSortOrder, linkedSortOrder, linkedSoldFilter])
-  useEffect(() => { setPage(0) }, [query, activeTab, yearFilter, unlinkedSortOrder, linkedSortOrder, linkedSoldFilter])
+  useEffect(() => { loadRows(page) }, [page, query, activeTab, yearFilter, unlinkedSortOrder, linkedSortOrder, linkedSoldFilter, linkedReadinessFilter])
+  useEffect(() => { setPage(0) }, [query, activeTab, yearFilter, unlinkedSortOrder, linkedSortOrder, linkedSoldFilter, linkedReadinessFilter])
 
   // Load tab totals independently from the table request so badge counts never block or reset the visible list.
   useEffect(() => {
@@ -312,6 +319,11 @@ export default function SolarRework({ onSelectAppointment }) {
         </select>}
         {activeTab === "linked" && <select value={linkedSortOrder} onChange={event => setLinkedSortOrder(event.target.value)} style={selectStyle}>
           <option value="desc">Newest to oldest</option><option value="asc">Oldest to newest</option>
+        </select>}
+        {activeTab === "linked" && <select value={linkedReadinessFilter} onChange={event => setLinkedReadinessFilter(event.target.value)} style={selectStyle}>
+          <option value="all">All readiness statuses</option>
+          <option value="ready">Ready to quote</option>
+          <option value="not-ready">Not ready to quote</option>
         </select>}
         {activeTab === "linked" && <select value={linkedSoldFilter} onChange={event => setLinkedSoldFilter(event.target.value)} style={selectStyle}>
           <option value="all">All linked appointments</option>
