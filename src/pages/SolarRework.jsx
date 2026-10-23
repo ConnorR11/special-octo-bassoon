@@ -126,7 +126,7 @@ export default function SolarRework({ onSelectAppointment }) {
   const [query, setQuery] = useState("")
   const [yearFilter, setYearFilter] = useState("all")
   const [unlinkedSortOrder, setUnlinkedSortOrder] = useState("desc")
-  const [linkedSortOrder, setLinkedSortOrder] = useState("asc")
+  const [linkedSortOrder, setLinkedSortOrder] = useState("desc")
   const [linkedSoldFilter, setLinkedSoldFilter] = useState("all")
   const [linkedReadinessFilter, setLinkedReadinessFilter] = useState("all")
   const [page, setPage] = useState(0)
