@@ -3,7 +3,6 @@ import { ExternalLink, Link2, RefreshCw, Search, Sun, UserRound } from "lucide-r
 import { supabase } from "../lib/supabase"
 
 const PAGE_SIZE = 50
-const UNSUITABLE_RESULTS = new Set(["DELETED", "REMOVED", "INVALID", "DUPLICATE", "NO COVER", "SINGLEHEAD"])
 
 function normalise(value) { return String(value ?? "").trim() }
 function normaliseResult(value) { return normalise(value).replace(/\s+/g, " ").toUpperCase() }
@@ -58,7 +57,6 @@ export default function SolarRework({ onSelectAppointment }) {
   const [error, setError] = useState("")
   const [query, setQuery] = useState("")
   const [resultFilter, setResultFilter] = useState("all")
-  const [suitabilityFilter, setSuitabilityFilter] = useState("all")
   const [yearFilter, setYearFilter] = useState("all")
   const [unlinkedSortOrder, setUnlinkedSortOrder] = useState("desc")
   const [page, setPage] = useState(0)
@@ -94,8 +92,6 @@ export default function SolarRework({ onSelectAppointment }) {
       if (needle) request = request.or("name.ilike.%" + needle + "%,postcode.ilike.%" + needle + "%,address.ilike.%" + needle + "%,phone_number_1.ilike.%" + needle + "%,secondary_phone_number.ilike.%" + needle + "%,email_address.ilike.%" + needle + "%,product.ilike.%" + needle + "%,result.ilike.%" + needle + "%")
       if (resultFilter === "No result") request = request.is("result", null)
       else if (resultFilter !== "all") request = request.eq("result", resultFilter)
-      if (suitabilityFilter === "unsuitable") request = request.in("result", ["DELETED", "REMOVED", "INVALID", "DUPLICATE", "NO COVER", "SINGLEHEAD"])
-      if (suitabilityFilter === "suitable") request = request.not("result", "in", "(DELETED,REMOVED,INVALID,DUPLICATE,NO COVER,SINGLEHEAD)")
       const { data, error: queryError } = await request
       if (requestId !== loadRequestId.current) return
       if (queryError) throw queryError
@@ -187,8 +183,8 @@ export default function SolarRework({ onSelectAppointment }) {
       setError(err?.message || "Could not save the OpenSolar ID.")
     } finally { setSavingId(null) }
   }
-  useEffect(() => { loadRows(page) }, [page, query, resultFilter, suitabilityFilter, activeTab, yearFilter, unlinkedSortOrder])
-  useEffect(() => { setPage(0) }, [query, resultFilter, suitabilityFilter, activeTab, yearFilter, unlinkedSortOrder])
+  useEffect(() => { loadRows(page) }, [page, query, resultFilter, activeTab, yearFilter, unlinkedSortOrder])
+  useEffect(() => { setPage(0) }, [query, resultFilter, activeTab, yearFilter, unlinkedSortOrder])
   const filteredRows = rows
   const pageCount = hasMore ? page + 2 : page + 1
   const visibleRows = filteredRows
@@ -245,15 +241,11 @@ export default function SolarRework({ onSelectAppointment }) {
             <option value="desc">Newest to oldest</option><option value="asc">Oldest to newest</option>
           </select>
         </>}
-        <select value={suitabilityFilter} onChange={event => setSuitabilityFilter(event.target.value)} style={selectStyle}>
-          <option value="all">All suitability statuses</option><option value="suitable">Potentially reworkable</option><option value="unsuitable">Unsuitable status</option>
-        </select>
         <select value={resultFilter} onChange={event => setResultFilter(event.target.value)} style={selectStyle}>
           <option value="all">All appointment results</option>
           {["No result","CONTACTED","NO ANSWER","NOT INTERESTED","DELETED","REMOVED","INVALID","DUPLICATE","NO COVER","SINGLEHEAD"].map(result => <option key={result} value={result}>{result}</option>)}
         </select>
       </div>
-      <div style={{ ...muted, marginTop: 9 }}>Unsuitable statuses are flagged (Deleted, Removed, Invalid, Duplicate, No Cover and Singlehead); records remain visible and searchable.</div>
     </div>
 
     <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
