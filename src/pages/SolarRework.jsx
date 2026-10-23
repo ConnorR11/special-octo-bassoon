@@ -58,6 +58,7 @@ export default function SolarRework({ onSelectAppointment }) {
   const [query, setQuery] = useState("")
   const [yearFilter, setYearFilter] = useState("all")
   const [unlinkedSortOrder, setUnlinkedSortOrder] = useState("desc")
+  const [linkedSoldFilter, setLinkedSoldFilter] = useState("all")
   const [page, setPage] = useState(0)
   const [activeTab, setActiveTab] = useState("unlinked")
   const [linkedReadinessTab, setLinkedReadinessTab] = useState("not-ready")
@@ -80,9 +81,9 @@ export default function SolarRework({ onSelectAppointment }) {
         .in("result", ["PM", "PM DNH"])
         .order("appointment_date", { ascending: activeTab === "linked" ? true : unlinkedSortOrder === "asc", nullsFirst: false })
         .order("appointment_row_id", { ascending: false })
+      if (yearFilter !== "all") request = request.gte("appointment_date", yearFilter + "-01-01").lt("appointment_date", (Number(yearFilter) + 1) + "-01-01")
       if (activeTab === "unlinked") {
         request = request.is("open_solar_id", null)
-        if (yearFilter !== "all") request = request.gte("appointment_date", yearFilter + "-01-01").lt("appointment_date", (Number(yearFilter) + 1) + "-01-01")
         request = request.range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE - 1)
       } else {
         request = request.not("open_solar_id", "is", null).range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE - 1)
@@ -116,8 +117,14 @@ export default function SolarRework({ onSelectAppointment }) {
       }))
 
       const eligibleBatch = rowsWithRelated.filter(row => normalise(row.job_type).toLowerCase() === "solar" && normaliseResult(row.result) !== "SOLD" && (activeTab !== "unlinked" ? Boolean(normalise(row.open_solar_id)) : !normalise(row.open_solar_id)))
-      setHasMore(batch.length > PAGE_SIZE)
-      setRows(eligibleBatch.slice(0, PAGE_SIZE))
+      const soldFiltered = activeTab === "linked" && linkedSoldFilter !== "all"
+        ? eligibleBatch.filter(row => {
+            const sold = (row.relatedAppointments || []).some(related => normaliseResult(related.result) === "SOLD")
+            return linkedSoldFilter === "sold" ? sold : !sold
+          })
+        : eligibleBatch
+      setHasMore(batch.length > PAGE_SIZE || (activeTab === "linked" && linkedSoldFilter !== "all" && soldFiltered.length === PAGE_SIZE))
+      setRows(soldFiltered.slice(0, PAGE_SIZE))
     } catch (err) {
       if (requestId !== loadRequestId.current) return
       console.error("Solar Rework load failed:", err)
@@ -131,8 +138,8 @@ export default function SolarRework({ onSelectAppointment }) {
   }
 
 
-  useEffect(() => { loadRows(page) }, [page, query, activeTab, yearFilter, unlinkedSortOrder])
-  useEffect(() => { setPage(0) }, [query, activeTab, yearFilter, unlinkedSortOrder])
+  useEffect(() => { loadRows(page) }, [page, query, activeTab, yearFilter, unlinkedSortOrder, linkedSoldFilter])
+  useEffect(() => { setPage(0) }, [query, activeTab, yearFilter, unlinkedSortOrder, linkedSoldFilter])
 
   // Load tab totals independently from the table request so badge counts never block or reset the visible list.
   useEffect(() => {
@@ -227,15 +234,18 @@ export default function SolarRework({ onSelectAppointment }) {
           <Search size={15} style={{ position: "absolute", left: 11, top: 12, color: "#64748b" }} />
           <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search name, postcode, phone, email…" style={{ ...inputStyle, width: "100%", paddingLeft: 33, boxSizing: "border-box" }} />
         </div>
-        {activeTab === "unlinked" && <>
-          <select value={yearFilter} onChange={event => setYearFilter(event.target.value)} style={selectStyle}>
-            <option value="all">All years</option>
-            {Array.from({ length: new Date().getFullYear() - 2019 }, (_, index) => String(new Date().getFullYear() - index)).map(year => <option key={year} value={year}>{year}</option>)}
-          </select>
-          <select value={unlinkedSortOrder} onChange={event => setUnlinkedSortOrder(event.target.value)} style={selectStyle}>
-            <option value="desc">Newest to oldest</option><option value="asc">Oldest to newest</option>
-          </select>
-        </>}
+        <select value={yearFilter} onChange={event => setYearFilter(event.target.value)} style={selectStyle}>
+          <option value="all">All years</option>
+          {Array.from({ length: new Date().getFullYear() - 2019 }, (_, index) => String(new Date().getFullYear() - index)).map(year => <option key={year} value={year}>{year}</option>)}
+        </select>
+        {activeTab === "unlinked" && <select value={unlinkedSortOrder} onChange={event => setUnlinkedSortOrder(event.target.value)} style={selectStyle}>
+          <option value="desc">Newest to oldest</option><option value="asc">Oldest to newest</option>
+        </select>}
+        {activeTab === "linked" && <select value={linkedSoldFilter} onChange={event => setLinkedSoldFilter(event.target.value)} style={selectStyle}>
+          <option value="all">All linked appointments</option>
+          <option value="sold">Since sold</option>
+          <option value="not-sold">Not subsequently sold</option>
+        </select>}
       </div>
     </div>
 
