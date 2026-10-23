@@ -359,6 +359,7 @@ export default function SolarRework({ onSelectAppointment }) {
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 700, color: "#0f172a" }}>{normalise(row.name) || "Name missing"}</div>
                       <div style={{ ...muted, marginTop: 2 }}>{normalise(row.address)}{row.address && row.postcode ? ", " : ""}{normalise(row.postcode)}</div>
+                      {activeTab === "unlinked" && <button type="button" onClick={async event => { event.stopPropagation(); const postcode = normalise(row.postcode); if (!postcode) return; try { await navigator.clipboard.writeText(postcode) } catch (error) { console.error("Could not copy postcode:", error) } }} disabled={!normalise(row.postcode)} style={{ marginTop: 5, border: "1px solid #cbd5e1", borderRadius: 6, padding: "3px 7px", background: "#fff", color: normalise(row.postcode) ? "#334155" : "#94a3b8", fontSize: 10, fontWeight: 650, cursor: normalise(row.postcode) ? "pointer" : "not-allowed" }}>Copy postcode</button>}
                     </div>
                   </div>
                 </td>
