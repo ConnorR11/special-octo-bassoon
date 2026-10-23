@@ -43,10 +43,7 @@ export default function SolarRework({ onSelectAppointment }) {
   const [rows, setRows] = useState([])
   const [totalCount, setTotalCount] = useState(0)
   const [linkedCount, setLinkedCount] = useState(0)
-  const [readyCount, setReadyCount] = useState(0)
-  const [notReadyCount, setNotReadyCount] = useState(0)
-  const [epvsCount, setEpvsCount] = useState(0)
-  const [tabCounts, setTabCounts] = useState({ unlinked: null, notReady: null, ready: null })
+  const [tabCounts, setTabCounts] = useState({ unlinked: null, linked: null })
   const [hasMore, setHasMore] = useState(false)
   const [savingId, setSavingId] = useState(null)
   const [rowEdits, setRowEdits] = useState({})
@@ -54,7 +51,6 @@ export default function SolarRework({ onSelectAppointment }) {
   const [error, setError] = useState("")
   const [query, setQuery] = useState("")
   const [resultFilter, setResultFilter] = useState("all")
-  const [linkFilter, setLinkFilter] = useState("all")
   const [suitabilityFilter, setSuitabilityFilter] = useState("all")
   const [page, setPage] = useState(0)
   const [activeTab, setActiveTab] = useState("unlinked")
@@ -79,9 +75,11 @@ export default function SolarRework({ onSelectAppointment }) {
         .or("result.is.null,result.neq.SOLD")
         .order("appointment_date", { ascending: false, nullsFirst: false })
         .order("appointment_row_id", { ascending: false })
-      if (activeTab === "unlinked") request = request.range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE)
-      else request = request.limit(150)
-      request = activeTab === "unlinked" ? request.is("open_solar_id", null) : request.not("open_solar_id", "is", null)
+      if (activeTab === "unlinked") {
+        request = request.is("open_solar_id", null).range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE)
+      } else {
+        request = request.not("open_solar_id", "is", null).neq("open_solar_id", "").range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE)
+      }
       const needle = normalise(query).replace(/[%_,()]/g, " ")
       if (needle) request = request.or("name.ilike.%" + needle + "%,postcode.ilike.%" + needle + "%,address.ilike.%" + needle + "%,phone_number_1.ilike.%" + needle + "%,secondary_phone_number.ilike.%" + needle + "%,email_address.ilike.%" + needle + "%,product.ilike.%" + needle + "%,result.ilike.%" + needle + "%")
       if (resultFilter === "No result") request = request.is("result", null)
@@ -94,13 +92,8 @@ export default function SolarRework({ onSelectAppointment }) {
       const batch = data || []
 
       const eligibleBatch = batch.filter(row => normalise(row.job_type).toLowerCase() === "solar" && normaliseResult(row.result) !== "SOLD" && (activeTab !== "unlinked" ? Boolean(normalise(row.open_solar_id)) : !normalise(row.open_solar_id)))
-      const readyRows = eligibleBatch.filter(row => getQuoteStages(row).every(stage => stage.complete))
-      const notReadyRows = eligibleBatch.filter(row => !getQuoteStages(row).every(stage => stage.complete))
-      setReadyCount(readyRows.length)
-      setNotReadyCount(notReadyRows.length)
-      const readinessFiltered = activeTab === "ready" ? readyRows : activeTab === "not-ready" ? notReadyRows : eligibleBatch
-      setHasMore(activeTab === "unlinked" ? batch.length > PAGE_SIZE : batch.length === 150 || (targetPage + 1) * PAGE_SIZE < readinessFiltered.length)
-      setRows(activeTab === "unlinked" ? eligibleBatch.slice(0, PAGE_SIZE) : readinessFiltered.slice(targetPage * PAGE_SIZE, (targetPage + 1) * PAGE_SIZE))
+      setHasMore(batch.length > PAGE_SIZE)
+      setRows(eligibleBatch.slice(0, PAGE_SIZE))
     } catch (err) {
       if (requestId !== loadRequestId.current) return
       console.error("Solar Rework load failed:", err)
@@ -130,23 +123,11 @@ export default function SolarRework({ onSelectAppointment }) {
           .or("result.is.null,result.neq.SOLD")
         const [unlinkedResult, linkedResult] = await Promise.all([
           base().is("open_solar_id", null),
-          supabase.from("appointments")
-            .select("appointment_row_id,epvs_calculation")
-            .eq("job_type", "Solar")
-            .gte("appointment_date", "2026-01-01")
-            .lt("appointment_date", "2027-01-01")
-            .not("rep_allocated", "is", null)
-            .neq("rep_allocated", "")
-            .or("result.is.null,result.neq.SOLD")
-            .not("open_solar_id", "is", null)
-            .order("appointment_row_id", { ascending: false })
-            .limit(150)
+          base().not("open_solar_id", "is", null).neq("open_solar_id", "")
         ])
         if (unlinkedResult.error) throw unlinkedResult.error
         if (linkedResult.error) throw linkedResult.error
-        const linkedRows = (linkedResult.data || []).filter(row => normalise(row.appointment_row_id))
-        const ready = linkedRows.filter(row => getQuoteStages(row).every(stage => stage.complete)).length
-        if (!cancelled) setTabCounts({ unlinked: unlinkedResult.count ?? 0, notReady: linkedRows.length - ready, ready })
+        if (!cancelled) setTabCounts({ unlinked: unlinkedResult.count ?? 0, linked: linkedResult.count ?? 0 })
       } catch (err) {
         console.warn("Solar Rework tab totals could not be loaded:", err)
       }
@@ -177,7 +158,7 @@ export default function SolarRework({ onSelectAppointment }) {
     } finally { setSavingId(null) }
   }
   useEffect(() => { loadRows(page) }, [page, query, resultFilter, suitabilityFilter, activeTab])
-  useEffect(() => { setPage(0) }, [query, resultFilter, linkFilter, suitabilityFilter, activeTab])
+  useEffect(() => { setPage(0) }, [query, resultFilter, suitabilityFilter, activeTab])
   const filteredRows = rows
   const pageCount = hasMore ? page + 2 : page + 1
   const visibleRows = filteredRows
@@ -211,8 +192,7 @@ export default function SolarRework({ onSelectAppointment }) {
     <div style={{ display: "flex", gap: 8, marginBottom: 12, borderBottom: "1px solid #dbe3ea", flexWrap: "wrap" }}>
       {[
         { value: "unlinked", label: "Unlinked appointments", count: tabCounts.unlinked },
-        { value: "not-ready", label: "Linked · Not ready", count: tabCounts.notReady },
-        { value: "ready", label: "Linked appointments", count: tabCounts.ready },
+        { value: "linked", label: "Linked appointments", count: tabCounts.linked },
         { value: "quotes-sent", label: "Quotes Sent" },
       ].map(tab => <button key={tab.value} onClick={() => { if (tab.value !== activeTab) { setRows([]); setLoading(true); setActiveTab(tab.value); setPage(0) } }} style={{ border: "1px solid " + (activeTab === tab.value ? "#0f766e" : "#d7dee5"), borderBottom: activeTab === tab.value ? "3px solid #0f766e" : "1px solid #d7dee5", borderRadius: "8px 8px 0 0", padding: "10px 14px", background: activeTab === tab.value ? "#f0fdfa" : "#fff", color: activeTab === tab.value ? "#0f766e" : "#475569", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{tab.label}{tab.count !== undefined && <span style={{ marginLeft: 7, display: "inline-flex", minWidth: 20, height: 20, alignItems: "center", justifyContent: "center", padding: "0 5px", borderRadius: 999, background: activeTab === tab.value ? "#ccfbf1" : "#eef2f6", color: activeTab === tab.value ? "#0f766e" : "#475569", fontSize: 10, fontWeight: 800 }}>{tab.count === null ? "…" : tab.count.toLocaleString("en-GB")}</span>}</button>)}
     </div>
@@ -223,9 +203,9 @@ export default function SolarRework({ onSelectAppointment }) {
           <Search size={15} style={{ position: "absolute", left: 11, top: 12, color: "#64748b" }} />
           <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search name, postcode, phone, email…" style={{ ...inputStyle, width: "100%", paddingLeft: 33, boxSizing: "border-box" }} />
         </div>
-        <select value={linkFilter} onChange={event => setLinkFilter(event.target.value)} style={selectStyle}>
-          <option value="all">{activeTab !== "unlinked" ? "All linked OpenSolar appointments" : "All unlinked OpenSolar appointments"}</option>
-        </select>
+        <div style={{ ...muted, display: "flex", alignItems: "center", padding: "0 10px" }}>
+          {activeTab === "linked" ? "All linked OpenSolar appointments" : "All unlinked OpenSolar appointments"}
+        </div>
         <select value={suitabilityFilter} onChange={event => setSuitabilityFilter(event.target.value)} style={selectStyle}>
           <option value="all">All suitability statuses</option><option value="suitable">Potentially reworkable</option><option value="unsuitable">Unsuitable status</option>
         </select>
