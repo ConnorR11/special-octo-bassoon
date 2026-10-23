@@ -59,6 +59,8 @@ export default function SolarRework({ onSelectAppointment }) {
   const [query, setQuery] = useState("")
   const [resultFilter, setResultFilter] = useState("all")
   const [suitabilityFilter, setSuitabilityFilter] = useState("all")
+  const [yearFilter, setYearFilter] = useState("all")
+  const [unlinkedSortOrder, setUnlinkedSortOrder] = useState("desc")
   const [page, setPage] = useState(0)
   const [activeTab, setActiveTab] = useState("unlinked")
   const [linkedReadinessTab, setLinkedReadinessTab] = useState("not-ready")
@@ -79,7 +81,7 @@ export default function SolarRework({ onSelectAppointment }) {
         .neq("rep_allocated", "")
         .lt("appointment_date", startOfCurrentWeekISO())
         .in("result", ["PM", "PM DNH"])
-        .order("appointment_date", { ascending: activeTab === "linked", nullsFirst: false })
+        .order("appointment_date", { ascending: activeTab === "linked" ? true : unlinkedSortOrder === "asc", nullsFirst: false })
         .order("appointment_row_id", { ascending: false })
       if (activeTab === "unlinked") {
         request = request.is("open_solar_id", null).range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE)
