@@ -131,6 +131,9 @@ export default function SolarRework({ onSelectAppointment }) {
   }
 
 
+  useEffect(() => { loadRows(page) }, [page, query, activeTab, yearFilter, unlinkedSortOrder])
+  useEffect(() => { setPage(0) }, [query, activeTab, yearFilter, unlinkedSortOrder])
+
   // Load tab totals independently from the table request so badge counts never block or reset the visible list.
   useEffect(() => {
     let cancelled = false
