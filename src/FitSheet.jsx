@@ -886,6 +886,18 @@ function FitSheet({ setSelected }) {
   return (
     <section className="fit-sheet-print-root">
       <style>{`
+        /* Keep the Fit Sheet usable on phones: controls wrap, while the
+           seven-day planning grid scrolls horizontally instead of being clipped. */
+        @media (max-width: 700px) {
+          .fit-sheet-print-root { width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; }
+          .fit-sheet-print-root .card { max-width: 100%; box-sizing: border-box; }
+          .fit-sheet-print-root h1 { font-size: 18px !important; }
+          .fit-sheet-print-root input { min-width: 0; max-width: 100%; box-sizing: border-box; }
+          .fit-sheet-print-root [style*="repeat(7, minmax(150px, 1fr))"] { min-width: 1240px; }
+          .fit-sheet-print-root [style*="grid-template-columns: 150px 190px repeat(7"] { min-width: 1240px; }
+          .fit-sheet-print-root [style*="overflow: auto"] { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+          .fit-sheet-print-root .fit-sheet-no-print { max-width: 100%; flex-wrap: wrap !important; }
+        }
         @media print {
           @page { size: portrait; margin: 8mm; }
           body { background: #fff !important; }
