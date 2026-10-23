@@ -32,6 +32,13 @@ function getQuoteStages(row) {
     { label: "System cost", complete: systemCostComplete },
   ]
 }
+function getOpenSolarImageUrl(row) {
+  let calculation = row?.epvs_calculation || null
+  if (typeof calculation === "string") {
+    try { calculation = JSON.parse(calculation) } catch { calculation = null }
+  }
+  return String(calculation?.data?.openSolar?.imageUrl || calculation?.openSolar?.imageUrl || "").trim()
+}
 function startOfCurrentWeekISO() {
   const now = new Date()
   const day = (now.getDay() + 6) % 7
@@ -269,11 +276,21 @@ export default function SolarRework({ onSelectAppointment }) {
             {activeTab !== "quotes-sent" && visibleRows.map(row => {
               const linked = row.open_solar_id !== null && row.open_solar_id !== undefined && String(row.open_solar_id).trim() !== ""
               return <tr key={row.appointment_row_id} style={{ borderBottom: "1px solid #edf2f7" }}>
-                <td style={{ padding: "6px 10px", maxWidth: 240 }}>
-                  <div style={{ fontWeight: 700, color: "#0f172a" }}>{normalise(row.name) || "Name missing"}</div>
-                  <div style={{ ...muted, marginTop: 2 }}>{normalise(row.address)}{row.address && row.postcode ? ", " : ""}{normalise(row.postcode)}</div>
+                <td style={{ padding: "6px 10px", maxWidth: 300 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
+                    {activeTab === "linked" && getOpenSolarImageUrl(row) && <img
+                      src={getOpenSolarImageUrl(row)}
+                      alt={"OpenSolar design for " + (normalise(row.name) || "appointment")}
+                      loading="lazy"
+                      style={{ width: 76, height: 54, flex: "0 0 76px", objectFit: "contain", border: "1px solid #e2e8f0", borderRadius: 5, background: "#f8fafc" }}
+                    />}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, color: "#0f172a" }}>{normalise(row.name) || "Name missing"}</div>
+                      <div style={{ ...muted, marginTop: 2 }}>{normalise(row.address)}{row.address && row.postcode ? ", " : ""}{normalise(row.postcode)}</div>
+                    </div>
+                  </div>
                 </td>
-                <td style={{ padding: "6px 10px", minWidth: 260 }}>
+                <td style={{ padding: "6px 8px", minWidth: activeTab === "linked" ? 105 : 260, width: activeTab === "linked" ? 120 : undefined }}>
                   {linked ? <span style={{ color: "#047857", display: "inline-flex", gap: 5, alignItems: "center" }}><Link2 size={13}/> {row.open_solar_id}</span> : <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <input value={rowEdits[row.appointment_row_id] ?? ""} onChange={event => setRowEdits(current => ({ ...current, [row.appointment_row_id]: event.target.value }))} placeholder="Enter OpenSolar ID" inputMode="numeric" aria-label={"OpenSolar ID for " + (normalise(row.name) || row.appointment_row_id)} style={{ ...inputStyle, height: 32, flex: 1, width: "100%", boxSizing: "border-box" }} />
                     <button onClick={() => saveOpenSolarId(row)} disabled={savingId === row.appointment_row_id || !normalise(rowEdits[row.appointment_row_id])} style={{ border: "1px solid #0f766e", borderRadius: 7, height: 32, padding: "0 10px", whiteSpace: "nowrap", background: "#f0fdfa", color: "#0f766e", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>{savingId === row.appointment_row_id ? "Saving…" : "Save"}</button>
