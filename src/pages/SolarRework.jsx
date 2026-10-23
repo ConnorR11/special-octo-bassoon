@@ -227,8 +227,6 @@ export default function SolarRework({ onSelectAppointment }) {
           <Search size={15} style={{ position: "absolute", left: 11, top: 12, color: "#64748b" }} />
           <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search name, postcode, phone, email…" style={{ ...inputStyle, width: "100%", paddingLeft: 33, boxSizing: "border-box" }} />
         </div>
-        <div style={{ ...muted, display: "flex", alignItems: "center", padding: "0 10px" }}>
-        </div>
         {activeTab === "unlinked" && <>
           <select value={yearFilter} onChange={event => setYearFilter(event.target.value)} style={selectStyle}>
             <option value="all">All years</option>
@@ -238,7 +236,6 @@ export default function SolarRework({ onSelectAppointment }) {
             <option value="desc">Newest to oldest</option><option value="asc">Oldest to newest</option>
           </select>
         </>}
-        </select>
       </div>
     </div>
 
