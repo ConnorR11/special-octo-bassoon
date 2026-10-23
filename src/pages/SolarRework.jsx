@@ -33,6 +33,13 @@ function getQuoteStages(row) {
     { label: "System cost", complete: systemCostComplete },
   ]
 }
+function startOfCurrentWeekISO() {
+  const now = new Date()
+  const day = (now.getDay() + 6) % 7
+  now.setDate(now.getDate() - day)
+  now.setHours(0, 0, 0, 0)
+  return now.toISOString().slice(0, 10)
+}
 function dateLabel(value) {
   if (!value) return "—"
   const date = new Date(value)
@@ -70,6 +77,7 @@ export default function SolarRework({ onSelectAppointment }) {
         .eq("job_type", "Solar")
         .gte("appointment_date", "2026-01-01")
         .lt("appointment_date", "2027-01-01")
+        .lt("appointment_date", startOfCurrentWeekISO())
         .not("rep_allocated", "is", null)
         .neq("rep_allocated", "")
         .or("result.is.null,result.neq.SOLD")
@@ -118,6 +126,7 @@ export default function SolarRework({ onSelectAppointment }) {
           .eq("job_type", "Solar")
           .gte("appointment_date", "2026-01-01")
           .lt("appointment_date", "2027-01-01")
+        .lt("appointment_date", startOfCurrentWeekISO())
           .not("rep_allocated", "is", null)
           .neq("rep_allocated", "")
           .or("result.is.null,result.neq.SOLD")
