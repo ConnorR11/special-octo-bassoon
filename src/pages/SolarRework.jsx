@@ -33,13 +33,6 @@ function getQuoteStages(row) {
     { label: "System cost", complete: systemCostComplete },
   ]
 }
-function startOfCurrentWeekISO() {
-  const now = new Date()
-  const day = (now.getDay() + 6) % 7
-  now.setDate(now.getDate() - day)
-  now.setHours(0, 0, 0, 0)
-  return now.toISOString().slice(0, 10)
-}
 function dateLabel(value) {
   if (!value) return "—"
   const date = new Date(value)
@@ -75,9 +68,6 @@ export default function SolarRework({ onSelectAppointment }) {
       let request = supabase.from("appointments")
         .select("appointment_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,open_solar_id,epvs_calculation,rep_allocated")
         .eq("job_type", "Solar")
-        .gte("appointment_date", "2026-01-01")
-        .lt("appointment_date", "2027-01-01")
-        .lt("appointment_date", startOfCurrentWeekISO())
         .not("rep_allocated", "is", null)
         .neq("rep_allocated", "")
         .in("result", ["PM", "PM DNH"])
@@ -124,10 +114,7 @@ export default function SolarRework({ onSelectAppointment }) {
         const base = () => supabase.from("appointments")
           .select("appointment_row_id", { count: "exact", head: true })
           .eq("job_type", "Solar")
-          .gte("appointment_date", "2026-01-01")
-          .lt("appointment_date", "2027-01-01")
-        .lt("appointment_date", startOfCurrentWeekISO())
-          .not("rep_allocated", "is", null)
+              .not("rep_allocated", "is", null)
           .neq("rep_allocated", "")
           .in("result", ["PM", "PM DNH"])
         const [unlinkedResult, linkedResult] = await Promise.all([
@@ -189,7 +176,7 @@ export default function SolarRework({ onSelectAppointment }) {
           <Sun size={23} color="#0f766e" />
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 750 }}>Solar Appointment Rework</h1>
         </div>
-        <p style={{ margin: "7px 0 0", color: "#64748b", fontSize: 13 }}>Solar appointments with result PM or PM DNH, dated before this week, for OpenSolar matching and quote preparation.</p>
+        <p style={{ margin: "7px 0 0", color: "#64748b", fontSize: 13 }}>All solar appointments with result PM or PM DNH, for OpenSolar matching and quote preparation.</p>
       </div>
       <button onClick={() => loadRows(page)} disabled={loading} style={{ border: "1px solid #cbd5e1", background: "#fff", borderRadius: 8, padding: "9px 13px", display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 650, cursor: loading ? "wait" : "pointer" }}>
         <RefreshCw size={14} /> Refresh list
