@@ -212,7 +212,7 @@ export default function SolarRework({ onSelectAppointment }) {
       {[
         { value: "unlinked", label: "Unlinked appointments", count: tabCounts.unlinked },
         { value: "not-ready", label: "Linked · Not ready", count: tabCounts.notReady },
-        { value: "ready", label: "Linked · Ready to quote", count: tabCounts.ready },
+        { value: "ready", label: "Linked appointments", count: tabCounts.ready },
         { value: "quotes-sent", label: "Quotes Sent" },
       ].map(tab => <button key={tab.value} onClick={() => { if (tab.value !== activeTab) { setRows([]); setLoading(true); setActiveTab(tab.value); setPage(0) } }} style={{ border: "1px solid " + (activeTab === tab.value ? "#0f766e" : "#d7dee5"), borderBottom: activeTab === tab.value ? "3px solid #0f766e" : "1px solid #d7dee5", borderRadius: "8px 8px 0 0", padding: "10px 14px", background: activeTab === tab.value ? "#f0fdfa" : "#fff", color: activeTab === tab.value ? "#0f766e" : "#475569", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{tab.label}{tab.count !== undefined && <span style={{ marginLeft: 7, display: "inline-flex", minWidth: 20, height: 20, alignItems: "center", justifyContent: "center", padding: "0 5px", borderRadius: 999, background: activeTab === tab.value ? "#ccfbf1" : "#eef2f6", color: activeTab === tab.value ? "#0f766e" : "#475569", fontSize: 10, fontWeight: 800 }}>{tab.count === null ? "…" : tab.count.toLocaleString("en-GB")}</span>}</button>)}
     </div>
