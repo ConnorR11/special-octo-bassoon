@@ -78,7 +78,7 @@ export default function SolarRework({ onSelectAppointment }) {
       if (activeTab === "unlinked") {
         request = request.is("open_solar_id", null).range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE)
       } else {
-        request = request.not("open_solar_id", "is", null).neq("open_solar_id", "").range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE)
+        request = request.not("open_solar_id", "is", null).range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE)
       }
       const needle = normalise(query).replace(/[%_,()]/g, " ")
       if (needle) request = request.or("name.ilike.%" + needle + "%,postcode.ilike.%" + needle + "%,address.ilike.%" + needle + "%,phone_number_1.ilike.%" + needle + "%,secondary_phone_number.ilike.%" + needle + "%,email_address.ilike.%" + needle + "%,product.ilike.%" + needle + "%,result.ilike.%" + needle + "%")
@@ -123,7 +123,7 @@ export default function SolarRework({ onSelectAppointment }) {
           .or("result.is.null,result.neq.SOLD")
         const [unlinkedResult, linkedResult] = await Promise.all([
           base().is("open_solar_id", null),
-          base().not("open_solar_id", "is", null).neq("open_solar_id", "")
+          base().not("open_solar_id", "is", null)
         ])
         if (unlinkedResult.error) throw unlinkedResult.error
         if (linkedResult.error) throw linkedResult.error
