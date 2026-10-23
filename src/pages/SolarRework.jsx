@@ -56,7 +56,6 @@ export default function SolarRework({ onSelectAppointment }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [query, setQuery] = useState("")
-  const [resultFilter, setResultFilter] = useState("all")
   const [yearFilter, setYearFilter] = useState("all")
   const [unlinkedSortOrder, setUnlinkedSortOrder] = useState("desc")
   const [page, setPage] = useState(0)
@@ -90,8 +89,6 @@ export default function SolarRework({ onSelectAppointment }) {
       }
       const needle = normalise(query).replace(/[%_,()]/g, " ")
       if (needle) request = request.or("name.ilike.%" + needle + "%,postcode.ilike.%" + needle + "%,address.ilike.%" + needle + "%,phone_number_1.ilike.%" + needle + "%,secondary_phone_number.ilike.%" + needle + "%,email_address.ilike.%" + needle + "%,product.ilike.%" + needle + "%,result.ilike.%" + needle + "%")
-      if (resultFilter === "No result") request = request.is("result", null)
-      else if (resultFilter !== "all") request = request.eq("result", resultFilter)
       const { data, error: queryError } = await request
       if (requestId !== loadRequestId.current) return
       if (queryError) throw queryError
@@ -183,8 +180,6 @@ export default function SolarRework({ onSelectAppointment }) {
       setError(err?.message || "Could not save the OpenSolar ID.")
     } finally { setSavingId(null) }
   }
-  useEffect(() => { loadRows(page) }, [page, query, resultFilter, activeTab, yearFilter, unlinkedSortOrder])
-  useEffect(() => { setPage(0) }, [query, resultFilter, activeTab, yearFilter, unlinkedSortOrder])
   const filteredRows = rows
   const pageCount = hasMore ? page + 2 : page + 1
   const visibleRows = filteredRows
@@ -224,13 +219,12 @@ export default function SolarRework({ onSelectAppointment }) {
     </div>
 
     <div style={{ ...cardStyle, padding: 13, marginBottom: 14 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(220px,2fr) repeat(3,minmax(145px,1fr))", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(220px,2fr) repeat(2,minmax(145px,1fr))", gap: 10 }}>
         <div style={{ position: "relative" }}>
           <Search size={15} style={{ position: "absolute", left: 11, top: 12, color: "#64748b" }} />
           <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search name, postcode, phone, email…" style={{ ...inputStyle, width: "100%", paddingLeft: 33, boxSizing: "border-box" }} />
         </div>
         <div style={{ ...muted, display: "flex", alignItems: "center", padding: "0 10px" }}>
-          {activeTab === "linked" ? "All linked OpenSolar appointments" : "All unlinked OpenSolar appointments"}
         </div>
         {activeTab === "unlinked" && <>
           <select value={yearFilter} onChange={event => setYearFilter(event.target.value)} style={selectStyle}>
@@ -241,9 +235,6 @@ export default function SolarRework({ onSelectAppointment }) {
             <option value="desc">Newest to oldest</option><option value="asc">Oldest to newest</option>
           </select>
         </>}
-        <select value={resultFilter} onChange={event => setResultFilter(event.target.value)} style={selectStyle}>
-          <option value="all">All appointment results</option>
-          {["No result","CONTACTED","NO ANSWER","NOT INTERESTED","DELETED","REMOVED","INVALID","DUPLICATE","NO COVER","SINGLEHEAD"].map(result => <option key={result} value={result}>{result}</option>)}
         </select>
       </div>
     </div>
