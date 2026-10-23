@@ -84,9 +84,11 @@ export default function SolarRework({ onSelectAppointment }) {
         .order("appointment_date", { ascending: activeTab === "linked" ? true : unlinkedSortOrder === "asc", nullsFirst: false })
         .order("appointment_row_id", { ascending: false })
       if (activeTab === "unlinked") {
-        request = request.is("open_solar_id", null).range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE)
+        request = request.is("open_solar_id", null)
+        if (yearFilter !== "all") request = request.gte("appointment_date", yearFilter + "-01-01").lt("appointment_date", (Number(yearFilter) + 1) + "-01-01")
+        request = request.range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE - 1)
       } else {
-        request = request.not("open_solar_id", "is", null).range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE)
+        request = request.not("open_solar_id", "is", null).range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE - 1)
       }
       const needle = normalise(query).replace(/[%_,()]/g, " ")
       if (needle) request = request.or("name.ilike.%" + needle + "%,postcode.ilike.%" + needle + "%,address.ilike.%" + needle + "%,phone_number_1.ilike.%" + needle + "%,secondary_phone_number.ilike.%" + needle + "%,email_address.ilike.%" + needle + "%,product.ilike.%" + needle + "%,result.ilike.%" + needle + "%")
@@ -185,8 +187,8 @@ export default function SolarRework({ onSelectAppointment }) {
       setError(err?.message || "Could not save the OpenSolar ID.")
     } finally { setSavingId(null) }
   }
-  useEffect(() => { loadRows(page) }, [page, query, resultFilter, suitabilityFilter, activeTab])
-  useEffect(() => { setPage(0) }, [query, resultFilter, suitabilityFilter, activeTab])
+  useEffect(() => { loadRows(page) }, [page, query, resultFilter, suitabilityFilter, activeTab, yearFilter, unlinkedSortOrder])
+  useEffect(() => { setPage(0) }, [query, resultFilter, suitabilityFilter, activeTab, yearFilter, unlinkedSortOrder])
   const filteredRows = rows
   const pageCount = hasMore ? page + 2 : page + 1
   const visibleRows = filteredRows
