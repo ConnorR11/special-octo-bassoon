@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react"
-import { ExternalLink, Link2, RefreshCw, Search, Sun, UserRound } from "lucide-react"
+import { Link2, RefreshCw, Search, Sun } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
 const PAGE_SIZE = 50
@@ -345,14 +345,14 @@ export default function SolarRework({ onSelectAppointment }) {
       <div style={{ overflowX: "auto" }}>
         <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 980, fontSize: 12 }}>
           <thead><tr style={{ background: "#f8fafc", textAlign: "left", color: "#475569" }}>
-            {["Name", ...(activeTab === "unlinked" ? ["OpenSolar ID"] : ["Design"]),"Date",activeTab === "unlinked" ? "Result" : "Quote readiness", ...(activeTab === "linked" ? ["Related appointment result"] : []),"Open"].map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
+            {["Name", ...(activeTab === "unlinked" ? ["OpenSolar ID"] : ["Design"]),"Date",activeTab === "unlinked" ? "Result" : "Quote readiness", ...(activeTab === "linked" ? ["Related appointment result"] : [])].map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
           </tr></thead>
           <tbody>
-            {activeTab === "quotes-sent" && <tr><td colSpan={6} style={{ padding: 36, textAlign: "center", color: "#64748b" }}><div style={{ fontWeight: 700, color: "#334155", marginBottom: 6 }}>Quotes Sent is not set up yet</div><div>Once quote sending is implemented, this tab will show appointments with quotes sent.</div></td></tr>}
-            {activeTab !== "quotes-sent" && !loading && visibleRows.length === 0 && <tr><td colSpan={7} style={{ padding: 28, textAlign: "center", color: "#64748b" }}>{"No appointments match these filters."}</td></tr>}
+            {activeTab === "quotes-sent" && <tr><td colSpan={activeTab === "linked" ? 5 : 4} style={{ padding: 36, textAlign: "center", color: "#64748b" }}><div style={{ fontWeight: 700, color: "#334155", marginBottom: 6 }}>Quotes Sent is not set up yet</div><div>Once quote sending is implemented, this tab will show appointments with quotes sent.</div></td></tr>}
+            {activeTab !== "quotes-sent" && !loading && visibleRows.length === 0 && <tr><td colSpan={activeTab === "linked" ? 5 : 4} style={{ padding: 28, textAlign: "center", color: "#64748b" }}>{"No appointments match these filters."}</td></tr>}
             {activeTab !== "quotes-sent" && visibleRows.map(row => {
               const linked = row.open_solar_id !== null && row.open_solar_id !== undefined && String(row.open_solar_id).trim() !== ""
-              return <tr key={row.appointment_row_id} style={{ borderBottom: "1px solid #edf2f7" }}>
+              return <tr key={row.appointment_row_id} onClick={() => onSelectAppointment?.(row)} onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelectAppointment?.(row) } }} tabIndex={0} role="button" aria-label={"Open appointment for " + (normalise(row.name) || "unnamed customer")} style={{ borderBottom: "1px solid #edf2f7", cursor: "pointer" }}>
                 <td style={{ padding: "6px 10px", maxWidth: 300 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
                     {activeTab === "linked" && <OpenSolarThumbnail row={row} />}
@@ -380,7 +380,7 @@ export default function SolarRework({ onSelectAppointment }) {
                 </td>}
                 <td style={{ padding: "6px 10px", whiteSpace: "nowrap" }}>
                   <div>{dateLabel(row.appointment_date)}</div>
-                  {activeTab === "linked" && linked && <a href={"https://app.opensolar.com/projects/" + encodeURIComponent(String(row.open_solar_id))} target="_blank" rel="noreferrer" style={{ color: "#047857", display: "inline-flex", gap: 4, alignItems: "center", marginTop: 4, textDecoration: "none", fontSize: 10, fontWeight: 650 }}><Link2 size={12}/> {row.open_solar_id}</a>}
+                  {activeTab === "linked" && linked && <a href={"https://app.opensolar.com/projects/" + encodeURIComponent(String(row.open_solar_id))} onClick={event => event.stopPropagation()} target="_blank" rel="noreferrer" style={{ color: "#047857", display: "inline-flex", gap: 4, alignItems: "center", marginTop: 4, textDecoration: "none", fontSize: 10, fontWeight: 650 }}><Link2 size={12}/> {row.open_solar_id}</a>}
                 </td>
                 <td style={{ padding: "6px 10px", minWidth: activeTab === "unlinked" ? 100 : 210 }}>
                   {activeTab === "unlinked" ? <span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, background: "#f1f5f9", color: "#475569", fontSize: 11, fontWeight: 700 }}>{formatStatus(row)}</span> : (() => {
@@ -407,9 +407,6 @@ export default function SolarRework({ onSelectAppointment }) {
                   </div> : <span style={muted}>No related appointment</span>}
                 </td>}
 
-                <td style={{ padding: "6px 10px" }}>
-                  <button onClick={() => onSelectAppointment?.(row)} style={{ border: "1px solid #cbd5e1", borderRadius: 7, padding: "6px 8px", background: "#fff", color: "#0f172a", display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", cursor: "pointer", fontSize: 11, fontWeight: 650 }}><UserRound size={13}/> Open <ExternalLink size={11}/></button>
-                </td>
               </tr>
             })}
           </tbody>
