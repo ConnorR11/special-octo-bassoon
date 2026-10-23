@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react"
 import { ExternalLink, Link2, RefreshCw, Search, Sun, UserRound } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 50
 const UNSUITABLE_RESULTS = new Set(["DELETED", "REMOVED", "INVALID", "DUPLICATE", "NO COVER", "SINGLEHEAD"])
 
 function normalise(value) { return String(value ?? "").trim() }
