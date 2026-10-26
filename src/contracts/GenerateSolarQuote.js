@@ -157,14 +157,14 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
     ["Battery",hardwareLabel(d.batteries,"To be confirmed")],
     ["Estimated generation",generation?Number(generation).toLocaleString("en-GB")+" kWh / year":"To be confirmed"]
   ]
-  let rowY=173
+  let coverRowY=173
   const rowH=10
   rowData.forEach(([label,detail],index)=>{
-    if(index%2===0){pdf.setFillColor(245,247,249);pdf.roundedRect(margin,rowY,w-margin*2,rowH,1.5,1.5,"F")}
-    pdf.setTextColor(...navy);pdf.setFont("helvetica","bold");pdf.setFontSize(8.5);pdf.text(label,margin+5,rowY+7)
+    if(index%2===0){pdf.setFillColor(245,247,249);pdf.roundedRect(margin,coverRowY,w-margin*2,rowH,1.5,1.5,"F")}
+    pdf.setTextColor(...navy);pdf.setFont("helvetica","bold");pdf.setFontSize(8.5);pdf.text(label,margin+5,coverRowY+7)
     pdf.setTextColor(...muted);pdf.setFont("helvetica","normal");pdf.setFontSize(8.5)
-    pdf.text(pdf.splitTextToSize(String(detail),w-margin*2-65).slice(0,1),w-margin-5,rowY+7,{align:"right"})
-    rowY+=11
+    pdf.text(pdf.splitTextToSize(String(detail),w-margin*2-65).slice(0,1),w-margin-5,coverRowY+7,{align:"right"})
+    coverRowY+=11
   })
 
   // Replace signature and itemised price breakdown with the two customer-facing price options.
