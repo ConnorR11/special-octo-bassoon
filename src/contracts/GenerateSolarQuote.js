@@ -25,6 +25,48 @@ function getQuoteData(appointment) {
   return { epvs, openSolar, panels, inverters, batteries, panelCount, capacity, cashPrice, termYears, rate, deposit, monthly }
 }
 
+async function imageData(url) {
+  const source = String(url || "").trim()
+  if (!source) throw new Error("No image URL was provided.")
+  let requestUrl = source
+  const parsed = new URL(source, window.location.origin)
+  if (parsed.hostname === "api.opensolar.com" || parsed.hostname.endsWith(".opensolar.com")) {
+    requestUrl = `/api/opensolar-image?url=${encodeURIComponent(source)}`
+  }
+  const response = await fetch(requestUrl)
+  if (!response.ok) throw new Error(`Image request returned HTTP ${response.status}`)
+  const blob = await response.blob()
+  const objectUrl = URL.createObjectURL(blob)
+  try {
+    const image = new Image()
+    image.src = objectUrl
+    await image.decode()
+    const canvas = document.createElement("canvas")
+    canvas.width = image.naturalWidth || image.width
+    canvas.height = image.naturalHeight || image.height
+    if (!canvas.width || !canvas.height) throw new Error("Image returned no dimensions.")
+    const context = canvas.getContext("2d")
+    if (!context) throw new Error("Unable to create image canvas.")
+    context.drawImage(image, 0, 0)
+    return { dataUrl: canvas.toDataURL("image/png"), width: canvas.width, height: canvas.height }
+  } finally {
+    URL.revokeObjectURL(objectUrl)
+  }
+}
+
+async function drawQuoteImage(pdf, url, x, y, width, maxHeight) {
+  const image = await imageData(url)
+  const ratio = image.width / image.height
+  let imageWidth = width - 4
+  let imageHeight = imageWidth / ratio
+  if (imageHeight > maxHeight) {
+    imageHeight = maxHeight
+    imageWidth = imageHeight * ratio
+  }
+  pdf.addImage(image.dataUrl, "PNG", x + (width - imageWidth) / 2, y, imageWidth, imageHeight, undefined, "FAST")
+  return imageHeight
+}
+
 function addWrapped(pdf, text, x, y, width, lineHeight = 5) {
   const lines = pdf.splitTextToSize(String(text), width)
   pdf.text(lines, x, y)
