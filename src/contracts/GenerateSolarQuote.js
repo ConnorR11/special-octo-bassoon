@@ -181,25 +181,60 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   pdf.text("Finance illustration at "+d.rate.toFixed(1)+"% over "+d.termYears+" years; subject to lender approval and confirmed terms.",margin+8,priceY+22)
   footer(1)
 
-  // PAGE 2 — Transparent pricing, savings assumptions and inclusions.
+  // PAGE 2 — Itemised equipment and service breakdown.
   pdf.addPage(); pdf.setFillColor(255,255,255);pdf.rect(0,0,w,h,"F")
-  pdf.setTextColor(...blue);pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("HOMESHIELD SCOTLAND",margin,16)
-  pdf.setTextColor(...navy);pdf.setFontSize(22);pdf.text("Your quotation",margin,32)
-  text("Pricing and specification summary",margin,40,w-margin*2,9,muted)
-  let y2=53
-  // Pricing is shown prominently on page 1 only, avoiding repetition across adjacent pages.
-  y2=section("Equipment and installation",y2)
-  for(const [label,detail] of equipment){
-    card(margin,y2,w-margin*2,17,[247,249,251])
-    pdf.setTextColor(...blue);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text(label.toUpperCase(),margin+5,y2+6)
-    pdf.setTextColor(...navy);pdf.setFont("helvetica","normal");pdf.setFontSize(9)
-    pdf.text(pdf.splitTextToSize(detail,w-margin*2-10).slice(0,2),margin+5,y2+12)
-    y2+=20
+  pdf.setTextColor(...blue);pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text("HOMESHIELD SCOTLAND",margin,16)
+  pdf.setTextColor(...navy);pdf.setFont("helvetica","bold");pdf.setFontSize(22);pdf.text("Itemised Breakdown",margin,33)
+  text("Equipment and services included in your proposed system",margin,41,w-margin*2,9,muted)
+  pdf.setFillColor(...blue);pdf.rect(margin,47,31,1.5,"F")
+
+  const itemRows=[]
+  const qtyOf=(item,fallback=1)=>Number(item?.quantity ?? item?.count ?? item?.qty ?? fallback) || fallback
+  const itemName=(item,fallback)=>[item?.manufacturer,item?.model||item?.name].filter(Boolean).join(" ") || fallback
+  d.panels.forEach((item,index)=>itemRows.push({
+    name:itemName(item,"Solar panels"),type:"Product",
+    qty:qtyOf(item,index===0 ? (d.panelCount||1) : 1),
+  }))
+  d.inverters.forEach(item=>{
+    itemRows.push({name:itemName(item,"Inverter"),type:"Product",qty:qtyOf(item)})
+    if(/hanchu|ess|wifi|dongle/i.test(String(item?.model||item?.name||""))) {
+      // Accessory naming is retained only when explicitly present in source data.
+    }
+  })
+  d.batteries.forEach(item=>itemRows.push({name:itemName(item,"Battery storage"),type:"Product",qty:qtyOf(item)}))
+  if(!itemRows.some(item=>/panel/i.test(item.name)) && d.panelCount>0) {
+    itemRows.unshift({name:"Solar panels",type:"Product",qty:d.panelCount})
   }
-  y2+=3;y2=section("What is included",y2)
-  y2=text("Supply of the listed solar equipment, installation and commissioning as agreed in the final specification. Any exclusions or site-specific requirements will be confirmed before an order is placed.",margin,y2,w-margin*2,9,navy,"normal",4.5)+5
-  y2=section("Estimated savings — assumptions",y2)
-  y2=text("Energy savings are estimates based on the information available at the time of quotation. Actual results depend on household usage, weather, tariffs, system design and export arrangements. Figures are indicative, not guarantees.",margin,y2,w-margin*2,8,muted,"normal",4)
+  if(!itemRows.some(item=>/installation/i.test(item.name))) itemRows.push({name:"Installation and commissioning",type:"Service",qty:1})
+  if(!itemRows.some(item=>/system design/i.test(item.name))) itemRows.push({name:"System design",type:"Service",qty:1})
+
+  const tableX=margin, tableW=w-margin*2, nameW=tableW-54, typeW=28, qtyW=26
+  let ty=56
+  pdf.setFillColor(...blue);pdf.roundedRect(tableX,ty,tableW,12,2,2,"F")
+  pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(8)
+  pdf.text("PRODUCT / SERVICE",tableX+7,ty+7.5)
+  pdf.text("TYPE",tableX+nameW+typeW/2,ty+7.5,{align:"center"})
+  pdf.text("QTY",tableX+tableW-7,ty+7.5,{align:"right"})
+  ty+=12
+  itemRows.forEach((item,index)=>{
+    const rowHeight=8
+    if(index%2===0){pdf.setFillColor(245,248,249);pdf.roundedRect(tableX,ty,tableW,rowHeight,1,1,"F")}
+    pdf.setTextColor(...navy);pdf.setFont("helvetica","normal");pdf.setFontSize(8)
+    const nameLines=pdf.splitTextToSize(item.name,nameW-12).slice(0,1)
+    pdf.text(nameLines,tableX+7,ty+5.3)
+    const isService=item.type==="Service"
+    pdf.setFillColor(...(isService?[255,241,224]:[226,240,248]))
+    pdf.roundedRect(tableX+nameW+2,ty+1.2,typeW-4,5.6,2,2,"F")
+    pdf.setTextColor(...(isService?[177,91,20]:blue));pdf.setFont("helvetica","bold");pdf.setFontSize(6.5)
+    pdf.text(item.type,tableX+nameW+typeW/2,ty+4.9,{align:"center"})
+    pdf.setTextColor(...navy);pdf.setFontSize(8);pdf.text(String(item.qty),tableX+tableW-7,ty+5.3,{align:"right"})
+    ty+=rowHeight
+  })
+  ty+=8
+  ty=section("What is included",ty)
+  ty=text("Supply of the listed solar equipment, installation and commissioning as agreed in the final specification. Any exclusions or site-specific requirements will be confirmed before an order is placed.",margin,ty,w-margin*2,9,navy,"normal",4.5)+5
+  ty=section("Savings and finance assumptions",ty)
+  text("Energy savings are estimates based on available information. Actual results depend on household usage, weather, tariffs, system design and export arrangements. Finance is illustrative, subject to lender approval and confirmed terms.",margin,ty,w-margin*2,8,muted,"normal",4)
   footer(2)
 
   // PAGE 3 — Next steps, limitations and customer confidence.
