@@ -29,7 +29,7 @@ export default function BulkUpdater() {
 
   async function runGlideSync(execute) {
     const token = await getSessionToken()
-    const response = await fetch((import.meta.env.VITE_SUPABASE_URL || "").replace(/\\/$/, "") + "/functions/v1/glide-leads-dry-run", {
+    const response = await fetch((import.meta.env.VITE_SUPABASE_URL || "").replace(/\/$/, "") + "/functions/v1/glide-leads-dry-run", {
       method: "POST",
       headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({ limit: Math.min(100, Math.max(1, Number.parseInt(limit, 10) || 100)), offset: Math.max(0, Number.parseInt(offset, 10) || 0), execute })
