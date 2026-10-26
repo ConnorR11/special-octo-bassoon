@@ -44,8 +44,7 @@ export default function BulkUpdater() {
     setBusy(true); setError(""); setMessage(""); setConfirmExecute(false)
     try {
       if (selectedJob.kind === "glide") {
-        if (execute) throw new Error("Live Glide writes are not enabled until the matching and mapping preview has been reviewed.")
-        await runGlideSync(false)
+        await runGlideSync(execute)
         return
       }
       const token = await getSessionToken()
@@ -97,11 +96,11 @@ export default function BulkUpdater() {
         </div>
         <div className="bulk-updater-actions">
           <button className="bulk-updater-btn primary" disabled={busy} onClick={()=>runUpdater(false)}><Eye size={16}/>{busy?"Working…":"Preview changes"}</button>
-          {selectedJob.kind!=="glide"&&<button className="bulk-updater-btn" disabled={busy||!result||!(result.previewed>0)} onClick={()=>setConfirmExecute(true)}><Play size={16}/>Review & run updates</button>}
+          <button className="bulk-updater-btn" disabled={busy||!result||!((result.proposedFieldChanges ?? result.previewed ?? 0)>0)} onClick={()=>setConfirmExecute(true)}><Play size={16}/>{selectedJob.kind==="glide"?"Update leads in Supabase":"Review & run updates"}</button>
           {busy&&<span className="bulk-updater-muted" style={{alignSelf:"center"}}><RefreshCw size={14} style={{verticalAlign:"middle"}}/> Processing request…</span>}
         </div>
         <div className="bulk-updater-notice warning"><AlertTriangle size={18} style={{flexShrink:0}}/><div><strong>{selectedJob.kind==="glide"?"Glide live sync is protected.":"Preview before execution."}</strong> {selectedJob.kind==="glide"?"This option currently runs a read-only preview of the first 100 Glide rows. No lead records are changed until matching, mappings and results are verified.":"Preview mode does not update deals. Execution writes only the fields targeted by the selected maintenance job. The batch size is capped at 250 records."}</div></div>
-        {confirmExecute&&<div className="bulk-updater-confirm"><strong>Confirm production update</strong><p className="bulk-updater-muted">You are about to run “{selectedJob.title}” for up to {Math.min(250,Math.max(1,Number.parseInt(limit,10)||250))} records. This will write changes to Supabase.</p><div className="bulk-updater-actions"><button className="bulk-updater-btn danger" disabled={busy} onClick={()=>runUpdater(true)}><Play size={16}/>Confirm and execute</button><button className="bulk-updater-btn" disabled={busy} onClick={()=>setConfirmExecute(false)}>Cancel</button></div></div>}
+        {confirmExecute&&<div className="bulk-updater-confirm"><strong>Confirm production update</strong><p className="bulk-updater-muted">You are about to run “{selectedJob.title}” for up to {Math.min(selectedJob.kind==="glide"?100:250,Math.max(1,Number.parseInt(limit,10)||100))} records. This will write changes to Supabase. For Glide, only existing matched leads will be updated; blank source fields are skipped and no leads are inserted.</p><div className="bulk-updater-actions"><button className="bulk-updater-btn danger" disabled={busy} onClick={()=>runUpdater(true)}><Play size={16}/>Confirm and execute</button><button className="bulk-updater-btn" disabled={busy} onClick={()=>setConfirmExecute(false)}>Cancel</button></div></div>}
         {message&&<div className="bulk-updater-notice success"><CheckCircle2 size={18} style={{flexShrink:0}}/><span>{message}</span></div>}
         {error&&<div className="bulk-updater-notice error"><XCircle size={18} style={{flexShrink:0}}/><span>{error}</span></div>}
       </section>
