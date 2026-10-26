@@ -257,7 +257,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   })
   const tableX=margin, tableW=w-margin*2
   const typeX=tableX+tableW-43
-  let headerY=ty+4
+  let headerY=56
   const rowHeight=6.8
   pdf.setFillColor(...blue)
   pdf.roundedRect(tableX,headerY-7,tableW,11,2,2,"F")
@@ -299,7 +299,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
     pdf.text(quantity,tableX+tableW-7,rowY,{align:"right"})
     rowY+=rowHeight
   })
-  ty=rowY+3
+  let ty=rowY+3
   ty+=8
   ty=section("What is included",ty)
   ty=text("Supply of the listed solar equipment, installation and commissioning as agreed in the final specification. Any exclusions or site-specific requirements will be confirmed before an order is placed.",margin,ty,w-margin*2,9,navy,"normal",4.5)+5
