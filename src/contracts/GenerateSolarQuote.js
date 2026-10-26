@@ -137,7 +137,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   pdf.setFillColor(...blue);pdf.rect(margin,46,31,1.5,"F")
 
   // Large OpenSolar image, spanning the page width like the reference.
-  const imageX=margin,imageY=56,imageW=w-margin*2,imageH=111
+  const imageX=margin,imageY=56,imageW=w-margin*2,imageH=100
   card(imageX,imageY,imageW,imageH,[245,247,249])
   if(openSolarImageUrl) {
     try { await drawQuoteImage(pdf,openSolarImageUrl,imageX+3,imageY+3,imageW-6,imageH-6) }
@@ -148,6 +148,13 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
 
   // Compact specification table.
   const generation=Number(d.epvs.annualGeneration||d.epvs.annual_generation||d.epvs.estimatedGeneration||d.epvs.estimated_generation||d.epvs.annualProduction||d.epvs.annual_production||d.openSolar?.annualGeneration||0)
+  // Use the saved EPVS first-year pre-install electricity bill, converted from annual to monthly.
+  const savedCalculation=record?.epvs_calculation||{}
+  const savedProjection=savedCalculation?.thirtyYearProjection||savedCalculation?.data?.thirtyYearProjection||d.epvs?.thirtyYearProjection||{}
+  const savedScenario=savedProjection?.scenarios?.averageInflation
+  const savedRows=Array.isArray(savedScenario?.rows)?savedScenario.rows:(Array.isArray(savedScenario)?savedScenario:[])
+  const annualPreInstallBill=Number(savedRows.find(row=>Number(row?.year)===1)?.billPreInstall ?? savedRows[0]?.billPreInstall)
+  const monthlyElectricityBill=Number.isFinite(annualPreInstallBill)&&annualPreInstallBill>0?annualPreInstallBill/12:null
   const rowData=[
     ["Customer",customer],
     ["Property address",address||"To be confirmed"],
@@ -155,9 +162,10 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
     ["Solar panels",d.panelCount?String(d.panelCount)+" × "+(d.panels.find(item=>Number(item?.wattage||item?.power||item?.watts)>0)?.wattage||d.panels.find(item=>Number(item?.power||item?.watts)>0)?.power||450)+" W":"To be confirmed"],
     ["Inverter",hardwareLabel(d.inverters,"To be confirmed")],
     ["Battery",hardwareLabel(d.batteries,"To be confirmed")],
-    ["Estimated generation",generation?Number(generation).toLocaleString("en-GB")+" kWh / year":"To be confirmed"]
+    ["Estimated generation",generation?Number(generation).toLocaleString("en-GB")+" kWh / year":"To be confirmed"],
+    ["Estimated current electricity bill",monthlyElectricityBill!==null?money(monthlyElectricityBill)+" / month":"To be confirmed"]
   ]
-  let coverRowY=173
+  let coverRowY=162
   const rowH=10
   rowData.forEach(([label,detail],index)=>{
     if(index%2===0){pdf.setFillColor(245,247,249);pdf.roundedRect(margin,coverRowY,w-margin*2,rowH,1.5,1.5,"F")}
