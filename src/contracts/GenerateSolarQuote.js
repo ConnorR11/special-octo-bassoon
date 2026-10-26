@@ -120,7 +120,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   }
   const inverterLabel = hardwareLabel(d.inverters, "Inverter details to be confirmed")
   const batteryLabel = hardwareLabel(d.batteries, "Battery details to be confirmed")
-  const hardwareY = 165
+  const hardwareY = 140
   const hardwareGap = 5
   const hardwareW = (w - margin * 2 - hardwareGap) / 2
   const drawHardwareCard = (x, title, detail) => {
