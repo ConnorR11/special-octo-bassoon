@@ -107,12 +107,12 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   pdf.setFont("helvetica","normal"); pdf.setFontSize(11)
   let y = 70; y = addWrapped(pdf, address || "Property address to be confirmed", 120, y, 70, 5)
   pdf.setTextColor(...muted); pdf.setFontSize(9); pdf.text("Quote reference: " + quoteRef, 120, 99); pdf.text("Prepared: " + today, 120, 107)
-  pdf.setFillColor(...blue); pdf.roundedRect(margin, 137, w - margin*2, 23, 3, 3, "F")
-  pdf.setTextColor(255,255,255); pdf.setFont("helvetica","bold"); pdf.setFontSize(16); pdf.text(d.panelCount ? "×" + d.panelCount : "Panels TBC", margin + 12, 148)
-  pdf.setFont("helvetica","normal"); pdf.setFontSize(7.5); pdf.text("SOLAR PANELS", margin + 12, 155)
-  pdf.setDrawColor(255,255,255); pdf.line(98, 141, 98, 156)
-  pdf.setFont("helvetica","bold"); pdf.setFontSize(16); pdf.text(d.capacity ? d.capacity.toFixed(2) + " kWp" : "TBC", 110, 148)
-  pdf.setFont("helvetica","normal"); pdf.setFontSize(7.5); pdf.text("SYSTEM SIZE", 110, 155)
+  pdf.setFillColor(...blue); pdf.roundedRect(margin, 112, w - margin*2, 23, 3, 3, "F")
+  pdf.setTextColor(255,255,255); pdf.setFont("helvetica","bold"); pdf.setFontSize(16); pdf.text(d.panelCount ? "×" + d.panelCount : "Panels TBC", margin + 12, 123)
+  pdf.setFont("helvetica","normal"); pdf.setFontSize(7.5); pdf.text("SOLAR PANELS", margin + 12, 130)
+  pdf.setDrawColor(255,255,255); pdf.line(98, 116, 98, 131)
+  pdf.setFont("helvetica","bold"); pdf.setFontSize(16); pdf.text(d.capacity ? d.capacity.toFixed(2) + " kWp" : "TBC", 110, 123)
+  pdf.setFont("helvetica","normal"); pdf.setFontSize(7.5); pdf.text("SYSTEM SIZE", 110, 130)
   // Hardware badges sit directly beneath the panel-count and system-size banner.
   const hardwareLabel = (items, fallback) => {
     const names = items.map(item => [item?.manufacturer, item?.model, item?.name].filter(Boolean).join(" ")).filter(Boolean)
@@ -132,8 +132,8 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   drawHardwareCard(margin, "Inverter", inverterLabel)
   drawHardwareCard(margin + hardwareW + hardwareGap, "Battery storage", batteryLabel)
 
-  pdf.setTextColor(...blue); pdf.setFont("helvetica","normal"); pdf.setFontSize(17); pdf.text("System Performance", margin, 202)
-  pdf.setDrawColor(185,211,226); pdf.roundedRect(margin,207,w-margin*2,35,3,3,"S")
+  pdf.setTextColor(...blue); pdf.setFont("helvetica","normal"); pdf.setFontSize(17); pdf.text("System Performance", margin, 177)
+  pdf.setDrawColor(185,211,226); pdf.roundedRect(margin,182,w-margin*2,35,3,3,"S")
   const performance = [
     ["Estimated annual savings", d.epvs.annualSavings ? money(d.epvs.annualSavings) : "Not available"],
     ["Estimated long-term savings", d.epvs.totalSavings ? money(d.epvs.totalSavings) : "Not available"],
@@ -141,18 +141,18 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   ]
   const performanceColors = [[245,171,45],[133,190,58],[40,165,205]]
   performance.forEach((item,index)=>{
-    const py=210+index*10
+    const py=185+index*10
     pdf.setFillColor(...performanceColors[index]); pdf.roundedRect(margin+3,py,91,8,1.5,1.5,"F")
     pdf.setTextColor(255,255,255); pdf.setFont("helvetica","bold"); pdf.setFontSize(7); pdf.text(item[0],margin+6,py+5.2)
     pdf.setTextColor(...navy); pdf.setFontSize(9); pdf.text(item[1],115,py+5.2)
   })
-  pdf.setFillColor(...pale); pdf.roundedRect(margin, 249, w - margin*2, 40, 4, 4, "F")
-  pdf.setTextColor(...blue); pdf.setFont("helvetica","bold"); pdf.setFontSize(10); pdf.text("CASH PRICE", margin + 8, 259)
-  pdf.setTextColor(...navy); pdf.setFontSize(20); pdf.text(money(d.cashPrice), margin + 8, 270)
-  pdf.setTextColor(...blue); pdf.setFontSize(10); pdf.text("INDICATIVE MONTHLY FINANCE", 108, 259)
-  pdf.setTextColor(...navy); pdf.setFontSize(20); pdf.text(money(d.monthly) + " / month", 108, 270)
+  pdf.setFillColor(...pale); pdf.roundedRect(margin, 224, w - margin*2, 40, 4, 4, "F")
+  pdf.setTextColor(...blue); pdf.setFont("helvetica","bold"); pdf.setFontSize(10); pdf.text("CASH PRICE", margin + 8, 234)
+  pdf.setTextColor(...navy); pdf.setFontSize(20); pdf.text(money(d.cashPrice), margin + 8, 245)
+  pdf.setTextColor(...blue); pdf.setFontSize(10); pdf.text("INDICATIVE MONTHLY FINANCE", 108, 234)
+  pdf.setTextColor(...navy); pdf.setFontSize(20); pdf.text(money(d.monthly) + " / month", 108, 245)
   pdf.setFont("helvetica","normal"); pdf.setFontSize(8); pdf.setTextColor(...muted)
-  pdf.text("Illustrative at 3.9% over " + d.termYears + " years; subject to lender approval and confirmed terms.", margin + 8, 281, { maxWidth: w - margin*2 - 16 })
+  pdf.text("Illustrative at 3.9% over " + d.termYears + " years; subject to lender approval and confirmed terms.", margin + 8, 256, { maxWidth: w - margin*2 - 16 })
   if (openSolarImageUrl) { try { await drawQuoteImage(pdf, openSolarImageUrl, margin, 45, 94, 76) } catch (error) { console.warn("OpenSolar image unavailable on quote cover:", error) } }
   footer(1)
 
