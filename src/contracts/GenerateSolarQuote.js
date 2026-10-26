@@ -101,12 +101,15 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   // Cover
   pdf.setFillColor(255,255,255); pdf.rect(0, 0, w, h, "F")
   pdf.setTextColor(...blue); pdf.setFont("helvetica","bold"); pdf.setFontSize(11); pdf.text("HOMESHIELD SCOTLAND", margin, 15)
+  pdf.setTextColor(...muted); pdf.setFont("helvetica","normal"); pdf.setFontSize(8)
+  pdf.text("QUOTE REF: " + quoteRef, w - margin, 12, { align: "right" })
+  pdf.text("DATE CREATED: " + today, w - margin, 17, { align: "right" })
   pdf.setFontSize(23); pdf.text("Your Solar PV System", margin, 31)
   pdf.setFont("helvetica","normal"); pdf.setFontSize(9); pdf.setTextColor(...muted); pdf.text("Your proposed solar system and estimated performance", margin, 39)
   pdf.setTextColor(...navy); pdf.setFont("helvetica","bold"); pdf.setFontSize(15); pdf.text(customer, 120, 58)
   pdf.setFont("helvetica","normal"); pdf.setFontSize(11)
   let y = 70; y = addWrapped(pdf, address || "Property address to be confirmed", 120, y, 70, 5)
-  pdf.setTextColor(...muted); pdf.setFontSize(9); pdf.text("Quote reference: " + quoteRef, 120, 99); pdf.text("Prepared: " + today, 120, 107)
+  pdf.setTextColor(...muted); pdf.setFontSize(9); 
   pdf.setFillColor(...blue); pdf.roundedRect(margin, 112, w - margin*2, 23, 3, 3, "F")
   pdf.setTextColor(255,255,255); pdf.setFont("helvetica","bold"); pdf.setFontSize(16); pdf.text(d.panelCount ? "×" + d.panelCount : "Panels TBC", margin + 12, 123)
   pdf.setFont("helvetica","normal"); pdf.setFontSize(7.5); pdf.text("SOLAR PANELS", margin + 12, 130)
