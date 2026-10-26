@@ -37,6 +37,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   if (error) throw error
   const record = saved || appointment
   const d = getQuoteData(record)
+  const openSolarImageUrl = String(d.openSolar?.imageUrl || "").trim()
   const pdf = new jsPDF({ unit: "mm", format: "a4" })
   const w = 210, h = 297, margin = 18
   const navy = [16, 35, 63], blue = [11, 93, 138], muted = [92, 105, 120], pale = [239, 246, 250]
