@@ -10,7 +10,7 @@ const JOBS = [
 
 export default function BulkUpdater() {
   const [job, setJob] = React.useState(JOBS[0].id)
-  const [limit, setLimit] = React.useState("100")
+  const [limit, setLimit] = React.useState("1000000")
   const [result, setResult] = React.useState(null)
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState("")
@@ -65,7 +65,7 @@ export default function BulkUpdater() {
 
   const counts = result ? [
     { label: "Scanned", value: result.requested ?? result.sourceRowsTested ?? 0 },
-    { label: "Eligible / matched", value: result.eligibleForUpdate ?? result.matchedUnique ?? 0 },
+    { label: "Eligible leads", value: result.eligibleRowsTotal ?? result.eligibleForUpdate ?? result.matchedUnique ?? 0 },
     { label: "Proposed changes", value: result.proposedFieldChanges ?? result.previewed ?? 0 },
     { label: "Same timestamp skipped", value: result.skippedSameLastCall ?? 0 },
     { label: "Updated", value: result.updated ?? 0 },
