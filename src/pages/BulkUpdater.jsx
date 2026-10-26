@@ -11,7 +11,7 @@ const JOBS = [
 
 export default function BulkUpdater() {
   const [job, setJob] = React.useState(JOBS[0].id)
-  const [limit, setLimit] = React.useState("1000000")
+  const [limit, setLimit] = React.useState("100")
   const [result, setResult] = React.useState(null)
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState("")
