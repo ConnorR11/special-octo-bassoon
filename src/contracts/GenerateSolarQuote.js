@@ -101,7 +101,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   // Cover
   pdf.setFillColor(...navy); pdf.rect(0, 0, w, 102, "F")
   pdf.setTextColor(255,255,255); pdf.setFont("helvetica","bold"); pdf.setFontSize(13); pdf.text("HOMESHIELD SCOTLAND", margin, 24)
-  pdf.setFontSize(29); pdf.text("Your solar", margin, 52); pdf.text("proposal", margin, 64)
+  pdf.setFontSize(29); pdf.text("Your Solar PV System", margin, 52)
   pdf.setFont("helvetica","normal"); pdf.setFontSize(12); pdf.text("A tailored proposal for your home", margin, 78)
   pdf.setTextColor(...navy); pdf.setFont("helvetica","bold"); pdf.setFontSize(18); pdf.text(customer, margin, 127)
   pdf.setFont("helvetica","normal"); pdf.setFontSize(11)
