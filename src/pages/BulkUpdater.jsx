@@ -65,8 +65,9 @@ export default function BulkUpdater() {
 
   const counts = result ? [
     { label: "Scanned", value: result.requested ?? result.sourceRowsTested ?? 0 },
-    { label: "Matched", value: result.matchedUnique ?? 0 },
+    { label: "Eligible / matched", value: result.eligibleForUpdate ?? result.matchedUnique ?? 0 },
     { label: "Proposed changes", value: result.proposedFieldChanges ?? result.previewed ?? 0 },
+    { label: "Same timestamp skipped", value: result.skippedSameLastCall ?? 0 },
     { label: "Updated", value: result.updated ?? 0 },
     { label: "Unmatched / failed", value: (result.notMatched ?? result.skipped ?? 0) + (result.multipleMatches ?? 0) + (result.errors?.length ?? result.failed ?? 0) },
   ] : []
@@ -99,7 +100,7 @@ export default function BulkUpdater() {
           <button className="bulk-updater-btn" disabled={busy||!result||!((result.proposedFieldChanges ?? result.previewed ?? 0)>0)} onClick={()=>setConfirmExecute(true)}><Play size={16}/>{selectedJob.kind==="glide"?"Update leads in Supabase":"Review & run updates"}</button>
           {busy&&<span className="bulk-updater-muted" style={{alignSelf:"center"}}><RefreshCw size={14} style={{verticalAlign:"middle"}}/> Processing request…</span>}
         </div>
-        <div className="bulk-updater-notice warning"><AlertTriangle size={18} style={{flexShrink:0}}/><div><strong>{selectedJob.kind==="glide"?"Glide live sync is protected.":"Preview before execution."}</strong> {selectedJob.kind==="glide"?"This option currently runs a read-only preview of the first 100 Glide rows. No lead records are changed until matching, mappings and results are verified.":"Preview mode does not update deals. Execution writes only the fields targeted by the selected maintenance job. The batch size is capped at 250 records."}</div></div>
+        <div className="bulk-updater-notice warning"><AlertTriangle size={18} style={{flexShrink:0}}/><div><strong>{selectedJob.kind==="glide"?"Glide live sync is protected.":"Preview before execution."}</strong> {selectedJob.kind==="glide"?"Only leads whose Glide last-time-called value differs from the CRM value are eligible for comparison and display. Leads with the same timestamp or a blank Glide timestamp are skipped. Preview is read-only; execution writes only differing, nonblank fields.":"Preview mode does not update deals. Execution writes only the fields targeted by the selected maintenance job. The batch size is capped at 250 records."}</div></div>
         {confirmExecute&&<div className="bulk-updater-confirm"><strong>Confirm production update</strong><p className="bulk-updater-muted">You are about to run “{selectedJob.title}” for up to {Math.min(selectedJob.kind==="glide"?100:250,Math.max(1,Number.parseInt(limit,10)||100))} records. This will write changes to Supabase. For Glide, only existing matched leads will be updated; blank source fields are skipped and no leads are inserted.</p><div className="bulk-updater-actions"><button className="bulk-updater-btn danger" disabled={busy} onClick={()=>runUpdater(true)}><Play size={16}/>Confirm and execute</button><button className="bulk-updater-btn" disabled={busy} onClick={()=>setConfirmExecute(false)}>Cancel</button></div></div>}
         {message&&<div className="bulk-updater-notice success"><CheckCircle2 size={18} style={{flexShrink:0}}/><span>{message}</span></div>}
         {error&&<div className="bulk-updater-notice error"><XCircle size={18} style={{flexShrink:0}}/><span>{error}</span></div>}
