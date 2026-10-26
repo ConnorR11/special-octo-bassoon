@@ -152,7 +152,7 @@ export default function SolarRework({ onSelectAppointment }) {
         .order("appointment_date", { ascending: activeTab === "linked" ? linkedSortOrder === "asc" : unlinkedSortOrder === "asc", nullsFirst: false })
         .order("appointment_row_id", { ascending: false })
       if (yearFilter !== "all") request = request.gte("appointment_date", yearFilter + "-01-01").lt("appointment_date", (Number(yearFilter) + 1) + "-01-01")
-      if (resultFilter !== "all") request = resultFilter === "no-result" ? request.or("result.is.null,result.eq.") : request.eq("result", resultFilter)
+      if (resultFilter !== "all") request = resultFilter === "no-result" ? request.is("result", null) : request.eq("result", resultFilter)
       if (activeTab === "unlinked") {
         request = request.is("open_solar_id", null)
         request = request.range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE - 1)
@@ -215,8 +215,8 @@ export default function SolarRework({ onSelectAppointment }) {
   }
 
 
-  useEffect(() => { loadRows(page) }, [page, query, activeTab, yearFilter, unlinkedSortOrder, linkedSortOrder, linkedSoldFilter, linkedReadinessFilter])
-  useEffect(() => { setPage(0) }, [query, activeTab, yearFilter, unlinkedSortOrder, linkedSortOrder, linkedSoldFilter, linkedReadinessFilter])
+  useEffect(() => { loadRows(page) }, [page, query, activeTab, yearFilter, unlinkedSortOrder, linkedSortOrder, linkedSoldFilter, linkedReadinessFilter, resultFilter])
+  useEffect(() => { setPage(0) }, [query, activeTab, yearFilter, unlinkedSortOrder, linkedSortOrder, linkedSoldFilter, linkedReadinessFilter, resultFilter])
 
   // Load tab totals independently from the table request so badge counts never block or reset the visible list.
   useEffect(() => {
