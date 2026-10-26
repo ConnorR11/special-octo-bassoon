@@ -54,7 +54,9 @@ export default function BulkUpdater() {
     setBusy(true); setError(""); setMessage(""); setConfirmExecute(false)
     try {
       if (selectedJob.kind === "archive-preview") {
-        throw new Error("Archived Glide sync is not enabled yet. Agree the matching filter and CRM field mappings first.");
+        if (execute) throw new Error("Archived sync is preview-only. No CRM records can be written from this job.");
+        await runArchivedPreview();
+        return;
       }
       if (selectedJob.kind === "glide") {
         await runGlideSync(execute)
