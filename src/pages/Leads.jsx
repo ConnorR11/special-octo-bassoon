@@ -20,6 +20,7 @@ import PhoneDialer from "../components/PhoneDialer"
 
 const QUEUE_SELECT = [
   "delete_row_id",
+  "marketing_row_id",
   "first_name",
   "last_name",
   "salutations",
