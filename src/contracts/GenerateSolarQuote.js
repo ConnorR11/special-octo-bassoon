@@ -153,7 +153,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   // System overview page removed; equipment details remain on the cover.
 
   // Price and savings
-  pdf.addPage(); y=25; y=heading("Your quotation", y)
+  pdf.addPage(); let y = 25; y=heading("Your quotation", y)
   pdf.setTextColor(...navy); pdf.setFont("helvetica","normal"); pdf.setFontSize(10)
   y=addWrapped(pdf, "The finance figure is illustrative, calculated at " + d.rate.toFixed(1) + "% annually over " + d.termYears + " years with an assumed deposit of " + money(d.deposit) + ". It is not a lender offer; final terms are subject to lender approval.", margin, y, w-margin*2, 5)
   y+=7; pdf.setFillColor(...pale); pdf.roundedRect(margin,y,w-margin*2,48,3,3,"F")
