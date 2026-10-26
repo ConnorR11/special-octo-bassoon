@@ -176,6 +176,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
 
           {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}>
             <NavItem icon={BarChart3} label="Data Dashboard" active={isActive("data-dashboard")} onClick={() => navigate("data-dashboard")}/>
+            <NavItem icon={RefreshCw} label="Bulk Updater" active={isActive("bulk-updater")} onClick={() => navigate("bulk-updater")}/>
             <NavItem icon={BarChart3} label="Sales Performance" active={isActive("sales-performance")} onClick={() => navigate("sales-performance")} disabled={!canAccessSalesPerformance} locked={!canAccessSalesPerformance}/>
             <NavItem icon={CalendarDays} label="Installations Performance" active={isActive("installations-performance")} onClick={() => navigate("installations-performance")}/>
             <NavItem icon={Database} label="Data Clean" active={isActive("data-clean")} onClick={() => navigate("data-clean")}/>
