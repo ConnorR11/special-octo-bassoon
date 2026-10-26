@@ -4,7 +4,7 @@ import {
   Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck,
   Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound,
   MessageCircle, UserCog, FileCheck, LogOut, ClipboardList, Lock, KanbanSquare,
-  Presentation, Clipboard, Calculator, ShoppingCart, Building2, Search, Database, Star, Sun, Map, Boxes, Link2,
+  Presentation, Clipboard, Calculator, ShoppingCart, Building2, Search, Database, Star, Sun, Map, Boxes, Link2, RefreshCw,
 } from "lucide-react"
 import CallLog from "../pages/CallLog"
 import PhoneDialer from "./PhoneDialer"
@@ -72,7 +72,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
       "marketing-dashboard": 3,
       "canvasser-kpi": 3,
       balances: 4,
-      mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4,
+      mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, "bulk-updater": 4,
       templates: 4, "integration-logs": 4, "data-dashboard": 4, "data-clean": 4, "solar-backend": 4, "unit-analysis": 4, "map-of-installs": 4, "epvs-applications": 4, "installations-performance": 4,
     }[route]
     return !requiredPermission || numericPermissionLevel >= requiredPermission
