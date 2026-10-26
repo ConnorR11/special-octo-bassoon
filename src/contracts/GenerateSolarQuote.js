@@ -307,14 +307,17 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   text("Energy savings are estimates based on available information. Actual results depend on household usage, weather, tariffs, system design and export arrangements. Finance is illustrative, subject to lender approval and confirmed terms.",margin,ty,w-margin*2,8,muted,"normal",4)
   footer(2)
 
-  // PAGE 3 — EPVS 30-year financial and generation projection30.
+  // PAGE 3 — EPVS 30-year financial and generation projection.
   pdf.addPage();pdf.setFillColor(255,255,255);pdf.rect(0,0,w,h,"F")
   pdf.setTextColor(...blue);pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text("HOMESHIELD SCOTLAND",margin,16)
   pdf.setTextColor(...navy);pdf.setFont("helvetica","bold");pdf.setFontSize(22);pdf.text("EPVS Calculations Cont.",margin,32)
   text("Continued estimated performance and value",margin,40,w-margin*2,9,muted)
   pdf.setFillColor(...blue);pdf.rect(margin,46,31,1.5,"F")
 
-  const projection30=d.epvs?.thirtyYearProjection||{}
+  // EPVS stores the 30-year projection on the calculation object itself, alongside data.
+  // Read the same path used by EpvsPdfRenderer rather than only reading calculation.data.
+  const calculation=record?.epvs_calculation||{}
+  const projection30=calculation?.thirtyYearProjection||calculation?.data?.thirtyYearProjection||d.epvs?.thirtyYearProjection||{}
   const scenario30=projection30?.scenarios?.averageInflation
   const projectionRows30=Array.isArray(scenario30?.rows)?scenario30.rows:(Array.isArray(scenario30)?scenario30:[])
   const tableX30=margin,tableY30=57,tableW30=w-margin*2
@@ -350,13 +353,13 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   const batteryOf30=row=>numeric30(row,"batteryBenefit","battery")||numeric30(row,"batterySelfConsumptionBenefit")+numeric30(row,"forceChargeBenefit")
   const exportOf30=row=>numeric30(row,"exportBenefit")
   const benefitOf30=row=>solarOf30(row)+batteryOf30(row)+exportOf30(row)
-  const savedAdminFee30=d.epvs?.data?.adminFee30??record.admin_fee_amount
+  const savedAdminFee30=d.epvs?.adminFee??calculation?.data?.adminFee??record.admin_fee_amount
   const adminFee30=savedAdminFee30!==null&&savedAdminFee30!==undefined&&String(savedAdminFee30).trim()!==""?Math.max(0,Number(savedAdminFee30)||0):399
   const paymentOf30=row=>numeric30(row,"yearlyPayment","payment")-(Number(row?.year)===1?adminFee30:0)
   const fmtNum30=n=>Number(n||0).toLocaleString("en-GB",{maximumFractionDigits:0})
   const fmtMoney30=n=>money(n).replace(".00","")
   if(!projectionRows30.length){
-    text("No saved 30-year EPVS projection30 is available for this appointment. Please recalculate and save the EPVS results before issuing this quotation.",tableX30,tableY30+20,tableW30,9,muted,"normal",4.5)
+    text("No saved 30-year EPVS projection is available for this appointment. Please recalculate and save the EPVS results before issuing this quotation.",tableX30,tableY30+20,tableW30,9,muted,"normal",4.5)
   } else {
     let rowY30=tableY30+headerH30
     let cumulative30=0
