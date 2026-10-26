@@ -114,6 +114,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   pdf.setTextColor(...navy); pdf.setFontSize(20); pdf.text(money(d.monthly) + " / month", margin + 8, 247)
   pdf.setFont("helvetica","normal"); pdf.setFontSize(8); pdf.setTextColor(...muted)
   pdf.text("Illustrative at 3.9% over " + d.termYears + " years; subject to lender approval and confirmed terms.", margin + 8, 255, { maxWidth: w - margin*2 - 16 })
+  if (openSolarImageUrl) { try { await drawQuoteImage(pdf, openSolarImageUrl, margin, 263, w - margin * 2, 20) } catch (error) { console.warn("OpenSolar image unavailable on quote cover:", error) } }
   footer(1)
 
   // System overview
@@ -121,6 +122,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   pdf.setTextColor(...navy); pdf.setFont("helvetica","normal"); pdf.setFontSize(10)
   y = addWrapped(pdf, "This proposal summarises the solar equipment and installation planned for your property. Final equipment and quantities are subject to survey and confirmation.", margin, y, w - margin*2, 5)
   y += 8
+  if (openSolarImageUrl) { try { y += await drawQuoteImage(pdf, openSolarImageUrl, margin, y, w - margin * 2, 62); y += 5 } catch (error) { console.warn("OpenSolar image unavailable in system breakdown:", error) } }
   const specs = [
     ["Solar panels", d.panelCount ? String(d.panelCount) + " panels" : "To be confirmed"],
     ["System capacity", d.capacity ? d.capacity.toFixed(2) + " kWp" : "To be confirmed"],
