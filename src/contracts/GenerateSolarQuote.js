@@ -188,57 +188,100 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   text("Equipment and services included in your proposed system",margin,41,w-margin*2,9,muted)
   pdf.setFillColor(...blue);pdf.rect(margin,47,31,1.5,"F")
 
-  // Keep the full standard Homeshield inclusion list shown on the solar contract,
-  // while resolving the customer-specific panel, inverter and battery models.
+  // Match the itemised table styling and hardware-resolution behaviour used by
+  // GenerateSolarContract.js, without changing the contract generator.
+  const hardware = d.epvs?.data?.openSolar?.hardware || d.openSolar?.hardware || {}
+  const panels = Array.isArray(hardware.panels) ? hardware.panels : d.panels
+  const inverters = Array.isArray(hardware.inverters) ? hardware.inverters : d.inverters
+  const batteries = Array.isArray(hardware.batteries) ? hardware.batteries : d.batteries
+  const findHardware = (items,label) => {
+    const item = items.find(candidate => {
+      const model = String(candidate?.model || candidate?.name || "").trim().toLowerCase()
+      return model && (model.includes(label.toLowerCase()) || label.toLowerCase()==="panels")
+    })
+    if(!item) return null
+    return {
+      name:[String(item?.manufacturer||"").trim(),String(item?.model||item?.name||"").trim(),label].filter(Boolean).join(" "),
+      quantity:item?.quantity
+    }
+  }
+  const resolveHardware = name => {
+    const normalized=String(name||"").trim().toLowerCase()
+    const findMatch=(items,label)=> {
+      const item=items.find(candidate=>{
+        const model=String(candidate?.model||candidate?.name||"").trim().toLowerCase()
+        return normalized===label.toLowerCase() || normalized===model ||
+          (model && normalized.startsWith(model+" ")) ||
+          normalized.endsWith(" "+label.toLowerCase()) ||
+          (label==="Panels" && /\\bpanels$/i.test(normalized))
+      })
+      if(!item)return null
+      return {name:[String(item?.manufacturer||"").trim(),String(item?.model||item?.name||"").trim(),label].filter(Boolean).join(" "),quantity:item?.quantity}
+    }
+    return findMatch(panels,"Panels") || findMatch(inverters,"Inverter") || findMatch(batteries,"Battery")
+  }
+  const panelHardware = findHardware(panels,"Panels")
   const panelWattage = d.panels.map(item=>Number(item?.wattage||item?.power||item?.watts||item?.capacity||0)).find(n=>n>0) || 450
-  const firstInverter = d.inverters[0]
-  const firstBattery = d.batteries[0]
-  const itemRows = [
-    {name:panelWattage ? "Panels ("+panelWattage+" W)" : "Panels",type:"Product",qty:d.panelCount||"-"},
-    {name:"Roof Hooks",type:"Product",qty:"-"},
-    {name:"Rail Fix Kit",type:"Product",qty:"-"},
-    {name:firstInverter ? itemName(firstInverter,"Inverter") : "Inverter",type:"Product",qty:firstInverter ? qtyOf(firstInverter) : 1},
-    {name:"Wifi Dongle",type:"Product",qty:1},
-    {name:firstBattery ? itemName(firstBattery,"Battery") : "Battery",type:"Product",qty:firstBattery ? qtyOf(firstBattery) : 1},
-    {name:"24 Month Workmanship Warranty",type:"Service",qty:1},
-    {name:"System Design",type:"Service",qty:1},
-    {name:"Generation Meter",type:"Product",qty:1},
-    {name:"Bird Proofing",type:"Service",qty:1},
-    {name:"DC cable",type:"Product",qty:1},
-    {name:"EPVS Validation",type:"Service",qty:1},
-    {name:"HIES Warranty",type:"Service",qty:1},
-    {name:"Installation",type:"Service",qty:1},
-    {name:"Lifetime Monitoring",type:"Service",qty:1},
-    {name:"MCS Building Control Registration",type:"Service",qty:1},
-    {name:"Pair of A/C Isolators 32A",type:"Product",qty:1},
-    {name:"Pair of D/C 80A Isolators",type:"Product",qty:1},
-    {name:"Panel Installation",type:"Service",qty:1},
-    {name:"PV on Roof and Hazards Label Pack",type:"Product",qty:1},
-    {name:"Scaffolding (Where required)",type:"Service",qty:1},
-    {name:"Electrical Connections",type:"Service",qty:1}
+  const configuredItems = [
+    {name:"Panels ("+panelWattage+" W)",type:"Product",quantity:d.panelCount||1},
+    {name:"Roof Hooks",type:"Product",quantity:"-"},
+    {name:"Rail Fix Kit",type:"Product",quantity:"-"},
+    {name:findHardware(inverters,"Inverter")?.name||"Inverter",type:"Product",quantity:findHardware(inverters,"Inverter")?.quantity??1},
+    {name:"Wifi Dongle",type:"Product",quantity:1},
+    {name:findHardware(batteries,"Battery")?.name||"Battery",type:"Product",quantity:findHardware(batteries,"Battery")?.quantity??1},
+    {name:"24 Month Workmanship Warranty",type:"Service",quantity:1},
+    {name:"System Design",type:"Service",quantity:1},
+    {name:"Generation Meter",type:"Product",quantity:1},
+    {name:"Bird Proofing",type:"Service",quantity:1},
+    {name:"DC cable",type:"Product",quantity:1},
+    {name:"EPVS Validation",type:"Service",quantity:1},
+    {name:"HIES Warranty",type:"Service",quantity:1},
+    {name:"Installation",type:"Service",quantity:1},
+    {name:"Lifetime Monitoring",type:"Service",quantity:1},
+    {name:"MCS Building Control Registration",type:"Service",quantity:1},
+    {name:"Pair of A/C Isolators 32A",type:"Product",quantity:1},
+    {name:"Pair of D/C 80A Isolators",type:"Product",quantity:1},
+    {name:"Panel Installation",type:"Service",quantity:1},
+    {name:"PV on Roof and Hazards Label Pack",type:"Product",quantity:1},
+    {name:"Scaffolding (Where required)",type:"Service",quantity:1},
+    {name:"Electrical Connections",type:"Service",quantity:1}
   ]
-  const tableX=margin, tableW=w-margin*2, nameW=tableW-54, typeW=28, qtyW=26
-  let ty=56
-  pdf.setFillColor(...blue);pdf.roundedRect(tableX,ty,tableW,12,2,2,"F")
-  pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(8)
-  pdf.text("PRODUCT / SERVICE",tableX+7,ty+7.5)
-  pdf.text("TYPE",tableX+nameW+typeW/2,ty+7.5,{align:"center"})
-  pdf.text("QTY",tableX+tableW-7,ty+7.5,{align:"right"})
-  ty+=12
-  itemRows.forEach((item,index)=>{
-    const rowHeight=8
-    if(index%2===0){pdf.setFillColor(245,248,249);pdf.roundedRect(tableX,ty,tableW,rowHeight,1,1,"F")}
-    pdf.setTextColor(...navy);pdf.setFont("helvetica","normal");pdf.setFontSize(8)
-    const nameLines=pdf.splitTextToSize(item.name,nameW-12).slice(0,1)
-    pdf.text(nameLines,tableX+7,ty+5.3)
-    const isService=item.type==="Service"
-    pdf.setFillColor(...(isService?[255,241,224]:[226,240,248]))
-    pdf.roundedRect(tableX+nameW+2,ty+1.2,typeW-4,5.6,2,2,"F")
-    pdf.setTextColor(...(isService?[177,91,20]:blue));pdf.setFont("helvetica","bold");pdf.setFontSize(6.5)
-    pdf.text(item.type,tableX+nameW+typeW/2,ty+4.9,{align:"center"})
-    pdf.setTextColor(...navy);pdf.setFontSize(8);pdf.text(String(item.qty),tableX+tableW-7,ty+5.3,{align:"right"})
-    ty+=rowHeight
+  const itemRows=configuredItems.map(item=>{
+    let name=item.name, quantity=item.quantity
+    const match=resolveHardware(name)
+    if(match){name=match.name;quantity=match.quantity??quantity}
+    const normalized=String(name).trim().toLowerCase()
+    if(normalized==="roof hooks"||normalized==="rail fix kit")quantity="-"
+    if(normalized==="panel installation")quantity=1
+    return {name,type:item.type,qty:quantity}
   })
+  const tableX=margin, tableW=w-margin*2, nameW=tableW-54, typeW=28
+  let ty=56
+  pdf.setFillColor(...blue);pdf.roundedRect(tableX,ty,tableW,11,2,2,"F")
+  pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(8)
+  pdf.text("PRODUCT / SERVICE",tableX+7,ty+7)
+  pdf.text("TYPE",tableX+nameW+typeW/2,ty+7,{align:"center"})
+  pdf.text("QTY",tableX+tableW-7,ty+7,{align:"right"})
+  let rowY=ty+8.3
+  itemRows.forEach((item,index)=>{
+    const rowHeight=6.8
+    if(index%2===0){pdf.setFillColor(247,249,250);pdf.roundedRect(tableX,rowY-5,tableW,rowHeight,1.2,1.2,"F")}
+    pdf.setTextColor(...navy);pdf.setFont("helvetica","normal");pdf.setFontSize(8)
+    pdf.text(pdf.splitTextToSize(String(item.name),nameW-12).slice(0,1),tableX+7,rowY)
+    if(item.type){
+      pdf.setFont("helvetica","bold");pdf.setFontSize(6.2)
+      const tw=pdf.getTextWidth(item.type)+6
+      const service=item.type.toLowerCase()==="service"
+      pdf.setFillColor(...(service?[255,241,230]:[231,242,248]))
+      pdf.setTextColor(...(service?[199,106,0]:[11,93,138]))
+      pdf.roundedRect(tableX+nameW-tw/2+typeW/2,rowY-3.6,tw,4.2,2,2,"F")
+      pdf.text(item.type,tableX+nameW+typeW/2,rowY-0.45,{align:"center"})
+    }
+    pdf.setTextColor(...navy);pdf.setFont("helvetica","bold");pdf.setFontSize(8)
+    pdf.text(String(item.qty),tableX+tableW-7,rowY,{align:"right"})
+    rowY+=rowHeight
+  })
+  ty=rowY+3
   ty+=8
   ty=section("What is included",ty)
   ty=text("Supply of the listed solar equipment, installation and commissioning as agreed in the final specification. Any exclusions or site-specific requirements will be confirmed before an order is placed.",margin,ty,w-margin*2,9,navy,"normal",4.5)+5
