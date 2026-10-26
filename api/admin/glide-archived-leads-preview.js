@@ -17,7 +17,7 @@ export default async function handler(req, res) {
     const response = await fetch(supabaseUrl.replace(/\/$/, "") + "/functions/v1/glide-archived-leads-preview", {
       method: "POST",
       headers: { Authorization: auth, apikey: anonKey, "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ previewOnly: true })
+      body: JSON.stringify({ previewOnly: true, offset: Math.max(0, Math.floor(Number(req.body?.offset) || 0)) })
     });
     const text = await response.text();
     res.status(response.status);
