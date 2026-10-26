@@ -128,6 +128,7 @@ export default function SolarRework({ onSelectAppointment }) {
   const [unlinkedSortOrder, setUnlinkedSortOrder] = useState("desc")
   const [linkedSortOrder, setLinkedSortOrder] = useState("desc")
   const [linkedSoldFilter, setLinkedSoldFilter] = useState("all")
+  const [resultFilter, setResultFilter] = useState("all")
   const [linkedReadinessFilter, setLinkedReadinessFilter] = useState("all")
   const [page, setPage] = useState(0)
   const [activeTab, setActiveTab] = useState("unlinked")
@@ -148,10 +149,10 @@ export default function SolarRework({ onSelectAppointment }) {
         .not("rep_allocated", "is", null)
         .neq("rep_allocated", "")
         .lt("appointment_date", startOfCurrentWeekISO())
-        .in("result", ["PM", "PM DNH"])
         .order("appointment_date", { ascending: activeTab === "linked" ? linkedSortOrder === "asc" : unlinkedSortOrder === "asc", nullsFirst: false })
         .order("appointment_row_id", { ascending: false })
       if (yearFilter !== "all") request = request.gte("appointment_date", yearFilter + "-01-01").lt("appointment_date", (Number(yearFilter) + 1) + "-01-01")
+      if (resultFilter !== "all") request = resultFilter === "no-result" ? request.or("result.is.null,result.eq.") : request.eq("result", resultFilter)
       if (activeTab === "unlinked") {
         request = request.is("open_solar_id", null)
         request = request.range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE - 1)
@@ -229,7 +230,6 @@ export default function SolarRework({ onSelectAppointment }) {
               .not("rep_allocated", "is", null)
           .neq("rep_allocated", "")
           .lt("appointment_date", startOfCurrentWeekISO())
-          .in("result", ["PM", "PM DNH"])
         const [unlinkedResult, linkedResult] = await Promise.all([
           base().is("open_solar_id", null),
           base().not("open_solar_id", "is", null)
@@ -287,7 +287,7 @@ export default function SolarRework({ onSelectAppointment }) {
           <Sun size={23} color="#0f766e" />
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 750 }}>Solar Appointment Rework</h1>
         </div>
-        <p style={{ margin: "7px 0 0", color: "#64748b", fontSize: 13 }}>All solar appointments with result PM or PM DNH, for OpenSolar matching and quote preparation.</p>
+        <p style={{ margin: "7px 0 0", color: "#64748b", fontSize: 13 }}>All past solar appointments for OpenSolar matching and quote preparation. Filter by result to narrow the list.</p>
       </div>
       <button onClick={() => loadRows(page)} disabled={loading} style={{ border: "1px solid #cbd5e1", background: "#fff", borderRadius: 8, padding: "9px 13px", display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 650, cursor: loading ? "wait" : "pointer" }}>
         <RefreshCw size={14} /> Refresh list
@@ -305,12 +305,20 @@ export default function SolarRework({ onSelectAppointment }) {
     </div>
 
     <div style={{ ...cardStyle, padding: 13, marginBottom: 14 }}>
-      <div style={{ display: "grid", gridTemplateColumns: activeTab === "linked" ? "minmax(220px,2fr) repeat(4,minmax(135px,1fr))" : activeTab === "unlinked" ? "minmax(220px,2fr) repeat(2,minmax(145px,1fr))" : "minmax(220px,2fr) minmax(145px,1fr)", gap: 10, alignItems: "center" }}>
+      <div style={{ display: "grid", gridTemplateColumns: activeTab === "linked" ? "minmax(220px,2fr) repeat(5,minmax(125px,1fr))" : activeTab === "unlinked" ? "minmax(220px,2fr) repeat(3,minmax(135px,1fr))" : "minmax(220px,2fr) minmax(145px,1fr)", gap: 10, alignItems: "center" }}>
         <div style={{ position: "relative" }}>
           <Search size={15} style={{ position: "absolute", left: 11, top: 12, color: "#64748b" }} />
           <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search name, postcode, phone, email…" style={{ ...inputStyle, width: "100%", paddingLeft: 33, boxSizing: "border-box" }} />
         </div>
-        <select value={yearFilter} onChange={event => setYearFilter(event.target.value)} style={selectStyle}>
+<select value={resultFilter} onChange={event => { setResultFilter(event.target.value); setPage(0) }} style={selectStyle}>
+          <option value="all">All results</option>
+          <option value="PM">PM</option>
+          <option value="PM DNH">PM DNH</option>
+          <option value="DNH">DNH</option>
+          <option value="SOLD">Sold</option>
+          <option value="no-result">No result</option>
+        </select>
+                <select value={yearFilter} onChange={event => setYearFilter(event.target.value)} style={selectStyle}>
           <option value="all">All years</option>
           {Array.from({ length: new Date().getFullYear() - 2019 }, (_, index) => String(new Date().getFullYear() - index)).map(year => <option key={year} value={year}>{year}</option>)}
         </select>
