@@ -225,13 +225,20 @@ export default function SolarRework({ onSelectAppointment }) {
     async function loadTabCounts() {
       if (!supabase) return
       try {
-        const base = () => supabase.from("appointments")
-          .select("appointment_row_id", { count: "exact", head: true })
-          .eq("job_type", "Solar")
-              .not("result", "is", null)
-          .neq("result", "")
-          .not("result", "ilike", "sold")
-          .lt("appointment_date", startOfCurrentWeekISO())
+        const base = () => {
+          let request = supabase.from("appointments")
+            .select("appointment_row_id", { count: "exact", head: true })
+            .eq("job_type", "Solar")
+            .not("result", "is", null)
+            .neq("result", "")
+            .not("result", "ilike", "sold")
+            .lt("appointment_date", startOfCurrentWeekISO())
+          if (yearFilter !== "all") request = request.gte("appointment_date", yearFilter + "-01-01").lt("appointment_date", (Number(yearFilter) + 1) + "-01-01")
+          if (resultFilter !== "all") request = request.eq("result", resultFilter)
+          const needle = normalise(query).replace(/[%_,()]/g, " ")
+          if (needle) request = request.or("name.ilike.%" + needle + "%,postcode.ilike.%" + needle + "%,address.ilike.%" + needle + "%,phone_number_1.ilike.%" + needle + "%,secondary_phone_number.ilike.%" + needle + "%,email_address.ilike.%" + needle + "%,product.ilike.%" + needle + "%,result.ilike.%" + needle + "%")
+          return request
+        }
         const [unlinkedResult, linkedResult] = await Promise.all([
           base().is("open_solar_id", null),
           base().not("open_solar_id", "is", null)
@@ -245,7 +252,7 @@ export default function SolarRework({ onSelectAppointment }) {
     }
     loadTabCounts()
     return () => { cancelled = true }
-  }, [])
+  }, [yearFilter, resultFilter, query])
 
   async function saveOpenSolarId(row) {
     const value = normalise(rowEdits[row.appointment_row_id])
