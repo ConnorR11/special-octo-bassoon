@@ -98,108 +98,169 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
     pdf.text("Homeshield Scotland | Solar proposal | Quote only — not a contract", margin, h - 10)
     pdf.text(String(page), w - margin, h - 10, { align: "right" })
   }
-  // Cover
-  pdf.setFillColor(255,255,255); pdf.rect(0, 0, w, h, "F")
-  pdf.setTextColor(...blue); pdf.setFont("helvetica","bold"); pdf.setFontSize(11); pdf.text("HOMESHIELD SCOTLAND", margin, 15)
-  pdf.setTextColor(...muted); pdf.setFont("helvetica","normal"); pdf.setFontSize(8)
-  pdf.text("QUOTE REF: " + quoteRef, w - margin, 12, { align: "right" })
-  pdf.text("DATE CREATED: " + today, w - margin, 17, { align: "right" })
-  pdf.setFontSize(23); pdf.text("Your Solar PV System", margin, 31)
-  pdf.setFont("helvetica","normal"); pdf.setFontSize(9); pdf.setTextColor(...muted); pdf.text("Your proposed solar system and estimated performance", margin, 39)
-  pdf.setTextColor(...navy); pdf.setFont("helvetica","bold"); pdf.setFontSize(15); pdf.text(customer, 120, 58)
-  pdf.setFont("helvetica","normal"); pdf.setFontSize(11)
-  addWrapped(pdf, address || "Property address to be confirmed", 120, 70, 70, 5)
-
-  const hardwareLabel = (items, fallback) => {
-    const names = items.map(item => [item?.manufacturer, item?.model, item?.name].filter(Boolean).join(" ")).filter(Boolean)
+  // Completely redesigned proposal: sales summary, quotation detail, next steps.
+  const line = (y) => { pdf.setDrawColor(220,228,234); pdf.line(margin,y,w-margin,y) }
+  const section = (title,y) => {
+    pdf.setTextColor(...blue); pdf.setFont("helvetica","bold"); pdf.setFontSize(13)
+    pdf.text(title,margin,y); line(y+3); return y+10
+  }
+  const text = (content,x,y,width,size=9,color=navy,style="normal",lineHeight=4.5) => {
+    pdf.setFont("helvetica",style); pdf.setFontSize(size); pdf.setTextColor(...color)
+    return addWrapped(pdf,content,x,y,width,lineHeight)
+  }
+  const card = (x,y,width,height,fill=pale) => {
+    pdf.setFillColor(...fill); pdf.roundedRect(x,y,width,height,3,3,"F")
+  }
+  const hardwareLabel = (items,fallback) => {
+    const names=items.map(item=>[item?.manufacturer,item?.model,item?.name].filter(Boolean).join(" ")).filter(Boolean)
     return names.length ? names.join(", ") : fallback
   }
-  const stackX = 120, stackW = w - margin - stackX
-  const drawStackCard = (y, title, detail) => {
-    pdf.setFillColor(...pale); pdf.roundedRect(stackX, y, stackW, 16, 2, 2, "F")
-    pdf.setTextColor(...blue); pdf.setFont("helvetica","bold"); pdf.setFontSize(7); pdf.text(title.toUpperCase(), stackX + 4, y + 5)
-    pdf.setTextColor(...navy); pdf.setFont("helvetica","normal"); pdf.setFontSize(8)
-    pdf.text(pdf.splitTextToSize(detail, stackW - 8).slice(0, 2), stackX + 4, y + 11)
-  }
-  drawStackCard(88, "Solar panels", d.panelCount ? "×" + d.panelCount + " panels" : "To be confirmed")
-  drawStackCard(106, "System size", d.capacity ? d.capacity.toFixed(2) + " kWp" : "To be confirmed")
-  drawStackCard(124, "Inverter", hardwareLabel(d.inverters, "To be confirmed"))
-  drawStackCard(142, "Battery storage", hardwareLabel(d.batteries, "To be confirmed"))
-
-  pdf.setTextColor(...blue); pdf.setFont("helvetica","normal"); pdf.setFontSize(17); pdf.text("System Performance", margin, 177)
-  pdf.setDrawColor(185,211,226); pdf.roundedRect(margin,182,w-margin*2,35,3,3,"S")
-  const performance = [
-    ["Estimated annual savings", d.epvs.annualSavings ? money(d.epvs.annualSavings) : "Not available"],
-    ["Estimated long-term savings", d.epvs.totalSavings ? money(d.epvs.totalSavings) : "Not available"],
-    ["Annual electricity consumption", d.epvs.annualConsumption ? Number(d.epvs.annualConsumption).toLocaleString("en-GB")+" kWh" : "Not available"]
+  const equipment = [
+    ["Solar panels",d.panelCount ? String(d.panelCount)+" panels" : "To be confirmed"],
+    ["System capacity",d.capacity ? d.capacity.toFixed(2)+" kWp" : "To be confirmed"],
+    ["Inverter",hardwareLabel(d.inverters,"To be confirmed")],
+    ["Battery storage",hardwareLabel(d.batteries,"To be confirmed")]
   ]
-  const performanceColors = [[245,171,45],[133,190,58],[40,165,205]]
-  performance.forEach((item,index)=>{
-    const py=185+index*10
-    pdf.setFillColor(...performanceColors[index]); pdf.roundedRect(margin+3,py,91,8,1.5,1.5,"F")
-    pdf.setTextColor(255,255,255); pdf.setFont("helvetica","bold"); pdf.setFontSize(7); pdf.text(item[0],margin+6,py+5.2)
-    pdf.setTextColor(...navy); pdf.setFontSize(9); pdf.text(item[1],115,py+5.2)
-  })
-  pdf.setFillColor(...pale); pdf.roundedRect(margin, 224, w - margin*2, 40, 4, 4, "F")
-  pdf.setTextColor(...blue); pdf.setFont("helvetica","bold"); pdf.setFontSize(10); pdf.text("CASH PRICE", margin + 8, 234)
-  pdf.setTextColor(...navy); pdf.setFontSize(20); pdf.text(money(d.cashPrice), margin + 8, 245)
-  pdf.setTextColor(...blue); pdf.setFontSize(10); pdf.text("INDICATIVE MONTHLY FINANCE", 108, 234)
-  pdf.setTextColor(...navy); pdf.setFontSize(20); pdf.text(money(d.monthly) + " / month", 108, 245)
+  const footer = (page) => {
+    line(h-15); pdf.setFont("helvetica","normal"); pdf.setFontSize(8); pdf.setTextColor(...muted)
+    pdf.text("Homeshield Scotland  |  Solar proposal  |  Quote only — not a contract",margin,h-9)
+    pdf.text(page+" / 3",w-margin,h-9,{align:"right"})
+  }
+
+  // PAGE 1 — A clear, visual sales summary.
+  pdf.setFillColor(255,255,255); pdf.rect(0,0,w,h,"F")
+  pdf.setTextColor(...blue); pdf.setFont("helvetica","bold"); pdf.setFontSize(11)
+  pdf.text("HOMESHIELD SCOTLAND",margin,16)
   pdf.setFont("helvetica","normal"); pdf.setFontSize(8); pdf.setTextColor(...muted)
-  pdf.text("Illustrative at 3.9% over " + d.termYears + " years; subject to lender approval and confirmed terms.", margin + 8, 256, { maxWidth: w - margin*2 - 16 })
-  if (openSolarImageUrl) { try { await drawQuoteImage(pdf, openSolarImageUrl, margin, 45, 94, 76) } catch (error) { console.warn("OpenSolar image unavailable on quote cover:", error) } }
+  pdf.text("QUOTE REF  "+quoteRef,w-margin,12,{align:"right"})
+  pdf.text("CREATED  "+today,w-margin,17,{align:"right"})
+  pdf.setTextColor(...navy); pdf.setFont("helvetica","bold"); pdf.setFontSize(25)
+  pdf.text("Your Solar PV System",margin,34)
+  text("A proposal prepared for your home",margin,42,w-margin*2,10,muted,"normal",5)
+  line(48)
+
+  // Main hero image and customer/property panel.
+  let heroBottom=53
+  if(openSolarImageUrl) {
+    try { heroBottom=53+await drawQuoteImage(pdf,openSolarImageUrl,margin,53,91,66) }
+    catch(error) { console.warn("OpenSolar image unavailable on quote cover:",error) }
+  }
+  if(heroBottom===53) {
+    card(margin,53,91,57,[230,240,246])
+    text("Your proposed solar design",margin+6,80,79,10,muted,"normal",5)
+    heroBottom=110
+  }
+  const infoX=119, infoW=w-margin-infoX
+  pdf.setTextColor(...blue);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text("PREPARED FOR",infoX,58)
+  pdf.setTextColor(...navy);pdf.setFont("helvetica","bold");pdf.setFontSize(15)
+  const customerLines=pdf.splitTextToSize(customer,infoW).slice(0,2);pdf.text(customerLines,infoX,66)
+  let infoY=68+customerLines.length*5
+  pdf.setFont("helvetica","normal");pdf.setFontSize(9);pdf.setTextColor(...navy)
+  infoY=text(address||"Property address to be confirmed",infoX,infoY,infoW,9,navy,"normal",4.5)+5
+  infoY=text("This proposal outlines the recommended equipment, indicative pricing and estimated energy performance.",infoX,infoY,infoW,8,muted,"normal",4)
+  const heroEnd=Math.max(heroBottom,infoY)+7
+
+  // System summary cards.
+  let y=heroEnd
+  y=section("Your proposed system",y)
+  const gap=4, cardW=(w-margin*2-gap)/2, cardH=23
+  const drawSpec=(x,yy,label,detail)=>{
+    card(x,yy,cardW,cardH)
+    pdf.setTextColor(...blue);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text(label.toUpperCase(),x+5,yy+7)
+    pdf.setTextColor(...navy);pdf.setFont("helvetica","bold");pdf.setFontSize(10)
+    pdf.text(pdf.splitTextToSize(detail,cardW-10).slice(0,2),x+5,yy+15)
+  }
+  drawSpec(margin,y,"Solar panels",d.panelCount ? "×"+d.panelCount : "To be confirmed")
+  drawSpec(margin+cardW+gap,y,"System capacity",d.capacity ? d.capacity.toFixed(2)+" kWp" : "To be confirmed")
+  drawSpec(margin,y+27,"Inverter",hardwareLabel(d.inverters,"To be confirmed"))
+  drawSpec(margin+cardW+gap,y+27,"Battery storage",hardwareLabel(d.batteries,"To be confirmed"))
+  y+=58
+
+  y=section("Estimated performance",y)
+  const perf=[
+    ["Annual electricity consumption",d.epvs.annualConsumption ? Number(d.epvs.annualConsumption).toLocaleString("en-GB")+" kWh" : "Not available"],
+    ["Estimated annual savings",d.epvs.annualSavings ? money(d.epvs.annualSavings) : "Not available"],
+    ["Estimated long-term savings",d.epvs.totalSavings ? money(d.epvs.totalSavings) : "Not available"]
+  ]
+  perf.forEach((item,i)=>{
+    const py=y+i*10
+    pdf.setFillColor(...[[245,171,45],[133,190,58],[40,165,205]][i]);pdf.roundedRect(margin,py,w-margin*2,8,1.5,1.5,"F")
+    pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text(item[0],margin+4,py+5.2)
+    pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.text(item[1],w-margin-4,py+5.2,{align:"right"})
+  })
+  y+=36
+  // Price panel is prominent but not crowded.
+  card(margin,y,w-margin*2,38)
+  const half=(w-margin*2)/2
+  pdf.setTextColor(...blue);pdf.setFont("helvetica","bold");pdf.setFontSize(9)
+  pdf.text("CASH PRICE",margin+7,y+10)
+  pdf.text("INDICATIVE MONTHLY FINANCE",margin+half+5,y+10)
+  pdf.setTextColor(...navy);pdf.setFontSize(19)
+  pdf.text(money(d.cashPrice),margin+7,y+22)
+  pdf.text(money(d.monthly)+" / month",margin+half+5,y+22)
+  pdf.setFont("helvetica","normal");pdf.setFontSize(7);pdf.setTextColor(...muted)
+  pdf.text("Illustrative at "+d.rate.toFixed(1)+"% over "+d.termYears+" years. Subject to lender approval and confirmed terms.",margin+7,y+32,{maxWidth:w-margin*2-14})
   footer(1)
 
-  // System overview page removed; equipment details remain on the cover.
-
-  // Price and savings
-  pdf.addPage(); let y = 25; y=heading("Your quotation", y)
-  pdf.setTextColor(...navy); pdf.setFont("helvetica","normal"); pdf.setFontSize(10)
-  y=addWrapped(pdf, "The finance figure is illustrative, calculated at " + d.rate.toFixed(1) + "% annually over " + d.termYears + " years with an assumed deposit of " + money(d.deposit) + ". It is not a lender offer; final terms are subject to lender approval.", margin, y, w-margin*2, 5)
-  y+=7; pdf.setFillColor(...pale); pdf.roundedRect(margin,y,w-margin*2,48,3,3,"F")
-  pdf.setFont("helvetica","bold"); pdf.setTextColor(...blue); pdf.setFontSize(10); pdf.text("TOTAL CASH PRICE",margin+7,y+12)
-  pdf.setTextColor(...navy); pdf.setFontSize(19); pdf.text(money(d.cashPrice),margin+7,y+23)
-  pdf.setTextColor(...blue); pdf.setFontSize(10); pdf.text("INDICATIVE MONTHLY FINANCE",margin+7,y+35)
-  pdf.setTextColor(...navy); pdf.setFontSize(17); pdf.text(money(d.monthly) + " per month",margin+7,y+44)
-  y += 60; y=heading("Estimated energy performance",y)
-  const epvs = d.epvs
-  const energyRows = [
-    ["Annual electricity consumption", epvs.annualConsumption ? Number(epvs.annualConsumption).toLocaleString("en-GB")+" kWh" : "Not available"],
-    ["Estimated annual savings", epvs.annualSavings ? money(epvs.annualSavings) : "Not available"],
-    ["Estimated long-term savings", epvs.totalSavings ? money(epvs.totalSavings) : "Not available"],
-  ]
-  for(const [label,val] of energyRows){pdf.setTextColor(...muted);pdf.setFontSize(9);pdf.text(label,margin,y);pdf.setTextColor(...navy);pdf.text(val,w-margin,y,{align:"right"});pdf.setDrawColor(225,230,235);pdf.line(margin,y+3,w-margin,y+3);y+=10}
-  y+=5; pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(...muted)
-  addWrapped(pdf,"Energy savings are estimates based on the information available at the time of quotation. Actual results depend on usage, weather, tariffs, system design and export arrangements. Finance is subject to lender approval and final lender documentation.",margin,y,w-margin*2,4)
-  y += 12; y = heading("What is included", y)
-  pdf.setTextColor(...navy); pdf.setFont("helvetica","normal"); pdf.setFontSize(10)
-  y = addWrapped(pdf,"Supply of the listed solar equipment, installation and commissioning as agreed in the final specification. Any exclusions or site-specific requirements will be confirmed before an order is placed.",margin,y,w-margin*2,5)
-  y += 8; y = heading("Equipment summary", y)
-  const equipmentRows = [
-    ["Solar panels", d.panelCount ? String(d.panelCount) + " panels" : "To be confirmed"],
-    ["System capacity", d.capacity ? d.capacity.toFixed(2) + " kWp" : "To be confirmed"],
-    ["Inverter", d.inverters.map(item => [item?.manufacturer,item?.model,item?.name].filter(Boolean).join(" ")).filter(Boolean).join(", ") || "To be confirmed"],
-    ["Battery storage", d.batteries.map(item => [item?.manufacturer,item?.model,item?.name].filter(Boolean).join(" ")).filter(Boolean).join(", ") || "To be confirmed"]
-  ]
-  for (const [label, detail] of equipmentRows) {
-    pdf.setFont("helvetica","bold"); pdf.setFontSize(9); pdf.setTextColor(...muted); pdf.text(label,margin,y)
-    pdf.setFont("helvetica","normal"); pdf.setTextColor(...navy)
-    const lines = pdf.splitTextToSize(detail,w-margin*2-48).slice(0,2)
-    pdf.text(lines,margin+48,y)
-    y += Math.max(8, lines.length*4.5)
+  // PAGE 2 — Transparent pricing, savings assumptions and inclusions.
+  pdf.addPage(); pdf.setFillColor(255,255,255);pdf.rect(0,0,w,h,"F")
+  pdf.setTextColor(...blue);pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("HOMESHIELD SCOTLAND",margin,16)
+  pdf.setTextColor(...navy);pdf.setFontSize(22);pdf.text("Your quotation",margin,32)
+  text("Pricing and specification summary",margin,40,w-margin*2,9,muted)
+  let y2=53
+  y2=section("Price and payment options",y2)
+  card(margin,y2,w-margin*2,51)
+  pdf.setTextColor(...muted);pdf.setFont("helvetica","bold");pdf.setFontSize(9)
+  pdf.text("TOTAL CASH PRICE",margin+7,y2+12)
+  pdf.text("INDICATIVE FINANCE",margin+half+5,y2+12)
+  pdf.setTextColor(...navy);pdf.setFontSize(20)
+  pdf.text(money(d.cashPrice),margin+7,y2+24)
+  pdf.text(money(d.monthly)+" / month",margin+half+5,y2+24)
+  pdf.setFont("helvetica","normal");pdf.setFontSize(8)
+  pdf.text("Deposit: "+money(d.deposit),margin+7,y2+35)
+  pdf.text("Term: "+d.termYears+" years",margin+half+5,y2+35)
+  pdf.text("Illustration at "+d.rate.toFixed(1)+"% annual interest",margin+half+5,y2+43)
+  y2+=62
+  y2=section("Equipment and installation",y2)
+  for(const [label,detail] of equipment){
+    card(margin,y2,w-margin*2,17,[247,249,251])
+    pdf.setTextColor(...blue);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text(label.toUpperCase(),margin+5,y2+6)
+    pdf.setTextColor(...navy);pdf.setFont("helvetica","normal");pdf.setFontSize(9)
+    pdf.text(pdf.splitTextToSize(detail,w-margin*2-10).slice(0,2),margin+5,y2+12)
+    y2+=20
   }
+  y2+=3;y2=section("What is included",y2)
+  y2=text("Supply of the listed solar equipment, installation and commissioning as agreed in the final specification. Any exclusions or site-specific requirements will be confirmed before an order is placed.",margin,y2,w-margin*2,9,navy,"normal",4.5)+5
+  y2=section("Estimated savings — assumptions",y2)
+  y2=text("Energy savings are estimates based on the information available at the time of quotation. Actual results depend on household usage, weather, tariffs, system design and export arrangements. Figures are indicative, not guarantees.",margin,y2,w-margin*2,8,muted,"normal",4)
   footer(2)
 
-  pdf.addPage(); y=25; y=heading("Next steps",y)
-
-  pdf.setTextColor(...navy);pdf.setFont("helvetica","normal");pdf.setFontSize(11)
-  y=addWrapped(pdf,"1. Review this proposal and the proposed system.",margin,y,w-margin*2,6)+5
-  y=addWrapped(pdf,"2. Confirm the equipment, installation scope and any site-specific requirements.",margin,y,w-margin*2,6)+5
-  y=addWrapped(pdf,"3. We will confirm the final specification, price and (where applicable) finance terms before you commit.",margin,y,w-margin*2,6)+10
-  pdf.setFont("helvetica","bold");pdf.setFontSize(14);pdf.setTextColor(...blue);pdf.text("Homeshield Scotland",margin,y);y+=8
-  pdf.setFont("helvetica","normal");pdf.setFontSize(10);pdf.setTextColor(...navy)
-  y=addWrapped(pdf,"This document is a quotation proposal only. It is not a contract, finance offer or guarantee of savings.",margin,y,w-margin*2,5)
+  // PAGE 3 — Next steps, limitations and customer confidence.
+  pdf.addPage();pdf.setFillColor(255,255,255);pdf.rect(0,0,w,h,"F")
+  pdf.setTextColor(...blue);pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("HOMESHIELD SCOTLAND",margin,16)
+  pdf.setTextColor(...navy);pdf.setFontSize(22);pdf.text("What happens next?",margin,34)
+  text("We’ll confirm the final design, equipment and price with you before anything is ordered.",margin,43,w-margin*2,10,muted)
+  let y3=62
+  const steps=[
+    ["01","Review your proposal","Check the proposed system, equipment and pricing."],
+    ["02","Confirm the details","We’ll confirm installation scope, site-specific requirements and any exclusions."],
+    ["03","Final checks and agreement","We’ll confirm the final specification, total price and, where applicable, finance terms before you commit."]
+  ]
+  for(const [num,title,desc] of steps){
+    card(margin,y3,w-margin*2,34)
+    pdf.setFillColor(...blue);pdf.circle(margin+10,y3+11,5,"F")
+    pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text(num,margin+10,y3+12.5,{align:"center"})
+    pdf.setTextColor(...navy);pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text(title,margin+20,y3+10)
+    text(desc,margin+20,y3+18,w-margin*2-26,8,muted,"normal",4)
+    y3+=41
+  }
+  y3+=4;y3=section("Important information",y3)
+  y3=text("This document is a quotation proposal only. It is not a contract, a formal finance offer or a guarantee of savings. Finance is subject to lender approval and the lender’s final terms. Final equipment, installation scope and any exclusions will be confirmed before an order is placed.",margin,y3,w-margin*2,9,navy,"normal",4.5)
+  y3+=12
+  pdf.setTextColor(...blue);pdf.setFont("helvetica","bold");pdf.setFontSize(15);pdf.text("Homeshield Scotland",margin,y3)
+  y3+=8;text("Thank you for considering Homeshield for your solar installation.",margin,y3,w-margin*2,9,muted)
   footer(3)
+
   const blob = pdf.output("blob")
   const url = URL.createObjectURL(blob)
   if (!previewOnly) {
