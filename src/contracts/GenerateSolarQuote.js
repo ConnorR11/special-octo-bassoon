@@ -99,10 +99,10 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
     pdf.text(String(page), w - margin, h - 10, { align: "right" })
   }
   // Cover
-  pdf.setFillColor(...navy); pdf.rect(0, 0, w, 102, "F")
-  pdf.setTextColor(255,255,255); pdf.setFont("helvetica","bold"); pdf.setFontSize(13); pdf.text("HOMESHIELD SCOTLAND", margin, 24)
+  pdf.setFillColor(255,255,255); pdf.rect(0, 0, w, h, "F")
+  pdf.setTextColor(...blue); pdf.setFont("helvetica","bold"); pdf.setFontSize(11); pdf.text("HOMESHIELD SCOTLAND", margin, 15)
   pdf.setFontSize(29); pdf.text("Your Solar PV System", margin, 52)
-  pdf.setFont("helvetica","normal"); pdf.setFontSize(12); pdf.text("A tailored proposal for your home", margin, 78)
+  pdf.setFont("helvetica","normal"); pdf.setFontSize(9); pdf.setTextColor(...muted); pdf.text("Your proposed solar system and estimated performance", margin, 39)
   pdf.setTextColor(...navy); pdf.setFont("helvetica","bold"); pdf.setFontSize(18); pdf.text(customer, margin, 127)
   pdf.setFont("helvetica","normal"); pdf.setFontSize(11)
   let y = 137; y = addWrapped(pdf, address || "Property address to be confirmed", margin, y, 150, 6)
@@ -114,7 +114,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   pdf.setTextColor(...navy); pdf.setFontSize(20); pdf.text(money(d.monthly) + " / month", margin + 8, 247)
   pdf.setFont("helvetica","normal"); pdf.setFontSize(8); pdf.setTextColor(...muted)
   pdf.text("Illustrative at 3.9% over " + d.termYears + " years; subject to lender approval and confirmed terms.", margin + 8, 255, { maxWidth: w - margin*2 - 16 })
-  if (openSolarImageUrl) { try { await drawQuoteImage(pdf, openSolarImageUrl, margin, 263, w - margin * 2, 20) } catch (error) { console.warn("OpenSolar image unavailable on quote cover:", error) } }
+  if (openSolarImageUrl) { try { await drawQuoteImage(pdf, openSolarImageUrl, margin, 48, 94, 76) } catch (error) { console.warn("OpenSolar image unavailable on quote cover:", error) } }
   footer(1)
 
   // System overview
