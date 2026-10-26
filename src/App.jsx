@@ -44,6 +44,7 @@ import UnitAnalysis from "./pages/UnitAnalysis"
 import EPVSApplications from "./pages/EPVSApplications"
 import OutstandingSolarSurveys from "./pages/OutstandingSolarSurveys"
 import SolarRework from "./pages/SolarRework"
+import BulkUpdater from "./pages/BulkUpdater"
 
 const DEALS_PAGE_SIZE = 50
 const REPORTING_PAGE_SIZE = 1000
@@ -112,7 +113,7 @@ function App() {
   const effectiveUserEmail = previewUser?.email ?? session?.user?.email ?? ""
 
   useEffect(() => {
-    const restrictedPages = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, balances: 4, mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, templates: 4, "integration-logs": 4, "data-dashboard": 4, "data-clean": 4, "solar-backend": 4, "unit-analysis": 4, "epvs-applications": 4, "outstanding-solar-surveys": 3 }
+    const restrictedPages = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, balances: 4, mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, "bulk-updater": 4, templates: 4, "integration-logs": 4, "data-dashboard": 4, "data-clean": 4, "solar-backend": 4, "unit-analysis": 4, "epvs-applications": 4, "outstanding-solar-surveys": 3 }
     const requiredPermission = restrictedPages[page]
     if (requiredPermission && effectivePermissionLevel < requiredPermission) {
       setPage("dashboard")
@@ -251,6 +252,8 @@ function App() {
     pageContent = <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated} permissionLevel={effectivePermissionLevel}/>
   } else if (page === "dashboard") {
     pageContent = homeContent
+  } else if (page === "bulk-updater") {
+    pageContent = <BulkUpdater/>
   } else if (page === "data-dashboard") {
     pageContent = <DataDashboard/>
   } else if (page === "data-clean") {
