@@ -6,7 +6,6 @@ const JOBS = [
   { id: "backfill-pipedrive-stages", title: "Backfill Pipedrive stages", description: "Find deals with a Pipedrive deal ID but no saved stage, then retrieve the current stage from Pipedrive.", kind: "bulk" },
   { id: "backfill-installation-start-dates", title: "Backfill installation start dates", description: "Find Contract Complete deals with a missing installation start date and retrieve the date from Pipedrive.", kind: "bulk" },
   { id: "glide-live-leads", title: "Sync live Glide leads", description: "Compare Glide rows with existing CRM leads, then update matched leads only. Blank Glide values are skipped; no new leads are inserted.", kind: "glide" },
-  { id: "glide-archived-leads", title: "Sync archived Glide leads", description: "Read-only preview of archived Glide leads archived on or after 1 October 2026. Matches by marketing_row_id and flags duplicates; no records are written.", kind: "archive-preview" },
 ]
 
 export default function BulkUpdater() {
@@ -41,23 +40,10 @@ export default function BulkUpdater() {
     setMessage(execute ? "Glide sync finished. Review the counts and any reported errors below." : "Glide preview ready. No lead records were changed.")
   }
 
-  async function runArchivedPreview() {
-    const token = await getSessionToken()
-    const response = await fetch("/api/admin/glide-archived-leads-preview", { method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ previewOnly: true }) })
-    const payload = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(payload?.error || payload?.detail || "Archived preview failed (HTTP " + response.status + ").")
-    setResult({ ...payload, dryRun: true, requested: payload.archived_since_cutoff ?? 0, previewed: 0, results: [] })
-    setMessage("Archived preview ready. Read-only: no CRM records were changed.")
-  }
 
   async function runUpdater(execute = false) {
     setBusy(true); setError(""); setMessage(""); setConfirmExecute(false)
     try {
-      if (selectedJob.kind === "archive-preview") {
-        if (execute) throw new Error("Archived sync is preview-only. No CRM records can be written from this job.");
-        await runArchivedPreview();
-        return;
-      }
       if (selectedJob.kind === "glide") {
         await runGlideSync(execute)
         return
@@ -80,10 +66,6 @@ export default function BulkUpdater() {
 
   const counts = result ? [
     { label: "Scanned", value: result.requested ?? result.sourceRowsTested ?? 0 },
-    { label: "Archived since 1 Oct 2026", value: result.archived_since_cutoff ?? 0 },
-    { label: "Would insert", value: result.would_insert ?? 0 },
-    { label: "Would update", value: result.would_update ?? 0 },
-    { label: "Duplicate / ambiguous", value: (result.duplicate_archive_ids ?? 0) + (result.ambiguous_crm_matches ?? 0) },
     { label: "Proposed changes", value: result.proposedFieldChanges ?? result.previewed ?? 0 },
     { label: "Same timestamp skipped", value: result.skippedSameLastCall ?? 0 },
     { label: "Updated", value: result.updated ?? 0 },
@@ -115,15 +97,15 @@ export default function BulkUpdater() {
         </div>
         <div className="bulk-updater-actions">
           <button className="bulk-updater-btn primary" disabled={busy} onClick={()=>runUpdater(false)}><Eye size={16}/>{busy?"Working…":"Preview changes"}</button>
-          <button className="bulk-updater-btn" disabled={busy||selectedJob.kind==="archive-preview"||!result||!((result.proposedFieldChanges ?? result.previewed ?? 0)>0)} onClick={()=>setConfirmExecute(true)}><Play size={16}/>{selectedJob.kind==="glide"?"Update leads in Supabase":"Review & run updates"}</button>
+          <button className="bulk-updater-btn" disabled={busy||!result||!((result.proposedFieldChanges ?? result.previewed ?? 0)>0)} onClick={()=>setConfirmExecute(true)}><Play size={16}/>{selectedJob.kind==="glide"?"Update leads in Supabase":"Review & run updates"}</button>
           {busy&&<span className="bulk-updater-muted" style={{alignSelf:"center"}}><RefreshCw size={14} style={{verticalAlign:"middle"}}/> Processing request…</span>}
         </div>
-        <div className="bulk-updater-notice warning"><AlertTriangle size={18} style={{flexShrink:0}}/><div><strong>{selectedJob.kind==="archive-preview"?"Archived sync is read-only.":selectedJob.kind==="glide"?"Glide live sync is protected.":"Preview before execution."}</strong> {selectedJob.kind==="archive-preview"?"Preview reads archived leads from 1 October 2026 onwards and matches only marketing_row_id. It flags duplicate archive IDs and ambiguous CRM matches. No records will be inserted or updated.":selectedJob.kind==="glide"?"Only leads whose Glide last-time-called value differs from the CRM value are eligible for comparison and display. Leads with the same timestamp or a blank Glide timestamp are skipped. Preview is read-only; execution writes only differing, nonblank fields.":"Preview mode does not update deals. Execution writes only the fields targeted by the selected maintenance job. The batch size is capped at 250 records."}</div></div>
+        <div className="bulk-updater-notice warning"><AlertTriangle size={18} style={{flexShrink:0}}/><div><strong>{selectedJob.kind==="glide"?"Glide live sync is protected.":"Preview before execution."}</strong> {selectedJob.kind==="glide"?"Only leads whose Glide last-time-called value differs from the CRM value are eligible for comparison and display. Leads with the same timestamp or a blank Glide timestamp are skipped. Preview is read-only; execution writes only differing, nonblank fields.":"Preview mode does not update deals. Execution writes only the fields targeted by the selected maintenance job. The batch size is capped at 250 records."}</div></div>
         {confirmExecute&&<div className="bulk-updater-confirm"><strong>Confirm production update</strong><p className="bulk-updater-muted">You are about to run “{selectedJob.title}” for up to {Math.min(selectedJob.kind==="glide"?Number.MAX_SAFE_INTEGER:250,Math.max(1,Number.parseInt(limit,10)||100))} records. This will write changes to Supabase. For Glide, only existing matched leads will be updated; blank source fields are skipped and no leads are inserted.</p><div className="bulk-updater-actions"><button className="bulk-updater-btn danger" disabled={busy} onClick={()=>runUpdater(true)}><Play size={16}/>Confirm and execute</button><button className="bulk-updater-btn" disabled={busy} onClick={()=>setConfirmExecute(false)}>Cancel</button></div></div>}
         {message&&<div className="bulk-updater-notice success"><CheckCircle2 size={18} style={{flexShrink:0}}/><span>{message}</span></div>}
         {error&&<div className="bulk-updater-notice error"><XCircle size={18} style={{flexShrink:0}}/><span>{error}</span></div>}
       </section>
-      {result&&<><section className="bulk-updater-card"><h2>Run summary</h2><p className="bulk-updater-muted">{result.mode==="READ_ONLY_ARCHIVE_COUNT"?"Read-only archive count — no CRM records were changed.":result.dryRun?"Preview only — no lead/deal records were changed.":"Execution results for this batch."} {result.totalMissing!=null?"Eligible records with missing values: "+result.totalMissing+".":""}</p><div className="bulk-updater-stats">{counts.map(item=><div className="bulk-updater-stat" key={item.label}><span>{item.label}</span><strong>{item.value}</strong></div>)}</div></section>
+      {result&&<><section className="bulk-updater-card"><h2>Run summary</h2><p className="bulk-updater-muted">{result.dryRun?"Preview only — no lead/deal records were changed.":"Execution results for this batch."} {result.totalMissing!=null?"Eligible records with missing values: "+result.totalMissing+".":""}</p><div className="bulk-updater-stats">{counts.map(item=><div className="bulk-updater-stat" key={item.label}><span>{item.label}</span><strong>{item.value}</strong></div>)}</div></section>
         <section className="bulk-updater-card"><h2>Record details</h2><div className="bulk-updater-table-wrap"><table className="bulk-updater-table"><thead><tr><th>Row ID</th><th>Customer</th><th>Postcode</th><th>Changed fields</th><th>Details</th></tr></thead><tbody>
           {(result.sampleChangedRows||result.results||[]).map((row,index)=><tr key={row.rowId||row.dealId||index}><td>{row.rowId||row.dealId||row.marketing_row_id||"—"}</td><td>{[row.firstName||row.first_name,row.lastName||row.last_name].filter(Boolean).join(" ")||row.customerName||"—"}</td><td>{row.postcode||"—"}</td><td>{Array.isArray(row.changedFields)?row.changedFields.join(", "):row.action||"—"}</td><td>{row.error||("CRM matches: "+(row.crm_matches??"—")+"; archive matches: "+(row.archive_source_matches??"—"))}</td></tr>)}
           {!(result.sampleChangedRows||result.results||[]).length&&<tr><td colSpan="5">No differences returned for this run.</td></tr>}
