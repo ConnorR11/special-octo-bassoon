@@ -81,8 +81,8 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   const specs = [
     ["Solar panels", d.panelCount ? String(d.panelCount) + " panels" : "To be confirmed"],
     ["System capacity", d.capacity ? d.capacity.toFixed(2) + " kWp" : "To be confirmed"],
-    ["Inverter", inverters.map(x => [x?.manufacturer,x?.model,x?.name].filter(Boolean).join(" ")).filter(Boolean).join(", ") || "To be confirmed"],
-    ["Battery storage", batteries.map(x => [x?.manufacturer,x?.model,x?.name].filter(Boolean).join(" ")).filter(Boolean).join(", ") || "To be confirmed"],
+    ["Inverter", d.inverters.map(x => [x?.manufacturer,x?.model,x?.name].filter(Boolean).join(" ")).filter(Boolean).join(", ") || "To be confirmed"],
+    ["Battery storage", d.batteries.map(x => [x?.manufacturer,x?.model,x?.name].filter(Boolean).join(" ")).filter(Boolean).join(", ") || "To be confirmed"],
   ]
   for (const [label, val] of specs) {
     pdf.setFillColor(...pale); pdf.roundedRect(margin, y, w-margin*2, 18, 2, 2, "F")
