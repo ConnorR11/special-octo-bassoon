@@ -223,7 +223,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   const panelHardware = findHardware(panels,"Panels")
   const panelWattage = d.panels.map(item=>Number(item?.wattage||item?.power||item?.watts||item?.capacity||0)).find(n=>n>0) || 450
   const configuredItems = [
-    {name:"Panels ("+panelWattage+" W)",type:"Product",quantity:d.panelCount||1},
+    {name:"Panels",type:"Product",quantity:d.panelCount||1},
     {name:"Roof Hooks",type:"Product",quantity:"-"},
     {name:"Rail Fix Kit",type:"Product",quantity:"-"},
     {name:findHardware(inverters,"Inverter")?.name||"Inverter",type:"Product",quantity:findHardware(inverters,"Inverter")?.quantity??1},
@@ -255,30 +255,48 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
     if(normalized==="panel installation")quantity=1
     return {name,type:item.type,qty:quantity}
   })
-  const tableX=margin, tableW=w-margin*2, nameW=tableW-54, typeW=28
-  let ty=56
-  pdf.setFillColor(...blue);pdf.roundedRect(tableX,ty,tableW,11,2,2,"F")
-  pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(8)
-  pdf.text("PRODUCT / SERVICE",tableX+7,ty+7)
-  pdf.text("TYPE",tableX+nameW+typeW/2,ty+7,{align:"center"})
-  pdf.text("QTY",tableX+tableW-7,ty+7,{align:"right"})
-  let rowY=ty+8.3
+  const tableX=margin, tableW=w-margin*2
+  const typeX=tableX+tableW-43
+  let headerY=ty+4
+  const rowHeight=6.8
+  pdf.setFillColor(...blue)
+  pdf.roundedRect(tableX,headerY-7,tableW,11,2,2,"F")
+  pdf.setTextColor(255,255,255)
+  pdf.setFont("helvetica","bold")
+  pdf.setFontSize(8)
+  pdf.text("PRODUCT / SERVICE",tableX+7,headerY)
+  pdf.text("TYPE",typeX,headerY,{align:"center"})
+  pdf.text("QTY",tableX+tableW-7,headerY,{align:"right"})
+
+  let rowY=headerY+8.3
   itemRows.forEach((item,index)=>{
-    const rowHeight=6.8
-    if(index%2===0){pdf.setFillColor(247,249,250);pdf.roundedRect(tableX,rowY-5,tableW,rowHeight,1.2,1.2,"F")}
-    pdf.setTextColor(...navy);pdf.setFont("helvetica","normal");pdf.setFontSize(8)
-    pdf.text(pdf.splitTextToSize(String(item.name),nameW-12).slice(0,1),tableX+7,rowY)
-    if(item.type){
-      pdf.setFont("helvetica","bold");pdf.setFontSize(6.2)
-      const tw=pdf.getTextWidth(item.type)+6
-      const service=item.type.toLowerCase()==="service"
-      pdf.setFillColor(...(service?[255,241,230]:[231,242,248]))
-      pdf.setTextColor(...(service?[199,106,0]:[11,93,138]))
-      pdf.roundedRect(tableX+nameW-tw/2+typeW/2,rowY-3.6,tw,4.2,2,2,"F")
-      pdf.text(item.type,tableX+nameW+typeW/2,rowY-0.45,{align:"center"})
+    const name=String(item.name)
+    const type=String(item.type||"")
+    const quantity=String(item.qty)
+    if(index%2===0){
+      pdf.setFillColor(247,249,250)
+      pdf.roundedRect(tableX,rowY-5,tableW,rowHeight,1.2,1.2,"F")
     }
-    pdf.setTextColor(...navy);pdf.setFont("helvetica","bold");pdf.setFontSize(8)
-    pdf.text(String(item.qty),tableX+tableW-7,rowY,{align:"right"})
+    pdf.setTextColor(...navy)
+    pdf.setFont("helvetica","normal")
+    pdf.setFontSize(8)
+    pdf.text(name,tableX+7,rowY)
+    if(type){
+      pdf.setFont("helvetica","bold")
+      pdf.setFontSize(6.2)
+      const tw=pdf.getTextWidth(type)+6
+      const key=type.toLowerCase()
+      const fill=key==="service"?[255,241,230]:key==="product"?[231,242,248]:[238,240,242]
+      const colour=key==="service"?[199,106,0]:key==="product"?[11,93,138]:[75,85,92]
+      pdf.setFillColor(...fill)
+      pdf.setTextColor(...colour)
+      pdf.roundedRect(typeX-tw/2,rowY-3.6,tw,4.2,2,2,"F")
+      pdf.text(type,typeX,rowY-0.45,{align:"center"})
+    }
+    pdf.setTextColor(...navy)
+    pdf.setFont("helvetica","bold")
+    pdf.setFontSize(8)
+    pdf.text(quantity,tableX+tableW-7,rowY,{align:"right"})
     rowY+=rowHeight
   })
   ty=rowY+3
