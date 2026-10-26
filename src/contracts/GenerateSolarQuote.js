@@ -188,26 +188,35 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   text("Equipment and services included in your proposed system",margin,41,w-margin*2,9,muted)
   pdf.setFillColor(...blue);pdf.rect(margin,47,31,1.5,"F")
 
-  const itemRows=[]
-  const qtyOf=(item,fallback=1)=>Number(item?.quantity ?? item?.count ?? item?.qty ?? fallback) || fallback
-  const itemName=(item,fallback)=>[item?.manufacturer,item?.model||item?.name].filter(Boolean).join(" ") || fallback
-  d.panels.forEach((item,index)=>itemRows.push({
-    name:itemName(item,"Solar panels"),type:"Product",
-    qty:qtyOf(item,index===0 ? (d.panelCount||1) : 1),
-  }))
-  d.inverters.forEach(item=>{
-    itemRows.push({name:itemName(item,"Inverter"),type:"Product",qty:qtyOf(item)})
-    if(/hanchu|ess|wifi|dongle/i.test(String(item?.model||item?.name||""))) {
-      // Accessory naming is retained only when explicitly present in source data.
-    }
-  })
-  d.batteries.forEach(item=>itemRows.push({name:itemName(item,"Battery storage"),type:"Product",qty:qtyOf(item)}))
-  if(!itemRows.some(item=>/panel/i.test(item.name)) && d.panelCount>0) {
-    itemRows.unshift({name:"Solar panels",type:"Product",qty:d.panelCount})
-  }
-  if(!itemRows.some(item=>/installation/i.test(item.name))) itemRows.push({name:"Installation and commissioning",type:"Service",qty:1})
-  if(!itemRows.some(item=>/system design/i.test(item.name))) itemRows.push({name:"System design",type:"Service",qty:1})
-
+  // Keep the full standard Homeshield inclusion list shown on the solar contract,
+  // while resolving the customer-specific panel, inverter and battery models.
+  const panelWattage = d.panels.map(item=>Number(item?.wattage||item?.power||item?.watts||item?.capacity||0)).find(n=>n>0) || 450
+  const firstInverter = d.inverters[0]
+  const firstBattery = d.batteries[0]
+  const itemRows = [
+    {name:"Panels",type:"Product",qty:d.panelCount||"-"},
+    {name:"Roof Hooks",type:"Product",qty:"-"},
+    {name:"Rail Fix Kit",type:"Product",qty:"-"},
+    {name:firstInverter ? itemName(firstInverter,"Inverter") : "Inverter",type:"Product",qty:firstInverter ? qtyOf(firstInverter) : 1},
+    {name:"Wifi Dongle",type:"Product",qty:1},
+    {name:firstBattery ? itemName(firstBattery,"Battery") : "Battery",type:"Product",qty:firstBattery ? qtyOf(firstBattery) : 1},
+    {name:"24 Month Workmanship Warranty",type:"Service",qty:1},
+    {name:"System Design",type:"Service",qty:1},
+    {name:"Generation Meter",type:"Product",qty:1},
+    {name:"Bird Proofing",type:"Service",qty:1},
+    {name:"DC cable",type:"Product",qty:1},
+    {name:"EPVS Validation",type:"Service",qty:1},
+    {name:"HIES Warranty",type:"Service",qty:1},
+    {name:"Installation",type:"Service",qty:1},
+    {name:"Lifetime Monitoring",type:"Service",qty:1},
+    {name:"MCS Building Control Registration",type:"Service",qty:1},
+    {name:"Pair of A/C Isolators 32A",type:"Product",qty:1},
+    {name:"Pair of D/C 80A Isolators",type:"Product",qty:1},
+    {name:"Panel Installation",type:"Service",qty:1},
+    {name:"PV on Roof and Hazards Label Pack",type:"Product",qty:1},
+    {name:"Scaffolding (Where required)",type:"Service",qty:1},
+    {name:"Electrical Connections",type:"Service",qty:1}
+  ]
   const tableX=margin, tableW=w-margin*2, nameW=tableW-54, typeW=28, qtyW=26
   let ty=56
   pdf.setFillColor(...blue);pdf.roundedRect(tableX,ty,tableW,12,2,2,"F")
