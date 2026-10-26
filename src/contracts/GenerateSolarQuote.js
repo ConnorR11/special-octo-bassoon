@@ -121,11 +121,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
     ["Inverter",hardwareLabel(d.inverters,"To be confirmed")],
     ["Battery storage",hardwareLabel(d.batteries,"To be confirmed")]
   ]
-  const footer = (page) => {
-    line(h-15); pdf.setFont("helvetica","normal"); pdf.setFontSize(8); pdf.setTextColor(...muted)
-    pdf.text("Homeshield Scotland  |  Solar proposal  |  Quote only — not a contract",margin,h-9)
-    pdf.text(page+" / 3",w-margin,h-9,{align:"right"})
-  }
+
 
   // PAGE 1 — A clear, visual sales summary.
   pdf.setFillColor(255,255,255); pdf.rect(0,0,w,h,"F")
