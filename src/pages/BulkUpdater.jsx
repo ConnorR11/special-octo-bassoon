@@ -32,7 +32,7 @@ export default function BulkUpdater() {
     const response = await fetch("/api/admin/glide-leads-preview", {
       method: "POST",
       headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ limit: Math.min(100, Math.max(1, Number.parseInt(limit, 10) || 100)), offset: Math.max(0, Number.parseInt(offset, 10) || 0), execute })
+      body: JSON.stringify({ limit: Math.max(1, Number.parseInt(limit, 10) || 100), offset: Math.max(0, Number.parseInt(offset, 10) || 0), execute })
     })
     const payload = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(payload?.error || payload?.message || "Glide sync request failed (HTTP " + response.status + ").")
@@ -92,7 +92,7 @@ export default function BulkUpdater() {
         <h2>Choose an update</h2><p className="bulk-updater-muted">Only the listed, supported maintenance jobs can run here. Each job is authenticated and recorded in Integration Logs.</p>
         <div className="bulk-updater-form">
           <div className="bulk-updater-field"><label htmlFor="bulk-job">Bulk update job</label><select id="bulk-job" value={job} onChange={e=>{setJob(e.target.value);setResult(null);setMessage("");setError("");setConfirmExecute(false)}}>{JOBS.map(item=><option key={item.id} value={item.id}>{item.title}</option>)}</select><span className="bulk-updater-muted">{selectedJob.description}</span></div>
-          <div className="bulk-updater-field"><label htmlFor="bulk-limit">Batch size {selectedJob.kind==="glide"?"(max 100 per preview)":"(max 250)"}</label><input id="bulk-limit" type="number" min="1" max={selectedJob.kind==="glide"?100:250} value={limit} onChange={e=>setLimit(e.target.value)}/></div>
+          <div className="bulk-updater-field"><label htmlFor="bulk-limit">Batch size {selectedJob.kind==="glide"?"(all matching leads allowed)":"(max 250)"}</label><input id="bulk-limit" type="number" min="1" max={selectedJob.kind==="glide"?undefined:250} value={limit} onChange={e=>setLimit(e.target.value)}/></div>
           <div className="bulk-updater-field"><label htmlFor="bulk-offset">Offset</label><input id="bulk-offset" type="number" min="0" step="1" value={offset} onChange={e=>setOffset(e.target.value)}/></div>
         </div>
         <div className="bulk-updater-actions">
@@ -101,7 +101,7 @@ export default function BulkUpdater() {
           {busy&&<span className="bulk-updater-muted" style={{alignSelf:"center"}}><RefreshCw size={14} style={{verticalAlign:"middle"}}/> Processing request…</span>}
         </div>
         <div className="bulk-updater-notice warning"><AlertTriangle size={18} style={{flexShrink:0}}/><div><strong>{selectedJob.kind==="glide"?"Glide live sync is protected.":"Preview before execution."}</strong> {selectedJob.kind==="glide"?"Only leads whose Glide last-time-called value differs from the CRM value are eligible for comparison and display. Leads with the same timestamp or a blank Glide timestamp are skipped. Preview is read-only; execution writes only differing, nonblank fields.":"Preview mode does not update deals. Execution writes only the fields targeted by the selected maintenance job. The batch size is capped at 250 records."}</div></div>
-        {confirmExecute&&<div className="bulk-updater-confirm"><strong>Confirm production update</strong><p className="bulk-updater-muted">You are about to run “{selectedJob.title}” for up to {Math.min(selectedJob.kind==="glide"?100:250,Math.max(1,Number.parseInt(limit,10)||100))} records. This will write changes to Supabase. For Glide, only existing matched leads will be updated; blank source fields are skipped and no leads are inserted.</p><div className="bulk-updater-actions"><button className="bulk-updater-btn danger" disabled={busy} onClick={()=>runUpdater(true)}><Play size={16}/>Confirm and execute</button><button className="bulk-updater-btn" disabled={busy} onClick={()=>setConfirmExecute(false)}>Cancel</button></div></div>}
+        {confirmExecute&&<div className="bulk-updater-confirm"><strong>Confirm production update</strong><p className="bulk-updater-muted">You are about to run “{selectedJob.title}” for up to {Math.min(selectedJob.kind==="glide"?Number.MAX_SAFE_INTEGER:250,Math.max(1,Number.parseInt(limit,10)||100))} records. This will write changes to Supabase. For Glide, only existing matched leads will be updated; blank source fields are skipped and no leads are inserted.</p><div className="bulk-updater-actions"><button className="bulk-updater-btn danger" disabled={busy} onClick={()=>runUpdater(true)}><Play size={16}/>Confirm and execute</button><button className="bulk-updater-btn" disabled={busy} onClick={()=>setConfirmExecute(false)}>Cancel</button></div></div>}
         {message&&<div className="bulk-updater-notice success"><CheckCircle2 size={18} style={{flexShrink:0}}/><span>{message}</span></div>}
         {error&&<div className="bulk-updater-notice error"><XCircle size={18} style={{flexShrink:0}}/><span>{error}</span></div>}
       </section>
