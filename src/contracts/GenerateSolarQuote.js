@@ -101,12 +101,18 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   // Cover
   pdf.setFillColor(255,255,255); pdf.rect(0, 0, w, h, "F")
   pdf.setTextColor(...blue); pdf.setFont("helvetica","bold"); pdf.setFontSize(11); pdf.text("HOMESHIELD SCOTLAND", margin, 15)
-  pdf.setFontSize(29); pdf.text("Your Solar PV System", margin, 52)
+  pdf.setFontSize(23); pdf.text("Your Solar PV System", margin, 31)
   pdf.setFont("helvetica","normal"); pdf.setFontSize(9); pdf.setTextColor(...muted); pdf.text("Your proposed solar system and estimated performance", margin, 39)
-  pdf.setTextColor(...navy); pdf.setFont("helvetica","bold"); pdf.setFontSize(18); pdf.text(customer, margin, 127)
+  pdf.setTextColor(...navy); pdf.setFont("helvetica","bold"); pdf.setFontSize(15); pdf.text(customer, 120, 58)
   pdf.setFont("helvetica","normal"); pdf.setFontSize(11)
-  let y = 137; y = addWrapped(pdf, address || "Property address to be confirmed", margin, y, 150, 6)
-  pdf.setTextColor(...muted); pdf.setFontSize(9); pdf.text("Quote reference: " + quoteRef, margin, 166); pdf.text("Prepared: " + today, margin, 173)
+  let y = 70; y = addWrapped(pdf, address || "Property address to be confirmed", 120, y, 70, 5)
+  pdf.setTextColor(...muted); pdf.setFontSize(9); pdf.text("Quote reference: " + quoteRef, 120, 99); pdf.text("Prepared: " + today, 120, 107)
+  pdf.setFillColor(...blue); pdf.roundedRect(margin, 137, w - margin*2, 23, 3, 3, "F")
+  pdf.setTextColor(255,255,255); pdf.setFont("helvetica","bold"); pdf.setFontSize(16); pdf.text(d.panelCount ? "×" + d.panelCount : "Panels TBC", margin + 12, 148)
+  pdf.setFont("helvetica","normal"); pdf.setFontSize(7.5); pdf.text("SOLAR PANELS", margin + 12, 155)
+  pdf.setDrawColor(255,255,255); pdf.line(98, 141, 98, 156)
+  pdf.setFont("helvetica","bold"); pdf.setFontSize(16); pdf.text(d.capacity ? d.capacity.toFixed(2) + " kWp" : "TBC", 110, 148)
+  pdf.setFont("helvetica","normal"); pdf.setFontSize(7.5); pdf.text("SYSTEM SIZE", 110, 155)
   pdf.setFillColor(...pale); pdf.roundedRect(margin, 193, w - margin*2, 66, 4, 4, "F")
   pdf.setTextColor(...blue); pdf.setFont("helvetica","bold"); pdf.setFontSize(10); pdf.text("CASH PRICE", margin + 8, 207)
   pdf.setTextColor(...navy); pdf.setFontSize(20); pdf.text(money(d.cashPrice), margin + 8, 220)
@@ -114,7 +120,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   pdf.setTextColor(...navy); pdf.setFontSize(20); pdf.text(money(d.monthly) + " / month", margin + 8, 247)
   pdf.setFont("helvetica","normal"); pdf.setFontSize(8); pdf.setTextColor(...muted)
   pdf.text("Illustrative at 3.9% over " + d.termYears + " years; subject to lender approval and confirmed terms.", margin + 8, 255, { maxWidth: w - margin*2 - 16 })
-  if (openSolarImageUrl) { try { await drawQuoteImage(pdf, openSolarImageUrl, margin, 48, 94, 76) } catch (error) { console.warn("OpenSolar image unavailable on quote cover:", error) } }
+  if (openSolarImageUrl) { try { await drawQuoteImage(pdf, openSolarImageUrl, margin, 45, 94, 76) } catch (error) { console.warn("OpenSolar image unavailable on quote cover:", error) } }
   footer(1)
 
   // System overview
