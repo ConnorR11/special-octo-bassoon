@@ -78,7 +78,9 @@ export default function BulkUpdater() {
 
   const counts = result ? [
     { label: "Scanned", value: result.requested ?? result.sourceRowsTested ?? 0 },
-    { label: "Eligible leads", value: result.eligibleRowsTotal ?? result.eligibleForUpdate ?? result.matchedUnique ?? 0 },
+    { label: "Would insert", value: result.would_insert ?? 0 },
+    { label: "Would update", value: result.would_update ?? 0 },
+    { label: "Duplicate / ambiguous", value: (result.duplicate_archive_ids ?? 0) + (result.ambiguous_crm_matches ?? 0) },
     { label: "Proposed changes", value: result.proposedFieldChanges ?? result.previewed ?? 0 },
     { label: "Same timestamp skipped", value: result.skippedSameLastCall ?? 0 },
     { label: "Updated", value: result.updated ?? 0 },
@@ -120,7 +122,7 @@ export default function BulkUpdater() {
       </section>
       {result&&<><section className="bulk-updater-card"><h2>Run summary</h2><p className="bulk-updater-muted">{result.dryRun?"Preview only — no lead/deal records were changed.":"Execution results for this batch."} {result.totalMissing!=null?"Eligible records with missing values: "+result.totalMissing+".":""}</p><div className="bulk-updater-stats">{counts.map(item=><div className="bulk-updater-stat" key={item.label}><span>{item.label}</span><strong>{item.value}</strong></div>)}</div></section>
         <section className="bulk-updater-card"><h2>Record details</h2><div className="bulk-updater-table-wrap"><table className="bulk-updater-table"><thead><tr><th>Row ID</th><th>Customer</th><th>Postcode</th><th>Changed fields</th><th>Details</th></tr></thead><tbody>
-          {(result.sampleChangedRows||result.results||[]).map((row,index)=><tr key={row.rowId||row.dealId||index}><td>{row.rowId||row.dealId||"—"}</td><td>{[row.firstName,row.lastName].filter(Boolean).join(" ")||row.customerName||"—"}</td><td>{row.postcode||"—"}</td><td>{Array.isArray(row.changedFields)?row.changedFields.join(", "):row.installationStartDate||"—"}</td><td>{row.error||"—"}</td></tr>)}
+          {(result.sampleChangedRows||result.results||[]).map((row,index)=><tr key={row.rowId||row.dealId||index}><td>{row.rowId||row.dealId||row.marketing_row_id||"—"}</td><td>{[row.firstName||row.first_name,row.lastName||row.last_name].filter(Boolean).join(" ")||row.customerName||"—"}</td><td>{row.postcode||"—"}</td><td>{Array.isArray(row.changedFields)?row.changedFields.join(", "):row.action||"—"}</td><td>{row.error||("CRM matches: "+(row.crm_matches??"—")+"; archive matches: "+(row.archive_source_matches??"—"))}</td></tr>)}
           {!(result.sampleChangedRows||result.results||[]).length&&<tr><td colSpan="5">No differences returned for this run.</td></tr>}
         </tbody></table></div></section></>}
     </div>
