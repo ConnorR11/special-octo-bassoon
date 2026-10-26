@@ -194,7 +194,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   const firstInverter = d.inverters[0]
   const firstBattery = d.batteries[0]
   const itemRows = [
-    {name:"Panels",type:"Product",qty:d.panelCount||"-"},
+    {name:panelWattage ? "Panels ("+panelWattage+" W)" : "Panels",type:"Product",qty:d.panelCount||"-"},
     {name:"Roof Hooks",type:"Product",qty:"-"},
     {name:"Rail Fix Kit",type:"Product",qty:"-"},
     {name:firstInverter ? itemName(firstInverter,"Inverter") : "Inverter",type:"Product",qty:firstInverter ? qtyOf(firstInverter) : 1},
