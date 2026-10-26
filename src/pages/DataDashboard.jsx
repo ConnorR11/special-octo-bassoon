@@ -15,6 +15,7 @@ import {
 } from "recharts"
 import { supabase } from "../lib/supabase"
 import MapOfAppointments from "./MapOfAppointments"
+import LeadDispositionKanban from "../components/LeadDispositionKanban"
 
 const START_YEAR = 2026
 const LEAD_TYPE_COLORS = ["#2563eb", "#0d9488", "#9333ea", "#ea580c", "#64748b", "#dc2626", "#0891b2", "#65a30d", "#c026d3", "#a16207"]
@@ -878,6 +879,13 @@ function DataDashboard() {
         >
           Map of Appointments
         </button>
+        <button
+          type="button"
+          className={`data-dashboard-tab ${activeTab === "kanban" ? "active" : ""}`}
+          onClick={() => setActiveTab("kanban")}
+        >
+          Kanban
+        </button>
       </div>
 
       {error && activeTab === "overview" && (
@@ -1326,6 +1334,8 @@ function DataDashboard() {
             )}
           </div>
         </>
+      ) : activeTab === "kanban" ? (
+        <LeadDispositionKanban />
       ) : (
         <MapOfAppointments />
       )}
