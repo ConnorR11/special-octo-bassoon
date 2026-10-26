@@ -123,6 +123,55 @@ export default function Leads() {
   const [note, setNote] = useState("")
   const [search, setSearch] = useState("")
   const [showDialer, setShowDialer] = useState(false)
+  const [syncingFromGlide, setSyncingFromGlide] = useState(false)
+  const [glideSyncMessage, setGlideSyncMessage] = useState("")
+
+  async function syncCurrentLeadFromGlide() {
+    if (!currentLead || syncingFromGlide || !supabase) return
+    const rowIds = [...new Set([currentLead.delete_row_id, currentLead.marketing_row_id].map(value => String(value || "").trim()).filter(Boolean))]
+    if (!rowIds.length) {
+      setGlideSyncMessage("This lead has no Glide row ID to match.")
+      return
+    }
+    if (!window.confirm(`Update ${displayName(currentLead)} from Glide now? Nonblank Glide fields may overwrite the current CRM values.`)) return
+    setSyncingFromGlide(true)
+    setGlideSyncMessage("")
+    setError("")
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError) throw sessionError
+      const response = await fetch("/api/admin/glide-leads-preview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionData?.session?.access_token || ""}`,
+        },
+        body: JSON.stringify({ execute: true, rowIds }),
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok || payload.error) throw new Error(payload.detail || payload.error || "Glide sync failed.")
+      if (Number(payload.updated || 0) > 0) {
+        setGlideSyncMessage(`Updated from Glide successfully (${payload.updated} CRM record).`)
+        const { data, error: refreshError } = await supabase.from("leads").select("*").eq("delete_row_id", currentLead.delete_row_id).maybeSingle()
+        if (refreshError) throw refreshError
+        if (data) setCurrentLead(data)
+      } else if (Number(payload.failed || 0) > 0) {
+        throw new Error(payload.errors?.[0]?.error || "Glide sync failed for this lead.")
+      } else if (Number(payload.skippedSameLastCall || 0) > 0) {
+        setGlideSyncMessage("Already up to date — the last-called timestamp matches Glide.")
+      } else if (Number(payload.skippedBlankGlideLastCall || 0) > 0) {
+        setGlideSyncMessage("Skipped: Glide has no last-called timestamp for this lead.")
+      } else if (Number(payload.notMatched || 0) > 0 || Number(payload.matchedUnique || 0) === 0) {
+        setGlideSyncMessage("No matching Glide row was found for this lead.")
+      } else {
+        setGlideSyncMessage("No changes were needed for this lead.")
+      }
+    } catch (err) {
+      setGlideSyncMessage(err?.message || "Unable to update this lead from Glide.")
+    } finally {
+      setSyncingFromGlide(false)
+    }
+  }
 
   async function getCurrentUserId() {
     const { data, error: authError } = await supabase.auth.getUser()
@@ -291,11 +340,19 @@ export default function Leads() {
                 <h2 style={{ margin:"6px 0 0", fontSize:30 }}>{currentLead ? displayName(currentLead) : "No lead selected"}</h2>
               </div>
               {currentLead && (
-                <div style={{ padding:"7px 11px", borderRadius:999, background:"#eef6ff", color:"#1d4ed8", fontWeight:800, fontSize:12 }}>
-                  {normaliseCount(currentLead.call_count)} calls
+                <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", justifyContent:"flex-end" }}>
+                  <button type="button" onClick={syncCurrentLeadFromGlide} disabled={syncingFromGlide} style={{ border:0, background:syncingFromGlide ? "#94a3b8" : "#0f766e", color:"#fff", borderRadius:9, padding:"9px 12px", display:"inline-flex", alignItems:"center", gap:7, fontWeight:800, fontSize:12, cursor:syncingFromGlide ? "default" : "pointer" }}>
+                    <RefreshCw size={14} className={syncingFromGlide ? "spin" : ""} />
+                    {syncingFromGlide ? "Updating from Glide…" : "Update from Glide"}
+                  </button>
+                  <div style={{ padding:"7px 11px", borderRadius:999, background:"#eef6ff", color:"#1d4ed8", fontWeight:800, fontSize:12 }}>
+                    {normaliseCount(currentLead.call_count)} calls
+                  </div>
                 </div>
               )}
             </div>
+
+            {glideSyncMessage && <div role="status" style={{ marginBottom:14, border:"1px solid #99f6e4", background:"#f0fdfa", color:"#115e59", borderRadius:9, padding:"10px 12px", fontSize:12 }}>{glideSyncMessage}</div>}
 
             {!currentLead ? (
               <div style={{ textAlign:"center", padding:"65px 20px" }}>
