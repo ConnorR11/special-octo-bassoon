@@ -204,19 +204,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   pdf.setTextColor(...navy);pdf.setFontSize(22);pdf.text("Your quotation",margin,32)
   text("Pricing and specification summary",margin,40,w-margin*2,9,muted)
   let y2=53
-  y2=section("Price and payment options",y2)
-  card(margin,y2,w-margin*2,51)
-  pdf.setTextColor(...muted);pdf.setFont("helvetica","bold");pdf.setFontSize(9)
-  pdf.text("TOTAL CASH PRICE",margin+7,y2+12)
-  pdf.text("INDICATIVE FINANCE",margin+half+5,y2+12)
-  pdf.setTextColor(...navy);pdf.setFontSize(20)
-  pdf.text(money(d.cashPrice),margin+7,y2+24)
-  pdf.text(money(d.monthly)+" / month",margin+half+5,y2+24)
-  pdf.setFont("helvetica","normal");pdf.setFontSize(8)
-  pdf.text("Deposit: "+money(d.deposit),margin+7,y2+35)
-  pdf.text("Term: "+d.termYears+" years",margin+half+5,y2+35)
-  pdf.text("Illustration at "+d.rate.toFixed(1)+"% annual interest",margin+half+5,y2+43)
-  y2+=62
+  // Pricing is shown prominently on page 1 only, avoiding repetition across adjacent pages.
   y2=section("Equipment and installation",y2)
   for(const [label,detail] of equipment){
     card(margin,y2,w-margin*2,17,[247,249,251])
