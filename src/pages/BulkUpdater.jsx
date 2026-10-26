@@ -46,7 +46,7 @@ export default function BulkUpdater() {
     const response = await fetch("/api/admin/glide-archived-leads-preview", { method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ previewOnly: true }) })
     const payload = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(payload?.error || payload?.detail || "Archived preview failed (HTTP " + response.status + ").")
-    setResult({ ...payload, dryRun: true, requested: payload.rows_after_cutoff, previewed: payload.would_insert + payload.would_update, results: payload.sample_rows || [] })
+    setResult({ ...payload, dryRun: true, requested: payload.archived_since_cutoff ?? 0, previewed: 0, results: [] })
     setMessage("Archived preview ready. Read-only: no CRM records were changed.")
   }
 
@@ -80,6 +80,7 @@ export default function BulkUpdater() {
 
   const counts = result ? [
     { label: "Scanned", value: result.requested ?? result.sourceRowsTested ?? 0 },
+    { label: "Archived since 1 Oct 2026", value: result.archived_since_cutoff ?? 0 },
     { label: "Would insert", value: result.would_insert ?? 0 },
     { label: "Would update", value: result.would_update ?? 0 },
     { label: "Duplicate / ambiguous", value: (result.duplicate_archive_ids ?? 0) + (result.ambiguous_crm_matches ?? 0) },
@@ -122,7 +123,7 @@ export default function BulkUpdater() {
         {message&&<div className="bulk-updater-notice success"><CheckCircle2 size={18} style={{flexShrink:0}}/><span>{message}</span></div>}
         {error&&<div className="bulk-updater-notice error"><XCircle size={18} style={{flexShrink:0}}/><span>{error}</span></div>}
       </section>
-      {result&&<><section className="bulk-updater-card"><h2>Run summary</h2><p className="bulk-updater-muted">{result.dryRun?"Preview only — no lead/deal records were changed.":"Execution results for this batch."} {result.totalMissing!=null?"Eligible records with missing values: "+result.totalMissing+".":""}</p><div className="bulk-updater-stats">{counts.map(item=><div className="bulk-updater-stat" key={item.label}><span>{item.label}</span><strong>{item.value}</strong></div>)}</div></section>
+      {result&&<><section className="bulk-updater-card"><h2>Run summary</h2><p className="bulk-updater-muted">{result.mode==="READ_ONLY_ARCHIVE_COUNT"?"Read-only archive count — no CRM records were changed.":result.dryRun?"Preview only — no lead/deal records were changed.":"Execution results for this batch."} {result.totalMissing!=null?"Eligible records with missing values: "+result.totalMissing+".":""}</p><div className="bulk-updater-stats">{counts.map(item=><div className="bulk-updater-stat" key={item.label}><span>{item.label}</span><strong>{item.value}</strong></div>)}</div></section>
         <section className="bulk-updater-card"><h2>Record details</h2><div className="bulk-updater-table-wrap"><table className="bulk-updater-table"><thead><tr><th>Row ID</th><th>Customer</th><th>Postcode</th><th>Changed fields</th><th>Details</th></tr></thead><tbody>
           {(result.sampleChangedRows||result.results||[]).map((row,index)=><tr key={row.rowId||row.dealId||index}><td>{row.rowId||row.dealId||row.marketing_row_id||"—"}</td><td>{[row.firstName||row.first_name,row.lastName||row.last_name].filter(Boolean).join(" ")||row.customerName||"—"}</td><td>{row.postcode||"—"}</td><td>{Array.isArray(row.changedFields)?row.changedFields.join(", "):row.action||"—"}</td><td>{row.error||("CRM matches: "+(row.crm_matches??"—")+"; archive matches: "+(row.archive_source_matches??"—"))}</td></tr>)}
           {!(result.sampleChangedRows||result.results||[]).length&&<tr><td colSpan="5">No differences returned for this run.</td></tr>}
