@@ -108,32 +108,23 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   pdf.setFont("helvetica","normal"); pdf.setFontSize(9); pdf.setTextColor(...muted); pdf.text("Your proposed solar system and estimated performance", margin, 39)
   pdf.setTextColor(...navy); pdf.setFont("helvetica","bold"); pdf.setFontSize(15); pdf.text(customer, 120, 58)
   pdf.setFont("helvetica","normal"); pdf.setFontSize(11)
-  let y = 70; y = addWrapped(pdf, address || "Property address to be confirmed", 120, y, 70, 5)
-  pdf.setTextColor(...muted); pdf.setFontSize(9); 
-  pdf.setFillColor(...blue); pdf.roundedRect(margin, 112, w - margin*2, 23, 3, 3, "F")
-  pdf.setTextColor(255,255,255); pdf.setFont("helvetica","bold"); pdf.setFontSize(16); pdf.text(d.panelCount ? "×" + d.panelCount : "Panels TBC", margin + 12, 123)
-  pdf.setFont("helvetica","normal"); pdf.setFontSize(7.5); pdf.text("SOLAR PANELS", margin + 12, 130)
-  pdf.setDrawColor(255,255,255); pdf.line(98, 116, 98, 131)
-  pdf.setFont("helvetica","bold"); pdf.setFontSize(16); pdf.text(d.capacity ? d.capacity.toFixed(2) + " kWp" : "TBC", 110, 123)
-  pdf.setFont("helvetica","normal"); pdf.setFontSize(7.5); pdf.text("SYSTEM SIZE", 110, 130)
-  // Hardware badges sit directly beneath the panel-count and system-size banner.
+  addWrapped(pdf, address || "Property address to be confirmed", 120, 70, 70, 5)
+
   const hardwareLabel = (items, fallback) => {
     const names = items.map(item => [item?.manufacturer, item?.model, item?.name].filter(Boolean).join(" ")).filter(Boolean)
     return names.length ? names.join(", ") : fallback
   }
-  const inverterLabel = hardwareLabel(d.inverters, "Inverter details to be confirmed")
-  const batteryLabel = hardwareLabel(d.batteries, "Battery details to be confirmed")
-  const hardwareY = 140
-  const hardwareGap = 5
-  const hardwareW = (w - margin * 2 - hardwareGap) / 2
-  const drawHardwareCard = (x, title, detail) => {
-    pdf.setFillColor(...pale); pdf.roundedRect(x, hardwareY, hardwareW, 24, 2.5, 2.5, "F")
-    pdf.setTextColor(...blue); pdf.setFont("helvetica","bold"); pdf.setFontSize(8); pdf.text(title.toUpperCase(), x + 4, hardwareY + 7)
+  const stackX = 120, stackW = w - margin - stackX
+  const drawStackCard = (y, title, detail) => {
+    pdf.setFillColor(...pale); pdf.roundedRect(stackX, y, stackW, 16, 2, 2, "F")
+    pdf.setTextColor(...blue); pdf.setFont("helvetica","bold"); pdf.setFontSize(7); pdf.text(title.toUpperCase(), stackX + 4, y + 5)
     pdf.setTextColor(...navy); pdf.setFont("helvetica","normal"); pdf.setFontSize(8)
-    pdf.text(pdf.splitTextToSize(detail, hardwareW - 8).slice(0, 2), x + 4, hardwareY + 14)
+    pdf.text(pdf.splitTextToSize(detail, stackW - 8).slice(0, 2), stackX + 4, y + 11)
   }
-  drawHardwareCard(margin, "Inverter", inverterLabel)
-  drawHardwareCard(margin + hardwareW + hardwareGap, "Battery storage", batteryLabel)
+  drawStackCard(88, "Solar panels", d.panelCount ? "×" + d.panelCount + " panels" : "To be confirmed")
+  drawStackCard(106, "System size", d.capacity ? d.capacity.toFixed(2) + " kWp" : "To be confirmed")
+  drawStackCard(124, "Inverter", hardwareLabel(d.inverters, "To be confirmed"))
+  drawStackCard(142, "Battery storage", hardwareLabel(d.batteries, "To be confirmed"))
 
   pdf.setTextColor(...blue); pdf.setFont("helvetica","normal"); pdf.setFontSize(17); pdf.text("System Performance", margin, 177)
   pdf.setDrawColor(185,211,226); pdf.roundedRect(margin,182,w-margin*2,35,3,3,"S")
