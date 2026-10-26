@@ -148,11 +148,14 @@ export default function SolarRework({ onSelectAppointment }) {
         .eq("job_type", "Solar")
         .not("rep_allocated", "is", null)
         .neq("rep_allocated", "")
+        .not("result", "is", null)
+        .neq("result", "")
+        .neq("result", "SOLD")
         .lt("appointment_date", startOfCurrentWeekISO())
         .order("appointment_date", { ascending: activeTab === "linked" ? linkedSortOrder === "asc" : unlinkedSortOrder === "asc", nullsFirst: false })
         .order("appointment_row_id", { ascending: false })
       if (yearFilter !== "all") request = request.gte("appointment_date", yearFilter + "-01-01").lt("appointment_date", (Number(yearFilter) + 1) + "-01-01")
-      if (resultFilter !== "all") request = resultFilter === "no-result" ? request.is("result", null) : request.eq("result", resultFilter)
+      if (resultFilter !== "all") request = request.eq("result", resultFilter)
       if (activeTab === "unlinked") {
         request = request.is("open_solar_id", null)
         request = request.range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE - 1)
@@ -229,6 +232,9 @@ export default function SolarRework({ onSelectAppointment }) {
           .eq("job_type", "Solar")
               .not("rep_allocated", "is", null)
           .neq("rep_allocated", "")
+          .not("result", "is", null)
+          .neq("result", "")
+          .neq("result", "SOLD")
           .lt("appointment_date", startOfCurrentWeekISO())
         const [unlinkedResult, linkedResult] = await Promise.all([
           base().is("open_solar_id", null),
@@ -287,7 +293,7 @@ export default function SolarRework({ onSelectAppointment }) {
           <Sun size={23} color="#0f766e" />
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 750 }}>Solar Appointment Rework</h1>
         </div>
-        <p style={{ margin: "7px 0 0", color: "#64748b", fontSize: 13 }}>All past solar appointments for OpenSolar matching and quote preparation. Filter by result to narrow the list.</p>
+        <p style={{ margin: "7px 0 0", color: "#64748b", fontSize: 13 }}>All past solar appointments with a result, excluding Sold appointments. Use the result filter to narrow the list.</p>
       </div>
       <button onClick={() => loadRows(page)} disabled={loading} style={{ border: "1px solid #cbd5e1", background: "#fff", borderRadius: 8, padding: "9px 13px", display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 650, cursor: loading ? "wait" : "pointer" }}>
         <RefreshCw size={14} /> Refresh list
@@ -315,7 +321,6 @@ export default function SolarRework({ onSelectAppointment }) {
           <option value="PM">PM</option>
           <option value="PM DNH">PM DNH</option>
           <option value="DNH">DNH</option>
-          <option value="SOLD">Sold</option>
           <option value="no-result">No result</option>
         </select>
                 <select value={yearFilter} onChange={event => setYearFilter(event.target.value)} style={selectStyle}>
