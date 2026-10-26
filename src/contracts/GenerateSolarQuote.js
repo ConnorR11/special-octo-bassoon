@@ -156,27 +156,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   if (openSolarImageUrl) { try { await drawQuoteImage(pdf, openSolarImageUrl, margin, 45, 94, 76) } catch (error) { console.warn("OpenSolar image unavailable on quote cover:", error) } }
   footer(1)
 
-  // System overview
-  pdf.addPage(); y = 25; y = heading("Your proposed solar system", y)
-  pdf.setTextColor(...navy); pdf.setFont("helvetica","normal"); pdf.setFontSize(10)
-  y = addWrapped(pdf, "This proposal summarises the solar equipment and installation planned for your property. Final equipment and quantities are subject to survey and confirmation.", margin, y, w - margin*2, 5)
-  y += 8
-  if (openSolarImageUrl) { try { y += await drawQuoteImage(pdf, openSolarImageUrl, margin, y, w - margin * 2, 62); y += 5 } catch (error) { console.warn("OpenSolar image unavailable in system breakdown:", error) } }
-  const specs = [
-    ["Solar panels", d.panelCount ? String(d.panelCount) + " panels" : "To be confirmed"],
-    ["System capacity", d.capacity ? d.capacity.toFixed(2) + " kWp" : "To be confirmed"],
-    ["Inverter", d.inverters.map(x => [x?.manufacturer,x?.model,x?.name].filter(Boolean).join(" ")).filter(Boolean).join(", ") || "To be confirmed"],
-    ["Battery storage", d.batteries.map(x => [x?.manufacturer,x?.model,x?.name].filter(Boolean).join(" ")).filter(Boolean).join(", ") || "To be confirmed"],
-  ]
-  for (const [label, val] of specs) {
-    pdf.setFillColor(...pale); pdf.roundedRect(margin, y, w-margin*2, 18, 2, 2, "F")
-    pdf.setTextColor(...muted); pdf.setFontSize(8); pdf.setFont("helvetica","bold"); pdf.text(label.toUpperCase(), margin+5, y+6)
-    pdf.setTextColor(...navy); pdf.setFontSize(11); pdf.setFont("helvetica","normal"); pdf.text(pdf.splitTextToSize(val, w-margin*2-10).slice(0,2), margin+5, y+13)
-    y += 22
-  }
-  y += 4; y = heading("What is included", y)
-  y = addWrapped(pdf, "Supply of the listed solar equipment, installation and commissioning as agreed in the final specification. Any exclusions or site-specific requirements will be confirmed before an order is placed.", margin, y, w-margin*2, 5)
-  footer(2)
+  // System overview page removed; equipment details remain on the cover.
 
   // Price and savings
   pdf.addPage(); y=25; y=heading("Your quotation", y)
@@ -199,7 +179,10 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   addWrapped(pdf,"Energy savings are estimates based on the information available at the time of quotation. Actual results depend on usage, weather, tariffs, system design and export arrangements. Finance is subject to lender approval and final lender documentation.",margin,y,w-margin*2,4)
   footer(3)
 
-  pdf.addPage(); y=25; y=heading("Next steps",y)
+  pdf.addPage(); y=25; y=heading("What is included",y)
+  pdf.setTextColor(...navy); pdf.setFont("helvetica","normal"); pdf.setFontSize(10)
+  y=addWrapped(pdf,"Supply of the listed solar equipment, installation and commissioning as agreed in the final specification. Any exclusions or site-specific requirements will be confirmed before an order is placed.",margin,y,w-margin*2,5)
+  y+=14; y=heading("Next steps",y)
   pdf.setTextColor(...navy);pdf.setFont("helvetica","normal");pdf.setFontSize(11)
   y=addWrapped(pdf,"1. Review this proposal and the proposed system.",margin,y,w-margin*2,6)+5
   y=addWrapped(pdf,"2. Confirm the equipment, installation scope and any site-specific requirements.",margin,y,w-margin*2,6)+5
@@ -207,7 +190,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   pdf.setFont("helvetica","bold");pdf.setFontSize(14);pdf.setTextColor(...blue);pdf.text("Homeshield Scotland",margin,y);y+=8
   pdf.setFont("helvetica","normal");pdf.setFontSize(10);pdf.setTextColor(...navy)
   y=addWrapped(pdf,"This document is a quotation proposal only. It is not a contract, finance offer or guarantee of savings.",margin,y,w-margin*2,5)
-  footer(4)
+  footer(3)
   const blob = pdf.output("blob")
   const url = URL.createObjectURL(blob)
   if (!previewOnly) {
