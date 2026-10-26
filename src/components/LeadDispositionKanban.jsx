@@ -27,5 +27,32 @@ export default function LeadDispositionKanban(){
  {error&&<div role="alert" style={{border:"1px solid #fecaca",background:"#fff1f2",color:"#b91c1c",borderRadius:9,padding:12,fontSize:12,marginBottom:14}}>{error}</div>}
  {loading?<div style={{padding:40,textAlign:"center",color:"#64748b",background:"#fff",border:"1px solid #dfe5ec",borderRadius:12}}>Loading leads…</div>:leads.length===0?<div style={{padding:40,textAlign:"center",color:"#64748b",background:"#fff",border:"1px solid #dfe5ec",borderRadius:12}}>No leads found for these filters.</div>:<div style={{display:"flex",gap:14,overflowX:"auto",alignItems:"flex-start",paddingBottom:12}}>{columns.map(([label,items])=><section key={label} style={{flex:"0 0 285px",width:285,minWidth:285,border:"1px solid #dfe5ec",background:"#edf2f7",borderRadius:12,padding:10,boxSizing:"border-box"}}><header style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,padding:"4px 3px 11px"}}><div style={{fontSize:12,fontWeight:800,color:"#334155"}}>{label}</div><span style={{minWidth:24,textAlign:"center",padding:"3px 7px",borderRadius:99,background:"#dbeafe",color:"#1d4ed8",fontSize:11,fontWeight:800}}>{items.length}</span></header><div style={{display:"flex",flexDirection:"column",gap:9}}>{items.map(l=><button type="button" key={l.delete_row_id} onClick={()=>setSelectedLead(l)} aria-label={`Open lead ${nameOf(l)}`} style={{display:"block",width:"100%",textAlign:"left",background:"#fff",border:"1px solid #e2e8f0",borderRadius:9,padding:12,boxShadow:"0 1px 2px rgba(15,23,42,.04)",cursor:"pointer",font:"inherit"}}><div style={{display:"flex",alignItems:"flex-start",gap:7,fontSize:13,fontWeight:750,color:"#0f172a",lineHeight:1.35,overflowWrap:"anywhere"}}><UserRound size={15} style={{flexShrink:0,marginTop:1,color:"#64748b"}}/>{nameOf(l)}</div><div style={{display:"flex",alignItems:"center",gap:7,marginTop:10,color:"#475569",fontSize:11,overflowWrap:"anywhere"}}><MapPin size={13} style={{flexShrink:0}}/>{l.postcode||"No postcode"}</div><div style={{display:"flex",alignItems:"center",gap:7,marginTop:7,color:"#475569",fontSize:11,overflowWrap:"anywhere"}}><Phone size={13} style={{flexShrink:0}}/>{l.primary_phone_number||l.secondary_phone_number||"No phone number"}</div><div style={{marginTop:10,paddingTop:9,borderTop:"1px solid #eef2f6",display:"flex",alignItems:"flex-start",gap:7,color:"#64748b",fontSize:11,overflowWrap:"anywhere"}}><b style={{color:"#475569",flexShrink:0}}>Source</b><span>{l.lead_source||"Unknown"}</span></div><div style={{display:"flex",alignItems:"center",gap:7,marginTop:7,color:"#64748b",fontSize:11}}><CalendarDays size={13} style={{flexShrink:0}}/>{label==="Call Back"?<>Call back {dateOf(l.callback_date_time)}</>:<>Received {dateOf(l.received_date_time)}</>}</div></button>)}</div></section>)}</div>}
 
+ {selectedLead&&<div role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setSelectedLead(null)}} style={{position:"fixed",inset:0,zIndex:1000,background:"rgba(15,23,42,.52)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+  <section role="dialog" aria-modal="true" aria-labelledby="kanban-lead-title" style={{width:"min(620px,100%)",maxHeight:"85vh",overflowY:"auto",background:"#fff",borderRadius:14,boxShadow:"0 24px 70px rgba(15,23,42,.25)",padding:22,boxSizing:"border-box"}}>
+   <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,marginBottom:18}}>
+    <div><div style={{fontSize:11,fontWeight:800,letterSpacing:".06em",textTransform:"uppercase",color:"#64748b"}}>Lead details</div><h2 id="kanban-lead-title" style={{fontSize:22,lineHeight:1.25,margin:"5px 0 0",color:"#0f172a"}}>{nameOf(selectedLead)}</h2></div>
+    <button type="button" onClick={()=>setSelectedLead(null)} style={{border:"1px solid #d7dee7",background:"#fff",borderRadius:8,padding:"7px 11px",cursor:"pointer",font:"inherit"}}>Close</button>
+   </div>
+   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))",gap:10}}>
+    {[
+      ["Disposition",disp(selectedLead.disposition)],
+      ["Lead source",selectedLead.lead_source||"Unknown"],
+      ["Postcode",selectedLead.postcode||"—"],
+      ["Primary phone",selectedLead.primary_phone_number||"—"],
+      ["Secondary phone",selectedLead.secondary_phone_number||"—"],
+      ["Received",selectedLead.received_date_time?new Date(selectedLead.received_date_time).toLocaleString("en-GB"):"—"],
+      ["Last called",selectedLead.last_time_called?new Date(selectedLead.last_time_called).toLocaleString("en-GB"):"Never"],
+      ["Callback",selectedLead.callback_date_time?new Date(selectedLead.callback_date_time).toLocaleString("en-GB"):"—"],
+      ["CRM row ID",selectedLead.delete_row_id||"—"],
+      ["Glide row ID",selectedLead.marketing_row_id||"—"],
+    ].map(([label,value])=><div key={label} style={{border:"1px solid #e2e8f0",borderRadius:9,padding:12,minWidth:0}}>
+      <div style={{fontSize:10,textTransform:"uppercase",letterSpacing:".05em",fontWeight:800,color:"#64748b",marginBottom:5}}>{label}</div>
+      <div style={{fontSize:13,color:"#0f172a",overflowWrap:"anywhere"}}>{value}</div>
+    </div>)}
+   </div>
+  </section>
+ </div>}
+
+
  </div>
 }
