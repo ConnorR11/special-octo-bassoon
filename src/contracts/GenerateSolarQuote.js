@@ -307,37 +307,37 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   text("Energy savings are estimates based on available information. Actual results depend on household usage, weather, tariffs, system design and export arrangements. Finance is illustrative, subject to lender approval and confirmed terms.",margin,ty,w-margin*2,8,muted,"normal",4)
   footer(2)
 
-  // PAGE 3 — EPVS 30-year financial and generation projection.
+  // PAGE 3 — EPVS 30-year financial and generation projection30.
   pdf.addPage();pdf.setFillColor(255,255,255);pdf.rect(0,0,w,h,"F")
   pdf.setTextColor(...blue);pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text("HOMESHIELD SCOTLAND",margin,16)
   pdf.setTextColor(...navy);pdf.setFont("helvetica","bold");pdf.setFontSize(22);pdf.text("EPVS Calculations Cont.",margin,32)
   text("Continued estimated performance and value",margin,40,w-margin*2,9,muted)
   pdf.setFillColor(...blue);pdf.rect(margin,46,31,1.5,"F")
 
-  const projection=d.epvs?.thirtyYearProjection||{}
-  const scenario=projection?.scenarios?.averageInflation
-  const projectionRows=Array.isArray(scenario?.rows)?scenario.rows:(Array.isArray(scenario)?scenario:[])
-  const tableX=margin,tableY=57,tableW=w-margin*2
-  const headers=["YR","GENERATION","SOLAR","BATTERY","EXPORT","ANNUAL BENEFIT","YEARLY PAYMENTS","NET ANNUAL","NET POSITION","BILL PRE INSTALL","BILL POST INSTALL"]
-  const weights=[7,13,11,12,11,14,13,12,13,14,14]
-  const weightTotal=weights.reduce((sum,n)=>sum+n,0)
-  const widths=weights.map(n=>tableW*n/weightTotal)
-  const headerH=11,rowH=5.9,totalH=6.5
+  const projection30=d.epvs?.thirtyYearProjection||{}
+  const scenario30=projection30?.scenarios?.averageInflation
+  const projectionRows30=Array.isArray(scenario30?.rows)?scenario30.rows:(Array.isArray(scenario30)?scenario30:[])
+  const tableX30=margin,tableY30=57,tableW30=w-margin*2
+  const headers30=["YR","GENERATION","SOLAR","BATTERY","EXPORT","ANNUAL BENEFIT","YEARLY PAYMENTS","NET ANNUAL","NET POSITION","BILL PRE INSTALL","BILL POST INSTALL"]
+  const weights30=[7,13,11,12,11,14,13,12,13,14,14]
+  const weightTotal30=weights30.reduce((sum,n)=>sum+n,0)
+  const widths30=weights30.map(n=>tableW30*n/weightTotal30)
+  const headerH30=11,rowH30=5.9,totalH30=6.5
   pdf.setTextColor(...navy);pdf.setFont("helvetica","bold");pdf.setFontSize(8)
-  pdf.text("30 Year Breakdown – 7.6% Inflation Rate",tableX,53)
-  pdf.setFillColor(...blue);pdf.roundedRect(tableX,tableY,tableW,headerH,1.5,1.5,"F")
-  let tx=tableX
-  headers.forEach((header,index)=>{
+  pdf.text("30 Year Breakdown – 7.6% Inflation Rate",tableX30,53)
+  pdf.setFillColor(...blue);pdf.roundedRect(tableX30,tableY30,tableW30,headerH30,1.5,1.5,"F")
+  let tx30=tableX30
+  headers30.forEach((header,index)=>{
     pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(4.8)
     const words=header.split(" ")
     const mid=Math.ceil(words.length/2)
     const first=words.length>2?words.slice(0,mid).join(" "):header
     const second=words.length>2?words.slice(mid).join(" "):""
-    if(second){pdf.text(first,tx+widths[index]/2,tableY+4.2,{align:"center"});pdf.text(second,tx+widths[index]/2,tableY+8.2,{align:"center"})}
-    else pdf.text(header,tx+widths[index]/2,tableY+6.8,{align:"center"})
-    tx+=widths[index]
+    if(second){pdf.text(first,tx30+widths30[index]/2,tableY30+4.2,{align:"center"});pdf.text(second,tx30+widths30[index]/2,tableY30+8.2,{align:"center"})}
+    else pdf.text(header,tx30+widths30[index]/2,tableY30+6.8,{align:"center"})
+    tx30+=widths30[index]
   })
-  const numeric=(row,...keys)=>{
+  const numeric30=(row,...keys)=>{
     for(const key of keys){
       const direct=Number(row?.[key])
       if(Number.isFinite(direct)&&direct!==0)return direct
@@ -346,50 +346,50 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
     }
     return 0
   }
-  const solarOf=row=>numeric(row,"solarBenefit","solar")
-  const batteryOf=row=>numeric(row,"batteryBenefit","battery")||numeric(row,"batterySelfConsumptionBenefit")+numeric(row,"forceChargeBenefit")
-  const exportOf=row=>numeric(row,"exportBenefit")
-  const benefitOf=row=>solarOf(row)+batteryOf(row)+exportOf(row)
-  const savedAdminFee=d.epvs?.data?.adminFee??record.admin_fee_amount
-  const adminFee=savedAdminFee!==null&&savedAdminFee!==undefined&&String(savedAdminFee).trim()!==""?Math.max(0,Number(savedAdminFee)||0):399
-  const paymentOf=row=>numeric(row,"yearlyPayment","payment")-(Number(row?.year)===1?adminFee:0)
-  const fmtNum=n=>Number(n||0).toLocaleString("en-GB",{maximumFractionDigits:0})
-  const fmtMoney=n=>money(n).replace(".00","")
-  if(!projectionRows.length){
-    text("No saved 30-year EPVS projection is available for this appointment. Please recalculate and save the EPVS results before issuing this quotation.",tableX,tableY+20,tableW,9,muted,"normal",4.5)
+  const solarOf30=row=>numeric30(row,"solarBenefit","solar")
+  const batteryOf30=row=>numeric30(row,"batteryBenefit","battery")||numeric30(row,"batterySelfConsumptionBenefit")+numeric30(row,"forceChargeBenefit")
+  const exportOf30=row=>numeric30(row,"exportBenefit")
+  const benefitOf30=row=>solarOf30(row)+batteryOf30(row)+exportOf30(row)
+  const savedAdminFee30=d.epvs?.data?.adminFee30??record.admin_fee_amount
+  const adminFee30=savedAdminFee30!==null&&savedAdminFee30!==undefined&&String(savedAdminFee30).trim()!==""?Math.max(0,Number(savedAdminFee30)||0):399
+  const paymentOf30=row=>numeric30(row,"yearlyPayment","payment")-(Number(row?.year)===1?adminFee30:0)
+  const fmtNum30=n=>Number(n||0).toLocaleString("en-GB",{maximumFractionDigits:0})
+  const fmtMoney30=n=>money(n).replace(".00","")
+  if(!projectionRows30.length){
+    text("No saved 30-year EPVS projection30 is available for this appointment. Please recalculate and save the EPVS results before issuing this quotation.",tableX30,tableY30+20,tableW30,9,muted,"normal",4.5)
   } else {
-    let rowY=tableY+headerH
-    let cumulative=0
-    const totals=Array(10).fill(0)
-    const bodyRows=projectionRows.slice(0,30).map(row=>{
-      const solar=solarOf(row),battery=batteryOf(row),exportValue=exportOf(row),benefit=solar+battery+exportValue
-      const payment=paymentOf(row),netAnnual=benefit+payment
-      cumulative+=benefit
-      return [String(row?.year||""),fmtNum(row?.generation),fmtMoney(solar),fmtMoney(battery),fmtMoney(exportValue),fmtMoney(benefit),fmtMoney(payment),fmtMoney(netAnnual),fmtMoney(cumulative+projectionRows.reduce((sum,r)=>sum+paymentOf(r),0)),fmtMoney(row?.billPreInstall),fmtMoney(row?.billPostInstall)].map((v,i)=>({v,n:[1,2,3,4,5,6,7,8,9,10].includes(i)?Number(String(v).replace(/[£,]/g,"")):0}))
+    let rowY30=tableY30+headerH30
+    let cumulative30=0
+    const totals30=Array(10).fill(0)
+    const bodyRows30=projectionRows30.slice(0,30).map(row=>{
+      const solar=solarOf30(row),battery=batteryOf30(row),exportValue=exportOf30(row),benefit=solar+battery+exportValue
+      const payment=paymentOf30(row),netAnnual=benefit+payment
+      cumulative30+=benefit
+      return [String(row?.year||""),fmtNum30(row?.generation),fmtMoney30(solar),fmtMoney30(battery),fmtMoney30(exportValue),fmtMoney30(benefit),fmtMoney30(payment),fmtMoney30(netAnnual),fmtMoney30(cumulative30+projectionRows30.reduce((sum,r)=>sum+paymentOf30(r),0)),fmtMoney30(row?.billPreInstall),fmtMoney30(row?.billPostInstall)].map((v,i)=>({v,n:[1,2,3,4,5,6,7,8,9,10].includes(i)?Number(String(v).replace(/[£,]/g,"")):0}))
     })
-    const totalRaw=Array(11).fill(0)
-    bodyRows.forEach((cells,index)=>{
-      const row=projectionRows[index]
-      const solar=solarOf(row),battery=batteryOf(row),exportValue=exportOf(row),benefit=solar+battery+exportValue,payment=paymentOf(row)
-      const vals=[String(row?.year||""),fmtNum(row?.generation),fmtMoney(solar),fmtMoney(battery),fmtMoney(exportValue),fmtMoney(benefit),fmtMoney(payment),fmtMoney(benefit+payment),fmtMoney(benefit+payment),fmtMoney(row?.billPreInstall),fmtMoney(row?.billPostInstall)]
+    const totalRaw30=Array(11).fill(0)
+    bodyRows30.forEach((cells,index)=>{
+      const row=projectionRows30[index]
+      const solar=solarOf30(row),battery=batteryOf30(row),exportValue=exportOf30(row),benefit=solar+battery+exportValue,payment=paymentOf30(row)
+      const vals=[String(row?.year||""),fmtNum30(row?.generation),fmtMoney30(solar),fmtMoney30(battery),fmtMoney30(exportValue),fmtMoney30(benefit),fmtMoney30(payment),fmtMoney30(benefit+payment),fmtMoney30(benefit+payment),fmtMoney30(row?.billPreInstall),fmtMoney30(row?.billPostInstall)]
       const nums=[0,Number(row?.generation)||0,solar,battery,exportValue,benefit,payment,benefit+payment,benefit+payment,Number(row?.billPreInstall)||0,Number(row?.billPostInstall)||0]
-      tx=tableX
+      tx30=tableX30
       vals.forEach((val,index)=>{
         const highlighted=index===5||index===8
         pdf.setFillColor(...(highlighted?[232,245,235]:index%2===0?[247,249,250]:[255,255,255]))
-        pdf.setDrawColor(220,228,234);pdf.rect(tx,rowY,widths[index],rowH,"FD")
+        pdf.setDrawColor(220,228,234);pdf.rect(tx30,rowY30,widths30[index],rowH30,"FD")
         pdf.setTextColor(...(highlighted?[38,120,58]:navy));pdf.setFont("helvetica",index===0?"bold":"normal");pdf.setFontSize(5.3)
-        pdf.text(String(val),tx+widths[index]-0.7,rowY+4.1,{align:"right"})
-        tx+=widths[index]
-        totalRaw[index]+=nums[index]
+        pdf.text(String(val),tx30+widths30[index]-0.7,rowY30+4.1,{align:"right"})
+        tx30+=widths30[index]
+        totalRaw30[index]+=nums[index]
       })
-      rowY+=rowH
+      rowY30+=rowH30
     })
-    tx=tableX
-    const totalVals=["TOTAL",fmtNum(totalRaw[1]),...totalRaw.slice(2).map(fmtMoney)]
+    tx30=tableX30
+    const totalVals=["TOTAL",fmtNum30(totalRaw30[1]),...totalRaw30.slice(2).map(fmtMoney30)]
     totalVals.forEach((val,index)=>{
-      pdf.setFillColor(...(index===5||index===8?blue:[82,92,100]));pdf.setDrawColor(255,255,255);pdf.rect(tx,rowY,widths[index],totalH,"FD")
-      pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(5.2);pdf.text(String(val),tx+widths[index]-0.7,rowY+4.4,{align:"right"});tx+=widths[index]
+      pdf.setFillColor(...(index===5||index===8?blue:[82,92,100]));pdf.setDrawColor(255,255,255);pdf.rect(tx30,rowY30,widths30[index],totalH30,"FD")
+      pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(5.2);pdf.text(String(val),tx30+widths30[index]-0.7,rowY30+4.4,{align:"right"});tx30+=widths30[index]
     })
   }
   footer(3)
