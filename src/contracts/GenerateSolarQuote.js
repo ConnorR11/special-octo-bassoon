@@ -31,13 +31,12 @@ function addWrapped(pdf, text, x, y, width, lineHeight = 5) {
   return y + lines.length * lineHeight
 }
 
-export async function GenerateSolarQuote({ appointment, previewOnly = true, priceMode = null }) {
+export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   if (!appointment) throw new Error("An appointment is required to create a solar quote.")
   const { data: saved, error } = await supabase.from("appointments").select("*").eq("appointment_row_id", appointment.appointment_row_id).maybeSingle()
   if (error) throw error
   const record = saved || appointment
   const d = getQuoteData(record)
-  const mode = priceMode || (String(d.epvs?.paymentMethod || record?.payment_method || "").toLowerCase().includes("finance") ? "finance" : "cash")
   const pdf = new jsPDF({ unit: "mm", format: "a4" })
   const w = 210, h = 297, margin = 18
   const navy = [16, 35, 63], blue = [11, 93, 138], muted = [92, 105, 120], pale = [239, 246, 250]
@@ -65,12 +64,13 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
   pdf.setFont("helvetica","normal"); pdf.setFontSize(11)
   let y = 137; y = addWrapped(pdf, address || "Property address to be confirmed", margin, y, 150, 6)
   pdf.setTextColor(...muted); pdf.setFontSize(9); pdf.text("Quote reference: " + quoteRef, margin, 166); pdf.text("Prepared: " + today, margin, 173)
-  pdf.setFillColor(...pale); pdf.roundedRect(margin, 193, w - margin*2, 54, 4, 4, "F")
-  pdf.setTextColor(...blue); pdf.setFont("helvetica","bold"); pdf.setFontSize(12); pdf.text(mode === "finance" ? "YOUR FINANCE INDICATIVE PAYMENT" : "YOUR PROPOSED CASH PRICE", margin + 8, 207)
-  pdf.setTextColor(...navy); pdf.setFontSize(25)
-  pdf.text(mode === "finance" ? money(d.monthly) + " / month" : money(d.cashPrice), margin + 8, 223)
-  pdf.setFont("helvetica","normal"); pdf.setFontSize(9); pdf.setTextColor(...muted)
-  pdf.text(mode === "finance" ? "Illustrative calculation at 3.9% over " + d.termYears + " years; subject to lender approval and confirmed terms." : "The cash price for the proposed system, subject to final survey and confirmed specification.", margin + 8, 235, { maxWidth: w - margin*2 - 16 })
+  pdf.setFillColor(...pale); pdf.roundedRect(margin, 193, w - margin*2, 66, 4, 4, "F")
+  pdf.setTextColor(...blue); pdf.setFont("helvetica","bold"); pdf.setFontSize(10); pdf.text("CASH PRICE", margin + 8, 207)
+  pdf.setTextColor(...navy); pdf.setFontSize(20); pdf.text(money(d.cashPrice), margin + 8, 220)
+  pdf.setTextColor(...blue); pdf.setFontSize(10); pdf.text("INDICATIVE MONTHLY FINANCE", margin + 8, 235)
+  pdf.setTextColor(...navy); pdf.setFontSize(20); pdf.text(money(d.monthly) + " / month", margin + 8, 247)
+  pdf.setFont("helvetica","normal"); pdf.setFontSize(8); pdf.setTextColor(...muted)
+  pdf.text("Illustrative at 3.9% over " + d.termYears + " years; subject to lender approval and confirmed terms.", margin + 8, 255, { maxWidth: w - margin*2 - 16 })
   footer(1)
 
   // System overview
@@ -97,18 +97,13 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
   // Price and savings
   pdf.addPage(); y=25; y=heading("Your quotation", y)
   pdf.setTextColor(...navy); pdf.setFont("helvetica","normal"); pdf.setFontSize(10)
-  if (mode === "finance") {
-    y=addWrapped(pdf, "Illustrative finance based on a " + d.rate.toFixed(1) + "% annual rate over " + d.termYears + " years, with an assumed deposit of " + money(d.deposit) + ". Monthly amount shown is a calculation only and is not a lender offer.", margin, y, w-margin*2, 5)
-    y+=10; pdf.setFillColor(...pale); pdf.roundedRect(margin,y,w-margin*2,38,3,3,"F")
-    pdf.setFont("helvetica","bold"); pdf.setTextColor(...blue); pdf.setFontSize(11); pdf.text("INDICATIVE MONTHLY PAYMENT",margin+7,y+11)
-    pdf.setTextColor(...navy); pdf.setFontSize(24); pdf.text(money(d.monthly)+" per month",margin+7,y+27)
-  } else {
-    y=addWrapped(pdf, "The proposed cash price for the solar system is shown below. The final price and specification will be confirmed before any order is placed.", margin, y, w-margin*2, 5)
-    y+=10; pdf.setFillColor(...pale); pdf.roundedRect(margin,y,w-margin*2,38,3,3,"F")
-    pdf.setFont("helvetica","bold"); pdf.setTextColor(...blue); pdf.setFontSize(11); pdf.text("TOTAL CASH PRICE",margin+7,y+11)
-    pdf.setTextColor(...navy); pdf.setFontSize(24); pdf.text(money(d.cashPrice),margin+7,y+27)
-  }
-  y += 53; y=heading("Estimated energy performance",y)
+  y=addWrapped(pdf, "The finance figure is illustrative, calculated at " + d.rate.toFixed(1) + "% annually over " + d.termYears + " years with an assumed deposit of " + money(d.deposit) + ". It is not a lender offer; final terms are subject to lender approval.", margin, y, w-margin*2, 5)
+  y+=7; pdf.setFillColor(...pale); pdf.roundedRect(margin,y,w-margin*2,48,3,3,"F")
+  pdf.setFont("helvetica","bold"); pdf.setTextColor(...blue); pdf.setFontSize(10); pdf.text("TOTAL CASH PRICE",margin+7,y+12)
+  pdf.setTextColor(...navy); pdf.setFontSize(19); pdf.text(money(d.cashPrice),margin+7,y+23)
+  pdf.setTextColor(...blue); pdf.setFontSize(10); pdf.text("INDICATIVE MONTHLY FINANCE",margin+7,y+35)
+  pdf.setTextColor(...navy); pdf.setFontSize(17); pdf.text(money(d.monthly) + " per month",margin+7,y+44)
+  y += 60; y=heading("Estimated energy performance",y)
   const epvs = d.epvs
   const energyRows = [
     ["Annual electricity consumption", epvs.annualConsumption ? Number(epvs.annualConsumption).toLocaleString("en-GB")+" kWh" : "Not available"],
@@ -136,7 +131,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
     const path = "solar-quotes/" + quoteRef + "/" + Date.now() + "-" + fileName
     const { error: uploadError } = await supabase.storage.from("signatures").upload(path, blob, { contentType:"application/pdf", upsert:false })
     if (uploadError) throw uploadError
-    return { url, path, fileName, priceMode:mode }
+    return { url, path, fileName }
   }
-  return { url, fileName: customer + "-Solar-Quote.pdf", priceMode:mode }
+  return { url, fileName: customer + "-Solar-Quote.pdf" }
 }
