@@ -319,12 +319,12 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   const projection30=calculation?.thirtyYearProjection||calculation?.data?.thirtyYearProjection||d.epvs?.thirtyYearProjection||{}
   const scenario30=projection30?.scenarios?.averageInflation
   const projectionRows30=Array.isArray(scenario30?.rows)?scenario30.rows:(Array.isArray(scenario30)?scenario30:[])
-  const tableX30=margin,tableY30=49,tableW30=w-margin*2
+  const tableX30=margin,tableY30=46,tableW30=w-margin*2
   const headers30=["YR","GENERATION","SOLAR","BATTERY","EXPORT","ANNUAL BENEFIT","YEARLY PAYMENTS","NET ANNUAL","NET POSITION","BILL PRE INSTALL","BILL POST INSTALL"]
   const weights30=[7,13,11,12,11,14,13,12,13,14,14]
   const weightTotal30=weights30.reduce((sum,n)=>sum+n,0)
   const widths30=weights30.map(n=>tableW30*n/weightTotal30)
-  const headerH30=11,rowH30=5.9,totalH30=6.5
+  const headerH30=9,rowH30=5.0,totalH30=5.5
   pdf.setTextColor(...navy);pdf.setFont("helvetica","bold");pdf.setFontSize(8)
   pdf.text("30 Year Breakdown – 7.6% Inflation Rate",tableX30,45)
   pdf.setFillColor(...blue);pdf.roundedRect(tableX30,tableY30,tableW30,headerH30,1.5,1.5,"F")
@@ -335,8 +335,8 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
     const mid=Math.ceil(words.length/2)
     const first=words.length>2?words.slice(0,mid).join(" "):header
     const second=words.length>2?words.slice(mid).join(" "):""
-    if(second){pdf.text(first,tx30+widths30[index]/2,tableY30+4.2,{align:"center"});pdf.text(second,tx30+widths30[index]/2,tableY30+8.2,{align:"center"})}
-    else pdf.text(header,tx30+widths30[index]/2,tableY30+6.8,{align:"center"})
+    if(second){pdf.text(first,tx30+widths30[index]/2,tableY30+3.4,{align:"center"});pdf.text(second,tx30+widths30[index]/2,tableY30+6.7,{align:"center"})}
+    else pdf.text(header,tx30+widths30[index]/2,tableY30+5.5,{align:"center"})
     tx30+=widths30[index]
   })
   const numeric30=(row,...keys)=>{
@@ -381,7 +381,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
         pdf.setFillColor(...(highlighted?[232,245,235]:index%2===0?[247,249,250]:[255,255,255]))
         pdf.setDrawColor(220,228,234);pdf.rect(tx30,rowY30,widths30[index],rowH30,"FD")
         pdf.setTextColor(...(highlighted?[38,120,58]:navy));pdf.setFont("helvetica",index===0?"bold":"normal");pdf.setFontSize(5.3)
-        pdf.text(String(val),tx30+widths30[index]-0.7,rowY30+4.1,{align:"right"})
+        pdf.text(String(val),tx30+widths30[index]-0.7,rowY30+3.5,{align:"right"})
         tx30+=widths30[index]
         totalRaw30[index]+=nums[index]
       })
@@ -391,14 +391,14 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
     const totalVals=["TOTAL",fmtNum30(totalRaw30[1]),...totalRaw30.slice(2).map(fmtMoney30)]
     totalVals.forEach((val,index)=>{
       pdf.setFillColor(...(index===5||index===8?blue:[82,92,100]));pdf.setDrawColor(255,255,255);pdf.rect(tx30,rowY30,widths30[index],totalH30,"FD")
-      pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(5.2);pdf.text(String(val),tx30+widths30[index]-0.7,rowY30+4.4,{align:"right"});tx30+=widths30[index]
+      pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(5.2);pdf.text(String(val),tx30+widths30[index]-0.7,rowY30+3.7,{align:"right"});tx30+=widths30[index]
     })
   }
 
   // Inflation explanation disclaimer, matching the supplied EPVS reference.
-  const disclaimerY30=tableY30+headerH30+Math.min(projectionRows30.length,30)*rowH30+totalH30+5
+  const disclaimerY30=tableY30+headerH30+Math.min(projectionRows30.length,30)*rowH30+totalH30+4
   const disclaimerH30=39
-  if(disclaimerY30+disclaimerH30<h-18){
+  if(disclaimerY30+disclaimerH30<h-8){
     pdf.setFillColor(242,246,249);pdf.setDrawColor(218,227,235)
     pdf.roundedRect(margin,disclaimerY30,w-margin*2,disclaimerH30,4,4,"FD")
     pdf.setTextColor(...navy);pdf.setFont("helvetica","bold");pdf.setFontSize(10)
