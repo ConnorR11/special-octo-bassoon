@@ -171,12 +171,27 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   for(const [label,val] of energyRows){pdf.setTextColor(...muted);pdf.setFontSize(9);pdf.text(label,margin,y);pdf.setTextColor(...navy);pdf.text(val,w-margin,y,{align:"right"});pdf.setDrawColor(225,230,235);pdf.line(margin,y+3,w-margin,y+3);y+=10}
   y+=5; pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(...muted)
   addWrapped(pdf,"Energy savings are estimates based on the information available at the time of quotation. Actual results depend on usage, weather, tariffs, system design and export arrangements. Finance is subject to lender approval and final lender documentation.",margin,y,w-margin*2,4)
-  footer(3)
-
-  pdf.addPage(); y=25; y=heading("What is included",y)
+  y += 12; y = heading("What is included", y)
   pdf.setTextColor(...navy); pdf.setFont("helvetica","normal"); pdf.setFontSize(10)
-  y=addWrapped(pdf,"Supply of the listed solar equipment, installation and commissioning as agreed in the final specification. Any exclusions or site-specific requirements will be confirmed before an order is placed.",margin,y,w-margin*2,5)
-  y+=14; y=heading("Next steps",y)
+  y = addWrapped(pdf,"Supply of the listed solar equipment, installation and commissioning as agreed in the final specification. Any exclusions or site-specific requirements will be confirmed before an order is placed.",margin,y,w-margin*2,5)
+  y += 8; y = heading("Equipment summary", y)
+  const equipmentRows = [
+    ["Solar panels", d.panelCount ? String(d.panelCount) + " panels" : "To be confirmed"],
+    ["System capacity", d.capacity ? d.capacity.toFixed(2) + " kWp" : "To be confirmed"],
+    ["Inverter", d.inverters.map(item => [item?.manufacturer,item?.model,item?.name].filter(Boolean).join(" ")).filter(Boolean).join(", ") || "To be confirmed"],
+    ["Battery storage", d.batteries.map(item => [item?.manufacturer,item?.model,item?.name].filter(Boolean).join(" ")).filter(Boolean).join(", ") || "To be confirmed"]
+  ]
+  for (const [label, detail] of equipmentRows) {
+    pdf.setFont("helvetica","bold"); pdf.setFontSize(9); pdf.setTextColor(...muted); pdf.text(label,margin,y)
+    pdf.setFont("helvetica","normal"); pdf.setTextColor(...navy)
+    const lines = pdf.splitTextToSize(detail,w-margin*2-48).slice(0,2)
+    pdf.text(lines,margin+48,y)
+    y += Math.max(8, lines.length*4.5)
+  }
+  footer(2)
+
+  pdf.addPage(); y=25; y=heading("Next steps",y)
+
   pdf.setTextColor(...navy);pdf.setFont("helvetica","normal");pdf.setFontSize(11)
   y=addWrapped(pdf,"1. Review this proposal and the proposed system.",margin,y,w-margin*2,6)+5
   y=addWrapped(pdf,"2. Confirm the equipment, installation scope and any site-specific requirements.",margin,y,w-margin*2,6)+5
