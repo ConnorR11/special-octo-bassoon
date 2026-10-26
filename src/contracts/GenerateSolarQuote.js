@@ -310,9 +310,8 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   // PAGE 3 — EPVS 30-year financial and generation projection.
   pdf.addPage();pdf.setFillColor(255,255,255);pdf.rect(0,0,w,h,"F")
   pdf.setTextColor(...blue);pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text("HOMESHIELD SCOTLAND",margin,16)
-  pdf.setTextColor(...navy);pdf.setFont("helvetica","bold");pdf.setFontSize(22);pdf.text("EPVS Calculations Cont.",margin,32)
-  text("Continued estimated performance and value",margin,40,w-margin*2,9,muted)
-  pdf.setFillColor(...blue);pdf.rect(margin,46,31,1.5,"F")
+  pdf.setTextColor(...navy);pdf.setFont("helvetica","bold");pdf.setFontSize(22);pdf.text("30 year breakdown",margin,32)
+  pdf.setFillColor(...blue);pdf.rect(margin,38,31,1.5,"F")
 
   // EPVS stores the 30-year projection on the calculation object itself, alongside data.
   // Read the same path used by EpvsPdfRenderer rather than only reading calculation.data.
@@ -320,14 +319,14 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   const projection30=calculation?.thirtyYearProjection||calculation?.data?.thirtyYearProjection||d.epvs?.thirtyYearProjection||{}
   const scenario30=projection30?.scenarios?.averageInflation
   const projectionRows30=Array.isArray(scenario30?.rows)?scenario30.rows:(Array.isArray(scenario30)?scenario30:[])
-  const tableX30=margin,tableY30=57,tableW30=w-margin*2
+  const tableX30=margin,tableY30=49,tableW30=w-margin*2
   const headers30=["YR","GENERATION","SOLAR","BATTERY","EXPORT","ANNUAL BENEFIT","YEARLY PAYMENTS","NET ANNUAL","NET POSITION","BILL PRE INSTALL","BILL POST INSTALL"]
   const weights30=[7,13,11,12,11,14,13,12,13,14,14]
   const weightTotal30=weights30.reduce((sum,n)=>sum+n,0)
   const widths30=weights30.map(n=>tableW30*n/weightTotal30)
   const headerH30=11,rowH30=5.9,totalH30=6.5
   pdf.setTextColor(...navy);pdf.setFont("helvetica","bold");pdf.setFontSize(8)
-  pdf.text("30 Year Breakdown – 7.6% Inflation Rate",tableX30,53)
+  pdf.text("30 Year Breakdown – 7.6% Inflation Rate",tableX30,45)
   pdf.setFillColor(...blue);pdf.roundedRect(tableX30,tableY30,tableW30,headerH30,1.5,1.5,"F")
   let tx30=tableX30
   headers30.forEach((header,index)=>{
@@ -394,6 +393,18 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
       pdf.setFillColor(...(index===5||index===8?blue:[82,92,100]));pdf.setDrawColor(255,255,255);pdf.rect(tx30,rowY30,widths30[index],totalH30,"FD")
       pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(5.2);pdf.text(String(val),tx30+widths30[index]-0.7,rowY30+4.4,{align:"right"});tx30+=widths30[index]
     })
+  }
+
+  // Inflation explanation disclaimer, matching the supplied EPVS reference.
+  const disclaimerY30=tableY30+headerH30+Math.min(projectionRows30.length,30)*rowH30+totalH30+5
+  const disclaimerH30=39
+  if(disclaimerY30+disclaimerH30<h-18){
+    pdf.setFillColor(242,246,249);pdf.setDrawColor(218,227,235)
+    pdf.roundedRect(margin,disclaimerY30,w-margin*2,disclaimerH30,4,4,"FD")
+    pdf.setTextColor(...navy);pdf.setFont("helvetica","bold");pdf.setFontSize(10)
+    pdf.text("Why have we shown savings based on varying rates on inflation?",margin+7,disclaimerY30+9)
+    const disclaimerText30="The current fuel inflation figure of 7.6% is based on data from the Office for National Statistics, covering the period 2015–2024. You can find more information at www.ons.gov.uk. The reason we have shown savings based on varying levels of inflation is because electricity inflation has fluctuated significantly over the past 20 years - including negative CPI values in 2006, 2015, and 2016 (-2.5%, -0.2%, -0.3%), and spikes like 21.7% in 2016. To avoid relying on one-off years, we use a long-term average to provide a more balanced view."
+    text(disclaimerText30,margin+7,disclaimerY30+17,w-margin*2-14,8,muted,"normal",4)
   }
   footer(3)
 
