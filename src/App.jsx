@@ -269,7 +269,7 @@ function App() {
   } else if (page === "epvs-applications") {
     pageContent = <EPVSApplications/>
   } else if (page === "sales-performance") {
-    pageContent = <SalesPerformance contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setSelected={setSelected}/>
+    pageContent = <SalesPerformance contracts={allDeals} total={totalValue} avg={averageValue} upcoming={upcomingInstallations} setSelected={deal => handleDealSelect(deal, page)}/>
   } else if (page === "installations-performance") {
     pageContent = <InstallationsPerformance deals={allDeals} loading={reportingLoading} onRefresh={loadAllDealsForReporting}/>
   } else if (page === "balances") {
