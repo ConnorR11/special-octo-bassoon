@@ -144,12 +144,13 @@ function DataDashboard() {
     setProntoSidError("")
 
     try {
-      const { data, error: rpcError } = await supabase.rpc("get_pronto_sid_lead_counts_with_dates_filtered", { date_period: prontoDatePeriod })
+      const { data, error: rpcError } = await supabase.rpc("get_pronto_introducer_lead_counts", { date_period: prontoDatePeriod })
       if (rpcError) throw rpcError
 
       setProntoSidRows((data || []).map((row) => ({
-        pronto_sid: String(row.pronto_sid || ""),
-        introducers: String(row.introducers || "—"),
+        pronto_sid: String(row.introducer || "(No Introducer)"),
+        introducers: String(row.introducer || "(No Introducer)"),
+        no_contact_count: Number(row.no_contact_count || 0),
         lead_count: Number(row.lead_count || 0),
         booked_count: Number(row.booked_count || 0),
         first_lead_date: row.first_lead_date || null,
@@ -998,7 +999,7 @@ function DataDashboard() {
         <>
           <div className="pronto-toolbar">
             <div>
-              <div className="data-dashboard-chart-title">Pronto SID Lead Counts</div>
+              <div className="data-dashboard-chart-title">Pronto Introducer Lead Counts</div>
               <div className="data-dashboard-chart-subtitle">
                 Lead counts and campaign activity for the selected period.
               </div>
@@ -1035,7 +1036,7 @@ function DataDashboard() {
                   type="text"
                   value={prontoSidSearch}
                   onChange={(event) => setProntoSidSearch(event.target.value)}
-                  placeholder="Search Pronto SID"
+                  placeholder="Search introducer"
                 />
               </div>
             </div>
@@ -1054,155 +1055,30 @@ function DataDashboard() {
               <table className="pronto-table">
                 <colgroup>
                   <col className="pronto-col-name" />
-                  <col className="pronto-col-introducer" />
                   <col className="pronto-col-first" />
                   <col className="pronto-col-latest" />
                   <col className="pronto-col-status" />
                   <col className="pronto-col-leads" />
                   <col className="pronto-col-booked" />
                   <col className="pronto-col-booked-percent" />
+                  <col />
                 </colgroup>
-                <thead>
-                  <tr>
-                    <th>Pronto SID</th>
-                    <th>Introducer</th>
-                    <th>First received</th>
-                    <th>Latest received</th>
-                    <th>Status</th>
-                    <th>Leads</th>
-                    <th>Booked</th>
-                    <th>Booked %</th>
-                    <th style={{ minWidth: 130, whiteSpace: "nowrap" }}>No Contact</th>
-                  </tr>
-                </thead>
+                <thead><tr>
+                  <th>Introducer</th><th>First received</th><th>Latest received</th><th>Status</th>
+                  <th>Leads</th><th>Booked</th><th>Booked %</th><th>No Contact</th>
+                </tr></thead>
                 <tbody>
                   {filteredProntoSidRows.map((row) => (
-                    <React.Fragment key={row.pronto_sid}>
-                      <tr>
-                        <td>
-                          <button
-                            type="button"
-                            onClick={() => toggleProntoSid(row.pronto_sid)}
-                            aria-expanded={Boolean(expandedProntoSids[row.pronto_sid])}
-                            style={{ border: 0, background: "transparent", padding: 0, color: "inherit", font: "inherit", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}
-                          >
-                            <span aria-hidden="true">{expandedProntoSids[row.pronto_sid] ? "▾" : "▸"}</span>
-                            {row.pronto_sid}
-                          </button>
-                        </td>
-                        <td title={row.introducers}>{row.introducers}</td>
-                        <td>{formatProntoDate(row.first_lead_date)}</td>
-                        <td>{formatProntoDate(row.latest_lead_date)}</td>
-                        <td>{prontoStatus(row.latest_lead_date)}</td>
-                        <td>{formatNumber(row.lead_count)}</td>
-                        <td>{formatNumber(row.booked_count)}</td>
-                        <td>{row.lead_count ? `${((row.booked_count / row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
-                        <td>{formatNumber(prontoNoContactBySid[row.pronto_sid] || 0)}</td>
-                      </tr>
-                      {expandedProntoSids[row.pronto_sid] && (
-                        <tr>
-                          <td colSpan={9} className="pronto-breakdown-cell">
-                            {prontoC3Loading[row.pronto_sid] ? (
-                              <div className="pronto-empty" style={{ padding: 16 }}>Loading Pronto C3 breakdown…</div>
-                            ) : (
-                              <table className="pronto-table pronto-breakdown-table">
-                                <colgroup>
-                                  <col className="pronto-col-name" />
-                                  <col className="pronto-col-first" />
-                                  <col className="pronto-col-latest" />
-                                  <col className="pronto-col-status" />
-                                  <col className="pronto-col-leads" />
-                                  <col className="pronto-col-booked" />
-                                  <col className="pronto-col-booked-percent" />
-                                </colgroup>
-                                <thead>
-                                  <tr>
-                                    <th>Pronto C1</th>
-                                    <th>First received</th>
-                                    <th>Latest received</th>
-                                    <th>Status</th>
-                                    <th>Leads</th>
-                                    <th>Booked</th>
-                                    <th>Booked %</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {(prontoC3Rows[row.pronto_sid] || []).length ? (
-                                    prontoC3Rows[row.pronto_sid].map((c1Row) => {
-                                      const c1Key = JSON.stringify([row.pronto_sid, c1Row.pronto_c3])
-                                      return (
-                                        <React.Fragment key={c1Key}>
-                                          <tr>
-                                            <td>
-                                              <button
-                                                type="button"
-                                                onClick={() => toggleProntoC1(row.pronto_sid, c1Row.pronto_c3)}
-                                                aria-expanded={Boolean(expandedProntoC1s[c1Key])}
-                                                style={{ border: 0, background: "transparent", padding: 0, color: "inherit", font: "inherit", fontWeight: 500, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}
-                                              >
-                                                <span aria-hidden="true">{expandedProntoC1s[c1Key] ? "▾" : "▸"}</span>
-                                                {c1Row.pronto_c3}
-                                              </button>
-                                            </td>
-                                            <td>{formatProntoDate(c1Row.first_lead_date)}</td>
-                                            <td>{formatProntoDate(c1Row.latest_lead_date)}</td>
-                                            <td>{prontoStatus(c1Row.latest_lead_date)}</td>
-                                            <td>{formatNumber(c1Row.lead_count)}</td>
-                                            <td>{formatNumber(c1Row.booked_count)}</td>
-                                            <td>{c1Row.lead_count ? `${((c1Row.booked_count / c1Row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
-                                          </tr>
-                                          {expandedProntoC1s[c1Key] && (
-                                            <tr>
-                                              <td colSpan={7} className="pronto-breakdown-cell">
-                                                {prontoC1C3Loading[c1Key] ? (
-                                                  <div className="pronto-empty" style={{ padding: 16 }}>Loading Pronto C3 breakdown…</div>
-                                                ) : (
-                                                  <table className="pronto-table pronto-breakdown-table">
-                                                    <colgroup>
-                                                      <col className="pronto-col-name" />
-                                                      <col className="pronto-col-first" />
-                                                      <col className="pronto-col-latest" />
-                                                      <col className="pronto-col-status" />
-                                                      <col className="pronto-col-leads" />
-                                                      <col className="pronto-col-booked" />
-                                                      <col className="pronto-col-booked-percent" />
-                                                    </colgroup>
-                                                    <thead><tr><th>Pronto C3</th><th>First received</th><th>Latest received</th><th>Status</th><th>Leads</th><th>Booked</th><th>Booked %</th></tr></thead>
-                                                    <tbody>
-                                                      {(prontoC1C3Rows[c1Key] || []).length ? (
-                                                        prontoC1C3Rows[c1Key].map((c3Item) => (
-                                                          <tr key={c3Item.pronto_c3}>
-                                                            <td>{c3Item.pronto_c3}</td>
-                                                            <td>{formatProntoDate(c3Item.first_lead_date)}</td>
-                                                            <td>{formatProntoDate(c3Item.latest_lead_date)}</td>
-                                                            <td>{prontoStatus(c3Item.latest_lead_date)}</td>
-                                                            <td>{formatNumber(c3Item.lead_count)}</td>
-                                                            <td>{formatNumber(c3Item.booked_count)}</td>
-                                                            <td>{c3Item.lead_count ? `${((c3Item.booked_count / c3Item.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
-                                                          </tr>
-                                                        ))
-                                                      ) : (
-                                                        <tr><td colSpan={7}>No Pronto C3 values found.</td></tr>
-                                                      )}
-                                                    </tbody>
-                                                  </table>
-                                                )}
-                                              </td>
-                                            </tr>
-                                          )}
-                                        </React.Fragment>
-                                      )
-                                    })
-                                  ) : (
-                                    <tr><td colSpan={5}>No Pronto C3 values found.</td></tr>
-                                  )}
-                                </tbody>
-                              </table>
-                            )}
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
+                    <tr key={row.pronto_sid}>
+                      <td title={row.pronto_sid}>{row.pronto_sid}</td>
+                      <td>{formatProntoDate(row.first_lead_date)}</td>
+                      <td>{formatProntoDate(row.latest_lead_date)}</td>
+                      <td>{prontoStatus(row.latest_lead_date)}</td>
+                      <td>{formatNumber(row.lead_count)}</td>
+                      <td>{formatNumber(row.booked_count)}</td>
+                      <td>{row.lead_count ? `${((row.booked_count / row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
+                      <td>{formatNumber(row.no_contact_count)}</td>
+                    </tr>
                   ))}
                   <tr>
                     <td colSpan={4}><strong>Total Pronto Windows leads</strong></td>
