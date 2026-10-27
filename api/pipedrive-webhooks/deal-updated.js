@@ -1107,6 +1107,10 @@ export default async function handler(req, res) {
 
     deal = deal || {}
 
+    // Pipedrive's built-in deal "value" is the source for the CRM net_value.
+    // Only update it when Pipedrive actually supplies a valid numeric value.
+    const netValue = normaliseNumber(deal?.value ?? deal?.net_value)
+
     /*
     |--------------------------------------------------------------------------
     | EXTRACT FIELDS
@@ -1497,6 +1501,7 @@ export default async function handler(req, res) {
       [
         "id",
         "pipedrive_deal_id",
+        "net_value",
         "customer_name",
         "contract_number",
         "installation_start_date",
@@ -1656,6 +1661,9 @@ export default async function handler(req, res) {
     const updatePayload = {
       pipedrive_deal_id:
         Number(dealId),
+
+      // Do not erase an existing value if the webhook/API response omits it.
+      ...(netValue !== null ? { net_value: netValue } : {}),
 
       customer_name:
         customerName,
@@ -1829,6 +1837,8 @@ export default async function handler(req, res) {
       customerName,
 
       contractNumber,
+
+      netValue,
 
       salesperson,
 
