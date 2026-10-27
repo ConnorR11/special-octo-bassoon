@@ -150,6 +150,7 @@ function DataDashboard() {
       setProntoSidRows((data || []).map((row) => ({
         pronto_sid: String(row.pronto_sid || ""),
         lead_count: Number(row.lead_count || 0),
+        booked_count: Number(row.booked_count || 0),
         first_lead_date: row.first_lead_date || null,
         latest_lead_date: row.latest_lead_date || null,
       })))
@@ -557,7 +558,8 @@ function DataDashboard() {
         .pronto-table col.pronto-col-first { width: 23.5%; }
         .pronto-table col.pronto-col-latest { width: 25.5%; }
         .pronto-table col.pronto-col-status { width: 17%; }
-        .pronto-table col.pronto-col-leads { width: 13.5%; }
+        .pronto-table col.pronto-col-leads { width: 10%; }
+        .pronto-table col.pronto-col-booked { width: 10%; }
 
         .pronto-table th,
         .pronto-table td {
@@ -1078,6 +1080,7 @@ function DataDashboard() {
                   <col className="pronto-col-latest" />
                   <col className="pronto-col-status" />
                   <col className="pronto-col-leads" />
+                  <col className="pronto-col-booked" />
                 </colgroup>
                 <thead>
                   <tr>
@@ -1086,6 +1089,7 @@ function DataDashboard() {
                     <th>Latest received</th>
                     <th>Status</th>
                     <th>Leads</th>
+                    <th>Booked</th>
                     <th style={{ minWidth: 130, whiteSpace: "nowrap" }}>No Contact</th>
                   </tr>
                 </thead>
@@ -1108,11 +1112,12 @@ function DataDashboard() {
                         <td>{formatProntoDate(row.latest_lead_date)}</td>
                         <td>{prontoStatus(row.latest_lead_date)}</td>
                         <td>{formatNumber(row.lead_count)}</td>
+                        <td>{formatNumber(row.booked_count)}</td>
                         <td>{formatNumber(prontoNoContactBySid[row.pronto_sid] || 0)}</td>
                       </tr>
                       {expandedProntoSids[row.pronto_sid] && (
                         <tr>
-                          <td colSpan={6} className="pronto-breakdown-cell">
+                          <td colSpan={7} className="pronto-breakdown-cell">
                             {prontoC3Loading[row.pronto_sid] ? (
                               <div className="pronto-empty" style={{ padding: 16 }}>Loading Pronto C3 breakdown…</div>
                             ) : (
@@ -1201,6 +1206,7 @@ function DataDashboard() {
                   <tr>
                     <td colSpan={4}><strong>Total Pronto Windows leads</strong></td>
                     <td><strong>{formatNumber(prontoSidTotal)}</strong></td>
+                    <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.booked_count, 0))}</strong></td>
                     <td><strong>{formatNumber(prontoNoContactTotal)}</strong></td>
                   </tr>
                 </tbody>
