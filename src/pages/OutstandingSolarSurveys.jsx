@@ -46,9 +46,12 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [search, setSearch] = useState("")
+  const [page, setPage] = useState(0)
+  const [hasNextPage, setHasNextPage] = useState(false)
+  const pageSize = 50
   const [lastUpdated, setLastUpdated] = useState(null)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (requestedPage = page, requestedSearch = search) => {
     if (!supabase) {
       setError("Supabase is not configured.")
       setLoading(false)
@@ -57,51 +60,61 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
     setLoading(true)
     setError("")
     try {
-      // Query deals directly. Contract number is already on the deals table;
-      // appointments are not needed for this list.
-      const solarDeals = []
-      let dealOffset = 0
-      while (true) {
-        const { data, error: dealsError } = await supabase
-          .from("deals")
-          .select("*")
-          .gte("contract_number", "S12345")
-          .order("contract_number", { ascending: true })
-          .range(dealOffset, dealOffset + 999)
-        if (dealsError) throw dealsError
-        const batch = data || []
-        solarDeals.push(...batch)
-        if (batch.length < 1000) break
-        dealOffset += 1000
+      // Server-side pagination: only load the current page plus one row to
+      // determine whether a next page exists. Do not scan/download every deal.
+      let query = supabase
+        .from("deals")
+        .select("*")
+        .gte("contract_number", "S12345")
+        .order("contract_number", { ascending: true })
+        .range(requestedPage * pageSize, requestedPage * pageSize + pageSize)
+
+      const term = requestedSearch.trim()
+      if (term) {
+        const safeTerm = term.replace(/[,%()]/g, " ").trim()
+        if (safeTerm) {
+          query = query.or([
+            `customer_name.ilike.%${safeTerm}%`,
+            `contract_number.ilike.%${safeTerm}%`,
+            `postcode.ilike.%${safeTerm}%`,
+            `address.ilike.%${safeTerm}%`,
+            `salesperson.ilike.%${safeTerm}%`,
+            `branch.ilike.%${safeTerm}%`,
+          ].join(","))
+        }
       }
 
-      const solarDealIds = solarDeals.map(deal => String(deal.id))
-      const surveyDocumentRows = []
-      const surveyProgressRows = []
-      for (let offset = 0; offset < solarDealIds.length; offset += 500) {
-        const ids = solarDealIds.slice(offset, offset + 500)
-        const [{ data: surveyDocs, error: surveyDocsError }, { data: docs, error: docsError }, { data: answers, error: answersError }] = await Promise.all([
-          supabase.from("deal_documents").select("deal_id").eq("category", "survey_pdf").in("deal_id", ids),
-          supabase.from("deal_documents").select("deal_id,category,survey_section").in("deal_id", ids),
-          supabase.from("deal_survey_answers").select("deal_id,answers").in("deal_id", ids),
+      const { data, error: dealsError } = await query
+      if (dealsError) throw dealsError
+      const fetchedDeals = data || []
+      setHasNextPage(fetchedDeals.length > pageSize)
+      const currentDeals = fetchedDeals.slice(0, pageSize)
+      const solarDealIds = currentDeals.map(deal => String(deal.id))
+
+      let allProgressDocs = []
+      let allProgressAnswers = new Map()
+      if (solarDealIds.length) {
+        const [{ data: docs, error: docsError }, { data: answers, error: answersError }] = await Promise.all([
+          supabase.from("deal_documents").select("deal_id,category,survey_section").in("deal_id", solarDealIds),
+          supabase.from("deal_survey_answers").select("deal_id,answers").in("deal_id", solarDealIds),
         ])
-        if (surveyDocsError) throw surveyDocsError
         if (docsError) throw docsError
         if (answersError) throw answersError
-        surveyDocumentRows.push(...(surveyDocs || []))
-        surveyProgressRows.push({ docs: docs || [], answers: answers || [] })
+        allProgressDocs = docs || []
+        allProgressAnswers = new Map((answers || []).map(item => [String(item.deal_id), item.answers || {}]))
       }
 
-      const eligibleSolarDeals = solarDeals.filter(deal =>
-        isContractNumberAtLeastS12345(deal.contract_number)
-      )
-      const eligibleDealIds = new Set(eligibleSolarDeals.map(deal => String(deal.id)))
-      const allProgressDocs = surveyProgressRows.flatMap(batch => batch.docs)
-      const allProgressAnswers = new Map(surveyProgressRows.flatMap(batch => batch.answers).map(item => [String(item.deal_id), item.answers || {}]))
+      const docsByDealId = new Map()
+      for (const doc of allProgressDocs) {
+        const id = String(doc.deal_id)
+        if (!docsByDealId.has(id)) docsByDealId.set(id, [])
+        docsByDealId.get(id).push(doc)
+      }
       const photoSections = ["Front of Property", "Rear of Property", "Side of Property", "Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Loft Access Point", "Loft Roof Truss", "Internet DC Route", "External DC Route", "Proposed Inverter Location", "Proposed Battery Location", "Proposed Canopy Location", "Proposed Panel Layout", "Alternative Roof Elevations", "Existing Solar Equipment", "Existing EV Charger", "High Electrical Usage Items", "Shading Issues"]
-      const outstanding = eligibleSolarDeals
+      const outstanding = currentDeals
+        .filter(deal => isContractNumberAtLeastS12345(deal.contract_number))
         .map(deal => {
-          const dealDocs = allProgressDocs.filter(doc => String(doc.deal_id) === String(deal.id))
+          const dealDocs = docsByDealId.get(String(deal.id)) || []
           const answers = allProgressAnswers.get(String(deal.id)) || {}
           const answeredCount = Object.values(answers).filter(value => String(value || "").trim()).length
           const checklistComplete = answeredCount >= 27
@@ -126,18 +139,15 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [page, search])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load(page, search) }, [load, page, search])
 
-  const filteredRows = useMemo(() => {
-    const term = search.trim().toLowerCase()
-    if (!term) return rows
-    return rows.filter(deal => [
-      deal.customer_name, deal.contract_number, deal.linked_contract_number, deal.postcode,
-      deal.address, deal.salesperson, deal.branch, deal.appointment_row_id,
-    ].some(value => String(value || "").toLowerCase().includes(term)))
-  }, [rows, search])
+  const filteredRows = rows
+  const changeSearch = value => {
+    setSearch(value)
+    setPage(0)
+  }
 
   return (
     <section style={styles.page}>
@@ -153,14 +163,14 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
       <div className="outstanding-surveys-page" style={styles.container}>
         <div style={styles.panel}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: 16, flexWrap: "wrap", borderBottom: "1px solid #e8edf2" }}>
-            <div style={{ fontSize: 12, fontWeight: 750, color: "#334155", whiteSpace: "nowrap" }}>Outstanding surveys <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 22, height: 22, padding: "0 6px", marginLeft: 5, boxSizing: "border-box", borderRadius: 999, background: "#e8eef4", color: "#17364b", fontSize: 11 }}>{loading ? "…" : rows.length.toLocaleString("en-GB")}</span></div>
+            <div style={{ fontSize: 12, fontWeight: 750, color: "#334155", whiteSpace: "nowrap" }}>Outstanding surveys <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 22, height: 22, padding: "0 6px", marginLeft: 5, boxSizing: "border-box", borderRadius: 999, background: "#e8eef4", color: "#17364b", fontSize: 11 }}>{loading ? "…" : `${rows.length.toLocaleString("en-GB")} on this page`}</span></div>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginLeft: "auto" }}>
               <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
               <Search size={15} style={{ position: "absolute", left: 11, color: "#94a3b8" }}/>
-              <input aria-label="Search outstanding surveys" placeholder="Search customer, contract, postcode…" value={search} onChange={e => setSearch(e.target.value)} style={{ ...styles.input, paddingLeft: 34, width: 310, maxWidth: "75vw" }}/>
+              <input aria-label="Search outstanding surveys" placeholder="Search customer, contract, postcode…" value={search} onChange={e => changeSearch(e.target.value)} style={{ ...styles.input, paddingLeft: 34, width: 310, maxWidth: "75vw" }}/>
               </div>
               <span style={{ color: "#94a3b8", fontSize: 10, whiteSpace: "nowrap" }}>{lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : ""}</span>
-              <button type="button" style={styles.button} onClick={load} disabled={loading}><RefreshCw size={14}/>{loading ? "Refreshing…" : "Refresh list"}</button>
+              <button type="button" style={styles.button} onClick={() => load(page, search)} disabled={loading}><RefreshCw size={14}/>{loading ? "Refreshing…" : "Refresh list"}</button>
             </div>
           </div>
           {error && <div style={{ margin: 16, padding: 12, borderRadius: 8, background: "#fff1f0", color: "#a12b23", fontSize: 12, display: "flex", gap: 8, alignItems: "center" }}><AlertCircle size={16}/>{error}</div>}
@@ -184,6 +194,15 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
                 </tr>)}
               </tbody>
             </table>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px", borderTop: "1px solid #e8edf2", flexWrap: "wrap" }}>
+            <span style={{ fontSize: 11, color: "#64748b" }}>
+              {loading ? "Loading page…" : `Showing ${rows.length ? page * pageSize + 1 : 0}–${page * pageSize + rows.length} · Page ${page + 1}`}
+            </span>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" style={{ ...styles.button, opacity: page === 0 || loading ? 0.5 : 1, cursor: page === 0 || loading ? "not-allowed" : "pointer" }} disabled={page === 0 || loading} onClick={() => setPage(p => Math.max(0, p - 1))}>Previous</button>
+              <button type="button" style={{ ...styles.button, opacity: !hasNextPage || loading ? 0.5 : 1, cursor: !hasNextPage || loading ? "not-allowed" : "pointer" }} disabled={!hasNextPage || loading} onClick={() => setPage(p => p + 1)}>Next</button>
+            </div>
           </div>
         </div>
       </div>
