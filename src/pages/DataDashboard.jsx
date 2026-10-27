@@ -149,6 +149,7 @@ function DataDashboard() {
 
       setProntoSidRows((data || []).map((row) => ({
         pronto_sid: String(row.pronto_sid || ""),
+        introducers: String(row.introducers || "—"),
         lead_count: Number(row.lead_count || 0),
         booked_count: Number(row.booked_count || 0),
         first_lead_date: row.first_lead_date || null,
@@ -529,7 +530,8 @@ function DataDashboard() {
           font-size: 12px;
         }
 
-        .pronto-table col.pronto-col-name { width: 20%; }
+        .pronto-table col.pronto-col-name { width: 16%; }
+        .pronto-table col.pronto-col-introducer { width: 18%; }
         .pronto-table col.pronto-col-first { width: 20%; }
         .pronto-table col.pronto-col-latest { width: 22%; }
         .pronto-table col.pronto-col-status { width: 14%; }
@@ -1052,6 +1054,7 @@ function DataDashboard() {
               <table className="pronto-table">
                 <colgroup>
                   <col className="pronto-col-name" />
+                  <col className="pronto-col-introducer" />
                   <col className="pronto-col-first" />
                   <col className="pronto-col-latest" />
                   <col className="pronto-col-status" />
@@ -1062,6 +1065,7 @@ function DataDashboard() {
                 <thead>
                   <tr>
                     <th>Pronto SID</th>
+                    <th>Introducer</th>
                     <th>First received</th>
                     <th>Latest received</th>
                     <th>Status</th>
@@ -1086,6 +1090,7 @@ function DataDashboard() {
                             {row.pronto_sid}
                           </button>
                         </td>
+                        <td title={row.introducers}>{row.introducers}</td>
                         <td>{formatProntoDate(row.first_lead_date)}</td>
                         <td>{formatProntoDate(row.latest_lead_date)}</td>
                         <td>{prontoStatus(row.latest_lead_date)}</td>
@@ -1096,7 +1101,7 @@ function DataDashboard() {
                       </tr>
                       {expandedProntoSids[row.pronto_sid] && (
                         <tr>
-                          <td colSpan={8} className="pronto-breakdown-cell">
+                          <td colSpan={9} className="pronto-breakdown-cell">
                             {prontoC3Loading[row.pronto_sid] ? (
                               <div className="pronto-empty" style={{ padding: 16 }}>Loading Pronto C3 breakdown…</div>
                             ) : (
