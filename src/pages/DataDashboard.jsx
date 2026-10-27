@@ -591,49 +591,31 @@ function DataDashboard() {
           font-size: 12px;
         }
 
-        .pronto-table col.pronto-col-name { width: 34%; }
-        .pronto-table col.pronto-col-introducer { width: 34%; }
-        .pronto-table col.pronto-col-first { width: 10%; }
-        .pronto-table col.pronto-col-latest { width: 10%; }
-        .pronto-table col.pronto-col-status { width: 7%; }
-        .pronto-table col.pronto-col-leads { width: 7%; }
-        .pronto-table col.pronto-col-booked { width: 7%; }
-        .pronto-table col.pronto-col-booked-percent { width: 7%; }
-
-        /* Keep the compact, consistent spacing at every drilldown level. */
+        /* Consistent SID-level column proportions throughout Pronto drilldowns. */
         .pronto-table,
         .pronto-breakdown-table {
           table-layout: fixed;
           width: 100%;
+          border-collapse: collapse;
         }
 
-        .pronto-breakdown-cell {
-          padding: 8px 0 10px !important;
-        }
+        /* The top-level introducer table has an additional No Contact column. */
+        .pronto-table:not(.pronto-breakdown-table) col.pronto-col-name { width: 34%; }
+        .pronto-table:not(.pronto-breakdown-table) col.pronto-col-first { width: 10%; }
+        .pronto-table:not(.pronto-breakdown-table) col.pronto-col-latest { width: 10%; }
+        .pronto-table:not(.pronto-breakdown-table) col.pronto-col-status { width: 7%; }
+        .pronto-table:not(.pronto-breakdown-table) col.pronto-col-leads { width: 7%; }
+        .pronto-table:not(.pronto-breakdown-table) col.pronto-col-booked { width: 7%; }
+        .pronto-table:not(.pronto-breakdown-table) col.pronto-col-booked-percent { width: 7%; }
 
-        .pronto-breakdown-table {
-          margin-left: 0;
-          width: 100%;
-          border-radius: 0;
-        }
-
-        .pronto-breakdown-table th,
-        .pronto-breakdown-table td {
-          padding: 10px 13px;
-          line-height: 1.25;
-          vertical-align: middle;
-        }
-
-        .pronto-breakdown-table th:first-child,
-        .pronto-breakdown-table td:first-child {
-          padding-left: 13px;
-        }
-
-        .pronto-table th,
-        .pronto-table td {
-          box-sizing: border-box;
-          overflow-wrap: anywhere;
-        }
+        /* SID, C1 and C3 tables all use the same seven-column grid. */
+        .pronto-breakdown-table col:nth-child(1) { width: 40%; }
+        .pronto-breakdown-table col:nth-child(2) { width: 12%; }
+        .pronto-breakdown-table col:nth-child(3) { width: 12%; }
+        .pronto-breakdown-table col:nth-child(4) { width: 8%; }
+        .pronto-breakdown-table col:nth-child(5) { width: 8%; }
+        .pronto-breakdown-table col:nth-child(6) { width: 8%; }
+        .pronto-breakdown-table col:nth-child(7) { width: 12%; }
 
         .pronto-breakdown-cell {
           padding: 8px 14px 14px !important;
@@ -641,13 +623,19 @@ function DataDashboard() {
         }
 
         .pronto-breakdown-table {
-          table-layout: fixed;
-          width: calc(100% + 28px);
           margin-left: -14px;
+          width: calc(100% + 28px);
           background: #fff;
           border: 1px solid #e2e8f0;
           border-radius: 8px;
           overflow: hidden;
+        }
+
+        .pronto-breakdown-table th,
+        .pronto-breakdown-table td {
+          padding: 10px 13px;
+          line-height: 1.25;
+          vertical-align: middle;
         }
 
         .pronto-breakdown-table th:first-child,
