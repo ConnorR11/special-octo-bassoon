@@ -57,8 +57,7 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
     setLoading(true)
     setError("")
     try {
-      // Start with the selective contract filter so we do not scan/download all 15k deals.
-      // Contract numbers use the fixed-width S12345 format, so lexical >= matches the sequence.
+      // Filter appointments by contract first, avoiding a full scan of all deals.
       const appointmentRows = []
       let appointmentOffset = 0
       while (true) {
@@ -73,6 +72,36 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
         appointmentRows.push(...batch)
         if (batch.length < 500) break
         appointmentOffset += 500
+      }
+
+      const appointmentsById = new Map(appointmentRows.map(item => [String(item.appointment_row_id), item]))
+      const appointmentIds = [...new Set(appointmentRows.map(item => String(item.appointment_row_id || "")).filter(Boolean))]
+      const solarDeals = []
+      for (let offset = 0; offset < appointmentIds.length; offset += 500) {
+        const { data, error: dealsError } = await supabase
+          .from("deals")
+          .select("*")
+          .in("appointment_row_id", appointmentIds.slice(offset, offset + 500))
+          .order("sale_date", { ascending: false })
+        if (dealsError) throw dealsError
+        solarDeals.push(...(data || []))
+      }
+
+      const solarDealIds = solarDeals.map(deal => String(deal.id))
+      const surveyDocumentRows = []
+      const surveyProgressRows = []
+      for (let offset = 0; offset < solarDealIds.length; offset += 500) {
+        const ids = solarDealIds.slice(offset, offset + 500)
+        const [{ data: surveyDocs, error: surveyDocsError }, { data: docs, error: docsError }, { data: answers, error: answersError }] = await Promise.all([
+          supabase.from("deal_documents").select("deal_id").eq("category", "survey_pdf").in("deal_id", ids),
+          supabase.from("deal_documents").select("deal_id,category,survey_section").in("deal_id", ids),
+          supabase.from("deal_survey_answers").select("deal_id,answers").in("deal_id", ids),
+        ])
+        if (surveyDocsError) throw surveyDocsError
+        if (docsError) throw docsError
+        if (answersError) throw answersError
+        surveyDocumentRows.push(...(surveyDocs || []))
+        surveyProgressRows.push({ docs: docs || [], answers: answers || [] })
       }
 
       const eligibleSolarDeals = solarDeals.filter(deal =>
