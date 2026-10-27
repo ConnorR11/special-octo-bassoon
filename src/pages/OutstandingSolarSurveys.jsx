@@ -57,34 +57,22 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
     setLoading(true)
     setError("")
     try {
-      // Filter appointments by contract first, avoiding a full scan of all deals.
-      const appointmentRows = []
-      let appointmentOffset = 0
-      while (true) {
-        const { data, error: appointmentsError } = await supabase
-          .from("appointments")
-          .select("appointment_row_id,contract_number,signature_path,express_fit_signature_path,seg_disclaimer_signature_path")
-          .gte("contract_number", "S12345")
-          .order("contract_number", { ascending: true })
-          .range(appointmentOffset, appointmentOffset + 499)
-        if (appointmentsError) throw appointmentsError
-        const batch = data || []
-        appointmentRows.push(...batch)
-        if (batch.length < 500) break
-        appointmentOffset += 500
-      }
-
-      const appointmentsById = new Map(appointmentRows.map(item => [String(item.appointment_row_id), item]))
-      const appointmentIds = [...new Set(appointmentRows.map(item => String(item.appointment_row_id || "")).filter(Boolean))]
+      // Query deals directly. Contract number is already on the deals table;
+      // appointments are not needed for this list.
       const solarDeals = []
-      for (let offset = 0; offset < appointmentIds.length; offset += 500) {
+      let dealOffset = 0
+      while (true) {
         const { data, error: dealsError } = await supabase
           .from("deals")
           .select("*")
-          .in("appointment_row_id", appointmentIds.slice(offset, offset + 500))
-          .order("sale_date", { ascending: false })
+          .gte("contract_number", "S12345")
+          .order("contract_number", { ascending: true })
+          .range(dealOffset, dealOffset + 999)
         if (dealsError) throw dealsError
-        solarDeals.push(...(data || []))
+        const batch = data || []
+        solarDeals.push(...batch)
+        if (batch.length < 1000) break
+        dealOffset += 1000
       }
 
       const solarDealIds = solarDeals.map(deal => String(deal.id))
@@ -105,7 +93,7 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
       }
 
       const eligibleSolarDeals = solarDeals.filter(deal =>
-        isContractNumberAtLeastS12345(appointmentsById.get(String(deal.appointment_row_id || ""))?.contract_number)
+        isContractNumberAtLeastS12345(deal.contract_number)
       )
       const eligibleDealIds = new Set(eligibleSolarDeals.map(deal => String(deal.id)))
       const eligibleSurveyDocumentRows = surveyDocumentRows.filter(item => eligibleDealIds.has(String(item.deal_id)))
@@ -115,7 +103,6 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
       const photoSections = ["Front of Property", "Rear of Property", "Side of Property", "Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Loft Access Point", "Loft Roof Truss", "Internet DC Route", "External DC Route", "Proposed Inverter Location", "Proposed Battery Location", "Proposed Canopy Location", "Proposed Panel Layout", "Alternative Roof Elevations", "Existing Solar Equipment", "Existing EV Charger", "High Electrical Usage Items", "Shading Issues"]
       const outstanding = eligibleSolarDeals
         .filter(deal => {
-          const appointment = appointmentsById.get(String(deal.appointment_row_id || ""))
           return !generatedSurveyDealIds.has(String(deal.id))
         })
         .map(deal => {
@@ -127,7 +114,7 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
           const photoCount = dealDocs.filter(doc => doc.category === "survey_photos").length
           return {
             ...deal,
-            linked_contract_number: appointmentsById.get(String(deal.appointment_row_id || ""))?.contract_number || "",
+            linked_contract_number: deal.contract_number || "",
             surveyProgress: [
               dealDocs.some(doc => doc.category === "survey_video") ? "complete" : "outstanding",
               dealDocs.some(doc => doc.category === "electricity_bill_epvs_waiver") ? "complete" : "outstanding",
