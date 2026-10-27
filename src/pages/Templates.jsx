@@ -782,7 +782,7 @@ export default function Templates() {
 
                     {isEmailTemplate && (
                       <div style={{ fontSize: 9, color: "#8b949e", lineHeight: 1.5, marginBottom: 12 }}>
-                        Available placeholders: {"{{customer_name}}"}, {"{{contract_number}}"}, {"{{recipient}}"}, {"{{sender}}"}
+                        Available placeholders: {"{{customer_name}}"}, {"{{quote_ref}}"}, {"{{quote_link}}"}, {"{{recipient}}"}, {"{{sender}}"}
                       </div>
                     )}
 
