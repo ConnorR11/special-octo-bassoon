@@ -1203,6 +1203,7 @@ function DataDashboard() {
                     <td colSpan={4}><strong>Total Pronto Windows leads</strong></td>
                     <td><strong>{formatNumber(prontoSidTotal)}</strong></td>
                     <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.booked_count, 0))}</strong></td>
+                    <td><strong>{prontoSidTotal ? `${((prontoSidRows.reduce((sum, row) => sum + row.booked_count, 0) / prontoSidTotal) * 100).toFixed(1)}%` : "0.0%"}</strong></td>
                     <td><strong>{formatNumber(prontoNoContactTotal)}</strong></td>
                   </tr>
                 </tbody>
