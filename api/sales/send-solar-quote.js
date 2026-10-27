@@ -95,8 +95,18 @@ export default async function handler(req, res) {
     }
     const renderTemplate = value => String(value || "").replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, key) => replacements[key] ?? "")
     const subject = renderTemplate(template.description).trim() || "Your Homeshield solar quote"
-    const emailBody = renderTemplate(template.template_body).trim()
-    if (!emailBody || !emailBody.includes(quoteLink)) return await fail(500, "The Solar Quote Email template must include the {{quote_link}} placeholder.")
+    const templateBody = String(template.template_body || "").trim()
+    if (!templateBody || !/{{\s*quote_link\s*}}/.test(templateBody)) return await fail(500, "The Solar Quote Email template must include the {{quote_link}} placeholder.")
+
+    // Escape editable template content before converting it to HTML. Render the secure
+    // link placeholder as a prominent button rather than exposing a long raw URL.
+    const escapeHtml = value => String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;")
+    const quoteButton = `<p style="margin:28px 0;text-align:center"><a href="${escapeHtml(quoteLink)}" style="display:inline-block;background:#174b40;color:#ffffff;text-decoration:none;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;padding:15px 28px;border-radius:6px">View your solar quote</a></p>`
+    const htmlBody = templateBody
+      .split(/({{\s*quote_link\s*}})/g)
+      .map(part => /{{\s*quote_link\s*}}/.test(part) ? quoteButton : escapeHtml(renderTemplate(part)).replace(/\r?\n/g, "<br>"))
+      .join("")
+    const emailBody = `<!doctype html><html><body style="margin:0;padding:24px;background:#f4f6f5"><div style="max-width:600px;margin:0 auto;padding:28px;background:#ffffff;color:#26332f;font-family:Arial,sans-serif;font-size:15px;line-height:1.65;border-radius:8px">${htmlBody}</div></body></html>`
 
     const tokenResponse = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(tenantId)}/oauth2/v2.0/token`, {
       method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -111,7 +121,7 @@ export default async function handler(req, res) {
     const sendResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(sender)}/sendMail`, {
       method: "POST", headers: { Authorization: `Bearer ${tokenData.access_token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ message: {
-        subject, body: { contentType: "Text", content: emailBody },
+        subject, body: { contentType: "HTML", content: emailBody },
         toRecipients: [{ emailAddress: { address: customerEmail } }],
       }, saveToSentItems: true }),
     })
