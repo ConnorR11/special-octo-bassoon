@@ -1092,9 +1092,23 @@ function DataDashboard() {
                 aria-label="Filter Pronto leads by date"
                 value={prontoDatePeriod}
                 onChange={(event) => {
-                  setProntoDatePeriod(event.target.value)
-                  setProntoC3Rows({})
+                  const nextPeriod = event.target.value
+                  setProntoDatePeriod(nextPeriod)
+                  // Clear every cached drilldown so child counts are reloaded for the selected period.
+                  setIntroducerSidRows({})
+                  setIntroducerSidLoading({})
+                  setIntroducerC1Rows({})
+                  setIntroducerC1Loading({})
+                  setIntroducerC3Rows({})
+                  setIntroducerC3Loading({})
+                  setExpandedIntroducers({})
                   setExpandedProntoSids({})
+                  setExpandedIntroducerC1s({})
+                  setProntoC3Rows({})
+                  setProntoC3Loading({})
+                  setExpandedProntoC1s({})
+                  setProntoC1C3Rows({})
+                  setProntoC1C3Loading({})
                 }}
                 style={{ height: 36, padding: "0 10px", border: "1px solid #d7dee7", borderRadius: 8, background: "#fff", color: "#172033", font: "inherit", fontSize: 12 }}
               >
