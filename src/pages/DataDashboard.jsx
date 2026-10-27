@@ -96,7 +96,7 @@ function DataDashboard() {
   const [prontoSidLoading, setProntoSidLoading] = useState(false)
   const [prontoSidError, setProntoSidError] = useState("")
   const [prontoSidSearch, setProntoSidSearch] = useState("")
-  const [prontoDatePeriod, setProntoDatePeriod] = useState("all_time")
+  const [prontoDatePeriod, setProntoDatePeriod] = useState("last_week")
   const [prontoStatusFilter, setProntoStatusFilter] = useState("all")
   const [expandedProntoSids, setExpandedProntoSids] = useState({})
   const [prontoC3Rows, setProntoC3Rows] = useState({})
@@ -1237,131 +1237,7 @@ function DataDashboard() {
             )}
           </div>
 
-          <div style={{ marginTop: 22, marginBottom: 10 }}>
-            <div className="data-dashboard-chart-title">Unique Pronto C1 values without a SID</div>
-            <div className="data-dashboard-chart-subtitle">
-              Distinct, non-blank Pronto C1 values from Pronto Windows leads where pronto_SID is blank or NULL, with the number of matching leads for each value.
-            </div>
-          </div>
 
-          <div className="pronto-toolbar">
-            <div style={{ fontSize: 12, color: "#64748b" }}>
-              {formatNumber(filteredMissingSidC1Rows.length)} unique values · {formatNumber(filteredMissingSidC1Rows.reduce((sum, row) => sum + row.lead_count, 0))} matching leads
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <div className="pronto-search">
-                <Search size={14} color="#64748b" />
-                <input
-                  type="text"
-                  value={missingSidC1Search}
-                  onChange={(event) => setMissingSidC1Search(event.target.value)}
-                  placeholder="Search Pronto C1"
-                  aria-label="Search Pronto C1 values without SID"
-                />
-              </div>
-              <button type="button" className="data-dashboard-refresh" onClick={loadMissingSidC1Values} disabled={missingSidC1Loading}>
-                <RefreshCw size={14} className={missingSidC1Loading ? "spin" : ""} />
-                Refresh list
-              </button>
-            </div>
-          </div>
-
-          {missingSidC1Error && <div className="data-dashboard-error">{missingSidC1Error}</div>}
-
-          <div className="pronto-table-card">
-            {missingSidC1Loading ? (
-              <div className="pronto-empty">Loading unique Pronto C1 values…</div>
-            ) : filteredMissingSidC1Rows.length === 0 ? (
-              <div className="pronto-empty">{missingSidC1Search ? "No matching Pronto C1 values." : "No non-blank Pronto C1 values found without a SID."}</div>
-            ) : (
-              <table className="pronto-table">
-                <colgroup>
-                  <col style={{ width: "80%" }} />
-                  <col style={{ width: "20%" }} />
-                </colgroup>
-                <thead>
-                  <tr>
-                    <th>Pronto C1 value</th>
-                    <th>Leads</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredMissingSidC1Rows.map((row) => (
-                    <tr key={row.pronto_c1}>
-                      <td style={{ fontWeight: 500 }}>{row.pronto_c1}</td>
-                      <td>{formatNumber(row.lead_count)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          <div style={{ marginTop: 22, marginBottom: 10 }}>
-            <div className="data-dashboard-chart-title">Pronto Windows leads without a SID</div>
-            <div className="data-dashboard-chart-subtitle">
-              Individual Pronto Windows leads where pronto_SID is blank or NULL, showing their Pronto C1, C2 and C3 values.
-            </div>
-          </div>
-
-          <div className="pronto-toolbar">
-            <div style={{ fontSize: 12, color: "#64748b" }}>
-              {formatNumber(filteredMissingSidLeadRows.length)} leads shown
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <div className="pronto-search">
-                <Search size={14} color="#64748b" />
-                <input
-                  type="text"
-                  value={missingSidLeadsSearch}
-                  onChange={(event) => setMissingSidLeadsSearch(event.target.value)}
-                  placeholder="Search C1, C2 or C3"
-                  aria-label="Search Pronto Windows leads without SID"
-                />
-              </div>
-              <button type="button" className="data-dashboard-refresh" onClick={loadMissingSidLeads} disabled={missingSidLeadsLoading}>
-                <RefreshCw size={14} className={missingSidLeadsLoading ? "spin" : ""} />
-                Refresh list
-              </button>
-            </div>
-          </div>
-
-          {missingSidLeadsError && <div className="data-dashboard-error">{missingSidLeadsError}</div>}
-
-          <div className="pronto-table-card">
-            {missingSidLeadsLoading ? (
-              <div className="pronto-empty">Loading Pronto Windows leads without a SID…</div>
-            ) : filteredMissingSidLeadRows.length === 0 ? (
-              <div className="pronto-empty">{missingSidLeadsSearch ? "No matching leads found." : "No Pronto Windows leads found without a SID."}</div>
-            ) : (
-              <table className="pronto-table">
-                <colgroup>
-                  <col style={{ width: "25%" }} />
-                  <col style={{ width: "25%" }} />
-                  <col style={{ width: "25%" }} />
-                  <col style={{ width: "25%" }} />
-                </colgroup>
-                <thead>
-                  <tr>
-                    <th>Lead identifier</th>
-                    <th>Pronto C1</th>
-                    <th>Pronto C2</th>
-                    <th>Pronto C3</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredMissingSidLeadRows.map((row, index) => (
-                    <tr key={row.lead_identifier || `${row.pronto_c1}-${row.pronto_c2}-${row.pronto_c3}-${index}`}>
-                      <td style={{ fontWeight: 500 }}>{row.lead_identifier || "—"}</td>
-                      <td style={{ fontWeight: 500 }}>{row.pronto_c1 || "—"}</td>
-                      <td style={{ fontWeight: 500 }}>{row.pronto_c2 || "—"}</td>
-                      <td style={{ fontWeight: 500 }}>{row.pronto_c3 || "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
         </>
       ) : activeTab === "kanban" ? (
         <LeadDispositionKanban />
