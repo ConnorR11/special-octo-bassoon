@@ -61,7 +61,7 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
           .from("deals")
           .select("*")
           .gte("sale_date", "2026-01-01")
-          .ilike("product", "%solar%")
+          .or("product.ilike.%solar%,pipedrive_data->>product.ilike.%solar%")
           .order("sale_date", { ascending: false })
           .range(dealOffset, dealOffset + 999)
         if (dealsError) throw dealsError
