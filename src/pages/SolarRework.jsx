@@ -436,7 +436,7 @@ export default function SolarRework({ onSelectAppointment }) {
       </div>
     </div>
 
-    {activeTab === "quotes-sent" ? (<div style={{ ...cardStyle, padding: 16, marginBottom: 14 }}>
+    {activeTab === "quotes-sent" && <div style={{ ...cardStyle, padding: 16, marginBottom: 14 }}>
       <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Quote sends and open rate</div>
       <div style={{ ...muted, marginBottom: 12 }}>Last 30 days · Open rate is the percentage of quotes sent on each day that have been opened at least once.</div>
       {quoteStatsLoading ? <div style={{ padding: 30, textAlign: "center", color: "#64748b" }}>Loading quote activity…</div> : <div style={{ width: "100%", height: 280 }}>
@@ -453,7 +453,7 @@ export default function SolarRework({ onSelectAppointment }) {
           </ComposedChart>
         </ResponsiveContainer>
       </div>
-    </div>) : null}
+    </div>}
     <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap" }}>
         <div style={{ fontWeight: 700, fontSize: 13 }}>{activeTab === "quotes-sent" ? "Quotes Sent" : loading ? "Loading appointments…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${page * PAGE_SIZE + rows.length} ${activeTab !== "unlinked" ? "linked" : "unlinked"} appointments`}</div>
