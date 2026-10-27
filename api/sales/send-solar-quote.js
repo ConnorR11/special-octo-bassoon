@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
+import crypto from "node:crypto"
 
 const json = (res, status, body) => {
   res.setHeader("Content-Type", "application/json")
@@ -8,8 +9,7 @@ const json = (res, status, body) => {
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return json(res, 405, { error: "Method not allowed." })
-
-  const authorization = req.headers?.authorization || req.headers?.Authorization || ""
+  const authorization = String(req.headers?.authorization || "")
   const accessToken = authorization.startsWith("Bearer ") ? authorization.slice(7) : ""
   if (!accessToken) return json(res, 401, { error: "Please sign in again before sending the quote." })
 
@@ -19,254 +19,117 @@ export default async function handler(req, res) {
   const clientId = process.env.MICROSOFT_CLIENT_ID
   const clientSecret = process.env.MICROSOFT_CLIENT_SECRET
   const sender = process.env.CONTRACT_SENDER_EMAIL
+  if (![supabaseUrl, serviceKey].every(Boolean)) return json(res, 500, { error: "Solar quote email logging is not configured." })
 
-  if (![supabaseUrl, serviceKey].every(Boolean)) {
-    console.error("Solar quote email attempt cannot be logged: Supabase server configuration is missing.")
-    return json(res, 500, { error: "Solar quote email logging is not configured. Check the Supabase server environment variables." })
-  }
-
-  const supabase = createClient(supabaseUrl, serviceKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  })
-
+  const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } })
   let logId = null
   const finishLog = async ({ status, httpStatus, errorMessage = null, result = {} }) => {
     if (!logId) return
-    const { error } = await supabase
-      .from("integration_event_logs")
-      .update({
-        status,
-        http_status: httpStatus,
-        error_message: errorMessage,
-        result,
-        processed_at: new Date().toISOString(),
-      })
-      .eq("id", logId)
-    if (error) console.error("Unable to update solar quote email integration log:", error.message)
+    const { error } = await db.from("integration_event_logs").update({
+      status, http_status: httpStatus, error_message: errorMessage, result, processed_at: new Date().toISOString(),
+    }).eq("id", logId)
+    if (error) console.error("Unable to update solar quote email log:", error.message)
   }
   const fail = async (status, message, httpStatus = status) => {
-    await finishLog({
-      status: "failed",
-      httpStatus,
-      errorMessage: message,
-      result: { success: false, message },
-    })
+    await finishLog({ status: "failed", httpStatus, errorMessage: message, result: { success: false, message } })
     return json(res, status, { error: message })
   }
 
   try {
-    const { data: userData, error: userError } = await supabase.auth.getUser(accessToken)
+    const { data: userData, error: userError } = await db.auth.getUser(accessToken)
     if (userError || !userData?.user) return json(res, 401, { error: "Your session has expired. Please sign in again." })
-
     const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {})
-    const appointmentRowId = String(body?.appointment_row_id || "").trim()
-    const customerEmail = String(body?.customer_email || "").trim()
-    const fileName = String(body?.file_name || "Solar-Quote.pdf").replace(/[^a-zA-Z0-9._-]/g, "-")
-    const pdfPath = String(body?.pdf_path || "").trim()
+    const appointmentRowId = String(body.appointment_row_id || "").trim()
+    const customerEmail = String(body.customer_email || "").trim()
+    const quoteLink = String(body.quote_link || "").trim()
 
-    // Record the attempt before validation or Microsoft Graph calls. Never log the PDF or credentials.
-    const { data: logRow, error: logError } = await supabase
-      .from("integration_event_logs")
-      .insert({
-        provider: "microsoft_graph",
-        integration_name: "Microsoft 365 Solar Quote Email",
-        direction: "outbound",
-        event_name: "quote_email_send",
-        event_type: "email_with_pdf_attachment",
-        external_id: appointmentRowId || null,
-        status: "received",
-        received_at: new Date().toISOString(),
-        payload: {
-          appointment_row_id: appointmentRowId || null,
-          recipient: customerEmail || null,
-          sender,
-          attachment_name: fileName,
-          attachment_type: "application/pdf",
-          attachment_storage_path: pdfPath || null,
-          triggered_by: userData.user.email || userData.user.id,
-        },
-      })
-      .select("id")
-      .single()
-    if (logError) console.error("Unable to create solar quote email integration log:", logError.message)
+    const { data: logRow, error: logError } = await db.from("integration_event_logs").insert({
+      provider: "microsoft_graph", integration_name: "Microsoft 365 Solar Quote Email", direction: "outbound",
+      event_name: "quote_email_send", event_type: "email_with_secure_link", external_id: appointmentRowId || null,
+      status: "received", received_at: new Date().toISOString(),
+      payload: { appointment_row_id: appointmentRowId || null, recipient: customerEmail || null, sender, triggered_by: userData.user.email || userData.user.id },
+    }).select("id").single()
+    if (logError) console.error("Unable to create solar quote email log:", logError.message)
     else logId = logRow?.id || null
 
-    if (![tenantId, clientId, clientSecret, sender].every(Boolean)) {
-      return await fail(500, "Email service is not fully configured. Check the Microsoft 365 email environment variables.")
+    if (![tenantId, clientId, clientSecret, sender].every(Boolean)) return await fail(500, "Email service is not fully configured. Check the Microsoft 365 email environment variables.")
+    if (!appointmentRowId || !customerEmail || !quoteLink) return await fail(400, "Appointment, customer email and secure quote link are required.")
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) return await fail(400, "Please enter a valid customer email address.")
+
+    let parsedLink
+    try { parsedLink = new URL(quoteLink) } catch { return await fail(400, "The secure quote link is invalid.") }
+    const allowedHosts = new Set([String(process.env.PUBLIC_APP_URL || "").replace(/^https?:\/\//, "").replace(/\/$/, ""), "crm.homeshield.ltd"])
+    if (parsedLink.protocol !== "https:" || !allowedHosts.has(parsedLink.host) || parsedLink.pathname !== "/api/sales/view-solar-quote") {
+      return await fail(400, "The link must be a Homeshield secure quote link.")
     }
-    if (!appointmentRowId || !customerEmail || !pdfPath) {
-      return await fail(400, "Appointment, customer email and quote PDF are required.")
-    }
-    if (!pdfPath.startsWith("solar-quotes/") || pdfPath.includes("..")) {
-      return await fail(400, "Invalid quote PDF storage path.")
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
-      return await fail(400, "Please enter a valid customer email address.")
-    }
-    const { data: appointment, error: appointmentError } = await supabase
-      .from("appointments")
-      .select("appointment_row_id,name,result,email_address,phone_number_1,address,postcode,product,job_type,rep_allocated,branch,sales_notes,epvs_calculation,quote_ref,signature_path,express_fit_signature_path,seg_disclaimer_signature_path,reason_for_overstay,overstay_form_link")
-      .eq("appointment_row_id", appointmentRowId)
-      .maybeSingle()
+    const rawToken = parsedLink.searchParams.get("token") || ""
+    if (!rawToken || rawToken.length > 200) return await fail(400, "The secure quote link is missing its token.")
+    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex")
+    const { data: quote, error: quoteError } = await db.from("solar_quotes")
+      .select("id,appointment_row_id,quote_ref,customer_email,expires_at,status")
+      .eq("public_token_hash", tokenHash).maybeSingle()
+    if (quoteError) throw quoteError
+    if (!quote || quote.appointment_row_id !== appointmentRowId) return await fail(404, "The secure quote link does not match this appointment.")
+    if (quote.expires_at && new Date(quote.expires_at).getTime() <= Date.now()) return await fail(410, "This secure quote link has expired. Create a new link first.")
+    if (["expired", "failed"].includes(String(quote.status || "").toLowerCase())) return await fail(409, "This quote link is not available to send.")
+    const { data: appointment, error: appointmentError } = await db.from("appointments")
+      .select("appointment_row_id,name,email_address,quote_ref").eq("appointment_row_id", appointmentRowId).maybeSingle()
     if (appointmentError) throw appointmentError
     if (!appointment) return await fail(404, "Appointment not found.")
-    if (String(appointment.result || "").trim().toLowerCase() !== "sold") {
-      return await fail(409, "Only appointments marked Sold can have a solar quote emailed.")
-    }
-    if (!appointment.signature_path || !appointment.express_fit_signature_path || !appointment.seg_disclaimer_signature_path) {
-      return await fail(409, "")
-    }
     if (String(appointment.email_address || "").trim().toLowerCase() !== customerEmail.toLowerCase()) {
-      return await fail(409, "The customer email does not match the saved appointment. Please go back and save the correct email first.")
+      return await fail(409, "The recipient must match the email address saved on the appointment.")
     }
 
-    const tokenResponse = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(tenantId)}/oauth2/v2.0/token`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        scope: "https://graph.microsoft.com/.default",
-        grant_type: "client_credentials",
-      }),
-    })
-    const tokenData = await tokenResponse.json()
-    if (!tokenResponse.ok || !tokenData.access_token) {
-      console.error("Microsoft Graph token request failed:", {
-        status: tokenResponse.status,
-        error: tokenData.error || null,
-        error_description: tokenData.error_description || null,
-        error_codes: tokenData.error_codes || null,
-        trace_id: tokenData.trace_id || null,
-        correlation_id: tokenData.correlation_id || null,
-      })
-      const authCode = tokenData.error || "unknown_error"
-      const authDescription = String(tokenData.error_description || "").replace(/[\\r\\n]+/g, " ").slice(0, 500)
-      return await fail(502, `Microsoft 365 authentication failed (${authCode})${authDescription ? `: ${authDescription}` : ". Check the app credentials and Mail.Send admin consent."}`, tokenResponse.status)
-    }
-
-    const { data: pdfFile, error: pdfDownloadError } = await supabase.storage.from("signatures").download(pdfPath)
-    if (pdfDownloadError || !pdfFile) {
-      console.error("Unable to download quote PDF from storage:", pdfDownloadError?.message)
-      return await fail(500, "Unable to retrieve the generated quote PDF from storage.")
-    }
-    if (pdfFile.size > 10 * 1024 * 1024) {
-      return await fail(413, "The quote PDF is over the 10 MB email attachment limit.")
-    }
-    const pdfBase64 = Buffer.from(await pdfFile.arrayBuffer()).toString("base64")
-    const attachments = [{
-      "@odata.type": "#microsoft.graph.fileAttachment",
-      name: fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`,
-      contentType: "application/pdf",
-      contentBytes: pdfBase64,
-    }]
-
-    // Attach the generated overstay form when one exists. BOs never call this quote endpoint.
-    if (appointment.overstay_form_link) {
-      const overstayPath = String(appointment.overstay_form_link).trim()
-      if (!overstayPath.startsWith(`${appointmentRowId}/`) || overstayPath.includes("..")) {
-        return await fail(409, "The saved overstay form path is invalid. Please regenerate the overstay form.")
-      }
-      const { data: overstayFile, error: overstayDownloadError } = await supabase.storage.from("overstay-forms").download(overstayPath)
-      if (overstayDownloadError || !overstayFile) {
-        console.error("Unable to download overstay PDF from storage:", overstayDownloadError?.message)
-        return await fail(500, "The overstay form could not be retrieved, so the solar quote email was not sent.")
-      }
-      if (overstayFile.size > 5 * 1024 * 1024 || pdfFile.size + overstayFile.size > 10 * 1024 * 1024) {
-        return await fail(413, "The quote and overstay PDF attachments exceed the email attachment limit.")
-      }
-      attachments.push({
-        "@odata.type": "#microsoft.graph.fileAttachment",
-        name: `${String(appointment.name || "Customer").replace(/[^a-zA-Z0-9._-]/g, "-")}-Overstay-Form.pdf`,
-        contentType: "application/pdf",
-        contentBytes: Buffer.from(await overstayFile.arrayBuffer()).toString("base64"),
-      })
-    }
-
-    const { data: emailTemplate, error: templateError } = await supabase
-      .from("templates")
-      .select("name,description,template_body,active")
-      .eq("template_type", "email")
-      .eq("name", "Solar Quote Email")
-      .eq("active", true)
-      .maybeSingle()
+    const { data: template, error: templateError } = await db.from("templates")
+      .select("name,description,template_body,active").eq("template_type", "email")
+      .eq("name", "Solar Quote Email").eq("active", true).maybeSingle()
     if (templateError) throw templateError
-    if (!emailTemplate) return await fail(500, "The active Solar Quote Email template was not found. Open CRM Templates and activate it.")
+    if (!template) return await fail(500, "The active Solar Quote Email template was not found. Open CRM Templates and activate it.")
 
     const replacements = {
       customer_name: appointment.name || "Customer",
-      quote_ref: appointment.quote_ref || "",
+      quote_ref: quote.quote_ref || appointment.quote_ref || "",
       recipient: customerEmail,
       sender,
+      quote_link: quoteLink,
     }
     const renderTemplate = value => String(value || "").replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, key) => replacements[key] ?? "")
-    const subject = renderTemplate(emailTemplate.description) || `Your Homeshield solar quote`
-    const emailBody = renderTemplate(emailTemplate.template_body) || `Dear ${appointment.name || "Customer"},\\n\\nPlease use the secure link to view your Homeshield solar quote.\\n\\nKind regards,\\nHomeshield Scotland Ltd`
-    const sendResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(sender)}/sendMail`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${tokenData.access_token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        message: {
-          subject,
-          body: {
-            contentType: "Text",
-            content: emailBody,
-          },
-          toRecipients: [{ emailAddress: { address: customerEmail } }],
-          attachments,
-        },
-        saveToSentItems: true,
-      }),
-    })
+    const subject = renderTemplate(template.description).trim() || "Your Homeshield solar quote"
+    const emailBody = renderTemplate(template.template_body).trim()
+    if (!emailBody || !emailBody.includes(quoteLink)) return await fail(500, "The Solar Quote Email template must include the {{quote_link}} placeholder.")
 
+    const tokenResponse = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(tenantId)}/oauth2/v2.0/token`, {
+      method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, scope: "https://graph.microsoft.com/.default", grant_type: "client_credentials" }),
+    })
+    const tokenData = await tokenResponse.json()
+    if (!tokenResponse.ok || !tokenData.access_token) {
+      console.error("Microsoft Graph token request failed:", { status: tokenResponse.status, error: tokenData.error || null, error_description: tokenData.error_description || null })
+      return await fail(502, "Microsoft 365 authentication failed. Check app credentials and Mail.Send admin consent.", tokenResponse.status)
+    }
+
+    const sendResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(sender)}/sendMail`, {
+      method: "POST", headers: { Authorization: `Bearer ${tokenData.access_token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ message: {
+        subject, body: { contentType: "Text", content: emailBody },
+        toRecipients: [{ emailAddress: { address: customerEmail } }],
+      }, saveToSentItems: true }),
+    })
     if (!sendResponse.ok) {
       const details = await sendResponse.text()
-      const graphRequestId = sendResponse.headers.get("request-id") || sendResponse.headers.get("client-request-id") || null
-      console.error("Microsoft Graph sendMail failed:", {
-        status: sendResponse.status,
-        requestId: graphRequestId,
-        details: details.slice(0, 1500),
-      })
-      if (sendResponse.status === 403) {
-        return await fail(502, "Microsoft 365 refused to send the email. Check admin consent and confirm app@homeshield.ltd is an active mailbox.", sendResponse.status)
-      }
-      if (sendResponse.status === 504 || sendResponse.status === 408) {
-        return await fail(504, "Microsoft 365 timed out while processing the quote. The email may still have been accepted; check Sent Items before retrying to avoid sending a duplicate.", sendResponse.status)
-      }
+      console.error("Microsoft Graph sendMail failed:", { status: sendResponse.status, details: details.slice(0, 1000) })
+      if (sendResponse.status === 403) return await fail(502, "Microsoft 365 refused to send the email. Check Mail.Send admin consent and the sender mailbox.", sendResponse.status)
       return await fail(502, `Microsoft 365 could not send the quote (HTTP ${sendResponse.status}).`, sendResponse.status)
     }
 
-    await finishLog({
-      status: "success",
-      httpStatus: 202,
-      result: {
-        success: true,
-        message: "Solar quote email accepted by Microsoft 365.",
-        recipient: customerEmail,
-        sender,
-        subject,
-        attachment_name: fileName,
-        appointment_row_id: appointmentRowId,
-        quote_ref: appointment.quote_ref || null,
-      },
-    })
-
-    return json(res, 200, {
-      success: true,
-      message: "Solar quote email accepted by Microsoft 365.",
-      recipient: customerEmail,
-    })
+    const now = new Date().toISOString()
+    await db.from("solar_quotes").update({ status: "sent", sent_at: now, customer_email: customerEmail }).eq("id", quote.id)
+    await db.from("solar_quote_events").insert({ quote_id: quote.id, event_type: "sent", channel: "email", recipient: customerEmail, details: { subject, sender } })
+    await finishLog({ status: "success", httpStatus: 202, result: { success: true, recipient: customerEmail, sender, subject, appointment_row_id: appointmentRowId, quote_ref: quote.quote_ref } })
+    return json(res, 200, { success: true, message: "Solar quote email accepted by Microsoft 365.", recipient: customerEmail })
   } catch (error) {
-    console.error("Send quote endpoint failed:", error)
-    await finishLog({
-      status: "failed",
-      httpStatus: 500,
-      errorMessage: error?.message || "Unexpected server error",
-      result: { success: false, message: "Unexpected server error" },
-    })
+    console.error("Send solar quote email failed:", error)
+    await finishLog({ status: "failed", httpStatus: 500, errorMessage: error?.message || "Unexpected server error", result: { success: false, message: "Unexpected server error" } })
     return json(res, 500, { error: "An unexpected error occurred while sending the quote." })
   }
 }
