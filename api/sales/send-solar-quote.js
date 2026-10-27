@@ -73,7 +73,7 @@ export default async function handler(req, res) {
     if (quote.expires_at && new Date(quote.expires_at).getTime() <= Date.now()) return await fail(410, "This secure quote link has expired. Create a new link first.")
     if (["expired", "failed"].includes(String(quote.status || "").toLowerCase())) return await fail(409, "This quote link is not available to send.")
     const { data: appointment, error: appointmentError } = await db.from("appointments")
-      .select("appointment_row_id,name,email_address,quote_ref").eq("appointment_row_id", appointmentRowId).maybeSingle()
+      .select("appointment_row_id,name,email_address").eq("appointment_row_id", appointmentRowId).maybeSingle()
     if (appointmentError) throw appointmentError
     if (!appointment) return await fail(404, "Appointment not found.")
     if (String(appointment.email_address || "").trim().toLowerCase() !== customerEmail.toLowerCase()) {
@@ -88,7 +88,7 @@ export default async function handler(req, res) {
 
     const replacements = {
       customer_name: appointment.name || "Customer",
-      quote_ref: quote.quote_ref || appointment.quote_ref || "",
+      quote_ref: quote.quote_ref || "",
       recipient: customerEmail,
       sender,
       quote_link: quoteLink,
