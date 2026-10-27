@@ -556,12 +556,12 @@ function DataDashboard() {
           font-size: 12px;
         }
 
-        .pronto-table col.pronto-col-name { width: 20.5%; }
-        .pronto-table col.pronto-col-first { width: 23.5%; }
-        .pronto-table col.pronto-col-latest { width: 25.5%; }
-        .pronto-table col.pronto-col-status { width: 17%; }
-        .pronto-table col.pronto-col-leads { width: 10%; }
-        .pronto-table col.pronto-col-booked { width: 10%; }
+        .pronto-table col.pronto-col-name { width: 20%; }
+        .pronto-table col.pronto-col-first { width: 20%; }
+        .pronto-table col.pronto-col-latest { width: 22%; }
+        .pronto-table col.pronto-col-status { width: 14%; }
+        .pronto-table col.pronto-col-leads { width: 12%; }
+        .pronto-table col.pronto-col-booked { width: 12%; }
 
         .pronto-table th,
         .pronto-table td {
@@ -1130,6 +1130,7 @@ function DataDashboard() {
                                   <col className="pronto-col-latest" />
                                   <col className="pronto-col-status" />
                                   <col className="pronto-col-leads" />
+                                  <col className="pronto-col-booked" />
                                 </colgroup>
                                 <thead>
                                   <tr>
@@ -1172,6 +1173,14 @@ function DataDashboard() {
                                                   <div className="pronto-empty" style={{ padding: 16 }}>Loading Pronto C3 breakdown…</div>
                                                 ) : (
                                                   <table className="pronto-table pronto-breakdown-table">
+                                                    <colgroup>
+                                                      <col className="pronto-col-name" />
+                                                      <col className="pronto-col-first" />
+                                                      <col className="pronto-col-latest" />
+                                                      <col className="pronto-col-status" />
+                                                      <col className="pronto-col-leads" />
+                                                      <col className="pronto-col-booked" />
+                                                    </colgroup>
                                                     <thead><tr><th>Pronto C3</th><th>First received</th><th>Latest received</th><th>Status</th><th>Leads</th><th>Booked</th></tr></thead>
                                                     <tbody>
                                                       {(prontoC1C3Rows[c1Key] || []).length ? (
