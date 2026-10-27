@@ -100,6 +100,9 @@ function DataDashboard() {
   const [prontoStatusFilter, setProntoStatusFilter] = useState("all")
   const [expandedProntoSids, setExpandedProntoSids] = useState({})
   const [prontoC3Rows, setProntoC3Rows] = useState({})
+  const [introducerSidRows, setIntroducerSidRows] = useState({})
+  const [introducerSidLoading, setIntroducerSidLoading] = useState({})
+  const [expandedIntroducers, setExpandedIntroducers] = useState({})
   const [prontoC3Loading, setProntoC3Loading] = useState({})
   const [expandedProntoC1s, setExpandedProntoC1s] = useState({})
   const [prontoC1C3Rows, setProntoC1C3Rows] = useState({})
@@ -230,6 +233,26 @@ function DataDashboard() {
     } finally {
       setMissingSidLeadsLoading(false)
     }
+  }
+
+  async function toggleIntroducer(introducer) {
+    const isExpanded = Boolean(expandedIntroducers[introducer])
+    setExpandedIntroducers((current) => ({ ...current, [introducer]: !current[introducer] }))
+    if (isExpanded || Object.prototype.hasOwnProperty.call(introducerSidRows, introducer) || introducerSidLoading[introducer]) return
+    if (!supabase) return
+    setIntroducerSidLoading((current) => ({ ...current, [introducer]: true }))
+    try {
+      const { data, error: rpcError } = await supabase.rpc("get_pronto_introducer_sid_counts", { introducer_filter: introducer, date_period: prontoDatePeriod })
+      if (rpcError) throw rpcError
+      setIntroducerSidRows((current) => ({ ...current, [introducer]: (data || []).map((row) => ({
+        pronto_sid: String(row.pronto_sid || "(No SID)"), lead_count: Number(row.lead_count || 0), booked_count: Number(row.booked_count || 0),
+        first_lead_date: row.first_lead_date || null, latest_lead_date: row.latest_lead_date || null,
+      })) }))
+    } catch (err) {
+      console.error("Error loading SID breakdown by introducer:", err)
+      setIntroducerSidRows((current) => ({ ...current, [introducer]: [] }))
+      setProntoSidError(err?.message || `Unable to load SID breakdown for introducer ${introducer}.`)
+    } finally { setIntroducerSidLoading((current) => ({ ...current, [introducer]: false })) }
   }
 
   async function toggleProntoSid(sid) {
@@ -1069,16 +1092,23 @@ function DataDashboard() {
                 </tr></thead>
                 <tbody>
                   {filteredProntoSidRows.map((row) => (
-                    <tr key={row.pronto_sid}>
-                      <td title={row.pronto_sid}>{row.pronto_sid}</td>
-                      <td>{formatProntoDate(row.first_lead_date)}</td>
-                      <td>{formatProntoDate(row.latest_lead_date)}</td>
-                      <td>{prontoStatus(row.latest_lead_date)}</td>
-                      <td>{formatNumber(row.lead_count)}</td>
-                      <td>{formatNumber(row.booked_count)}</td>
-                      <td>{row.lead_count ? `${((row.booked_count / row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
-                      <td>{formatNumber(row.no_contact_count)}</td>
-                    </tr>
+                    <React.Fragment key={row.pronto_sid}>
+                      <tr>
+                        <td><button type="button" onClick={() => toggleIntroducer(row.pronto_sid)} aria-expanded={Boolean(expandedIntroducers[row.pronto_sid])} style={{ border: 0, background: "transparent", padding: 0, color: "inherit", font: "inherit", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}><span aria-hidden="true">{expandedIntroducers[row.pronto_sid] ? "▾" : "▸"}</span>{row.pronto_sid}</button></td>
+                        <td>{formatProntoDate(row.first_lead_date)}</td><td>{formatProntoDate(row.latest_lead_date)}</td><td>{prontoStatus(row.latest_lead_date)}</td><td>{formatNumber(row.lead_count)}</td><td>{formatNumber(row.booked_count)}</td><td>{row.lead_count ? `${((row.booked_count / row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td><td>{formatNumber(row.no_contact_count)}</td>
+                      </tr>
+                      {expandedIntroducers[row.pronto_sid] && <tr><td colSpan={8} className="pronto-breakdown-cell">
+                        {introducerSidLoading[row.pronto_sid] ? <div className="pronto-empty" style={{ padding: 16 }}>Loading SID breakdown…</div> : (
+                          <table className="pronto-table pronto-breakdown-table"><colgroup><col className="pronto-col-name" /><col className="pronto-col-first" /><col className="pronto-col-latest" /><col className="pronto-col-status" /><col className="pronto-col-leads" /><col className="pronto-col-booked" /><col className="pronto-col-booked-percent" /></colgroup>
+                            <thead><tr><th>Pronto SID</th><th>First received</th><th>Latest received</th><th>Status</th><th>Leads</th><th>Booked</th><th>Booked %</th></tr></thead>
+                            <tbody>{(introducerSidRows[row.pronto_sid] || []).map((sidRow) => <React.Fragment key={sidRow.pronto_sid}>
+                              <tr><td><button type="button" onClick={() => toggleProntoSid(sidRow.pronto_sid)} aria-expanded={Boolean(expandedProntoSids[sidRow.pronto_sid])} style={{ border: 0, background: "transparent", padding: 0, color: "inherit", font: "inherit", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}><span aria-hidden="true">{expandedProntoSids[sidRow.pronto_sid] ? "▾" : "▸"}</span>{sidRow.pronto_sid}</button></td><td>{formatProntoDate(sidRow.first_lead_date)}</td><td>{formatProntoDate(sidRow.latest_lead_date)}</td><td>{prontoStatus(sidRow.latest_lead_date)}</td><td>{formatNumber(sidRow.lead_count)}</td><td>{formatNumber(sidRow.booked_count)}</td><td>{sidRow.lead_count ? `${((sidRow.booked_count / sidRow.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td></tr>
+                              {expandedProntoSids[sidRow.pronto_sid] && <tr><td colSpan={7} className="pronto-breakdown-cell">{prontoC3Loading[sidRow.pronto_sid] ? <div className="pronto-empty" style={{ padding: 16 }}>Loading C1 breakdown…</div> : <table className="pronto-table pronto-breakdown-table"><thead><tr><th>Pronto C1</th><th>First received</th><th>Latest received</th><th>Status</th><th>Leads</th><th>Booked</th><th>Booked %</th></tr></thead><tbody>{(prontoC3Rows[sidRow.pronto_sid] || []).map((c1Row) => <tr key={c1Row.pronto_c3}><td>{c1Row.pronto_c3}</td><td>{formatProntoDate(c1Row.first_lead_date)}</td><td>{formatProntoDate(c1Row.latest_lead_date)}</td><td>{prontoStatus(c1Row.latest_lead_date)}</td><td>{formatNumber(c1Row.lead_count)}</td><td>{formatNumber(c1Row.booked_count)}</td><td>{c1Row.lead_count ? `${((c1Row.booked_count / c1Row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td></tr>)}</tbody></table>}</td></tr>}
+                            </React.Fragment>)}</tbody>
+                          </table>
+                        )}
+                      </td></tr>}
+                    </React.Fragment>
                   ))}
                   <tr>
                     <td colSpan={4}><strong>Total Pronto Windows leads</strong></td>
