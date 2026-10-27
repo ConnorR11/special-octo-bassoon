@@ -160,6 +160,8 @@ export default function SolarRework({ onSelectAppointment }) {
   const [linkedSortOrder, setLinkedSortOrder] = useState("desc")
   const [linkedSoldFilter, setLinkedSoldFilter] = useState("all")
   const [resultFilter, setResultFilter] = useState("all")
+  const [leadSourceFilter, setLeadSourceFilter] = useState("all")
+  const [leadSourceOptions, setLeadSourceOptions] = useState([])
   const [quoteViewedFilter, setQuoteViewedFilter] = useState("viewed")
   const [quoteDailyStats, setQuoteDailyStats] = useState([])
   const [quoteStatsRange, setQuoteStatsRange] = useState({ first: "", last: "" })
@@ -217,6 +219,21 @@ export default function SolarRework({ onSelectAppointment }) {
     loadQuoteDailyStats()
     return () => { cancelled = true }
   }, [activeTab])
+  useEffect(() => {
+    let cancelled = false
+    async function loadLeadSources() {
+      if (!supabase) return
+      try {
+        const { data, error } = await supabase.from("appointments").select("lead_source").not("lead_source", "is", null).neq("lead_source", "").order("lead_source").limit(5000)
+        if (error) throw error
+        const values = [...new Set((data || []).map(row => normalise(row.lead_source)).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+        if (!cancelled) setLeadSourceOptions(values)
+      } catch (err) { console.warn("Could not load lead source options:", err) }
+    }
+    loadLeadSources()
+    return () => { cancelled = true }
+  }, [])
+
   async function loadRows(targetPage = page) {
     const requestId = ++loadRequestId.current
     if (!supabase) { setError("Supabase is not configured."); setLoading(false); return }
@@ -254,7 +271,7 @@ export default function SolarRework({ onSelectAppointment }) {
         return
       }
       let request = supabase.from("appointments")
-        .select("appointment_row_id,marketing_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,open_solar_id,epvs_calculation,rep_allocated")
+        .select("appointment_row_id,marketing_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,lead_source,open_solar_id,epvs_calculation,rep_allocated")
         .eq("job_type", "Solar")
         .not("result", "is", null)
         .neq("result", "")
@@ -264,6 +281,7 @@ export default function SolarRework({ onSelectAppointment }) {
         .order("appointment_row_id", { ascending: false })
       if (yearFilter !== "all") request = request.gte("appointment_date", yearFilter + "-01-01").lt("appointment_date", (Number(yearFilter) + 1) + "-01-01")
       if (resultFilter !== "all") request = request.eq("result", resultFilter)
+      if (leadSourceFilter !== "all") request = request.eq("lead_source", leadSourceFilter)
       if (activeTab === "unlinked") {
         request = request.is("open_solar_id", null)
         request = request.range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE - 1)
@@ -333,8 +351,8 @@ export default function SolarRework({ onSelectAppointment }) {
   }
 
 
-  useEffect(() => { loadRows(page) }, [page, query, activeTab, yearFilter, unlinkedSortOrder, linkedSortOrder, linkedSoldFilter, linkedReadinessFilter, resultFilter, quoteViewedFilter])
-  useEffect(() => { setPage(0) }, [query, activeTab, yearFilter, unlinkedSortOrder, linkedSortOrder, linkedSoldFilter, linkedReadinessFilter, resultFilter, quoteViewedFilter])
+  useEffect(() => { loadRows(page) }, [page, query, activeTab, yearFilter, unlinkedSortOrder, linkedSortOrder, linkedSoldFilter, linkedReadinessFilter, resultFilter, leadSourceFilter, quoteViewedFilter])
+  useEffect(() => { setPage(0) }, [query, activeTab, yearFilter, unlinkedSortOrder, linkedSortOrder, linkedSoldFilter, linkedReadinessFilter, resultFilter, leadSourceFilter, quoteViewedFilter])
 
   // Load tab totals independently from the table request so badge counts never block or reset the visible list.
   useEffect(() => {
@@ -352,6 +370,7 @@ export default function SolarRework({ onSelectAppointment }) {
             .lt("appointment_date", activeTab === "linked" ? startOfPreviousWeekISO() : startOfCurrentWeekISO())
           if (yearFilter !== "all") request = request.gte("appointment_date", yearFilter + "-01-01").lt("appointment_date", (Number(yearFilter) + 1) + "-01-01")
           if (resultFilter !== "all") request = request.eq("result", resultFilter)
+          if (leadSourceFilter !== "all") request = request.eq("lead_source", leadSourceFilter)
           const needle = normalise(query).replace(/[%_,()]/g, " ")
           if (needle) request = request.or("name.ilike.%" + needle + "%,postcode.ilike.%" + needle + "%,address.ilike.%" + needle + "%,phone_number_1.ilike.%" + needle + "%,secondary_phone_number.ilike.%" + needle + "%,email_address.ilike.%" + needle + "%,product.ilike.%" + needle + "%,result.ilike.%" + needle + "%")
           return request
@@ -369,7 +388,7 @@ export default function SolarRework({ onSelectAppointment }) {
     }
     loadTabCounts()
     return () => { cancelled = true }
-  }, [yearFilter, resultFilter, query])
+  }, [yearFilter, resultFilter, leadSourceFilter, query])
 
   async function saveOpenSolarId(row) {
     const value = normalise(rowEdits[row.appointment_row_id])
@@ -431,7 +450,7 @@ export default function SolarRework({ onSelectAppointment }) {
     </div>
 
     <div style={{ ...cardStyle, padding: 13, marginBottom: 14 }}>
-      <div style={{ display: "grid", gridTemplateColumns: activeTab === "linked" ? "minmax(220px,2fr) repeat(5,minmax(125px,1fr))" : activeTab === "unlinked" ? "minmax(220px,2fr) repeat(3,minmax(135px,1fr))" : activeTab === "quotes-sent" ? "minmax(220px,2fr) minmax(170px,1fr)" : "minmax(220px,2fr)", gap: 10, alignItems: "center" }}>
+      <div style={{ display: "grid", gridTemplateColumns: activeTab === "linked" ? "minmax(200px,2fr) repeat(6,minmax(120px,1fr))" : activeTab === "unlinked" ? "minmax(200px,2fr) repeat(4,minmax(125px,1fr))" : activeTab === "quotes-sent" ? "minmax(220px,2fr) minmax(170px,1fr)" : "minmax(220px,2fr)", gap: 10, alignItems: "center" }}>
         <div style={{ position: "relative" }}>
           <Search size={15} style={{ position: "absolute", left: 11, top: 12, color: "#64748b" }} />
           <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search name, postcode, phone, email…" style={{ ...inputStyle, width: "100%", paddingLeft: 33, boxSizing: "border-box" }} />
@@ -443,6 +462,10 @@ export default function SolarRework({ onSelectAppointment }) {
           <option value="DNH">DNH</option>
           <option value="no-result">No result</option>
         </select>
+                {activeTab !== "quotes-sent" && <select value={leadSourceFilter} onChange={event => { setLeadSourceFilter(event.target.value); setPage(0) }} style={selectStyle}>
+          <option value="all">All lead sources</option>
+          {leadSourceOptions.map(source => <option key={source} value={source}>{source}</option>)}
+        </select>}
                 <select value={yearFilter} onChange={event => setYearFilter(event.target.value)} style={selectStyle}>
           <option value="all">All years</option>
           {Array.from({ length: new Date().getFullYear() - 2019 }, (_, index) => String(new Date().getFullYear() - index)).map(year => <option key={year} value={year}>{year}</option>)}
