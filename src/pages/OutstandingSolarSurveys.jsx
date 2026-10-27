@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { RefreshCw, Search, FileText, ClipboardCheck, AlertCircle } from "lucide-react"
 import { supabase } from "../lib/supabase"
 import SurveyProgressBar from "../components/SurveyProgressBar"
-import { useVisibility } from "../context/VisibilityContext"
 
 const styles = {
   page: { padding: "24px 28px 40px", color: "#17212b", minHeight: "100%", background: "#f6f8fb", boxSizing: "border-box" },
@@ -38,7 +37,6 @@ function hasDigitalContract(appointment) {
 }
 
 export default function OutstandingSolarSurveys({ onSelectDeal }) {
-  const { canSeeDeal } = useVisibility()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -74,7 +72,7 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
       // Product can be stored in either the top-level column or Pipedrive payload.
       // Apply visibility after loading all records so a nested product field doesn't
       // cause a manager's rep deals to be excluded before visibility is checked.
-      const solarDeals = fetchedDeals.filter(deal => isSolarDeal(deal) && canSeeDeal(deal))
+      const solarDeals = fetchedDeals.filter(isSolarDeal)
       const appointmentIds = [...new Set(solarDeals.map(deal => String(deal.appointment_row_id || "")).filter(Boolean))]
       const appointmentRows = []
       for (let offset = 0; offset < appointmentIds.length; offset += 500) {
@@ -147,7 +145,7 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
     } finally {
       setLoading(false)
     }
-  }, [canSeeDeal])
+  }, [])
 
   useEffect(() => { load() }, [load])
 
