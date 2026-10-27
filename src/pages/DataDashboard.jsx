@@ -98,6 +98,7 @@ function DataDashboard() {
   const [prontoExporting, setProntoExporting] = useState(false)
   const [prontoSidError, setProntoSidError] = useState("")
   const [prontoSidSearch, setProntoSidSearch] = useState("")
+  const [prontoSort, setProntoSort] = useState({ key: null, direction: "asc" })
   const [prontoDatePeriod, setProntoDatePeriod] = useState("last_week")
   const [prontoStatusFilter, setProntoStatusFilter] = useState("all")
   const [expandedProntoSids, setExpandedProntoSids] = useState({})
@@ -541,15 +542,50 @@ function DataDashboard() {
     )
   }, [missingSidLeadRows, missingSidLeadsSearch])
 
+  function changeProntoSort(key) {
+    setProntoSort((current) => ({
+      key,
+      direction: current.key === key && current.direction === "asc" ? "desc" : "asc",
+    }))
+  }
+
+  function sortProntoRows(rows) {
+    if (!prontoSort.key) return rows
+    const key = prontoSort.key
+    const direction = prontoSort.direction === "asc" ? 1 : -1
+    return [...rows].sort((a, b) => {
+      let av
+      let bv
+      if (key === "name") {
+        av = String(a.pronto_sid ?? a.pronto_c1 ?? a.pronto_c3 ?? "").toLowerCase()
+        bv = String(b.pronto_sid ?? b.pronto_c1 ?? b.pronto_c3 ?? "").toLowerCase()
+      } else if (key === "status") {
+        av = isProntoLive(a.latest_lead_date) ? 1 : 0
+        bv = isProntoLive(b.latest_lead_date) ? 1 : 0
+      } else if (key === "booked_rate") {
+        av = Number(a.lead_count) ? Number(a.booked_count || 0) / Number(a.lead_count) : 0
+        bv = Number(b.lead_count) ? Number(b.booked_count || 0) / Number(b.lead_count) : 0
+      } else if (key === "leads" || key === "booked") {
+        av = Number(key === "leads" ? a.lead_count || 0 : a.booked_count || 0)
+        bv = Number(key === "leads" ? b.lead_count || 0 : b.booked_count || 0)
+      } else {
+        av = a[key] ? new Date(a[key]).getTime() : 0
+        bv = b[key] ? new Date(b[key]).getTime() : 0
+      }
+      if (typeof av === "string" && typeof bv === "string") return av.localeCompare(bv) * direction
+      return (av - bv) * direction
+    })
+  }
+
   const filteredProntoSidRows = useMemo(() => {
     const search = prontoSidSearch.trim().toLowerCase()
-    return prontoSidRows.filter((row) => {
+    return sortProntoRows(prontoSidRows.filter((row) => {
       const matchesSearch = !search || row.pronto_sid.toLowerCase().includes(search)
       const live = isProntoLive(row.latest_lead_date)
       const matchesStatus = prontoStatusFilter === "all" || (prontoStatusFilter === "live" ? live : !live)
       return matchesSearch && matchesStatus
-    })
-  }, [prontoSidRows, prontoSidSearch, prontoStatusFilter])
+    }))
+  }, [prontoSidRows, prontoSidSearch, prontoStatusFilter, prontoSort])
 
   const totalLeads = useMemo(
     () => rows.reduce((total, row) => total + (selectedLeadType ? Number(row[selectedLeadType] || 0) : Number(row.lead_count || 0)), 0),
@@ -687,6 +723,21 @@ function DataDashboard() {
           display: inline-block;
           overflow-wrap: anywhere;
         }
+
+        .pronto-sort-header {
+          border: 0;
+          padding: 0;
+          margin: 0;
+          background: transparent;
+          color: inherit;
+          font: inherit;
+          font-weight: 700;
+          text-align: left;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .pronto-sort-header:hover { text-decoration: underline; }
+        .pronto-sort-header:focus-visible { outline: 2px solid #93c5fd; outline-offset: 3px; border-radius: 2px; }
 
         .pronto-tree-table td {
           padding: 10px 13px;
@@ -1235,13 +1286,13 @@ function DataDashboard() {
                 </colgroup>
                 <thead>
                   <tr>
-                    <th>Introducer / Campaign</th>
-                    <th>First received</th>
-                    <th>Latest received</th>
-                    <th>Status</th>
-                    <th>Leads</th>
-                    <th>Booked</th>
-                    <th>Booked %</th>
+                    <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("name")}>Introducer / Campaign{prontoSort.key === "name" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
+                    <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("first_lead_date")}>First received{prontoSort.key === "first_lead_date" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
+                    <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("latest_lead_date")}>Latest received{prontoSort.key === "latest_lead_date" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
+                    <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("status")}>Status{prontoSort.key === "status" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
+                    <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("leads")}>Leads{prontoSort.key === "leads" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
+                    <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("booked")}>Booked{prontoSort.key === "booked" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
+                    <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("booked_rate")}>Booked %{prontoSort.key === "booked_rate" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th aria-label="Alignment spacer"></th>
                   </tr>
                 </thead>
@@ -1265,7 +1316,7 @@ function DataDashboard() {
                       {expandedIntroducers[row.pronto_sid] && (
                         introducerSidLoading[row.pronto_sid] ? (
                           <tr className="pronto-tree-loading"><td colSpan={8}>Loading SID breakdown…</td></tr>
-                        ) : (introducerSidRows[row.pronto_sid] || []).map((sidRow) => {
+                        ) : sortProntoRows(introducerSidRows[row.pronto_sid] || []).map((sidRow) => {
                           const sidKey = JSON.stringify([row.pronto_sid, sidRow.pronto_sid]);
                           const sidExpanded = Boolean(expandedProntoSids[sidKey]);
                           const c1Rows = introducerC1Rows[sidKey] || [];
@@ -1288,7 +1339,7 @@ function DataDashboard() {
                               {sidExpanded && (
                                 introducerC1Loading[sidKey] ? (
                                   <tr className="pronto-tree-loading"><td colSpan={8}>Loading C1 campaigns…</td></tr>
-                                ) : c1Rows.map((c1Row) => {
+                                ) : sortProntoRows(c1Rows).map((c1Row) => {
                                   const c1Key = JSON.stringify([row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1]);
                                   const c1Expanded = Boolean(expandedIntroducerC1s[c1Key]);
                                   const c3Rows = introducerC3Rows[c1Key] || [];
@@ -1311,7 +1362,7 @@ function DataDashboard() {
                                       {c1Expanded && (
                                         introducerC3Loading[c1Key] ? (
                                           <tr className="pronto-tree-loading"><td colSpan={8}>Loading C3 campaigns…</td></tr>
-                                        ) : c3Rows.map((c3Row) => (
+                                        ) : sortProntoRows(c3Rows).map((c3Row) => (
                                           <tr className="pronto-tree-c3" key={c3Row.pronto_c3}>
                                             <td><span className="pronto-tree-leaf" style={{ paddingLeft: 66 }}>{c3Row.pronto_c3}</span></td>
                                             <td>{formatProntoDate(c3Row.first_lead_date)}</td>
