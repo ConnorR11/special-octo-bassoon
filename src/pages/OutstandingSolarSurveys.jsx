@@ -57,59 +57,24 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
     setLoading(true)
     setError("")
     try {
-      const fetchedDeals = []
-      let dealOffset = 0
-      while (true) {
-        const { data, error: dealsError } = await supabase
-          .from("deals")
-          .select("*")
-          .order("sale_date", { ascending: false })
-          .range(dealOffset, dealOffset + 999)
-        if (dealsError) throw dealsError
-        const batch = data || []
-        fetchedDeals.push(...batch)
-        if (batch.length < 1000) break
-        dealOffset += 1000
-      }
-
-      // Start with all deals visible under the existing database access rules.
-      const solarDeals = fetchedDeals
-      const appointmentIds = [...new Set(solarDeals.map(deal => String(deal.appointment_row_id || "")).filter(Boolean))]
+      // Start with the selective contract filter so we do not scan/download all 15k deals.
+      // Contract numbers use the fixed-width S12345 format, so lexical >= matches the sequence.
       const appointmentRows = []
-      for (let offset = 0; offset < appointmentIds.length; offset += 500) {
+      let appointmentOffset = 0
+      while (true) {
         const { data, error: appointmentsError } = await supabase
           .from("appointments")
           .select("appointment_row_id,contract_number,signature_path,express_fit_signature_path,seg_disclaimer_signature_path")
-          .in("appointment_row_id", appointmentIds.slice(offset, offset + 500))
+          .gte("contract_number", "S12345")
+          .order("contract_number", { ascending: true })
+          .range(appointmentOffset, appointmentOffset + 499)
         if (appointmentsError) throw appointmentsError
-        appointmentRows.push(...(data || []))
+        const batch = data || []
+        appointmentRows.push(...batch)
+        if (batch.length < 500) break
+        appointmentOffset += 500
       }
 
-      const solarDealIds = solarDeals.map(deal => String(deal.id))
-      const surveyDocumentRows = []
-      const surveyProgressRows = []
-      for (let offset = 0; offset < solarDealIds.length; offset += 500) {
-        const { data, error: documentsError } = await supabase
-          .from("deal_documents")
-          .select("deal_id")
-          .eq("category", "survey_pdf")
-          .in("deal_id", solarDealIds.slice(offset, offset + 500))
-        if (documentsError) throw documentsError
-        surveyDocumentRows.push(...(data || []))
-      }
-      for (let offset = 0; offset < solarDealIds.length; offset += 500) {
-        const ids = solarDealIds.slice(offset, offset + 500)
-        const [{ data: docs, error: docsError }, { data: answers, error: answersError }] = await Promise.all([
-          supabase.from("deal_documents").select("deal_id,category,survey_section").in("deal_id", ids),
-          supabase.from("deal_survey_answers").select("deal_id,answers").in("deal_id", ids),
-        ])
-        if (docsError) throw docsError
-        if (answersError) throw answersError
-        surveyProgressRows.push({ docs: docs || [], answers: answers || [] })
-      }
-
-      const appointmentsById = new Map(appointmentRows.map(item => [String(item.appointment_row_id), item]))
-      // Only include contracts S12345 and above. Contract numbers live on appointments.
       const eligibleSolarDeals = solarDeals.filter(deal =>
         isContractNumberAtLeastS12345(appointmentsById.get(String(deal.appointment_row_id || ""))?.contract_number)
       )
