@@ -352,11 +352,25 @@ export function VisibilityProvider({ children }) {
         )
         .filter(Boolean)
 
+    // Managers may have reps assigned directly through manager_id/sales_manager,
+    // even if those reps' branch field is missing or inconsistent.
+    const managedSalespersonIds =
+      managedProfiles
+        .map((row) =>
+          String(row?.pipedrive_person_id || "").trim()
+        )
+        .filter(Boolean)
+
     const branchEmails =
       branchProfiles
         .map((row) =>
           normaliseEmail(row?.email)
         )
+        .filter(Boolean)
+
+    const managedEmails =
+      managedProfiles
+        .map((row) => normaliseEmail(row?.email))
         .filter(Boolean)
 
     const visibleSalespersonIds =
@@ -366,6 +380,7 @@ export function VisibilityProvider({ children }) {
           isSalesManager
         ? unique([
             ...branchSalespersonIds,
+            ...managedSalespersonIds,
             pipedrivePersonId,
           ])
         : unique([
@@ -379,6 +394,7 @@ export function VisibilityProvider({ children }) {
           isSalesManager
         ? unique([
             ...branchEmails,
+            ...managedEmails,
             ownEmail,
           ])
         : unique([
