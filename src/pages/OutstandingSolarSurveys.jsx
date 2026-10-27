@@ -63,8 +63,6 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
         const { data, error: dealsError } = await supabase
           .from("deals")
           .select("*")
-          .gte("sale_date", "2026-01-01")
-          .or("product.ilike.%solar%,pipedrive_data->>product.ilike.%solar%")
           .order("sale_date", { ascending: false })
           .range(dealOffset, dealOffset + 999)
         if (dealsError) throw dealsError
@@ -74,10 +72,8 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
         dealOffset += 1000
       }
 
-      // Product can be stored in either the top-level column or Pipedrive payload.
-      // Apply visibility after loading all records so a nested product field doesn't
-      // cause a manager's rep deals to be excluded before visibility is checked.
-      const solarDeals = fetchedDeals.filter(isSolarDeal)
+      // Start with all deals visible under the existing database access rules.
+      const solarDeals = fetchedDeals
       const appointmentIds = [...new Set(solarDeals.map(deal => String(deal.appointment_row_id || "")).filter(Boolean))]
       const appointmentRows = []
       for (let offset = 0; offset < appointmentIds.length; offset += 500) {
@@ -128,7 +124,7 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
         .filter(deal => !excludedStages.has(getPipedriveStage(deal).toLowerCase()))
         .filter(deal => {
           const appointment = appointmentsById.get(String(deal.appointment_row_id || ""))
-          return hasDigitalContract(appointment) && !generatedSurveyDealIds.has(String(deal.id))
+          return !generatedSurveyDealIds.has(String(deal.id))
         })
         .map(deal => {
           const dealDocs = allProgressDocs.filter(doc => String(doc.deal_id) === String(deal.id))
