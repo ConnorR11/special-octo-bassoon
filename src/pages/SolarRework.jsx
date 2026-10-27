@@ -107,6 +107,7 @@ function startOfCurrentWeekISO() {
   now.setHours(0, 0, 0, 0)
   return now.toISOString().slice(0, 10)
 }
+function dateTimeLabel(value) { if (!value) return "Not viewed yet"; const date = new Date(value); return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) }
 function dateLabel(value) {
   if (!value) return "—"
   const date = new Date(value)
@@ -143,6 +144,33 @@ export default function SolarRework({ onSelectAppointment }) {
     setRows([])
     setError("")
     try {
+      if (activeTab === "quotes-sent") {
+        let quoteRequest = supabase.from("solar_quotes")
+          .select("id,appointment_row_id,quote_ref,customer_name,customer_email,status,created_at,sent_at,last_viewed_at,view_count,expires_at")
+          .in("status", ["sent", "delivered", "viewed"])
+          .not("sent_at", "is", null)
+          .order("sent_at", { ascending: false })
+          .range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE)
+        const needle = normalise(query).replace(/[%_,()]/g, " ")
+        if (needle) quoteRequest = quoteRequest.or("customer_name.ilike.%" + needle + "%,customer_email.ilike.%" + needle + "%,quote_ref.ilike.%" + needle + "%,appointment_row_id.ilike.%" + needle + "%")
+        const { data: quoteData, error: quoteError } = await quoteRequest
+        if (requestId !== loadRequestId.current) return
+        if (quoteError) throw quoteError
+        const quoteBatch = quoteData || []
+        const ids = [...new Set(quoteBatch.map(item => item.appointment_row_id).filter(Boolean))]
+        let appointmentById = {}
+        if (ids.length) {
+          const { data: appointments, error: appointmentsError } = await supabase.from("appointments")
+            .select("appointment_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,open_solar_id,epvs_calculation,rep_allocated")
+            .in("appointment_row_id", ids)
+          if (appointmentsError) throw appointmentsError
+          appointmentById = Object.fromEntries((appointments || []).map(item => [String(item.appointment_row_id), item]))
+        }
+        setRows(quoteBatch.map(item => ({ ...appointmentById[String(item.appointment_row_id)], ...item })).slice(0, PAGE_SIZE))
+        setHasMore(quoteBatch.length > PAGE_SIZE)
+        setLoading(false)
+        return
+      }
       let request = supabase.from("appointments")
         .select("appointment_row_id,marketing_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,open_solar_id,epvs_calculation,rep_allocated")
         .eq("job_type", "Solar")
@@ -181,6 +209,13 @@ export default function SolarRework({ onSelectAppointment }) {
           relatedByMarketingId[key].push(related)
         }
       }
+      let quoteSentAppointmentIds = new Set()
+      if (activeTab === "linked") {
+        const { data: sentQuotes, error: sentQuotesError } = await supabase.from("solar_quotes").select("appointment_row_id")
+          .in("status", ["sent", "delivered", "viewed"]).not("sent_at", "is", null)
+        if (sentQuotesError) throw sentQuotesError
+        quoteSentAppointmentIds = new Set((sentQuotes || []).map(item => String(item.appointment_row_id)))
+      }
       const rowsWithRelated = batch.map(row => ({
         ...row,
         relatedAppointments: row.marketing_row_id === null || row.marketing_row_id === undefined
@@ -188,7 +223,7 @@ export default function SolarRework({ onSelectAppointment }) {
           : (relatedByMarketingId[String(row.marketing_row_id)] || []).filter(related => related.appointment_row_id !== row.appointment_row_id)
       }))
 
-      const eligibleBatch = rowsWithRelated.filter(row => normalise(row.job_type).toLowerCase() === "solar" && normaliseResult(row.result) !== "SOLD" && (activeTab !== "unlinked" ? Boolean(normalise(row.open_solar_id)) : !normalise(row.open_solar_id)))
+      const eligibleBatch = rowsWithRelated.filter(row => normalise(row.job_type).toLowerCase() === "solar" && normaliseResult(row.result) !== "SOLD" && (activeTab !== "unlinked" ? Boolean(normalise(row.open_solar_id)) : !normalise(row.open_solar_id)) && !(activeTab === "linked" && quoteSentAppointmentIds.has(String(row.appointment_row_id))))
       const soldFiltered = activeTab === "linked" && linkedSoldFilter !== "all"
         ? eligibleBatch.filter(row => {
             const sold = (row.relatedAppointments || []).some(related => normaliseResult(related.result) === "SOLD")
@@ -314,7 +349,7 @@ export default function SolarRework({ onSelectAppointment }) {
     </div>
 
     <div style={{ ...cardStyle, padding: 13, marginBottom: 14 }}>
-      <div style={{ display: "grid", gridTemplateColumns: activeTab === "linked" ? "minmax(220px,2fr) repeat(5,minmax(125px,1fr))" : activeTab === "unlinked" ? "minmax(220px,2fr) repeat(3,minmax(135px,1fr))" : "minmax(220px,2fr) minmax(145px,1fr)", gap: 10, alignItems: "center" }}>
+      <div style={{ display: "grid", gridTemplateColumns: activeTab === "linked" ? "minmax(220px,2fr) repeat(5,minmax(125px,1fr))" : activeTab === "unlinked" ? "minmax(220px,2fr) repeat(3,minmax(135px,1fr))" : "minmax(220px,2fr)", gap: 10, alignItems: "center" }}>
         <div style={{ position: "relative" }}>
           <Search size={15} style={{ position: "absolute", left: 11, top: 12, color: "#64748b" }} />
           <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search name, postcode, phone, email…" style={{ ...inputStyle, width: "100%", paddingLeft: 33, boxSizing: "border-box" }} />
@@ -361,10 +396,11 @@ export default function SolarRework({ onSelectAppointment }) {
       <div style={{ overflowX: "auto" }}>
         <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 980, fontSize: 12 }}>
           <thead><tr style={{ background: "#f8fafc", textAlign: "left", color: "#475569" }}>
-            {["Name", ...(activeTab === "unlinked" ? ["OpenSolar ID"] : ["Design"]),"Date",activeTab === "unlinked" ? "Result" : "Quote readiness", ...(activeTab === "linked" ? ["Related appointment result"] : [])].map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
+            {(activeTab === "quotes-sent" ? ["Customer", "Quote Ref", "Email", "Sent", "Last viewed", "Views"] : ["Name", ...(activeTab === "unlinked" ? ["OpenSolar ID"] : ["Design"]),"Date",activeTab === "unlinked" ? "Result" : "Quote readiness", ...(activeTab === "linked" ? ["Related appointment result"] : [])]).map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
           </tr></thead>
           <tbody>
-            {activeTab === "quotes-sent" && <tr><td colSpan={activeTab === "linked" ? 5 : 4} style={{ padding: 36, textAlign: "center", color: "#64748b" }}><div style={{ fontWeight: 700, color: "#334155", marginBottom: 6 }}>Quotes Sent is not set up yet</div><div>Once quote sending is implemented, this tab will show appointments with quotes sent.</div></td></tr>}
+            {activeTab === "quotes-sent" && !loading && visibleRows.length === 0 && <tr><td colSpan={6} style={{ padding: 36, textAlign: "center", color: "#64748b" }}>No quotes have been sent matching these filters.</td></tr>}
+            {activeTab === "quotes-sent" && visibleRows.map(row => <tr key={row.id} onClick={() => { if (row.appointment_row_id) onSelectAppointment?.({ ...row, email: row.email_address || row.customer_email }) }} style={{ borderBottom: "1px solid #edf2f7", cursor: row.appointment_row_id ? "pointer" : "default" }}><td style={{ padding: "10px 13px", fontWeight: 700 }}>{normalise(row.customer_name || row.name) || "Name missing"}<div style={{ ...muted, marginTop: 3 }}>{normalise(row.address)}{row.address && row.postcode ? ", " : ""}{normalise(row.postcode)}</div></td><td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{row.quote_ref || "—"}</td><td style={{ padding: "10px 13px" }}>{row.customer_email || row.email_address || "—"}</td><td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{dateTimeLabel(row.sent_at)}</td><td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{dateTimeLabel(row.last_viewed_at)}</td><td style={{ padding: "10px 13px", textAlign: "center" }}>{Number(row.view_count || 0)}</td></tr>)}
             {activeTab !== "quotes-sent" && !loading && visibleRows.length === 0 && <tr><td colSpan={activeTab === "linked" ? 5 : 4} style={{ padding: 28, textAlign: "center", color: "#64748b" }}>{"No appointments match these filters."}</td></tr>}
             {activeTab !== "quotes-sent" && visibleRows.map(row => {
               const linked = row.open_solar_id !== null && row.open_solar_id !== undefined && String(row.open_solar_id).trim() !== ""
