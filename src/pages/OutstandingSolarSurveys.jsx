@@ -54,25 +54,25 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
     setLoading(true)
     setError("")
     try {
-      const fetchedSolarDeals = []
+      const fetchedDeals = []
       let dealOffset = 0
       while (true) {
         const { data, error: dealsError } = await supabase
           .from("deals")
           .select("*")
-          .ilike("product", "%solar%")
           .order("sale_date", { ascending: false })
           .range(dealOffset, dealOffset + 999)
         if (dealsError) throw dealsError
         const batch = data || []
-        fetchedSolarDeals.push(...batch)
+        fetchedDeals.push(...batch)
         if (batch.length < 1000) break
         dealOffset += 1000
       }
 
-      // Apply the shared CRM deal-visibility rules so branch and sales managers
-      // see qualifying deals for their own branch, not just deals returned by a broad query.
-      const solarDeals = fetchedSolarDeals.filter(deal => canSeeDeal(deal))
+      // Product can be stored in either the top-level column or Pipedrive payload.
+      // Apply visibility after loading all records so a nested product field doesn't
+      // cause a manager's rep deals to be excluded before visibility is checked.
+      const solarDeals = fetchedDeals.filter(deal => isSolarDeal(deal) && canSeeDeal(deal))
       const appointmentIds = [...new Set(solarDeals.map(deal => String(deal.appointment_row_id || "")).filter(Boolean))]
       const appointmentRows = []
       for (let offset = 0; offset < appointmentIds.length; offset += 500) {
