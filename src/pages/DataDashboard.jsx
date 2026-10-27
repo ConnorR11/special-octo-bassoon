@@ -263,6 +263,7 @@ function DataDashboard() {
         [sid]: (data || []).map((row) => ({
           pronto_c3: String(row.pronto_c3 || "(Blank / NULL)"),
           lead_count: Number(row.lead_count || 0),
+          booked_count: Number(row.booked_count || 0),
           first_lead_date: row.first_lead_date || null,
           latest_lead_date: row.latest_lead_date || null,
         })),
@@ -296,6 +297,7 @@ function DataDashboard() {
         [key]: (data || []).map((item) => ({
           pronto_c3: String(item.pronto_c3 || "(Blank / NULL)"),
           lead_count: Number(item.lead_count || 0),
+          booked_count: Number(item.booked_count || 0),
           first_lead_date: item.first_lead_date || null,
           latest_lead_date: item.latest_lead_date || null,
         })),
@@ -1136,6 +1138,7 @@ function DataDashboard() {
                                     <th>Latest received</th>
                                     <th>Status</th>
                                     <th>Leads</th>
+                                    <th>Booked</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -1160,15 +1163,16 @@ function DataDashboard() {
                                             <td>{formatProntoDate(c1Row.latest_lead_date)}</td>
                                             <td>{prontoStatus(c1Row.latest_lead_date)}</td>
                                             <td>{formatNumber(c1Row.lead_count)}</td>
+                                            <td>{formatNumber(c1Row.booked_count)}</td>
                                           </tr>
                                           {expandedProntoC1s[c1Key] && (
                                             <tr>
-                                              <td colSpan={5} className="pronto-breakdown-cell">
+                                              <td colSpan={6} className="pronto-breakdown-cell">
                                                 {prontoC1C3Loading[c1Key] ? (
                                                   <div className="pronto-empty" style={{ padding: 16 }}>Loading Pronto C3 breakdown…</div>
                                                 ) : (
                                                   <table className="pronto-table pronto-breakdown-table">
-                                                    <thead><tr><th>Pronto C3</th><th>First received</th><th>Latest received</th><th>Status</th><th>Leads</th></tr></thead>
+                                                    <thead><tr><th>Pronto C3</th><th>First received</th><th>Latest received</th><th>Status</th><th>Leads</th><th>Booked</th></tr></thead>
                                                     <tbody>
                                                       {(prontoC1C3Rows[c1Key] || []).length ? (
                                                         prontoC1C3Rows[c1Key].map((c3Item) => (
@@ -1178,10 +1182,11 @@ function DataDashboard() {
                                                             <td>{formatProntoDate(c3Item.latest_lead_date)}</td>
                                                             <td>{prontoStatus(c3Item.latest_lead_date)}</td>
                                                             <td>{formatNumber(c3Item.lead_count)}</td>
+                                                            <td>{formatNumber(c3Item.booked_count)}</td>
                                                           </tr>
                                                         ))
                                                       ) : (
-                                                        <tr><td colSpan={5}>No Pronto C3 values found.</td></tr>
+                                                        <tr><td colSpan={6}>No Pronto C3 values found.</td></tr>
                                                       )}
                                                     </tbody>
                                                   </table>
