@@ -122,6 +122,28 @@ function dateLabel(value) {
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
 }
 
+function QuoteDailyStatsPanel({ active, loading, stats, cardStyle, muted }) {
+  if (!active) return null
+  return <div style={{ ...cardStyle, padding: 16, marginBottom: 14 }}>
+    <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Quote sends and open rate</div>
+    <div style={{ ...muted, marginBottom: 12 }}>Last 30 days · Open rate is the percentage of quotes sent on each day that have been opened at least once.</div>
+    {loading ? <div style={{ padding: 30, textAlign: "center", color: "#64748b" }}>Loading quote activity…</div> : <div style={{ width: "100%", height: 280 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart data={stats} margin={{ top: 8, right: 14, bottom: 4, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={4} />
+          <YAxis yAxisId="sent" allowDecimals={false} tick={{ fontSize: 10 }} />
+          <YAxis yAxisId="rate" orientation="right" domain={[0, 100]} tickFormatter={value => value + "%"} tick={{ fontSize: 10 }} />
+          <Tooltip formatter={(value, name) => name === "Open rate" ? [value + "%", name] : [value, name]} />
+          <Legend />
+          <Bar yAxisId="sent" dataKey="sent" name="Quotes sent" fill="#0f766e" radius={[3, 3, 0, 0]} />
+          <Line yAxisId="rate" type="monotone" dataKey="openedPercent" name="Open rate" stroke="#2563eb" strokeWidth={2} dot={false} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>}
+  </div>
+}
+
 export default function SolarRework({ onSelectAppointment }) {
   const [rows, setRows] = useState([])
   const [totalCount, setTotalCount] = useState(0)
@@ -436,24 +458,7 @@ export default function SolarRework({ onSelectAppointment }) {
       </div>
     </div>
 
-    {activeTab === "quotes-sent" && <div style={{ ...cardStyle, padding: 16, marginBottom: 14 }}>
-      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Quote sends and open rate</div>
-      <div style={{ ...muted, marginBottom: 12 }}>Last 30 days · Open rate is the percentage of quotes sent on each day that have been opened at least once.</div>
-      {quoteStatsLoading ? <div style={{ padding: 30, textAlign: "center", color: "#64748b" }}>Loading quote activity…</div> : <div style={{ width: "100%", height: 280 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={quoteDailyStats} margin={{ top: 8, right: 14, bottom: 4, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={4} />
-            <YAxis yAxisId="sent" allowDecimals={false} tick={{ fontSize: 10 }} />
-            <YAxis yAxisId="rate" orientation="right" domain={[0, 100]} tickFormatter={value => value + "%"} tick={{ fontSize: 10 }} />
-            <Tooltip formatter={(value, name) => name === "Open rate" ? [value + "%", name] : [value, name]} />
-            <Legend />
-            <Bar yAxisId="sent" dataKey="sent" name="Quotes sent" fill="#0f766e" radius={[3, 3, 0, 0]} />
-            <Line yAxisId="rate" type="monotone" dataKey="openedPercent" name="Open rate" stroke="#2563eb" strokeWidth={2} dot={false} />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
-    </div>}
+    <QuoteDailyStatsPanel active={activeTab === "quotes-sent"} loading={quoteStatsLoading} stats={quoteDailyStats} cardStyle={cardStyle} muted={muted} />
     <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap" }}>
         <div style={{ fontWeight: 700, fontSize: 13 }}>{activeTab === "quotes-sent" ? "Quotes Sent" : loading ? "Loading appointments…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${page * PAGE_SIZE + rows.length} ${activeTab !== "unlinked" ? "linked" : "unlinked"} appointments`}</div>
