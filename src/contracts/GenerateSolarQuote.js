@@ -124,6 +124,52 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   ]
 
 
+  // PAGE 1 — Dedicated customer-facing cover page.
+  pdf.setFillColor(255,255,255); pdf.rect(0,0,w,h,"F")
+  // Brand header and restrained accent bar.
+  pdf.setFillColor(...navy); pdf.rect(0,0,w,78,"F")
+  pdf.setFillColor(...blue); pdf.rect(0,78,w,3,"F")
+  pdf.setTextColor(255,255,255); pdf.setFont("helvetica","bold"); pdf.setFontSize(12)
+  pdf.text("HOMESHIELD SCOTLAND",margin,22)
+  pdf.setFont("helvetica","normal"); pdf.setFontSize(8)
+  pdf.setTextColor(205,219,232); pdf.text("SOLAR ENERGY PROPOSAL",margin,31)
+  pdf.setTextColor(255,255,255); pdf.setFont("helvetica","bold"); pdf.setFontSize(28)
+  pdf.text("Your solar",margin,51)
+  pdf.text("proposal",margin,63)
+  pdf.setTextColor(...muted); pdf.setFont("helvetica","normal"); pdf.setFontSize(9)
+  pdf.text("A proposal prepared for",margin,99)
+  pdf.setTextColor(...navy); pdf.setFont("helvetica","bold"); pdf.setFontSize(21)
+  const coverCustomerLines = pdf.splitTextToSize(customer, w-margin*2)
+  pdf.text(coverCustomerLines.slice(0,2),margin,111)
+  const customerNameHeight = Math.min(coverCustomerLines.length,2)*8
+  pdf.setTextColor(...muted); pdf.setFont("helvetica","normal"); pdf.setFontSize(10)
+  const coverAddress = address || "Property address to be confirmed"
+  const coverAddressLines = pdf.splitTextToSize(coverAddress, w-margin*2)
+  pdf.text(coverAddressLines.slice(0,3),margin,119+customerNameHeight)
+
+  // Hero image for a more visual proposal cover.
+  const coverImageY = 145 + customerNameHeight + Math.min(coverAddressLines.length,3)*4
+  const coverImageH = Math.max(65, Math.min(94, 232-coverImageY))
+  pdf.setFillColor(245,247,249); pdf.roundedRect(margin,coverImageY,w-margin*2,coverImageH,3,3,"F")
+  if(openSolarImageUrl) {
+    try { await drawQuoteImage(pdf,openSolarImageUrl,margin+3,coverImageY+3,w-margin*2-6,coverImageH-6) }
+    catch(error) { console.warn("OpenSolar image unavailable on quote cover:",error) }
+  } else {
+    pdf.setTextColor(...muted); pdf.setFont("helvetica","normal"); pdf.setFontSize(10)
+    pdf.text("Your proposed solar system design",w/2,coverImageY+coverImageH/2,{align:"center"})
+  }
+  const coverMetaY = Math.min(coverImageY+coverImageH+14,263)
+  pdf.setDrawColor(220,228,234); pdf.line(margin,coverMetaY-5,w-margin,coverMetaY-5)
+  pdf.setTextColor(...muted); pdf.setFont("helvetica","bold"); pdf.setFontSize(7)
+  pdf.text("QUOTE REFERENCE",margin,coverMetaY)
+  pdf.text("DATE PREPARED",w/2+4,coverMetaY)
+  pdf.setTextColor(...navy); pdf.setFont("helvetica","normal"); pdf.setFontSize(10)
+  pdf.text(quoteRef,margin,coverMetaY+7)
+  pdf.text(today,w/2+4,coverMetaY+7)
+  pdf.setTextColor(...muted); pdf.setFont("helvetica","normal"); pdf.setFontSize(8)
+  pdf.text("Designed around your home and energy needs",margin,h-17)
+  pdf.setDrawColor(220,228,234); pdf.line(margin,h-12,w-margin,h-12)
+
   // PAGE 1 — System overview, inspired by the supplied reference.
   pdf.setFillColor(255,255,255); pdf.rect(0,0,w,h,"F")
   pdf.setTextColor(...blue); pdf.setFont("helvetica","bold"); pdf.setFontSize(10)
@@ -188,7 +234,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   pdf.text(money(d.monthly)+" / month",margin+priceHalf+6,priceY+17)
   pdf.setFont("helvetica","normal");pdf.setFontSize(6.5)
   pdf.text("Finance illustration at "+d.rate.toFixed(1)+"% over "+d.termYears+" years; subject to lender approval and confirmed terms.",margin+8,priceY+22)
-  footer(1)
+  footer(2)
 
   // PAGE 2 — Itemised equipment and service breakdown.
   pdf.addPage(); pdf.setFillColor(255,255,255);pdf.rect(0,0,w,h,"F")
@@ -314,7 +360,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   ty=text("Supply of the listed solar equipment, installation and commissioning as agreed in the final specification. Any exclusions or site-specific requirements will be confirmed before an order is placed.",margin,ty,w-margin*2,9,navy,"normal",4.5)+5
   ty=section("Savings and finance assumptions",ty)
   text("Energy savings are estimates based on available information. Actual results depend on household usage, weather, tariffs, system design and export arrangements. Finance is illustrative, subject to lender approval and confirmed terms.",margin,ty,w-margin*2,8,muted,"normal",4)
-  footer(2)
+  footer(3)
 
   // PAGE 3 — EPVS 30-year financial and generation projection.
   pdf.addPage();pdf.setFillColor(255,255,255);pdf.rect(0,0,w,h,"F")
@@ -415,7 +461,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
     const disclaimerText30="The current fuel inflation figure of 7.6% is based on data from the Office for National Statistics, covering the period 2015–2024. You can find more information at www.ons.gov.uk. The reason we have shown savings based on varying levels of inflation is because electricity inflation has fluctuated significantly over the past 20 years - including negative CPI values in 2006, 2015, and 2016 (-2.5%, -0.2%, -0.3%), and spikes like 21.7% in 2016. To avoid relying on one-off years, we use a long-term average to provide a more balanced view."
     text(disclaimerText30,margin+7,disclaimerY30+17,w-margin*2-14,8,muted,"normal",4)
   }
-  footer(3)
+  footer(4)
 
   // PAGE 4 — Next steps, limitations and customer confidence.
   pdf.addPage();pdf.setFillColor(255,255,255);pdf.rect(0,0,w,h,"F")
@@ -441,7 +487,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   y3+=12
   pdf.setTextColor(...blue);pdf.setFont("helvetica","bold");pdf.setFontSize(15);pdf.text("Homeshield Scotland",margin,y3)
   y3+=8;text("Thank you for considering Homeshield for your solar installation.",margin,y3,w-margin*2,9,muted)
-  footer(4)
+  footer(5)
 
   const blob = pdf.output("blob")
   const url = URL.createObjectURL(blob)
