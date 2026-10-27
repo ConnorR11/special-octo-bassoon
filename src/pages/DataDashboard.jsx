@@ -156,37 +156,19 @@ function DataDashboard() {
       })))
       setProntoSidTotal(Number(data?.[0]?.total_count || 0))
 
-      let noContactQuery = supabase
-        .from("leads")
-        .select("delete_row_id", { count: "exact", head: true })
-        .eq("lead_source", "Pronto Windows")
-        .ilike("disposition", "No Contact")
-        .gte("received_date_time", "2025-01-01T00:00:00.000Z")
-
-      const now = new Date()
-      if (prontoDatePeriod === "last_week") {
-        const from = new Date(now)
-        from.setDate(from.getDate() - 7)
-        noContactQuery = noContactQuery.gte("received_date_time", from.toISOString())
-      } else if (prontoDatePeriod === "last_4_weeks") {
-        const from = new Date(now)
-        from.setDate(from.getDate() - 28)
-        noContactQuery = noContactQuery.gte("received_date_time", from.toISOString())
-      } else if (prontoDatePeriod === "year_to_date") {
-        noContactQuery = noContactQuery.gte("received_date_time", new Date(now.getFullYear(), 0, 1).toISOString())
-      }
-      const { count: noContactCount, error: noContactError } = await noContactQuery
-      if (noContactError) throw noContactError
-      setProntoNoContactTotal(Number(noContactCount || 0))
-
       const { data: noContactRows, error: noContactRowsError } = await supabase.rpc(
         "get_pronto_sid_no_contact_counts",
         { date_period: prontoDatePeriod }
       )
       if (noContactRowsError) throw noContactRowsError
+      const noContactCounts = (noContactRows || []).map((row) => ({
+        pronto_sid: String(row.pronto_sid || "(No SID)"),
+        no_contact_count: Number(row.no_contact_count || 0),
+      }))
       setProntoNoContactBySid(Object.fromEntries(
-        (noContactRows || []).map((row) => [String(row.pronto_sid || "(No SID)"), Number(row.no_contact_count || 0)])
+        noContactCounts.map((row) => [row.pronto_sid, row.no_contact_count])
       ))
+      setProntoNoContactTotal(noContactCounts.reduce((sum, row) => sum + row.no_contact_count, 0))
     } catch (err) {
       console.error("Error loading Pronto SID data:", err)
       setProntoSidError(err?.message || "Unable to load Pronto SID data.")
