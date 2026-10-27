@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { BarChart3, RefreshCw, TrendingUp, Search, FileSpreadsheet } from "lucide-react"
-import * as XLSX from "xlsx"
+import * as XLSX from "xlsx-js-style"
 import {
   Bar,
   BarChart,
@@ -178,6 +178,22 @@ function DataDashboard() {
       if (!reportRows.length) { setProntoSidError("No Pronto data is available for the selected filters."); return }
       const worksheet = XLSX.utils.json_to_sheet(reportRows)
       worksheet["!cols"] = [{ wch: 14 }, { wch: 24 }, { wch: 20 }, { wch: 42 }, { wch: 42 }, { wch: 16 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }]
+      // Style the exported hierarchy rows so SID and C1 levels are easy to distinguish.
+      const reportHeaders = Object.keys(reportRows[0])
+      reportRows.forEach((row, index) => {
+        const excelRow = index + 2 // row 1 contains the column headings
+        const fillColor = row.Level === "SID" ? "17365D" : row.Level === "C1" ? "808080" : null
+        if (!fillColor) return
+        reportHeaders.forEach((header, colIndex) => {
+          const cell = XLSX.utils.encode_cell({ r: excelRow - 1, c: colIndex })
+          if (!worksheet[cell]) return
+          worksheet[cell].s = {
+            fill: { patternType: "solid", fgColor: { rgb: fillColor } },
+            font: { color: { rgb: "FFFFFF" }, bold: row.Level === "SID" },
+            alignment: { vertical: "center" },
+          }
+        })
+      })
       const workbook = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(workbook, worksheet, "Pronto Drilldown")
       const periodLabels = { last_week: "Last Week", last_4_weeks: "Last 4 Weeks", year_to_date: "Year To Date", all_time: "All Time" }
