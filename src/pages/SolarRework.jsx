@@ -138,7 +138,6 @@ export default function SolarRework({ onSelectAppointment }) {
 
   async function loadRows(targetPage = page) {
     const requestId = ++loadRequestId.current
-    if (activeTab === "quotes-sent") { setRows([]); setHasMore(false); setError(""); setLoading(false); return }
     if (!supabase) { setError("Supabase is not configured."); setLoading(false); return }
     setLoading(true)
     setRows([])
