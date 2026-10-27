@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import {
   ArrowLeft,
   Save,
@@ -56,6 +56,7 @@ function CustomerDetail({
   const [surveyProgress, setSurveyProgress] = useState(["outstanding", "outstanding", "outstanding", "outstanding"])
   const [documentsLoading, setDocumentsLoading] = useState(false)
   const [uploadingCategory, setUploadingCategory] = useState("")
+  const documentFileInputs = useRef({})
   const [documentError, setDocumentError] = useState("")
   const [documentNotice, setDocumentNotice] = useState("")
   const [openingDocument, setOpeningDocument] = useState("")
@@ -756,16 +757,13 @@ function CustomerDetail({
                     <button type="button" onClick={() => openDocument(categoryDocuments[0])} disabled={openingDocument === categoryDocuments[0].id} style={{ border: "1px solid #d7dee8", borderRadius: 6, padding: "7px 9px", background: "#fff", color: "#334155", fontSize: 10, cursor: "pointer" }}>{openingDocument === categoryDocuments[0].id ? "Working…" : "Open"}</button>
                     {Number(permissionLevel) >= 4 && <button type="button" onClick={() => deleteDocument(categoryDocuments[0])} aria-label={`Delete ${categoryDocuments[0].file_name}`} style={{ border: "1px solid #f0d4d4", borderRadius: 6, padding: 7, background: "#fff", color: "#a33b3b", cursor: "pointer" }}><Trash2 size={14} /></button>}
                   </div>
-                ) : (category.key === "survey_video" || category.key === "electricity_bill_epvs_waiver") ? (
-                  <label onClick={event => event.stopPropagation()} onMouseDown={event => event.stopPropagation()} style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 11px", borderRadius: 7, background: busy ? "#e2e8f0" : "#002d49", color: busy ? "#64748b" : "#fff", fontSize: 10, fontWeight: 700, cursor: busy ? "wait" : "pointer", opacity: busy ? .7 : 1 }}>
-                    {busy ? <LoaderCircle size={14} /> : <FileUp size={14} />}{busy ? "Uploading…" : "Upload"}
-                    <input type="file" accept={category.accept} multiple={category.multiple} disabled={Boolean(uploadingCategory)} onClick={event => event.stopPropagation()} onChange={event => { event.stopPropagation(); const selectedFiles = event.target.files; uploadDocuments(category.key, selectedFiles); event.target.value = "" }} style={{ display: "none" }} />
-                  </label>
                 ) : (
-                  <label style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 11px", borderRadius: 7, background: busy ? "#e2e8f0" : "#002d49", color: busy ? "#64748b" : "#fff", fontSize: 10, fontWeight: 700, cursor: busy ? "wait" : "pointer", opacity: busy ? .7 : 1 }}>
-                    {busy ? <LoaderCircle size={14} /> : <FileUp size={14} />}{busy ? "Uploading…" : "Upload"}
-                    <input type="file" accept={category.accept} multiple={category.multiple} disabled={Boolean(uploadingCategory)} onChange={event => { uploadDocuments(category.key, event.target.files); event.target.value = "" }} style={{ display: "none" }} />
-                  </label>
+                  <div style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 7 }}>
+                    <button type="button" disabled={Boolean(uploadingCategory)} onClick={event => { event.preventDefault(); event.stopPropagation(); documentFileInputs.current[category.key]?.click() }} style={{ border: 0, display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 11px", borderRadius: 7, background: busy ? "#e2e8f0" : "#002d49", color: busy ? "#64748b" : "#fff", fontSize: 10, fontWeight: 700, cursor: busy ? "wait" : "pointer", opacity: busy ? .7 : 1 }}>
+                      {busy ? <LoaderCircle size={14} /> : <FileUp size={14} />}{busy ? "Uploading…" : "Upload"}
+                    </button>
+                    <input ref={element => { documentFileInputs.current[category.key] = element }} type="file" accept={category.accept} multiple={category.multiple} disabled={Boolean(uploadingCategory)} onClick={event => event.stopPropagation()} onChange={event => { event.stopPropagation(); const selectedFiles = event.target.files; uploadDocuments(category.key, selectedFiles); event.target.value = "" }} style={{ display: "none" }} />
+                  </div>
                 )}
               </div>
               {category.key !== "survey_video" && category.key !== "electricity_bill_epvs_waiver" && <div style={{ padding: categoryDocuments.length ? "3px 12px" : "10px 12px", display: "grid", gap: 0 }}>
