@@ -187,11 +187,11 @@ export default async function handler(req, res) {
       .from("templates")
       .select("name,description,template_body,active")
       .eq("template_type", "email")
-      .eq("name", "Solar Solar Quote Email")
+      .eq("name", "Solar Quote Email")
       .eq("active", true)
       .maybeSingle()
     if (templateError) throw templateError
-    if (!emailTemplate) return await fail(500, "The active Solar Solar Quote Email template was not found. Open CRM Templates and activate it.")
+    if (!emailTemplate) return await fail(500, "The active Solar Quote Email template was not found. Open CRM Templates and activate it.")
 
     const replacements = {
       customer_name: appointment.name || "Customer",
@@ -200,8 +200,8 @@ export default async function handler(req, res) {
       sender,
     }
     const renderTemplate = value => String(value || "").replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, key) => replacements[key] ?? "")
-    const subject = renderTemplate(emailTemplate.description) || `Your Homeshield quote${appointment.quote_ref ? ` – ${appointment.quote_ref}` : ""}`
-    const emailBody = renderTemplate(emailTemplate.template_body) || `Dear ${appointment.name || "Customer"},\\n\\nPlease find attached your Homeshield quote.\\n\\nKind regards,\\nHomeshield Scotland Ltd`
+    const subject = renderTemplate(emailTemplate.description) || `Your Homeshield solar quote`
+    const emailBody = renderTemplate(emailTemplate.template_body) || `Dear ${appointment.name || "Customer"},\\n\\nPlease use the secure link to view your Homeshield solar quote.\\n\\nKind regards,\\nHomeshield Scotland Ltd`
     const sendResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(sender)}/sendMail`, {
       method: "POST",
       headers: {
