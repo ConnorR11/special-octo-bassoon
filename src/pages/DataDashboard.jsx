@@ -591,14 +591,14 @@ function DataDashboard() {
           font-size: 12px;
         }
 
-        .pronto-table col.pronto-col-name { width: 16%; }
-        .pronto-table col.pronto-col-introducer { width: 18%; }
-        .pronto-table col.pronto-col-first { width: 20%; }
-        .pronto-table col.pronto-col-latest { width: 22%; }
-        .pronto-table col.pronto-col-status { width: 14%; }
-        .pronto-table col.pronto-col-leads { width: 12%; }
-        .pronto-table col.pronto-col-booked { width: 10%; }
-        .pronto-table col.pronto-col-booked-percent { width: 10%; }
+        .pronto-table col.pronto-col-name { width: 34%; }
+        .pronto-table col.pronto-col-introducer { width: 34%; }
+        .pronto-table col.pronto-col-first { width: 10%; }
+        .pronto-table col.pronto-col-latest { width: 10%; }
+        .pronto-table col.pronto-col-status { width: 7%; }
+        .pronto-table col.pronto-col-leads { width: 7%; }
+        .pronto-table col.pronto-col-booked { width: 7%; }
+        .pronto-table col.pronto-col-booked-percent { width: 7%; }
 
         .pronto-table th,
         .pronto-table td {
@@ -612,6 +612,7 @@ function DataDashboard() {
         }
 
         .pronto-breakdown-table {
+          table-layout: fixed;
           width: calc(100% + 28px);
           margin-left: -14px;
           background: #fff;
