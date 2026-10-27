@@ -96,15 +96,10 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
         isContractNumberAtLeastS12345(deal.contract_number)
       )
       const eligibleDealIds = new Set(eligibleSolarDeals.map(deal => String(deal.id)))
-      const eligibleSurveyDocumentRows = surveyDocumentRows.filter(item => eligibleDealIds.has(String(item.deal_id)))
-      const generatedSurveyDealIds = new Set(eligibleSurveyDocumentRows.map(item => String(item.deal_id)))
-      const allProgressDocs = surveyProgressRows.flatMap(batch => batch.docs).filter(doc => eligibleDealIds.has(String(doc.deal_id)))
-      const allProgressAnswers = new Map(surveyProgressRows.flatMap(batch => batch.answers).filter(item => eligibleDealIds.has(String(item.deal_id))).map(item => [String(item.deal_id), item.answers || {}]))
+      const allProgressDocs = surveyProgressRows.flatMap(batch => batch.docs)
+      const allProgressAnswers = new Map(surveyProgressRows.flatMap(batch => batch.answers).map(item => [String(item.deal_id), item.answers || {}]))
       const photoSections = ["Front of Property", "Rear of Property", "Side of Property", "Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Loft Access Point", "Loft Roof Truss", "Internet DC Route", "External DC Route", "Proposed Inverter Location", "Proposed Battery Location", "Proposed Canopy Location", "Proposed Panel Layout", "Alternative Roof Elevations", "Existing Solar Equipment", "Existing EV Charger", "High Electrical Usage Items", "Shading Issues"]
       const outstanding = eligibleSolarDeals
-        .filter(deal => {
-          return !generatedSurveyDealIds.has(String(deal.id))
-        })
         .map(deal => {
           const dealDocs = allProgressDocs.filter(doc => String(doc.deal_id) === String(deal.id))
           const answers = allProgressAnswers.get(String(deal.id)) || {}
