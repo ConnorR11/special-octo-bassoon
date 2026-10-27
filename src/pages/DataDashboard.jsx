@@ -636,6 +636,8 @@ function DataDashboard() {
         .pronto-tree-sid td { background: #eef4fb; }
         .pronto-tree-c1 td { background: #ffffff; }
         .pronto-tree-c3 td { background: #ffffff; color: #243449; }
+        .pronto-rate-low { color: #dc2626 !important; font-weight: 700; }
+        .pronto-rate-normal { color: inherit; }
         .pronto-tree-loading td { background: #f8fafc; color: #64748b; padding: 12px 16px; }
         .pronto-tree-total td { background: #f8fafc; font-weight: 700; border-top: 1px solid #d7e0ea; }
 
@@ -1186,7 +1188,7 @@ function DataDashboard() {
                         <td>{prontoStatus(row.latest_lead_date)}</td>
                         <td>{formatNumber(row.lead_count)}</td>
                         <td>{formatNumber(row.booked_count)}</td>
-                        <td>{row.lead_count ? `${((row.booked_count / row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
+                        <td className={row.lead_count && (row.booked_count / row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{row.lead_count ? `${((row.booked_count / row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
                         <td aria-hidden="true"></td>
                       </tr>
                       {expandedIntroducers[row.pronto_sid] && (
@@ -1209,7 +1211,7 @@ function DataDashboard() {
                                 <td>{prontoStatus(sidRow.latest_lead_date)}</td>
                                 <td>{formatNumber(sidRow.lead_count)}</td>
                                 <td>{formatNumber(sidRow.booked_count)}</td>
-                                <td>{sidRow.lead_count ? `${((sidRow.booked_count / sidRow.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
+                                <td className={sidRow.lead_count && (sidRow.booked_count / sidRow.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{sidRow.lead_count ? `${((sidRow.booked_count / sidRow.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
                                 <td aria-hidden="true"></td>
                               </tr>
                               {sidExpanded && (
@@ -1232,7 +1234,7 @@ function DataDashboard() {
                                         <td>{prontoStatus(c1Row.latest_lead_date)}</td>
                                         <td>{formatNumber(c1Row.lead_count)}</td>
                                         <td>{formatNumber(c1Row.booked_count)}</td>
-                                        <td>{c1Row.lead_count ? `${((c1Row.booked_count / c1Row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
+                                        <td className={c1Row.lead_count && (c1Row.booked_count / c1Row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{c1Row.lead_count ? `${((c1Row.booked_count / c1Row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
                                         <td aria-hidden="true"></td>
                                       </tr>
                                       {c1Expanded && (
@@ -1246,7 +1248,7 @@ function DataDashboard() {
                                             <td>{prontoStatus(c3Row.latest_lead_date)}</td>
                                             <td>{formatNumber(c3Row.lead_count)}</td>
                                             <td>{formatNumber(c3Row.booked_count)}</td>
-                                            <td>{c3Row.lead_count ? `${((c3Row.booked_count / c3Row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
+                                            <td className={c3Row.lead_count && (c3Row.booked_count / c3Row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{c3Row.lead_count ? `${((c3Row.booked_count / c3Row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
                                             <td aria-hidden="true"></td>
                                           </tr>
                                         ))
