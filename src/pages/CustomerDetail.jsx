@@ -759,7 +759,7 @@ function CustomerDetail({
                 ) : (category.key === "survey_video" || category.key === "electricity_bill_epvs_waiver") ? (
                   <label style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 11px", borderRadius: 7, background: busy ? "#e2e8f0" : "#002d49", color: busy ? "#64748b" : "#fff", fontSize: 10, fontWeight: 700, cursor: busy ? "wait" : "pointer", opacity: busy ? .7 : 1 }}>
                     {busy ? <LoaderCircle size={14} /> : <FileUp size={14} />}{busy ? "Uploading…" : "Upload"}
-                    <input type="file" accept={category.accept} multiple={category.multiple} disabled={Boolean(uploadingCategory)} onChange={event => { uploadDocuments(category.key, event.target.files); event.target.value = "" }} style={{ display: "none" }} />
+                    <input type="file" accept={category.accept} multiple={category.multiple} disabled={Boolean(uploadingCategory)} onClick={event => event.stopPropagation()} onChange={event => { event.stopPropagation(); const selectedFiles = event.target.files; uploadDocuments(category.key, selectedFiles); event.target.value = "" }} style={{ display: "none" }} />
                   </label>
                 ) : (
                   <label style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 11px", borderRadius: 7, background: busy ? "#e2e8f0" : "#002d49", color: busy ? "#64748b" : "#fff", fontSize: 10, fontWeight: 700, cursor: busy ? "wait" : "pointer", opacity: busy ? .7 : 1 }}>
