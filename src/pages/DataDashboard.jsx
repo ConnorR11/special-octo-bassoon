@@ -91,6 +91,9 @@ function DataDashboard() {
   const [error, setError] = useState("")
   const [activeTab, setActiveTab] = useState("overview")
   const [prontoSidRows, setProntoSidRows] = useState([])
+  const [prontoMonthlyRows, setProntoMonthlyRows] = useState([])
+  const [prontoMonthlyLoading, setProntoMonthlyLoading] = useState(false)
+  const [prontoMonthlyError, setProntoMonthlyError] = useState("")
   const [prontoSidTotal, setProntoSidTotal] = useState(0)
   const [prontoNoContactTotal, setProntoNoContactTotal] = useState(0)
   const [prontoNoContactBySid, setProntoNoContactBySid] = useState({})
@@ -206,6 +209,21 @@ function DataDashboard() {
       setProntoSidError(err?.message || "Unable to export the Pronto drilldown report.")
     } finally { setProntoExporting(false) }
   }
+  async function loadProntoMonthlyTrends() {
+    if (!supabase) return
+    setProntoMonthlyLoading(true)
+    setProntoMonthlyError("")
+    try {
+      const { data, error: rpcError } = await supabase.rpc("get_pronto_monthly_introducer_trends", { date_period: prontoDatePeriod })
+      if (rpcError) throw rpcError
+      setProntoMonthlyRows((data || []).map((row) => ({ ...row, month_start: String(row.month_start).slice(0, 10), lead_count: Number(row.lead_count || 0), booked_count: Number(row.booked_count || 0) })))
+    } catch (err) {
+      console.error("Error loading Pronto monthly trends:", err)
+      setProntoMonthlyError(err?.message || "Unable to load monthly Pronto trends.")
+      setProntoMonthlyRows([])
+    } finally { setProntoMonthlyLoading(false) }
+  }
+
   async function loadProntoSidData() {
     if (!supabase) {
       setProntoSidError("Supabase is not configured.")
@@ -526,6 +544,7 @@ function DataDashboard() {
   useEffect(() => {
     if (activeTab === "pronto") {
       loadProntoSidData()
+      loadProntoMonthlyTrends()
     }
   }, [activeTab, prontoDatePeriod])
 
