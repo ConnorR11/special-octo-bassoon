@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import { Link2, RefreshCw, Search, Sun } from "lucide-react"
+import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts"
 import { supabase } from "../lib/supabase"
 
 const PAGE_SIZE = 50
@@ -138,12 +139,54 @@ export default function SolarRework({ onSelectAppointment }) {
   const [linkedSoldFilter, setLinkedSoldFilter] = useState("all")
   const [resultFilter, setResultFilter] = useState("all")
   const [quoteViewedFilter, setQuoteViewedFilter] = useState("viewed")
+  const [quoteDailyStats, setQuoteDailyStats] = useState([])
+  const [quoteStatsLoading, setQuoteStatsLoading] = useState(false)
   const [linkedReadinessFilter, setLinkedReadinessFilter] = useState("all")
   const [page, setPage] = useState(0)
   const [activeTab, setActiveTab] = useState("unlinked")
   const [linkedReadinessTab, setLinkedReadinessTab] = useState("not-ready")
   const loadRequestId = useRef(0)
 
+  useEffect(() => {
+    if (activeTab !== "quotes-sent" || !supabase) return
+    let cancelled = false
+    async function loadQuoteDailyStats() {
+      setQuoteStatsLoading(true)
+      try {
+        const since = new Date()
+        since.setDate(since.getDate() - 29)
+        since.setHours(0, 0, 0, 0)
+        const { data, error } = await supabase.from("solar_quotes")
+          .select("sent_at,last_viewed_at,status")
+          .not("sent_at", "is", null)
+          .gte("sent_at", since.toISOString())
+          .order("sent_at", { ascending: true })
+        if (error) throw error
+        const days = Array.from({ length: 30 }, (_, index) => {
+          const date = new Date(since)
+          date.setDate(date.getDate() + index)
+          const key = date.toISOString().slice(0, 10)
+          return { date: key, label: date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }), sent: 0, opened: 0, openedPercent: 0 }
+        })
+        const byDate = Object.fromEntries(days.map(day => [day.date, day]))
+        for (const quote of data || []) {
+          const key = String(quote.sent_at).slice(0, 10)
+          if (!byDate[key]) continue
+          byDate[key].sent += 1
+          if (quote.last_viewed_at) byDate[key].opened += 1
+        }
+        for (const day of days) day.openedPercent = day.sent ? Math.round(day.opened / day.sent * 100) : 0
+        if (!cancelled) setQuoteDailyStats(days)
+      } catch (err) {
+        console.error("Unable to load daily solar quote stats:", err)
+        if (!cancelled) setQuoteDailyStats([])
+      } finally {
+        if (!cancelled) setQuoteStatsLoading(false)
+      }
+    }
+    loadQuoteDailyStats()
+    return () => { cancelled = true }
+  }, [activeTab])
   async function loadRows(targetPage = page) {
     const requestId = ++loadRequestId.current
     if (!supabase) { setError("Supabase is not configured."); setLoading(false); return }
@@ -393,6 +436,24 @@ export default function SolarRework({ onSelectAppointment }) {
       </div>
     </div>
 
+    {activeTab === "quotes-sent" && <div style={{ ...cardStyle, padding: 16, marginBottom: 14 }}>
+      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Quote sends and open rate</div>
+      <div style={{ ...muted, marginBottom: 12 }}>Last 30 days · Open rate is the percentage of quotes sent on each day that have been opened at least once.</div>
+      {quoteStatsLoading ? <div style={{ padding: 30, textAlign: "center", color: "#64748b" }}>Loading quote activity…</div> : <div style={{ width: "100%", height: 280 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={quoteDailyStats} margin={{ top: 8, right: 14, bottom: 4, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={4} />
+            <YAxis yAxisId="sent" allowDecimals={false} tick={{ fontSize: 10 }} />
+            <YAxis yAxisId="rate" orientation="right" domain={[0, 100]} tickFormatter={value => value + "%"} tick={{ fontSize: 10 }} />
+            <Tooltip formatter={(value, name) => name === "Open rate" ? [value + "%", name] : [value, name]} />
+            <Legend />
+            <Bar yAxisId="sent" dataKey="sent" name="Quotes sent" fill="#0f766e" radius={[3, 3, 0, 0]} />
+            <Line yAxisId="rate" type="monotone" dataKey="openedPercent" name="Open rate" stroke="#2563eb" strokeWidth={2} dot={false} />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+    </div>}
     <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap" }}>
         <div style={{ fontWeight: 700, fontSize: 13 }}>{activeTab === "quotes-sent" ? "Quotes Sent" : loading ? "Loading appointments…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${page * PAGE_SIZE + rows.length} ${activeTab !== "unlinked" ? "linked" : "unlinked"} appointments`}</div>
