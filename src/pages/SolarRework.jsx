@@ -122,11 +122,11 @@ function dateLabel(value) {
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
 }
 
-function QuoteDailyStatsPanel({ active, loading, stats, cardStyle, muted }) {
+function QuoteDailyStatsPanel({ active, loading, stats, cardStyle, muted, firstSentDate, lastSentDate }) {
   if (!active) return null
   return <div style={{ ...cardStyle, padding: 16, marginBottom: 14 }}>
     <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Quote sends and open rate</div>
-    <div style={{ ...muted, marginBottom: 12 }}>Last 30 days · Open rate is the percentage of quotes sent on each day that have been opened at least once.</div>
+    <div style={{ ...muted, marginBottom: 12 }}>{firstSentDate && lastSentDate ? `${firstSentDate} – ${lastSentDate}` : "No quotes sent yet"} · Open rate is the percentage of quotes sent on each day that have been opened at least once.</div>
     {loading ? <div style={{ padding: 30, textAlign: "center", color: "#64748b" }}>Loading quote activity…</div> : <div style={{ width: "100%", height: 280 }}>
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={stats} margin={{ top: 8, right: 14, bottom: 4, left: 0 }}>
@@ -162,6 +162,7 @@ export default function SolarRework({ onSelectAppointment }) {
   const [resultFilter, setResultFilter] = useState("all")
   const [quoteViewedFilter, setQuoteViewedFilter] = useState("viewed")
   const [quoteDailyStats, setQuoteDailyStats] = useState([])
+  const [quoteStatsRange, setQuoteStatsRange] = useState({ first: "", last: "" })
   const [quoteStatsLoading, setQuoteStatsLoading] = useState(false)
   const [linkedReadinessFilter, setLinkedReadinessFilter] = useState("all")
   const [page, setPage] = useState(0)
@@ -175,33 +176,40 @@ export default function SolarRework({ onSelectAppointment }) {
     async function loadQuoteDailyStats() {
       setQuoteStatsLoading(true)
       try {
-        const since = new Date()
-        since.setDate(since.getDate() - 29)
-        since.setHours(0, 0, 0, 0)
         const { data, error } = await supabase.from("solar_quotes")
           .select("sent_at,last_viewed_at,status")
           .not("sent_at", "is", null)
-          .gte("sent_at", since.toISOString())
+          .in("status", ["sent", "delivered", "viewed"])
           .order("sent_at", { ascending: true })
         if (error) throw error
-        const days = Array.from({ length: 30 }, (_, index) => {
-          const date = new Date(since)
+        const sentQuotes = data || []
+        const dateKey = value => String(value).slice(0, 10)
+        const firstDate = sentQuotes.length ? dateKey(sentQuotes[0].sent_at) : ""
+        const lastDate = sentQuotes.length ? dateKey(sentQuotes[sentQuotes.length - 1].sent_at) : ""
+        const firstDay = firstDate ? new Date(firstDate + "T00:00:00") : new Date()
+        const lastDay = lastDate ? new Date(lastDate + "T00:00:00") : new Date()
+        const dayCount = firstDate ? Math.max(1, Math.round((lastDay - firstDay) / 86400000) + 1) : 0
+        const days = Array.from({ length: dayCount }, (_, index) => {
+          const date = new Date(firstDay)
           date.setDate(date.getDate() + index)
           const key = date.toISOString().slice(0, 10)
           return { date: key, label: date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }), sent: 0, opened: 0, openedPercent: 0 }
         })
         const byDate = Object.fromEntries(days.map(day => [day.date, day]))
-        for (const quote of data || []) {
+        for (const quote of sentQuotes) {
           const key = String(quote.sent_at).slice(0, 10)
           if (!byDate[key]) continue
           byDate[key].sent += 1
           if (quote.last_viewed_at) byDate[key].opened += 1
         }
         for (const day of days) day.openedPercent = day.sent ? Math.round(day.opened / day.sent * 100) : 0
-        if (!cancelled) setQuoteDailyStats(days)
+        if (!cancelled) {
+          setQuoteDailyStats(days)
+          setQuoteStatsRange({ first: firstDate, last: lastDate })
+        }
       } catch (err) {
         console.error("Unable to load daily solar quote stats:", err)
-        if (!cancelled) setQuoteDailyStats([])
+        if (!cancelled) { setQuoteDailyStats([]); setQuoteStatsRange({ first: "", last: "" }) }
       } finally {
         if (!cancelled) setQuoteStatsLoading(false)
       }
@@ -458,7 +466,7 @@ export default function SolarRework({ onSelectAppointment }) {
       </div>
     </div>
 
-    <QuoteDailyStatsPanel active={activeTab === "quotes-sent"} loading={quoteStatsLoading} stats={quoteDailyStats} cardStyle={cardStyle} muted={muted} />
+    <QuoteDailyStatsPanel active={activeTab === "quotes-sent"} loading={quoteStatsLoading} stats={quoteDailyStats} cardStyle={cardStyle} muted={muted} firstSentDate={quoteStatsRange.first ? dateLabel(quoteStatsRange.first) : ""} lastSentDate={quoteStatsRange.last ? dateLabel(quoteStatsRange.last) : ""} />
     <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap" }}>
         <div style={{ fontWeight: 700, fontSize: 13 }}>{activeTab === "quotes-sent" ? "Quotes Sent" : loading ? "Loading appointments…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${page * PAGE_SIZE + rows.length} ${activeTab !== "unlinked" ? "linked" : "unlinked"} appointments`}</div>
