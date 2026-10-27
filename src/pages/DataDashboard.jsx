@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
-import { BarChart3, RefreshCw, TrendingUp, Search } from "lucide-react"
+import { BarChart3, RefreshCw, TrendingUp, Search, FileSpreadsheet } from "lucide-react"
+import * as XLSX from "xlsx"
 import {
   Bar,
   BarChart,
@@ -94,6 +95,7 @@ function DataDashboard() {
   const [prontoNoContactTotal, setProntoNoContactTotal] = useState(0)
   const [prontoNoContactBySid, setProntoNoContactBySid] = useState({})
   const [prontoSidLoading, setProntoSidLoading] = useState(false)
+  const [prontoExporting, setProntoExporting] = useState(false)
   const [prontoSidError, setProntoSidError] = useState("")
   const [prontoSidSearch, setProntoSidSearch] = useState("")
   const [prontoDatePeriod, setProntoDatePeriod] = useState("last_week")
@@ -142,6 +144,51 @@ function DataDashboard() {
     return <span style={{ display: "inline-block", minWidth: 42, textAlign: "center", padding: "3px 8px", borderRadius: 999, background: live ? "#dcfce7" : "#fee2e2", color: live ? "#166534" : "#991b1b", fontSize: 11, fontWeight: 700 }}>{live ? "Live" : "Off"}</span>
   }
 
+  async function exportProntoDrilldown() {
+    if (!supabase || prontoExporting) return
+    setProntoExporting(true)
+    setProntoSidError("")
+    try {
+      const reportRows = []
+      const statusFor = (date) => isProntoLive(date) ? "Live" : "Off"
+      const addRow = ({ level, introducer, sid = "", c1 = "", c3 = "", first, latest, leads, booked }) => {
+        const count = Number(leads || 0)
+        const bookedCount = Number(booked || 0)
+        reportRows.push({ Level: level, Introducer: introducer, SID: sid, "C1 Campaign": c1, "C3 Campaign": c3, "First Received": first || "", "Latest Received": latest || "", Status: statusFor(latest), Leads: count, Booked: bookedCount, "Booked %": Number((count ? bookedCount / count * 100 : 0).toFixed(1)) })
+      }
+      for (const introRow of filteredProntoSidRows) {
+        const introducer = introRow.pronto_sid
+        addRow({ level: "Introducer", introducer, first: introRow.first_lead_date, latest: introRow.latest_lead_date, leads: introRow.lead_count, booked: introRow.booked_count })
+        const { data: sidRows, error: sidError } = await supabase.rpc("get_pronto_introducer_sid_counts", { introducer_filter: introducer, date_period: prontoDatePeriod })
+        if (sidError) throw sidError
+        for (const sidRow of sidRows || []) {
+          const sid = String(sidRow.pronto_sid || "(No SID)")
+          addRow({ level: "SID", introducer, sid, first: sidRow.first_lead_date, latest: sidRow.latest_lead_date, leads: sidRow.lead_count, booked: sidRow.booked_count })
+          const { data: c1Rows, error: c1Error } = await supabase.rpc("get_pronto_introducer_sid_c1_counts", { introducer_filter: introducer, sid_filter: sid, date_period: prontoDatePeriod })
+          if (c1Error) throw c1Error
+          for (const c1Row of c1Rows || []) {
+            const c1 = String(c1Row.pronto_c1 || "(Blank / NULL)")
+            addRow({ level: "C1", introducer, sid, c1, first: c1Row.first_lead_date, latest: c1Row.latest_lead_date, leads: c1Row.lead_count, booked: c1Row.booked_count })
+            const { data: c3Rows, error: c3Error } = await supabase.rpc("get_pronto_introducer_sid_c1_c3_counts", { introducer_filter: introducer, sid_filter: sid, c1_filter: c1, date_period: prontoDatePeriod })
+            if (c3Error) throw c3Error
+            for (const c3Row of c3Rows || []) addRow({ level: "C3", introducer, sid, c1, c3: String(c3Row.pronto_c3 || "(Blank / NULL)"), first: c3Row.first_lead_date, latest: c3Row.latest_lead_date, leads: c3Row.lead_count, booked: c3Row.booked_count })
+          }
+        }
+      }
+      if (!reportRows.length) { setProntoSidError("No Pronto data is available for the selected filters."); return }
+      const worksheet = XLSX.utils.json_to_sheet(reportRows)
+      worksheet["!cols"] = [{ wch: 14 }, { wch: 24 }, { wch: 20 }, { wch: 42 }, { wch: 42 }, { wch: 16 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }]
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Pronto Drilldown")
+      const periodLabels = { last_week: "Last Week", last_4_weeks: "Last 4 Weeks", year_to_date: "Year To Date", all_time: "All Time" }
+      const info = XLSX.utils.aoa_to_sheet([["Pronto Buy Drilldown Report"], ["Date period", periodLabels[prontoDatePeriod] || prontoDatePeriod], ["Status filter", prontoStatusFilter === "all" ? "All Statuses" : prontoStatusFilter === "live" ? "Live" : "Off"], ["Search", prontoSidSearch.trim() || "None"], ["Generated", new Date().toLocaleString("en-GB")], [], ["Rows exported", reportRows.length]])
+      XLSX.utils.book_append_sheet(workbook, info, "Report Info")
+      XLSX.writeFile(workbook, "pronto-buy-drilldown-" + new Date().toISOString().slice(0, 10) + ".xlsx")
+    } catch (err) {
+      console.error("Error exporting Pronto drilldown:", err)
+      setProntoSidError(err?.message || "Unable to export the Pronto drilldown report.")
+    } finally { setProntoExporting(false) }
+  }
   async function loadProntoSidData() {
     if (!supabase) {
       setProntoSidError("Supabase is not configured.")
@@ -1137,7 +1184,15 @@ function DataDashboard() {
                   onChange={(event) => setProntoSidSearch(event.target.value)}
                   placeholder="Search introducer"
                 />
-              </div>
+              </div>              <button
+                type="button"
+                onClick={exportProntoDrilldown}
+                disabled={prontoExporting || prontoSidLoading}
+                style={{ height: 36, padding: "0 12px", display: "inline-flex", alignItems: "center", gap: 7, border: "1px solid #17365d", borderRadius: 8, background: prontoExporting ? "#e2e8f0" : "#17365d", color: prontoExporting ? "#64748b" : "#fff", font: "inherit", fontSize: 12, fontWeight: 600, cursor: prontoExporting ? "wait" : "pointer", whiteSpace: "nowrap" }}
+              >
+                <FileSpreadsheet size={14} />
+                {prontoExporting ? "Exporting…" : "Export drilldown"}
+              </button>
             </div>
           </div>
 
