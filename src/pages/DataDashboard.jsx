@@ -600,6 +600,35 @@ function DataDashboard() {
         .pronto-table col.pronto-col-booked { width: 7%; }
         .pronto-table col.pronto-col-booked-percent { width: 7%; }
 
+        /* Keep the compact, consistent spacing at every drilldown level. */
+        .pronto-table,
+        .pronto-breakdown-table {
+          table-layout: fixed;
+          width: 100%;
+        }
+
+        .pronto-breakdown-cell {
+          padding: 8px 0 10px !important;
+        }
+
+        .pronto-breakdown-table {
+          margin-left: 0;
+          width: 100%;
+          border-radius: 0;
+        }
+
+        .pronto-breakdown-table th,
+        .pronto-breakdown-table td {
+          padding: 10px 13px;
+          line-height: 1.25;
+          vertical-align: middle;
+        }
+
+        .pronto-breakdown-table th:first-child,
+        .pronto-breakdown-table td:first-child {
+          padding-left: 13px;
+        }
+
         .pronto-table th,
         .pronto-table td {
           box-sizing: border-box;
