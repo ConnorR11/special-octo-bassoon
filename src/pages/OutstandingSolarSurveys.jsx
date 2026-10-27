@@ -37,7 +37,7 @@ function hasDigitalContract(appointment) {
 }
 
 function isContractNumberAtLeastS12345(value) {
-  const match = String(value || "").trim().match(/^S(\\d+)$/i)
+  const match = String(value || "").trim().match(/^S(\d+)$/i)
   return Boolean(match && Number(match[1]) >= 12345)
 }
 
