@@ -421,15 +421,6 @@ function DataDashboard() {
     }
   }, [activeTab, prontoDatePeriod])
 
-  useEffect(() => {
-    if (activeTab === "pronto" && missingSidC1Rows.length === 0 && !missingSidC1Loading) {
-      loadMissingSidC1Values()
-    }
-    if (activeTab === "pronto" && missingSidLeadRows.length === 0 && !missingSidLeadsLoading) {
-      loadMissingSidLeads()
-    }
-  }, [activeTab])
-
   const filteredMissingSidC1Rows = useMemo(() => {
     const search = missingSidC1Search.trim().toLowerCase()
     return missingSidC1Rows.filter((row) => !search || row.pronto_c1.toLowerCase().includes(search))
