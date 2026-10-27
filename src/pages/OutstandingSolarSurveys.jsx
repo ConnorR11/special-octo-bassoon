@@ -60,6 +60,8 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
         const { data, error: dealsError } = await supabase
           .from("deals")
           .select("*")
+          .gte("sale_date", "2026-01-01")
+          .ilike("product", "%solar%")
           .order("sale_date", { ascending: false })
           .range(dealOffset, dealOffset + 999)
         if (dealsError) throw dealsError
