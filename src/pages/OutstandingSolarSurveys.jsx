@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { RefreshCw, Search, FileText, ClipboardCheck, AlertCircle } from "lucide-react"
 import { supabase } from "../lib/supabase"
 import SurveyProgressBar from "../components/SurveyProgressBar"
+import { useVisibility } from "../context/VisibilityContext"
 
 const styles = {
   page: { padding: "24px 28px 40px", color: "#17212b", minHeight: "100%", background: "#f6f8fb", boxSizing: "border-box" },
@@ -37,6 +38,7 @@ function hasDigitalContract(appointment) {
 }
 
 export default function OutstandingSolarSurveys({ onSelectDeal }) {
+  const { canSeeDeal } = useVisibility()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -52,7 +54,7 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
     setLoading(true)
     setError("")
     try {
-      const solarDeals = []
+      const fetchedSolarDeals = []
       let dealOffset = 0
       while (true) {
         const { data, error: dealsError } = await supabase
@@ -63,11 +65,14 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
           .range(dealOffset, dealOffset + 999)
         if (dealsError) throw dealsError
         const batch = data || []
-        solarDeals.push(...batch)
+        fetchedSolarDeals.push(...batch)
         if (batch.length < 1000) break
         dealOffset += 1000
       }
 
+      // Apply the shared CRM deal-visibility rules so branch and sales managers
+      // see qualifying deals for their own branch, not just deals returned by a broad query.
+      const solarDeals = fetchedSolarDeals.filter(deal => canSeeDeal(deal))
       const appointmentIds = [...new Set(solarDeals.map(deal => String(deal.appointment_row_id || "")).filter(Boolean))]
       const appointmentRows = []
       for (let offset = 0; offset < appointmentIds.length; offset += 500) {
@@ -140,7 +145,7 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [canSeeDeal])
 
   useEffect(() => { load() }, [load])
 
