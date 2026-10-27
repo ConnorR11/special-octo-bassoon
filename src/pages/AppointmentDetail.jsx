@@ -4,7 +4,6 @@ import {supabase} from "../lib/supabase"
 import EPVSCalculator from "../EPVSCalculator"
 import WindowCosting from "../WindowCosting"
 import {GenerateSolarContract} from "../contracts/GenerateSolarContract"
-import {GenerateSolarQuote} from "../contracts/GenerateSolarQuote"
 import ActionHistory from "../components/ActionHistory"
 import AppointmentActions from "../components/AppointmentActions"
 
