@@ -119,9 +119,7 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
       const allProgressDocs = surveyProgressRows.flatMap(batch => batch.docs).filter(doc => eligibleDealIds.has(String(doc.deal_id)))
       const allProgressAnswers = new Map(surveyProgressRows.flatMap(batch => batch.answers).filter(item => eligibleDealIds.has(String(item.deal_id))).map(item => [String(item.deal_id), item.answers || {}]))
       const photoSections = ["Front of Property", "Rear of Property", "Side of Property", "Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Loft Access Point", "Loft Roof Truss", "Internet DC Route", "External DC Route", "Proposed Inverter Location", "Proposed Battery Location", "Proposed Canopy Location", "Proposed Panel Layout", "Alternative Roof Elevations", "Existing Solar Equipment", "Existing EV Charger", "High Electrical Usage Items", "Shading Issues"]
-      const excludedStages = new Set(["customer cancelled", "decline"])
       const outstanding = eligibleSolarDeals
-        .filter(deal => !excludedStages.has(getPipedriveStage(deal).toLowerCase()))
         .filter(deal => {
           const appointment = appointmentsById.get(String(deal.appointment_row_id || ""))
           return !generatedSurveyDealIds.has(String(deal.id))
