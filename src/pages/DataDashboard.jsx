@@ -635,8 +635,8 @@ function DataDashboard() {
         }
 
         .pronto-table th {
-          background: #f8fafc;
-          color: #64748b;
+          background: #17365d;
+          color: #ffffff;
           text-align: left;
           font-weight: 700;
           padding: 11px 13px;
