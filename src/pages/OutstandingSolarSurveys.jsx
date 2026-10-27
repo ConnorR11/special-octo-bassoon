@@ -52,32 +52,88 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
     setLoading(true)
     setError("")
     try {
-      // Single-table query: global RLS policies control visibility.
-      // Survey status is denormalised onto deals and kept current by database triggers.
-      const { data: deals, error: dealsError } = await supabase
-        .from("deals")
-        .select("*")
-        .gte("sale_date", "2026-01-01")
-        .or("product.ilike.%solar%,pipedrive_data->>product.ilike.%solar%")
-        .eq("has_digital_contract", true)
-        .eq("has_survey_pdf", false)
-        .order("sale_date", { ascending: false })
-      if (dealsError) throw dealsError
+      const fetchedDeals = []
+      let dealOffset = 0
+      while (true) {
+        const { data, error: dealsError } = await supabase
+          .from("deals")
+          .select("*")
+          .gte("sale_date", "2026-01-01")
+          .or("product.ilike.%solar%,pipedrive_data->>product.ilike.%solar%")
+          .order("sale_date", { ascending: false })
+          .range(dealOffset, dealOffset + 999)
+        if (dealsError) throw dealsError
+        const batch = data || []
+        fetchedDeals.push(...batch)
+        if (batch.length < 1000) break
+        dealOffset += 1000
+      }
 
+      // Product can be stored in either the top-level column or Pipedrive payload.
+      // Apply visibility after loading all records so a nested product field doesn't
+      // cause a manager's rep deals to be excluded before visibility is checked.
+      const solarDeals = fetchedDeals.filter(isSolarDeal)
+      const appointmentIds = [...new Set(solarDeals.map(deal => String(deal.appointment_row_id || "")).filter(Boolean))]
+      const appointmentRows = []
+      for (let offset = 0; offset < appointmentIds.length; offset += 500) {
+        const { data, error: appointmentsError } = await supabase
+          .from("appointments")
+          .select("appointment_row_id,contract_number,signature_path,express_fit_signature_path,seg_disclaimer_signature_path")
+          .in("appointment_row_id", appointmentIds.slice(offset, offset + 500))
+        if (appointmentsError) throw appointmentsError
+        appointmentRows.push(...(data || []))
+      }
+
+      const solarDealIds = solarDeals.map(deal => String(deal.id))
+      const surveyDocumentRows = []
+      const surveyProgressRows = []
+      for (let offset = 0; offset < solarDealIds.length; offset += 500) {
+        const { data, error: documentsError } = await supabase
+          .from("deal_documents")
+          .select("deal_id")
+          .eq("category", "survey_pdf")
+          .in("deal_id", solarDealIds.slice(offset, offset + 500))
+        if (documentsError) throw documentsError
+        surveyDocumentRows.push(...(data || []))
+      }
+      for (let offset = 0; offset < solarDealIds.length; offset += 500) {
+        const ids = solarDealIds.slice(offset, offset + 500)
+        const [{ data: docs, error: docsError }, { data: answers, error: answersError }] = await Promise.all([
+          supabase.from("deal_documents").select("deal_id,category,survey_section").in("deal_id", ids),
+          supabase.from("deal_survey_answers").select("deal_id,answers").in("deal_id", ids),
+        ])
+        if (docsError) throw docsError
+        if (answersError) throw answersError
+        surveyProgressRows.push({ docs: docs || [], answers: answers || [] })
+      }
+
+      const appointmentsById = new Map(appointmentRows.map(item => [String(item.appointment_row_id), item]))
+      const generatedSurveyDealIds = new Set(surveyDocumentRows.map(item => String(item.deal_id)))
+      const allProgressDocs = surveyProgressRows.flatMap(batch => batch.docs)
+      const allProgressAnswers = new Map(surveyProgressRows.flatMap(batch => batch.answers).map(item => [String(item.deal_id), item.answers || {}]))
+      const photoSections = ["Front of Property", "Rear of Property", "Side of Property", "Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Loft Access Point", "Loft Roof Truss", "Internet DC Route", "External DC Route", "Proposed Inverter Location", "Proposed Battery Location", "Proposed Canopy Location", "Proposed Panel Layout", "Alternative Roof Elevations", "Existing Solar Equipment", "Existing EV Charger", "High Electrical Usage Items", "Shading Issues"]
       const excludedStages = new Set(["customer cancelled", "decline"])
-      const outstanding = (deals || [])
-        .filter(isSolarDeal)
+      const outstanding = solarDeals
         .filter(deal => !excludedStages.has(getPipedriveStage(deal).toLowerCase()))
+        .filter(deal => {
+          const appointment = appointmentsById.get(String(deal.appointment_row_id || ""))
+          return hasDigitalContract(appointment) && !generatedSurveyDealIds.has(String(deal.id))
+        })
         .map(deal => {
-          const progress = deal.survey_progress || {}
+          const dealDocs = allProgressDocs.filter(doc => String(doc.deal_id) === String(deal.id))
+          const answers = allProgressAnswers.get(String(deal.id)) || {}
+          const answeredCount = Object.values(answers).filter(value => String(value || "").trim()).length
+          const checklistComplete = answeredCount >= 27
+          const photoSectionsComplete = new Set(dealDocs.filter(doc => doc.category === "survey_photos").map(doc => doc.survey_section || "Front of Property"))
+          const photoCount = dealDocs.filter(doc => doc.category === "survey_photos").length
           return {
             ...deal,
-            linked_contract_number: deal.contract_number || "",
+            linked_contract_number: appointmentsById.get(String(deal.appointment_row_id || ""))?.contract_number || "",
             surveyProgress: [
-              progress.video || "outstanding",
-              progress.epvs_waiver || "outstanding",
-              progress.checklist || "outstanding",
-              progress.photos || "outstanding",
+              dealDocs.some(doc => doc.category === "survey_video") ? "complete" : "outstanding",
+              dealDocs.some(doc => doc.category === "electricity_bill_epvs_waiver") ? "complete" : "outstanding",
+              checklistComplete ? "complete" : answeredCount > 0 ? "in-progress" : "outstanding",
+              photoSections.every(section => photoSectionsComplete.has(section)) ? "complete" : photoCount > 0 ? "in-progress" : "outstanding",
             ],
           }
         })
