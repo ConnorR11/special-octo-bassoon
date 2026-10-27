@@ -107,6 +107,13 @@ function startOfCurrentWeekISO() {
   now.setHours(0, 0, 0, 0)
   return now.toISOString().slice(0, 10)
 }
+function startOfPreviousWeekISO() {
+  const now = new Date()
+  const day = (now.getDay() + 6) % 7
+  now.setDate(now.getDate() - day - 7)
+  now.setHours(0, 0, 0, 0)
+  return now.toISOString().slice(0, 10)
+}
 function dateTimeLabel(value) { if (!value) return "Not viewed yet"; const date = new Date(value); return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) }
 function dateLabel(value) {
   if (!value) return "—"
@@ -179,7 +186,7 @@ export default function SolarRework({ onSelectAppointment }) {
         .not("result", "is", null)
         .neq("result", "")
         .not("result", "ilike", "sold")
-        .lt("appointment_date", startOfCurrentWeekISO())
+        .lt("appointment_date", activeTab === "linked" ? startOfPreviousWeekISO() : startOfCurrentWeekISO())
         .order("appointment_date", { ascending: activeTab === "linked" ? linkedSortOrder === "asc" : unlinkedSortOrder === "asc", nullsFirst: false })
         .order("appointment_row_id", { ascending: false })
       if (yearFilter !== "all") request = request.gte("appointment_date", yearFilter + "-01-01").lt("appointment_date", (Number(yearFilter) + 1) + "-01-01")
@@ -269,7 +276,7 @@ export default function SolarRework({ onSelectAppointment }) {
             .not("result", "is", null)
             .neq("result", "")
             .not("result", "ilike", "sold")
-            .lt("appointment_date", startOfCurrentWeekISO())
+            .lt("appointment_date", activeTab === "linked" ? startOfPreviousWeekISO() : startOfCurrentWeekISO())
           if (yearFilter !== "all") request = request.gte("appointment_date", yearFilter + "-01-01").lt("appointment_date", (Number(yearFilter) + 1) + "-01-01")
           if (resultFilter !== "all") request = request.eq("result", resultFilter)
           const needle = normalise(query).replace(/[%_,()]/g, " ")
