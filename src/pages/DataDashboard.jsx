@@ -561,7 +561,8 @@ function DataDashboard() {
         .pronto-table col.pronto-col-latest { width: 22%; }
         .pronto-table col.pronto-col-status { width: 14%; }
         .pronto-table col.pronto-col-leads { width: 12%; }
-        .pronto-table col.pronto-col-booked { width: 12%; }
+        .pronto-table col.pronto-col-booked { width: 10%; }
+        .pronto-table col.pronto-col-booked-percent { width: 10%; }
 
         .pronto-table th,
         .pronto-table td {
@@ -1083,6 +1084,7 @@ function DataDashboard() {
                   <col className="pronto-col-status" />
                   <col className="pronto-col-leads" />
                   <col className="pronto-col-booked" />
+                  <col className="pronto-col-booked-percent" />
                 </colgroup>
                 <thead>
                   <tr>
@@ -1092,6 +1094,7 @@ function DataDashboard() {
                     <th>Status</th>
                     <th>Leads</th>
                     <th>Booked</th>
+                    <th>Booked %</th>
                     <th style={{ minWidth: 130, whiteSpace: "nowrap" }}>No Contact</th>
                   </tr>
                 </thead>
@@ -1115,11 +1118,12 @@ function DataDashboard() {
                         <td>{prontoStatus(row.latest_lead_date)}</td>
                         <td>{formatNumber(row.lead_count)}</td>
                         <td>{formatNumber(row.booked_count)}</td>
+                        <td>{row.lead_count ? `${((row.booked_count / row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
                         <td>{formatNumber(prontoNoContactBySid[row.pronto_sid] || 0)}</td>
                       </tr>
                       {expandedProntoSids[row.pronto_sid] && (
                         <tr>
-                          <td colSpan={7} className="pronto-breakdown-cell">
+                          <td colSpan={8} className="pronto-breakdown-cell">
                             {prontoC3Loading[row.pronto_sid] ? (
                               <div className="pronto-empty" style={{ padding: 16 }}>Loading Pronto C3 breakdown…</div>
                             ) : (
@@ -1131,6 +1135,7 @@ function DataDashboard() {
                                   <col className="pronto-col-status" />
                                   <col className="pronto-col-leads" />
                                   <col className="pronto-col-booked" />
+                                  <col className="pronto-col-booked-percent" />
                                 </colgroup>
                                 <thead>
                                   <tr>
@@ -1140,6 +1145,7 @@ function DataDashboard() {
                                     <th>Status</th>
                                     <th>Leads</th>
                                     <th>Booked</th>
+                                    <th>Booked %</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -1165,10 +1171,11 @@ function DataDashboard() {
                                             <td>{prontoStatus(c1Row.latest_lead_date)}</td>
                                             <td>{formatNumber(c1Row.lead_count)}</td>
                                             <td>{formatNumber(c1Row.booked_count)}</td>
+                                            <td>{c1Row.lead_count ? `${((c1Row.booked_count / c1Row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
                                           </tr>
                                           {expandedProntoC1s[c1Key] && (
                                             <tr>
-                                              <td colSpan={6} className="pronto-breakdown-cell">
+                                              <td colSpan={7} className="pronto-breakdown-cell">
                                                 {prontoC1C3Loading[c1Key] ? (
                                                   <div className="pronto-empty" style={{ padding: 16 }}>Loading Pronto C3 breakdown…</div>
                                                 ) : (
@@ -1180,8 +1187,9 @@ function DataDashboard() {
                                                       <col className="pronto-col-status" />
                                                       <col className="pronto-col-leads" />
                                                       <col className="pronto-col-booked" />
+                                                      <col className="pronto-col-booked-percent" />
                                                     </colgroup>
-                                                    <thead><tr><th>Pronto C3</th><th>First received</th><th>Latest received</th><th>Status</th><th>Leads</th><th>Booked</th></tr></thead>
+                                                    <thead><tr><th>Pronto C3</th><th>First received</th><th>Latest received</th><th>Status</th><th>Leads</th><th>Booked</th><th>Booked %</th></tr></thead>
                                                     <tbody>
                                                       {(prontoC1C3Rows[c1Key] || []).length ? (
                                                         prontoC1C3Rows[c1Key].map((c3Item) => (
@@ -1192,10 +1200,11 @@ function DataDashboard() {
                                                             <td>{prontoStatus(c3Item.latest_lead_date)}</td>
                                                             <td>{formatNumber(c3Item.lead_count)}</td>
                                                             <td>{formatNumber(c3Item.booked_count)}</td>
+                                                            <td>{c3Item.lead_count ? `${((c3Item.booked_count / c3Item.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
                                                           </tr>
                                                         ))
                                                       ) : (
-                                                        <tr><td colSpan={6}>No Pronto C3 values found.</td></tr>
+                                                        <tr><td colSpan={7}>No Pronto C3 values found.</td></tr>
                                                       )}
                                                     </tbody>
                                                   </table>
