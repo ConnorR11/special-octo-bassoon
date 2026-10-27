@@ -190,7 +190,7 @@ function App() {
 
   useEffect(() => {
     if (!session) return
-    function handlePopState(){
+    async function handlePopState(){
       const path=window.location.pathname.replace(/\/+$/,"/")||"/"
       if (path === "/contract-file/") { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("contract-file"); return }
       if (path === "/overstay-form/") { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("overstay-form"); return }
@@ -199,6 +199,23 @@ function App() {
       if (path === "/solar-bill/") { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("solar-bill"); return }
       const appointmentMatch=path.match(/^\/appointments\/([^/]+)$/)
       if(appointmentMatch){loadAppointmentFromUrl(decodeURIComponent(appointmentMatch[1]));return}
+      // Restore a deal detail URL instead of dropping back to its parent page.
+      // This matters on mobile browsers when returning from the native file picker.
+      const dealMatch=path.match(/^\/([^/]+)\/([^/]+)$/)
+      if(dealMatch){
+        const routePage=decodeURIComponent(dealMatch[1])
+        const dealId=decodeURIComponent(dealMatch[2])
+        const {data:routeDeal,error:routeDealError}=await supabase.from("deals").select("*").eq("id",dealId).maybeSingle()
+        if(routeDealError) console.error("Error restoring deal from URL:",routeDealError)
+        if(routeDeal){
+          setSelectedSourcePage(routePage)
+          setSelected(routeDeal)
+          setSelectedAppointment(null)
+          setPickupAppointment(null)
+          setPage(routePage)
+          return
+        }
+      }
       setSelected(null);setSelectedAppointment(null);setPickupAppointment(null)
       setPage(path==="/"||path==="/dashboard"?"dashboard":path.slice(1))
     }
