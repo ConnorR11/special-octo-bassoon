@@ -596,6 +596,45 @@ function DataDashboard() {
     })
   }
 
+  const prontoTrendIntroducers = useMemo(
+    () => filteredProntoSidRows.map((row) => String(row.pronto_sid || "(No Introducer)")),
+    [filteredProntoSidRows]
+  )
+
+  const prontoMonthlyChartData = useMemo(() => {
+    if (!prontoMonthlyRows.length || !prontoTrendIntroducers.length) return []
+    const current = new Date()
+    const currentMonth = new Date(current.getFullYear(), current.getMonth(), 1)
+    let startMonth
+    if (prontoDatePeriod === "last_week" || prontoDatePeriod === "last_4_weeks") {
+      const start = new Date(current)
+      start.setDate(start.getDate() - (prontoDatePeriod === "last_week" ? 6 : 27))
+      startMonth = new Date(start.getFullYear(), start.getMonth(), 1)
+    } else if (prontoDatePeriod === "year_to_date") {
+      startMonth = new Date(current.getFullYear(), 0, 1)
+    } else {
+      startMonth = new Date(2025, 0, 1)
+    }
+    const monthKeys = []
+    for (let date = new Date(startMonth); date <= currentMonth; date.setMonth(date.getMonth() + 1)) {
+      monthKeys.push(date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-01")
+    }
+    const byMonth = new Map()
+    for (const row of prontoMonthlyRows) {
+      const name = String(row.introducer || "(No Introducer)")
+      if (!prontoTrendIntroducers.includes(name)) continue
+      const key = row.month_start.slice(0, 7) + "-01"
+      if (!byMonth.has(key)) byMonth.set(key, {})
+      const month = byMonth.get(key)
+      month[name + "__leads"] = row.lead_count
+      month[name + "__rate"] = row.lead_count ? row.booked_count / row.lead_count * 100 : null
+    }
+    return monthKeys.map((key) => ({
+      month: new Date(key + "T00:00:00").toLocaleDateString("en-GB", { month: "short", year: "numeric" }),
+      ...(byMonth.get(key) || {}),
+    }))
+  }, [prontoMonthlyRows, prontoTrendIntroducers, prontoDatePeriod])
+
   const filteredProntoSidRows = useMemo(() => {
     const search = prontoSidSearch.trim().toLowerCase()
     return sortProntoRows(prontoSidRows.filter((row) => {
