@@ -58,12 +58,14 @@ export default async function handler(req, res) {
 
     let parsedLink
     try { parsedLink = new URL(quoteLink) } catch { return await fail(400, "The secure quote link is invalid.") }
-    const allowedHosts = new Set([String(process.env.PUBLIC_APP_URL || "").replace(/^https?:\/\//, "").replace(/\/$/, ""), "crm.homeshield.ltd"])
-    if (parsedLink.protocol !== "https:" || !allowedHosts.has(parsedLink.host) || parsedLink.pathname !== "/api/sales/view-solar-quote") {
-      return await fail(400, "The link must be a Homeshield secure quote link.")
+    if (parsedLink.protocol !== "https:" || parsedLink.pathname !== "/api/sales/view-solar-quote") {
+      return await fail(400, "The link must be a valid secure quote link.")
     }
     const rawToken = parsedLink.searchParams.get("token") || ""
     if (!rawToken || rawToken.length > 200) return await fail(400, "The secure quote link is missing its token.")
+    // Customer emails always use the canonical CRM domain, not a temporary Vercel URL.
+    const publicBaseUrl = String(process.env.PUBLIC_APP_URL || "https://crm.homeshield.ltd").replace(/\/$/, "")
+    const customerQuoteLink = publicBaseUrl + "/api/sales/view-solar-quote?token=" + encodeURIComponent(rawToken)
     const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex")
     const { data: quote, error: quoteError } = await db.from("solar_quotes")
       .select("id,appointment_row_id,quote_ref,customer_email,expires_at,status")
@@ -91,7 +93,7 @@ export default async function handler(req, res) {
       quote_ref: quote.quote_ref || "",
       recipient: customerEmail,
       sender,
-      quote_link: quoteLink,
+      quote_link: customerQuoteLink,
     }
     const renderTemplate = value => String(value || "").replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, key) => replacements[key] ?? "")
     const subject = renderTemplate(template.description).trim() || "Your Homeshield solar quote"
@@ -101,7 +103,7 @@ export default async function handler(req, res) {
     // Escape editable template content before converting it to HTML. Render the secure
     // link placeholder as a prominent button rather than exposing a long raw URL.
     const escapeHtml = value => String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;")
-    const quoteButton = `<p style="margin:28px 0;text-align:center"><a href="${escapeHtml(quoteLink)}" style="display:inline-block;background:#174b40;color:#ffffff;text-decoration:none;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;padding:15px 28px;border-radius:6px">View your solar quote</a></p>`
+    const quoteButton = `<p style="margin:28px 0;text-align:center"><a href="${escapeHtml(customerQuoteLink)}" style="display:inline-block;background:#174b40;color:#ffffff;text-decoration:none;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;padding:15px 28px;border-radius:6px">View your solar quote</a></p>`
     const htmlBody = templateBody
       .split(/({{\s*quote_link\s*}})/g)
       .map(part => /{{\s*quote_link\s*}}/.test(part) ? quoteButton : escapeHtml(renderTemplate(part)).replace(/\r?\n/g, "<br>"))
