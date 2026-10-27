@@ -1130,18 +1130,18 @@ function DataDashboard() {
                   <col className="pronto-col-leads" />
                   <col className="pronto-col-booked" />
                   <col className="pronto-col-booked-percent" />
-                  <col />
+                  <col className="pronto-col-spacer" />
                 </colgroup>
                 <thead><tr>
                   <th>Introducer</th><th>First received</th><th>Latest received</th><th>Status</th>
-                  <th>Leads</th><th>Booked</th><th>Booked %</th><th>No Contact</th>
+                  <th>Leads</th><th>Booked</th><th>Booked %</th>
                 </tr></thead>
                 <tbody>
                   {filteredProntoSidRows.map((row) => (
                     <React.Fragment key={row.pronto_sid}>
                       <tr>
                         <td><button type="button" onClick={() => toggleIntroducer(row.pronto_sid)} aria-expanded={Boolean(expandedIntroducers[row.pronto_sid])} style={{ border: 0, background: "transparent", padding: 0, color: "inherit", font: "inherit", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}><span aria-hidden="true">{expandedIntroducers[row.pronto_sid] ? "▾" : "▸"}</span>{row.pronto_sid}</button></td>
-                        <td>{formatProntoDate(row.first_lead_date)}</td><td>{formatProntoDate(row.latest_lead_date)}</td><td>{prontoStatus(row.latest_lead_date)}</td><td>{formatNumber(row.lead_count)}</td><td>{formatNumber(row.booked_count)}</td><td>{row.lead_count ? `${((row.booked_count / row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td><td>{formatNumber(row.no_contact_count)}</td>
+                        <td>{formatProntoDate(row.first_lead_date)}</td><td>{formatProntoDate(row.latest_lead_date)}</td><td>{prontoStatus(row.latest_lead_date)}</td><td>{formatNumber(row.lead_count)}</td><td>{formatNumber(row.booked_count)}</td><td>{row.lead_count ? `${((row.booked_count / row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td><td aria-hidden="true"></td>
                       </tr>
                       {expandedIntroducers[row.pronto_sid] && <tr><td colSpan={8} className="pronto-breakdown-cell">
                         {introducerSidLoading[row.pronto_sid] ? <div className="pronto-empty" style={{ padding: 16 }}>Loading SID breakdown…</div> : (
@@ -1161,7 +1161,7 @@ function DataDashboard() {
                     <td><strong>{formatNumber(prontoSidTotal)}</strong></td>
                     <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.booked_count, 0))}</strong></td>
                     <td><strong>{prontoSidTotal ? `${((prontoSidRows.reduce((sum, row) => sum + row.booked_count, 0) / prontoSidTotal) * 100).toFixed(1)}%` : "0.0%"}</strong></td>
-                    <td><strong>{formatNumber(prontoNoContactTotal)}</strong></td>
+                    
                   </tr>
                 </tbody>
               </table>
