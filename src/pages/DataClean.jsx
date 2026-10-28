@@ -72,6 +72,10 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
         if (queryError) throw queryError
         const fetchedRows = Array.isArray(data) ? data : []
         setHasNextPage(fetchedRows.length > pageSize)
+        const visibleSources = fetchedRows.map(item => item.lead_source).filter(Boolean)
+        if (visibleSources.length) {
+          setDuplicateSources(current => [...new Set([...current, ...visibleSources])].sort((a, b) => a.localeCompare(b)))
+        }
         allRows = fetchedRows.slice(0, pageSize)
       } else {
       {
