@@ -1469,10 +1469,10 @@ function DataDashboard() {
             </div>
             <div style={{ background:"#fff",border:"1px solid #dbe3ed",borderRadius:12,padding:16 }}>
               <div className="data-dashboard-chart-title">Appointment pipeline</div>
-              <div className="data-dashboard-chart-subtitle">Based on the currently loaded lead list ({formatNumber(prontoLeadDetails.length)} leads).</div>
+              <div className="data-dashboard-chart-subtitle">Related appointment rows for the currently loaded lead list ({formatNumber(prontoLeadDetails.length)} leads).</div>
               <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:14 }}>
-                <div style={{ background:"#f8fafc",borderRadius:8,padding:12 }}><div style={{ color:"#64748b",fontSize:11 }}>Past appointments</div><strong style={{fontSize:22}}>{formatNumber(prontoLeadDetails.filter(l=>l.appointment_date_time && new Date(l.appointment_date_time)<new Date(new Date().setHours(0,0,0,0))).length)}</strong></div>
-                <div style={{ background:"#f8fafc",borderRadius:8,padding:12 }}><div style={{ color:"#64748b",fontSize:11 }}>Today & forward</div><strong style={{fontSize:22}}>{formatNumber(prontoLeadDetails.filter(l=>l.appointment_date_time && new Date(l.appointment_date_time)>=new Date(new Date().setHours(0,0,0,0))).length)}</strong></div>
+                <div style={{ background:"#f8fafc",borderRadius:8,padding:12 }}><div style={{ color:"#64748b",fontSize:11 }}>Past appointments</div><strong style={{fontSize:22}}>{formatNumber(prontoLeadDetails.flatMap(l=>l.relatedAppointments || []).filter(a=>a.appointment_date && new Date(a.appointment_date)<new Date(new Date().setHours(0,0,0,0))).length)}</strong></div>
+                <div style={{ background:"#f8fafc",borderRadius:8,padding:12 }}><div style={{ color:"#64748b",fontSize:11 }}>Today & forward</div><strong style={{fontSize:22}}>{formatNumber(prontoLeadDetails.flatMap(l=>l.relatedAppointments || []).filter(a=>a.appointment_date && new Date(a.appointment_date)>=new Date(new Date().setHours(0,0,0,0))).length)}</strong></div>
               </div>
               <div style={{ color:"#64748b",fontSize:11,marginTop:10 }}>Appointment totals reflect loaded leads only; full-period aggregation is a placeholder.</div>
             </div>
