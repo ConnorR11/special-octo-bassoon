@@ -1453,17 +1453,21 @@ function DataDashboard() {
           <div style={{ marginTop:14, display:"grid", gridTemplateColumns:"minmax(0,1.5fr) minmax(260px,1fr)", gap:14 }}>
             <div style={{ background:"#fff",border:"1px solid #dbe3ed",borderRadius:12,padding:16 }}>
               <div className="data-dashboard-chart-title">Appointment conversion funnel</div>
-              <div className="data-dashboard-chart-subtitle">Counts each lead once per stage when any related appointment has that CPS flag. Stage counts can overlap.</div>
+              <div className="data-dashboard-chart-subtitle">Shows how total leads progress through CPS H, C, P and S. Each stage count is shown as a percentage of total leads; stage counts can overlap.</div>
               {[
-                ["H · Generated",prontoDashboardStats.h,100],
-                ["C · Confirmed",prontoDashboardStats.confirmed,prontoDashboardStats.h ? prontoDashboardStats.confirmed/prontoDashboardStats.h*100 : 0],
-                ["P · Pitched",prontoDashboardStats.pitched,prontoDashboardStats.h ? prontoDashboardStats.pitched/prontoDashboardStats.h*100 : 0],
-                ["S · Sold",prontoDashboardStats.sold,prontoDashboardStats.h ? prontoDashboardStats.sold/prontoDashboardStats.h*100 : 0]
+                ["Leads",prontoDashboardStats.leads,100],
+                ["H · Generated",prontoDashboardStats.h,prontoDashboardStats.leads ? prontoDashboardStats.h/prontoDashboardStats.leads*100 : 0],
+                ["C · Confirmed",prontoDashboardStats.confirmed,prontoDashboardStats.leads ? prontoDashboardStats.confirmed/prontoDashboardStats.leads*100 : 0],
+                ["P · Pitched",prontoDashboardStats.pitched,prontoDashboardStats.leads ? prontoDashboardStats.pitched/prontoDashboardStats.leads*100 : 0],
+                ["S · Sold",prontoDashboardStats.sold,prontoDashboardStats.leads ? prontoDashboardStats.sold/prontoDashboardStats.leads*100 : 0]
               ].map(([label,count,pct]) => <div key={label} style={{ marginTop:12 }}>
-                <div style={{ display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:4 }}><span>{label}</span><strong>{formatNumber(count)} · {Number(pct).toFixed(1)}% of H</strong></div>
-                <div style={{ height:9,background:"#e8eef5",borderRadius:8,overflow:"hidden" }}><div style={{ height:"100%",width:Math.min(100,Math.max(0,Number(pct)))+"%",background:"#3478c8",borderRadius:8 }} /></div>
+                <div style={{ display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:4 }}><span>{label}</span><strong>{formatNumber(count)} · {Number(pct).toFixed(1)}% of leads</strong></div>
+                <div style={{ height:9,background:"#e8eef5",borderRadius:8,overflow:"hidden" }}><div style={{ height:"100%",width:Math.min(100,Math.max(0,Number(pct)))+"%",background:label === "Leads" ? "#64748b" : "#3478c8",borderRadius:8 }} /></div>
               </div>)}
               <div style={{ display:"flex",gap:14,flexWrap:"wrap",marginTop:12,color:"#64748b",fontSize:11 }}>
+                <span>Lead→H: {prontoDashboardStats.leads ? (prontoDashboardStats.h/prontoDashboardStats.leads*100).toFixed(1) : "0.0"}%</span><span>Lead→C: {prontoDashboardStats.leads ? (prontoDashboardStats.confirmed/prontoDashboardStats.leads*100).toFixed(1) : "0.0"}%</span><span>Lead→P: {prontoDashboardStats.leads ? (prontoDashboardStats.pitched/prontoDashboardStats.leads*100).toFixed(1) : "0.0"}%</span><span>Lead→S: {prontoDashboardStats.leads ? (prontoDashboardStats.sold/prontoDashboardStats.leads*100).toFixed(1) : "0.0"}%</span>
+              </div>
+              <div style={{ display:"flex",gap:14,flexWrap:"wrap",marginTop:6,color:"#64748b",fontSize:11 }}>
                 <span>H→C: {prontoDashboardStats.hToC.toFixed(1)}%</span><span>C→P: {prontoDashboardStats.cToP.toFixed(1)}%</span><span>P→S: {prontoDashboardStats.pToS.toFixed(1)}%</span><span>H→S: {prontoDashboardStats.hToS.toFixed(1)}%</span>
               </div>
             </div>
