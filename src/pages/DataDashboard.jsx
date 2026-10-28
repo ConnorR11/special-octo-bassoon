@@ -245,8 +245,10 @@ function DataDashboard() {
         no_contact_count: Number(row.no_contact_count || 0),
         lead_count: Number(row.lead_count || 0),
         booked_count: Number(row.booked_count || 0),
-        pitched_count: Number(row.pitched_count || 0),
-        sold_count: Number(row.sold_count || 0),
+        cps_h_count: Number(row.cps_h_count || 0),
+        cps_c_count: Number(row.cps_c_count || 0),
+        cps_p_count: Number(row.cps_p_count || 0),
+        cps_s_count: Number(row.cps_s_count || 0),
         first_lead_date: row.first_lead_date || null,
         latest_lead_date: row.latest_lead_date || null,
       })))
@@ -1348,6 +1350,8 @@ function DataDashboard() {
                   <col className="pronto-col-booked" />
                   <col className="pronto-col-booked" />
                   <col className="pronto-col-booked" />
+                  <col className="pronto-col-booked" />
+                  <col className="pronto-col-booked" />
                   <col className="pronto-col-booked-percent" />
                   <col className="pronto-col-spacer" />
                 </colgroup>
@@ -1359,8 +1363,10 @@ function DataDashboard() {
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("status")}>Status{prontoSort.key === "status" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("leads")}>Leads{prontoSort.key === "leads" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("booked")}>Booked{prontoSort.key === "booked" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
-                    <th>Pitched</th>
-                    <th>Sold</th>
+                    <th>CPS H</th>
+                    <th>CPS C</th>
+                    <th>CPS P</th>
+                    <th>CPS S</th>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("booked_rate")}>Booked %{prontoSort.key === "booked_rate" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th aria-label="Alignment spacer"></th>
                   </tr>
@@ -1379,8 +1385,10 @@ function DataDashboard() {
                         <td>{prontoStatus(row.latest_lead_date)}</td>
                         <td>{formatNumber(row.lead_count)}</td>
                         <td>{formatNumber(row.booked_count)}</td>
-                        <td>{formatNumber(row.pitched_count)}</td>
-                        <td>{formatNumber(row.sold_count)}</td>
+                        <td>{formatNumber(row.cps_h_count)}</td>
+                        <td>{formatNumber(row.cps_c_count)}</td>
+                        <td>{formatNumber(row.cps_p_count)}</td>
+                        <td>{formatNumber(row.cps_s_count)}</td>
                         <td className={row.lead_count && (row.booked_count / row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{row.lead_count ? `${((row.booked_count / row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
                         <td aria-hidden="true"></td>
                       </tr>
@@ -1466,8 +1474,10 @@ function DataDashboard() {
                     <td colSpan={4}><strong>Total Pronto Windows leads</strong></td>
                     <td><strong>{formatNumber(prontoSidTotal)}</strong></td>
                     <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.booked_count, 0))}</strong></td>
-                    <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.pitched_count, 0))}</strong></td>
-                    <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.sold_count, 0))}</strong></td>
+                    <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_h_count, 0))}</strong></td>
+                    <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_c_count, 0))}</strong></td>
+                    <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_p_count, 0))}</strong></td>
+                    <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_s_count, 0))}</strong></td>
                     <td><strong>{prontoSidTotal ? `${((prontoSidRows.reduce((sum, row) => sum + row.booked_count, 0) / prontoSidTotal) * 100).toFixed(1)}%` : "0.0%"}</strong></td>
                     <td aria-hidden="true"></td>
                   </tr>
