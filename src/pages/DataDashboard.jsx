@@ -1457,33 +1457,21 @@ function DataDashboard() {
             )}
           </div>
 
-          <div style={{ marginTop: 24, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(500px, 1fr))", gap: 16 }}>
-            <div style={{ background: "#fff", border: "1px solid #dbe3ed", borderRadius: 12, padding: 16 }}>
-              <div className="data-dashboard-chart-title">Monthly lead volume by introducer</div>
-              {prontoMonthlyLoading ? <p>Loading monthly trends…</p> : prontoMonthlyError ? <p style={{ color: "#dc2626" }}>{prontoMonthlyError}</p> : <ResponsiveContainer width="100%" height={320}>
-                <LineChart data={prontoMonthlyChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Legend />
-                  {prontoTrendIntroducers.map((name, index) => <Line key={name} type="monotone" dataKey={name + "__leads"} name={name} stroke={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} dot={false} />)}
-                </LineChart>
-              </ResponsiveContainer>}
-            </div>
-            <div style={{ background: "#fff", border: "1px solid #dbe3ed", borderRadius: 12, padding: 16 }}>
-              <div className="data-dashboard-chart-title">Monthly booking rate by introducer</div>
-              {prontoMonthlyLoading ? <p>Loading monthly trends…</p> : prontoMonthlyError ? <p style={{ color: "#dc2626" }}>{prontoMonthlyError}</p> : <ResponsiveContainer width="100%" height={320}>
-                <LineChart data={prontoMonthlyChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis domain={[0, prontoMonthlyMaxRate]} ticks={Array.from({ length: prontoMonthlyMaxRate / 10 + 1 }, (_, index) => index * 10)} tickFormatter={(value) => value + "%"} />
-                  <Tooltip formatter={(value) => value == null ? "No leads" : Number(value).toFixed(1) + "%"} />
-                  <Legend />
-                  {prontoTrendIntroducers.map((name, index) => <Line key={name} type="monotone" dataKey={name + "__rate"} name={name} stroke={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} dot={false} connectNulls={false} />)}
-                </LineChart>
-              </ResponsiveContainer>}
-            </div>
+          <div style={{ marginTop: 24, background: "#fff", border: "1px solid #dbe3ed", borderRadius: 12, padding: 16, minWidth: 0 }}>
+            <div className="data-dashboard-chart-title">Monthly lead volume and booking rate by introducer</div>
+            <div className="data-dashboard-chart-subtitle">Bars show leads received (left axis); lines show booking rate (right axis).</div>
+            {prontoMonthlyLoading ? <p>Loading monthly trends…</p> : prontoMonthlyError ? <p style={{ color: "#dc2626" }}>{prontoMonthlyError}</p> : <ResponsiveContainer width="100%" height={380}>
+              <ComposedChart data={prontoMonthlyChartData} margin={{ top: 12, right: 18, left: 8, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis yAxisId="volume" orientation="left" allowDecimals={false} />
+                <YAxis yAxisId="rate" orientation="right" domain={[0, prontoMonthlyMaxRate]} ticks={Array.from({ length: prontoMonthlyMaxRate / 10 + 1 }, (_, index) => index * 10)} tickFormatter={(value) => value + "%"} />
+                <Tooltip formatter={(value, name) => String(name).endsWith("__rate") ? (value == null ? "No leads" : Number(value).toFixed(1) + "%") : Number(value).toLocaleString()} />
+                <Legend />
+                {prontoTrendIntroducers.map((name, index) => <Bar key={name + "-volume"} yAxisId="volume" dataKey={name + "__leads"} name={name + " volume"} fill={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} fillOpacity={0.35} />)}
+                {prontoTrendIntroducers.map((name, index) => <Line key={name + "-rate"} yAxisId="rate" type="monotone" dataKey={name + "__rate"} name={name + " booking %"} stroke={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} strokeWidth={2} dot={false} connectNulls={false} />)}
+              </ComposedChart>
+            </ResponsiveContainer>}
           </div>
 
         </>
