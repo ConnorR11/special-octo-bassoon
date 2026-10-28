@@ -1511,6 +1511,16 @@ function DataDashboard() {
             </ResponsiveContainer>}
           </div>
 
+          <div style={{ marginTop:14,background:"#fff",border:"1px solid #dbe3ed",borderRadius:12,padding:16 }}>
+            <div className="data-dashboard-chart-title">Sales value by month</div>
+            <div className="data-dashboard-chart-subtitle">Monthly sales value needs a confirmed deal close-date field. Until then, the monthly chart is a placeholder.</div>
+            <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginTop:12 }}>
+              <div style={{ border:"1px dashed #cbd5e1",borderRadius:8,padding:12,color:"#64748b" }}>Monthly net value sold<br/><strong>Awaiting deal close date</strong></div>
+              <div style={{ border:"1px dashed #cbd5e1",borderRadius:8,padding:12,color:"#64748b" }}>Average value per sold deal<br/><strong>£{prontoDashboardStats.sold ? (prontoDashboardStats.netValue/prontoDashboardStats.sold).toFixed(2) : "0.00"}</strong></div>
+              <div style={{ border:"1px dashed #cbd5e1",borderRadius:8,padding:12,color:"#64748b" }}>Sold appointments without linked deal<br/><strong>Reconciliation metric to be added</strong></div>
+            </div>
+          </div>
+
           <div className="pronto-table-card">
             {prontoSidLoading ? (
               <div className="pronto-empty">Loading Pronto SID data…</div>
@@ -1702,7 +1712,8 @@ function DataDashboard() {
                         <td colSpan={2} style={{ paddingLeft:28 }}><span style={{ color:"#64748b",fontSize:11 }}>↳ Appointment</span><div><strong>{a.name || "Appointment"}</strong></div><div style={{ color:"#64748b",fontSize:10 }}>{a.appointment_row_id}</div></td>
                         <td>{a.appointment_date ? new Date(a.appointment_date).toLocaleString("en-GB") : "No date"}</td>
                         <td>{a.product || a.job_type || "—"}</td><td>{a.result || "—"}</td><td>—</td>
-                        <td><div style={{ display:"flex",flexWrap:"wrap",gap:4 }}>{["h","c","p","s"].map((stage) => <span key={stage} style={{ fontSize:10,borderRadius:5,padding:"2px 5px",background:a["cps_"+stage]===true?"#dcfce7":"#e2e8f0",color:a["cps_"+stage]===true?"#166534":"#64748b" }}>{stage.toUpperCase()}: {a["cps_"+stage]===true?"Yes":"No"}</span>)}</div><div style={{ color:"#64748b",fontSize:11 }}>{a.canvasser || a.rep_allocated || ""}</div></td>
+                        <td><div style={{ display:"flex",flexWrap:"wrap",gap:4 }}>{["h","c","p","s"].map((stage) => <span key={stage} style={{ fontSize:10,borderRadius:5,padding:"2px 5px",background:a["cps_"+stage]===true?"#dcfce7":"#e2e8f0",color:a["cps_"+stage]===true?"#166534":"#64748b" }}>{stage.toUpperCase()}: {a["cps_"+stage]===true?"Yes":"No"}</span>)}</div><div style={{ color:"#64748b",fontSize:11 }}>{a.canvasser || a.rep_allocated || ""}</div>
+                        {(a.relatedDeals || []).map((d) => <div key={d.id} style={{fontSize:11,color:"#166534"}}>Deal #{d.id}: £{formatNumber(d.net_value)}</div>)}</td>
                       </tr>)}
                     </React.Fragment>)}
                     {!filteredProntoLeadDetails.length && <tr><td colSpan={7}>No leads match these filters.</td></tr>}
