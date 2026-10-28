@@ -1659,11 +1659,19 @@ function DataDashboard() {
             <div className="data-dashboard-chart-subtitle">Leads in the selected date period, with their related appointment records listed underneath.</div>
             {prontoLeadDetailsError && <p style={{ color: "#dc2626" }}>{prontoLeadDetailsError}</p>}
             {prontoLeadDetailsLoading ? <p>Loading leads and appointments…</p> : <>
+              <div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:12}}>
+                <input value={prontoLeadSearch} onChange={e=>setProntoLeadSearch(e.target.value)} placeholder="Search lead, postcode, introducer…" style={{height:34,minWidth:220,padding:"0 10px",border:"1px solid #cbd5e1",borderRadius:7}} />
+                <select value={prontoLeadDispositionFilter} onChange={e=>setProntoLeadDispositionFilter(e.target.value)} style={{height:34,padding:"0 8px",border:"1px solid #cbd5e1",borderRadius:7}}><option value="all">All dispositions</option>{[...new Set(prontoLeadDetails.map(l=>l.disposition).filter(Boolean))].sort().map(v=><option key={v} value={v}>{v}</option>)}</select>
+                <select value={prontoLeadAppointmentFilter} onChange={e=>setProntoLeadAppointmentFilter(e.target.value)} style={{height:34,padding:"0 8px",border:"1px solid #cbd5e1",borderRadius:7}}><option value="all">All appointment dates</option><option value="past">Past</option><option value="forward">Today & forward</option></select>
+                <select value={prontoLeadStageFilter} onChange={e=>setProntoLeadStageFilter(e.target.value)} style={{height:34,padding:"0 8px",border:"1px solid #cbd5e1",borderRadius:7}}><option value="all">All CPS stages</option><option value="h">CPS H</option><option value="c">CPS C</option><option value="p">CPS P</option><option value="s">CPS S</option></select>
+                <select value={prontoLeadDealFilter} onChange={e=>setProntoLeadDealFilter(e.target.value)} style={{height:34,padding:"0 8px",border:"1px solid #cbd5e1",borderRadius:7}}><option value="all">All deal links</option><option value="yes">Has linked deal</option><option value="no">No linked deal</option></select>
+              </div>
+              <div style={{color:"#64748b",fontSize:11,marginTop:8}}>Showing {formatNumber(filteredProntoLeadDetails.length)} of {formatNumber(prontoLeadDetails.length)} loaded leads.</div>
               <div style={{ overflowX: "auto", marginTop: 12 }}>
                 <table className="pronto-table">
                   <thead><tr><th>Lead</th><th>Postcode</th><th>Introducer</th><th>Disposition</th><th>Received</th><th>Lead appointment date</th><th>Related appointments</th></tr></thead>
                   <tbody>
-                    {prontoLeadDetails.map((lead) => <React.Fragment key={lead.marketing_row_id}>
+                    {filteredProntoLeadDetails.map((lead) => <React.Fragment key={lead.marketing_row_id}>
                       <tr>
                         <td><strong>{[lead.first_name,lead.last_name].filter(Boolean).join(" ") || "Unnamed lead"}</strong></td>
                         <td>{lead.postcode || "—"}</td><td>{lead.introducer || "—"}</td><td>{lead.disposition || "—"}</td>
@@ -1677,7 +1685,7 @@ function DataDashboard() {
                         <td><div style={{ display:"flex",flexWrap:"wrap",gap:4 }}>{["h","c","p","s"].map((stage) => <span key={stage} style={{ fontSize:10,borderRadius:5,padding:"2px 5px",background:a["cps_"+stage]===true?"#dcfce7":"#e2e8f0",color:a["cps_"+stage]===true?"#166534":"#64748b" }}>{stage.toUpperCase()}: {a["cps_"+stage]===true?"Yes":"No"}</span>)}</div><div style={{ color:"#64748b",fontSize:11 }}>{a.canvasser || a.rep_allocated || ""}</div></td>
                       </tr>)}
                     </React.Fragment>)}
-                    {!prontoLeadDetails.length && <tr><td colSpan={7}>No leads found for this period.</td></tr>}
+                    {!filteredProntoLeadDetails.length && <tr><td colSpan={7}>No leads match these filters.</td></tr>}
                   </tbody>
                 </table>
               </div>
