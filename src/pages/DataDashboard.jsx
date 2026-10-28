@@ -596,6 +596,16 @@ function DataDashboard() {
     })
   }
 
+  const filteredProntoSidRows = useMemo(() => {
+    const search = prontoSidSearch.trim().toLowerCase()
+    return sortProntoRows(prontoSidRows.filter((row) => {
+      const matchesSearch = !search || row.pronto_sid.toLowerCase().includes(search)
+      const live = isProntoLive(row.latest_lead_date)
+      const matchesStatus = prontoStatusFilter === "all" || (prontoStatusFilter === "live" ? live : !live)
+      return matchesSearch && matchesStatus
+    }))
+  }, [prontoSidRows, prontoSidSearch, prontoStatusFilter, prontoSort])
+
   const prontoTrendIntroducers = useMemo(
     () => filteredProntoSidRows.map((row) => String(row.pronto_sid || "(No Introducer)")),
     [filteredProntoSidRows]
@@ -634,16 +644,6 @@ function DataDashboard() {
       ...(byMonth.get(key) || {}),
     }))
   }, [prontoMonthlyRows, prontoTrendIntroducers, prontoDatePeriod])
-
-  const filteredProntoSidRows = useMemo(() => {
-    const search = prontoSidSearch.trim().toLowerCase()
-    return sortProntoRows(prontoSidRows.filter((row) => {
-      const matchesSearch = !search || row.pronto_sid.toLowerCase().includes(search)
-      const live = isProntoLive(row.latest_lead_date)
-      const matchesStatus = prontoStatusFilter === "all" || (prontoStatusFilter === "live" ? live : !live)
-      return matchesSearch && matchesStatus
-    }))
-  }, [prontoSidRows, prontoSidSearch, prontoStatusFilter, prontoSort])
 
   const totalLeads = useMemo(
     () => rows.reduce((total, row) => total + (selectedLeadType ? Number(row[selectedLeadType] || 0) : Number(row.lead_count || 0)), 0),
