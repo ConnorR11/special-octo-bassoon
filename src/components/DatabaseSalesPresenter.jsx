@@ -41,12 +41,7 @@ function TandemFinanceSlide() {
     <div style={{ ...absolute("3.5%", "35.5%", "45.8%", "22.7%"), border: "2px solid "+cyan, borderRadius: 13, overflow: "hidden", background: "#fff" }}>
       <svg role="img" aria-label="Funded by UK Government. This product is supported by the Warm Homes Loan Scheme." viewBox="0 0 900 250" preserveAspectRatio="xMidYMid meet" style={{ width: "100%", height: "100%", display: "block" }}>
         <rect width="900" height="250" fill="#ffffff"/>
-        <g fill="#111820" stroke="#111820" strokeWidth="2">
-          <path d="M135 27 L151 61 L183 43 L179 78 L216 78 L194 106 L222 126 L190 142 L201 177 L166 169 L153 205 L132 178 L104 204 L96 169 L60 177 L72 143 L39 126 L67 106 L45 78 L82 78 L78 43 L109 61 Z" stroke="none"/>
-          <circle cx="130" cy="123" r="42" fill="#fff" strokeWidth="5"/>
-          <path d="M130 91 V155 M99 111 H161 M101 133 H159" fill="none" strokeWidth="5"/>
-        </g>
-        <text x="130" y="128" textAnchor="middle" fontFamily="Arial, Helvetica, sans-serif" fontWeight="700" fontSize="17" fill="#111820">UK</text>
+        <image href="https://commons.wikimedia.org/wiki/Special:Redirect/file/Coat_of_arms_of_the_United_Kingdom_(2024,_lesser_arms).svg" x="35" y="18" width="190" height="214" preserveAspectRatio="xMidYMid meet" style={{ filter: "grayscale(1) contrast(1.2)" }} />
         <line x1="270" y1="31" x2="270" y2="219" stroke="#182841" strokeWidth="2"/>
         <text x="312" y="87" fontFamily="Arial, Helvetica, sans-serif" fontWeight="800" fontSize="51" letterSpacing="-1.8" fill="#070d17">Funded by</text>
         <text x="312" y="140" fontFamily="Arial, Helvetica, sans-serif" fontWeight="800" fontSize="51" letterSpacing="-1.8" fill="#070d17">UK Government</text>
