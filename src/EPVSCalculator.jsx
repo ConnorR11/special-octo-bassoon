@@ -2934,6 +2934,9 @@ export default function EPVSCalculator({
             {product.lender || "Finance product"}
             {product.term ? ` — ${product.term} months` : ""}
             {product.apr != null ? ` @ ${product.apr}%` : ""}
+            {Number(product.deferral_period) > 0
+              ? ` — ${product.deferral_period} month${Number(product.deferral_period) === 1 ? "" : "s"} deferral`
+              : ""}
           </option>
         ))}
       </select>
