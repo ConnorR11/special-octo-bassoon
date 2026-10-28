@@ -38,14 +38,21 @@ function TandemFinanceSlide() {
       <div style={{ fontSize: "clamp(23px, 3.45vw, 58px)", lineHeight: 1.03, fontWeight: 800, letterSpacing: "-.035em", color: cyan, whiteSpace: "nowrap" }}>with Government support.</div>
       <div style={{ marginTop: "1.2%", fontSize: "clamp(10px, 1.48vw, 24px)", lineHeight: 1.22, color: pale, maxWidth: "72%" }}>A lower interest rate, making renewable energy more affordable for your home.</div>
     </div>
-    <div style={{ ...absolute("3.5%", "35.5%", "45.8%", "22.7%"), background: "#fff", color: "#071321", border: "2px solid "+cyan, borderRadius: 13, display: "grid", gridTemplateColumns: "36% 64%", alignItems: "center", padding: "2.2% 2.6%" }}>
-      <div style={{ height: "78%", borderRight: "2px solid #16263d", display: "flex", alignItems: "center", justifyContent: "center", paddingRight: "10%" }}>
-        <svg viewBox="0 0 150 150" style={{ width: "84%", height: "100%", maxHeight: "130px" }} aria-label="UK government emblem"><g fill="#101820"><path d="M75 5 87 29 110 18 108 43 137 43 121 64 143 78 119 91 127 117 101 111 91 140 75 119 58 140 49 112 22 118 31 92 7 78 29 63 13 43 42 43 40 18 63 29Z"/><circle cx="75" cy="74" r="31" fill="#fff" stroke="#101820" strokeWidth="5"/><path d="M75 51v45M54 66h42M54 82h42" stroke="#101820" strokeWidth="4"/></g><text x="75" y="79" fontSize="12" fontWeight="bold" textAnchor="middle" fill="#101820">UK</text></svg>
-      </div>
-      <div style={{ paddingLeft: "8%", minWidth: 0 }}>
-        <div style={{ fontSize: "clamp(16px, 2.05vw, 34px)", lineHeight: ".98", fontWeight: 800, letterSpacing: "-.04em" }}>Funded by<br/>UK Government</div>
-        <div style={{ marginTop: "4%", fontSize: "clamp(9px, 1.08vw, 17px)", lineHeight: 1.2, color: "#101d38" }}>This product is supported by the <strong>Warm Homes Loan Scheme.</strong></div>
-      </div>
+    <div style={{ ...absolute("3.5%", "35.5%", "45.8%", "22.7%"), border: "2px solid "+cyan, borderRadius: 13, overflow: "hidden", background: "#fff" }}>
+      <svg role="img" aria-label="Funded by UK Government. This product is supported by the Warm Homes Loan Scheme." viewBox="0 0 900 250" preserveAspectRatio="xMidYMid meet" style={{ width: "100%", height: "100%", display: "block" }}>
+        <rect width="900" height="250" fill="#ffffff"/>
+        <g fill="#111820" stroke="#111820" strokeWidth="2">
+          <path d="M135 27 L151 61 L183 43 L179 78 L216 78 L194 106 L222 126 L190 142 L201 177 L166 169 L153 205 L132 178 L104 204 L96 169 L60 177 L72 143 L39 126 L67 106 L45 78 L82 78 L78 43 L109 61 Z" stroke="none"/>
+          <circle cx="130" cy="123" r="42" fill="#fff" strokeWidth="5"/>
+          <path d="M130 91 V155 M99 111 H161 M101 133 H159" fill="none" strokeWidth="5"/>
+        </g>
+        <text x="130" y="128" textAnchor="middle" fontFamily="Arial, Helvetica, sans-serif" fontWeight="700" fontSize="17" fill="#111820">UK</text>
+        <line x1="270" y1="31" x2="270" y2="219" stroke="#182841" strokeWidth="2"/>
+        <text x="312" y="87" fontFamily="Arial, Helvetica, sans-serif" fontWeight="800" fontSize="51" letterSpacing="-1.8" fill="#070d17">Funded by</text>
+        <text x="312" y="140" fontFamily="Arial, Helvetica, sans-serif" fontWeight="800" fontSize="51" letterSpacing="-1.8" fill="#070d17">UK Government</text>
+        <text x="312" y="183" fontFamily="Arial, Helvetica, sans-serif" fontSize="23" fill="#15213a">This product is supported by the</text>
+        <text x="312" y="211" fontFamily="Arial, Helvetica, sans-serif" fontWeight="700" fontSize="23" fill="#15213a">Warm Homes Loan Scheme.</text>
+      </svg>
     </div>
     <div style={{ ...absolute("3%", "59.7%", "46.3%", "23.2%"), display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: "1.5%" }}>
       {benefits.map(([icon, title, description]) => <div key={title} style={{ display: "grid", gridTemplateColumns: "25% 75%", alignItems: "center", gap: "2%", minWidth: 0, minHeight: 0, border: "1px solid "+cyan, borderRadius: 12, padding: "5% 4%", background: "rgba(2,26,44,.94)", boxSizing: "border-box" }}>
