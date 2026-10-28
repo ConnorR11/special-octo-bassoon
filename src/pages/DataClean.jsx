@@ -41,6 +41,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
   const [page, setPage] = useState(0)
   const [hasNextPage, setHasNextPage] = useState(false)
   const [leadSourceFilter, setLeadSourceFilter] = useState("")
+  const [receivedYear, setReceivedYear] = useState("2026")
   const [duplicateSources, setDuplicateSources] = useState([])
   const [deletingLeadIds, setDeletingLeadIds] = useState({})
   const pageSize = 50
@@ -48,7 +49,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
 
   const selectedReport = REPORTS.find(report => report.id === activeReport) || REPORTS[0]
 
-  async function loadReport(reportId = activeReport, sourceFilter = leadSourceFilter, pageNumber = page) {
+  async function loadReport(reportId = activeReport, sourceFilter = leadSourceFilter, pageNumber = page, yearFilter = receivedYear) {
     const requestId = ++requestIdRef.current
 
     if (!supabase) {
@@ -67,7 +68,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
 
       if (reportId === "duplicate-marketing-row-id") {
         const { data, error: queryError } = await supabase.rpc("get_duplicate_marketing_row_ids", {
-          p_lead_source: sourceFilter || null, p_limit: pageSize + 1, p_offset: pageNumber * pageSize,
+          p_lead_source: sourceFilter || null, p_limit: pageSize + 1, p_offset: pageNumber * pageSize, p_received_year: yearFilter ? Number(yearFilter) : null,
         })
         if (queryError) throw queryError
         const fetchedRows = Array.isArray(data) ? data : []
@@ -168,22 +169,22 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
   }
 
   useEffect(() => {
-    loadReport(activeReport, leadSourceFilter, page)
-  }, [activeReport, page, leadSourceFilter])
+    loadReport(activeReport, leadSourceFilter, page, receivedYear)
+  }, [activeReport, page, leadSourceFilter, receivedYear])
 
   useEffect(() => {
     let cancelled = false
     async function loadDuplicateSources() {
       if (!supabase) return
       let sources = []
-      const { data, error: sourceError } = await supabase.rpc("get_duplicate_marketing_row_sources")
+      const { data, error: sourceError } = await supabase.rpc("get_duplicate_marketing_row_sources", { p_received_year: receivedYear ? Number(receivedYear) : null })
       if (sourceError) console.error("Unable to load duplicate lead sources:", sourceError)
       else sources = (data || []).map(item => item.lead_source).filter(Boolean)
 
       // Fallback to the same working report RPC if the source-list RPC returns no options.
       if (!sources.length) {
         const { data: duplicateRows, error: rowsError } = await supabase.rpc("get_duplicate_marketing_row_ids", {
-          p_lead_source: null, p_limit: 201, p_offset: 0,
+          p_lead_source: null, p_limit: 201, p_offset: 0, p_received_year: receivedYear ? Number(receivedYear) : null,
         })
         if (rowsError) console.error("Unable to derive duplicate lead sources:", rowsError)
         else sources = (duplicateRows || []).map(item => item.lead_source).filter(Boolean)
@@ -192,7 +193,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
     }
     loadDuplicateSources()
     return () => { cancelled = true }
-  }, [])
+  }, [receivedYear])
 
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -355,6 +356,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
             <div className="data-clean-panel-header">
               <div><h2>{selectedReport.title}</h2><p>{selectedReport.description}</p></div>
               <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",justifyContent:"flex-end"}}>
+                {activeReport === "duplicate-marketing-row-id" && <select aria-label="Filter duplicate leads by received year" value={receivedYear} onChange={event => { setPage(0); setReceivedYear(event.target.value); setLeadSourceFilter("") }} style={{height:36,minWidth:120,padding:"0 10px",border:"1px solid #d7dee7",borderRadius:8,background:"#fff",color:"#334155",fontSize:12}}><option value="2026">Received in 2026</option><option value="2025">Received in 2025</option><option value="2024">Received in 2024</option><option value="">All years</option></select>}
                 {activeReport === "duplicate-marketing-row-id" && <select aria-label="Filter duplicate leads by source" value={leadSourceFilter} onChange={event => { setPage(0); setLeadSourceFilter(event.target.value) }} style={{height:36,minWidth:180,padding:"0 10px",border:"1px solid #d7dee7",borderRadius:8,background:"#fff",color:"#334155",fontSize:12}}><option value="">All lead sources</option>{duplicateSources.map(source => <option key={source} value={source}>{source}</option>)}</select>}
                 <div className="data-clean-search"><Search size={15} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search records..." /></div>
               </div>
