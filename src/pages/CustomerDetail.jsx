@@ -82,7 +82,7 @@ function CustomerDetail({
   const surveyCompletion = Math.round((answeredSurveyCount / surveyQuestions.length) * 100)
   const surveyPhotoSections = ["Front of Property", "Rear of Property", "Side of Property", "Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Loft Access Point", "Loft Roof Truss", "Internet DC Route", "External DC Route", "Proposed Inverter Location", "Proposed Battery Location", "Proposed Canopy Location", "Proposed Panel Layout", "Alternative Roof Elevations", "Existing Solar Equipment", "Existing EV Charger", "High Electrical Usage Items", "Shading Issues"]
   const documentCategories = [
-    { key: "survey_video", label: "1. Survey Video", accept: "video/*", multiple: false, hint: "Common video formats. Maximum 250 MB per file." },
+    { key: "survey_video", label: "1. Survey Video", accept: "video/*", multiple: false, hint: "Common video formats. Maximum 500 MB per file." },
     { key: "survey_photos", label: "Survey Checklist & Photos", accept: "image/jpeg,image/png,image/webp", multiple: true, hint: "Complete the checklist below and upload labelled survey photos here. Generate the combined survey PDF when finished." },
     { key: "electricity_bill_epvs_waiver", label: "2. Electricity Bill", accept: "application/pdf,image/jpeg,image/png,image/webp", multiple: true, hint: "Upload a PDF or image. Bill and waiver can be attached separately." },
   ]
@@ -166,7 +166,7 @@ function CustomerDetail({
     let uploadedCount = 0
     try {
       for (const file of files) {
-        if (file.size > 250 * 1024 * 1024) throw new Error(`"${file.name}" exceeds the 250 MB upload limit.`)
+        if (file.size > (category === "survey_video" ? 500 : 250) * 1024 * 1024) throw new Error(`"${file.name}" exceeds the ${category === "survey_video" ? "500 MB" : "250 MB"} upload limit.`)
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-140) || "upload"
         const path = `${deal.id}/${category}/${Date.now()}-${Math.random().toString(36).slice(2, 9)}-${safeName}`
         const { error: uploadError } = await supabase.storage.from("deal-documents").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false })
