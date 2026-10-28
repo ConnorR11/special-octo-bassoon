@@ -340,6 +340,7 @@ function DataDashboard() {
       setIntroducerSidRows((current) => ({ ...current, [introducer]: (data || []).map((row) => ({
         pronto_sid: String(row.pronto_sid || "(No SID)"), lead_count: Number(row.lead_count || 0), booked_count: Number(row.booked_count || 0),
         first_lead_date: row.first_lead_date || null, latest_lead_date: row.latest_lead_date || null,
+        cps_h_count: Number(row.cps_h_count || 0), cps_c_count: Number(row.cps_c_count || 0), cps_p_count: Number(row.cps_p_count || 0), cps_s_count: Number(row.cps_s_count || 0),
       })) }))
     } catch (err) {
       console.error("Error loading SID breakdown by introducer:", err)
@@ -357,7 +358,7 @@ function DataDashboard() {
     try {
       const { data, error } = await supabase.rpc("get_pronto_introducer_sid_c1_counts", { introducer_filter: introducer, sid_filter: sid, date_period: prontoDatePeriod })
       if (error) throw error
-      setIntroducerC1Rows((current) => ({ ...current, [key]: (data || []).map((r) => ({ pronto_c1: String(r.pronto_c1 || "(Blank / NULL)"), lead_count: Number(r.lead_count || 0), booked_count: Number(r.booked_count || 0), first_lead_date: r.first_lead_date || null, latest_lead_date: r.latest_lead_date || null })) }))
+      setIntroducerC1Rows((current) => ({ ...current, [key]: (data || []).map((r) => ({ pronto_c1: String(r.pronto_c1 || "(Blank / NULL)"), lead_count: Number(r.lead_count || 0), booked_count: Number(r.booked_count || 0), first_lead_date: r.first_lead_date || null, latest_lead_date: r.latest_lead_date || null, cps_h_count: Number(r.cps_h_count || 0), cps_c_count: Number(r.cps_c_count || 0), cps_p_count: Number(r.cps_p_count || 0), cps_s_count: Number(r.cps_s_count || 0) })) }))
     } catch (err) {
       setIntroducerC1Rows((current) => ({ ...current, [key]: [] }))
       setProntoSidError(err?.message || "Unable to load C1 breakdown.")
@@ -373,7 +374,7 @@ function DataDashboard() {
     try {
       const { data, error } = await supabase.rpc("get_pronto_introducer_sid_c1_c3_counts", { introducer_filter: introducer, sid_filter: sid, c1_filter: c1, date_period: prontoDatePeriod })
       if (error) throw error
-      setIntroducerC3Rows((current) => ({ ...current, [key]: (data || []).map((r) => ({ pronto_c3: String(r.pronto_c3 || "(Blank / NULL)"), lead_count: Number(r.lead_count || 0), booked_count: Number(r.booked_count || 0), first_lead_date: r.first_lead_date || null, latest_lead_date: r.latest_lead_date || null })) }))
+      setIntroducerC3Rows((current) => ({ ...current, [key]: (data || []).map((r) => ({ pronto_c3: String(r.pronto_c3 || "(Blank / NULL)"), lead_count: Number(r.lead_count || 0), booked_count: Number(r.booked_count || 0), first_lead_date: r.first_lead_date || null, latest_lead_date: r.latest_lead_date || null, cps_h_count: Number(r.cps_h_count || 0), cps_c_count: Number(r.cps_c_count || 0), cps_p_count: Number(r.cps_p_count || 0), cps_s_count: Number(r.cps_s_count || 0) })) }))
     } catch (err) {
       setIntroducerC3Rows((current) => ({ ...current, [key]: [] }))
       setProntoSidError(err?.message || "Unable to load C3 breakdown.")
@@ -1412,10 +1413,10 @@ function DataDashboard() {
                                 <td>{prontoStatus(sidRow.latest_lead_date)}</td>
                                 <td>{formatNumber(sidRow.lead_count)}</td>
                                 <td>{formatNumber(sidRow.booked_count)}</td>
-                                <td>—</td>
-                                <td>—</td>
-                                <td>—</td>
-                                <td>—</td>
+                                <td>{formatNumber(sidRow.cps_h_count)}</td>
+                                <td>{formatNumber(sidRow.cps_c_count)}</td>
+                                <td>{formatNumber(sidRow.cps_p_count)}</td>
+                                <td>{formatNumber(sidRow.cps_s_count)}</td>
                                 <td className={sidRow.lead_count && (sidRow.booked_count / sidRow.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{sidRow.lead_count ? `${((sidRow.booked_count / sidRow.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
                                 <td aria-hidden="true"></td>
                               </tr>
@@ -1439,8 +1440,10 @@ function DataDashboard() {
                                         <td>{prontoStatus(c1Row.latest_lead_date)}</td>
                                         <td>{formatNumber(c1Row.lead_count)}</td>
                                         <td>{formatNumber(c1Row.booked_count)}</td>
-                                        <td>—</td>
-                                        <td>—</td>
+                                        <td>{formatNumber(c1Row.cps_h_count)}</td>
+                                        <td>{formatNumber(c1Row.cps_c_count)}</td>
+                                        <td>{formatNumber(c1Row.cps_p_count)}</td>
+                                        <td>{formatNumber(c1Row.cps_s_count)}</td>
                                         <td className={c1Row.lead_count && (c1Row.booked_count / c1Row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{c1Row.lead_count ? `${((c1Row.booked_count / c1Row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
                                         <td aria-hidden="true"></td>
                                       </tr>
@@ -1455,9 +1458,11 @@ function DataDashboard() {
                                             <td>{prontoStatus(c3Row.latest_lead_date)}</td>
                                             <td>{formatNumber(c3Row.lead_count)}</td>
                                             <td>{formatNumber(c3Row.booked_count)}</td>
-                                            <td>—</td>
-                                            <td>—</td>
-                                            <td className={c3Row.lead_count && (c3Row.booked_count / c3Row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{c3Row.lead_count ? `${((c3Row.booked_count / c3Row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
+                                            <td>{formatNumber(c3Row.cps_h_count)}</td>
+                                        <td>{formatNumber(c3Row.cps_c_count)}</td>
+                                        <td>{formatNumber(c3Row.cps_p_count)}</td>
+                                        <td>{formatNumber(c3Row.cps_s_count)}</td>
+                                        <td className={c3Row.lead_count && (c3Row.booked_count / c3Row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{c3Row.lead_count ? `${((c3Row.booked_count / c3Row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
                                             <td aria-hidden="true"></td>
                                           </tr>
                                         ))
