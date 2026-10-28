@@ -48,7 +48,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
 
   const selectedReport = REPORTS.find(report => report.id === activeReport) || REPORTS[0]
 
-  async function loadReport(reportId = activeReport) {
+  async function loadReport(reportId = activeReport, sourceFilter = leadSourceFilter, pageNumber = page) {
     const requestId = ++requestIdRef.current
 
     if (!supabase) {
@@ -67,7 +67,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
 
       if (reportId === "duplicate-marketing-row-id") {
         const { data, error: queryError } = await supabase.rpc("get_duplicate_marketing_row_ids", {
-          p_lead_source: leadSourceFilter || null, p_limit: pageSize + 1, p_offset: page * pageSize,
+          p_lead_source: sourceFilter || null, p_limit: pageSize + 1, p_offset: pageNumber * pageSize,
         })
         if (queryError) throw queryError
         const fetchedRows = Array.isArray(data) ? data : []
@@ -164,7 +164,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
   }
 
   useEffect(() => {
-    loadReport(activeReport)
+    loadReport(activeReport, leadSourceFilter, page)
   }, [activeReport, page, leadSourceFilter])
 
   useEffect(() => {
