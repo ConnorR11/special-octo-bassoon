@@ -1592,23 +1592,23 @@ function DataDashboard() {
             {prontoLeadDetailsLoading ? <p>Loading leads and appointments…</p> : <>
               <div style={{ overflowX: "auto", marginTop: 12 }}>
                 <table className="pronto-table">
-                  <thead><tr><th>Lead</th><th>Postcode</th><th>Introducer</th><th>Received</th><th>Lead appointment date</th><th>Related appointments</th></tr></thead>
+                  <thead><tr><th>Lead</th><th>Postcode</th><th>Introducer</th><th>Disposition</th><th>Received</th><th>Lead appointment date</th><th>Related appointments</th></tr></thead>
                   <tbody>
                     {prontoLeadDetails.map((lead) => <React.Fragment key={lead.marketing_row_id}>
                       <tr>
-                        <td><strong>{[lead.first_name,lead.last_name].filter(Boolean).join(" ") || "Unnamed lead"}</strong><div style={{ color:"#64748b",fontSize:11 }}>{lead.primary_phone_number || ""}{lead.email ? " · "+lead.email : ""}</div></td>
-                        <td>{lead.postcode || "—"}</td><td>{lead.introducer || "—"}</td>
+                        <td><strong>{[lead.first_name,lead.last_name].filter(Boolean).join(" ") || "Unnamed lead"}</strong></td>
+                        <td>{lead.postcode || "—"}</td><td>{lead.introducer || "—"}</td><td>{lead.disposition || "—"}</td>
                         <td>{lead.received_date_time ? new Date(lead.received_date_time).toLocaleDateString("en-GB") : "—"}</td>
                         <td>{lead.appointment_date_time || "—"}</td><td>{lead.relatedAppointments.length} appointment{lead.relatedAppointments.length===1?"":"s"}</td>
                       </tr>
                       {lead.relatedAppointments.map((a) => <tr key={a.appointment_row_id} style={{ background:"#f8fafc" }}>
                         <td colSpan={2} style={{ paddingLeft:28 }}><span style={{ color:"#64748b",fontSize:11 }}>↳ Appointment</span><div><strong>{a.name || "Appointment"}</strong></div><div style={{ color:"#64748b",fontSize:10 }}>{a.appointment_row_id}</div></td>
                         <td>{a.appointment_date ? new Date(a.appointment_date).toLocaleString("en-GB") : "No date"}</td>
-                        <td>{a.product || a.job_type || "—"}</td><td>{a.result || "—"}</td>
+                        <td>{a.product || a.job_type || "—"}</td><td>{a.result || "—"}</td><td>—</td>
                         <td><div style={{ display:"flex",flexWrap:"wrap",gap:4 }}>{["h","c","p","s"].map((stage) => <span key={stage} style={{ fontSize:10,borderRadius:5,padding:"2px 5px",background:a["cps_"+stage]===true?"#dcfce7":"#e2e8f0",color:a["cps_"+stage]===true?"#166534":"#64748b" }}>{stage.toUpperCase()}: {a["cps_"+stage]===true?"Yes":"No"}</span>)}</div><div style={{ color:"#64748b",fontSize:11 }}>{a.canvasser || a.rep_allocated || ""}</div></td>
                       </tr>)}
                     </React.Fragment>)}
-                    {!prontoLeadDetails.length && <tr><td colSpan={6}>No leads found for this period.</td></tr>}
+                    {!prontoLeadDetails.length && <tr><td colSpan={7}>No leads found for this period.</td></tr>}
                   </tbody>
                 </table>
               </div>
