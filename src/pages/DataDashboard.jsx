@@ -611,6 +611,15 @@ function DataDashboard() {
     [filteredProntoSidRows]
   )
 
+  const prontoMonthlyMaxRate = useMemo(() => {
+    const rates = prontoMonthlyRows
+      .filter((row) => prontoTrendIntroducers.includes(String(row.introducer || "(No Introducer)")))
+      .filter((row) => Number(row.lead_count) > 0)
+      .map((row) => Number(row.booked_count || 0) / Number(row.lead_count) * 100)
+    const maxRate = rates.length ? Math.max(...rates) : 0
+    return Math.max(10, Math.ceil(maxRate / 10) * 10)
+  }, [prontoMonthlyRows, prontoTrendIntroducers])
+
   const prontoMonthlyChartData = useMemo(() => {
     if (!prontoMonthlyRows.length || !prontoTrendIntroducers.length) return []
     const current = new Date()
@@ -1468,7 +1477,7 @@ function DataDashboard() {
                 <LineChart data={prontoMonthlyChartData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
-                  <YAxis domain={[0, 50]} ticks={[0, 10, 20, 30, 40, 50]} tickFormatter={(value) => value + "%"} />
+                  <YAxis domain={[0, prontoMonthlyMaxRate]} ticks={Array.from({ length: prontoMonthlyMaxRate / 10 + 1 }, (_, index) => index * 10)} tickFormatter={(value) => value + "%"} />
                   <Tooltip formatter={(value) => value == null ? "No leads" : Number(value).toFixed(1) + "%"} />
                   <Legend />
                   {prontoTrendIntroducers.map((name, index) => <Line key={name} type="monotone" dataKey={name + "__rate"} name={name} stroke={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} dot={false} connectNulls={false} />)}
