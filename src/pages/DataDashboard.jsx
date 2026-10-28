@@ -660,6 +660,31 @@ function DataDashboard() {
     })
   }
 
+  const prontoDashboardStats = useMemo(() => {
+    const sum = (key) => (prontoSidRows || []).reduce((total, row) => total + Number(row[key] || 0), 0)
+    const leads = sum("lead_count"), booked = sum("booked_count"), h = sum("cps_h_count")
+    const confirmed = sum("cps_c_count"), pitched = sum("cps_p_count"), sold = sum("cps_s_count"), netValue = sum("net_value_sold")
+    return { leads, booked, h, confirmed, pitched, sold, netValue, bookedRate: leads ? booked / leads * 100 : 0, valuePerLead: leads ? netValue / leads : 0, hToC: h ? confirmed / h * 100 : 0, cToP: confirmed ? pitched / confirmed * 100 : 0, pToS: pitched ? sold / pitched * 100 : 0, hToS: h ? sold / h * 100 : 0 }
+  }, [prontoSidRows])
+
+  const filteredProntoLeadDetails = useMemo(() => {
+    const search = prontoLeadSearch.trim().toLowerCase()
+    return prontoLeadDetails.filter((lead) => {
+      const haystack = [lead.first_name, lead.last_name, lead.postcode, lead.introducer, lead.disposition, lead.pronto_SID, lead.pronto_c1, lead.pronto_c3].filter(Boolean).join(" ").toLowerCase()
+      if (search && !haystack.includes(search)) return false
+      if (prontoLeadDispositionFilter !== "all" && String(lead.disposition || "") !== prontoLeadDispositionFilter) return false
+      const today = new Date(); today.setHours(0,0,0,0)
+      const appointmentDate = lead.appointment_date_time ? new Date(lead.appointment_date_time) : null
+      if (prontoLeadAppointmentFilter === "past" && (!appointmentDate || appointmentDate >= today)) return false
+      if (prontoLeadAppointmentFilter === "forward" && (!appointmentDate || appointmentDate < today)) return false
+      if (prontoLeadStageFilter !== "all" && !lead.relatedAppointments.some((a) => a["cps_" + prontoLeadStageFilter] === true)) return false
+      const hasDeal = (lead.relatedDeals || []).length > 0
+      if (prontoLeadDealFilter === "yes" && !hasDeal) return false
+      if (prontoLeadDealFilter === "no" && hasDeal) return false
+      return true
+    })
+  }, [prontoLeadDetails, prontoLeadSearch, prontoLeadDispositionFilter, prontoLeadAppointmentFilter, prontoLeadStageFilter, prontoLeadDealFilter])
+
   const filteredProntoSidRows = useMemo(() => {
     const search = prontoSidSearch.trim().toLowerCase()
     return sortProntoRows(prontoSidRows.filter((row) => {
