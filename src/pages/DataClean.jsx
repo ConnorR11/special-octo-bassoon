@@ -8,6 +8,7 @@ const REPORTS = [
   { id: "sold-missing-cps-s", title: "Sold · CPS-S not true", description: "2026 appointments marked SOLD where CPS-S is FALSE or NULL.", group: "CPS Work" },
   { id: "pm-pickup-hcps", title: "PM · Pickup / HCPS review", description: '2026 appointments where result contains "PM", is_pickup is not TRUE, and HCPS is not 1110.', group: "CPS Work" },
   { id: "missing-lead-type", title: "Leads missing lead type", description: "Leads where lead_type is empty or NULL. Assign one of the approved lead types." },
+  { id: "duplicate-marketing-row-id", title: "Duplicate marketing row IDs", description: "Lead records sharing a marketing_row_id with another lead. Review each copy before deleting." },
 ]
 
 const LEAD_TYPE_OPTIONS = ["Air Source Heat Pump", "ECO4", "Garden Room", "Solar", "Windows"]
@@ -39,6 +40,9 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
   const [saveMessages, setSaveMessages] = useState({})
   const [page, setPage] = useState(0)
   const [hasNextPage, setHasNextPage] = useState(false)
+  const [leadSourceFilter, setLeadSourceFilter] = useState("")
+  const [duplicateSources, setDuplicateSources] = useState([])
+  const [deletingLeadIds, setDeletingLeadIds] = useState({})
   const pageSize = 50
   const requestIdRef = useRef(0)
 
@@ -61,6 +65,15 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
     try {
       let allRows = []
 
+      if (reportId === "duplicate-marketing-row-id") {
+        const { data, error: queryError } = await supabase.rpc("get_duplicate_marketing_row_ids", {
+          p_lead_source: leadSourceFilter || null, p_limit: pageSize + 1, p_offset: page * pageSize,
+        })
+        if (queryError) throw queryError
+        const fetchedRows = Array.isArray(data) ? data : []
+        setHasNextPage(fetchedRows.length > pageSize)
+        allRows = fetchedRows.slice(0, pageSize)
+      } else {
       {
         let query
 
@@ -133,6 +146,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
           }
         }
       }
+      }
 
       if (requestId !== requestIdRef.current) return
       setRows(allRows)
@@ -151,7 +165,19 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
 
   useEffect(() => {
     loadReport(activeReport)
-  }, [activeReport, page])
+  }, [activeReport, page, leadSourceFilter])
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadDuplicateSources() {
+      if (!supabase) return
+      const { data, error: sourceError } = await supabase.rpc("get_duplicate_marketing_row_sources")
+      if (sourceError) { console.error("Unable to load duplicate lead sources:", sourceError); return }
+      if (!cancelled) setDuplicateSources((data || []).map(item => item.lead_source).filter(Boolean))
+    }
+    loadDuplicateSources()
+    return () => { cancelled = true }
+  }, [])
 
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -169,8 +195,8 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
         row.phone_number_1,
         row.appointment_date,
         ["wrong-cps", "pm-pickup-hcps", "sold-missing-cps-s"].includes(activeReport) ? hcps(row) : "",
-        row.lead_source,
-        row.lead_type,
+        row.lead_source, row.lead_type, row.marketing_row_id, row.delete_row_id,
+        row.first_name, row.last_name, row.primary_phone_number,
       ]
       return values.map(text).join(" ").toLowerCase().includes(term)
     })
@@ -183,6 +209,24 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
     }
     if (typeof onOpenAppointment === "function") return onOpenAppointment(row)
     if (typeof onOpenLead === "function") onOpenLead(row)
+  }
+
+  async function deleteDuplicateLead(row) {
+    const id = row.delete_row_id
+    if (!id || !row.marketing_row_id || !supabase) return
+    const customerName = [row.first_name, row.last_name].map(text).filter(Boolean).join(" ") || "this lead"
+    if (!window.confirm(`Permanently delete ${customerName} (marketing_row_id: ${row.marketing_row_id})? This cannot be undone. Only this record will be deleted.`)) return
+    setDeletingLeadIds(current => ({ ...current, [id]: true }))
+    setSaveMessages(current => ({ ...current, [id]: "" }))
+    try {
+      const { data, error: deleteError } = await supabase.from("leads").delete().eq("delete_row_id", id).eq("marketing_row_id", row.marketing_row_id).select("delete_row_id")
+      if (deleteError) throw deleteError
+      if (!data?.length) throw new Error("No record was deleted. Check database permissions or refresh the report.")
+      await loadReport("duplicate-marketing-row-id")
+    } catch (err) {
+      console.error("Unable to delete duplicate lead:", err)
+      setSaveMessages(current => ({ ...current, [id]: err?.message || "Could not delete this lead." }))
+    } finally { setDeletingLeadIds(current => ({ ...current, [id]: false })) }
   }
 
   async function saveLeadType(row) {
@@ -295,7 +339,10 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
           <div className="data-clean-panel">
             <div className="data-clean-panel-header">
               <div><h2>{selectedReport.title}</h2><p>{selectedReport.description}</p></div>
-              <div className="data-clean-search"><Search size={15} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search records..." /></div>
+              <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",justifyContent:"flex-end"}}>
+                {activeReport === "duplicate-marketing-row-id" && <select aria-label="Filter duplicate leads by source" value={leadSourceFilter} onChange={event => { setPage(0); setLeadSourceFilter(event.target.value) }} style={{height:36,minWidth:180,padding:"0 10px",border:"1px solid #d7dee7",borderRadius:8,background:"#fff",color:"#334155",fontSize:12}}><option value="">All lead sources</option>{duplicateSources.map(source => <option key={source} value={source}>{source}</option>)}</select>}
+                <div className="data-clean-search"><Search size={15} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search records..." /></div>
+              </div>
             </div>
 
             {loading ? (
@@ -309,7 +356,9 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                   <table className="data-clean-table">
                     <thead>
                       <tr>
-                        {activeReport === "missing-lead-type" ? (
+                        {activeReport === "duplicate-marketing-row-id" ? (
+                          <><th>Marketing Row ID</th><th>Customer</th><th>Lead Source</th><th>Received</th><th>Postcode</th><th>Phone</th><th>Copies</th><th>Action</th></>
+                        ) : activeReport === "missing-lead-type" ? (
                           <><th>Lead</th><th>Received</th><th>Postcode</th><th>Lead Source</th><th>Phone</th><th>Email</th><th>Assign Lead Type</th><th></th></>
                         ) : (
                           <><th>Customer</th><th>Appointment</th><th>Postcode</th>{activeReport !== "pm-pickup-hcps" && <th>Product</th>}<th>Job Type</th><th>Branch</th><th>Sales Rep</th>{activeReport !== "pm-pickup-hcps" && <><th>Phone</th><th>Email</th></>}
@@ -321,7 +370,14 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                     <tbody>
                       {filteredRows.map((row, index) => (
                         <tr key={row.appointment_row_id || `${row.name}-${row.appointment_date}-${index}`}>
-                          {activeReport === "missing-lead-type" ? (
+                          {activeReport === "duplicate-marketing-row-id" ? (
+                            <>
+                              <td><strong>{row.marketing_row_id}</strong><small>{row.delete_row_id}</small></td>
+                              <td><strong>{[row.first_name, row.last_name].map(text).filter(Boolean).join(" ") || "Unnamed lead"}</strong></td><td>{row.lead_source || "—"}</td><td>{formatDate(row.received_date_time)}</td><td>{row.postcode || "—"}</td><td>{row.primary_phone_number || "—"}</td>
+                              <td><span className="data-clean-badge warning">{row.duplicate_count} copies</span></td>
+                              <td><button type="button" className="data-clean-delete" disabled={!!deletingLeadIds[row.delete_row_id]} onClick={() => deleteDuplicateLead(row)}>{deletingLeadIds[row.delete_row_id] ? "Deleting…" : "Delete this row"}</button>{saveMessages[row.delete_row_id] && <small style={{color:"#b91c1c",whiteSpace:"normal",maxWidth:180}}>{saveMessages[row.delete_row_id]}</small>}</td>
+                            </>
+                          ) : activeReport === "missing-lead-type" ? (
                             <>
                               <td><strong>{[row.salutations, row.first_name, row.last_name].map(text).filter(Boolean).join(" ") || "Unnamed lead"}</strong><small>{row.delete_row_id}</small></td>
                               <td>{formatDate(row.received_date_time)}</td>
@@ -377,7 +433,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                     </tbody>
                   </table>
                 </div>
-                {activeReport === "missing-lead-type" && <div className="data-clean-pagination"><button type="button" className="data-clean-open" disabled={page === 0 || loading} onClick={() => setPage(current => Math.max(0, current - 1))}>Previous</button><span>Page {page + 1}</span><button type="button" className="data-clean-open" disabled={!hasNextPage || loading} onClick={() => setPage(current => current + 1)}>Next</button></div>}
+                {["missing-lead-type", "duplicate-marketing-row-id"].includes(activeReport) && <div className="data-clean-pagination"><button type="button" className="data-clean-open" disabled={page === 0 || loading} onClick={() => setPage(current => Math.max(0, current - 1))}>Previous</button><span>Page {page + 1}</span><button type="button" className="data-clean-open" disabled={!hasNextPage || loading} onClick={() => setPage(current => current + 1)}>Next</button></div>}
               </>
             )}
           </div>
@@ -435,6 +491,7 @@ const styles = `
 .data-clean-table td small{display:block;margin-top:3px;color:#94a3b8;font-size:9px}
 .data-clean-open{height:28px;padding:0 9px;border:1px solid #d7dee7;border-radius:6px;background:#fff;color:#334155;font-size:10px;font-weight:700;cursor:pointer}
 .data-clean-open:hover{background:#f8fafc}
+.data-clean-delete{height:28px;padding:0 9px;border:1px solid #fecaca;border-radius:6px;background:#fff1f2;color:#b91c1c;font-size:10px;font-weight:800;cursor:pointer}.data-clean-delete:disabled{opacity:.6;cursor:default}
 .data-clean-badge{display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:23px;padding:0 7px;border-radius:6px;font-size:10px;font-weight:800}
 .data-clean-badge.warning{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa}
 .data-clean-badge.danger{background:#fff1f2;color:#b91c1c;border:1px solid #fecaca}
