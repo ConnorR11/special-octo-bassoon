@@ -171,9 +171,20 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
     let cancelled = false
     async function loadDuplicateSources() {
       if (!supabase) return
+      let sources = []
       const { data, error: sourceError } = await supabase.rpc("get_duplicate_marketing_row_sources")
-      if (sourceError) { console.error("Unable to load duplicate lead sources:", sourceError); return }
-      if (!cancelled) setDuplicateSources((data || []).map(item => item.lead_source).filter(Boolean))
+      if (sourceError) console.error("Unable to load duplicate lead sources:", sourceError)
+      else sources = (data || []).map(item => item.lead_source).filter(Boolean)
+
+      // Fallback to the same working report RPC if the source-list RPC returns no options.
+      if (!sources.length) {
+        const { data: duplicateRows, error: rowsError } = await supabase.rpc("get_duplicate_marketing_row_ids", {
+          p_lead_source: null, p_limit: 201, p_offset: 0,
+        })
+        if (rowsError) console.error("Unable to derive duplicate lead sources:", rowsError)
+        else sources = (duplicateRows || []).map(item => item.lead_source).filter(Boolean)
+      }
+      if (!cancelled) setDuplicateSources([...new Set(sources)].sort((a, b) => a.localeCompare(b)))
     }
     loadDuplicateSources()
     return () => { cancelled = true }
