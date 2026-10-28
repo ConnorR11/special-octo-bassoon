@@ -88,6 +88,9 @@ function DataDashboard() {
   const [selectedLeadType, setSelectedLeadType] = useState("")
   const [leadSourcesLoading, setLeadSourcesLoading] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [speedToLeadRows, setSpeedToLeadRows] = useState([])
+  const [speedToLeadLoading, setSpeedToLeadLoading] = useState(false)
+  const [speedToLeadError, setSpeedToLeadError] = useState("")
   const [error, setError] = useState("")
   const [activeTab, setActiveTab] = useState("overview")
   const [prontoLeadDetails, setProntoLeadDetails] = useState([])
@@ -621,9 +624,37 @@ function DataDashboard() {
     if (supabase) loadLeadSources()
   }, [])
 
+  async function loadSpeedToLead() {
+    if (!supabase) return
+    setSpeedToLeadLoading(true)
+    setSpeedToLeadError("")
+    try {
+      const since = new Date()
+      since.setDate(since.getDate() - 30)
+      const { data, error: queryError } = await supabase.from("leads").select("marketing_row_id,received_date_time,first_time_called,hotkey_status").gte("received_date_time", since.toISOString()).not("received_date_time", "is", null).order("received_date_time", { ascending: false }).range(0, 9999)
+      if (queryError) throw queryError
+      const eligible = (data || []).filter((lead) => {
+        if (String(lead.hotkey_status || "").trim()) return false
+        const received = new Date(lead.received_date_time)
+        if (Number.isNaN(received.getTime())) return false
+        const hour = received.getHours()
+        return hour >= 9 && hour < 19
+      }).map((lead) => {
+        const received = new Date(lead.received_date_time)
+        const firstCalled = lead.first_time_called ? new Date(lead.first_time_called) : null
+        const minutes = firstCalled && !Number.isNaN(firstCalled.getTime()) ? (firstCalled - received) / 60000 : null
+        return { ...lead, speed_minutes: minutes !== null && minutes >= 0 ? minutes : null }
+      })
+      setSpeedToLeadRows(eligible)
+    } catch (e) { setSpeedToLeadError(e.message || "Unable to load speed-to-lead data.") }
+    finally { setSpeedToLeadLoading(false) }
+  }
+
   useEffect(() => {
     loadData()
   }, [selectedLeadSource, chartPeriod])
+
+  useEffect(() => { loadSpeedToLead() }, [])
 
   useEffect(() => {
     if (activeTab === "pronto") {
