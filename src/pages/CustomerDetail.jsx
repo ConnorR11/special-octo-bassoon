@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react"
+import * as tus from "tus-js-client"
 import {
   ArrowLeft,
   Save,
@@ -56,6 +57,8 @@ function CustomerDetail({
   const [surveyProgress, setSurveyProgress] = useState(["outstanding", "outstanding", "outstanding", "outstanding"])
   const [documentsLoading, setDocumentsLoading] = useState(false)
   const [uploadingCategory, setUploadingCategory] = useState("")
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0)
+  const [videoUploadStatus, setVideoUploadStatus] = useState("")
   const documentFileInputs = useRef({})
   const [documentError, setDocumentError] = useState("")
   const [documentNotice, setDocumentNotice] = useState("")
@@ -169,8 +172,36 @@ function CustomerDetail({
         if (file.size > (category === "survey_video" ? 500 : 250) * 1024 * 1024) throw new Error(`"${file.name}" exceeds the ${category === "survey_video" ? "500 MB" : "250 MB"} upload limit.`)
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-140) || "upload"
         const path = `${deal.id}/${category}/${Date.now()}-${Math.random().toString(36).slice(2, 9)}-${safeName}`
-        const { error: uploadError } = await supabase.storage.from("deal-documents").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false })
-        if (uploadError) throw uploadError
+        if (category === "survey_video") {
+          const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+          if (sessionError) throw sessionError
+          const accessToken = sessionData?.session?.access_token
+          if (!accessToken) throw new Error("Your session has expired. Please sign in again.")
+          setVideoUploadProgress(0)
+          setVideoUploadStatus("Starting resumable upload…")
+          await new Promise((resolve, reject) => {
+            const upload = new tus.Upload(file, {
+              endpoint: supabase.supabaseUrl.replace(/\/+$/, "") + "/storage/v1/upload/resumable",
+              retryDelays: [0, 3000, 5000, 10000, 20000],
+              chunkSize: 6 * 1024 * 1024,
+              uploadDataDuringCreation: true,
+              removeFingerprintOnSuccess: true,
+              headers: { authorization: "Bearer " + accessToken, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
+              metadata: { bucketName: "deal-documents", objectName: path, contentType: file.type || "application/octet-stream", cacheControl: "3600" },
+              onError: error => reject(error),
+              onProgress: (bytesUploaded, bytesTotal) => {
+                const percent = bytesTotal ? Math.min(100, Math.round((bytesUploaded / bytesTotal) * 100)) : 0
+                setVideoUploadProgress(percent)
+                setVideoUploadStatus("Uploading video… " + percent + "%")
+              },
+              onSuccess: () => { setVideoUploadProgress(100); setVideoUploadStatus("Upload complete. Saving video details…"); resolve() },
+            })
+            upload.start()
+          })
+        } else {
+          const { error: uploadError } = await supabase.storage.from("deal-documents").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false })
+          if (uploadError) throw uploadError
+        }
         const { data: userData } = await supabase.auth.getUser()
         const { data: savedDocument, error: metadataError } = await supabase.from("deal_documents").insert({
           deal_id: deal.id, category, survey_section: category === "survey_photos" ? surveySection : null, file_name: file.name, storage_path: path,
@@ -205,7 +236,7 @@ function CustomerDetail({
       console.error("Unable to upload deal documents:", err)
       setDocumentError(err?.message || "Unable to upload file. Please try again.")
       await loadDocuments()
-    } finally { setUploadingCategory("") }
+    } finally { setUploadingCategory(""); setVideoUploadProgress(0); setVideoUploadStatus("") }
   }
 
   async function uploadSurveyPhotos(files, section) {
@@ -766,6 +797,11 @@ function CustomerDetail({
                   </div>
                 )}
               </div>
+              {category.key === "survey_video" && busy && <div style={{ padding: "10px 14px 12px", borderTop: "1px solid #edf0f2" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 6, color: "#31536a", fontSize: 10 }}><span>{videoUploadStatus || "Preparing video upload…"}</span><strong>{videoUploadProgress}%</strong></div>
+                <div style={{ height: 6, overflow: "hidden", borderRadius: 999, background: "#e7edf2" }}><div style={{ width: videoUploadProgress + "%", height: "100%", borderRadius: 999, background: "#16865b", transition: "width 180ms ease" }} /></div>
+                <div style={{ marginTop: 5, color: "#75818b", fontSize: 9 }}>Large videos upload in resumable chunks and retry automatically if the connection drops.</div>
+              </div>}
               {category.key !== "survey_video" && category.key !== "electricity_bill_epvs_waiver" && <div style={{ padding: categoryDocuments.length ? "3px 12px" : "10px 12px", display: "grid", gap: 0 }}>
                 {categoryDocuments.map(document => <div key={document.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #edf0f2" }}>
                   <div style={{ width: 32, height: 32, borderRadius: 7, background: "#eaf3f8", color: "#1676b8", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto" }}><ExternalLink size={15} /></div>
