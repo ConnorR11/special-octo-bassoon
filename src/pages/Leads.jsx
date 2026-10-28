@@ -29,7 +29,7 @@ const QUEUE_SELECT = [
   "email",
   "address",
   "postcode",
-  "campaign",
+  "lead_source",
   "lead_type",
   "disposition",
   "last_disposition",
@@ -275,7 +275,7 @@ export default function Leads() {
     const q = search.trim().toLowerCase()
     if (!q) return queuePreview
     return queuePreview.filter(lead =>
-      [displayName(lead), lead.primary_phone_number, lead.postcode, lead.campaign]
+      [displayName(lead), lead.primary_phone_number, lead.postcode, lead.lead_source]
         .some(value => String(value || "").toLowerCase().includes(q))
     )
   }, [queuePreview, search])
