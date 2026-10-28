@@ -94,6 +94,8 @@ function DataDashboard() {
   const [prontoMonthlyRows, setProntoMonthlyRows] = useState([])
   const [prontoMonthlyLoading, setProntoMonthlyLoading] = useState(false)
   const [prontoMonthlyError, setProntoMonthlyError] = useState("")
+  const [showProntoVolumeBars, setShowProntoVolumeBars] = useState(true)
+  const [showProntoBookingLines, setShowProntoBookingLines] = useState(true)
   const [prontoSidTotal, setProntoSidTotal] = useState(0)
   const [prontoNoContactTotal, setProntoNoContactTotal] = useState(0)
   const [prontoNoContactBySid, setProntoNoContactBySid] = useState({})
@@ -1460,6 +1462,14 @@ function DataDashboard() {
           <div style={{ marginTop: 24, background: "#fff", border: "1px solid #dbe3ed", borderRadius: 12, padding: 16, minWidth: 0 }}>
             <div className="data-dashboard-chart-title">Monthly lead volume and booking rate by introducer</div>
             <div className="data-dashboard-chart-subtitle">Bars show leads received (left axis); lines show booking rate (right axis).</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "12px 0" }}>
+              <button type="button" onClick={() => setShowProntoVolumeBars((visible) => !visible)} aria-pressed={showProntoVolumeBars} style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "7px 12px", background: showProntoVolumeBars ? "#19385f" : "#fff", color: showProntoVolumeBars ? "#fff" : "#19385f", cursor: "pointer", fontSize: 13 }}>
+                {showProntoVolumeBars ? "Hide volume bars" : "Show volume bars"}
+              </button>
+              <button type="button" onClick={() => setShowProntoBookingLines((visible) => !visible)} aria-pressed={showProntoBookingLines} style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "7px 12px", background: showProntoBookingLines ? "#19385f" : "#fff", color: showProntoBookingLines ? "#fff" : "#19385f", cursor: "pointer", fontSize: 13 }}>
+                {showProntoBookingLines ? "Hide booking lines" : "Show booking lines"}
+              </button>
+            </div>
             {prontoMonthlyLoading ? <p>Loading monthly trends…</p> : prontoMonthlyError ? <p style={{ color: "#dc2626" }}>{prontoMonthlyError}</p> : <ResponsiveContainer width="100%" height={380}>
               <ComposedChart data={prontoMonthlyChartData} margin={{ top: 12, right: 18, left: 8, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -1478,8 +1488,8 @@ function DataDashboard() {
                     ))}
                   </div>
                 )} />
-                {prontoTrendIntroducers.map((name, index) => <Bar key={name + "-volume"} yAxisId="volume" stackId="monthly-leads" dataKey={name + "__leads"} name={name + " volume"} fill={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} fillOpacity={0.55} />)}
-                {prontoTrendIntroducers.map((name, index) => <Line key={name + "-rate"} yAxisId="rate" type="monotone" dataKey={name + "__rate"} name={name + " booking %"} stroke={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} strokeWidth={2} dot={false} connectNulls={false} />)}
+                {showProntoVolumeBars && prontoTrendIntroducers.map((name, index) => <Bar key={name + "-volume"} yAxisId="volume" stackId="monthly-leads" dataKey={name + "__leads"} name={name + " volume"} fill={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} fillOpacity={0.55} />)}
+                {showProntoBookingLines && prontoTrendIntroducers.map((name, index) => <Line key={name + "-rate"} yAxisId="rate" type="monotone" dataKey={name + "__rate"} name={name + " booking %"} stroke={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} strokeWidth={2} dot={false} connectNulls={false} />)}
               </ComposedChart>
             </ResponsiveContainer>}
           </div>
