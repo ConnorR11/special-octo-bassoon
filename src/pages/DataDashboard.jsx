@@ -1386,7 +1386,7 @@ function DataDashboard() {
                       </tr>
                       {expandedIntroducers[row.pronto_sid] && (
                         introducerSidLoading[row.pronto_sid] ? (
-                          <tr className="pronto-tree-loading"><td colSpan={8}>Loading SID breakdown…</td></tr>
+                          <tr className="pronto-tree-loading"><td colSpan={10}>Loading SID breakdown…</td></tr>
                         ) : sortProntoRows(introducerSidRows[row.pronto_sid] || []).map((sidRow) => {
                           const sidKey = JSON.stringify([row.pronto_sid, sidRow.pronto_sid]);
                           const sidExpanded = Boolean(expandedProntoSids[sidKey]);
@@ -1404,12 +1404,14 @@ function DataDashboard() {
                                 <td>{prontoStatus(sidRow.latest_lead_date)}</td>
                                 <td>{formatNumber(sidRow.lead_count)}</td>
                                 <td>{formatNumber(sidRow.booked_count)}</td>
+                                <td>—</td>
+                                <td>—</td>
                                 <td className={sidRow.lead_count && (sidRow.booked_count / sidRow.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{sidRow.lead_count ? `${((sidRow.booked_count / sidRow.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
                                 <td aria-hidden="true"></td>
                               </tr>
                               {sidExpanded && (
                                 introducerC1Loading[sidKey] ? (
-                                  <tr className="pronto-tree-loading"><td colSpan={8}>Loading C1 campaigns…</td></tr>
+                                  <tr className="pronto-tree-loading"><td colSpan={10}>Loading C1 campaigns…</td></tr>
                                 ) : sortProntoRows(c1Rows).map((c1Row) => {
                                   const c1Key = JSON.stringify([row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1]);
                                   const c1Expanded = Boolean(expandedIntroducerC1s[c1Key]);
@@ -1427,12 +1429,14 @@ function DataDashboard() {
                                         <td>{prontoStatus(c1Row.latest_lead_date)}</td>
                                         <td>{formatNumber(c1Row.lead_count)}</td>
                                         <td>{formatNumber(c1Row.booked_count)}</td>
+                                        <td>—</td>
+                                        <td>—</td>
                                         <td className={c1Row.lead_count && (c1Row.booked_count / c1Row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{c1Row.lead_count ? `${((c1Row.booked_count / c1Row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
                                         <td aria-hidden="true"></td>
                                       </tr>
                                       {c1Expanded && (
                                         introducerC3Loading[c1Key] ? (
-                                          <tr className="pronto-tree-loading"><td colSpan={8}>Loading C3 campaigns…</td></tr>
+                                          <tr className="pronto-tree-loading"><td colSpan={10}>Loading C3 campaigns…</td></tr>
                                         ) : sortProntoRows(c3Rows).map((c3Row) => (
                                           <tr className="pronto-tree-c3" key={c3Row.pronto_c3}>
                                             <td><span className="pronto-tree-leaf" style={{ paddingLeft: 66 }}>{c3Row.pronto_c3}</span></td>
@@ -1441,6 +1445,8 @@ function DataDashboard() {
                                             <td>{prontoStatus(c3Row.latest_lead_date)}</td>
                                             <td>{formatNumber(c3Row.lead_count)}</td>
                                             <td>{formatNumber(c3Row.booked_count)}</td>
+                                            <td>—</td>
+                                            <td>—</td>
                                             <td className={c3Row.lead_count && (c3Row.booked_count / c3Row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{c3Row.lead_count ? `${((c3Row.booked_count / c3Row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
                                             <td aria-hidden="true"></td>
                                           </tr>
