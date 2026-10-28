@@ -1444,7 +1444,8 @@ function DataDashboard() {
               ["Net value sold", "£" + formatNumber(prontoDashboardStats.netValue), "Linked sold deals"],
               ["Value per lead", "£" + prontoDashboardStats.valuePerLead.toFixed(2), "Net value ÷ leads"],
               ["Cost per lead", "Not configured", "Placeholder — add campaign spend"],
-              ["Cost per sale", "Not configured", "Placeholder — add campaign spend"]
+              ["Cost per sale", "Not configured", "Placeholder — add campaign spend"],
+              ["Return on lead spend", "Not configured", "Placeholder — add campaign spend"]
             ].map(([label,value,sub]) => <div key={label} style={{ background:"#fff",border:"1px solid #dbe3ed",borderRadius:12,padding:14 }}>
               <div style={{ color:"#64748b",fontSize:12 }}>{label}</div><div style={{ fontSize:23,fontWeight:700,color:"#17365d",marginTop:5 }}>{value}</div><div style={{ color:"#64748b",fontSize:11,marginTop:4 }}>{sub}</div>
             </div>)}
@@ -1516,7 +1517,7 @@ function DataDashboard() {
             <div className="data-dashboard-chart-subtitle">Monthly sales value needs a confirmed deal close-date field. Until then, the monthly chart is a placeholder.</div>
             <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginTop:12 }}>
               <div style={{ border:"1px dashed #cbd5e1",borderRadius:8,padding:12,color:"#64748b" }}>Monthly net value sold<br/><strong>Awaiting deal close date</strong></div>
-              <div style={{ border:"1px dashed #cbd5e1",borderRadius:8,padding:12,color:"#64748b" }}>Average value per sold deal<br/><strong>£{prontoDashboardStats.sold ? (prontoDashboardStats.netValue/prontoDashboardStats.sold).toFixed(2) : "0.00"}</strong></div>
+              <div style={{ border:"1px dashed #cbd5e1",borderRadius:8,padding:12,color:"#64748b" }}>Average value per sold deal<br/><strong>Awaiting reliable deal count</strong></div>
               <div style={{ border:"1px dashed #cbd5e1",borderRadius:8,padding:12,color:"#64748b" }}>Sold appointments without linked deal<br/><strong>Reconciliation metric to be added</strong></div>
             </div>
           </div>
