@@ -1417,6 +1417,45 @@ function DataDashboard() {
             <div className="data-dashboard-error">{prontoSidError}</div>
           )}
 
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(155px,1fr))", gap:12, marginTop:18 }}>
+            {[
+              ["Total leads", formatNumber(prontoDashboardStats.leads), "Selected period"],
+              ["Booked", formatNumber(prontoDashboardStats.booked), prontoDashboardStats.bookedRate.toFixed(1) + "% of leads"],
+              ["Net value sold", "£" + formatNumber(prontoDashboardStats.netValue), "Linked sold deals"],
+              ["Value per lead", "£" + prontoDashboardStats.valuePerLead.toFixed(2), "Net value ÷ leads"],
+              ["Cost per lead", "Not configured", "Placeholder — add campaign spend"],
+              ["Cost per sale", "Not configured", "Placeholder — add campaign spend"]
+            ].map(([label,value,sub]) => <div key={label} style={{ background:"#fff",border:"1px solid #dbe3ed",borderRadius:12,padding:14 }}>
+              <div style={{ color:"#64748b",fontSize:12 }}>{label}</div><div style={{ fontSize:23,fontWeight:700,color:"#17365d",marginTop:5 }}>{value}</div><div style={{ color:"#64748b",fontSize:11,marginTop:4 }}>{sub}</div>
+            </div>)}
+          </div>
+          <div style={{ marginTop:14, display:"grid", gridTemplateColumns:"minmax(0,1.5fr) minmax(260px,1fr)", gap:14 }}>
+            <div style={{ background:"#fff",border:"1px solid #dbe3ed",borderRadius:12,padding:16 }}>
+              <div className="data-dashboard-chart-title">Appointment conversion funnel</div>
+              <div className="data-dashboard-chart-subtitle">Counts each lead once per stage when any related appointment has that CPS flag. Stage counts can overlap.</div>
+              {[
+                ["H · Generated",prontoDashboardStats.h,100],
+                ["C · Confirmed",prontoDashboardStats.confirmed,prontoDashboardStats.h ? prontoDashboardStats.confirmed/prontoDashboardStats.h*100 : 0],
+                ["P · Pitched",prontoDashboardStats.pitched,prontoDashboardStats.h ? prontoDashboardStats.pitched/prontoDashboardStats.h*100 : 0],
+                ["S · Sold",prontoDashboardStats.sold,prontoDashboardStats.h ? prontoDashboardStats.sold/prontoDashboardStats.h*100 : 0]
+              ].map(([label,count,pct]) => <div key={label} style={{ marginTop:12 }}>
+                <div style={{ display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:4 }}><span>{label}</span><strong>{formatNumber(count)} · {Number(pct).toFixed(1)}% of H</strong></div>
+                <div style={{ height:9,background:"#e8eef5",borderRadius:8,overflow:"hidden" }}><div style={{ height:"100%",width:Math.min(100,Math.max(0,Number(pct)))+"%",background:"#3478c8",borderRadius:8 }} /></div>
+              </div>)}
+              <div style={{ display:"flex",gap:14,flexWrap:"wrap",marginTop:12,color:"#64748b",fontSize:11 }}>
+                <span>H→C: {prontoDashboardStats.hToC.toFixed(1)}%</span><span>C→P: {prontoDashboardStats.cToP.toFixed(1)}%</span><span>P→S: {prontoDashboardStats.pToS.toFixed(1)}%</span><span>H→S: {prontoDashboardStats.hToS.toFixed(1)}%</span>
+              </div>
+            </div>
+            <div style={{ background:"#fff",border:"1px solid #dbe3ed",borderRadius:12,padding:16 }}>
+              <div className="data-dashboard-chart-title">Appointment pipeline</div>
+              <div className="data-dashboard-chart-subtitle">Based on the currently loaded lead list ({formatNumber(prontoLeadDetails.length)} leads).</div>
+              <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:14 }}>
+                <div style={{ background:"#f8fafc",borderRadius:8,padding:12 }}><div style={{ color:"#64748b",fontSize:11 }}>Past appointments</div><strong style={{fontSize:22}}>{formatNumber(prontoLeadDetails.filter(l=>l.appointment_date_time && new Date(l.appointment_date_time)<new Date(new Date().setHours(0,0,0,0))).length)}</strong></div>
+                <div style={{ background:"#f8fafc",borderRadius:8,padding:12 }}><div style={{ color:"#64748b",fontSize:11 }}>Today & forward</div><strong style={{fontSize:22}}>{formatNumber(prontoLeadDetails.filter(l=>l.appointment_date_time && new Date(l.appointment_date_time)>=new Date(new Date().setHours(0,0,0,0))).length)}</strong></div>
+              </div>
+              <div style={{ color:"#64748b",fontSize:11,marginTop:10 }}>Appointment totals reflect loaded leads only; full-period aggregation is a placeholder.</div>
+            </div>
+          </div>
           <div style={{ marginTop: 24, background: "#fff", border: "1px solid #dbe3ed", borderRadius: 12, padding: 16, minWidth: 0 }}>
             <div className="data-dashboard-chart-title">Monthly lead volume and booking rate by introducer</div>
             <div className="data-dashboard-chart-subtitle">Bars show leads received (left axis); lines show booking rate (right axis).</div>
