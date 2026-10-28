@@ -9,14 +9,8 @@ const PRESENTER_PATH = "Homeshield-Solar-Presenter-edited.pdf"
 
 function TandemFinanceSlide() {
   const cyan = "#08c7ed"
-  const muted = "#e1edf6"
-  const benefitCards = [
-    ["▦", "Lower interest rate", "Making renewable energy more affordable for your home."],
-    ["♧", "Flexible terms", "Spread the cost over a term that works for you."],
-    ["☷", "Simple application", "A quick and straightforward process with a trusted UK provider."],
-    ["◉", "Trusted by millions", "Personal finance from a well-established UK lender."],
-  ]
-  const financeRows = [
+  const pale = "#e6eff7"
+  const rows = [
     ["Cash price", "£10,000"],
     ["Deposit", "£0"],
     ["Amount borrowed", "£10,000"],
@@ -26,50 +20,58 @@ function TandemFinanceSlide() {
     ["APR representative", "4.6%"],
     ["Fixed interest rate", "4.51%"],
   ]
-  return <div style={{ width: "min(100%, calc((100vh - 160px) * 16 / 9))", height: "auto", maxWidth: "100%", maxHeight: "100%", flex: "0 1 auto", aspectRatio: "16 / 9", minHeight: 0, overflow: "hidden", boxSizing: "border-box", position: "relative", display: "flex", flexDirection: "column", padding: "2.2% 3.1% 0", color: "#fff", background: "#071522", fontFamily: "Arial, Helvetica, sans-serif" }}>
-    <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(90deg,rgba(4,14,26,.98) 0%,rgba(4,18,32,.91) 42%,rgba(4,20,34,.34) 72%,rgba(4,15,25,.12) 100%), linear-gradient(0deg,rgba(3,14,25,.96) 0%,transparent 28%), url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2000&q=85')", backgroundSize: "cover", backgroundPosition: "center", zIndex: 0 }} />
-    <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "clamp(9px, 1.05vw, 16px)", letterSpacing: ".08em", color: "#f2f7fc", flexShrink: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ width: "clamp(14px, 1.8vw, 28px)", height: "clamp(14px, 1.8vw, 28px)", background: cyan, borderRadius: 3, display: "inline-block" }} /><span>HOMESHIELD SCOTLAND</span></div>
-      <div>SOLAR + BATTERY STORAGE</div>
+  const benefits = [
+    ["▦", "Lower interest rate", "Making renewable energy more affordable for your home."],
+    ["♧", "Flexible terms", "Spread the cost over a term that works for you."],
+    ["☷", "Simple application", "A quick and straightforward process with a trusted UK provider."],
+    ["◉", "Trusted by millions", "Personal finance from a well-established UK lender."],
+  ]
+  const absolute = (left, top, width, height) => ({ position: "absolute", left, top, width, height, boxSizing: "border-box" })
+  return <div style={{ width: "min(100%, calc((100vh - 160px) * 1.7421))", maxWidth: "100%", aspectRatio: "1655 / 950", position: "relative", overflow: "hidden", flex: "0 1 auto", background: "#061725", color: "#fff", fontFamily: "Arial, Helvetica, sans-serif", boxSizing: "border-box", boxShadow: "0 4px 22px rgba(0,0,0,.25)" }}>
+    <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(90deg,rgba(2,14,27,.98) 0%,rgba(2,17,31,.94) 35%,rgba(2,17,31,.75) 56%,rgba(2,17,31,.18) 100%), linear-gradient(0deg,rgba(2,14,24,.98) 0%,transparent 33%), url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2000&q=90')", backgroundSize: "cover", backgroundPosition: "center right" }} />
+    <div style={{ ...absolute("3.2%", "4.2%", "50%", "4%"), display: "flex", alignItems: "center", gap: "1%", fontSize: "clamp(9px, 1.05vw, 17px)", letterSpacing: ".08em", whiteSpace: "nowrap" }}>
+      <span style={{ display: "inline-block", width: "clamp(14px, 1.65vw, 27px)", height: "clamp(14px, 1.65vw, 27px)", borderRadius: 3, background: cyan, flexShrink: 0 }} /> HOMESHIELD SCOTLAND
     </div>
-    <div style={{ position: "relative", zIndex: 1, display: "grid", gridTemplateColumns: "minmax(0, 1.12fr) minmax(0, .88fr)", gap: "2.2%", flex: 1, minHeight: 0, paddingTop: "2.3%", paddingBottom: "1.2%" }}>
-      <div style={{ display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
-        <div style={{ fontSize: "clamp(22px, 3.65vw, 56px)", lineHeight: 1.02, fontWeight: 800, letterSpacing: "-.035em" }}>Solar &amp; battery finance</div>
-        <div style={{ fontSize: "clamp(21px, 3.55vw, 54px)", lineHeight: 1.03, fontWeight: 800, letterSpacing: "-.035em", color: cyan }}>with Government support.</div>
-        <p style={{ margin: "1.5% 0 2.4%", color: muted, fontSize: "clamp(11px, 1.5vw, 23px)", lineHeight: 1.25, maxWidth: "95%" }}>A lower interest rate, making renewable energy more affordable for your home.</p>
-        <div style={{ display: "grid", gridTemplateColumns: "32% 68%", alignItems: "center", background: "#fff", color: "#07111e", border: "2px solid "+cyan, borderRadius: 13, padding: "2.5% 3%", minHeight: "26%", boxSizing: "border-box", flexShrink: 0 }}>
-          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", borderRight: "2px solid #1b2a40", minHeight: 70, paddingRight: "6%" }}>
-            <svg viewBox="0 0 120 120" style={{ width: "85%", maxHeight: 110 }} aria-hidden="true"><path d="M60 10 L67 25 L82 19 L80 36 L99 37 L88 52 L103 63 L84 70 L89 89 L70 83 L60 105 L50 83 L31 89 L36 70 L17 63 L32 52 L21 37 L40 36 L38 19 L53 25 Z" fill="#101820"/><circle cx="60" cy="58" r="23" fill="white" stroke="#101820" strokeWidth="4"/><path d="M60 39 V77 M45 50 H75 M45 65 H75" stroke="#101820" strokeWidth="3"/><text x="60" y="62" fontSize="9" fontWeight="bold" textAnchor="middle" fill="#101820">UK</text></svg>
-          </div>
-          <div style={{ paddingLeft: "7%" }}><div style={{ fontSize: "clamp(16px, 2.45vw, 37px)", lineHeight: .98, fontWeight: 800, letterSpacing: "-.04em" }}>Funded by<br/>UK Government</div><div style={{ marginTop: "3%", fontSize: "clamp(10px, 1.22vw, 18px)", lineHeight: 1.2, color: "#14213d" }}>This product is supported by the <strong>Warm Homes Loan Scheme.</strong></div></div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.3%", marginTop: "2.2%", flex: 1, minHeight: 0 }}>
-          {benefitCards.map(([icon, title, description]) => <div key={title} style={{ display: "grid", gridTemplateColumns: "25% 75%", alignItems: "center", gap: "3%", border: "1px solid "+cyan, borderRadius: 12, padding: "5% 4%", background: "rgba(3,27,45,.9)", minHeight: 0, boxSizing: "border-box" }}>
-            <div style={{ color: cyan, fontSize: "clamp(24px, 3.4vw, 50px)", lineHeight: 1, textAlign: "center", fontWeight: 700 }}>{icon}</div>
-            <div style={{ minWidth: 0 }}><div style={{ fontSize: "clamp(10px, 1.1vw, 17px)", lineHeight: 1.1, fontWeight: 800, marginBottom: "4%" }}>{title}</div><div style={{ fontSize: "clamp(8px, .88vw, 13px)", lineHeight: 1.3, color: muted }}>{description}</div></div>
-          </div>)}
-        </div>
+    <div style={{ ...absolute("66%", "4.5%", "31%", "3.5%"), textAlign: "right", fontSize: "clamp(9px, 1.02vw, 16px)", letterSpacing: ".08em", whiteSpace: "nowrap" }}>SOLAR + BATTERY STORAGE</div>
+    <div style={{ ...absolute("3.4%", "10.6%", "53%", "15.5%"), display: "flex", flexDirection: "column", justifyContent: "flex-start", gap: 0, textShadow: "0 2px 8px rgba(0,0,0,.2)" }}>
+      <div style={{ fontSize: "clamp(25px, 3.55vw, 60px)", lineHeight: 1.02, fontWeight: 800, letterSpacing: "-.035em", whiteSpace: "nowrap" }}>Solar &amp; battery finance</div>
+      <div style={{ fontSize: "clamp(23px, 3.45vw, 58px)", lineHeight: 1.03, fontWeight: 800, letterSpacing: "-.035em", color: cyan, whiteSpace: "nowrap" }}>with Government support.</div>
+      <div style={{ marginTop: "1.2%", fontSize: "clamp(10px, 1.48vw, 24px)", lineHeight: 1.22, color: pale, maxWidth: "72%" }}>A lower interest rate, making renewable energy more affordable for your home.</div>
+    </div>
+    <div style={{ ...absolute("3.5%", "35.5%", "40.2%", "22.7%"), background: "#fff", color: "#071321", border: "2px solid "+cyan, borderRadius: 13, display: "grid", gridTemplateColumns: "35% 65%", alignItems: "center", padding: "2.2% 2.6%" }}>
+      <div style={{ height: "78%", borderRight: "2px solid #16263d", display: "flex", alignItems: "center", justifyContent: "center", paddingRight: "10%" }}>
+        <svg viewBox="0 0 150 150" style={{ width: "84%", height: "100%", maxHeight: "130px" }} aria-label="UK government emblem"><g fill="#101820"><path d="M75 5 87 29 110 18 108 43 137 43 121 64 143 78 119 91 127 117 101 111 91 140 75 119 58 140 49 112 22 118 31 92 7 78 29 63 13 43 42 43 40 18 63 29Z"/><circle cx="75" cy="74" r="31" fill="#fff" stroke="#101820" strokeWidth="5"/><path d="M75 51v45M54 66h42M54 82h42" stroke="#101820" strokeWidth="4"/></g><text x="75" y="79" fontSize="12" fontWeight="bold" textAnchor="middle" fill="#101820">UK</text></svg>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", minHeight: 0, paddingTop: "1%", position: "relative" }}>
-        <div style={{ alignSelf: "flex-end", fontSize: "clamp(23px, 3.2vw, 48px)", fontWeight: 800, letterSpacing: "-.06em", margin: "0 0 3%", textShadow: "0 2px 10px #001321" }}><span style={{ color: cyan }}>◖</span><span style={{ color: "#f53c8a" }}>◗</span><span style={{ marginLeft: 8 }}>tandem</span></div>
-        <div style={{ border: "2px solid "+cyan, borderRadius: 18, padding: "3.3% 3.8%", background: "rgba(2,18,31,.94)", display: "flex", flexDirection: "column", minHeight: 0, flex: 1, boxSizing: "border-box", boxShadow: "0 8px 26px rgba(0,0,0,.25)" }}>
-          <div style={{ fontSize: "clamp(8px, .92vw, 14px)", letterSpacing: ".2em", color: "#e2edf7" }}>TANDEM BANK – REPRESENTATIVE EXAMPLE</div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: "2%" }}><span style={{ color: cyan, fontSize: "clamp(48px, 7.5vw, 112px)", lineHeight: .92, fontWeight: 900, letterSpacing: "-.06em" }}>4.6%</span><span style={{ color: cyan, fontSize: "clamp(18px, 2.4vw, 36px)", fontWeight: 800 }}>APR</span></div>
-          <div style={{ textAlign: "right", fontSize: "clamp(9px, 1.1vw, 16px)", marginTop: "-.5%" }}>Representative</div>
-          <div style={{ fontSize: "clamp(9px, 1.15vw, 17px)", color: muted, margin: "2% 0 2.5%" }}>10 year finance (120 months) through <strong>Tandem Bank.</strong></div>
-          <div style={{ border: "1px solid rgba(8,199,237,.28)", borderRadius: 13, padding: "2px 3%", flex: "1 1 auto", minHeight: 0, overflow: "hidden" }}>
-            {financeRows.map(([label, value], index) => <div key={label} style={{ display: "grid", gridTemplateColumns: "47% 53%", gap: 8, padding: "clamp(5px, .55vw, 8px) 0", borderBottom: index === financeRows.length - 1 ? 0 : "1px solid rgba(8,199,237,.24)", fontSize: "clamp(9px, 1.02vw, 15px)", lineHeight: 1.12 }}><span style={{ color: "#e1edf6" }}>{label}</span><span style={{ color: cyan, fontWeight: 800 }}>{value}</span></div>)}
-          </div>
-          <p style={{ margin: "2.5% 0 0", color: "#e1edf6", fontSize: "clamp(6px, .66vw, 10px)", lineHeight: 1.3 }}>Finance subject to status, affordability and scheme eligibility. The Government supports the interest rate but does not provide the loan. Finance is provided by Tandem Bank through Matrix. Homeshield Scotland Limited is a credit broker, not a lender. Authorised and regulated by the Financial Conduct Authority, FRN 624069. Credit is provided by a panel of lenders with whom we have a commercial relationship.</p>
-        </div>
+      <div style={{ paddingLeft: "8%", minWidth: 0 }}>
+        <div style={{ fontSize: "clamp(17px, 2.35vw, 39px)", lineHeight: ".98", fontWeight: 800, letterSpacing: "-.04em" }}>Funded by<br/>UK Government</div>
+        <div style={{ marginTop: "4%", fontSize: "clamp(9px, 1.18vw, 19px)", lineHeight: 1.2, color: "#101d38" }}>This product is supported by the <strong>Warm Homes Loan Scheme.</strong></div>
       </div>
     </div>
-    <div style={{ position: "relative", zIndex: 1, display: "grid", gridTemplateColumns: "29% 71%", gap: "2%", borderTop: "2px solid "+cyan, padding: "1.3% 0 1.6%", marginLeft: "-3.3%", marginRight: "-3.3%", paddingLeft: "3.3%", paddingRight: "3.3%", background: "rgba(3,14,25,.94)", flexShrink: 0 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "22% 78%", gap: "4%", alignItems: "center", borderRight: "2px solid "+cyan, paddingRight: "4%" }}>
-        <div style={{ fontSize: "clamp(26px, 3.7vw, 56px)", color: "#28bfff", textAlign: "center" }}>♙</div>
-        <div style={{ fontSize: "clamp(8px, .95vw, 14px)", lineHeight: 1.25 }}><strong>Representative example only</strong><div style={{ marginTop: 3, color: muted }}>Your actual payments may vary depending on your circumstances and the lender's assessment.</div></div>
+    <div style={{ ...absolute("3%", "59.7%", "40.5%", "23.2%"), display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: "1.5%" }}>
+      {benefits.map(([icon, title, description]) => <div key={title} style={{ display: "grid", gridTemplateColumns: "25% 75%", alignItems: "center", gap: "2%", minWidth: 0, minHeight: 0, border: "1px solid "+cyan, borderRadius: 12, padding: "5% 4%", background: "rgba(2,26,44,.94)", boxSizing: "border-box" }}>
+        <div style={{ color: cyan, fontSize: "clamp(22px, 3.2vw, 51px)", fontWeight: 700, lineHeight: 1, textAlign: "center" }}>{icon}</div>
+        <div style={{ minWidth: 0 }}><div style={{ fontSize: "clamp(9px, 1.08vw, 17px)", lineHeight: 1.12, fontWeight: 800, marginBottom: "4%" }}>{title}</div><div style={{ fontSize: "clamp(7px, .83vw, 13px)", lineHeight: 1.28, color: pale }}>{description}</div></div>
+      </div>)}
+    </div>
+    <div style={{ ...absolute("72%", "10%", "25%", "7.5%"), display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "1%", fontSize: "clamp(24px, 3.35vw, 56px)", fontWeight: 800, letterSpacing: "-.05em", whiteSpace: "nowrap", textShadow: "0 2px 8px rgba(0,0,0,.3)" }}>
+      <span style={{ display: "inline-block", width: "clamp(25px, 5.5vw, 88px)", height: "clamp(18px, 3.9vw, 62px)", borderRadius: "55% 0 0 0", background: "linear-gradient(90deg,#08c7ed 0 52%,#176fcb 52% 100%)" }} /><span style={{ display: "inline-block", width: "clamp(16px, 2.6vw, 42px)", height: "clamp(18px, 3.9vw, 62px)", background: "#f53b88", borderRadius: "0 4px 4px 0", marginLeft: "-2.4%" }} /><span style={{ marginLeft: "1%" }}>tandem</span>
+    </div>
+    <div style={{ ...absolute("44.5%", "27%", "31.1%", "56.3%"), border: "2px solid "+cyan, borderRadius: 18, padding: "2.2% 2.4%", background: "rgba(2,19,32,.94)", display: "flex", flexDirection: "column", boxShadow: "0 8px 25px rgba(0,0,0,.25)" }}>
+      <div style={{ fontSize: "clamp(7px, .9vw, 14px)", letterSpacing: ".19em", whiteSpace: "nowrap", color: pale }}>TANDEM BANK – REPRESENTATIVE EXAMPLE</div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: "2%", marginTop: "2%" }}><span style={{ color: cyan, fontSize: "clamp(44px, 7vw, 112px)", lineHeight: .9, fontWeight: 900, letterSpacing: "-.06em" }}>4.6%</span><span style={{ color: cyan, fontSize: "clamp(17px, 2.35vw, 38px)", fontWeight: 800 }}>APR</span></div>
+      <div style={{ textAlign: "right", fontSize: "clamp(8px, 1vw, 16px)", lineHeight: 1.1, marginTop: "-.2%" }}>Representative</div>
+      <div style={{ fontSize: "clamp(8px, 1.12vw, 18px)", color: pale, lineHeight: 1.2, margin: "1.8% 0 2.2%" }}>10 year finance (120 months) through <strong>Tandem Bank.</strong></div>
+      <div style={{ flex: "1 1 auto", minHeight: 0, border: "1px solid rgba(8,199,237,.3)", borderRadius: 12, padding: "0 2.2%", display: "flex", flexDirection: "column", justifyContent: "space-evenly" }}>
+        {rows.map(([label, value], index) => <div key={label} style={{ display: "grid", gridTemplateColumns: "48% 52%", alignItems: "center", minHeight: 0, flex: "1 1 0", borderBottom: index === rows.length - 1 ? 0 : "1px solid rgba(8,199,237,.24)", fontSize: "clamp(8px, 1.02vw, 16px)", lineHeight: 1.1, gap: "2%" }}><span style={{ color: pale }}>{label}</span><span style={{ color: cyan, fontWeight: 800, whiteSpace: "nowrap" }}>{value}</span></div>)}
       </div>
-      <div style={{ alignSelf: "center", color: muted, fontSize: "clamp(7px, .85vw, 13px)", lineHeight: 1.35 }}>Finance subject to status, affordability and scheme eligibility. The Government supports the interest rate but does not provide the loan. Finance is provided by Tandem Bank through Matrix. Homeshield Scotland Limited is a credit broker, not a lender. Authorised and regulated by the Financial Conduct Authority, FRN 624069.</div>
+      <div style={{ marginTop: "2.1%", fontSize: "clamp(5px, .63vw, 10px)", lineHeight: 1.25, color: pale }}>Finance subject to status, affordability and scheme eligibility. The Government supports the interest rate but does not provide the loan. Finance is provided by Tandem Bank through Matrix. Homeshield Scotland Limited is a credit broker, not a lender. Authorised and regulated by the Financial Conduct Authority, FRN 624069. Credit is provided by a panel of lenders with whom we have a commercial relationship.</div>
+    </div>
+    <div style={{ ...absolute("0", "84.4%", "100%", "15.6%"), borderTop: "2px solid "+cyan, background: "rgba(2,14,25,.97)", display: "grid", gridTemplateColumns: "30.5% 69.5%", alignItems: "center", padding: "1.3% 3.2% 1.6%", gap: "2.1%" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "18% 82%", alignItems: "center", gap: "3%", height: "100%", borderRight: "2px solid "+cyan, paddingRight: "5%" }}>
+        <div style={{ fontSize: "clamp(25px, 3.7vw, 58px)", color: "#28bfff", textAlign: "center", lineHeight: 1 }}>♙</div>
+        <div style={{ fontSize: "clamp(7px, .93vw, 15px)", lineHeight: 1.25 }}><strong>Representative example only</strong><div style={{ marginTop: 3, color: pale }}>Your actual payments may vary depending on your circumstances and the lender's assessment.</div></div>
+      </div>
+      <div style={{ fontSize: "clamp(7px, .86vw, 14px)", lineHeight: 1.35, color: pale }}>Finance subject to status, affordability and scheme eligibility. The Government supports the interest rate but does not provide the loan. Finance is provided by Tandem Bank through Matrix. Homeshield Scotland Limited is a credit broker, not a lender. Authorised and regulated by the Financial Conduct Authority, FRN 624069. Credit is provided by a panel of lenders with whom we have a commercial relationship.</div>
     </div>
   </div>
 }
