@@ -1468,7 +1468,7 @@ function DataDashboard() {
                 <LineChart data={prontoMonthlyChartData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
-                  <YAxis domain={[0, 100]} tickFormatter={(value) => value + "%"} />
+                  <YAxis domain={[0, 50]} ticks={[0, 10, 20, 30, 40, 50]} tickFormatter={(value) => value + "%"} />
                   <Tooltip formatter={(value) => value == null ? "No leads" : Number(value).toFixed(1) + "%"} />
                   <Legend />
                   {prontoTrendIntroducers.map((name, index) => <Line key={name} type="monotone" dataKey={name + "__rate"} name={name} stroke={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} dot={false} connectNulls={false} />)}
