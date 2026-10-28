@@ -357,7 +357,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                     <thead>
                       <tr>
                         {activeReport === "duplicate-marketing-row-id" ? (
-                          <><th>Marketing Row ID</th><th>Customer</th><th>Lead Source</th><th>Received</th><th>Postcode</th><th>Phone</th><th>Disposition</th><th>Last Time Called</th><th>Copies</th><th>Action</th></>
+                          <><th>Marketing Row ID</th><th>Customer</th><th>Lead Source</th><th>Received</th><th>Postcode</th><th>Phone</th><th>Disposition</th><th>Archive Date Time</th><th>Copies</th><th>Action</th></>
                         ) : activeReport === "missing-lead-type" ? (
                           <><th>Lead</th><th>Received</th><th>Postcode</th><th>Lead Source</th><th>Phone</th><th>Email</th><th>Assign Lead Type</th><th></th></>
                         ) : (
@@ -374,7 +374,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                             <>
                               <td><strong>{row.marketing_row_id}</strong><small>{row.delete_row_id}</small></td>
                               <td><strong>{[row.first_name, row.last_name].map(text).filter(Boolean).join(" ") || "Unnamed lead"}</strong></td><td>{row.lead_source || "—"}</td><td>{formatDate(row.received_date_time)}</td><td>{row.postcode || "—"}</td><td>{row.primary_phone_number || "—"}</td>
-                              <td>{row.disposition || "—"}</td><td>{formatDate(row.last_time_called)}</td>
+                              <td>{row.disposition || "—"}</td><td>{row.time_archived || "—"}</td>
                               <td><span className="data-clean-badge warning">{row.duplicate_count} copies</span></td>
                               <td><button type="button" className="data-clean-delete" disabled={!!deletingLeadIds[row.delete_row_id]} onClick={() => deleteDuplicateLead(row)}>{deletingLeadIds[row.delete_row_id] ? "Deleting…" : "Delete this row"}</button>{saveMessages[row.delete_row_id] && <small style={{color:"#b91c1c",whiteSpace:"normal",maxWidth:180}}>{saveMessages[row.delete_row_id]}</small>}</td>
                             </>
