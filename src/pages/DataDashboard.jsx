@@ -1467,7 +1467,17 @@ function DataDashboard() {
                 <YAxis yAxisId="volume" orientation="left" allowDecimals={false} />
                 <YAxis yAxisId="rate" orientation="right" domain={[0, prontoMonthlyMaxRate]} ticks={Array.from({ length: prontoMonthlyMaxRate / 10 + 1 }, (_, index) => index * 10)} tickFormatter={(value) => value + "%"} />
                 <Tooltip formatter={(value, name) => String(name).endsWith("__rate") ? (value == null ? "No leads" : Number(value).toFixed(1) + "%") : Number(value).toLocaleString()} />
-                <Legend />
+                <Legend content={() => (
+                  <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "6px 14px", paddingTop: 8 }}>
+                    {prontoTrendIntroducers.map((name, index) => (
+                      <span key={name} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length], fontSize: 12, whiteSpace: "nowrap" }}>
+                        <span style={{ display: "inline-block", width: 12, height: 8, background: LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length], opacity: 0.6, borderRadius: 2 }} />
+                        <span style={{ display: "inline-block", width: 14, borderTop: "2px solid " + LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length }} />
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                )} />
                 {prontoTrendIntroducers.map((name, index) => <Bar key={name + "-volume"} yAxisId="volume" stackId="monthly-leads" dataKey={name + "__leads"} name={name + " volume"} fill={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} fillOpacity={0.55} />)}
                 {prontoTrendIntroducers.map((name, index) => <Line key={name + "-rate"} yAxisId="rate" type="monotone" dataKey={name + "__rate"} name={name + " booking %"} stroke={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} strokeWidth={2} dot={false} connectNulls={false} />)}
               </ComposedChart>
