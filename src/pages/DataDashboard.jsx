@@ -268,9 +268,29 @@ function DataDashboard() {
         if (error) throw error
         appointments = data || []
       }
+      const appointmentIds = appointments.map((a) => a.appointment_row_id).filter(Boolean)
+      let deals = []
+      if (appointmentIds.length) {
+        const { data: dealData, error: dealError } = await supabase.from("deals").select("id,appointment_row_id,net_value").in("appointment_row_id", appointmentIds)
+        if (dealError) throw dealError
+        deals = dealData || []
+      }
+      const dealsByAppointment = new Map()
+      deals.forEach((deal) => {
+        if (!dealsByAppointment.has(deal.appointment_row_id)) dealsByAppointment.set(deal.appointment_row_id, [])
+        dealsByAppointment.get(deal.appointment_row_id).push(deal)
+      })
       const byLead = new Map()
-      appointments.forEach((a) => { if (!byLead.has(a.marketing_row_id)) byLead.set(a.marketing_row_id,[]); byLead.get(a.marketing_row_id).push(a) })
-      setProntoLeadDetails(leads.map((l) => ({...l,relatedAppointments:byLead.get(l.marketing_row_id)||[]})))
+      appointments.forEach((a) => {
+        const enriched = { ...a, relatedDeals: dealsByAppointment.get(a.appointment_row_id) || [] }
+        if (!byLead.has(a.marketing_row_id)) byLead.set(a.marketing_row_id,[])
+        byLead.get(a.marketing_row_id).push(enriched)
+      })
+      setProntoLeadDetails(leads.map((l) => {
+        const relatedAppointments = byLead.get(l.marketing_row_id) || []
+        const relatedDeals = relatedAppointments.flatMap((a) => a.relatedDeals || [])
+        return { ...l, relatedAppointments, relatedDeals, netValueSold: relatedDeals.reduce((sum, d) => sum + Number(d.net_value || 0), 0) }
+      }))
     } catch (err) {
       console.error("Error loading Pronto leads and appointments:",err)
       setProntoLeadDetailsError(err?.message || "Unable to load leads and related appointments.")
