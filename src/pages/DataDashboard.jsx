@@ -214,7 +214,7 @@ function DataDashboard() {
     setProntoMonthlyLoading(true)
     setProntoMonthlyError("")
     try {
-      const { data, error: rpcError } = await supabase.rpc("get_pronto_monthly_introducer_trends", { date_period: prontoDatePeriod })
+      const { data, error: rpcError } = await supabase.rpc("get_pronto_monthly_introducer_trends", { date_period: "year_to_date" })
       if (rpcError) throw rpcError
       setProntoMonthlyRows((data || []).map((row) => ({ ...row, month_start: String(row.month_start).slice(0, 10), lead_count: Number(row.lead_count || 0), booked_count: Number(row.booked_count || 0) })))
     } catch (err) {
@@ -615,16 +615,9 @@ function DataDashboard() {
     if (!prontoMonthlyRows.length || !prontoTrendIntroducers.length) return []
     const current = new Date()
     const currentMonth = new Date(current.getFullYear(), current.getMonth(), 1)
-    let startMonth
-    if (prontoDatePeriod === "last_week" || prontoDatePeriod === "last_4_weeks") {
-      const start = new Date(current)
-      start.setDate(start.getDate() - (prontoDatePeriod === "last_week" ? 6 : 27))
-      startMonth = new Date(start.getFullYear(), start.getMonth(), 1)
-    } else if (prontoDatePeriod === "year_to_date") {
-      startMonth = new Date(current.getFullYear(), 0, 1)
-    } else {
-      startMonth = new Date(2025, 0, 1)
-    }
+    // The trend charts intentionally show month-by-month performance for the current calendar year,
+    // independently of the table's selected date-period filter.
+    const startMonth = new Date(current.getFullYear(), 0, 1)
     const monthKeys = []
     for (let date = new Date(startMonth); date <= currentMonth; date.setMonth(date.getMonth() + 1)) {
       monthKeys.push(date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-01")
@@ -643,7 +636,7 @@ function DataDashboard() {
       month: new Date(key + "T00:00:00").toLocaleDateString("en-GB", { month: "short", year: "numeric" }),
       ...(byMonth.get(key) || {}),
     }))
-  }, [prontoMonthlyRows, prontoTrendIntroducers, prontoDatePeriod])
+  }, [prontoMonthlyRows, prontoTrendIntroducers])
 
   const totalLeads = useMemo(
     () => rows.reduce((total, row) => total + (selectedLeadType ? Number(row[selectedLeadType] || 0) : Number(row.lead_count || 0)), 0),
