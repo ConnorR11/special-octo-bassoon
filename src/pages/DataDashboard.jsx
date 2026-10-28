@@ -1414,6 +1414,8 @@ function DataDashboard() {
                                 <td>{formatNumber(sidRow.booked_count)}</td>
                                 <td>—</td>
                                 <td>—</td>
+                                <td>—</td>
+                                <td>—</td>
                                 <td className={sidRow.lead_count && (sidRow.booked_count / sidRow.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{sidRow.lead_count ? `${((sidRow.booked_count / sidRow.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
                                 <td aria-hidden="true"></td>
                               </tr>
