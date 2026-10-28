@@ -90,6 +90,10 @@ function DataDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [activeTab, setActiveTab] = useState("overview")
+  const [prontoLeadDetails, setProntoLeadDetails] = useState([])
+  const [prontoLeadDetailsLoading, setProntoLeadDetailsLoading] = useState(false)
+  const [prontoLeadDetailsError, setProntoLeadDetailsError] = useState("")
+  const [prontoLeadDetailsLimit, setProntoLeadDetailsLimit] = useState(250)
   const [prontoSidRows, setProntoSidRows] = useState([])
   const [prontoMonthlyRows, setProntoMonthlyRows] = useState([])
   const [prontoMonthlyLoading, setProntoMonthlyLoading] = useState(false)
@@ -211,6 +215,8 @@ function DataDashboard() {
       setProntoSidError(err?.message || "Unable to export the Pronto drilldown report.")
     } finally { setProntoExporting(false) }
   }
+  useEffect(() => { if (activeTab === "pronto") loadProntoLeadDetails() }, [activeTab, prontoDatePeriod, prontoLeadDetailsLimit])
+
   async function loadProntoMonthlyTrends() {
     if (!supabase) return
     setProntoMonthlyLoading(true)
@@ -224,6 +230,47 @@ function DataDashboard() {
       setProntoMonthlyError(err?.message || "Unable to load monthly Pronto trends.")
       setProntoMonthlyRows([])
     } finally { setProntoMonthlyLoading(false) }
+  }
+
+  async function loadProntoLeadDetails() {
+    if (!supabase) return
+    setProntoLeadDetailsLoading(true)
+    setProntoLeadDetailsError("")
+    try {
+      const now = new Date()
+      const weekStart = new Date(now); weekStart.setHours(0,0,0,0); weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7))
+      const lastWeekStart = new Date(weekStart); lastWeekStart.setDate(lastWeekStart.getDate() - 7)
+      const fourWeeksStart = new Date(weekStart); fourWeeksStart.setDate(fourWeeksStart.getDate() - 28)
+      const yearStart = new Date(now.getFullYear(),0,1)
+      let from = new Date("2025-01-01T00:00:00")
+      let to = new Date(now); to.setDate(to.getDate()+1); to.setHours(0,0,0,0)
+      if (prontoDatePeriod === "this_week") from = weekStart
+      else if (prontoDatePeriod === "last_week") { from = lastWeekStart; to = weekStart }
+      else if (prontoDatePeriod === "last_4_weeks") { from = fourWeeksStart; to = weekStart }
+      else if (prontoDatePeriod === "year_to_date") from = yearStart
+      const { data: leadData, error: leadError } = await supabase.from("leads")
+        .select("marketing_row_id,first_name,last_name,primary_phone_number,email,address,postcode,lead_source,introducer,pronto_SID,pronto_c1,pronto_c3,received_date_time,appointment_date_time,disposition")
+        .eq("lead_source","Pronto Windows").gte("received_date_time",from.toISOString()).lt("received_date_time",to.toISOString())
+        .order("received_date_time",{ascending:false}).range(0,prontoLeadDetailsLimit-1)
+      if (leadError) throw leadError
+      const leads = leadData || []
+      const ids = leads.map((l) => l.marketing_row_id).filter(Boolean)
+      let appointments = []
+      if (ids.length) {
+        const { data, error } = await supabase.from("appointments")
+          .select("appointment_row_id,marketing_row_id,name,appointment_date,canvasser,rep_allocated,result,product,job_type,cps_h,cps_c,cps_p,cps_s,branch,rep_confirmed_time,appointment_confirmed_time")
+          .in("marketing_row_id",ids).order("appointment_date",{ascending:false})
+        if (error) throw error
+        appointments = data || []
+      }
+      const byLead = new Map()
+      appointments.forEach((a) => { if (!byLead.has(a.marketing_row_id)) byLead.set(a.marketing_row_id,[]); byLead.get(a.marketing_row_id).push(a) })
+      setProntoLeadDetails(leads.map((l) => ({...l,relatedAppointments:byLead.get(l.marketing_row_id)||[]})))
+    } catch (err) {
+      console.error("Error loading Pronto leads and appointments:",err)
+      setProntoLeadDetailsError(err?.message || "Unable to load leads and related appointments.")
+      setProntoLeadDetails([])
+    } finally { setProntoLeadDetailsLoading(false) }
   }
 
   async function loadProntoSidData() {
@@ -1340,6 +1387,41 @@ function DataDashboard() {
             <div className="data-dashboard-error">{prontoSidError}</div>
           )}
 
+          <div style={{ marginTop: 24, background: "#fff", border: "1px solid #dbe3ed", borderRadius: 12, padding: 16, minWidth: 0 }}>
+            <div className="data-dashboard-chart-title">Monthly lead volume and booking rate by introducer</div>
+            <div className="data-dashboard-chart-subtitle">Bars show leads received (left axis); lines show booking rate (right axis).</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "12px 0" }}>
+              <button type="button" onClick={() => setShowProntoVolumeBars((visible) => !visible)} aria-pressed={showProntoVolumeBars} style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "7px 12px", background: showProntoVolumeBars ? "#19385f" : "#fff", color: showProntoVolumeBars ? "#fff" : "#19385f", cursor: "pointer", fontSize: 13 }}>
+                {showProntoVolumeBars ? "Hide volume bars" : "Show volume bars"}
+              </button>
+              <button type="button" onClick={() => setShowProntoBookingLines((visible) => !visible)} aria-pressed={showProntoBookingLines} style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "7px 12px", background: showProntoBookingLines ? "#19385f" : "#fff", color: showProntoBookingLines ? "#fff" : "#19385f", cursor: "pointer", fontSize: 13 }}>
+                {showProntoBookingLines ? "Hide booking lines" : "Show booking lines"}
+              </button>
+            </div>
+            {prontoMonthlyLoading ? <p>Loading monthly trends…</p> : prontoMonthlyError ? <p style={{ color: "#dc2626" }}>{prontoMonthlyError}</p> : <ResponsiveContainer width="100%" height={380}>
+              <ComposedChart data={prontoMonthlyChartData} margin={{ top: 12, right: 18, left: 8, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis yAxisId="volume" orientation="left" allowDecimals={false} />
+                <YAxis yAxisId="rate" orientation="right" domain={[0, prontoMonthlyMaxRate]} ticks={Array.from({ length: prontoMonthlyMaxRate / 10 + 1 }, (_, index) => index * 10)} tickFormatter={(value) => value + "%"} />
+                <Tooltip formatter={(value, name) => String(name).endsWith("__rate") ? (value == null ? "No leads" : Number(value).toFixed(1) + "%") : Number(value).toLocaleString()} />
+                <Legend content={() => (
+                  <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "6px 14px", paddingTop: 8 }}>
+                    {prontoTrendIntroducers.map((name, index) => (
+                      <span key={name} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length], fontSize: 12, whiteSpace: "nowrap" }}>
+                        <span style={{ display: "inline-block", width: 12, height: 8, background: LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length], opacity: 0.6, borderRadius: 2 }} />
+                        <span style={{ display: "inline-block", width: 14, borderTop: "2px solid " + LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length] }} />
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                )} />
+                {showProntoVolumeBars && prontoTrendIntroducers.map((name, index) => <Bar key={name + "-volume"} yAxisId="volume" stackId="monthly-leads" dataKey={name + "__leads"} name={name + " volume"} fill={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} fillOpacity={0.55} />)}
+                {showProntoBookingLines && prontoTrendIntroducers.map((name, index) => <Line key={name + "-rate"} yAxisId="rate" type="monotone" dataKey={name + "__rate"} name={name + " booking %"} stroke={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} strokeWidth={2} dot={false} connectNulls={false} />)}
+              </ComposedChart>
+            </ResponsiveContainer>}
+          </div>
+
           <div className="pronto-table-card">
             {prontoSidLoading ? (
               <div className="pronto-empty">Loading Pronto SID data…</div>
@@ -1502,39 +1584,37 @@ function DataDashboard() {
             )}
           </div>
 
+
           <div style={{ marginTop: 24, background: "#fff", border: "1px solid #dbe3ed", borderRadius: 12, padding: 16, minWidth: 0 }}>
-            <div className="data-dashboard-chart-title">Monthly lead volume and booking rate by introducer</div>
-            <div className="data-dashboard-chart-subtitle">Bars show leads received (left axis); lines show booking rate (right axis).</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "12px 0" }}>
-              <button type="button" onClick={() => setShowProntoVolumeBars((visible) => !visible)} aria-pressed={showProntoVolumeBars} style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "7px 12px", background: showProntoVolumeBars ? "#19385f" : "#fff", color: showProntoVolumeBars ? "#fff" : "#19385f", cursor: "pointer", fontSize: 13 }}>
-                {showProntoVolumeBars ? "Hide volume bars" : "Show volume bars"}
-              </button>
-              <button type="button" onClick={() => setShowProntoBookingLines((visible) => !visible)} aria-pressed={showProntoBookingLines} style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "7px 12px", background: showProntoBookingLines ? "#19385f" : "#fff", color: showProntoBookingLines ? "#fff" : "#19385f", cursor: "pointer", fontSize: 13 }}>
-                {showProntoBookingLines ? "Hide booking lines" : "Show booking lines"}
-              </button>
-            </div>
-            {prontoMonthlyLoading ? <p>Loading monthly trends…</p> : prontoMonthlyError ? <p style={{ color: "#dc2626" }}>{prontoMonthlyError}</p> : <ResponsiveContainer width="100%" height={380}>
-              <ComposedChart data={prontoMonthlyChartData} margin={{ top: 12, right: 18, left: 8, bottom: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis yAxisId="volume" orientation="left" allowDecimals={false} />
-                <YAxis yAxisId="rate" orientation="right" domain={[0, prontoMonthlyMaxRate]} ticks={Array.from({ length: prontoMonthlyMaxRate / 10 + 1 }, (_, index) => index * 10)} tickFormatter={(value) => value + "%"} />
-                <Tooltip formatter={(value, name) => String(name).endsWith("__rate") ? (value == null ? "No leads" : Number(value).toFixed(1) + "%") : Number(value).toLocaleString()} />
-                <Legend content={() => (
-                  <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "6px 14px", paddingTop: 8 }}>
-                    {prontoTrendIntroducers.map((name, index) => (
-                      <span key={name} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length], fontSize: 12, whiteSpace: "nowrap" }}>
-                        <span style={{ display: "inline-block", width: 12, height: 8, background: LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length], opacity: 0.6, borderRadius: 2 }} />
-                        <span style={{ display: "inline-block", width: 14, borderTop: "2px solid " + LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length] }} />
-                        {name}
-                      </span>
-                    ))}
-                  </div>
-                )} />
-                {showProntoVolumeBars && prontoTrendIntroducers.map((name, index) => <Bar key={name + "-volume"} yAxisId="volume" stackId="monthly-leads" dataKey={name + "__leads"} name={name + " volume"} fill={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} fillOpacity={0.55} />)}
-                {showProntoBookingLines && prontoTrendIntroducers.map((name, index) => <Line key={name + "-rate"} yAxisId="rate" type="monotone" dataKey={name + "__rate"} name={name + " booking %"} stroke={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} strokeWidth={2} dot={false} connectNulls={false} />)}
-              </ComposedChart>
-            </ResponsiveContainer>}
+            <div className="data-dashboard-chart-title">Pronto leads and related appointments</div>
+            <div className="data-dashboard-chart-subtitle">Leads in the selected date period, with their related appointment records listed underneath.</div>
+            {prontoLeadDetailsError && <p style={{ color: "#dc2626" }}>{prontoLeadDetailsError}</p>}
+            {prontoLeadDetailsLoading ? <p>Loading leads and appointments…</p> : <>
+              <div style={{ overflowX: "auto", marginTop: 12 }}>
+                <table className="pronto-table">
+                  <thead><tr><th>Lead</th><th>Postcode</th><th>Introducer</th><th>Received</th><th>Lead appointment date</th><th>Related appointments</th></tr></thead>
+                  <tbody>
+                    {prontoLeadDetails.map((lead) => <React.Fragment key={lead.marketing_row_id}>
+                      <tr>
+                        <td><strong>{[lead.first_name,lead.last_name].filter(Boolean).join(" ") || "Unnamed lead"}</strong><div style={{ color:"#64748b",fontSize:11 }}>{lead.primary_phone_number || ""}{lead.email ? " · "+lead.email : ""}</div></td>
+                        <td>{lead.postcode || "—"}</td><td>{lead.introducer || "—"}</td>
+                        <td>{lead.received_date_time ? new Date(lead.received_date_time).toLocaleDateString("en-GB") : "—"}</td>
+                        <td>{lead.appointment_date_time || "—"}</td><td>{lead.relatedAppointments.length} appointment{lead.relatedAppointments.length===1?"":"s"}</td>
+                      </tr>
+                      {lead.relatedAppointments.map((a) => <tr key={a.appointment_row_id} style={{ background:"#f8fafc" }}>
+                        <td colSpan={2} style={{ paddingLeft:28 }}><span style={{ color:"#64748b",fontSize:11 }}>↳ Appointment</span><div><strong>{a.name || "Appointment"}</strong></div><div style={{ color:"#64748b",fontSize:10 }}>{a.appointment_row_id}</div></td>
+                        <td>{a.appointment_date ? new Date(a.appointment_date).toLocaleString("en-GB") : "No date"}</td>
+                        <td>{a.product || a.job_type || "—"}</td><td>{a.result || "—"}</td>
+                        <td><div style={{ display:"flex",flexWrap:"wrap",gap:4 }}>{["h","c","p","s"].map((stage) => <span key={stage} style={{ fontSize:10,borderRadius:5,padding:"2px 5px",background:a["cps_"+stage]===true?"#dcfce7":"#e2e8f0",color:a["cps_"+stage]===true?"#166534":"#64748b" }}>{stage.toUpperCase()}: {a["cps_"+stage]===true?"Yes":"No"}</span>)}</div><div style={{ color:"#64748b",fontSize:11 }}>{a.canvasser || a.rep_allocated || ""}</div></td>
+                      </tr>)}
+                    </React.Fragment>)}
+                    {!prontoLeadDetails.length && <tr><td colSpan={6}>No leads found for this period.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+              {prontoLeadDetails.length >= prontoLeadDetailsLimit && <button type="button" onClick={() => setProntoLeadDetailsLimit((n)=>n+250)} style={{ marginTop:12,border:"1px solid #cbd5e1",borderRadius:8,padding:"8px 12px",background:"#fff",color:"#17365d",cursor:"pointer" }}>Load 250 more leads</button>}
+              <div style={{ color:"#64748b",fontSize:11,marginTop:8 }}>Showing {formatNumber(prontoLeadDetails.length)} leads. Related appointments are matched by marketing_row_id.</div>
+            </>}
           </div>
 
         </>
