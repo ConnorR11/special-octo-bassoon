@@ -239,6 +239,10 @@ function DataDashboard() {
       const { data, error: rpcError } = await supabase.rpc("get_pronto_introducer_lead_counts", { date_period: prontoDatePeriod })
       if (rpcError) throw rpcError
 
+      const { data: netValueRows, error: netValueError } = await supabase.rpc("get_pronto_introducer_net_value_sold", { date_period: prontoDatePeriod })
+      if (netValueError) throw netValueError
+      const netValueByIntroducer = Object.fromEntries((netValueRows || []).map((row) => [String(row.introducer || "(No Introducer)"), Number(row.net_value_sold || 0)]))
+
       setProntoSidRows((data || []).map((row) => ({
         pronto_sid: String(row.introducer || "(No Introducer)"),
         introducers: String(row.introducer || "(No Introducer)"),
@@ -249,6 +253,7 @@ function DataDashboard() {
         cps_c_count: Number(row.cps_c_count || 0),
         cps_p_count: Number(row.cps_p_count || 0),
         cps_s_count: Number(row.cps_s_count || 0),
+        net_value_sold: Number(netValueByIntroducer[String(row.introducer || "(No Introducer)")] || 0),
         first_lead_date: row.first_lead_date || null,
         latest_lead_date: row.latest_lead_date || null,
       })))
@@ -1353,6 +1358,7 @@ function DataDashboard() {
                   <col className="pronto-col-booked" />
                   <col className="pronto-col-booked" />
                   <col className="pronto-col-booked" />
+                  <col className="pronto-col-booked" />
                   <col className="pronto-col-booked-percent" />
                   <col className="pronto-col-spacer" />
                 </colgroup>
@@ -1368,6 +1374,7 @@ function DataDashboard() {
                     <th>CPS C</th>
                     <th>CPS P</th>
                     <th>CPS S</th>
+                    <th>Net Value Sold</th>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("booked_rate")}>Booked %{prontoSort.key === "booked_rate" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th aria-label="Alignment spacer"></th>
                   </tr>
@@ -1390,6 +1397,7 @@ function DataDashboard() {
                         <td>{formatNumber(row.cps_c_count)}</td>
                         <td>{formatNumber(row.cps_p_count)}</td>
                         <td>{formatNumber(row.cps_s_count)}</td>
+                        <td>£{formatNumber(row.net_value_sold)}</td>
                         <td className={row.lead_count && (row.booked_count / row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{row.lead_count ? `${((row.booked_count / row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
                         <td aria-hidden="true"></td>
                       </tr>
@@ -1485,6 +1493,7 @@ function DataDashboard() {
                     <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_c_count, 0))}</strong></td>
                     <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_p_count, 0))}</strong></td>
                     <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_s_count, 0))}</strong></td>
+                    <td><strong>£{formatNumber(filteredProntoSidRows.reduce((sum, row) => sum + row.net_value_sold, 0))}</strong></td>
                     <td><strong>{prontoSidTotal ? `${((prontoSidRows.reduce((sum, row) => sum + row.booked_count, 0) / prontoSidTotal) * 100).toFixed(1)}%` : "0.0%"}</strong></td>
                     <td aria-hidden="true"></td>
                   </tr>
