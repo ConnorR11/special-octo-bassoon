@@ -1472,7 +1472,7 @@ function DataDashboard() {
                     {prontoTrendIntroducers.map((name, index) => (
                       <span key={name} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length], fontSize: 12, whiteSpace: "nowrap" }}>
                         <span style={{ display: "inline-block", width: 12, height: 8, background: LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length], opacity: 0.6, borderRadius: 2 }} />
-                        <span style={{ display: "inline-block", width: 14, borderTop: "2px solid " + LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length }} />
+                        <span style={{ display: "inline-block", width: 14, borderTop: "2px solid " + LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length] }} />
                         {name}
                       </span>
                     ))}
