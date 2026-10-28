@@ -6,6 +6,52 @@ import { supabase } from "../lib/supabase"
 
 const PRESENTER_PATH = "Homeshield-Solar-Presenter-edited.pdf"
 
+
+function TandemFinanceSlide() {
+  const cyan = "#08c7ed"
+  const muted = "#dce7f2"
+  const rowStyle = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, padding: "8px 0", borderBottom: "1px solid rgba(8,199,237,.24)", fontSize: "clamp(10px, 1.05vw, 16px)" }
+  const valueStyle = { color: cyan, fontWeight: 800 }
+  return <div style={{ width: "min(100%, calc((100vh - 150px) * 16 / 9))", maxHeight: "100%", aspectRatio: "16 / 9", overflow: "hidden", boxSizing: "border-box", padding: "2.3% 3%", display: "flex", flexDirection: "column", gap: "2%", color: "#fff", background: "radial-gradient(ellipse at 72% 0%, #075b99 0%, transparent 38%), linear-gradient(115deg,#031d32 0%,#03243b 60%,#02172a 100%)", fontFamily: "Arial, Helvetica, sans-serif", boxShadow: "0 4px 22px rgba(0,0,0,.35)" }}>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "clamp(9px, 1.15vw, 17px)", letterSpacing: ".07em", color: "#eaf5fc" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ width: "clamp(14px, 2.1vw, 32px)", height: "clamp(14px, 2.1vw, 32px)", background: cyan, borderRadius: 5, display: "inline-block" }} /><span>HOMESHIELD SCOTLAND</span></div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>SOLAR + BATTERY STORAGE <span style={{ background: "#fff", color: "#09263d", borderRadius: 5, padding: "3px 6px", fontSize: "clamp(9px, .9vw, 14px)" }}>◉</span></div>
+    </div>
+    <div style={{ display: "grid", gridTemplateColumns: "58% 42%", gap: "2.2%", flex: 1, minHeight: 0 }}>
+      <div style={{ display: "flex", flexDirection: "column", minHeight: 0, paddingTop: "3%" }}>
+        <div style={{ fontSize: "clamp(22px, 4.1vw, 62px)", lineHeight: 1.02, fontWeight: 800, letterSpacing: "-.035em" }}>Solar &amp; battery finance</div>
+        <div style={{ fontSize: "clamp(20px, 3.65vw, 55px)", lineHeight: 1.02, fontWeight: 800, letterSpacing: "-.035em", color: cyan }}>with Government support</div>
+        <p style={{ margin: "2% 0 3%", color: muted, fontSize: "clamp(11px, 1.65vw, 25px)", lineHeight: 1.3 }}>A lower interest rate, making renewable energy more affordable for your home.</p>
+        <div style={{ display: "grid", gridTemplateColumns: "34% 66%", alignItems: "center", background: "#fff", color: "#07111e", border: "2px solid "+cyan, borderRadius: 13, padding: "3% 3.5%", minHeight: "24%", boxSizing: "border-box" }}>
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", fontSize: "clamp(30px, 5vw, 76px)", color: "#101820", borderRight: "2px solid #12213a", minHeight: 72 }}>♛</div>
+          <div style={{ paddingLeft: "7%" }}><div style={{ fontSize: "clamp(16px, 2.65vw, 40px)", lineHeight: 1.02, fontWeight: 800, letterSpacing: "-.04em" }}>Funded by<br/>UK Government</div><div style={{ marginTop: "3%", fontSize: "clamp(10px, 1.35vw, 20px)", lineHeight: 1.2, color: "#14213d" }}>This product is supported by the <strong>Warm Homes Loan Scheme.</strong></div></div>
+        </div>
+        <p style={{ margin: "3% 1% 0", color: muted, fontSize: "clamp(10px, 1.5vw, 22px)", lineHeight: 1.35 }}>The Warm Homes Loan Scheme helps eligible homeowners and private landlords access more affordable finance for eligible home energy improvements, including solar panels and battery storage.</p>
+      </div>
+      <div style={{ border: "2px solid "+cyan, borderRadius: 20, padding: "3.2% 4%", display: "flex", flexDirection: "column", minHeight: 0, background: "rgba(0,12,24,.24)", boxSizing: "border-box" }}>
+        <div style={{ fontSize: "clamp(8px, .95vw, 14px)", letterSpacing: ".2em", color: "#dce9f2" }}>TANDEM BANK – REPRESENTATIVE EXAMPLE</div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: "2%" }}><span style={{ color: cyan, fontSize: "clamp(48px, 8vw, 120px)", lineHeight: .95, fontWeight: 900, letterSpacing: "-.06em" }}>4.6%</span><span style={{ color: cyan, fontSize: "clamp(19px, 2.8vw, 42px)", fontWeight: 800 }}>APR</span></div>
+        <div style={{ textAlign: "right", fontSize: "clamp(10px, 1.25vw, 19px)", marginTop: "-1%" }}>Representative</div>
+        <div style={{ fontSize: "clamp(10px, 1.25vw, 19px)", color: muted, margin: "2% 0 3%" }}>10 year finance (120 months) through <strong>Tandem Bank.</strong></div>
+        <div style={{ border: "1px solid rgba(8,199,237,.3)", borderRadius: 14, padding: "1% 3%", flex: 1, minHeight: 0 }}>
+          {[
+            ["Cash price", "£10,000"],
+            ["Deposit", "£0"],
+            ["Amount borrowed", "£10,000"],
+            ["Term", "120 months (10 years)"],
+            ["Monthly repayment", "£103.67"],
+            ["Total amount repayable", "£12,440.40"],
+            ["APR representative", "4.6%"],
+            ["Fixed interest rate", "4.51%"],
+          ].map(([label, value], index) => <div key={label} style={{ ...rowStyle, borderBottom: index === 7 ? 0 : rowStyle.borderBottom }}><span style={{ color: "#dce7f2" }}>{label}</span><span style={valueStyle}>{value}</span></div>)}
+        </div>
+        <p style={{ margin: "3% 0 0", color: "#dce7f2", fontSize: "clamp(7px, .76vw, 11px)", lineHeight: 1.35 }}>Finance subject to status, affordability and scheme eligibility. The Government supports the interest rate but does not provide the loan. Finance is provided by Tandem Bank through Matrix. Homeshield Scotland Limited is a credit broker, not a lender. Authorised and regulated by the Financial Conduct Authority, FRN 624069.</p>
+      </div>
+    </div>
+  </div>
+}
+
+
 export default function DatabaseSalesPresenter({ appointment, onClose }) {
   const [sourceUrl, setSourceUrl] = useState("")
   const [pageUrl, setPageUrl] = useState("")
@@ -218,7 +264,7 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
         {loading ? <div style={{display:"flex",alignItems:"center",gap:10,color:"#fff"}}><LoaderCircle size={22}/>Loading presenter…</div> : error ? <div style={{maxWidth:520,padding:24,textAlign:"center"}}><div style={{fontWeight:700,marginBottom:8}}>Presenter unavailable</div><div style={{fontSize:13,lineHeight:1.6,color:"#d4dbe4"}}>{error}</div></div> : <>
           <div style={{position:"absolute",left:20,top:0,bottom:0,width:48,display:"flex",justifyContent:"center",alignItems:"center",zIndex:2}}><button type="button" aria-label="Previous page" disabled={page===0||renderingPage} onClick={()=>changePage(p=>p-1,"button")} style={{...navStyle,position:"relative",top:"auto",left:"auto",transform:"none",opacity:page===0?.35:1}}><ChevronLeft size={30}/></button></div>
           <div ref={pdfContainerRef} style={{display:"flex",alignItems:"center",justifyContent:"center",minWidth:0,minHeight:0,width:"100%",height:"100%",padding:"0 76px",boxSizing:"border-box",overflow:"hidden"}}>
-            {renderingPage ? <LoaderCircle size={26}/> : renderedPage ? <canvas ref={node => { if (node && renderedPage.canvas && node !== renderedPage.canvas) { node.width = renderedPage.canvas.width; node.height = renderedPage.canvas.height; node.style.width = renderedPage.width + "px"; node.style.height = renderedPage.height + "px"; node.getContext("2d").drawImage(renderedPage.canvas,0,0) } }} style={{display:"block",maxWidth:"100%",maxHeight:"100%",objectFit:"contain",boxShadow:"0 4px 18px rgba(0,0,0,.35)"}} /> : null}
+            {page === 28 ? <TandemFinanceSlide /> : renderingPage ? <LoaderCircle size={26}/> : renderedPage ? <canvas ref={node => { if (node && renderedPage.canvas && node !== renderedPage.canvas) { node.width = renderedPage.canvas.width; node.height = renderedPage.canvas.height; node.style.width = renderedPage.width + "px"; node.style.height = renderedPage.height + "px"; node.getContext("2d").drawImage(renderedPage.canvas,0,0) } }} style={{display:"block",maxWidth:"100%",maxHeight:"100%",objectFit:"contain",boxShadow:"0 4px 18px rgba(0,0,0,.35)"}} /> : null}
           </div>
           <div style={{position:"absolute",right:20,top:0,bottom:0,width:48,display:"flex",justifyContent:"center",alignItems:"center",zIndex:2}}><button type="button" aria-label="Next page" disabled={page>=pageCount-1||renderingPage} onClick={()=>changePage(p=>p+1,"button")} style={{...navStyle,position:"relative",top:"auto",right:"auto",transform:"none",opacity:page>=pageCount-1?.35:1}}><ChevronRight size={30}/></button></div>
         </>}
