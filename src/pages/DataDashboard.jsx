@@ -202,7 +202,7 @@ function DataDashboard() {
       })
       const workbook = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(workbook, worksheet, "Pronto Drilldown")
-      const periodLabels = { last_week: "Last Week", last_4_weeks: "Last 4 Weeks", year_to_date: "Year To Date", all_time: "All Time" }
+      const periodLabels = { this_week: "This Week", last_week: "Last Week", last_4_weeks: "Last Four Weeks", year_to_date: "Year To Date", all_time: "All Time" }
       const info = XLSX.utils.aoa_to_sheet([["Pronto Buy Drilldown Report"], ["Date period", periodLabels[prontoDatePeriod] || prontoDatePeriod], ["Status filter", prontoStatusFilter === "all" ? "All Statuses" : prontoStatusFilter === "live" ? "Live" : "Off"], ["Search", prontoSidSearch.trim() || "None"], ["Generated", new Date().toLocaleString("en-GB")], [], ["Rows exported", reportRows.length]])
       XLSX.utils.book_append_sheet(workbook, info, "Report Info")
       XLSX.writeFile(workbook, "pronto-buy-drilldown-" + new Date().toISOString().slice(0, 10) + ".xlsx")
@@ -1290,6 +1290,7 @@ function DataDashboard() {
                 }}
                 style={{ height: 36, padding: "0 10px", border: "1px solid #d7dee7", borderRadius: 8, background: "#fff", color: "#172033", font: "inherit", fontSize: 12 }}
               >
+                <option value="this_week">This Week</option>
                 <option value="last_week">Last Week</option>
                 <option value="last_4_weeks">Last 4 Weeks</option>
                 <option value="year_to_date">Year To Date</option>
