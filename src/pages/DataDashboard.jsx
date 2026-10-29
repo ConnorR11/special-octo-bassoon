@@ -938,10 +938,13 @@ function DataDashboard() {
         .pronto-tree-table.pronto-hide-date-status tbody tr:not(.pronto-tree-total) td:nth-child(4) { display: none; }
         .pronto-tree-table.pronto-hide-lead-info col:nth-child(5),
         .pronto-tree-table.pronto-hide-lead-info col:nth-child(6),
+        .pronto-tree-table.pronto-hide-lead-info col:nth-child(7),
         .pronto-tree-table.pronto-hide-lead-info thead tr:not(.pronto-group-header) th:nth-child(5),
         .pronto-tree-table.pronto-hide-lead-info tbody tr:not(.pronto-tree-total) td:nth-child(5),
         .pronto-tree-table.pronto-hide-lead-info thead tr:not(.pronto-group-header) th:nth-child(6),
-        .pronto-tree-table.pronto-hide-lead-info tbody tr:not(.pronto-tree-total) td:nth-child(6) { display: none; }
+        .pronto-tree-table.pronto-hide-lead-info tbody tr:not(.pronto-tree-total) td:nth-child(6),
+        .pronto-tree-table.pronto-hide-lead-info thead tr:not(.pronto-group-header) th:nth-child(7),
+        .pronto-tree-table.pronto-hide-lead-info tbody tr:not(.pronto-tree-total) td:nth-child(7) { display: none; }
         .pronto-tree-table.pronto-hide-appointment col:nth-child(7),
         .pronto-tree-table.pronto-hide-appointment col:nth-child(8),
         .pronto-tree-table.pronto-hide-appointment col:nth-child(9),
@@ -1667,16 +1670,16 @@ function DataDashboard() {
                   <col className="pronto-col-latest" />
                   <col className="pronto-col-status" />
                   <col className="pronto-col-leads" />
-                  <col className="pronto-col-booked" />
-                  <col className="pronto-col-booked" />
-                  <col className="pronto-col-booked" />
-                  <col className="pronto-col-booked" />
-                  <col className="pronto-col-booked" />
-                  <col className="pronto-col-conversion" />
-                  <col className="pronto-col-conversion" />
-                  <col className="pronto-col-net-value" />
-                  <col className="pronto-col-net-value" />
                   <col className="pronto-col-booked-percent" />
+                  <col className="pronto-col-booked" />
+                  <col className="pronto-col-booked" />
+                  <col className="pronto-col-booked" />
+                  <col className="pronto-col-booked" />
+                  <col className="pronto-col-booked" />
+                  <col className="pronto-col-conversion" />
+                  <col className="pronto-col-conversion" />
+                  <col className="pronto-col-net-value" />
+                  <col className="pronto-col-net-value" />
                   <col className="pronto-col-spacer" />
                 </colgroup>
                 <thead>
@@ -1686,6 +1689,7 @@ function DataDashboard() {
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("latest_lead_date")}>Latest received{prontoSort.key === "latest_lead_date" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("status")}>Status{prontoSort.key === "status" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("leads")}>Leads{prontoSort.key === "leads" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
+                    <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("booked_rate")}>Booked %{prontoSort.key === "booked_rate" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("booked")}>Booked{prontoSort.key === "booked" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th>H</th>
                     <th>C</th>
@@ -1695,7 +1699,6 @@ function DataDashboard() {
                     <th>Lead to P</th>
                     <th>Net Value Sold</th>
                     <th>Net Value Solid</th>
-                    <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("booked_rate")}>Booked %{prontoSort.key === "booked_rate" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th aria-label="Alignment spacer"></th>
                   </tr>
                 </thead>
@@ -1712,6 +1715,7 @@ function DataDashboard() {
                         <td>{formatProntoDate(row.latest_lead_date)}</td>
                         <td>{prontoStatus(row.latest_lead_date)}</td>
                         <td>{formatNumber(row.lead_count)}</td>
+
                         <td>{formatNumber(row.booked_count)}</td>
                         <td>{formatNumber(row.cps_h_count)}</td>
                         <td>{formatNumber(row.cps_c_count)}</td>
@@ -1743,6 +1747,7 @@ function DataDashboard() {
                                 <td>{formatProntoDate(sidRow.latest_lead_date)}</td>
                                 <td>{prontoStatus(sidRow.latest_lead_date)}</td>
                                 <td>{formatNumber(sidRow.lead_count)}</td>
+
                                 <td>{formatNumber(sidRow.booked_count)}</td>
                                 <td>{formatNumber(sidRow.cps_h_count)}</td>
                                 <td>{formatNumber(sidRow.cps_c_count)}</td>
@@ -1774,6 +1779,7 @@ function DataDashboard() {
                                         <td>{formatProntoDate(c1Row.latest_lead_date)}</td>
                                         <td>{prontoStatus(c1Row.latest_lead_date)}</td>
                                         <td>{formatNumber(c1Row.lead_count)}</td>
+
                                         <td>{formatNumber(c1Row.booked_count)}</td>
                                         <td>{formatNumber(c1Row.cps_h_count)}</td>
                                         <td>{formatNumber(c1Row.cps_c_count)}</td>
@@ -1796,6 +1802,7 @@ function DataDashboard() {
                                             <td>{formatProntoDate(c3Row.latest_lead_date)}</td>
                                             <td>{prontoStatus(c3Row.latest_lead_date)}</td>
                                             <td>{formatNumber(c3Row.lead_count)}</td>
+
                                             <td>{formatNumber(c3Row.booked_count)}</td>
                                             <td>{formatNumber(c3Row.cps_h_count)}</td>
                                         <td>{formatNumber(c3Row.cps_c_count)}</td>
