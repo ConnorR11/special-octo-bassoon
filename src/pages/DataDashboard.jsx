@@ -919,17 +919,17 @@ function DataDashboard() {
           font-size: 12px;
         }
 
-        .pronto-tree-table.pronto-hide-deal-info th:nth-child(13),
-        .pronto-tree-table.pronto-hide-deal-info td:nth-child(13),
-        .pronto-tree-table.pronto-hide-deal-info th:nth-child(14),
-        .pronto-tree-table.pronto-hide-deal-info td:nth-child(14) { display: none; }
+        .pronto-tree-table.pronto-hide-deal-info thead tr:not(.pronto-group-header) th:nth-child(13),
+        .pronto-tree-table.pronto-hide-deal-info tbody td:nth-child(13),
+        .pronto-tree-table.pronto-hide-deal-info thead tr:not(.pronto-group-header) th:nth-child(14),
+        .pronto-tree-table.pronto-hide-deal-info tbody td:nth-child(14) { display: none; }
         .pronto-group-toggle { display: block; width: 100%; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; font: inherit; font-weight: 700; cursor: pointer; }
-        .pronto-tree-table.pronto-hide-date-status th:nth-child(2),
-        .pronto-tree-table.pronto-hide-date-status td:nth-child(2),
-        .pronto-tree-table.pronto-hide-date-status th:nth-child(3),
-        .pronto-tree-table.pronto-hide-date-status td:nth-child(3),
-        .pronto-tree-table.pronto-hide-date-status th:nth-child(4),
-        .pronto-tree-table.pronto-hide-date-status td:nth-child(4) { display: none; }
+        .pronto-tree-table.pronto-hide-date-status thead tr:not(.pronto-group-header) th:nth-child(2),
+        .pronto-tree-table.pronto-hide-date-status tbody td:nth-child(2),
+        .pronto-tree-table.pronto-hide-date-status thead tr:not(.pronto-group-header) th:nth-child(3),
+        .pronto-tree-table.pronto-hide-date-status tbody td:nth-child(3),
+        .pronto-tree-table.pronto-hide-date-status thead tr:not(.pronto-group-header) th:nth-child(4),
+        .pronto-tree-table.pronto-hide-date-status tbody td:nth-child(4) { display: none; }
         .pronto-column-controls { display: flex; justify-content: flex-end; padding: 8px 12px; border-bottom: 1px solid #e5eaf0; background: #fff; }
         .pronto-column-toggle { border: 1px solid #cbd5e1; border-radius: 7px; padding: 6px 10px; background: #fff; color: #24364b; font-size: 12px; font-weight: 600; cursor: pointer; }
         .pronto-tree-table { min-width: 1500px; }
