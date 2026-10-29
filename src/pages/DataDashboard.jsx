@@ -1015,6 +1015,8 @@ function DataDashboard() {
         .pronto-tree-table col.pronto-col-latest { width: 8%; }
         .pronto-tree-table col.pronto-col-status { width: 5%; }
         .pronto-tree-table col.pronto-col-leads { width: 5%; }
+        .pronto-tree-table col.pronto-col-disposition { width: 4%; }
+        .pronto-tree-table col.pronto-col-appointment { width: 4%; }
         .pronto-tree-table col.pronto-col-booked { width: 4%; }
         .pronto-tree-table col.pronto-col-conversion { width: 6%; }
         .pronto-tree-table col.pronto-col-net-value { width: 10%; }
@@ -1708,17 +1710,20 @@ function DataDashboard() {
                   <col className="pronto-col-latest" />
                   <col className="pronto-col-status" />
                   <col className="pronto-col-leads" />
+                  <col className="pronto-col-disposition" />
+                  <col className="pronto-col-disposition" />
+                  <col className="pronto-col-disposition" />
+                  <col className="pronto-col-booked" />
                   <col className="pronto-col-booked-percent" />
-                  <col className="pronto-col-booked" />
-                  <col className="pronto-col-booked" />
-                  <col className="pronto-col-booked" />
-                  <col className="pronto-col-booked" />
-                  <col className="pronto-col-booked" />
+                  <col className="pronto-col-appointment" />
+                  <col className="pronto-col-appointment" />
+                  <col className="pronto-col-appointment" />
+                  <col className="pronto-col-appointment" />
                   <col className="pronto-col-conversion" />
                   <col className="pronto-col-conversion" />
                   <col className="pronto-col-net-value" />
                   <col className="pronto-col-net-value" />
-                  <col className="pronto-col-spacer" />
+                  <col className="pronto-col-booked-percent" />
                 </colgroup>
                 <thead>
                   <tr>
