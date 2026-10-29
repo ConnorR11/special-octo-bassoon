@@ -19,7 +19,7 @@ export default function AppointmentActions({ appointment,onUpdated,onConfirmLega
   const resultAppointmentDate=appointment?.appointment_date?new Date(appointment.appointment_date):null
   const todayForResult=new Date()
   const resultDateIsPast=Boolean(resultAppointmentDate&&!Number.isNaN(resultAppointmentDate.getTime())&&new Date(resultAppointmentDate.getFullYear(),resultAppointmentDate.getMonth(),resultAppointmentDate.getDate())<new Date(todayForResult.getFullYear(),todayForResult.getMonth(),todayForResult.getDate()))
-  const canResultAppointment=!resultDateIsPast||numericPermissionLevel>=4
+  const canResultAppointment=!resultDateIsPast||numericPermissionLevel!==1
   const hasResult=Boolean(String(appointment?.result||appointment?.status||"").trim()), confirmed=appointment?.cps_c===true, hasBranch=Boolean(String(appointment?.branch||"").trim()), hasAllocatedRep=Boolean(String(appointment?.rep_allocated||"").trim()), solarAppointment=isSolarAppointment(appointment)
   const [currentUserEmail,setCurrentUserEmail]=useState("")
   useEffect(()=>{let mounted=true;(async()=>{const {data,error}=await supabase.auth.getUser();if(!error&&mounted)setCurrentUserEmail(String(data?.user?.email||"").trim().toLowerCase())})();return()=>{mounted=false}},[])
