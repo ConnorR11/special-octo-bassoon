@@ -74,12 +74,13 @@ function addWrapped(pdf, text, x, y, width, lineHeight = 5) {
   return y + lines.length * lineHeight
 }
 
-export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
+export async function GenerateSolarQuote({ appointment, previewOnly = true, priceMode = "cash" }) {
   if (!appointment) throw new Error("An appointment is required to create a solar quote.")
   const { data: saved, error } = await supabase.from("appointments").select("*").eq("appointment_row_id", appointment.appointment_row_id).maybeSingle()
   if (error) throw error
   const record = saved || appointment
   const d = getQuoteData(record)
+  const selectedPriceMode = priceMode === "finance" ? "finance" : "cash"
   const openSolarImageUrl = String(d.openSolar?.imageUrl || "").trim()
   const pdf = new jsPDF({ unit: "mm", format: "a4" })
   const w = 210, h = 297, margin = 18
@@ -170,7 +171,8 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
   pdf.text("Designed around your home and energy needs",margin,h-17)
   pdf.setDrawColor(220,228,234); pdf.line(margin,h-12,w-margin,h-12)
 
-  // PAGE 1 — System overview, inspired by the supplied reference.
+  // PAGE 2 — System overview. Start a fresh page so the dedicated cover remains visible.
+  pdf.addPage();
   pdf.setFillColor(255,255,255); pdf.rect(0,0,w,h,"F")
   pdf.setTextColor(...blue); pdf.setFont("helvetica","bold"); pdf.setFontSize(10)
   pdf.text("HOMESHIELD SCOTLAND",margin,16)
@@ -222,18 +224,21 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true }) {
     coverRowY+=11
   })
 
-  // Replace signature and itemised price breakdown with the two customer-facing price options.
+  // Show only the price presentation selected by the salesperson.
   const priceY=252
   pdf.setFillColor(...blue);pdf.roundedRect(margin,priceY,w-margin*2,25,3,3,"F")
-  const priceHalf=(w-margin*2)/2
   pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(8)
-  pdf.text("CASH PRICE",margin+8,priceY+7)
-  pdf.text("MONTHLY FINANCE",margin+priceHalf+6,priceY+7)
-  pdf.setFontSize(16)
-  pdf.text(money(d.cashPrice),margin+8,priceY+17)
-  pdf.text(money(d.monthly)+" / month",margin+priceHalf+6,priceY+17)
-  pdf.setFont("helvetica","normal");pdf.setFontSize(6.5)
-  pdf.text("Finance illustration at "+d.rate.toFixed(1)+"% over "+d.termYears+" years; subject to lender approval and confirmed terms.",margin+8,priceY+22)
+  if (selectedPriceMode === "finance") {
+    pdf.text("ILLUSTRATIVE MONTHLY FINANCE",margin+8,priceY+7)
+    pdf.setFontSize(16)
+    pdf.text(money(d.monthly)+" / month",margin+8,priceY+17)
+    pdf.setFont("helvetica","normal");pdf.setFontSize(6.5)
+    pdf.text("Illustration at "+d.rate.toFixed(1)+"% over "+d.termYears+" years; subject to lender approval and confirmed terms.",margin+8,priceY+22)
+  } else {
+    pdf.text("CASH PRICE",margin+8,priceY+7)
+    pdf.setFontSize(16)
+    pdf.text(money(d.cashPrice),margin+8,priceY+17)
+  }
   footer(2)
 
   // PAGE 2 — Itemised equipment and service breakdown.
