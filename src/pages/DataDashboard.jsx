@@ -90,6 +90,12 @@ function DataDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [activeTab, setActiveTab] = useState("overview")
+  const [archivedLeads, setArchivedLeads] = useState([])
+  const [archivedLeadCount, setArchivedLeadCount] = useState(0)
+  const [archivedLeadsLoading, setArchivedLeadsLoading] = useState(false)
+  const [archivedLeadsError, setArchivedLeadsError] = useState("")
+  const [archivedLeadsPage, setArchivedLeadsPage] = useState(0)
+  const [archivedLeadsSearch, setArchivedLeadsSearch] = useState("")
   const [prontoLeadDetails, setProntoLeadDetails] = useState([])
   const [prontoLeadDetailsLoading, setProntoLeadDetailsLoading] = useState(false)
   const [prontoLeadDetailsError, setProntoLeadDetailsError] = useState("")
@@ -620,6 +626,37 @@ function DataDashboard() {
     }
     if (supabase) loadLeadSources()
   }, [])
+
+
+  async function loadArchivedLeads() {
+    if (!supabase) return
+    setArchivedLeadsLoading(true)
+    setArchivedLeadsError("")
+    try {
+      const pageSize = 100
+      let query = supabase.from("leads")
+        .select("delete_row_id,marketing_row_id,salutations,first_name,last_name,postcode,primary_phone_number,email,lead_source,disposition,reason_for_archive,time_archived,received_date_time", { count: "exact" })
+        .not("time_archived", "is", null)
+        .order("time_archived", { ascending: false, nullsFirst: false })
+        .range(archivedLeadsPage * pageSize, archivedLeadsPage * pageSize + pageSize - 1)
+      const term = archivedLeadsSearch.trim().replace(/[,%()]/g, " ")
+      if (term) query = query.or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%,postcode.ilike.%${term}%,primary_phone_number.ilike.%${term}%,email.ilike.%${term}%,lead_source.ilike.%${term}%`)
+      const { data, error: queryError, count } = await query
+      if (queryError) throw queryError
+      setArchivedLeads(data || [])
+      setArchivedLeadCount(count || 0)
+    } catch (e) {
+      setArchivedLeadsError(e.message || "Unable to load archived leads.")
+      setArchivedLeads([])
+      setArchivedLeadCount(0)
+    } finally {
+      setArchivedLeadsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === "archived-leads") loadArchivedLeads()
+  }, [activeTab, archivedLeadsPage, archivedLeadsSearch])
 
   useEffect(() => {
     loadData()
@@ -1230,6 +1267,13 @@ function DataDashboard() {
         </button>
         <button
           type="button"
+          className={`data-dashboard-tab ${activeTab === "archived-leads" ? "active" : ""}`}
+          onClick={() => { setArchivedLeadsPage(0); setActiveTab("archived-leads") }}
+        >
+          Archived Leads
+        </button>
+        <button
+          type="button"
           className={`data-dashboard-tab ${activeTab === "kanban" ? "active" : ""}`}
           onClick={() => setActiveTab("kanban")}
         >
@@ -1729,6 +1773,49 @@ function DataDashboard() {
           </div>
 
         </>
+
+      ) : activeTab === "archived-leads" ? (
+        <div className="data-dashboard-chart-card">
+          <div className="data-dashboard-chart-head">
+            <div>
+              <div className="data-dashboard-chart-title">Archived leads</div>
+              <div className="data-dashboard-chart-subtitle">Leads with an archive date, sorted newest to oldest.</div>
+            </div>
+            <button type="button" onClick={loadArchivedLeads} disabled={archivedLeadsLoading} className="data-dashboard-refresh">{archivedLeadsLoading ? "Loading…" : "Refresh list"}</button>
+          </div>
+          <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",margin:"12px 0"}}>
+            <div style={{position:"relative",flex:"1 1 260px",maxWidth:420}}>
+              <Search size={15} style={{position:"absolute",left:10,top:11,color:"#64748b"}} />
+              <input value={archivedLeadsSearch} onChange={e=>{setArchivedLeadsPage(0);setArchivedLeadsSearch(e.target.value)}} placeholder="Search name, postcode, phone, email or source" style={{width:"100%",boxSizing:"border-box",padding:"9px 10px 9px 32px",border:"1px solid #cbd5e1",borderRadius:8}} />
+            </div>
+            <span style={{fontSize:12,color:"#64748b"}}>{formatNumber(archivedLeadCount)} archived leads</span>
+          </div>
+          {archivedLeadsError && <div className="data-dashboard-error">{archivedLeadsError}</div>}
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+              <thead><tr style={{background:"#17365d",color:"#fff",textAlign:"left"}}>{["Archive date","Lead","Postcode","Lead source","Disposition","Archive reason","Received"].map(label=><th key={label} style={{padding:"11px 10px",whiteSpace:"nowrap"}}>{label}</th>)}</tr></thead>
+              <tbody>
+                {archivedLeads.map((lead,index)=><tr key={lead.delete_row_id || lead.marketing_row_id || index} style={{borderBottom:"1px solid #e2e8f0",background:index%2?"#f8fafc":"#fff"}}>
+                  <td style={{padding:"10px",whiteSpace:"nowrap",fontWeight:600}}>{lead.time_archived ? new Date(lead.time_archived).toLocaleString("en-GB") : "—"}</td>
+                  <td style={{padding:"10px",minWidth:150}}><strong>{[lead.salutations,lead.first_name,lead.last_name].filter(Boolean).join(" ") || "Unnamed lead"}</strong><div style={{color:"#64748b",fontSize:11}}>{lead.primary_phone_number || lead.email || ""}</div></td>
+                  <td style={{padding:"10px",whiteSpace:"nowrap"}}>{lead.postcode || "—"}</td>
+                  <td style={{padding:"10px"}}>{lead.lead_source || "—"}</td>
+                  <td style={{padding:"10px"}}>{lead.disposition || "—"}</td>
+                  <td style={{padding:"10px"}}>{lead.reason_for_archive || "—"}</td>
+                  <td style={{padding:"10px",whiteSpace:"nowrap"}}>{lead.received_date_time ? new Date(lead.received_date_time).toLocaleString("en-GB") : "—"}</td>
+                </tr>)}
+                {!archivedLeadsLoading && !archivedLeads.length && <tr><td colSpan={7} style={{padding:18,textAlign:"center",color:"#64748b"}}>No archived leads found.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginTop:14}}>
+            <span style={{fontSize:11,color:"#64748b"}}>Showing {archivedLeads.length ? archivedLeadsPage*100+1 : 0}–{archivedLeadsPage*100+archivedLeads.length} of {formatNumber(archivedLeadCount)} · Newest archive date first</span>
+            <div style={{display:"flex",gap:8}}>
+              <button type="button" disabled={archivedLeadsPage===0 || archivedLeadsLoading} onClick={()=>setArchivedLeadsPage(p=>Math.max(0,p-1))} style={{border:"1px solid #cbd5e1",borderRadius:7,padding:"7px 12px",background:"#fff",color:"#17365d",cursor:"pointer"}}>Previous</button>
+              <button type="button" disabled={(archivedLeadsPage+1)*100>=archivedLeadCount || archivedLeadsLoading} onClick={()=>setArchivedLeadsPage(p=>p+1)} style={{border:"1px solid #cbd5e1",borderRadius:7,padding:"7px 12px",background:"#fff",color:"#17365d",cursor:"pointer"}}>Next</button>
+            </div>
+          </div>
+        </div>
       ) : activeTab === "kanban" ? (
         <LeadDispositionKanban />
       ) : (
