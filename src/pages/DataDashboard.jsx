@@ -320,6 +320,9 @@ function DataDashboard() {
       const { data: netValueRows, error: netValueError } = await supabase.rpc("get_pronto_introducer_net_value_sold", { date_period: prontoDatePeriod })
       if (netValueError) throw netValueError
       const netValueByIntroducer = Object.fromEntries((netValueRows || []).map((row) => [String(row.introducer || "(No Introducer)"), Number(row.net_value_sold || 0)]))
+      const { data: solidValueRows, error: solidValueError } = await supabase.rpc("get_pronto_introducer_net_value_solid", { date_period: prontoDatePeriod })
+      if (solidValueError) throw solidValueError
+      const netValueSolidByIntroducer = Object.fromEntries((solidValueRows || []).map((row) => [String(row.introducer || "(No Introducer)"), Number(row.net_value_solid || 0)]))
 
       setProntoSidRows((data || []).map((row) => ({
         pronto_sid: String(row.introducer || "(No Introducer)"),
@@ -332,6 +335,7 @@ function DataDashboard() {
         cps_p_count: Number(row.cps_p_count || 0),
         cps_s_count: Number(row.cps_s_count || 0),
         net_value_sold: Number(netValueByIntroducer[String(row.introducer || "(No Introducer)")] || 0),
+        net_value_solid: Number(netValueSolidByIntroducer[String(row.introducer || "(No Introducer)")] || 0),
         first_lead_date: row.first_lead_date || null,
         latest_lead_date: row.latest_lead_date || null,
       })))
@@ -1603,6 +1607,7 @@ function DataDashboard() {
                     <th>CPS P</th>
                     <th>CPS S</th>
                     <th>Net Value Sold</th>
+                    <th>Net Value Solid</th>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("booked_rate")}>Booked %{prontoSort.key === "booked_rate" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th aria-label="Alignment spacer"></th>
                   </tr>
@@ -1626,6 +1631,7 @@ function DataDashboard() {
                         <td>{formatNumber(row.cps_p_count)}</td>
                         <td>{formatNumber(row.cps_s_count)}</td>
                         <td>£{formatNumber(row.net_value_sold)}</td>
+                        <td>£{formatNumber(row.net_value_solid)}</td>
                         <td className={row.lead_count && (row.booked_count / row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{row.lead_count ? `${((row.booked_count / row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
                         <td aria-hidden="true"></td>
                       </tr>
@@ -1722,6 +1728,7 @@ function DataDashboard() {
                     <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_p_count, 0))}</strong></td>
                     <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_s_count, 0))}</strong></td>
                     <td><strong>£{formatNumber(filteredProntoSidRows.reduce((sum, row) => sum + row.net_value_sold, 0))}</strong></td>
+                    <td><strong>£{formatNumber(filteredProntoSidRows.reduce((sum, row) => sum + row.net_value_solid, 0))}</strong></td>
                     <td><strong>{prontoSidTotal ? `${((prontoSidRows.reduce((sum, row) => sum + row.booked_count, 0) / prontoSidTotal) * 100).toFixed(1)}%` : "0.0%"}</strong></td>
                     <td aria-hidden="true"></td>
                   </tr>
