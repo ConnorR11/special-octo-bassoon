@@ -790,10 +790,10 @@ function CustomerDetail({
                   </div>
                 ) : (
                   <div style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 7 }}>
-                    <button type="button" disabled={Boolean(uploadingCategory)} onClick={event => { event.preventDefault(); event.stopPropagation(); documentFileInputs.current[category.key]?.click() }} style={{ border: 0, display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 11px", borderRadius: 7, background: busy ? "#e2e8f0" : "#002d49", color: busy ? "#64748b" : "#fff", fontSize: 10, fontWeight: 700, cursor: busy ? "wait" : "pointer", opacity: busy ? .7 : 1 }}>
+                    <label style={{ position: "relative", overflow: "hidden", border: 0, display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 11px", borderRadius: 7, background: busy ? "#e2e8f0" : "#002d49", color: busy ? "#64748b" : "#fff", fontSize: 10, fontWeight: 700, cursor: busy ? "wait" : "pointer", opacity: busy ? .7 : 1, pointerEvents: busy ? "none" : "auto", WebkitTapHighlightColor: "transparent" }}>
                       {busy ? <LoaderCircle size={14} /> : <FileUp size={14} />}{busy ? "Uploading…" : "Upload"}
-                    </button>
-                    <input ref={element => { documentFileInputs.current[category.key] = element }} type="file" accept={category.accept} multiple={category.multiple} disabled={Boolean(uploadingCategory)} onClick={event => event.stopPropagation()} onChange={event => { event.stopPropagation(); const selectedFiles = event.target.files; uploadDocuments(category.key, selectedFiles); event.target.value = "" }} style={{ display: "none" }} />
+                      <input ref={element => { documentFileInputs.current[category.key] = element }} type="file" accept={category.accept} multiple={category.multiple} disabled={Boolean(uploadingCategory)} onClick={event => event.stopPropagation()} onChange={event => { event.stopPropagation(); const selectedFiles = event.target.files; void uploadDocuments(category.key, selectedFiles); event.target.value = "" }} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer" }} />
+                    </label>
                   </div>
                 )}
               </div>
