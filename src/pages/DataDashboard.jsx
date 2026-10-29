@@ -1726,7 +1726,7 @@ function DataDashboard() {
                       </tr>
                       {expandedIntroducers[row.pronto_sid] && (
                         introducerSidLoading[row.pronto_sid] ? (
-                          <tr className="pronto-tree-loading"><td colSpan={10}>Loading SID breakdown…</td></tr>
+                          <tr className="pronto-tree-loading"><td colSpan={16 - (showProntoDateStatusColumns ? 0 : 3) - (showProntoLeadInfoColumns ? 0 : 2) - (showProntoAppointmentColumns ? 0 : 4) - (showProntoConversionColumns ? 0 : 2) - (showProntoDealInfoColumns ? 0 : 3)}>Loading SID breakdown…</td></tr>
                         ) : sortProntoRows(introducerSidRows[row.pronto_sid] || []).map((sidRow) => {
                           const sidKey = JSON.stringify([row.pronto_sid, sidRow.pronto_sid]);
                           const sidExpanded = Boolean(expandedProntoSids[sidKey]);
@@ -1757,7 +1757,7 @@ function DataDashboard() {
                               </tr>
                               {sidExpanded && (
                                 introducerC1Loading[sidKey] ? (
-                                  <tr className="pronto-tree-loading"><td colSpan={10}>Loading C1 campaigns…</td></tr>
+                                  <tr className="pronto-tree-loading"><td colSpan={16 - (showProntoDateStatusColumns ? 0 : 3) - (showProntoLeadInfoColumns ? 0 : 2) - (showProntoAppointmentColumns ? 0 : 4) - (showProntoConversionColumns ? 0 : 2) - (showProntoDealInfoColumns ? 0 : 3)}>Loading C1 campaigns…</td></tr>
                                 ) : sortProntoRows(c1Rows).map((c1Row) => {
                                   const c1Key = JSON.stringify([row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1]);
                                   const c1Expanded = Boolean(expandedIntroducerC1s[c1Key]);
@@ -1788,7 +1788,7 @@ function DataDashboard() {
                                       </tr>
                                       {c1Expanded && (
                                         introducerC3Loading[c1Key] ? (
-                                          <tr className="pronto-tree-loading"><td colSpan={10}>Loading C3 campaigns…</td></tr>
+                                          <tr className="pronto-tree-loading"><td colSpan={16 - (showProntoDateStatusColumns ? 0 : 3) - (showProntoLeadInfoColumns ? 0 : 2) - (showProntoAppointmentColumns ? 0 : 4) - (showProntoConversionColumns ? 0 : 2) - (showProntoDealInfoColumns ? 0 : 3)}>Loading C3 campaigns…</td></tr>
                                         ) : sortProntoRows(c3Rows).map((c3Row) => (
                                           <tr className="pronto-tree-c3" key={c3Row.pronto_c3}>
                                             <td><span className="pronto-tree-leaf" style={{ paddingLeft: 66 }}>{c3Row.pronto_c3}</span></td>
