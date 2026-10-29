@@ -952,38 +952,47 @@ function DataDashboard() {
         .pronto-tree-table.pronto-hide-date-status thead tr:not(.pronto-group-header) th:nth-child(4),
         .pronto-tree-table.pronto-hide-date-status tbody tr:not(.pronto-tree-total) td:nth-child(4) { display: none; }
         .pronto-tree-table.pronto-hide-lead-info col:nth-child(5),
-        .pronto-tree-table.pronto-hide-lead-info col:nth-child(6),
-        .pronto-tree-table.pronto-hide-lead-info col:nth-child(7),
         .pronto-tree-table.pronto-hide-lead-info thead tr:not(.pronto-group-header) th:nth-child(5),
         .pronto-tree-table.pronto-hide-lead-info tbody tr:not(.pronto-tree-total) td:nth-child(5),
+        .pronto-tree-table.pronto-hide-lead-info col:nth-child(6),
         .pronto-tree-table.pronto-hide-lead-info thead tr:not(.pronto-group-header) th:nth-child(6),
         .pronto-tree-table.pronto-hide-lead-info tbody tr:not(.pronto-tree-total) td:nth-child(6),
+        .pronto-tree-table.pronto-hide-lead-info col:nth-child(7),
         .pronto-tree-table.pronto-hide-lead-info thead tr:not(.pronto-group-header) th:nth-child(7),
-        .pronto-tree-table.pronto-hide-lead-info tbody tr:not(.pronto-tree-total) td:nth-child(7) { display: none; }
-        .pronto-tree-table.pronto-hide-appointment col:nth-child(8),
-        .pronto-tree-table.pronto-hide-appointment col:nth-child(9),
-        .pronto-tree-table.pronto-hide-appointment col:nth-child(10),
+        .pronto-tree-table.pronto-hide-lead-info tbody tr:not(.pronto-tree-total) td:nth-child(7),
+        .pronto-tree-table.pronto-hide-lead-info col:nth-child(8),
+        .pronto-tree-table.pronto-hide-lead-info thead tr:not(.pronto-group-header) th:nth-child(8),
+        .pronto-tree-table.pronto-hide-lead-info tbody tr:not(.pronto-tree-total) td:nth-child(8),
+        .pronto-tree-table.pronto-hide-lead-info col:nth-child(9),
+        .pronto-tree-table.pronto-hide-lead-info thead tr:not(.pronto-group-header) th:nth-child(9),
+        .pronto-tree-table.pronto-hide-lead-info tbody tr:not(.pronto-tree-total) td:nth-child(9),
+        .pronto-tree-table.pronto-hide-lead-info col:nth-child(10),
+        .pronto-tree-table.pronto-hide-lead-info thead tr:not(.pronto-group-header) th:nth-child(10),
+        .pronto-tree-table.pronto-hide-lead-info tbody tr:not(.pronto-tree-total) td:nth-child(10) { display: none; }
         .pronto-tree-table.pronto-hide-appointment col:nth-child(11),
-        .pronto-tree-table.pronto-hide-appointment thead tr:not(.pronto-group-header) th:nth-child(8),
-        .pronto-tree-table.pronto-hide-appointment tbody tr:not(.pronto-tree-total) td:nth-child(8),
-        .pronto-tree-table.pronto-hide-appointment thead tr:not(.pronto-group-header) th:nth-child(9),
-        .pronto-tree-table.pronto-hide-appointment tbody tr:not(.pronto-tree-total) td:nth-child(9),
-        .pronto-tree-table.pronto-hide-appointment thead tr:not(.pronto-group-header) th:nth-child(10),
-        .pronto-tree-table.pronto-hide-appointment tbody tr:not(.pronto-tree-total) td:nth-child(10),
         .pronto-tree-table.pronto-hide-appointment thead tr:not(.pronto-group-header) th:nth-child(11),
-        .pronto-tree-table.pronto-hide-appointment tbody tr:not(.pronto-tree-total) td:nth-child(11) { display: none; }
-        .pronto-tree-table.pronto-hide-conversion col:nth-child(12),
-        .pronto-tree-table.pronto-hide-conversion col:nth-child(13),
-        .pronto-tree-table.pronto-hide-conversion thead tr:not(.pronto-group-header) th:nth-child(12),
-        .pronto-tree-table.pronto-hide-conversion tbody tr:not(.pronto-tree-total) td:nth-child(12),
-        .pronto-tree-table.pronto-hide-conversion thead tr:not(.pronto-group-header) th:nth-child(13),
-        .pronto-tree-table.pronto-hide-conversion tbody tr:not(.pronto-tree-total) td:nth-child(13) { display: none; }
-        .pronto-tree-table.pronto-hide-deal-info col:nth-child(14),
-        .pronto-tree-table.pronto-hide-deal-info col:nth-child(15),
-        .pronto-tree-table.pronto-hide-deal-info thead tr:not(.pronto-group-header) th:nth-child(14),
-        .pronto-tree-table.pronto-hide-deal-info tbody tr:not(.pronto-tree-total) td:nth-child(14),
-        .pronto-tree-table.pronto-hide-deal-info thead tr:not(.pronto-group-header) th:nth-child(15),
-        .pronto-tree-table.pronto-hide-deal-info tbody tr:not(.pronto-tree-total) td:nth-child(15) { display: none; }
+        .pronto-tree-table.pronto-hide-appointment tbody tr:not(.pronto-tree-total) td:nth-child(11),
+        .pronto-tree-table.pronto-hide-appointment col:nth-child(12),
+        .pronto-tree-table.pronto-hide-appointment thead tr:not(.pronto-group-header) th:nth-child(12),
+        .pronto-tree-table.pronto-hide-appointment tbody tr:not(.pronto-tree-total) td:nth-child(12),
+        .pronto-tree-table.pronto-hide-appointment col:nth-child(13),
+        .pronto-tree-table.pronto-hide-appointment thead tr:not(.pronto-group-header) th:nth-child(13),
+        .pronto-tree-table.pronto-hide-appointment tbody tr:not(.pronto-tree-total) td:nth-child(13),
+        .pronto-tree-table.pronto-hide-appointment col:nth-child(14),
+        .pronto-tree-table.pronto-hide-appointment thead tr:not(.pronto-group-header) th:nth-child(14),
+        .pronto-tree-table.pronto-hide-appointment tbody tr:not(.pronto-tree-total) td:nth-child(14) { display: none; }
+        .pronto-tree-table.pronto-hide-conversion col:nth-child(15),
+        .pronto-tree-table.pronto-hide-conversion thead tr:not(.pronto-group-header) th:nth-child(15),
+        .pronto-tree-table.pronto-hide-conversion tbody tr:not(.pronto-tree-total) td:nth-child(15),
+        .pronto-tree-table.pronto-hide-conversion col:nth-child(16),
+        .pronto-tree-table.pronto-hide-conversion thead tr:not(.pronto-group-header) th:nth-child(16),
+        .pronto-tree-table.pronto-hide-conversion tbody tr:not(.pronto-tree-total) td:nth-child(16) { display: none; }
+        .pronto-tree-table.pronto-hide-deal-info col:nth-child(17),
+        .pronto-tree-table.pronto-hide-deal-info thead tr:not(.pronto-group-header) th:nth-child(17),
+        .pronto-tree-table.pronto-hide-deal-info tbody tr:not(.pronto-tree-total) td:nth-child(17),
+        .pronto-tree-table.pronto-hide-deal-info col:nth-child(18),
+        .pronto-tree-table.pronto-hide-deal-info thead tr:not(.pronto-group-header) th:nth-child(18),
+        .pronto-tree-table.pronto-hide-deal-info tbody tr:not(.pronto-tree-total) td:nth-child(18) { display: none; }
         .pronto-tree-table col.pronto-col-name { width: 22%; }
         .pronto-tree-table col.pronto-col-first { width: 8%; }
         .pronto-tree-table col.pronto-col-latest { width: 8%; }
@@ -1748,7 +1757,7 @@ function DataDashboard() {
                       </tr>
                       {expandedIntroducers[row.pronto_sid] && (
                         introducerSidLoading[row.pronto_sid] ? (
-                          <tr className="pronto-tree-loading"><td colSpan={16 - (showProntoDateStatusColumns ? 0 : 3) - (showProntoLeadInfoColumns ? 0 : 2) - (showProntoAppointmentColumns ? 0 : 4) - (showProntoConversionColumns ? 0 : 2) - (showProntoDealInfoColumns ? 0 : 3)}>Loading SID breakdown…</td></tr>
+                          <tr className="pronto-tree-loading"><td colSpan={19 - (showProntoDateStatusColumns ? 0 : 3) - (showProntoLeadInfoColumns ? 0 : 5) - (showProntoAppointmentColumns ? 0 : 4) - (showProntoConversionColumns ? 0 : 2) - (showProntoDealInfoColumns ? 0 : 3)}>Loading SID breakdown…</td></tr>
                         ) : sortProntoRows(introducerSidRows[row.pronto_sid] || []).map((sidRow) => {
                           const sidKey = JSON.stringify([row.pronto_sid, sidRow.pronto_sid]);
                           const sidExpanded = Boolean(expandedProntoSids[sidKey]);
@@ -1783,7 +1792,7 @@ function DataDashboard() {
                               </tr>
                               {sidExpanded && (
                                 introducerC1Loading[sidKey] ? (
-                                  <tr className="pronto-tree-loading"><td colSpan={16 - (showProntoDateStatusColumns ? 0 : 3) - (showProntoLeadInfoColumns ? 0 : 2) - (showProntoAppointmentColumns ? 0 : 4) - (showProntoConversionColumns ? 0 : 2) - (showProntoDealInfoColumns ? 0 : 3)}>Loading C1 campaigns…</td></tr>
+                                  <tr className="pronto-tree-loading"><td colSpan={19 - (showProntoDateStatusColumns ? 0 : 3) - (showProntoLeadInfoColumns ? 0 : 5) - (showProntoAppointmentColumns ? 0 : 4) - (showProntoConversionColumns ? 0 : 2) - (showProntoDealInfoColumns ? 0 : 3)}>Loading C1 campaigns…</td></tr>
                                 ) : sortProntoRows(c1Rows).map((c1Row) => {
                                   const c1Key = JSON.stringify([row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1]);
                                   const c1Expanded = Boolean(expandedIntroducerC1s[c1Key]);
@@ -1818,7 +1827,7 @@ function DataDashboard() {
                                       </tr>
                                       {c1Expanded && (
                                         introducerC3Loading[c1Key] ? (
-                                          <tr className="pronto-tree-loading"><td colSpan={16 - (showProntoDateStatusColumns ? 0 : 3) - (showProntoLeadInfoColumns ? 0 : 2) - (showProntoAppointmentColumns ? 0 : 4) - (showProntoConversionColumns ? 0 : 2) - (showProntoDealInfoColumns ? 0 : 3)}>Loading C3 campaigns…</td></tr>
+                                          <tr className="pronto-tree-loading"><td colSpan={19 - (showProntoDateStatusColumns ? 0 : 3) - (showProntoLeadInfoColumns ? 0 : 5) - (showProntoAppointmentColumns ? 0 : 4) - (showProntoConversionColumns ? 0 : 2) - (showProntoDealInfoColumns ? 0 : 3)}>Loading C3 campaigns…</td></tr>
                                         ) : sortProntoRows(c3Rows).map((c3Row) => (
                                           <tr className="pronto-tree-c3" key={c3Row.pronto_c3}>
                                             <td><span className="pronto-tree-leaf" style={{ paddingLeft: 66 }}>{c3Row.pronto_c3}</span></td>
