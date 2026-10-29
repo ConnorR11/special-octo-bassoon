@@ -10,7 +10,7 @@ export default async function handler(req,res){
  const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}})
  try{
   const {data:user,error:userError}=await db.auth.getUser(accessToken);if(userError||!user?.user)return json(res,401,{error:"Your session has expired."})
-  const body=typeof req.body==="string"?JSON.parse(req.body):(req.body||{});const appointmentId=String(body.appointment_row_id||"").trim();const storagePath=String(body.storage_path||"").trim();const fileName=String(body.file_name||"Solar-Quote.pdf").trim();const priceMode=body.price_mode==="finance"?"finance":"cash"
+  const body=typeof req.body==="string"?JSON.parse(req.body):(req.body||{});const appointmentId=String(body.appointment_row_id||"").trim();const storagePath=String(body.storage_path||"").trim();const fileName=String(body.file_name||"Solar-Quote.pdf").trim();const priceMode="both"
   if(!appointmentId||!storagePath.startsWith("solar-quotes/")||storagePath.includes(".."))return json(res,400,{error:"A valid appointment and saved quote PDF are required."})
   const {data:appointment,error:appointmentError}=await db.from("appointments").select("appointment_row_id,name,email_address,phone_number_1,address,postcode").eq("appointment_row_id",appointmentId).maybeSingle();if(appointmentError)throw appointmentError;if(!appointment)return json(res,404,{error:"Appointment not found."})
   const token=crypto.randomBytes(32).toString("base64url");const hash=crypto.createHash("sha256").update(token).digest("hex");const quoteRef="SQ-"+new Date().toISOString().slice(0,10).replaceAll("-","")+"-"+crypto.randomBytes(3).toString("hex").toUpperCase();const expiresAt=new Date(Date.now()+90*24*60*60*1000).toISOString()
