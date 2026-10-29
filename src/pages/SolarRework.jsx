@@ -162,7 +162,7 @@ export default function SolarRework({ onSelectAppointment }) {
   const [resultFilter, setResultFilter] = useState("all")
   const [leadSourceFilter, setLeadSourceFilter] = useState("all")
   const [leadSourceOptions, setLeadSourceOptions] = useState([])
-  const [quoteViewedFilter, setQuoteViewedFilter] = useState("viewed")
+  const [quoteViewedFilter, setQuoteViewedFilter] = useState("all")
   const [quoteDailyStats, setQuoteDailyStats] = useState([])
   const [quoteStatsRange, setQuoteStatsRange] = useState({ first: "", last: "" })
   const [quoteStatsLoading, setQuoteStatsLoading] = useState(false)
