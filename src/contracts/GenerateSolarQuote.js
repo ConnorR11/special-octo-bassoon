@@ -43,8 +43,8 @@ function getQuoteData(appointment) {
   const deposit = Number(epvs.deposit || appointment?.deposit || 0)
   const principal = Math.max(0, cashPrice - deposit)
   const months = Math.max(1, Math.round(termYears * 12))
-  const monthlyRate = rate / 100 / 12
-  const monthly = monthlyRate ? principal * monthlyRate / (1 - Math.pow(1 + monthlyRate, -months)) : principal / months
+  // Use the agreed lender illustration factor: £9.91 per £1,000 of system cost per month.
+  const monthly = Math.max(0, cashPrice) / 1000 * 9.91
   return { epvs, results, openSolar, panels, inverters, batteries, panelCount, capacity, generation, cashPrice, termYears, rate, deposit, monthly }
 }
 
