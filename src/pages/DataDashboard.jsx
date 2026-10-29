@@ -926,19 +926,22 @@ function DataDashboard() {
         .pronto-tree-table.pronto-hide-date-status td:nth-child(4) { display: none; }
         .pronto-column-controls { display: flex; justify-content: flex-end; padding: 8px 12px; border-bottom: 1px solid #e5eaf0; background: #fff; }
         .pronto-column-toggle { border: 1px solid #cbd5e1; border-radius: 7px; padding: 6px 10px; background: #fff; color: #24364b; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .pronto-tree-table { min-width: 1500px; }
         .pronto-tree-table col.pronto-col-name { width: 22%; }
-        .pronto-tree-table th:nth-child(11),
-        .pronto-tree-table td:nth-child(11),
-        .pronto-tree-table th:nth-child(12),
-        .pronto-tree-table td:nth-child(12) { white-space: nowrap; text-align: right; }
         .pronto-tree-table col.pronto-col-first { width: 8%; }
         .pronto-tree-table col.pronto-col-latest { width: 8%; }
         .pronto-tree-table col.pronto-col-status { width: 5%; }
         .pronto-tree-table col.pronto-col-leads { width: 5%; }
         .pronto-tree-table col.pronto-col-booked { width: 4%; }
+        .pronto-tree-table col.pronto-col-conversion { width: 6%; }
         .pronto-tree-table col.pronto-col-net-value { width: 10%; }
         .pronto-tree-table col.pronto-col-booked-percent { width: 6%; }
-        .pronto-tree-table col.pronto-col-spacer { width: 4%; }
+        .pronto-tree-table col.pronto-col-spacer { width: 2%; }
+        .pronto-tree-table th:nth-child(13),
+        .pronto-tree-table td:nth-child(13),
+        .pronto-tree-table th:nth-child(14),
+        .pronto-tree-table td:nth-child(14) { white-space: nowrap; text-align: right; }
+        .pronto-deal-info-header { text-align: center; border-left: 1px solid #4d6785; border-right: 1px solid #4d6785; }
         .pronto-tree-table th:nth-last-child(4),
         .pronto-tree-table td:nth-last-child(4),
         .pronto-tree-table th:nth-last-child(3),
@@ -1623,12 +1626,20 @@ function DataDashboard() {
                   <col className="pronto-col-booked" />
                   <col className="pronto-col-booked" />
                   <col className="pronto-col-booked" />
+                  <col className="pronto-col-booked" />
+                  <col className="pronto-col-conversion" />
+                  <col className="pronto-col-conversion" />
                   <col className="pronto-col-net-value" />
                   <col className="pronto-col-net-value" />
                   <col className="pronto-col-booked-percent" />
                   <col className="pronto-col-spacer" />
                 </colgroup>
                 <thead>
+                  <tr className="pronto-group-header">
+                    <th colSpan={12}></th>
+                    <th colSpan={2} className="pronto-deal-info-header">Deal Info</th>
+                    <th colSpan={2}></th>
+                  </tr>
                   <tr>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("name")}>Introducer / Campaign{prontoSort.key === "name" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("first_lead_date")}>First received{prontoSort.key === "first_lead_date" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
