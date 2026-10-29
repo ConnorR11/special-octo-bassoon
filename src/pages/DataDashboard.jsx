@@ -121,6 +121,7 @@ function DataDashboard() {
   const [prontoSort, setProntoSort] = useState({ key: null, direction: "asc" })
   const [prontoDatePeriod, setProntoDatePeriod] = useState("last_week")
   const [prontoStatusFilter, setProntoStatusFilter] = useState("all")
+  const [showProntoDateStatusColumns, setShowProntoDateStatusColumns] = useState(true)
   const [expandedProntoSids, setExpandedProntoSids] = useState({})
   const [prontoC3Rows, setProntoC3Rows] = useState({})
   const [introducerSidRows, setIntroducerSidRows] = useState({})
@@ -917,6 +918,14 @@ function DataDashboard() {
           font-size: 12px;
         }
 
+        .pronto-tree-table.pronto-hide-date-status th:nth-child(2),
+        .pronto-tree-table.pronto-hide-date-status td:nth-child(2),
+        .pronto-tree-table.pronto-hide-date-status th:nth-child(3),
+        .pronto-tree-table.pronto-hide-date-status td:nth-child(3),
+        .pronto-tree-table.pronto-hide-date-status th:nth-child(4),
+        .pronto-tree-table.pronto-hide-date-status td:nth-child(4) { display: none; }
+        .pronto-column-controls { display: flex; justify-content: flex-end; padding: 8px 12px; border-bottom: 1px solid #e5eaf0; background: #fff; }
+        .pronto-column-toggle { border: 1px solid #cbd5e1; border-radius: 7px; padding: 6px 10px; background: #fff; color: #24364b; font-size: 12px; font-weight: 600; cursor: pointer; }
         .pronto-tree-table col.pronto-col-name { width: 22%; }
         .pronto-tree-table th:nth-child(11),
         .pronto-tree-table td:nth-child(11),
@@ -1597,7 +1606,12 @@ function DataDashboard() {
             ) : filteredProntoSidRows.length === 0 ? (
               <div className="pronto-empty">No Pronto SID data found.</div>
             ) : (
-              <table className="pronto-table pronto-tree-table">
+              <div className="pronto-column-controls">
+                <button type="button" className="pronto-column-toggle" onClick={() => setShowProntoDateStatusColumns((shown) => !shown)}>
+                  {showProntoDateStatusColumns ? "Hide Dates & Status" : "Show Dates & Status"}
+                </button>
+              </div>
+              <table className={`pronto-table pronto-tree-table${showProntoDateStatusColumns ? "" : " pronto-hide-date-status"}`}>
                 <colgroup>
                   <col className="pronto-col-name" />
                   <col className="pronto-col-first" />
