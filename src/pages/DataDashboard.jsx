@@ -1276,8 +1276,17 @@ function DataDashboard() {
 
       {activeTab === "overview" ? (
         <>
-
-
+      <div className="data-dashboard-chart-card" style={{marginBottom:16}}>
+        <div className="data-dashboard-chart-title"><TrendingUp size={17} /> Speed to lead</div>
+        <div className="data-dashboard-chart-subtitle">Last 30 days. Leads received between 09:00 and 19:00 with no hotkey status.</div>
+        <button type="button" onClick={loadSpeedToLead} disabled={speedToLeadLoading}>{speedToLeadLoading ? "Loading..." : "Refresh report"}</button>
+        {speedToLeadError ? <div className="data-dashboard-error">{speedToLeadError}</div> : null}
+        <div style={{display:"flex",flexWrap:"wrap",gap:16,marginTop:14}}>
+          <div><div>Eligible leads</div><strong>{speedToLeadRows.length}</strong></div>
+          <div><div>Average minutes to first call</div><strong>{speedToLeadRows.filter(r => r.speed_minutes !== null).length ? (speedToLeadRows.filter(r => r.speed_minutes !== null).reduce((sum,r) => sum + r.speed_minutes,0) / speedToLeadRows.filter(r => r.speed_minutes !== null).length).toFixed(1) : "—"}</strong></div>
+          <div><div>Not yet called</div><strong>{speedToLeadRows.filter(r => r.speed_minutes === null).length}</strong></div>
+        </div>
+      </div>
       <div className="data-dashboard-chart-card">
         <div className="data-dashboard-chart-head">
           <div>
