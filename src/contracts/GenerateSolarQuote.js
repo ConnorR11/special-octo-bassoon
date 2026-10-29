@@ -6,16 +6,38 @@ const value = (v, fallback = "To be confirmed") => v === null || v === undefined
 const clean = (v) => String(v ?? "").trim()
 
 function getQuoteData(appointment) {
-  const epvs = appointment?.epvs_calculation?.data || appointment?.epvs_calculation || {}
-  const openSolar = epvs?.openSolar || {}
+  let calculation = appointment?.epvs_calculation || {}
+  if (typeof calculation === "string") {
+    try { calculation = JSON.parse(calculation) } catch { calculation = {} }
+  }
+  const epvs = calculation?.data || calculation || {}
+  const results = calculation?.results || epvs?.results || {}
+  const openSolar = epvs?.openSolar || epvs?.open_solar || {}
   const hardware = epvs?.hardware || openSolar?.hardware || {}
-  const panels = Array.isArray(hardware.panels) ? hardware.panels : []
-  const inverters = Array.isArray(hardware.inverters) ? hardware.inverters : []
-  const batteries = Array.isArray(hardware.batteries) ? hardware.batteries : []
-  const panelCount = panels.reduce((sum, item) => sum + Number(item?.quantity || item?.count || 0), 0) || Number(epvs.panelCount || epvs.numberOfPanels || 0)
-  const capacity = Number(epvs.systemSize || epvs.system_size || openSolar.systemSize || 0)
+  const panels = Array.isArray(hardware.panels) ? hardware.panels : (Array.isArray(epvs.panels) ? epvs.panels : [])
+  const inverters = Array.isArray(hardware.inverters) ? hardware.inverters : (Array.isArray(epvs.inverters) ? epvs.inverters : [])
+  const batteries = Array.isArray(hardware.batteries) ? hardware.batteries : (Array.isArray(epvs.batteries) ? epvs.batteries : [])
+  const panelCount = panels.reduce((sum, item) => sum + Number(item?.quantity || item?.count || item?.panelCount || item?.panel_count || 0), 0)
+    || Number(epvs.panelCount || epvs.panel_count || epvs.numberOfPanels || epvs.number_of_panels || 0)
+  const arrays = Array.isArray(openSolar?.arrays) && openSolar.arrays.length
+    ? openSolar.arrays
+    : (Array.isArray(epvs?.arrays) ? epvs.arrays : [])
+  const derivedCapacity = arrays.reduce((sum, array) => {
+    const wattage = Number(array?.panelWattage || array?.panel_wattage || 0)
+    const count = Number(array?.panelCount || array?.panel_count || array?.numberOfPanels || array?.number_of_panels || 0)
+    return sum + (wattage * count) / 1000
+  }, 0)
+  const capacity = Number(results.systemSize || results.system_size || epvs.systemSize || epvs.system_size || openSolar.systemSize || openSolar.system_size || derivedCapacity || 0)
+  const derivedGeneration = arrays.reduce((sum, array) => {
+    const wattage = Number(array?.panelWattage || array?.panel_wattage || 0)
+    const count = Number(array?.panelCount || array?.panel_count || array?.numberOfPanels || array?.number_of_panels || 0)
+    const irradiance = Number(array?.irradiance || 0)
+    const shading = Number(array?.shading ?? 1)
+    return sum + ((wattage * count) / 1000) * irradiance * shading
+  }, 0)
+  const generation = Number(results.generation || results.annualGeneration || results.annual_generation || epvs.generation || epvs.annualGeneration || epvs.annual_generation || epvs.estimatedGeneration || epvs.estimated_generation || epvs.annualProduction || epvs.annual_production || openSolar.annualGeneration || openSolar.annual_generation || derivedGeneration || 0)
   const isTradeLead = String(appointment?.is_trade_lead || "").trim().toUpperCase() === "TRUE"
-  const cashPrice = Number(isTradeLead ? (appointment?.price_left || 0) : (epvs.totalContractValue || epvs.totalPrice || appointment?.contract_value || appointment?.price_left || 0))
+  const cashPrice = Number(isTradeLead ? (appointment?.price_left || 0) : (epvs.totalContractValue || results.totalContractValue || epvs.totalPrice || appointment?.contract_value || appointment?.price_left || 0))
   const termYears = Number(epvs.financeTerm || appointment?.finance_term || 10)
   const rate = 3.9
   const deposit = Number(epvs.deposit || appointment?.deposit || 0)
@@ -23,7 +45,7 @@ function getQuoteData(appointment) {
   const months = Math.max(1, Math.round(termYears * 12))
   const monthlyRate = rate / 100 / 12
   const monthly = monthlyRate ? principal * monthlyRate / (1 - Math.pow(1 + monthlyRate, -months)) : principal / months
-  return { epvs, openSolar, panels, inverters, batteries, panelCount, capacity, cashPrice, termYears, rate, deposit, monthly }
+  return { epvs, results, openSolar, panels, inverters, batteries, panelCount, capacity, generation, cashPrice, termYears, rate, deposit, monthly }
 }
 
 async function imageData(url) {
@@ -148,7 +170,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
   }
 
   // Compact specification table.
-  const generation=Number(d.epvs.annualGeneration||d.epvs.annual_generation||d.epvs.estimatedGeneration||d.epvs.estimated_generation||d.epvs.annualProduction||d.epvs.annual_production||d.openSolar?.annualGeneration||0)
+  const generation=Number(d.generation || 0)
   // Use the saved EPVS first-year pre-install electricity bill, converted from annual to monthly.
   const savedCalculation=record?.epvs_calculation||{}
   const savedProjection=savedCalculation?.thirtyYearProjection||savedCalculation?.data?.thirtyYearProjection||d.epvs?.thirtyYearProjection||{}
@@ -188,7 +210,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
   pdf.text(money(d.monthly)+" / month",margin+priceHalf+6,priceY+17)
   pdf.setFont("helvetica","normal");pdf.setFontSize(6.5)
   pdf.text("Finance illustration at "+d.rate.toFixed(1)+"% over "+d.termYears+" years; subject to lender approval and confirmed terms.",margin+8,priceY+22)
-  footer(2)
+  footer(1)
 
   // PAGE 2 — Itemised equipment and service breakdown.
   pdf.addPage(); pdf.setFillColor(255,255,255);pdf.rect(0,0,w,h,"F")
@@ -314,7 +336,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
   ty=text("Supply of the listed solar equipment, installation and commissioning as agreed in the final specification. Any exclusions or site-specific requirements will be confirmed before an order is placed.",margin,ty,w-margin*2,9,navy,"normal",4.5)+5
   ty=section("Savings and finance assumptions",ty)
   text("Energy savings are estimates based on available information. Actual results depend on household usage, weather, tariffs, system design and export arrangements. Finance is illustrative, subject to lender approval and confirmed terms.",margin,ty,w-margin*2,8,muted,"normal",4)
-  footer(3)
+  footer(2)
 
   // PAGE 3 — EPVS 30-year financial and generation projection.
   pdf.addPage();pdf.setFillColor(255,255,255);pdf.rect(0,0,w,h,"F")
@@ -415,7 +437,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
     const disclaimerText30="The current fuel inflation figure of 7.6% is based on data from the Office for National Statistics, covering the period 2015–2024. You can find more information at www.ons.gov.uk. The reason we have shown savings based on varying levels of inflation is because electricity inflation has fluctuated significantly over the past 20 years - including negative CPI values in 2006, 2015, and 2016 (-2.5%, -0.2%, -0.3%), and spikes like 21.7% in 2016. To avoid relying on one-off years, we use a long-term average to provide a more balanced view."
     text(disclaimerText30,margin+7,disclaimerY30+17,w-margin*2-14,8,muted,"normal",4)
   }
-  footer(4)
+  footer(3)
 
   // PAGE 4 — Next steps, limitations and customer confidence.
   pdf.addPage();pdf.setFillColor(255,255,255);pdf.rect(0,0,w,h,"F")
@@ -441,7 +463,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
   y3+=12
   pdf.setTextColor(...blue);pdf.setFont("helvetica","bold");pdf.setFontSize(15);pdf.text("Homeshield Scotland",margin,y3)
   y3+=8;text("Thank you for considering Homeshield for your solar installation.",margin,y3,w-margin*2,9,muted)
-  footer(5)
+  footer(4)
 
   const blob = pdf.output("blob")
   const url = URL.createObjectURL(blob)
