@@ -931,44 +931,44 @@ function DataDashboard() {
         .pronto-tree-table.pronto-hide-date-status col:nth-child(3),
         .pronto-tree-table.pronto-hide-date-status col:nth-child(4),
         .pronto-tree-table.pronto-hide-date-status thead tr:not(.pronto-group-header) th:nth-child(2),
-        .pronto-tree-table.pronto-hide-date-status tbody td:nth-child(2),
+        .pronto-tree-table.pronto-hide-date-status tbody tr:not(.pronto-tree-total) td:nth-child(2),
         .pronto-tree-table.pronto-hide-date-status thead tr:not(.pronto-group-header) th:nth-child(3),
-        .pronto-tree-table.pronto-hide-date-status tbody td:nth-child(3),
+        .pronto-tree-table.pronto-hide-date-status tbody tr:not(.pronto-tree-total) td:nth-child(3),
         .pronto-tree-table.pronto-hide-date-status thead tr:not(.pronto-group-header) th:nth-child(4),
-        .pronto-tree-table.pronto-hide-date-status tbody td:nth-child(4) { display: none; }
+        .pronto-tree-table.pronto-hide-date-status tbody tr:not(.pronto-tree-total) td:nth-child(4) { display: none; }
         .pronto-tree-table.pronto-hide-lead-info col:nth-child(5),
         .pronto-tree-table.pronto-hide-lead-info col:nth-child(6),
         .pronto-tree-table.pronto-hide-lead-info thead tr:not(.pronto-group-header) th:nth-child(5),
-        .pronto-tree-table.pronto-hide-lead-info tbody td:nth-child(5),
+        .pronto-tree-table.pronto-hide-lead-info tbody tr:not(.pronto-tree-total) td:nth-child(5),
         .pronto-tree-table.pronto-hide-lead-info thead tr:not(.pronto-group-header) th:nth-child(6),
-        .pronto-tree-table.pronto-hide-lead-info tbody td:nth-child(6) { display: none; }
+        .pronto-tree-table.pronto-hide-lead-info tbody tr:not(.pronto-tree-total) td:nth-child(6) { display: none; }
         .pronto-tree-table.pronto-hide-appointment col:nth-child(7),
         .pronto-tree-table.pronto-hide-appointment col:nth-child(8),
         .pronto-tree-table.pronto-hide-appointment col:nth-child(9),
         .pronto-tree-table.pronto-hide-appointment col:nth-child(10),
         .pronto-tree-table.pronto-hide-appointment thead tr:not(.pronto-group-header) th:nth-child(7),
-        .pronto-tree-table.pronto-hide-appointment tbody td:nth-child(7),
+        .pronto-tree-table.pronto-hide-appointment tbody tr:not(.pronto-tree-total) td:nth-child(7),
         .pronto-tree-table.pronto-hide-appointment thead tr:not(.pronto-group-header) th:nth-child(8),
-        .pronto-tree-table.pronto-hide-appointment tbody td:nth-child(8),
+        .pronto-tree-table.pronto-hide-appointment tbody tr:not(.pronto-tree-total) td:nth-child(8),
         .pronto-tree-table.pronto-hide-appointment thead tr:not(.pronto-group-header) th:nth-child(9),
-        .pronto-tree-table.pronto-hide-appointment tbody td:nth-child(9),
+        .pronto-tree-table.pronto-hide-appointment tbody tr:not(.pronto-tree-total) td:nth-child(9),
         .pronto-tree-table.pronto-hide-appointment thead tr:not(.pronto-group-header) th:nth-child(10),
-        .pronto-tree-table.pronto-hide-appointment tbody td:nth-child(10) { display: none; }
+        .pronto-tree-table.pronto-hide-appointment tbody tr:not(.pronto-tree-total) td:nth-child(10) { display: none; }
         .pronto-tree-table.pronto-hide-conversion col:nth-child(11),
         .pronto-tree-table.pronto-hide-conversion col:nth-child(12),
         .pronto-tree-table.pronto-hide-conversion thead tr:not(.pronto-group-header) th:nth-child(11),
-        .pronto-tree-table.pronto-hide-conversion tbody td:nth-child(11),
+        .pronto-tree-table.pronto-hide-conversion tbody tr:not(.pronto-tree-total) td:nth-child(11),
         .pronto-tree-table.pronto-hide-conversion thead tr:not(.pronto-group-header) th:nth-child(12),
-        .pronto-tree-table.pronto-hide-conversion tbody td:nth-child(12) { display: none; }
+        .pronto-tree-table.pronto-hide-conversion tbody tr:not(.pronto-tree-total) td:nth-child(12) { display: none; }
         .pronto-tree-table.pronto-hide-deal-info col:nth-child(13),
         .pronto-tree-table.pronto-hide-deal-info col:nth-child(14),
         .pronto-tree-table.pronto-hide-deal-info col:nth-child(15),
         .pronto-tree-table.pronto-hide-deal-info thead tr:not(.pronto-group-header) th:nth-child(13),
-        .pronto-tree-table.pronto-hide-deal-info tbody td:nth-child(13),
+        .pronto-tree-table.pronto-hide-deal-info tbody tr:not(.pronto-tree-total) td:nth-child(13),
         .pronto-tree-table.pronto-hide-deal-info thead tr:not(.pronto-group-header) th:nth-child(14),
-        .pronto-tree-table.pronto-hide-deal-info tbody td:nth-child(14),
+        .pronto-tree-table.pronto-hide-deal-info tbody tr:not(.pronto-tree-total) td:nth-child(14),
         .pronto-tree-table.pronto-hide-deal-info thead tr:not(.pronto-group-header) th:nth-child(15),
-        .pronto-tree-table.pronto-hide-deal-info tbody td:nth-child(15) { display: none; }
+        .pronto-tree-table.pronto-hide-deal-info tbody tr:not(.pronto-tree-total) td:nth-child(15) { display: none; }
         .pronto-tree-table col.pronto-col-name { width: 22%; }
         .pronto-tree-table col.pronto-col-first { width: 8%; }
         .pronto-tree-table col.pronto-col-latest { width: 8%; }
@@ -1822,17 +1822,25 @@ function DataDashboard() {
                   ))}
                   <tr className="pronto-tree-total">
                     <td colSpan={showProntoDateStatusColumns ? 4 : 1}><strong>Total Pronto Windows leads</strong></td>
-                    <td><strong>{formatNumber(prontoSidTotal)}</strong></td>
-                    <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.booked_count, 0))}</strong></td>
-                    <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_h_count, 0))}</strong></td>
-                    <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_c_count, 0))}</strong></td>
-                    <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_p_count, 0))}</strong></td>
-                    <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_s_count, 0))}</strong></td>
-                    <td><strong>{prontoSidTotal ? `${(prontoSidRows.reduce((sum, row) => sum + row.cps_h_count, 0) / prontoSidTotal * 100).toFixed(1)}%` : "0.0%"}</strong></td>
-                    <td><strong>{prontoSidTotal ? `${(prontoSidRows.reduce((sum, row) => sum + row.cps_p_count, 0) / prontoSidTotal * 100).toFixed(1)}%` : "0.0%"}</strong></td>
-                    <td><strong>£{formatNumber(filteredProntoSidRows.reduce((sum, row) => sum + row.net_value_sold, 0))}</strong></td>
-                    <td><strong>£{formatNumber(filteredProntoSidRows.reduce((sum, row) => sum + row.net_value_solid, 0))}</strong></td>
-                    <td><strong>{prontoSidTotal ? `${((prontoSidRows.reduce((sum, row) => sum + row.booked_count, 0) / prontoSidTotal) * 100).toFixed(1)}%` : "0.0%"}</strong></td>
+                    {showProntoLeadInfoColumns && <>
+                      <td><strong>{formatNumber(prontoSidTotal)}</strong></td>
+                      <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.booked_count, 0))}</strong></td>
+                    </>}
+                    {showProntoAppointmentColumns && <>
+                      <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_h_count, 0))}</strong></td>
+                      <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_c_count, 0))}</strong></td>
+                      <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_p_count, 0))}</strong></td>
+                      <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_s_count, 0))}</strong></td>
+                    </>}
+                    {showProntoConversionColumns && <>
+                      <td><strong>{prontoSidTotal ? `${(prontoSidRows.reduce((sum, row) => sum + row.cps_h_count, 0) / prontoSidTotal * 100).toFixed(1)}%` : "0.0%"}</strong></td>
+                      <td><strong>{prontoSidTotal ? `${(prontoSidRows.reduce((sum, row) => sum + row.cps_p_count, 0) / prontoSidTotal * 100).toFixed(1)}%` : "0.0%"}</strong></td>
+                    </>}
+                    {showProntoDealInfoColumns && <>
+                      <td><strong>£{formatNumber(filteredProntoSidRows.reduce((sum, row) => sum + row.net_value_sold, 0))}</strong></td>
+                      <td><strong>£{formatNumber(filteredProntoSidRows.reduce((sum, row) => sum + row.net_value_solid, 0))}</strong></td>
+                      <td><strong>{prontoSidTotal ? `${((prontoSidRows.reduce((sum, row) => sum + row.booked_count, 0) / prontoSidTotal) * 100).toFixed(1)}%` : "0.0%"}</strong></td>
+                    </>}
                     <td aria-hidden="true"></td>
                   </tr>
                 </tbody>
