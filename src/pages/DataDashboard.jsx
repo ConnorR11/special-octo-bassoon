@@ -123,6 +123,7 @@ function DataDashboard() {
   const [prontoStatusFilter, setProntoStatusFilter] = useState("all")
   const [showProntoDateStatusColumns, setShowProntoDateStatusColumns] = useState(true)
   const [showProntoDealInfoColumns, setShowProntoDealInfoColumns] = useState(true)
+  const [showProntoConversionColumns, setShowProntoConversionColumns] = useState(true)
   const [expandedProntoSids, setExpandedProntoSids] = useState({})
   const [prontoC3Rows, setProntoC3Rows] = useState({})
   const [introducerSidRows, setIntroducerSidRows] = useState({})
@@ -919,20 +920,35 @@ function DataDashboard() {
           font-size: 12px;
         }
 
-        .pronto-tree-table.pronto-hide-deal-info thead tr:not(.pronto-group-header) th:nth-child(13),
-        .pronto-tree-table.pronto-hide-deal-info tbody td:nth-child(13),
-        .pronto-tree-table.pronto-hide-deal-info thead tr:not(.pronto-group-header) th:nth-child(14),
-        .pronto-tree-table.pronto-hide-deal-info tbody td:nth-child(14) { display: none; }
-        .pronto-group-toggle { display: block; width: 100%; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; font: inherit; font-weight: 700; cursor: pointer; }
+        .pronto-column-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #e5eaf0; background: #f8fafc; }
+        .pronto-column-controls-label { color: #64748b; font-size: 12px; font-weight: 600; margin-right: 4px; }
+        .pronto-column-toggle { border: 1px solid #cbd5e1; border-radius: 7px; padding: 7px 11px; background: #fff; color: #24364b; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .pronto-column-toggle[aria-pressed="true"] { background: #e8f2ff; border-color: #93b4e8; color: #17406b; }
+        .pronto-tree-table { min-width: 1120px; }
+        .pronto-tree-table.pronto-hide-date-status col:nth-child(2),
+        .pronto-tree-table.pronto-hide-date-status col:nth-child(3),
+        .pronto-tree-table.pronto-hide-date-status col:nth-child(4),
         .pronto-tree-table.pronto-hide-date-status thead tr:not(.pronto-group-header) th:nth-child(2),
         .pronto-tree-table.pronto-hide-date-status tbody td:nth-child(2),
         .pronto-tree-table.pronto-hide-date-status thead tr:not(.pronto-group-header) th:nth-child(3),
         .pronto-tree-table.pronto-hide-date-status tbody td:nth-child(3),
         .pronto-tree-table.pronto-hide-date-status thead tr:not(.pronto-group-header) th:nth-child(4),
         .pronto-tree-table.pronto-hide-date-status tbody td:nth-child(4) { display: none; }
-        .pronto-column-controls { display: flex; justify-content: flex-end; padding: 8px 12px; border-bottom: 1px solid #e5eaf0; background: #fff; }
-        .pronto-column-toggle { border: 1px solid #cbd5e1; border-radius: 7px; padding: 6px 10px; background: #fff; color: #24364b; font-size: 12px; font-weight: 600; cursor: pointer; }
-        .pronto-tree-table { min-width: 1500px; }
+        .pronto-tree-table.pronto-hide-conversion col:nth-child(11),
+        .pronto-tree-table.pronto-hide-conversion col:nth-child(12),
+        .pronto-tree-table.pronto-hide-conversion thead tr:not(.pronto-group-header) th:nth-child(11),
+        .pronto-tree-table.pronto-hide-conversion tbody td:nth-child(11),
+        .pronto-tree-table.pronto-hide-conversion thead tr:not(.pronto-group-header) th:nth-child(12),
+        .pronto-tree-table.pronto-hide-conversion tbody td:nth-child(12) { display: none; }
+        .pronto-tree-table.pronto-hide-deal-info col:nth-child(13),
+        .pronto-tree-table.pronto-hide-deal-info col:nth-child(14),
+        .pronto-tree-table.pronto-hide-deal-info col:nth-child(15),
+        .pronto-tree-table.pronto-hide-deal-info thead tr:not(.pronto-group-header) th:nth-child(13),
+        .pronto-tree-table.pronto-hide-deal-info tbody td:nth-child(13),
+        .pronto-tree-table.pronto-hide-deal-info thead tr:not(.pronto-group-header) th:nth-child(14),
+        .pronto-tree-table.pronto-hide-deal-info tbody td:nth-child(14),
+        .pronto-tree-table.pronto-hide-deal-info thead tr:not(.pronto-group-header) th:nth-child(15),
+        .pronto-tree-table.pronto-hide-deal-info tbody td:nth-child(15) { display: none; }
         .pronto-tree-table col.pronto-col-name { width: 22%; }
         .pronto-tree-table col.pronto-col-first { width: 8%; }
         .pronto-tree-table col.pronto-col-latest { width: 8%; }
@@ -1616,7 +1632,13 @@ function DataDashboard() {
               <div className="pronto-empty">No Pronto SID data found.</div>
             ) : (
               <>
-              <table className={`pronto-table pronto-tree-table${showProntoDateStatusColumns ? "" : " pronto-hide-date-status"}${showProntoDealInfoColumns ? "" : " pronto-hide-deal-info"}`}>
+              <div className="pronto-column-controls">
+                <span className="pronto-column-controls-label">Show columns:</span>
+                <button type="button" className="pronto-column-toggle" aria-pressed={showProntoDateStatusColumns} onClick={() => setShowProntoDateStatusColumns((shown) => !shown)}>Dates &amp; Status {showProntoDateStatusColumns ? "✓" : "+"}</button>
+                <button type="button" className="pronto-column-toggle" aria-pressed={showProntoConversionColumns} onClick={() => setShowProntoConversionColumns((shown) => !shown)}>CPS &amp; Conversion {showProntoConversionColumns ? "✓" : "+"}</button>
+                <button type="button" className="pronto-column-toggle" aria-pressed={showProntoDealInfoColumns} onClick={() => setShowProntoDealInfoColumns((shown) => !shown)}>Deal Info {showProntoDealInfoColumns ? "✓" : "+"}</button>
+              </div>
+              <table className={`pronto-table pronto-tree-table${showProntoDateStatusColumns ? "" : " pronto-hide-date-status"}${showProntoConversionColumns ? "" : " pronto-hide-conversion"}${showProntoDealInfoColumns ? "" : " pronto-hide-deal-info"}`}>
                 <colgroup>
                   <col className="pronto-col-name" />
                   <col className="pronto-col-first" />
@@ -1636,17 +1658,6 @@ function DataDashboard() {
                   <col className="pronto-col-spacer" />
                 </colgroup>
                 <thead>
-                  <tr className="pronto-group-header">
-                    <th></th>
-                    <th colSpan={3} className="pronto-deal-info-header">
-                      <button type="button" className="pronto-group-toggle" onClick={() => setShowProntoDateStatusColumns((shown) => !shown)} aria-expanded={showProntoDateStatusColumns}>Dates &amp; Status {showProntoDateStatusColumns ? "−" : "+"}</button>
-                    </th>
-                    <th colSpan={8}></th>
-                    <th colSpan={2} className="pronto-deal-info-header">
-                      <button type="button" className="pronto-group-toggle" onClick={() => setShowProntoDealInfoColumns((shown) => !shown)} aria-expanded={showProntoDealInfoColumns}>Deal Info {showProntoDealInfoColumns ? "−" : "+"}</button>
-                    </th>
-                    <th colSpan={2}></th>
-                  </tr>
                   <tr>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("name")}>Introducer / Campaign{prontoSort.key === "name" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("first_lead_date")}>First received{prontoSort.key === "first_lead_date" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
