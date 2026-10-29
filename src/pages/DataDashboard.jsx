@@ -907,14 +907,19 @@ function DataDashboard() {
           font-size: 12px;
         }
 
-        .pronto-tree-table col.pronto-col-name { width: 34%; }
-        .pronto-tree-table col.pronto-col-first { width: 10%; }
-        .pronto-tree-table col.pronto-col-latest { width: 10%; }
-        .pronto-tree-table col.pronto-col-status { width: 7%; }
-        .pronto-tree-table col.pronto-col-leads { width: 7%; }
-        .pronto-tree-table col.pronto-col-booked { width: 7%; }
-        .pronto-tree-table col.pronto-col-booked-percent { width: 7%; }
-        .pronto-tree-table col.pronto-col-spacer { width: 18%; }
+        .pronto-tree-table col.pronto-col-name { width: 24%; }
+        .pronto-tree-table col.pronto-col-first { width: 8%; }
+        .pronto-tree-table col.pronto-col-latest { width: 8%; }
+        .pronto-tree-table col.pronto-col-status { width: 5%; }
+        .pronto-tree-table col.pronto-col-leads { width: 5%; }
+        .pronto-tree-table col.pronto-col-booked { width: 4%; }
+        .pronto-tree-table col.pronto-col-net-value { width: 10%; }
+        .pronto-tree-table col.pronto-col-booked-percent { width: 6%; }
+        .pronto-tree-table col.pronto-col-spacer { width: 4%; }
+        .pronto-tree-table th:nth-last-child(4),
+        .pronto-tree-table td:nth-last-child(4),
+        .pronto-tree-table th:nth-last-child(3),
+        .pronto-tree-table td:nth-last-child(3) { white-space: nowrap; text-align: right; }
 
         .pronto-tree-toggle {
           border: 0;
@@ -1589,8 +1594,8 @@ function DataDashboard() {
                   <col className="pronto-col-booked" />
                   <col className="pronto-col-booked" />
                   <col className="pronto-col-booked" />
-                  <col className="pronto-col-booked" />
-                  <col className="pronto-col-booked" />
+                  <col className="pronto-col-net-value" />
+                  <col className="pronto-col-net-value" />
                   <col className="pronto-col-booked-percent" />
                   <col className="pronto-col-spacer" />
                 </colgroup>
