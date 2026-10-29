@@ -993,6 +993,23 @@ function DataDashboard() {
         .pronto-tree-table.pronto-hide-deal-info col:nth-child(18),
         .pronto-tree-table.pronto-hide-deal-info thead tr:not(.pronto-group-header) th:nth-child(18),
         .pronto-tree-table.pronto-hide-deal-info tbody tr:not(.pronto-tree-total) td:nth-child(18) { display: none; }
+        /* Clear vertical separators between the table's column groups. */
+        .pronto-tree-table thead tr:not(.pronto-group-header) th:nth-child(5),
+        .pronto-tree-table tbody tr:not(.pronto-tree-total) td:nth-child(5),
+        .pronto-tree-table thead tr:not(.pronto-group-header) th:nth-child(11),
+        .pronto-tree-table tbody tr:not(.pronto-tree-total) td:nth-child(11),
+        .pronto-tree-table thead tr:not(.pronto-group-header) th:nth-child(15),
+        .pronto-tree-table tbody tr:not(.pronto-tree-total) td:nth-child(15),
+        .pronto-tree-table thead tr:not(.pronto-group-header) th:nth-child(17),
+        .pronto-tree-table tbody tr:not(.pronto-tree-total) td:nth-child(17) {
+          border-left: 2px solid #cbd5e1;
+        }
+        .pronto-tree-table tbody tr.pronto-tree-total td:nth-child(5),
+        .pronto-tree-table tbody tr.pronto-tree-total td:nth-child(11),
+        .pronto-tree-table tbody tr.pronto-tree-total td:nth-child(15),
+        .pronto-tree-table tbody tr.pronto-tree-total td:nth-child(17) {
+          border-left: 2px solid #cbd5e1;
+        }
         .pronto-tree-table col.pronto-col-name { width: 22%; }
         .pronto-tree-table col.pronto-col-first { width: 8%; }
         .pronto-tree-table col.pronto-col-latest { width: 8%; }
