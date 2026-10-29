@@ -1738,11 +1738,11 @@ function DataDashboard() {
                 <thead>
                   <tr className="pronto-group-header">
                     <th aria-label="Campaign column"></th>
-                    <th colSpan={3} className="pronto-group-title">Dates &amp; Status</th>
-                    <th colSpan={6} className="pronto-group-title">Lead Info</th>
-                    <th colSpan={4} className="pronto-group-title">Appointment Info</th>
-                    <th colSpan={2} className="pronto-group-title">Lead Conversion</th>
-                    <th colSpan={2} className="pronto-group-title">Deal Info</th>
+                    {showProntoDateStatusColumns && <th colSpan={3} className="pronto-group-title">Dates &amp; Status</th>}
+                    {showProntoLeadInfoColumns && <th colSpan={6} className="pronto-group-title">Lead Info</th>}
+                    {showProntoAppointmentColumns && <th colSpan={4} className="pronto-group-title">Appointment Info</th>}
+                    {showProntoConversionColumns && <th colSpan={2} className="pronto-group-title">Lead Conversion</th>}
+                    {showProntoDealInfoColumns && <th colSpan={2} className="pronto-group-title">Deal Info</th>}
                     <th aria-label="Alignment spacer"></th>
                   </tr>
                   <tr>
