@@ -936,6 +936,19 @@ function DataDashboard() {
           border-collapse: collapse;
           font-size: 12px;
         }
+        .pronto-tree-table thead tr.pronto-group-header th {
+          background: #18385f;
+          color: #fff;
+          font-weight: 700;
+          text-align: left;
+          padding: 9px 10px;
+          height: 34px;
+          border-bottom: 1px solid #cbd5e1;
+          white-space: nowrap;
+        }
+        .pronto-tree-table thead tr.pronto-group-header th.pronto-group-title {
+          border-left: 1px solid #48617f;
+        }
 
         .pronto-column-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #e5eaf0; background: #f8fafc; }
         .pronto-column-controls-label { color: #64748b; font-size: 12px; font-weight: 600; margin-right: 4px; }
@@ -1726,6 +1739,15 @@ function DataDashboard() {
                   <col className="pronto-col-booked-percent" />
                 </colgroup>
                 <thead>
+                  <tr className="pronto-group-header">
+                    <th aria-label="Campaign column"></th>
+                    <th colSpan={3} className="pronto-group-title">Dates &amp; Status</th>
+                    <th colSpan={6} className="pronto-group-title">Lead Info</th>
+                    <th colSpan={4} className="pronto-group-title">Appointment Info</th>
+                    <th colSpan={2} className="pronto-group-title">Lead Conversion</th>
+                    <th colSpan={2} className="pronto-group-title">Deal Info</th>
+                    <th aria-label="Alignment spacer"></th>
+                  </tr>
                   <tr>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("name")}>Introducer / Campaign{prontoSort.key === "name" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("first_lead_date")}>First received{prontoSort.key === "first_lead_date" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
