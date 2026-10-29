@@ -1610,12 +1610,7 @@ function DataDashboard() {
               <div className="pronto-empty">No Pronto SID data found.</div>
             ) : (
               <>
-              <div className="pronto-column-controls">
-                <button type="button" className="pronto-column-toggle" onClick={() => setShowProntoDateStatusColumns((shown) => !shown)}>
-                  {showProntoDateStatusColumns ? "Hide Dates & Status" : "Show Dates & Status"}
-                </button>
-              </div>
-              <table className={`pronto-table pronto-tree-table${showProntoDateStatusColumns ? "" : " pronto-hide-date-status"}`}>
+              <table className="pronto-table pronto-tree-table">
                 <colgroup>
                   <col className="pronto-col-name" />
                   <col className="pronto-col-first" />
@@ -1636,7 +1631,9 @@ function DataDashboard() {
                 </colgroup>
                 <thead>
                   <tr className="pronto-group-header">
-                    <th colSpan={12}></th>
+                    <th></th>
+                    <th colSpan={3} className="pronto-deal-info-header">Dates &amp; Status</th>
+                    <th colSpan={8}></th>
                     <th colSpan={2} className="pronto-deal-info-header">Deal Info</th>
                     <th colSpan={2}></th>
                   </tr>
