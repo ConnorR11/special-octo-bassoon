@@ -1722,7 +1722,7 @@ function DataDashboard() {
                         <td>{row.lead_count ? `${(row.cps_p_count / row.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
                         <td>£{formatNumber(row.net_value_sold)}</td>
                         <td>£{formatNumber(row.net_value_solid)}</td>
-                        <td className={row.lead_count && (row.booked_count / row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{row.lead_count ? `${((row.booked_count / row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
+                        
                         <td aria-hidden="true"></td>
                       </tr>
                       {expandedIntroducers[row.pronto_sid] && (
@@ -1754,7 +1754,7 @@ function DataDashboard() {
                                 <td>{sidRow.lead_count ? `${(sidRow.cps_p_count / sidRow.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
                                 <td>£{formatNumber(sidRow.net_value_sold)}</td>
                                 <td>£{formatNumber(sidRow.net_value_solid)}</td>
-                                <td className={sidRow.lead_count && (sidRow.booked_count / sidRow.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{sidRow.lead_count ? `${((sidRow.booked_count / sidRow.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
+                                
                                 <td aria-hidden="true"></td>
                               </tr>
                               {sidExpanded && (
@@ -1786,7 +1786,7 @@ function DataDashboard() {
                                         <td>{c1Row.lead_count ? `${(c1Row.cps_p_count / c1Row.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
                                         <td>£{formatNumber(c1Row.net_value_sold)}</td>
                                         <td>£{formatNumber(c1Row.net_value_solid)}</td>
-                                        <td className={c1Row.lead_count && (c1Row.booked_count / c1Row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{c1Row.lead_count ? `${((c1Row.booked_count / c1Row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
+                                        
                                         <td aria-hidden="true"></td>
                                       </tr>
                                       {c1Expanded && (
@@ -1809,7 +1809,7 @@ function DataDashboard() {
                                         <td>{c3Row.lead_count ? `${(c3Row.cps_p_count / c3Row.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
                                         <td>£{formatNumber(c3Row.net_value_sold)}</td>
                                         <td>£{formatNumber(c3Row.net_value_solid)}</td>
-                                        <td className={c3Row.lead_count && (c3Row.booked_count / c3Row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{c3Row.lead_count ? `${((c3Row.booked_count / c3Row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
+                                        
                                             <td aria-hidden="true"></td>
                                           </tr>
                                         ))
