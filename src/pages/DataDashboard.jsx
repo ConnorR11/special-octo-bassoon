@@ -106,6 +106,7 @@ function DataDashboard() {
   const [prontoLeadStageFilter, setProntoLeadStageFilter] = useState("all")
   const [prontoLeadDealFilter, setProntoLeadDealFilter] = useState("all")
   const [prontoSidRows, setProntoSidRows] = useState([])
+  const [prontoDispositionCounts, setProntoDispositionCounts] = useState([])
   const [prontoMonthlyRows, setProntoMonthlyRows] = useState([])
   const [prontoMonthlyLoading, setProntoMonthlyLoading] = useState(false)
   const [prontoMonthlyError, setProntoMonthlyError] = useState("")
@@ -321,6 +322,9 @@ function DataDashboard() {
     try {
       const { data, error: rpcError } = await supabase.rpc("get_pronto_introducer_lead_counts", { date_period: prontoDatePeriod })
       if (rpcError) throw rpcError
+      const { data: dispositionRows, error: dispositionError } = await supabase.rpc("get_pronto_disposition_counts", { date_period: prontoDatePeriod })
+      if (dispositionError) throw dispositionError
+      setProntoDispositionCounts(dispositionRows || [])
 
       const { data: netValueRows, error: netValueError } = await supabase.rpc("get_pronto_introducer_net_value_sold", { date_period: prontoDatePeriod })
       if (netValueError) throw netValueError
@@ -700,6 +704,17 @@ function DataDashboard() {
         .some((value) => value.toLowerCase().includes(search))
     )
   }, [missingSidLeadRows, missingSidLeadsSearch])
+
+  function getProntoDispositionCounts(level, introducer, sid = "(No SID)", c1 = "(Blank / NULL)", c3 = "(Blank / NULL)") {
+    const match = prontoDispositionCounts.find((item) =>
+      item.group_level === level &&
+      item.introducer === String(introducer || "(No Introducer)") &&
+      (level === "introducer" || item.pronto_sid === String(sid || "(No SID)")) &&
+      (level === "introducer" || level === "sid" || item.pronto_c1 === String(c1 || "(Blank / NULL)")) &&
+      (level !== "c3" || item.pronto_c3 === String(c3 || "(Blank / NULL)"))
+    )
+    return { dup_count: Number(match?.dup_count || 0), wn_count: Number(match?.wn_count || 0), ooa_count: Number(match?.ooa_count || 0) }
+  }
 
   function changeProntoSort(key) {
     setProntoSort((current) => ({
@@ -1686,6 +1701,9 @@ function DataDashboard() {
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("latest_lead_date")}>Latest received{prontoSort.key === "latest_lead_date" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("status")}>Status{prontoSort.key === "status" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("leads")}>Leads{prontoSort.key === "leads" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
+                    <th>Dup</th>
+                    <th>WN</th>
+                    <th>OOA</th>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("booked")}>Booked{prontoSort.key === "booked" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("booked_rate")}>Booked %{prontoSort.key === "booked_rate" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th>H</th>
@@ -1712,6 +1730,9 @@ function DataDashboard() {
                         <td>{formatProntoDate(row.latest_lead_date)}</td>
                         <td>{prontoStatus(row.latest_lead_date)}</td>
                         <td>{formatNumber(row.lead_count)}</td>
+                        <td>{formatNumber(getProntoDispositionCounts("introducer", row.pronto_sid).dup_count)}</td>
+                        <td>{formatNumber(getProntoDispositionCounts("introducer", row.pronto_sid).wn_count)}</td>
+                        <td>{formatNumber(getProntoDispositionCounts("introducer", row.pronto_sid).ooa_count)}</td>
 <td>{formatNumber(row.booked_count)}</td>
 <td className={row.lead_count && (row.booked_count / row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{row.lead_count ? `${((row.booked_count / row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
                         <td>{formatNumber(row.cps_h_count)}</td>
@@ -1744,6 +1765,9 @@ function DataDashboard() {
                                 <td>{formatProntoDate(sidRow.latest_lead_date)}</td>
                                 <td>{prontoStatus(sidRow.latest_lead_date)}</td>
                                 <td>{formatNumber(sidRow.lead_count)}</td>
+                        <td>{formatNumber(getProntoDispositionCounts("sid", row.pronto_sid, sidRow.pronto_sid).dup_count)}</td>
+                        <td>{formatNumber(getProntoDispositionCounts("sid", row.pronto_sid, sidRow.pronto_sid).wn_count)}</td>
+                        <td>{formatNumber(getProntoDispositionCounts("sid", row.pronto_sid, sidRow.pronto_sid).ooa_count)}</td>
 <td>{formatNumber(sidRow.booked_count)}</td>
 <td className={sidRow.lead_count && (sidRow.booked_count / sidRow.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{sidRow.lead_count ? `${((sidRow.booked_count / sidRow.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
                                 <td>{formatNumber(sidRow.cps_h_count)}</td>
@@ -1776,6 +1800,9 @@ function DataDashboard() {
                                         <td>{formatProntoDate(c1Row.latest_lead_date)}</td>
                                         <td>{prontoStatus(c1Row.latest_lead_date)}</td>
                                         <td>{formatNumber(c1Row.lead_count)}</td>
+                        <td>{formatNumber(getProntoDispositionCounts("c1", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1).dup_count)}</td>
+                        <td>{formatNumber(getProntoDispositionCounts("c1", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1).wn_count)}</td>
+                        <td>{formatNumber(getProntoDispositionCounts("c1", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1).ooa_count)}</td>
 <td>{formatNumber(c1Row.booked_count)}</td>
 <td className={c1Row.lead_count && (c1Row.booked_count / c1Row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{c1Row.lead_count ? `${((c1Row.booked_count / c1Row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
                                         <td>{formatNumber(c1Row.cps_h_count)}</td>
@@ -1799,6 +1826,9 @@ function DataDashboard() {
                                             <td>{formatProntoDate(c3Row.latest_lead_date)}</td>
                                             <td>{prontoStatus(c3Row.latest_lead_date)}</td>
                                             <td>{formatNumber(c3Row.lead_count)}</td>
+                        <td>{formatNumber(getProntoDispositionCounts("c3", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1, c3Row.pronto_c3).dup_count)}</td>
+                        <td>{formatNumber(getProntoDispositionCounts("c3", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1, c3Row.pronto_c3).wn_count)}</td>
+                        <td>{formatNumber(getProntoDispositionCounts("c3", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1, c3Row.pronto_c3).ooa_count)}</td>
 <td>{formatNumber(c3Row.booked_count)}</td>
 <td className={c3Row.lead_count && (c3Row.booked_count / c3Row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{c3Row.lead_count ? `${((c3Row.booked_count / c3Row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
                                             <td>{formatNumber(c3Row.cps_h_count)}</td>
@@ -1828,6 +1858,9 @@ function DataDashboard() {
                     <td colSpan={showProntoDateStatusColumns ? 4 : 1}><strong>Total Pronto Windows leads</strong></td>
                     {showProntoLeadInfoColumns && <>
                       <td><strong>{formatNumber(prontoSidTotal)}</strong></td>
+                      <td><strong>{formatNumber(prontoDispositionCounts.filter((item) => item.group_level === "introducer").reduce((sum, item) => sum + Number(item.dup_count || 0), 0))}</strong></td>
+                      <td><strong>{formatNumber(prontoDispositionCounts.filter((item) => item.group_level === "introducer").reduce((sum, item) => sum + Number(item.wn_count || 0), 0))}</strong></td>
+                      <td><strong>{formatNumber(prontoDispositionCounts.filter((item) => item.group_level === "introducer").reduce((sum, item) => sum + Number(item.ooa_count || 0), 0))}</strong></td>
                       <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.booked_count, 0))}</strong></td>
                       <td><strong>{prontoSidTotal ? `${((prontoSidRows.reduce((sum, row) => sum + row.booked_count, 0) / prontoSidTotal) * 100).toFixed(1)}%` : "0.0%"}</strong></td>
                     </>}
