@@ -917,7 +917,11 @@ function DataDashboard() {
           font-size: 12px;
         }
 
-        .pronto-tree-table col.pronto-col-name { width: 24%; }
+        .pronto-tree-table col.pronto-col-name { width: 22%; }
+        .pronto-tree-table th:nth-child(11),
+        .pronto-tree-table td:nth-child(11),
+        .pronto-tree-table th:nth-child(12),
+        .pronto-tree-table td:nth-child(12) { white-space: nowrap; text-align: right; }
         .pronto-tree-table col.pronto-col-first { width: 8%; }
         .pronto-tree-table col.pronto-col-latest { width: 8%; }
         .pronto-tree-table col.pronto-col-status { width: 5%; }
@@ -1621,6 +1625,8 @@ function DataDashboard() {
                     <th>CPS C</th>
                     <th>CPS P</th>
                     <th>CPS S</th>
+                    <th>Lead to H</th>
+                    <th>Lead to P</th>
                     <th>Net Value Sold</th>
                     <th>Net Value Solid</th>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("booked_rate")}>Booked %{prontoSort.key === "booked_rate" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
@@ -1645,6 +1651,8 @@ function DataDashboard() {
                         <td>{formatNumber(row.cps_c_count)}</td>
                         <td>{formatNumber(row.cps_p_count)}</td>
                         <td>{formatNumber(row.cps_s_count)}</td>
+                        <td>{row.lead_count ? `${(row.cps_h_count / row.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
+                        <td>{row.lead_count ? `${(row.cps_p_count / row.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
                         <td>£{formatNumber(row.net_value_sold)}</td>
                         <td>£{formatNumber(row.net_value_solid)}</td>
                         <td className={row.lead_count && (row.booked_count / row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{row.lead_count ? `${((row.booked_count / row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
@@ -1674,6 +1682,8 @@ function DataDashboard() {
                                 <td>{formatNumber(sidRow.cps_c_count)}</td>
                                 <td>{formatNumber(sidRow.cps_p_count)}</td>
                                 <td>{formatNumber(sidRow.cps_s_count)}</td>
+                                <td>{sidRow.lead_count ? `${(sidRow.cps_h_count / sidRow.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
+                                <td>{sidRow.lead_count ? `${(sidRow.cps_p_count / sidRow.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
                                 <td>£{formatNumber(sidRow.net_value_sold)}</td>
                                 <td>£{formatNumber(sidRow.net_value_solid)}</td>
                                 <td className={sidRow.lead_count && (sidRow.booked_count / sidRow.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{sidRow.lead_count ? `${((sidRow.booked_count / sidRow.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
@@ -1703,6 +1713,8 @@ function DataDashboard() {
                                         <td>{formatNumber(c1Row.cps_c_count)}</td>
                                         <td>{formatNumber(c1Row.cps_p_count)}</td>
                                         <td>{formatNumber(c1Row.cps_s_count)}</td>
+                                        <td>{c1Row.lead_count ? `${(c1Row.cps_h_count / c1Row.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
+                                        <td>{c1Row.lead_count ? `${(c1Row.cps_p_count / c1Row.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
                                         <td>£{formatNumber(c1Row.net_value_sold)}</td>
                                         <td>£{formatNumber(c1Row.net_value_solid)}</td>
                                         <td className={c1Row.lead_count && (c1Row.booked_count / c1Row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{c1Row.lead_count ? `${((c1Row.booked_count / c1Row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
@@ -1723,6 +1735,8 @@ function DataDashboard() {
                                         <td>{formatNumber(c3Row.cps_c_count)}</td>
                                         <td>{formatNumber(c3Row.cps_p_count)}</td>
                                         <td>{formatNumber(c3Row.cps_s_count)}</td>
+                                        <td>{c3Row.lead_count ? `${(c3Row.cps_h_count / c3Row.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
+                                        <td>{c3Row.lead_count ? `${(c3Row.cps_p_count / c3Row.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
                                         <td>£{formatNumber(c3Row.net_value_sold)}</td>
                                         <td>£{formatNumber(c3Row.net_value_solid)}</td>
                                         <td className={c3Row.lead_count && (c3Row.booked_count / c3Row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{c3Row.lead_count ? `${((c3Row.booked_count / c3Row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
@@ -1748,6 +1762,8 @@ function DataDashboard() {
                     <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_c_count, 0))}</strong></td>
                     <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_p_count, 0))}</strong></td>
                     <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_s_count, 0))}</strong></td>
+                    <td><strong>{prontoSidTotal ? `${(prontoSidRows.reduce((sum, row) => sum + row.cps_h_count, 0) / prontoSidTotal * 100).toFixed(1)}%` : "0.0%"}</strong></td>
+                    <td><strong>{prontoSidTotal ? `${(prontoSidRows.reduce((sum, row) => sum + row.cps_p_count, 0) / prontoSidTotal * 100).toFixed(1)}%` : "0.0%"}</strong></td>
                     <td><strong>£{formatNumber(filteredProntoSidRows.reduce((sum, row) => sum + row.net_value_sold, 0))}</strong></td>
                     <td><strong>£{formatNumber(filteredProntoSidRows.reduce((sum, row) => sum + row.net_value_solid, 0))}</strong></td>
                     <td><strong>{prontoSidTotal ? `${((prontoSidRows.reduce((sum, row) => sum + row.booked_count, 0) / prontoSidTotal) * 100).toFixed(1)}%` : "0.0%"}</strong></td>
