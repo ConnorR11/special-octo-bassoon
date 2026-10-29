@@ -37,7 +37,7 @@ function getQuoteData(appointment) {
   }, 0)
   const generation = Number(results.generation || results.annualGeneration || results.annual_generation || epvs.generation || epvs.annualGeneration || epvs.annual_generation || epvs.estimatedGeneration || epvs.estimated_generation || epvs.annualProduction || epvs.annual_production || openSolar.annualGeneration || openSolar.annual_generation || derivedGeneration || 0)
   const isTradeLead = String(appointment?.is_trade_lead || "").trim().toUpperCase() === "TRUE"
-  const cashPrice = Number(isTradeLead ? (appointment?.price_left || 0) : (epvs.totalContractValue || results.totalContractValue || epvs.totalPrice || appointment?.contract_value || appointment?.price_left || 0))
+  const cashPrice = Number(isTradeLead ? (appointment?.price_left || 0) : (epvs.totalContractValue || epvs.totalPrice || appointment?.contract_value || appointment?.price_left || 0))
   const termYears = Number(epvs.financeTerm || appointment?.finance_term || 10)
   const rate = 3.9
   const deposit = Number(epvs.deposit || appointment?.deposit || 0)
