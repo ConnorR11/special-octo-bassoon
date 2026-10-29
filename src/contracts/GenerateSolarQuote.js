@@ -39,19 +39,16 @@ function getQuoteData(appointment) {
   const isTradeLead = String(appointment?.is_trade_lead || "").trim().toUpperCase() === "TRUE"
   const cashPrice = Number(isTradeLead ? (appointment?.price_left || 0) : (epvs.totalContractValue || epvs.totalPrice || appointment?.contract_value || appointment?.price_left || 0))
   const paymentMethod = String(epvs.paymentMethod || calculation?.paymentMethod || calculation?.payment_method || appointment?.payment_method || "").trim()
-  const savedFinanceTerm = Number(epvs.financeTerm || calculation?.financeTerm || appointment?.finance_term || 0)
-  const termYears = savedFinanceTerm > 0 ? savedFinanceTerm : 10
-  const savedRate = Number(epvs.financeRate || calculation?.financeRate || appointment?.finance_rate || 0)
-  const rate = savedRate > 0 ? savedRate : 3.9
-  const deposit = Number(epvs.deposit || appointment?.deposit || 0)
+  const termYears = Number(epvs.financeTerm ?? calculation?.financeTerm ?? appointment?.finance_term ?? 0)
+  const rate = Number(epvs.financeRate ?? calculation?.financeRate ?? appointment?.finance_rate ?? 0)
+  const deposit = Number(epvs.deposit ?? appointment?.deposit ?? 0)
   const principal = Math.max(0, cashPrice - deposit)
   const months = Math.max(1, Math.round(termYears * 12))
-  const financeFactor = Number(epvs.financeFactor || calculation?.financeFactor || appointment?.finance_factor || 0)
-  // Use the finance factor saved with the appointment's EPVS payment method.
-  // Fall back to the agreed 10-year illustration factor only when no factor was saved.
-  const monthly = financeFactor > 0
+  const financeFactor = Number(epvs.financeFactor ?? calculation?.financeFactor ?? appointment?.finance_factor ?? 0)
+  // Only calculate a finance figure when the selected appointment has a complete finance setup.
+  const monthly = paymentMethod.toLowerCase() === "finance" && termYears > 0 && rate >= 0 && financeFactor > 0
     ? Math.max(0, principal) / 1000 * financeFactor
-    : Math.max(0, cashPrice) / 1000 * 9.91
+    : null
   return { epvs, results, openSolar, panels, inverters, batteries, panelCount, capacity, generation, cashPrice, paymentMethod, termYears, rate, deposit, financeFactor, monthly }
 }
 
@@ -214,9 +211,9 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
   pdf.text("MONTHLY FINANCE",margin+priceHalf+6,priceY+7)
   pdf.setFontSize(16)
   pdf.text(money(d.cashPrice),margin+8,priceY+17)
-  pdf.text(money(d.monthly)+" / month",margin+priceHalf+6,priceY+17)
+  pdf.text(d.monthly == null ? "Not selected" : money(d.monthly)+" / month",margin+priceHalf+6,priceY+17)
   pdf.setFont("helvetica","normal");pdf.setFontSize(6.5)
-  pdf.text("Finance illustration at "+d.rate.toFixed(1)+"% over "+d.termYears+" years; subject to lender approval and confirmed terms.",margin+8,priceY+22)
+  pdf.text(d.monthly == null ? "Select a finance product in the appointment to show monthly payments." : "Finance illustration at "+d.rate.toFixed(1)+"% over "+d.termYears+" years; subject to lender approval and confirmed terms.",margin+8,priceY+22)
   footer(1)
 
   // PAGE 2 — Itemised equipment and service breakdown.
