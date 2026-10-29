@@ -124,6 +124,7 @@ function DataDashboard() {
   const [showProntoDateStatusColumns, setShowProntoDateStatusColumns] = useState(true)
   const [showProntoDealInfoColumns, setShowProntoDealInfoColumns] = useState(true)
   const [showProntoConversionColumns, setShowProntoConversionColumns] = useState(true)
+  const [showProntoAppointmentColumns, setShowProntoAppointmentColumns] = useState(true)
   const [expandedProntoSids, setExpandedProntoSids] = useState({})
   const [prontoC3Rows, setProntoC3Rows] = useState({})
   const [introducerSidRows, setIntroducerSidRows] = useState({})
@@ -934,6 +935,18 @@ function DataDashboard() {
         .pronto-tree-table.pronto-hide-date-status tbody td:nth-child(3),
         .pronto-tree-table.pronto-hide-date-status thead tr:not(.pronto-group-header) th:nth-child(4),
         .pronto-tree-table.pronto-hide-date-status tbody td:nth-child(4) { display: none; }
+        .pronto-tree-table.pronto-hide-appointment col:nth-child(7),
+        .pronto-tree-table.pronto-hide-appointment col:nth-child(8),
+        .pronto-tree-table.pronto-hide-appointment col:nth-child(9),
+        .pronto-tree-table.pronto-hide-appointment col:nth-child(10),
+        .pronto-tree-table.pronto-hide-appointment thead tr:not(.pronto-group-header) th:nth-child(7),
+        .pronto-tree-table.pronto-hide-appointment tbody td:nth-child(7),
+        .pronto-tree-table.pronto-hide-appointment thead tr:not(.pronto-group-header) th:nth-child(8),
+        .pronto-tree-table.pronto-hide-appointment tbody td:nth-child(8),
+        .pronto-tree-table.pronto-hide-appointment thead tr:not(.pronto-group-header) th:nth-child(9),
+        .pronto-tree-table.pronto-hide-appointment tbody td:nth-child(9),
+        .pronto-tree-table.pronto-hide-appointment thead tr:not(.pronto-group-header) th:nth-child(10),
+        .pronto-tree-table.pronto-hide-appointment tbody td:nth-child(10) { display: none; }
         .pronto-tree-table.pronto-hide-conversion col:nth-child(11),
         .pronto-tree-table.pronto-hide-conversion col:nth-child(12),
         .pronto-tree-table.pronto-hide-conversion thead tr:not(.pronto-group-header) th:nth-child(11),
@@ -1635,10 +1648,11 @@ function DataDashboard() {
               <div className="pronto-column-controls">
                 <span className="pronto-column-controls-label">Show columns:</span>
                 <button type="button" className="pronto-column-toggle" aria-pressed={showProntoDateStatusColumns} onClick={() => setShowProntoDateStatusColumns((shown) => !shown)}>Dates &amp; Status {showProntoDateStatusColumns ? "✓" : "+"}</button>
-                <button type="button" className="pronto-column-toggle" aria-pressed={showProntoConversionColumns} onClick={() => setShowProntoConversionColumns((shown) => !shown)}>CPS &amp; Conversion {showProntoConversionColumns ? "✓" : "+"}</button>
+                <button type="button" className="pronto-column-toggle" aria-pressed={showProntoAppointmentColumns} onClick={() => setShowProntoAppointmentColumns((shown) => !shown)}>Appointment Info {showProntoAppointmentColumns ? "✓" : "+"}</button>
+                <button type="button" className="pronto-column-toggle" aria-pressed={showProntoConversionColumns} onClick={() => setShowProntoConversionColumns((shown) => !shown)}>Lead Conversion {showProntoConversionColumns ? "✓" : "+"}</button>
                 <button type="button" className="pronto-column-toggle" aria-pressed={showProntoDealInfoColumns} onClick={() => setShowProntoDealInfoColumns((shown) => !shown)}>Deal Info {showProntoDealInfoColumns ? "✓" : "+"}</button>
               </div>
-              <table className={`pronto-table pronto-tree-table${showProntoDateStatusColumns ? "" : " pronto-hide-date-status"}${showProntoConversionColumns ? "" : " pronto-hide-conversion"}${showProntoDealInfoColumns ? "" : " pronto-hide-deal-info"}`}>
+              <table className={`pronto-table pronto-tree-table${showProntoDateStatusColumns ? "" : " pronto-hide-date-status"}${showProntoAppointmentColumns ? "" : " pronto-hide-appointment"}${showProntoConversionColumns ? "" : " pronto-hide-conversion"}${showProntoDealInfoColumns ? "" : " pronto-hide-deal-info"}`}>
                 <colgroup>
                   <col className="pronto-col-name" />
                   <col className="pronto-col-first" />
