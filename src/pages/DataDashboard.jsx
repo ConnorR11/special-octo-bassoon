@@ -1017,10 +1017,7 @@ function DataDashboard() {
         .pronto-tree-table tbody tr:not(.pronto-tree-total) td:nth-child(17) {
           border-left: 2px solid #cbd5e1;
         }
-        .pronto-tree-table tbody tr.pronto-tree-total td:nth-child(5),
-        .pronto-tree-table tbody tr.pronto-tree-total td:nth-child(11),
-        .pronto-tree-table tbody tr.pronto-tree-total td:nth-child(15),
-        .pronto-tree-table tbody tr.pronto-tree-total td:nth-child(17) {
+        .pronto-tree-table tbody tr.pronto-tree-total td.pronto-total-group-start {
           border-left: 2px solid #cbd5e1;
         }
         .pronto-tree-table col.pronto-col-name { width: 22%; }
@@ -1910,7 +1907,7 @@ function DataDashboard() {
                   <tr className="pronto-tree-total">
                     <td colSpan={showProntoDateStatusColumns ? 4 : 1}><strong>Total Pronto Windows leads</strong></td>
                     {showProntoLeadInfoColumns && <>
-                      <td><strong>{formatNumber(prontoSidTotal)}</strong></td>
+                      <td className="pronto-total-group-start"><strong>{formatNumber(prontoSidTotal)}</strong></td>
                       <td><strong>{formatNumber(prontoDispositionCounts.filter((item) => item.group_level === "introducer").reduce((sum, item) => sum + Number(item.dup_count || 0), 0))}</strong></td>
                       <td><strong>{formatNumber(prontoDispositionCounts.filter((item) => item.group_level === "introducer").reduce((sum, item) => sum + Number(item.wn_count || 0), 0))}</strong></td>
                       <td><strong>{formatNumber(prontoDispositionCounts.filter((item) => item.group_level === "introducer").reduce((sum, item) => sum + Number(item.ooa_count || 0), 0))}</strong></td>
@@ -1918,17 +1915,17 @@ function DataDashboard() {
                       <td><strong>{prontoSidTotal ? `${((prontoSidRows.reduce((sum, row) => sum + row.booked_count, 0) / prontoSidTotal) * 100).toFixed(1)}%` : "0.0%"}</strong></td>
                     </>}
                     {showProntoAppointmentColumns && <>
-                      <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_h_count, 0))}</strong></td>
+                      <td className="pronto-total-group-start"><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_h_count, 0))}</strong></td>
                       <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_c_count, 0))}</strong></td>
                       <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_p_count, 0))}</strong></td>
                       <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_s_count, 0))}</strong></td>
                     </>}
                     {showProntoConversionColumns && <>
-                      <td><strong>{prontoSidTotal ? `${(prontoSidRows.reduce((sum, row) => sum + row.cps_h_count, 0) / prontoSidTotal * 100).toFixed(1)}%` : "0.0%"}</strong></td>
+                      <td className="pronto-total-group-start"><strong>{prontoSidTotal ? `${(prontoSidRows.reduce((sum, row) => sum + row.cps_h_count, 0) / prontoSidTotal * 100).toFixed(1)}%` : "0.0%"}</strong></td>
                       <td><strong>{prontoSidTotal ? `${(prontoSidRows.reduce((sum, row) => sum + row.cps_p_count, 0) / prontoSidTotal * 100).toFixed(1)}%` : "0.0%"}</strong></td>
                     </>}
                     {showProntoDealInfoColumns && <>
-                      <td><strong>£{formatNumber(filteredProntoSidRows.reduce((sum, row) => sum + row.net_value_sold, 0))}</strong></td>
+                      <td className="pronto-total-group-start"><strong>£{formatNumber(filteredProntoSidRows.reduce((sum, row) => sum + row.net_value_sold, 0))}</strong></td>
                       <td><strong>£{formatNumber(filteredProntoSidRows.reduce((sum, row) => sum + row.net_value_solid, 0))}</strong></td>
                     </>}
                     <td aria-hidden="true"></td>
