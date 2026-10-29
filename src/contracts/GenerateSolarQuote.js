@@ -80,7 +80,6 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
   if (error) throw error
   const record = saved || appointment
   const d = getQuoteData(record)
-  const selectedPriceMode = priceMode === "finance" ? "finance" : "cash"
   const openSolarImageUrl = String(d.openSolar?.imageUrl || "").trim()
   const pdf = new jsPDF({ unit: "mm", format: "a4" })
   const w = 210, h = 297, margin = 18
@@ -224,21 +223,18 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
     coverRowY+=11
   })
 
-  // Show only the price presentation selected by the salesperson.
+  // Every quote displays both the cash price and monthly finance illustration.
   const priceY=252
   pdf.setFillColor(...blue);pdf.roundedRect(margin,priceY,w-margin*2,25,3,3,"F")
+  const priceHalf=(w-margin*2)/2
   pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(8)
-  if (selectedPriceMode === "finance") {
-    pdf.text("ILLUSTRATIVE MONTHLY FINANCE",margin+8,priceY+7)
-    pdf.setFontSize(16)
-    pdf.text(money(d.monthly)+" / month",margin+8,priceY+17)
-    pdf.setFont("helvetica","normal");pdf.setFontSize(6.5)
-    pdf.text("Illustration at "+d.rate.toFixed(1)+"% over "+d.termYears+" years; subject to lender approval and confirmed terms.",margin+8,priceY+22)
-  } else {
-    pdf.text("CASH PRICE",margin+8,priceY+7)
-    pdf.setFontSize(16)
-    pdf.text(money(d.cashPrice),margin+8,priceY+17)
-  }
+  pdf.text("CASH PRICE",margin+8,priceY+7)
+  pdf.text("MONTHLY FINANCE",margin+priceHalf+6,priceY+7)
+  pdf.setFontSize(16)
+  pdf.text(money(d.cashPrice),margin+8,priceY+17)
+  pdf.text(money(d.monthly)+" / month",margin+priceHalf+6,priceY+17)
+  pdf.setFont("helvetica","normal");pdf.setFontSize(6.5)
+  pdf.text("Finance illustration at "+d.rate.toFixed(1)+"% over "+d.termYears+" years; subject to lender approval and confirmed terms.",margin+8,priceY+22)
   footer(2)
 
   // PAGE 2 — Itemised equipment and service breakdown.
