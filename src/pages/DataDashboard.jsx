@@ -1606,6 +1606,7 @@ function DataDashboard() {
             ) : filteredProntoSidRows.length === 0 ? (
               <div className="pronto-empty">No Pronto SID data found.</div>
             ) : (
+              <>
               <div className="pronto-column-controls">
                 <button type="button" className="pronto-column-toggle" onClick={() => setShowProntoDateStatusColumns((shown) => !shown)}>
                   {showProntoDateStatusColumns ? "Hide Dates & Status" : "Show Dates & Status"}
@@ -1785,6 +1786,7 @@ function DataDashboard() {
                   </tr>
                 </tbody>
               </table>
+              </>
             )}
           </div>
 
