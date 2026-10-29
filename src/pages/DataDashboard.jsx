@@ -1665,10 +1665,10 @@ function DataDashboard() {
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("status")}>Status{prontoSort.key === "status" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("leads")}>Leads{prontoSort.key === "leads" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("booked")}>Booked{prontoSort.key === "booked" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
-                    <th>CPS H</th>
-                    <th>CPS C</th>
-                    <th>CPS P</th>
-                    <th>CPS S</th>
+                    <th>H</th>
+                    <th>C</th>
+                    <th>P</th>
+                    <th>S</th>
                     <th>Lead to H</th>
                     <th>Lead to P</th>
                     <th>Net Value Sold</th>
@@ -1799,7 +1799,7 @@ function DataDashboard() {
                     </React.Fragment>
                   ))}
                   <tr className="pronto-tree-total">
-                    <td colSpan={4}><strong>Total Pronto Windows leads</strong></td>
+                    <td colSpan={showProntoDateStatusColumns ? 4 : 1}><strong>Total Pronto Windows leads</strong></td>
                     <td><strong>{formatNumber(prontoSidTotal)}</strong></td>
                     <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.booked_count, 0))}</strong></td>
                     <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.cps_h_count, 0))}</strong></td>
