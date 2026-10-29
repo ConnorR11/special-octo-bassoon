@@ -630,7 +630,9 @@ function DataDashboard() {
     setSpeedToLeadError("")
     try {
       const since = new Date()
-      since.setDate(since.getDate() - 30)
+      since.setDate(1)
+      since.setHours(0, 0, 0, 0)
+      since.setMonth(since.getMonth() - 11)
       const { data, error: queryError } = await supabase.from("leads").select("marketing_row_id,received_date_time,first_time_called,hotkey_status").gte("received_date_time", since.toISOString()).not("received_date_time", "is", null).order("received_date_time", { ascending: false }).range(0, 9999)
       if (queryError) throw queryError
       const eligible = (data || []).filter((lead) => {
@@ -1278,7 +1280,7 @@ function DataDashboard() {
         <>
       <div className="data-dashboard-chart-card" style={{marginBottom:16}}>
         <div className="data-dashboard-chart-title"><TrendingUp size={17} /> Speed to lead</div>
-        <div className="data-dashboard-chart-subtitle">Last 30 days. Leads received between 09:00 and 19:00 with no hotkey status.</div>
+        <div className="data-dashboard-chart-subtitle">Monthly trend · Last 12 months · Leads received 09:00–18:59 with no hotkey status.</div>
         <button type="button" onClick={loadSpeedToLead} disabled={speedToLeadLoading}>{speedToLeadLoading ? "Loading..." : "Refresh report"}</button>
         {speedToLeadError ? <div className="data-dashboard-error">{speedToLeadError}</div> : null}
         <div style={{display:"flex",flexWrap:"wrap",gap:16,marginTop:14}}>
@@ -1286,6 +1288,23 @@ function DataDashboard() {
           <div><div>Average minutes to first call</div><strong>{speedToLeadRows.filter(r => r.speed_minutes !== null).length ? (speedToLeadRows.filter(r => r.speed_minutes !== null).reduce((sum,r) => sum + r.speed_minutes,0) / speedToLeadRows.filter(r => r.speed_minutes !== null).length).toFixed(1) : "—"}</strong></div>
           <div><div>Not yet called</div><strong>{speedToLeadRows.filter(r => r.speed_minutes === null).length}</strong></div>
         </div>
+      </div>
+      <div className="data-dashboard-chart-card" style={{marginBottom:16}}>
+        <div className="data-dashboard-chart-title"><TrendingUp size={17} /> Monthly speed to lead</div>
+        <div className="data-dashboard-chart-subtitle">Average and median minutes from lead received time to first call. Eligible leads only; leads without a first call are excluded from response-time averages.</div>
+        {(() => {
+          const monthly = new Map()
+          speedToLeadRows.forEach((lead) => { const received = new Date(lead.received_date_time); const key = received.getFullYear() + "-" + String(received.getMonth()+1).padStart(2,"0"); if (!monthly.has(key)) monthly.set(key, []); if (lead.speed_minutes !== null && Number.isFinite(lead.speed_minutes)) monthly.get(key).push(lead.speed_minutes) })
+          const now = new Date()
+          const chartData = []
+          for (let offset=11; offset>=0; offset--) {
+            const month = new Date(now.getFullYear(), now.getMonth()-offset, 1)
+            const key = month.getFullYear() + "-" + String(month.getMonth()+1).padStart(2,"0")
+            const values = (monthly.get(key) || []).sort((a,b)=>a-b)
+            chartData.push({ month: month.toLocaleDateString("en-GB",{month:"short",year:"2-digit"}), average: values.length ? Number((values.reduce((sum,v)=>sum+v,0)/values.length).toFixed(1)) : null, median: values.length ? Number((values.length%2 ? values[(values.length-1)/2] : (values[values.length/2-1]+values[values.length/2])/2).toFixed(1)) : null })
+          }
+          return <div style={{width:"100%",height:300,marginTop:12}}><ResponsiveContainer width="100%" height="100%"><ComposedChart data={chartData} margin={{top:10,right:20,left:4,bottom:4}}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="month" tick={{fontSize:11}} /><YAxis tick={{fontSize:11}} label={{value:"Minutes",angle:-90,position:"insideLeft"}} /><Tooltip formatter={(value,name)=>[value===null||value===undefined?"No calls":value+" min",name]} /><Legend /><Line type="monotone" dataKey="average" name="Average minutes" stroke="#2563eb" strokeWidth={2} connectNulls={false} /><Line type="monotone" dataKey="median" name="Median minutes" stroke="#0d9488" strokeWidth={2} connectNulls={false} /></ComposedChart></ResponsiveContainer></div>
+        })()}
       </div>
       <div className="data-dashboard-chart-card">
         <div className="data-dashboard-chart-head">
