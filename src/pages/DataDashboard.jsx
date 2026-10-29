@@ -1712,6 +1712,7 @@ function DataDashboard() {
                         <td>{formatProntoDate(row.latest_lead_date)}</td>
                         <td>{prontoStatus(row.latest_lead_date)}</td>
                         <td>{formatNumber(row.lead_count)}</td>
+<td className={row.lead_count && (row.booked_count / row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{row.lead_count ? `${((row.booked_count / row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
 
                         <td>{formatNumber(row.booked_count)}</td>
                         <td>{formatNumber(row.cps_h_count)}</td>
@@ -1744,6 +1745,7 @@ function DataDashboard() {
                                 <td>{formatProntoDate(sidRow.latest_lead_date)}</td>
                                 <td>{prontoStatus(sidRow.latest_lead_date)}</td>
                                 <td>{formatNumber(sidRow.lead_count)}</td>
+<td className={sidRow.lead_count && (sidRow.booked_count / sidRow.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{sidRow.lead_count ? `${((sidRow.booked_count / sidRow.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
 
                                 <td>{formatNumber(sidRow.booked_count)}</td>
                                 <td>{formatNumber(sidRow.cps_h_count)}</td>
@@ -1776,6 +1778,7 @@ function DataDashboard() {
                                         <td>{formatProntoDate(c1Row.latest_lead_date)}</td>
                                         <td>{prontoStatus(c1Row.latest_lead_date)}</td>
                                         <td>{formatNumber(c1Row.lead_count)}</td>
+<td className={c1Row.lead_count && (c1Row.booked_count / c1Row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{c1Row.lead_count ? `${((c1Row.booked_count / c1Row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
 
                                         <td>{formatNumber(c1Row.booked_count)}</td>
                                         <td>{formatNumber(c1Row.cps_h_count)}</td>
@@ -1799,6 +1802,7 @@ function DataDashboard() {
                                             <td>{formatProntoDate(c3Row.latest_lead_date)}</td>
                                             <td>{prontoStatus(c3Row.latest_lead_date)}</td>
                                             <td>{formatNumber(c3Row.lead_count)}</td>
+<td className={c3Row.lead_count && (c3Row.booked_count / c3Row.lead_count) * 100 < 15 ? "pronto-rate-low" : "pronto-rate-normal"}>{c3Row.lead_count ? `${((c3Row.booked_count / c3Row.lead_count) * 100).toFixed(1)}%` : "0.0%"}</td>
 
                                             <td>{formatNumber(c3Row.booked_count)}</td>
                                             <td>{formatNumber(c3Row.cps_h_count)}</td>
@@ -1828,6 +1832,7 @@ function DataDashboard() {
                     <td colSpan={showProntoDateStatusColumns ? 4 : 1}><strong>Total Pronto Windows leads</strong></td>
                     {showProntoLeadInfoColumns && <>
                       <td><strong>{formatNumber(prontoSidTotal)}</strong></td>
+                      <td><strong>{prontoSidTotal ? `${((prontoSidRows.reduce((sum, row) => sum + row.booked_count, 0) / prontoSidTotal) * 100).toFixed(1)}%` : "0.0%"}</strong></td>
                       <td><strong>{formatNumber(prontoSidRows.reduce((sum, row) => sum + row.booked_count, 0))}</strong></td>
                     </>}
                     {showProntoAppointmentColumns && <>
@@ -1843,7 +1848,6 @@ function DataDashboard() {
                     {showProntoDealInfoColumns && <>
                       <td><strong>£{formatNumber(filteredProntoSidRows.reduce((sum, row) => sum + row.net_value_sold, 0))}</strong></td>
                       <td><strong>£{formatNumber(filteredProntoSidRows.reduce((sum, row) => sum + row.net_value_solid, 0))}</strong></td>
-                      <td><strong>{prontoSidTotal ? `${((prontoSidRows.reduce((sum, row) => sum + row.booked_count, 0) / prontoSidTotal) * 100).toFixed(1)}%` : "0.0%"}</strong></td>
                     </>}
                     <td aria-hidden="true"></td>
                   </tr>
