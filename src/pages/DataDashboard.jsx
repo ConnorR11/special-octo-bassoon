@@ -122,6 +122,7 @@ function DataDashboard() {
   const [prontoDatePeriod, setProntoDatePeriod] = useState("last_week")
   const [prontoStatusFilter, setProntoStatusFilter] = useState("all")
   const [showProntoDateStatusColumns, setShowProntoDateStatusColumns] = useState(true)
+  const [showProntoDealInfoColumns, setShowProntoDealInfoColumns] = useState(true)
   const [expandedProntoSids, setExpandedProntoSids] = useState({})
   const [prontoC3Rows, setProntoC3Rows] = useState({})
   const [introducerSidRows, setIntroducerSidRows] = useState({})
@@ -918,6 +919,11 @@ function DataDashboard() {
           font-size: 12px;
         }
 
+        .pronto-tree-table.pronto-hide-deal-info th:nth-child(13),
+        .pronto-tree-table.pronto-hide-deal-info td:nth-child(13),
+        .pronto-tree-table.pronto-hide-deal-info th:nth-child(14),
+        .pronto-tree-table.pronto-hide-deal-info td:nth-child(14) { display: none; }
+        .pronto-group-toggle { display: block; width: 100%; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; font: inherit; font-weight: 700; cursor: pointer; }
         .pronto-tree-table.pronto-hide-date-status th:nth-child(2),
         .pronto-tree-table.pronto-hide-date-status td:nth-child(2),
         .pronto-tree-table.pronto-hide-date-status th:nth-child(3),
@@ -1610,7 +1616,7 @@ function DataDashboard() {
               <div className="pronto-empty">No Pronto SID data found.</div>
             ) : (
               <>
-              <table className="pronto-table pronto-tree-table">
+              <table className={`pronto-table pronto-tree-table${showProntoDateStatusColumns ? "" : " pronto-hide-date-status"}${showProntoDealInfoColumns ? "" : " pronto-hide-deal-info"}`}>
                 <colgroup>
                   <col className="pronto-col-name" />
                   <col className="pronto-col-first" />
@@ -1632,9 +1638,13 @@ function DataDashboard() {
                 <thead>
                   <tr className="pronto-group-header">
                     <th></th>
-                    <th colSpan={3} className="pronto-deal-info-header">Dates &amp; Status</th>
+                    <th colSpan={3} className="pronto-deal-info-header">
+                      <button type="button" className="pronto-group-toggle" onClick={() => setShowProntoDateStatusColumns((shown) => !shown)} aria-expanded={showProntoDateStatusColumns}>Dates &amp; Status {showProntoDateStatusColumns ? "−" : "+"}</button>
+                    </th>
                     <th colSpan={8}></th>
-                    <th colSpan={2} className="pronto-deal-info-header">Deal Info</th>
+                    <th colSpan={2} className="pronto-deal-info-header">
+                      <button type="button" className="pronto-group-toggle" onClick={() => setShowProntoDealInfoColumns((shown) => !shown)} aria-expanded={showProntoDealInfoColumns}>Deal Info {showProntoDealInfoColumns ? "−" : "+"}</button>
+                    </th>
                     <th colSpan={2}></th>
                   </tr>
                   <tr>
