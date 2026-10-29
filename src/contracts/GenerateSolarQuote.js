@@ -38,14 +38,21 @@ function getQuoteData(appointment) {
   const generation = Number(results.generation || results.annualGeneration || results.annual_generation || epvs.generation || epvs.annualGeneration || epvs.annual_generation || epvs.estimatedGeneration || epvs.estimated_generation || epvs.annualProduction || epvs.annual_production || openSolar.annualGeneration || openSolar.annual_generation || derivedGeneration || 0)
   const isTradeLead = String(appointment?.is_trade_lead || "").trim().toUpperCase() === "TRUE"
   const cashPrice = Number(isTradeLead ? (appointment?.price_left || 0) : (epvs.totalContractValue || epvs.totalPrice || appointment?.contract_value || appointment?.price_left || 0))
-  const termYears = 10
-  const rate = 3.9
+  const paymentMethod = String(epvs.paymentMethod || calculation?.paymentMethod || calculation?.payment_method || appointment?.payment_method || "").trim()
+  const savedFinanceTerm = Number(epvs.financeTerm || calculation?.financeTerm || appointment?.finance_term || 0)
+  const termYears = savedFinanceTerm > 0 ? savedFinanceTerm : 10
+  const savedRate = Number(epvs.financeRate || calculation?.financeRate || appointment?.finance_rate || 0)
+  const rate = savedRate > 0 ? savedRate : 3.9
   const deposit = Number(epvs.deposit || appointment?.deposit || 0)
   const principal = Math.max(0, cashPrice - deposit)
   const months = Math.max(1, Math.round(termYears * 12))
-  // Use the agreed lender illustration factor: £9.91 per £1,000 of system cost per month.
-  const monthly = Math.max(0, cashPrice) / 1000 * 9.91
-  return { epvs, results, openSolar, panels, inverters, batteries, panelCount, capacity, generation, cashPrice, termYears, rate, deposit, monthly }
+  const financeFactor = Number(epvs.financeFactor || calculation?.financeFactor || appointment?.finance_factor || 0)
+  // Use the finance factor saved with the appointment's EPVS payment method.
+  // Fall back to the agreed 10-year illustration factor only when no factor was saved.
+  const monthly = financeFactor > 0
+    ? Math.max(0, principal) / 1000 * financeFactor
+    : Math.max(0, cashPrice) / 1000 * 9.91
+  return { epvs, results, openSolar, panels, inverters, batteries, panelCount, capacity, generation, cashPrice, paymentMethod, termYears, rate, deposit, financeFactor, monthly }
 }
 
 async function imageData(url) {
