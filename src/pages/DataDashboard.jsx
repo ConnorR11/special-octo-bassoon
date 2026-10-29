@@ -1791,8 +1791,8 @@ function DataDashboard() {
                         <td>{formatNumber(row.cps_s_count)}</td>
                         <td>{row.lead_count ? `${(row.cps_h_count / row.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
                         <td>{row.lead_count ? `${(row.cps_p_count / row.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
-                        <td>£{formatNumber(row.net_value_sold)}</td>
-                        <td>£{formatNumber(row.net_value_solid)}</td>
+                        <td>£{formatNumber(Math.round(Number(row.net_value_sold || 0)))}</td>
+                        <td>£{formatNumber(Math.round(Number(row.net_value_solid || 0)))}</td>
                         
                         <td aria-hidden="true"></td>
                       </tr>
@@ -1826,8 +1826,8 @@ function DataDashboard() {
                                 <td>{formatNumber(sidRow.cps_s_count)}</td>
                                 <td>{sidRow.lead_count ? `${(sidRow.cps_h_count / sidRow.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
                                 <td>{sidRow.lead_count ? `${(sidRow.cps_p_count / sidRow.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
-                                <td>£{formatNumber(sidRow.net_value_sold)}</td>
-                                <td>£{formatNumber(sidRow.net_value_solid)}</td>
+                                <td>£{formatNumber(Math.round(Number(sidRow.net_value_sold || 0)))}</td>
+                                <td>£{formatNumber(Math.round(Number(sidRow.net_value_solid || 0)))}</td>
                                 
                                 <td aria-hidden="true"></td>
                               </tr>
@@ -1861,8 +1861,8 @@ function DataDashboard() {
                                         <td>{formatNumber(c1Row.cps_s_count)}</td>
                                         <td>{c1Row.lead_count ? `${(c1Row.cps_h_count / c1Row.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
                                         <td>{c1Row.lead_count ? `${(c1Row.cps_p_count / c1Row.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
-                                        <td>£{formatNumber(c1Row.net_value_sold)}</td>
-                                        <td>£{formatNumber(c1Row.net_value_solid)}</td>
+                                        <td>£{formatNumber(Math.round(Number(c1Row.net_value_sold || 0)))}</td>
+                                        <td>£{formatNumber(Math.round(Number(c1Row.net_value_solid || 0)))}</td>
                                         
                                         <td aria-hidden="true"></td>
                                       </tr>
@@ -1887,8 +1887,8 @@ function DataDashboard() {
                                         <td>{formatNumber(c3Row.cps_s_count)}</td>
                                         <td>{c3Row.lead_count ? `${(c3Row.cps_h_count / c3Row.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
                                         <td>{c3Row.lead_count ? `${(c3Row.cps_p_count / c3Row.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
-                                        <td>£{formatNumber(c3Row.net_value_sold)}</td>
-                                        <td>£{formatNumber(c3Row.net_value_solid)}</td>
+                                        <td>£{formatNumber(Math.round(Number(c3Row.net_value_sold || 0)))}</td>
+                                        <td>£{formatNumber(Math.round(Number(c3Row.net_value_solid || 0)))}</td>
                                         
                                             <td aria-hidden="true"></td>
                                           </tr>
@@ -1925,8 +1925,8 @@ function DataDashboard() {
                       <td><strong>{prontoSidTotal ? `${(prontoSidRows.reduce((sum, row) => sum + row.cps_p_count, 0) / prontoSidTotal * 100).toFixed(1)}%` : "0.0%"}</strong></td>
                     </>}
                     {showProntoDealInfoColumns && <>
-                      <td className="pronto-total-group-start"><strong>£{formatNumber(filteredProntoSidRows.reduce((sum, row) => sum + row.net_value_sold, 0))}</strong></td>
-                      <td><strong>£{formatNumber(filteredProntoSidRows.reduce((sum, row) => sum + row.net_value_solid, 0))}</strong></td>
+                      <td className="pronto-total-group-start"><strong>£{formatNumber(Math.round(filteredProntoSidRows.reduce((sum, row) => sum + Number(row.net_value_sold || 0), 0)))}</strong></td>
+                      <td><strong>£{formatNumber(Math.round(filteredProntoSidRows.reduce((sum, row) => sum + Number(row.net_value_solid || 0), 0)))}</strong></td>
                     </>}
                     <td aria-hidden="true"></td>
                   </tr>
