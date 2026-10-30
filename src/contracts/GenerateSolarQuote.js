@@ -415,7 +415,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
         const highlighted=index===5||index===8
         pdf.setFillColor(...(highlighted?[232,245,235]:index%2===0?[247,249,250]:[255,255,255]))
         pdf.setDrawColor(220,228,234);pdf.rect(tx30,rowY30,widths30[index],rowH30,"FD")
-        pdf.setTextColor(...(highlighted?[38,120,58]:navy));pdf.setFont("helvetica",index===0?"bold":"normal");pdf.setFontSize(5.3)
+        pdf.setTextColor(...(highlighted?[38,120,58]:navy));pdf.setFont("helvetica",index===0?"bold":"normal");pdf.setFontSize(6)
         pdf.text(String(val),tx30+widths30[index]-0.7,rowY30+3.5,{align:"right"})
         tx30+=widths30[index]
         totalRaw30[index]+=nums[index]
