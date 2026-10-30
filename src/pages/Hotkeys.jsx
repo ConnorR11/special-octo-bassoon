@@ -46,6 +46,7 @@ export default function Hotkeys() {
       let query = supabase.from("leads").select(FIELDS, { count: "exact" })
         .not("hotkey_status", "is", null)
         .neq("hotkey_status", "")
+        .in("lead_source", ["Watts Marketing", "SPF Solar"])
       if (hotkeyFilter) query = query.eq("hotkey_status", hotkeyFilter)
       if (sourceFilter) query = query.eq("lead_source", sourceFilter)
       query = query.order("received_date_time", { ascending: false, nullsFirst: false })
@@ -101,6 +102,7 @@ export default function Hotkeys() {
         .select("hotkey_status,lead_source")
         .not("hotkey_status", "is", null)
         .neq("hotkey_status", "")
+        .in("lead_source", ["Watts Marketing", "SPF Solar"])
       if (optionsError) {
         console.error("Unable to load Hotkeys filter options:", optionsError)
         return
@@ -130,8 +132,8 @@ export default function Hotkeys() {
     <section>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:16, flexWrap:"wrap", marginBottom:20 }}>
         <div>
-          <h2 style={{ margin:0, color:"#17324d", fontSize:24 }}>Hotkeys</h2>
-          <p style={{ margin:"6px 0 0", color:"#64748b" }}>Leads with a hotkey status assigned.</p>
+          <h2 style={{ margin:0, color:"#17324d", fontSize:24 }}>Watts Marketing</h2>
+          <p style={{ margin:"6px 0 0", color:"#64748b" }}>Watts Marketing and SPF Solar leads with a hotkey status assigned.</p>
         </div>
         <button type="button" onClick={() => loadLeads(page)} disabled={loading} style={{ border:"1px solid #d7dee8", background:"#fff", color:"#334155", borderRadius:8, padding:"10px 14px", display:"inline-flex", alignItems:"center", gap:8, cursor:"pointer" }}>
           <RefreshCw size={16} /> Refresh
