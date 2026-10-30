@@ -172,11 +172,11 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
 
           <Folder visible={canSeeFolder("digitalTeam")} title="Digital Team" icon={Search} open={openFolders.digitalTeam} onClick={() => toggleFolder("digitalTeam")}>
             <NavItem icon={Search} label="SEO" active={isActive("seo")} onClick={() => navigate("seo")}/>
+            {isAdministrator && <NavItem icon={BarChart3} label="Pronto" active={isActive("pronto")} onClick={() => navigate("pronto")}/>}
           </Folder>
 
           {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}>
             <NavItem icon={BarChart3} label="Data Dashboard" active={isActive("data-dashboard")} onClick={() => navigate("data-dashboard")}/>
-            <NavItem icon={BarChart3} label="Pronto" active={isActive("pronto")} onClick={() => navigate("pronto")}/>
             <NavItem icon={RefreshCw} label="Bulk Updater" active={isActive("bulk-updater")} onClick={() => navigate("bulk-updater")}/>
             <NavItem icon={BarChart3} label="Sales Performance" active={isActive("sales-performance")} onClick={() => navigate("sales-performance")} disabled={!canAccessSalesPerformance} locked={!canAccessSalesPerformance}/>
             <NavItem icon={CalendarDays} label="Installations Performance" active={isActive("installations-performance")} onClick={() => navigate("installations-performance")}/>
