@@ -1,10 +1,19 @@
 import React, { useCallback, useEffect, useState } from "react"
-import { RefreshCw, Search, Phone, MapPin, CalendarDays, Tag } from "lucide-react"
+import { RefreshCw, Search, MapPin, CalendarDays, Tag } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
 const PAGE_SIZE = 50
 const FIELDS = "delete_row_id,marketing_row_id,first_name,last_name,salutations,primary_phone_number,secondary_phone_number,postcode,lead_source,received_date_time,hotkey_status,disposition"
 const APPOINTMENT_FIELDS = "appointment_row_id,marketing_row_id,appointment_date,result,sent_back,reason_for_return,product,rep_allocated"
+
+function hotkeyTagColors(status) {
+  const value = String(status || "").trim().toLowerCase()
+  if (value === "paid") return { background: "#eef6ff", color: "#1d4ed8" }
+  if (value === "return open") return { background: "#fff7ed", color: "#c2410c" }
+  if (value === "return declined") return { background: "#fef2f2", color: "#b91c1c" }
+  if (value === "return accepted") return { background: "#ecfdf5", color: "#15803d" }
+  return { background: "#f3e8ff", color: "#7e22ce" }
+}
 
 function displayName(lead) {
   return [lead.salutations, lead.first_name, lead.last_name].map(value => String(value || "").trim()).filter(Boolean).join(" ") || "Unnamed lead"
@@ -123,7 +132,7 @@ export default function Hotkeys() {
                   <td style={{ padding:"13px 14px", color:"#17324d", fontWeight:800 }}>{displayName(lead)}</td>
                                     <td style={{ padding:"13px 14px", whiteSpace:"nowrap", color:"#475569" }}><span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><MapPin size={13}/>{lead.postcode || "—"}</span></td>
                   <td style={{ padding:"13px 14px", color:"#475569" }}>{lead.lead_source || "—"}</td>
-                  <td style={{ padding:"13px 14px" }}><span style={{ display:"inline-flex", alignItems:"center", gap:6, borderRadius:999, padding:"5px 9px", background:"#eef6ff", color:"#1d4ed8", fontWeight:800, whiteSpace:"nowrap" }}><Tag size={12}/>{lead.hotkey_status}</span></td>
+                  <td style={{ padding:"13px 14px" }}><span style={{ display:"inline-flex", alignItems:"center", gap:6, borderRadius:999, padding:"5px 9px", ...hotkeyTagColors(lead.hotkey_status), fontWeight:800, whiteSpace:"nowrap" }}><Tag size={12}/>{lead.hotkey_status}</span></td>
                   <td style={{ padding:"13px 14px", color:"#475569" }}>{lead.disposition || "—"}</td>
                   <td style={{ padding:"13px 14px", color:"#475569", whiteSpace:"nowrap" }}>{appointment ? formatDate(appointment.appointment_date) : <span style={{ color:"#94a3b8" }}>No appointment</span>}</td>
                   <td style={{ padding:"13px 14px", color:appointment?.result ? "#17324d" : "#94a3b8", fontWeight:appointment?.result ? 800 : 400, whiteSpace:"nowrap" }}>{appointment?.result || (appointment ? "Awaiting result" : "—")}</td>
