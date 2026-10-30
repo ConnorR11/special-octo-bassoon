@@ -130,7 +130,7 @@ export default function Hotkeys() {
                   <td style={{ padding:"13px 14px", color:appointment?.result ? "#17324d" : "#94a3b8", fontWeight:appointment?.result ? 800 : 400, whiteSpace:"nowrap" }}>{appointment?.result || (appointment ? "Awaiting result" : "—")}</td>
                   <td style={{ padding:"13px 14px", whiteSpace:"nowrap" }}>{appointment?.sent_back === "true" || appointment?.sent_back === true ? <span style={{ color:"#b45309", fontWeight:800 }}>Yes</span> : appointment ? <span style={{ color:"#64748b" }}>No</span> : "—"}</td>
                   <td style={{ padding:"13px 14px", color:"#64748b", whiteSpace:"nowrap" }}><span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><CalendarDays size={13}/>{formatDate(lead.received_date_time)}</span></td>
-                </tr>})
+                </tr>})}
             </tbody>
           </table>
         </div>
