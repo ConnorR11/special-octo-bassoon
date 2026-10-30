@@ -2931,8 +2931,7 @@ export default function EPVSCalculator({
         <option value="Cash">Cash</option>
         {eligibleFinanceProducts.map((product) => (
           <option key={product.id} value={product.id}>
-            {product.lender || "Finance product"}
-            {product.term ? ` — ${product.term} months` : ""}
+            {product.term ? `${product.term} months` : ""}
             {product.apr != null ? ` @ ${product.apr}%` : ""}
             {Number(product.deferral_period) > 0
               ? ` — ${product.deferral_period} month${Number(product.deferral_period) === 1 ? "" : "s"} deferral`
