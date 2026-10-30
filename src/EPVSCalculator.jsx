@@ -578,6 +578,7 @@ const cappedBatterySC = Math.min(
 export default function EPVSCalculator({
   appointment,
   onCalculationChange,
+  permissionLevel = 1,
 }) {
   const [loadingFluxRates, setLoadingFluxRates] = useState(false)
   const [fluxRateError, setFluxRateError] = useState("")
@@ -599,7 +600,7 @@ export default function EPVSCalculator({
       const { data, error } = await supabase
         .from("finance_products")
         .select(
-          "id,internal_reference,sort_order,product,term,factor,apr,deferral_period,lender,portal,method"
+          "id,internal_reference,sort_order,product,term,factor,apr,deferral_period,lender,portal,method,minimum_level"
         )
         .order("sort_order", {
           ascending: true,
@@ -931,6 +932,7 @@ export default function EPVSCalculator({
   const lender = String(financeProduct.lender || "").trim().toLowerCase()
   const method = String(financeProduct.method || "").trim().toLowerCase()
   if (lender === "cash" || method === "cash") return false
+  if (Number(financeProduct.minimum_level || 1) > Number(permissionLevel || 1)) return false
 
   const jobType = String(appointment?.job_type || "")
     .trim()
