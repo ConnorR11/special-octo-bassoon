@@ -18,6 +18,7 @@ function Header({ page, setMobile }) {
   }
 
   const pageTitle = {
+    pronto: "Pronto",
     "sales-performance": "Sales Performance",
     "installations-performance": "Installations Performance",
     "outstanding-solar-surveys": "Outstanding Solar Surveys",
@@ -28,6 +29,7 @@ function Header({ page, setMobile }) {
   }[page]
 
   const pageSubtitle = {
+    pronto: "Pronto lead and campaign performance",
     "sales-performance": "Overview of your sales performance and activity",
     "installations-performance": "Jobs grouped by installation start date",
     "outstanding-solar-surveys": "Solar deals with a digital contract but no generated survey",
