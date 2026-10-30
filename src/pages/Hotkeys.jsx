@@ -113,23 +113,21 @@ export default function Hotkeys() {
           <table style={{ width:"100%", borderCollapse:"collapse", minWidth:1120, fontSize:13 }}>
             <thead>
               <tr style={{ background:"#f8fafc", color:"#64748b", textAlign:"left" }}>
-                {["Lead","Contact","Postcode","Lead Source","Hotkey Status","Disposition","Appointment Date","Appointment Result","Sent Back","Received"].map(label => <th key={label} style={{ padding:"13px 14px", fontSize:11, textTransform:"uppercase", letterSpacing:".04em", whiteSpace:"nowrap" }}>{label}</th>)}
+                {["Lead","Postcode","Lead Source","Hotkey Status","Disposition","Appointment Date","Appointment Result","Received"].map(label => <th key={label} style={{ padding:"13px 14px", fontSize:11, textTransform:"uppercase", letterSpacing:".04em", whiteSpace:"nowrap" }}>{label}</th>)}
               </tr>
             </thead>
             <tbody>
-              {loading ? <tr><td colSpan={10} style={{ padding:36, textAlign:"center", color:"#64748b" }}>Loading hotkey leads…</td></tr>
-                : leads.length === 0 ? <tr><td colSpan={10} style={{ padding:36, textAlign:"center", color:"#64748b" }}>No leads found with a hotkey status.</td></tr>
+              {loading ? <tr><td colSpan={8} style={{ padding:36, textAlign:"center", color:"#64748b" }}>Loading hotkey leads…</td></tr>
+                : leads.length === 0 ? <tr><td colSpan={8} style={{ padding:36, textAlign:"center", color:"#64748b" }}>No leads found with a hotkey status.</td></tr>
                 : leads.map((lead, index) => { const appointment = appointmentsByLead[lead.marketing_row_id]; return <tr key={lead.delete_row_id || lead.marketing_row_id || index} style={{ borderTop:"1px solid #edf1f5" }}>
                   <td style={{ padding:"13px 14px", color:"#17324d", fontWeight:800 }}>{displayName(lead)}</td>
-                  <td style={{ padding:"13px 14px", whiteSpace:"nowrap", color:"#475569" }}><span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><Phone size={13}/>{lead.primary_phone_number || lead.secondary_phone_number || "—"}</span></td>
-                  <td style={{ padding:"13px 14px", whiteSpace:"nowrap", color:"#475569" }}><span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><MapPin size={13}/>{lead.postcode || "—"}</span></td>
+                                    <td style={{ padding:"13px 14px", whiteSpace:"nowrap", color:"#475569" }}><span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><MapPin size={13}/>{lead.postcode || "—"}</span></td>
                   <td style={{ padding:"13px 14px", color:"#475569" }}>{lead.lead_source || "—"}</td>
                   <td style={{ padding:"13px 14px" }}><span style={{ display:"inline-flex", alignItems:"center", gap:6, borderRadius:999, padding:"5px 9px", background:"#eef6ff", color:"#1d4ed8", fontWeight:800, whiteSpace:"nowrap" }}><Tag size={12}/>{lead.hotkey_status}</span></td>
                   <td style={{ padding:"13px 14px", color:"#475569" }}>{lead.disposition || "—"}</td>
                   <td style={{ padding:"13px 14px", color:"#475569", whiteSpace:"nowrap" }}>{appointment ? formatDate(appointment.appointment_date) : <span style={{ color:"#94a3b8" }}>No appointment</span>}</td>
                   <td style={{ padding:"13px 14px", color:appointment?.result ? "#17324d" : "#94a3b8", fontWeight:appointment?.result ? 800 : 400, whiteSpace:"nowrap" }}>{appointment?.result || (appointment ? "Awaiting result" : "—")}</td>
-                  <td style={{ padding:"13px 14px", whiteSpace:"nowrap" }}>{appointment?.sent_back === "true" || appointment?.sent_back === true ? <span style={{ color:"#b45309", fontWeight:800 }}>Yes</span> : appointment ? <span style={{ color:"#64748b" }}>No</span> : "—"}</td>
-                  <td style={{ padding:"13px 14px", color:"#64748b", whiteSpace:"nowrap" }}><span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><CalendarDays size={13}/>{formatDate(lead.received_date_time)}</span></td>
+                                    <td style={{ padding:"13px 14px", color:"#64748b", whiteSpace:"nowrap" }}><span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><CalendarDays size={13}/>{formatDate(lead.received_date_time)}</span></td>
                 </tr>})}
             </tbody>
           </table>
