@@ -3,7 +3,7 @@ import { RefreshCw, Search, Phone, MapPin, CalendarDays, Tag } from "lucide-reac
 import { supabase } from "../lib/supabase"
 
 const PAGE_SIZE = 50
-const FIELDS = "delete_row_id,marketing_row_id,first_name,last_name,salutations,primary_phone_number,secondary_phone_number,postcode,lead_source,received_date_time,hotkey_status,disposition"
+const FIELDS = "delete_row_id,marketing_row_id,first_name,last_name,salutations,primary_phone_number,secondary_phone_number,postcode,lead_source,received_date_time,hotkey_status,disposition"\nconst APPOINTMENT_FIELDS = "appointment_row_id,marketing_row_id,appointment_date,result,sent_back,reason_for_return,product,rep_allocated"
 
 function displayName(lead) {
   return [lead.salutations, lead.first_name, lead.last_name].map(value => String(value || "").trim()).filter(Boolean).join(" ") || "Unnamed lead"
@@ -17,7 +17,7 @@ function formatDate(value) {
 
 export default function Hotkeys() {
   const [leads, setLeads] = useState([])
-  const [total, setTotal] = useState(0)
+  const [total, setTotal] = useState(0)\n  const [appointmentsByLead, setAppointmentsByLead] = useState({})
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(false)
@@ -86,16 +86,16 @@ export default function Hotkeys() {
 
       <div style={{ background:"#fff", border:"1px solid #e4e9ef", borderRadius:12, overflow:"hidden" }}>
         <div style={{ overflowX:"auto" }}>
-          <table style={{ width:"100%", borderCollapse:"collapse", minWidth:850, fontSize:13 }}>
+          <table style={{ width:"100%", borderCollapse:"collapse", minWidth:1120, fontSize:13 }}>
             <thead>
               <tr style={{ background:"#f8fafc", color:"#64748b", textAlign:"left" }}>
-                {["Lead","Contact","Postcode","Lead Source","Hotkey Status","Disposition","Received"].map(label => <th key={label} style={{ padding:"13px 14px", fontSize:11, textTransform:"uppercase", letterSpacing:".04em", whiteSpace:"nowrap" }}>{label}</th>)}
+                {["Lead","Contact","Postcode","Lead Source","Hotkey Status","Disposition","Appointment Date","Appointment Result","Sent Back","Received"].map(label => <th key={label} style={{ padding:"13px 14px", fontSize:11, textTransform:"uppercase", letterSpacing:".04em", whiteSpace:"nowrap" }}>{label}</th>)}
               </tr>
             </thead>
             <tbody>
               {loading ? <tr><td colSpan={7} style={{ padding:36, textAlign:"center", color:"#64748b" }}>Loading hotkey leads…</td></tr>
-                : leads.length === 0 ? <tr><td colSpan={7} style={{ padding:36, textAlign:"center", color:"#64748b" }}>No leads found with a hotkey status.</td></tr>
-                : leads.map((lead, index) => <tr key={lead.delete_row_id || lead.marketing_row_id || index} style={{ borderTop:"1px solid #edf1f5" }}>
+                : leads.length === 0 ? <tr><td colSpan={10} style={{ padding:36, textAlign:"center", color:"#64748b" }}>No leads found with a hotkey status.</td></tr>
+                : leads.map((lead, index) => { const appointment = appointmentsByLead[lead.marketing_row_id]; return <tr key={lead.delete_row_id || lead.marketing_row_id || index} style={{ borderTop:"1px solid #edf1f5" }}>
                   <td style={{ padding:"13px 14px", color:"#17324d", fontWeight:800 }}>{displayName(lead)}</td>
                   <td style={{ padding:"13px 14px", whiteSpace:"nowrap", color:"#475569" }}><span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><Phone size={13}/>{lead.primary_phone_number || lead.secondary_phone_number || "—"}</span></td>
                   <td style={{ padding:"13px 14px", whiteSpace:"nowrap", color:"#475569" }}><span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><MapPin size={13}/>{lead.postcode || "—"}</span></td>
