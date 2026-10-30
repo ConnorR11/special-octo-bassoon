@@ -69,6 +69,9 @@ export default function Hotkeys() {
   const [sourceFilter, setSourceFilter] = useState("")
   const [hotkeyOptions, setHotkeyOptions] = useState([])
   const [sourceOptions, setSourceOptions] = useState([])
+  const [weeklyChartData, setWeeklyChartData] = useState([])
+  const [chartLoading, setChartLoading] = useState(false)
+  const [chartError, setChartError] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
@@ -147,6 +150,55 @@ export default function Hotkeys() {
     }
     loadFilterOptions()
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadWeeklyChart() {
+      if (!supabase) return
+      setChartLoading(true)
+      setChartError("")
+      try {
+        const allRows = []
+        const batchSize = 1000
+        let from = 0
+        while (true) {
+          const { data, error: chartQueryError } = await supabase.from("leads")
+            .select("received_date_time,hotkey_status")
+            .not("hotkey_status", "is", null)
+            .neq("hotkey_status", "")
+            .in("lead_source", sourceFilter ? [sourceFilter] : ["Watts Marketing", "SPF Solar"])
+            .order("received_date_time", { ascending: true })
+            .range(from, from + batchSize - 1)
+          if (chartQueryError) throw chartQueryError
+          const rows = data || []
+          allRows.push(...rows)
+          if (rows.length < batchSize) break
+          from += batchSize
+        }
+        const weeks = new Map()
+        for (const lead of allRows) {
+          const week = getWeekStart(lead.received_date_time)
+          if (!week) continue
+          const iso = week.toISOString().slice(0, 10)
+          if (!weeks.has(iso)) weeks.set(iso, { week: iso, label: weekLabel(iso), Paid: 0, "Return Open": 0, "Return Declined": 0, "Return Accepted": 0, Other: 0 })
+          const status = String(lead.hotkey_status || "").trim().toLowerCase()
+          const series = status === "paid" ? "Paid"
+            : status === "return open" ? "Return Open"
+            : status === "return declined" ? "Return Declined"
+            : status === "return accepted" ? "Return Accepted" : "Other"
+          weeks.get(iso)[series] += 1
+        }
+        if (!cancelled) setWeeklyChartData([...weeks.values()].sort((a, b) => a.week.localeCompare(b.week)))
+      } catch (chartErr) {
+        console.error("Unable to load weekly Hotkeys chart:", chartErr)
+        if (!cancelled) setChartError(chartErr?.message || "Unable to load weekly chart.")
+      } finally {
+        if (!cancelled) setChartLoading(false)
+      }
+    }
+    loadWeeklyChart()
+    return () => { cancelled = true }
+  }, [sourceFilter])
 
   function updateSearch(value) {
     setSearch(value)
