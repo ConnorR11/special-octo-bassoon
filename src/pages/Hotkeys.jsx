@@ -244,6 +244,32 @@ export default function Hotkeys() {
         <div style={{ color:"#64748b", fontSize:13, fontWeight:700 }}>{total.toLocaleString("en-GB")} leads</div>
       </div>
 
+      <div style={{ background:"#fff", border:"1px solid #e4e9ef", borderRadius:12, padding:"18px 18px 12px", marginBottom:16 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:12, flexWrap:"wrap", marginBottom:12 }}>
+          <div>
+            <h3 style={{ margin:0, color:"#17324d", fontSize:16 }}>Weekly lead volume by hotkey status</h3>
+            <p style={{ margin:"5px 0 0", color:"#64748b", fontSize:12 }}>Lead count by received week, stacked by status. Hover over a segment for its count and percentage of that week's total.</p>
+          </div>
+          {chartLoading && <span style={{ color:"#64748b", fontSize:12 }}>Loading chart…</span>}
+        </div>
+        {chartError ? <div role="alert" style={{ color:"#991b1b", fontSize:13 }}>{chartError}</div>
+          : weeklyChartData.length === 0 && !chartLoading ? <div style={{ padding:36, textAlign:"center", color:"#64748b", fontSize:13 }}>No weekly lead data available.</div>
+          : <div style={{ width:"100%", height:320 }}>
+            <ResponsiveContainer>
+              <BarChart data={weeklyChartData} margin={{ top:8, right:16, left:0, bottom:8 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e9eef4" />
+                <XAxis dataKey="label" tick={{ fontSize:11, fill:"#64748b" }} axisLine={{ stroke:"#cbd5e1" }} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize:11, fill:"#64748b" }} axisLine={false} tickLine={false} />
+                <Tooltip content={<HotkeyChartTooltip />} cursor={{ fill:"#f1f5f9", opacity:.7 }} />
+                {CHART_SERIES.map(series => <Bar key={series.key} dataKey={series.key} stackId="weekly" fill={series.color} maxBarSize={54} />)}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>}
+        <div style={{ display:"flex", flexWrap:"wrap", gap:"10px 18px", marginTop:8 }}>
+          {CHART_SERIES.map(series => <span key={series.key} style={{ display:"inline-flex", alignItems:"center", gap:7, color:"#475569", fontSize:12 }}><span style={{ width:9, height:9, borderRadius:2, background:series.color }}/>{series.key}</span>)}
+        </div>
+      </div>
+
       {error && <div role="alert" style={{ padding:14, marginBottom:14, border:"1px solid #fecaca", background:"#fff6f6", color:"#991b1b", borderRadius:9 }}>{error}</div>}
 
       <div style={{ background:"#fff", border:"1px solid #e4e9ef", borderRadius:12, overflow:"hidden" }}>
