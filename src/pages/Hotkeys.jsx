@@ -1,10 +1,44 @@
 import React, { useCallback, useEffect, useState } from "react"
 import { RefreshCw, Search, MapPin, CalendarDays, Tag } from "lucide-react"
 import { supabase } from "../lib/supabase"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 
 const PAGE_SIZE = 50
 const FIELDS = "delete_row_id,marketing_row_id,first_name,last_name,salutations,primary_phone_number,secondary_phone_number,postcode,lead_source,received_date_time,hotkey_status,disposition"
 const APPOINTMENT_FIELDS = "appointment_row_id,marketing_row_id,appointment_date,result,sent_back,reason_for_return,product,rep_allocated"
+const CHART_SERIES = [
+  { key: "Paid", color: "#93c5fd" },
+  { key: "Return Open", color: "#fb923c" },
+  { key: "Return Declined", color: "#ef4444" },
+  { key: "Return Accepted", color: "#22c55e" },
+  { key: "Other", color: "#a855f7" },
+]
+function getWeekStart(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  date.setHours(0, 0, 0, 0)
+  date.setDate(date.getDate() - ((date.getDay() + 6) % 7))
+  return date
+}
+function weekLabel(isoDate) {
+  return new Date(isoDate + "T12:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })
+}
+function HotkeyChartTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null
+  const total = payload.reduce((sum, item) => sum + Number(item.value || 0), 0)
+  return <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:10, padding:"12px 14px", boxShadow:"0 8px 24px rgba(15,23,42,.12)", minWidth:190 }}>
+    <div style={{ fontWeight:800, color:"#17324d", marginBottom:8 }}>Week commencing {label}</div>
+    {CHART_SERIES.map(series => {
+      const count = Number(payload.find(item => item.dataKey === series.key)?.value || 0)
+      if (!count) return null
+      return <div key={series.key} style={{ display:"flex", justifyContent:"space-between", gap:18, fontSize:12, marginTop:5 }}>
+        <span style={{ display:"flex", alignItems:"center", gap:7, color:"#475569" }}><span style={{ width:8, height:8, borderRadius:2, background:series.color }}/>{series.key}</span>
+        <strong style={{ color:"#17324d" }}>{count.toLocaleString("en-GB")} ({total ? (count / total * 100).toFixed(1) : "0.0"}%)</strong>
+      </div>
+    })}
+    <div style={{ borderTop:"1px solid #e2e8f0", marginTop:9, paddingTop:8, display:"flex", justifyContent:"space-between", fontSize:12, fontWeight:800, color:"#17324d" }}><span>Total</span><span>{total.toLocaleString("en-GB")} (100%)</span></div>
+  </div>
+}
 
 function hotkeyTagColors(status) {
   const value = String(status || "").trim().toLowerCase()
