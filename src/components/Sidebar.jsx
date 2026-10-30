@@ -73,7 +73,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
       "canvasser-kpi": 3,
       balances: 4,
       mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, "bulk-updater": 4,
-      templates: 4, "integration-logs": 4, "data-dashboard": 4, "data-clean": 4, "solar-backend": 4, "unit-analysis": 4, "map-of-installs": 4, "epvs-applications": 4, "installations-performance": 4,
+      templates: 4, "integration-logs": 4, "data-dashboard": 4, pronto: 4, "data-clean": 4, "solar-backend": 4, "unit-analysis": 4, "map-of-installs": 4, "epvs-applications": 4, "installations-performance": 4,
     }[route]
     return !requiredPermission || numericPermissionLevel >= requiredPermission
   }
