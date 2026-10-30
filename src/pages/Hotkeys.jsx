@@ -3,7 +3,8 @@ import { RefreshCw, Search, Phone, MapPin, CalendarDays, Tag } from "lucide-reac
 import { supabase } from "../lib/supabase"
 
 const PAGE_SIZE = 50
-const FIELDS = "delete_row_id,marketing_row_id,first_name,last_name,salutations,primary_phone_number,secondary_phone_number,postcode,lead_source,received_date_time,hotkey_status,disposition"\nconst APPOINTMENT_FIELDS = "appointment_row_id,marketing_row_id,appointment_date,result,sent_back,reason_for_return,product,rep_allocated"
+const FIELDS = "delete_row_id,marketing_row_id,first_name,last_name,salutations,primary_phone_number,secondary_phone_number,postcode,lead_source,received_date_time,hotkey_status,disposition"
+const APPOINTMENT_FIELDS = "appointment_row_id,marketing_row_id,appointment_date,result,sent_back,reason_for_return,product,rep_allocated"
 
 function displayName(lead) {
   return [lead.salutations, lead.first_name, lead.last_name].map(value => String(value || "").trim()).filter(Boolean).join(" ") || "Unnamed lead"
@@ -41,12 +42,34 @@ export default function Hotkeys() {
       }
       const { data, count, error: queryError } = await query
       if (queryError) throw queryError
-      setLeads(data || [])
+      const leadRows = data || []
+      setLeads(leadRows)
       setTotal(Number(count || 0))
+
+      const marketingRowIds = [...new Set(leadRows.map(lead => lead.marketing_row_id).filter(Boolean))]
+      if (marketingRowIds.length) {
+        const { data: appointmentRows, error: appointmentError } = await supabase
+          .from("appointments")
+          .select(APPOINTMENT_FIELDS)
+          .in("marketing_row_id", marketingRowIds)
+          .order("appointment_date", { ascending: false, nullsFirst: false })
+        if (appointmentError) throw appointmentError
+
+        const latestByLead = {}
+        for (const appointment of appointmentRows || []) {
+          if (!latestByLead[appointment.marketing_row_id]) {
+            latestByLead[appointment.marketing_row_id] = appointment
+          }
+        }
+        setAppointmentsByLead(latestByLead)
+      } else {
+        setAppointmentsByLead({})
+      }
     } catch (err) {
       console.error("Unable to load hotkey leads:", err)
       setError(err?.message || "Unable to load hotkey leads.")
       setLeads([])
+      setAppointmentsByLead({})
       setTotal(0)
     } finally {
       setLoading(false)
@@ -93,7 +116,7 @@ export default function Hotkeys() {
               </tr>
             </thead>
             <tbody>
-              {loading ? <tr><td colSpan={7} style={{ padding:36, textAlign:"center", color:"#64748b" }}>Loading hotkey leads…</td></tr>
+              {loading ? <tr><td colSpan={10} style={{ padding:36, textAlign:"center", color:"#64748b" }}>Loading hotkey leads…</td></tr>
                 : leads.length === 0 ? <tr><td colSpan={10} style={{ padding:36, textAlign:"center", color:"#64748b" }}>No leads found with a hotkey status.</td></tr>
                 : leads.map((lead, index) => { const appointment = appointmentsByLead[lead.marketing_row_id]; return <tr key={lead.delete_row_id || lead.marketing_row_id || index} style={{ borderTop:"1px solid #edf1f5" }}>
                   <td style={{ padding:"13px 14px", color:"#17324d", fontWeight:800 }}>{displayName(lead)}</td>
@@ -102,8 +125,11 @@ export default function Hotkeys() {
                   <td style={{ padding:"13px 14px", color:"#475569" }}>{lead.lead_source || "—"}</td>
                   <td style={{ padding:"13px 14px" }}><span style={{ display:"inline-flex", alignItems:"center", gap:6, borderRadius:999, padding:"5px 9px", background:"#eef6ff", color:"#1d4ed8", fontWeight:800, whiteSpace:"nowrap" }}><Tag size={12}/>{lead.hotkey_status}</span></td>
                   <td style={{ padding:"13px 14px", color:"#475569" }}>{lead.disposition || "—"}</td>
+                  <td style={{ padding:"13px 14px", color:"#475569", whiteSpace:"nowrap" }}>{appointment ? formatDate(appointment.appointment_date) : <span style={{ color:"#94a3b8" }}>No appointment</span>}</td>
+                  <td style={{ padding:"13px 14px", color:appointment?.result ? "#17324d" : "#94a3b8", fontWeight:appointment?.result ? 800 : 400, whiteSpace:"nowrap" }}>{appointment?.result || (appointment ? "Awaiting result" : "—")}</td>
+                  <td style={{ padding:"13px 14px", whiteSpace:"nowrap" }}>{appointment?.sent_back === "true" || appointment?.sent_back === true ? <span style={{ color:"#b45309", fontWeight:800 }}>Yes</span> : appointment ? <span style={{ color:"#64748b" }}>No</span> : "—"}</td>
                   <td style={{ padding:"13px 14px", color:"#64748b", whiteSpace:"nowrap" }}><span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><CalendarDays size={13}/>{formatDate(lead.received_date_time)}</span></td>
-                </tr>)}
+                </tr>})
             </tbody>
           </table>
         </div>
