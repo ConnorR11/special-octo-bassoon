@@ -1609,7 +1609,7 @@ function DataDashboard() {
             <div className="data-dashboard-error">{prontoSidError}</div>
           )}
 
-          <div style={{ marginTop:14, display:"grid", gridTemplateColumns:"minmax(0,1.5fr) minmax(260px,1fr)", gap:14 }}>
+          <div style={{ marginTop:14, display:"grid", gridTemplateColumns:"minmax(0,1fr)", gap:14 }}>
             <div style={{ background:"#fff",border:"1px solid #dbe3ed",borderRadius:12,padding:16 }}>
               <div className="data-dashboard-chart-title">Appointment conversion funnel</div>
               <div className="data-dashboard-chart-subtitle">Shows how total leads progress through CPS H, C, P and S. Each stage count is shown as a percentage of total leads; stage counts can overlap.</div>
@@ -1629,15 +1629,6 @@ function DataDashboard() {
               <div style={{ display:"flex",gap:14,flexWrap:"wrap",marginTop:6,color:"#64748b",fontSize:11 }}>
                 <span>H→C: {prontoDashboardStats.hToC.toFixed(1)}%</span><span>C→P: {prontoDashboardStats.cToP.toFixed(1)}%</span><span>P→S: {prontoDashboardStats.pToS.toFixed(1)}%</span><span>H→S: {prontoDashboardStats.hToS.toFixed(1)}%</span>
               </div>
-            </div>
-            <div style={{ background:"#fff",border:"1px solid #dbe3ed",borderRadius:12,padding:16 }}>
-              <div className="data-dashboard-chart-title">Appointment pipeline</div>
-              <div className="data-dashboard-chart-subtitle">Related appointment rows for the currently loaded lead list ({formatNumber(prontoLeadDetails.length)} leads).</div>
-              <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:14 }}>
-                <div style={{ background:"#f8fafc",borderRadius:8,padding:12 }}><div style={{ color:"#64748b",fontSize:11 }}>Past appointments</div><strong style={{fontSize:22}}>{formatNumber(prontoLeadDetails.flatMap(l=>l.relatedAppointments || []).filter(a=>a.appointment_date && new Date(a.appointment_date)<new Date(new Date().setHours(0,0,0,0))).length)}</strong></div>
-                <div style={{ background:"#f8fafc",borderRadius:8,padding:12 }}><div style={{ color:"#64748b",fontSize:11 }}>Today & forward</div><strong style={{fontSize:22}}>{formatNumber(prontoLeadDetails.flatMap(l=>l.relatedAppointments || []).filter(a=>a.appointment_date && new Date(a.appointment_date)>=new Date(new Date().setHours(0,0,0,0))).length)}</strong></div>
-              </div>
-              <div style={{ color:"#64748b",fontSize:11,marginTop:10 }}>Appointment totals reflect loaded leads only; full-period aggregation is a placeholder.</div>
             </div>
           </div>
           <div style={{ marginTop: 24, background: "#fff", border: "1px solid #dbe3ed", borderRadius: 12, padding: 16, minWidth: 0 }}>
