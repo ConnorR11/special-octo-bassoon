@@ -189,7 +189,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={Presentation} label="Templates" active={isActive("templates")} onClick={() => navigate("templates")}/>
             <NavItem icon={Database} label="API & Webhooks" active={isActive("integration-logs")} onClick={() => navigate("integration-logs")}/>
             <NavItem icon={Link2} label="EPVS Applications" active={isActive("epvs-applications")} onClick={() => navigate("epvs-applications")}/>
-            <NavItem icon={Tag} label="Hotkeys" active={isActive("hotkeys")} onClick={() => navigate("hotkeys")}/>
+            <NavItem icon={Tag} label="Watts Marketing" active={isActive("hotkeys")} onClick={() => navigate("hotkeys")}/>
             <NavItem icon={Settings} label="Settings" disabled/>
           </Folder>}
         </nav>
