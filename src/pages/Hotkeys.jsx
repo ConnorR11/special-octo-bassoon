@@ -166,6 +166,7 @@ export default function Hotkeys() {
             .select("received_date_time,hotkey_status")
             .not("hotkey_status", "is", null)
             .neq("hotkey_status", "")
+            .gte("received_date_time", "2026-01-01T00:00:00")
             .in("lead_source", sourceFilter ? [sourceFilter] : ["Watts Marketing", "SPF Solar"])
             .order("received_date_time", { ascending: true })
             .range(from, from + batchSize - 1)
