@@ -79,7 +79,7 @@ function formatMonth(value) {
       })
 }
 
-function DataDashboard() {
+function DataDashboard({ standalonePronto = false }) {
   const [rows, setRows] = useState([])
   const [typeNames, setTypeNames] = useState([])
   const [leadSources, setLeadSources] = useState([])
@@ -89,7 +89,7 @@ function DataDashboard() {
   const [leadSourcesLoading, setLeadSourcesLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  const [activeTab, setActiveTab] = useState("overview")
+  const [activeTab, setActiveTab] = useState(standalonePronto ? "pronto" : "overview")
   const [archivedLeads, setArchivedLeads] = useState([])
   const [archivedLeadCount, setArchivedLeadCount] = useState(0)
   const [archivedLeadsLoading, setArchivedLeadsLoading] = useState(false)
@@ -1351,7 +1351,7 @@ function DataDashboard() {
             Head Office
           </div>
 
-          <h1>Data Dashboard</h1>
+          <h1>{standalonePronto ? "Pronto" : "Data Dashboard"}</h1>
 
           <p>
             <span style={{ color: "#dc2626" }}>This is not all leads, still have to move more over</span>
@@ -1373,20 +1373,13 @@ function DataDashboard() {
         </button>
       </div>
 
-      <div className="data-dashboard-tabs">
+      {!standalonePronto && <div className="data-dashboard-tabs">
         <button
           type="button"
           className={`data-dashboard-tab ${activeTab === "overview" ? "active" : ""}`}
           onClick={() => setActiveTab("overview")}
         >
           Overview
-        </button>
-        <button
-          type="button"
-          className={`data-dashboard-tab ${activeTab === "pronto" ? "active" : ""}`}
-          onClick={() => setActiveTab("pronto")}
-        >
-          Pronto
         </button>
         <button
           type="button"
@@ -1409,7 +1402,7 @@ function DataDashboard() {
         >
           Kanban
         </button>
-      </div>
+      </div>}
 
       {error && activeTab === "overview" && (
         <div className="data-dashboard-error">
