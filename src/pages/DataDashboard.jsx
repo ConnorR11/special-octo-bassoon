@@ -1609,19 +1609,6 @@ function DataDashboard() {
             <div className="data-dashboard-error">{prontoSidError}</div>
           )}
 
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(155px,1fr))", gap:12, marginTop:18 }}>
-            {[
-              ["Total leads", formatNumber(prontoDashboardStats.leads), "Selected period"],
-              ["Booked", formatNumber(prontoDashboardStats.booked), prontoDashboardStats.bookedRate.toFixed(1) + "% of leads"],
-              ["Net value sold", "£" + formatNumber(prontoDashboardStats.netValue), "Linked sold deals"],
-              ["Value per lead", "£" + prontoDashboardStats.valuePerLead.toFixed(2), "Net value ÷ leads"],
-              ["Cost per lead", "Not configured", "Placeholder — add campaign spend"],
-              ["Cost per sale", "Not configured", "Placeholder — add campaign spend"],
-              ["Return on lead spend", "Not configured", "Placeholder — add campaign spend"]
-            ].map(([label,value,sub]) => <div key={label} style={{ background:"#fff",border:"1px solid #dbe3ed",borderRadius:12,padding:14 }}>
-              <div style={{ color:"#64748b",fontSize:12 }}>{label}</div><div style={{ fontSize:23,fontWeight:700,color:"#17365d",marginTop:5 }}>{value}</div><div style={{ color:"#64748b",fontSize:11,marginTop:4 }}>{sub}</div>
-            </div>)}
-          </div>
           <div style={{ marginTop:14, display:"grid", gridTemplateColumns:"minmax(0,1.5fr) minmax(260px,1fr)", gap:14 }}>
             <div style={{ background:"#fff",border:"1px solid #dbe3ed",borderRadius:12,padding:16 }}>
               <div className="data-dashboard-chart-title">Appointment conversion funnel</div>
