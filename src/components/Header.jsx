@@ -19,6 +19,7 @@ function Header({ page, setMobile }) {
 
   const pageTitle = {
     pronto: "Pronto",
+    hotkeys: "Hotkeys",
     "sales-performance": "Sales Performance",
     "installations-performance": "Installations Performance",
     "outstanding-solar-surveys": "Outstanding Solar Surveys",
@@ -30,6 +31,7 @@ function Header({ page, setMobile }) {
 
   const pageSubtitle = {
     pronto: "Pronto lead and campaign performance",
+    hotkeys: "Leads with a hotkey status assigned",
     "sales-performance": "Overview of your sales performance and activity",
     "installations-performance": "Jobs grouped by installation start date",
     "outstanding-solar-surveys": "Solar deals with a digital contract but no generated survey",
