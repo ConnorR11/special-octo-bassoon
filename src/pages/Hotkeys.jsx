@@ -18,7 +18,8 @@ function formatDate(value) {
 
 export default function Hotkeys() {
   const [leads, setLeads] = useState([])
-  const [total, setTotal] = useState(0)\n  const [appointmentsByLead, setAppointmentsByLead] = useState({})
+  const [total, setTotal] = useState(0)
+  const [appointmentsByLead, setAppointmentsByLead] = useState({})
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(false)
