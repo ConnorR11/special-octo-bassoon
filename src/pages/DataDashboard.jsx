@@ -1353,9 +1353,6 @@ function DataDashboard({ standalonePronto = false }) {
 
           <h1>{standalonePronto ? "Pronto" : "Data Dashboard"}</h1>
 
-          <p>
-            <span style={{ color: "#dc2626" }}>This is not all leads, still have to move more over</span>
-          </p>
         </div>
 
         <button
