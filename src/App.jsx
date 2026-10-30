@@ -272,9 +272,9 @@ function App() {
   } else if (page === "bulk-updater") {
     pageContent = <BulkUpdater/>
   } else if (page === "data-dashboard") {
-    pageContent = <DataDashboard/>
+    pageContent = <DataDashboard key="data-dashboard" />
   } else if (page === "pronto") {
-    pageContent = <DataDashboard standalonePronto/>
+    pageContent = <DataDashboard key="pronto" standalonePronto />
   } else if (page === "data-clean") {
     pageContent = <DataClean onOpenAppointment={handleAppointmentSelect}/>
   } else if (page === "solar-backend") {
