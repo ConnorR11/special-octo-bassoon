@@ -242,6 +242,56 @@ export default function SolarRework({ onSelectAppointment }) {
     setRows([])
     setError("")
     try {
+      if (activeTab === "lead-view") {
+        let leadRequest = supabase.from("leads")
+          .select("marketing_row_id,first_name,last_name,name,postcode,address,primary_phone_number,secondary_phone_number,email,lead_source,lead_type,disposition,appointment_date_time,appointment_product")
+          .eq("lead_type", "Solar")
+          .not("appointment_date_time", "is", null)
+          .neq("appointment_date_time", "")
+          .order("appointment_date_time", { ascending: false })
+          .range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE)
+        if (leadSourceFilter !== "all") leadRequest = leadRequest.eq("lead_source", leadSourceFilter)
+        const needle = normalise(query).replace(/[%_,()]/g, " ")
+        if (needle) leadRequest = leadRequest.or("first_name.ilike.%" + needle + "%,last_name.ilike.%" + needle + "%,address.ilike.%" + needle + "%,postcode.ilike.%" + needle + "%,primary_phone_number.ilike.%" + needle + "%,email.ilike.%" + needle + "%,disposition.ilike.%" + needle + "%")
+        const { data: leadData, error: leadError } = await leadRequest
+        if (requestId !== loadRequestId.current) return
+        if (leadError) throw leadError
+        const leadBatch = leadData || []
+        const marketingIds = [...new Set(leadBatch.map(lead => normalise(lead.marketing_row_id)).filter(Boolean))]
+        let appointmentByMarketingId = {}
+        if (marketingIds.length) {
+          const { data: linkedAppointments, error: appointmentError } = await supabase.from("appointments")
+            .select("appointment_row_id,marketing_row_id,appointment_date,result")
+            .eq("job_type", "Solar")
+            .in("marketing_row_id", marketingIds)
+            .order("appointment_date", { ascending: false, nullsFirst: false })
+          if (appointmentError) throw appointmentError
+          for (const appointment of linkedAppointments || []) {
+            const key = String(appointment.marketing_row_id)
+            if (!appointmentByMarketingId[key]) appointmentByMarketingId[key] = appointment
+          }
+        }
+        const appointmentIds = [...new Set(Object.values(appointmentByMarketingId).map(item => item.appointment_row_id).filter(Boolean))]
+        const sentAppointmentIds = new Set()
+        for (let index = 0; index < appointmentIds.length; index += 500) {
+          const ids = appointmentIds.slice(index, index + 500)
+          const { data: sentQuotes, error: quotesError } = await supabase.from("solar_quotes")
+            .select("appointment_row_id")
+            .in("appointment_row_id", ids)
+            .in("status", ["sent", "delivered", "viewed"])
+            .not("sent_at", "is", null)
+          if (quotesError) throw quotesError
+          for (const quote of sentQuotes || []) sentAppointmentIds.add(String(quote.appointment_row_id))
+        }
+        const leadRows = leadBatch.map(lead => {
+          const appointment = appointmentByMarketingId[String(lead.marketing_row_id)] || null
+          return { ...lead, linkedAppointment: appointment, quoteSent: Boolean(appointment && sentAppointmentIds.has(String(appointment.appointment_row_id))) }
+        })
+        setRows(leadRows.slice(0, PAGE_SIZE))
+        setHasMore(leadBatch.length > PAGE_SIZE)
+        setLoading(false)
+        return
+      }
       if (activeTab === "quotes-sent") {
         let quoteRequest = supabase.from("solar_quotes")
           .select("id,appointment_row_id,quote_ref,customer_name,customer_email,status,created_at,sent_at,last_viewed_at,view_count,expires_at")
@@ -503,6 +553,7 @@ export default function SolarRework({ onSelectAppointment }) {
         { value: "unlinked", group: null, label: "Unlinked appointments", count: tabCounts.unlinked },
         { value: "linked", group: "pm", label: "Linked appointments - Pitched", count: tabCounts.linkedPm },
         { value: "linked", group: "without-pm", label: "Linked appointments - Not Pitched", count: tabCounts.linkedNonPm },
+        { value: "lead-view", group: null, label: "Lead View" },
         { value: "quotes-sent", group: null, label: "Quotes Sent" },
       ].map((tab, index) => {
         const selected = activeTab === tab.value && (tab.value !== "linked" || linkedPmGroup === tab.group)
@@ -573,13 +624,23 @@ export default function SolarRework({ onSelectAppointment }) {
       <div style={{ overflowX: "auto" }}>
         <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 980, fontSize: 12 }}>
           <thead><tr style={{ background: "#f8fafc", textAlign: "left", color: "#475569" }}>
-            {(activeTab === "quotes-sent" ? ["Customer", "Quote Ref", "Phone", "Email", "Sent", "Last viewed", "Views"] : ["Name", ...(activeTab === "unlinked" ? ["OpenSolar ID"] : ["Design"]), ...(activeTab === "linked" ? ["Lead disposition", "Appointment result"] : []),"Date",activeTab === "unlinked" ? "Result" : "Quote readiness", ...(activeTab === "linked" ? ["Related appointment result"] : [])]).map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
+            {(activeTab === "quotes-sent" ? ["Customer", "Quote Ref", "Phone", "Email", "Sent", "Last viewed", "Views"] : activeTab === "lead-view" ? ["Lead", "Postcode", "Phone", "Email", "Appointment date & time", "Disposition", "Solar quote"] : ["Name", ...(activeTab === "unlinked" ? ["OpenSolar ID"] : ["Design"]), ...(activeTab === "linked" ? ["Lead disposition", "Appointment result"] : []),"Date",activeTab === "unlinked" ? "Result" : "Quote readiness", ...(activeTab === "linked" ? ["Related appointment result"] : [])]).map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
           </tr></thead>
           <tbody>
+            {activeTab === "lead-view" && !loading && visibleRows.length === 0 && <tr><td colSpan={7} style={{ padding: 36, textAlign: "center", color: "#64748b" }}>No solar leads with an appointment date and time match these filters.</td></tr>}
+            {activeTab === "lead-view" && visibleRows.map(row => <tr key={row.marketing_row_id || row.email || row.first_name + row.last_name} onClick={() => row.linkedAppointment && onSelectAppointment?.(row.linkedAppointment)} style={{ borderBottom: "1px solid #edf2f7", cursor: row.linkedAppointment ? "pointer" : "default" }}>
+              <td style={{ padding: "10px 13px", fontWeight: 700 }}>{[row.first_name, row.last_name].filter(Boolean).join(" ") || "Name missing"}<div style={{ ...muted, marginTop: 3 }}>{row.address || "—"}</div></td>
+              <td style={{ padding: "10px 13px" }}>{row.postcode || "—"}</td>
+              <td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{row.primary_phone_number || row.secondary_phone_number || "—"}</td>
+              <td style={{ padding: "10px 13px" }}>{row.email || "—"}</td>
+              <td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{dateTimeLabel(row.appointment_date_time)}</td>
+              <td style={{ padding: "10px 13px" }}>{row.disposition ? <span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, background: "#eff6ff", color: "#1d4ed8", fontSize: 10, fontWeight: 750 }}>{row.disposition}</span> : "—"}</td>
+              <td style={{ padding: "10px 13px" }}>{row.quoteSent ? <span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, background: "#dcfce7", color: "#166534", fontSize: 10, fontWeight: 750 }}>Sent</span> : <span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, background: "#f1f5f9", color: "#475569", fontSize: 10, fontWeight: 750 }}>Not sent</span>}</td>
+            </tr>)}
             {activeTab === "quotes-sent" && !loading && visibleRows.length === 0 && <tr><td colSpan={7} style={{ padding: 36, textAlign: "center", color: "#64748b" }}>No quotes match this filter. Customers appear here after opening their secure quote link.</td></tr>}
             {activeTab === "quotes-sent" && visibleRows.map(row => <tr key={row.id} onClick={() => { if (row.appointment_row_id) onSelectAppointment?.({ ...row, email: row.email_address || row.customer_email }) }} style={{ borderBottom: "1px solid #edf2f7", cursor: row.appointment_row_id ? "pointer" : "default" }}><td style={{ padding: "10px 13px", fontWeight: 700 }}>{normalise(row.customer_name || row.name) || "Name missing"}<div style={{ ...muted, marginTop: 3 }}>{normalise(row.address)}{row.address && row.postcode ? ", " : ""}{normalise(row.postcode)}</div></td><td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{row.quote_ref || "—"}</td><td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{row.phone_number_1 || row.secondary_phone_number ? <a href={"tel:" + encodeURIComponent(String(row.phone_number_1 || row.secondary_phone_number))} onClick={event => event.stopPropagation()} style={{ color: "#0f766e", fontWeight: 700, textDecoration: "none" }}>{row.phone_number_1 || row.secondary_phone_number}</a> : "—"}</td><td style={{ padding: "10px 13px" }}>{row.customer_email || row.email_address || "—"}</td><td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{dateTimeLabel(row.sent_at)}</td><td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{row.last_viewed_at ? dateTimeLabel(row.last_viewed_at) : <span style={{ display: "inline-flex", alignItems: "center", padding: "4px 8px", borderRadius: 999, background: "#fee2e2", color: "#b91c1c", fontSize: 10, fontWeight: 750 }}>Not Viewed Yet</span>}</td><td style={{ padding: "10px 13px", textAlign: "center" }}>{Number(row.view_count || 0)}</td></tr>)}
-            {activeTab !== "quotes-sent" && !loading && visibleRows.length === 0 && <tr><td colSpan={activeTab === "linked" ? 7 : 4} style={{ padding: 28, textAlign: "center", color: "#64748b" }}>{"No appointments match these filters."}</td></tr>}
-            {activeTab !== "quotes-sent" && visibleRows.map(row => {
+            {activeTab !== "quotes-sent" && activeTab !== "lead-view" && !loading && visibleRows.length === 0 && <tr><td colSpan={activeTab === "linked" ? 7 : 4} style={{ padding: 28, textAlign: "center", color: "#64748b" }}>{"No appointments match these filters."}</td></tr>}
+            {activeTab !== "quotes-sent" && activeTab !== "lead-view" && visibleRows.map(row => {
               const linked = row.open_solar_id !== null && row.open_solar_id !== undefined && String(row.open_solar_id).trim() !== ""
               return <tr key={row.appointment_row_id} onClick={() => onSelectAppointment?.(row)} onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelectAppointment?.(row) } }} tabIndex={0} role="button" aria-label={"Open appointment for " + (normalise(row.name) || "unnamed customer")} style={{ borderBottom: "1px solid #edf2f7", cursor: "pointer" }}>
                 <td style={{ padding: "6px 10px", maxWidth: 300 }}>
