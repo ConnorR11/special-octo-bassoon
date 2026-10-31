@@ -297,6 +297,15 @@ export default function SolarRework({ onSelectAppointment }) {
       if (queryError) throw queryError
       const batch = data || []
       const marketingIds = [...new Set(batch.map(row => row.marketing_row_id).filter(value => value !== null && value !== undefined && String(value).trim() !== ""))]
+      let leadByMarketingId = {}
+      if (activeTab === "linked" && marketingIds.length) {
+        const { data: leadRows, error: leadError } = await supabase
+          .from("leads")
+          .select("marketing_row_id,disposition")
+          .in("marketing_row_id", marketingIds)
+        if (leadError) throw leadError
+        for (const lead of leadRows || []) leadByMarketingId[String(lead.marketing_row_id)] = lead
+      }
       let relatedByMarketingId = {}
       if (activeTab === "linked" && marketingIds.length) {
         const { data: relatedAppointments, error: relatedError } = await supabase
@@ -348,6 +357,7 @@ export default function SolarRework({ onSelectAppointment }) {
 
       const rowsWithRelated = batch.map(row => ({
         ...row,
+        leadDisposition: leadByMarketingId[String(row.marketing_row_id)]?.disposition || null,
         relatedAppointments: row.marketing_row_id === null || row.marketing_row_id === undefined
           ? []
           : (relatedByMarketingId[String(row.marketing_row_id)] || []).filter(related => related.appointment_row_id !== row.appointment_row_id)
