@@ -484,18 +484,25 @@ export default function SolarRework({ onSelectAppointment }) {
 
     <div style={{ display: "flex", gap: 8, marginBottom: 12, borderBottom: "1px solid #dbe3ea", flexWrap: "wrap" }}>
       {[
-        { value: "unlinked", label: "Unlinked appointments", count: tabCounts.unlinked },
-        { value: "linked", label: "Linked appointments", count: tabCounts.linked },
-        { value: "quotes-sent", label: "Quotes Sent" },
-      ].map(tab => <button key={tab.value} onClick={() => { if (tab.value !== activeTab) { setRows([]); setLoading(true); setActiveTab(tab.value); setPage(0) } }} style={{ border: "1px solid " + (activeTab === tab.value ? "#0f766e" : "#d7dee5"), borderBottom: activeTab === tab.value ? "3px solid #0f766e" : "1px solid #d7dee5", borderRadius: "8px 8px 0 0", padding: "10px 14px", background: activeTab === tab.value ? "#f0fdfa" : "#fff", color: activeTab === tab.value ? "#0f766e" : "#475569", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{tab.label}{tab.count !== undefined && <span style={{ marginLeft: 7, display: "inline-flex", minWidth: 20, height: 20, alignItems: "center", justifyContent: "center", padding: "0 5px", borderRadius: 999, background: activeTab === tab.value ? "#ccfbf1" : "#eef2f6", color: activeTab === tab.value ? "#0f766e" : "#475569", fontSize: 10, fontWeight: 800 }}>{tab.count === null ? "…" : tab.count.toLocaleString("en-GB")}</span>}</button>)}
+        { value: "unlinked", group: null, label: "Unlinked appointments", count: tabCounts.unlinked },
+        { value: "linked", group: "without-pm", label: 'Linked appointments – Results without "PM"', count: tabCounts.linked },
+        { value: "linked", group: "pm", label: 'Linked appointments – Results including "PM"', count: tabCounts.linked },
+        { value: "quotes-sent", group: null, label: "Quotes Sent" },
+      ].map((tab, index) => {
+        const selected = activeTab === tab.value && (tab.value !== "linked" || linkedPmGroup === tab.group)
+        return <button key={tab.value + (tab.group || "")} onClick={() => {
+          if (tab.value === "linked") setLinkedPmGroup(tab.group)
+          if (tab.value !== activeTab || (tab.value === "linked" && linkedPmGroup !== tab.group)) {
+            setRows([])
+            setLoading(true)
+            setActiveTab(tab.value)
+            setPage(0)
+          }
+        }} style={{ border: "1px solid " + (selected ? "#0f766e" : "#d7dee5"), borderBottom: selected ? "3px solid #0f766e" : "1px solid #d7dee5", borderRadius: "8px 8px 0 0", padding: "10px 14px", background: selected ? "#f0fdfa" : "#fff", color: selected ? "#0f766e" : "#475569", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+          {tab.label}{tab.count !== undefined && <span style={{ marginLeft: 7, display: "inline-flex", minWidth: 20, height: 20, alignItems: "center", justifyContent: "center", padding: "0 5px", borderRadius: 999, background: selected ? "#ccfbf1" : "#eef2f6", color: selected ? "#0f766e" : "#475569", fontSize: 10, fontWeight: 800 }}>{tab.count === null ? "…" : tab.count.toLocaleString("en-GB")}</span>}
+        </button>
+      })}
     </div>
-
-    {activeTab === "linked" && <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-      {[
-        { value: "without-pm", label: 'Results without "PM"' },
-        { value: "pm", label: 'Results including "PM"' },
-      ].map(option => <button key={option.value} onClick={() => { setLinkedPmGroup(option.value); setPage(0) }} style={{ border: "1px solid " + (linkedPmGroup === option.value ? "#0f766e" : "#d7dee5"), borderBottom: linkedPmGroup === option.value ? "3px solid #0f766e" : "1px solid #d7dee5", borderRadius: 8, padding: "9px 14px", background: linkedPmGroup === option.value ? "#f0fdfa" : "#fff", color: linkedPmGroup === option.value ? "#0f766e" : "#475569", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{option.label}</button>)}
-    </div>}
 
     <div style={{ ...cardStyle, padding: 13, marginBottom: 14 }}>
       <div style={{ display: "grid", gridTemplateColumns: activeTab === "linked" ? "minmax(200px,2fr) repeat(6,minmax(120px,1fr))" : activeTab === "unlinked" ? "minmax(200px,2fr) repeat(4,minmax(125px,1fr))" : activeTab === "quotes-sent" ? "minmax(220px,2fr) minmax(170px,1fr)" : "minmax(220px,2fr)", gap: 10, alignItems: "center" }}>
