@@ -338,7 +338,9 @@ export default function SolarRework({ onSelectAppointment }) {
         matchQueries.push(supabase.from("appointments").select("appointment_row_id,marketing_row_id,email_address").in("marketing_row_id", [...marketingIdSet]))
       }
       if (emailSet.size) {
-        matchQueries.push(supabase.from("appointments").select("appointment_row_id,marketing_row_id,email_address").in("email_address", [...emailSet]))
+        for (const email of emailSet) {
+          matchQueries.push(supabase.from("appointments").select("appointment_row_id,marketing_row_id,email_address").ilike("email_address", email))
+        }
       }
       if (matchQueries.length) {
         const matchResults = await Promise.all(matchQueries)
