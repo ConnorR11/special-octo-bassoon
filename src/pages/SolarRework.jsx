@@ -159,6 +159,7 @@ export default function SolarRework({ onSelectAppointment }) {
   const [unlinkedSortOrder, setUnlinkedSortOrder] = useState("desc")
   const [linkedSortOrder, setLinkedSortOrder] = useState("desc")
   const [linkedSoldFilter, setLinkedSoldFilter] = useState("all")
+  const [linkedPmGroup, setLinkedPmGroup] = useState("without-pm")
   const [resultFilter, setResultFilter] = useState("all")
   const [leadSourceFilter, setLeadSourceFilter] = useState("all")
   const [leadSourceOptions, setLeadSourceOptions] = useState([])
@@ -281,6 +282,7 @@ export default function SolarRework({ onSelectAppointment }) {
         .order("appointment_row_id", { ascending: false })
       if (yearFilter !== "all") request = request.gte("appointment_date", yearFilter + "-01-01").lt("appointment_date", (Number(yearFilter) + 1) + "-01-01")
       if (resultFilter !== "all") request = request.eq("result", resultFilter)
+      if (activeTab === "linked") request = linkedPmGroup === "pm" ? request.ilike("result", "%PM%") : request.not("result", "ilike", "%PM%")
       if (leadSourceFilter !== "all") request = request.eq("lead_source", leadSourceFilter)
       if (activeTab === "unlinked") {
         request = request.is("open_solar_id", null)
@@ -390,8 +392,8 @@ export default function SolarRework({ onSelectAppointment }) {
   }
 
 
-  useEffect(() => { loadRows(page) }, [page, query, activeTab, yearFilter, unlinkedSortOrder, linkedSortOrder, linkedSoldFilter, linkedReadinessFilter, resultFilter, leadSourceFilter, quoteViewedFilter])
-  useEffect(() => { setPage(0) }, [query, activeTab, yearFilter, unlinkedSortOrder, linkedSortOrder, linkedSoldFilter, linkedReadinessFilter, resultFilter, leadSourceFilter, quoteViewedFilter])
+  useEffect(() => { loadRows(page) }, [page, query, activeTab, yearFilter, unlinkedSortOrder, linkedSortOrder, linkedSoldFilter, linkedReadinessFilter, linkedPmGroup, resultFilter, leadSourceFilter, quoteViewedFilter])
+  useEffect(() => { setPage(0) }, [query, activeTab, yearFilter, unlinkedSortOrder, linkedSortOrder, linkedSoldFilter, linkedReadinessFilter, linkedPmGroup, resultFilter, leadSourceFilter, quoteViewedFilter])
 
   // Load tab totals independently from the table request so badge counts never block or reset the visible list.
   useEffect(() => {
@@ -487,6 +489,13 @@ export default function SolarRework({ onSelectAppointment }) {
         { value: "quotes-sent", label: "Quotes Sent" },
       ].map(tab => <button key={tab.value} onClick={() => { if (tab.value !== activeTab) { setRows([]); setLoading(true); setActiveTab(tab.value); setPage(0) } }} style={{ border: "1px solid " + (activeTab === tab.value ? "#0f766e" : "#d7dee5"), borderBottom: activeTab === tab.value ? "3px solid #0f766e" : "1px solid #d7dee5", borderRadius: "8px 8px 0 0", padding: "10px 14px", background: activeTab === tab.value ? "#f0fdfa" : "#fff", color: activeTab === tab.value ? "#0f766e" : "#475569", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{tab.label}{tab.count !== undefined && <span style={{ marginLeft: 7, display: "inline-flex", minWidth: 20, height: 20, alignItems: "center", justifyContent: "center", padding: "0 5px", borderRadius: 999, background: activeTab === tab.value ? "#ccfbf1" : "#eef2f6", color: activeTab === tab.value ? "#0f766e" : "#475569", fontSize: 10, fontWeight: 800 }}>{tab.count === null ? "…" : tab.count.toLocaleString("en-GB")}</span>}</button>)}
     </div>
+
+    {activeTab === "linked" && <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+      {[
+        { value: "without-pm", label: 'Results without "PM"' },
+        { value: "pm", label: 'Results including "PM"' },
+      ].map(option => <button key={option.value} onClick={() => { setLinkedPmGroup(option.value); setPage(0) }} style={{ border: "1px solid " + (linkedPmGroup === option.value ? "#0f766e" : "#d7dee5"), borderBottom: linkedPmGroup === option.value ? "3px solid #0f766e" : "1px solid #d7dee5", borderRadius: 8, padding: "9px 14px", background: linkedPmGroup === option.value ? "#f0fdfa" : "#fff", color: linkedPmGroup === option.value ? "#0f766e" : "#475569", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{option.label}</button>)}
+    </div>}
 
     <div style={{ ...cardStyle, padding: 13, marginBottom: 14 }}>
       <div style={{ display: "grid", gridTemplateColumns: activeTab === "linked" ? "minmax(200px,2fr) repeat(6,minmax(120px,1fr))" : activeTab === "unlinked" ? "minmax(200px,2fr) repeat(4,minmax(125px,1fr))" : activeTab === "quotes-sent" ? "minmax(220px,2fr) minmax(170px,1fr)" : "minmax(220px,2fr)", gap: 10, alignItems: "center" }}>
