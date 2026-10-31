@@ -356,6 +356,9 @@ export default function SolarRework({ onSelectAppointment }) {
         const hasRelatedDeal = Boolean(email && dealEmails.has(email))
         return normalise(row.job_type).toLowerCase() === "solar" &&
           normaliseResult(row.result) !== "SOLD" &&
+          // A linked appointment is also excluded when any other appointment sharing
+          // its marketing row ID has already been marked SOLD.
+          !(activeTab === "linked" && (row.relatedAppointments || []).some(related => normaliseResult(related.result) === "SOLD")) &&
           (activeTab !== "unlinked" ? Boolean(normalise(row.open_solar_id)) : !normalise(row.open_solar_id)) &&
           !hasRelatedDeal &&
           !(activeTab === "linked" && (quoteSentAppointmentIds.has(String(row.appointment_row_id)) || (row.marketing_row_id !== null && row.marketing_row_id !== undefined && quoteSentMarketingIds.has(String(row.marketing_row_id)))))
