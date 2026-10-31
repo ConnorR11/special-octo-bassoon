@@ -37,7 +37,7 @@ function getQuoteData(appointment) {
   }, 0)
   const generation = Number(results.generation || results.annualGeneration || results.annual_generation || epvs.generation || epvs.annualGeneration || epvs.annual_generation || epvs.estimatedGeneration || epvs.estimated_generation || epvs.annualProduction || epvs.annual_production || openSolar.annualGeneration || openSolar.annual_generation || derivedGeneration || 0)
   const isTradeLead = String(appointment?.is_trade_lead || "").trim().toUpperCase() === "TRUE"
-  const cashPrice = Number(isTradeLead ? (appointment?.price_left || 0) : (epvs.totalContractValue || epvs.totalPrice || appointment?.contract_value || appointment?.price_left || 0))
+  // The current EPVS system cost is the authoritative quote price. Older saved totalContractValue values can be stale after the system cost is edited.\n  const cashPrice = Number(isTradeLead ? (appointment?.price_left || 0) : (epvs.systemCost ?? epvs.totalContractValue ?? epvs.totalPrice ?? appointment?.contract_value ?? appointment?.price_left ?? 0))
   const paymentMethod = String(epvs.paymentMethod || calculation?.paymentMethod || calculation?.payment_method || appointment?.payment_method || "").trim()
   const termYears = Number(epvs.financeTerm ?? calculation?.financeTerm ?? appointment?.finance_term ?? 0)
   const rate = Number(epvs.financeRate ?? calculation?.financeRate ?? appointment?.finance_rate ?? 0)
