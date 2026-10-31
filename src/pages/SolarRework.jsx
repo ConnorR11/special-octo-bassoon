@@ -244,7 +244,7 @@ export default function SolarRework({ onSelectAppointment }) {
     try {
       if (activeTab === "lead-view") {
         let leadRequest = supabase.from("leads")
-          .select("marketing_row_id,first_name,last_name,name,postcode,address,primary_phone_number,secondary_phone_number,email,lead_source,lead_type,disposition,appointment_date_time,appointment_product")
+          .select("marketing_row_id,first_name,last_name,postcode,address,primary_phone_number,secondary_phone_number,email,lead_source,lead_type,disposition,appointment_date_time,appointment_product")
           .eq("lead_type", "Solar")
           .not("appointment_date_time", "is", null)
           .neq("appointment_date_time", "")
@@ -259,6 +259,7 @@ export default function SolarRework({ onSelectAppointment }) {
         const leadBatch = leadData || []
         const marketingIds = [...new Set(leadBatch.map(lead => normalise(lead.marketing_row_id)).filter(Boolean))]
         let appointmentByMarketingId = {}
+        let appointmentMarketingById = {}
         if (marketingIds.length) {
           const { data: linkedAppointments, error: appointmentError } = await supabase.from("appointments")
             .select("appointment_row_id,marketing_row_id,appointment_date,result")
@@ -269,10 +270,11 @@ export default function SolarRework({ onSelectAppointment }) {
           for (const appointment of linkedAppointments || []) {
             const key = String(appointment.marketing_row_id)
             if (!appointmentByMarketingId[key]) appointmentByMarketingId[key] = appointment
+            appointmentMarketingById[String(appointment.appointment_row_id)] = key
           }
         }
-        const appointmentIds = [...new Set(Object.values(appointmentByMarketingId).map(item => item.appointment_row_id).filter(Boolean))]
-        const sentAppointmentIds = new Set()
+        const appointmentIds = Object.keys(appointmentMarketingById)
+        const sentMarketingIds = new Set()
         for (let index = 0; index < appointmentIds.length; index += 500) {
           const ids = appointmentIds.slice(index, index + 500)
           const { data: sentQuotes, error: quotesError } = await supabase.from("solar_quotes")
@@ -281,11 +283,15 @@ export default function SolarRework({ onSelectAppointment }) {
             .in("status", ["sent", "delivered", "viewed"])
             .not("sent_at", "is", null)
           if (quotesError) throw quotesError
-          for (const quote of sentQuotes || []) sentAppointmentIds.add(String(quote.appointment_row_id))
+          for (const quote of sentQuotes || []) {
+            const marketingId = appointmentMarketingById[String(quote.appointment_row_id)]
+            if (marketingId) sentMarketingIds.add(marketingId)
+          }
         }
         const leadRows = leadBatch.map(lead => {
-          const appointment = appointmentByMarketingId[String(lead.marketing_row_id)] || null
-          return { ...lead, linkedAppointment: appointment, quoteSent: Boolean(appointment && sentAppointmentIds.has(String(appointment.appointment_row_id))) }
+          const marketingId = String(lead.marketing_row_id)
+          const appointment = appointmentByMarketingId[marketingId] || null
+          return { ...lead, linkedAppointment: appointment, quoteSent: sentMarketingIds.has(marketingId) }
         })
         setRows(leadRows.slice(0, PAGE_SIZE))
         setHasMore(leadBatch.length > PAGE_SIZE)
