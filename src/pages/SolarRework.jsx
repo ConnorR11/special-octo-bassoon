@@ -326,6 +326,43 @@ export default function SolarRework({ onSelectAppointment }) {
             .map(item => String(item.marketing_row_id)))
         }
       }
+      // Resolve every appointment connected to these customers by marketing ID or email,
+      // then check whether any of those appointments already has a deal.
+      const marketingIdSet = new Set(batch.map(row => normalise(row.marketing_row_id)).filter(Boolean))
+      const emailSet = new Set(batch.map(row => normalise(row.email_address).toLowerCase()).filter(Boolean))
+      const relatedAppointmentIds = new Set(batch.map(row => normalise(row.appointment_row_id)).filter(Boolean))
+      const matchQueries = []
+      if (marketingIdSet.size) {
+        matchQueries.push(supabase.from("appointments").select("appointment_row_id").in("marketing_row_id", [...marketingIdSet]))
+      }
+      if (emailSet.size) {
+        matchQueries.push(supabase.from("appointments").select("appointment_row_id").in("email_address", [...emailSet]))
+      }
+      if (matchQueries.length) {
+        const matchResults = await Promise.all(matchQueries)
+        for (const result of matchResults) {
+          if (result.error) throw result.error
+          for (const match of result.data || []) {
+            const id = normalise(match.appointment_row_id)
+            if (id) relatedAppointmentIds.add(id)
+          }
+        }
+      }
+      const dealAppointmentIds = [...relatedAppointmentIds]
+      const dealMatches = new Set()
+      for (let index = 0; index < dealAppointmentIds.length; index += 500) {
+        const idBatch = dealAppointmentIds.slice(index, index + 500)
+        const { data: deals, error: dealsError } = await supabase
+          .from("deals")
+          .select("appointment_row_id")
+          .in("appointment_row_id", idBatch)
+        if (dealsError) throw dealsError
+        for (const deal of deals || []) {
+          const id = normalise(deal.appointment_row_id)
+          if (id) dealMatches.add(id)
+        }
+      }
+
       const rowsWithRelated = batch.map(row => ({
         ...row,
         relatedAppointments: row.marketing_row_id === null || row.marketing_row_id === undefined
@@ -333,7 +370,20 @@ export default function SolarRework({ onSelectAppointment }) {
           : (relatedByMarketingId[String(row.marketing_row_id)] || []).filter(related => related.appointment_row_id !== row.appointment_row_id)
       }))
 
-      const eligibleBatch = rowsWithRelated.filter(row => normalise(row.job_type).toLowerCase() === "solar" && normaliseResult(row.result) !== "SOLD" && (activeTab !== "unlinked" ? Boolean(normalise(row.open_solar_id)) : !normalise(row.open_solar_id)) && !(activeTab === "linked" && (quoteSentAppointmentIds.has(String(row.appointment_row_id)) || (row.marketing_row_id !== null && row.marketing_row_id !== undefined && quoteSentMarketingIds.has(String(row.marketing_row_id))))))
+      const eligibleBatch = rowsWithRelated.filter(row => {
+        const customerEmail = normalise(row.email_address).toLowerCase()
+        const matchingAppointmentIds = new Set([
+          normalise(row.appointment_row_id),
+          ...(row.relatedAppointments || []).map(related => normalise(related.appointment_row_id)),
+        ].filter(Boolean))
+        const hasRelatedDeal = [...matchingAppointmentIds].some(id => dealMatches.has(id)) ||
+          (customerEmail && emailSet.has(customerEmail) && [...dealMatches].some(id => relatedAppointmentIds.has(id)))
+        return normalise(row.job_type).toLowerCase() === "solar" &&
+          normaliseResult(row.result) !== "SOLD" &&
+          (activeTab !== "unlinked" ? Boolean(normalise(row.open_solar_id)) : !normalise(row.open_solar_id)) &&
+          !hasRelatedDeal &&
+          !(activeTab === "linked" && (quoteSentAppointmentIds.has(String(row.appointment_row_id)) || (row.marketing_row_id !== null && row.marketing_row_id !== undefined && quoteSentMarketingIds.has(String(row.marketing_row_id)))))
+      })
       const soldFiltered = activeTab === "linked" && linkedSoldFilter !== "all"
         ? eligibleBatch.filter(row => {
             const sold = (row.relatedAppointments || []).some(related => normaliseResult(related.result) === "SOLD")
