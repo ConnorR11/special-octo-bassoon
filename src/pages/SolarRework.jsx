@@ -224,7 +224,7 @@ export default function SolarRework({ onSelectAppointment }) {
     async function loadLeadSources() {
       if (!supabase) return
       try {
-        const { data, error } = await supabase.from("appointments").select("lead_source").not("lead_source", "is", null).neq("lead_source", "").order("lead_source").limit(5000)
+        const { data, error } = await supabase.from("appointments").select("lead_source").eq("job_type", "Solar").not("open_solar_id", "is", null).not("lead_source", "is", null).neq("lead_source", "").order("lead_source").limit(5000)
         if (error) throw error
         const values = [...new Set((data || []).map(row => normalise(row.lead_source)).filter(Boolean))].sort((a, b) => a.localeCompare(b))
         if (!cancelled) setLeadSourceOptions(values)
