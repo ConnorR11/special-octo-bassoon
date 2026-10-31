@@ -326,68 +326,27 @@ export default function SolarRework({ onSelectAppointment }) {
             .map(item => String(item.marketing_row_id)))
         }
       }
-      // Resolve every appointment connected to these customers by marketing ID or email,
-      // then check whether any of those appointments already has a deal.
-      const marketingIdSet = new Set(batch.map(row => normalise(row.marketing_row_id)).filter(Boolean))
+      // Match sold deals directly against the customer email on the appointment.
+      // This avoids scanning related appointments and joining their IDs.
       const emailSet = new Set(batch.map(row => normalise(row.email_address).toLowerCase()).filter(Boolean))
-      const appointmentIdsByMarketing = new Map()
-      const appointmentIdsByEmail = new Map()
-      const directAppointmentIds = new Set(batch.map(row => normalise(row.appointment_row_id)).filter(Boolean))
-      const matchQueries = []
-      if (marketingIdSet.size) {
-        matchQueries.push(supabase.from("appointments").select("appointment_row_id,marketing_row_id,email_address").in("marketing_row_id", [...marketingIdSet]))
-      }
-      if (emailSet.size) {
-        for (const email of emailSet) {
-          matchQueries.push(supabase.from("appointments").select("appointment_row_id,marketing_row_id,email_address").ilike("email_address", email))
-        }
-      }
-      if (matchQueries.length) {
-        const matchResults = await Promise.all(matchQueries)
-        for (const result of matchResults) {
-          if (result.error) throw result.error
-          for (const match of result.data || []) {
-            const id = normalise(match.appointment_row_id)
-            const marketingId = normalise(match.marketing_row_id)
-            const email = normalise(match.email_address).toLowerCase()
-            if (id && marketingIdSet.has(marketingId)) {
-              if (!appointmentIdsByMarketing.has(marketingId)) appointmentIdsByMarketing.set(marketingId, new Set())
-              appointmentIdsByMarketing.get(marketingId).add(id)
-            }
-            if (id && emailSet.has(email)) {
-              if (!appointmentIdsByEmail.has(email)) appointmentIdsByEmail.set(email, new Set())
-              appointmentIdsByEmail.get(email).add(id)
-            }
-          }
-        }
-      }
-      const allRelatedAppointmentIds = new Set(directAppointmentIds)
-      for (const ids of appointmentIdsByMarketing.values()) for (const id of ids) allRelatedAppointmentIds.add(id)
-      for (const ids of appointmentIdsByEmail.values()) for (const id of ids) allRelatedAppointmentIds.add(id)
-      const dealMatches = new Set()
-      const dealAppointmentIds = [...allRelatedAppointmentIds]
-      for (let index = 0; index < dealAppointmentIds.length; index += 500) {
-        const idBatch = dealAppointmentIds.slice(index, index + 500)
+      const dealEmails = new Set()
+      const emails = [...emailSet]
+      for (let index = 0; index < emails.length; index += 500) {
+        const emailBatch = emails.slice(index, index + 500)
         const { data: deals, error: dealsError } = await supabase
           .from("deals")
-          .select("appointment_row_id")
-          .in("appointment_row_id", idBatch)
+          .select("email")
+          .in("email", emailBatch)
         if (dealsError) throw dealsError
         for (const deal of deals || []) {
-          const id = normalise(deal.appointment_row_id)
-          if (id) dealMatches.add(id)
+          const email = normalise(deal.email).toLowerCase()
+          if (email) dealEmails.add(email)
         }
       }
 
       const eligibleBatch = rowsWithRelated.filter(row => {
-        const marketingId = normalise(row.marketing_row_id)
         const email = normalise(row.email_address).toLowerCase()
-        const matchingAppointmentIds = new Set([
-          normalise(row.appointment_row_id),
-          ...(appointmentIdsByMarketing.get(marketingId) || []),
-          ...(appointmentIdsByEmail.get(email) || []),
-        ].filter(Boolean))
-        const hasRelatedDeal = [...matchingAppointmentIds].some(id => dealMatches.has(id))
+        const hasRelatedDeal = Boolean(email && dealEmails.has(email))
         return normalise(row.job_type).toLowerCase() === "solar" &&
           normaliseResult(row.result) !== "SOLD" &&
           (activeTab !== "unlinked" ? Boolean(normalise(row.open_solar_id)) : !normalise(row.open_solar_id)) &&
