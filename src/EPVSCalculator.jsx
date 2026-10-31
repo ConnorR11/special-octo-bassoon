@@ -583,6 +583,7 @@ export default function EPVSCalculator({
   const [loadingFluxRates, setLoadingFluxRates] = useState(false)
   const [fluxRateError, setFluxRateError] = useState("")
   const [savingCalculation, setSavingCalculation] = useState(false)
+  const saveInFlightRef = useRef(false)
   const [saveMessage, setSaveMessage] = useState("")
   const [saveError, setSaveError] = useState("")
   const [financeProducts, setFinanceProducts] = useState([])
@@ -1622,6 +1623,9 @@ export default function EPVSCalculator({
   ])
 
   const saveCalculation = async () => {
+    // A ref prevents rapid repeat clicks before React has rendered the disabled state.
+    if (saveInFlightRef.current) return
+
     if (!hasRequiredEnergyInputs) {
       setSaveError(
         "Please enter annual electricity consumption, current import rate, current export rate and current standing charge before saving the calculation."
@@ -1629,13 +1633,19 @@ export default function EPVSCalculator({
       return
     }
 
-    const appointmentRowId = appointment?.appointment_row_id
+    const appointmentRowId = String(appointment?.appointment_row_id || "").trim()
 
     if (!appointmentRowId) {
       setSaveError("This appointment does not have an appointment ID, so the calculation cannot be saved.")
       return
     }
 
+    if (!supabase) {
+      setSaveError("The database connection is unavailable. Please refresh and try again.")
+      return
+    }
+
+    saveInFlightRef.current = true
     setSavingCalculation(true)
     setSaveMessage("")
     setSaveError("")
@@ -1649,18 +1659,24 @@ export default function EPVSCalculator({
         thirtyYearProjection,
       }
 
-      const { error } = await supabase
+      // Request the updated row back so a zero-row update cannot be shown as saved.
+      const { data: savedRows, error } = await supabase
         .from("appointments")
         .update({ epvs_calculation: payload })
         .eq("appointment_row_id", appointmentRowId)
+        .select("appointment_row_id")
 
       if (error) throw error
+      if (!Array.isArray(savedRows) || savedRows.length !== 1) {
+        throw new Error("The appointment was not updated. Please refresh the appointment and try again.")
+      }
 
-      setSaveMessage(`Saved ${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`)
+      setSaveMessage(`Saved successfully at ${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`)
     } catch (err) {
       console.error("Error saving EPVS calculation:", err)
-      setSaveError(err?.message || "Unable to save EPVS calculation.")
+      setSaveError(err?.message || "Unable to save EPVS calculation. Please try again.")
     } finally {
+      saveInFlightRef.current = false
       setSavingCalculation(false)
     }
   }
