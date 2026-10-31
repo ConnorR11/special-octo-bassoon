@@ -148,7 +148,7 @@ export default function SolarRework({ onSelectAppointment }) {
   const [rows, setRows] = useState([])
   const [totalCount, setTotalCount] = useState(0)
   const [linkedCount, setLinkedCount] = useState(0)
-  const [tabCounts, setTabCounts] = useState({ unlinked: null, linked: null })
+  const [tabCounts, setTabCounts] = useState({ unlinked: null, linkedPm: null, linkedNonPm: null })
   const [hasMore, setHasMore] = useState(false)
   const [savingId, setSavingId] = useState(null)
   const [rowEdits, setRowEdits] = useState({})
@@ -416,13 +416,19 @@ export default function SolarRework({ onSelectAppointment }) {
           if (needle) request = request.or("name.ilike.%" + needle + "%,postcode.ilike.%" + needle + "%,address.ilike.%" + needle + "%,phone_number_1.ilike.%" + needle + "%,secondary_phone_number.ilike.%" + needle + "%,email_address.ilike.%" + needle + "%,product.ilike.%" + needle + "%,result.ilike.%" + needle + "%")
           return request
         }
-        const [unlinkedResult, linkedResult] = await Promise.all([
+        const [unlinkedResult, linkedPmResult, linkedNonPmResult] = await Promise.all([
           base().is("open_solar_id", null),
-          base().not("open_solar_id", "is", null)
+          base().not("open_solar_id", "is", null).ilike("result", "%PM%"),
+          base().not("open_solar_id", "is", null).not("result", "ilike", "%PM%")
         ])
         if (unlinkedResult.error) throw unlinkedResult.error
-        if (linkedResult.error) throw linkedResult.error
-        if (!cancelled) setTabCounts({ unlinked: unlinkedResult.count ?? 0, linked: linkedResult.count ?? 0 })
+        if (linkedPmResult.error) throw linkedPmResult.error
+        if (linkedNonPmResult.error) throw linkedNonPmResult.error
+        if (!cancelled) setTabCounts({
+          unlinked: unlinkedResult.count ?? 0,
+          linkedPm: linkedPmResult.count ?? 0,
+          linkedNonPm: linkedNonPmResult.count ?? 0
+        })
       } catch (err) {
         console.warn("Solar Rework tab totals could not be loaded:", err)
       }
@@ -485,8 +491,8 @@ export default function SolarRework({ onSelectAppointment }) {
     <div style={{ display: "flex", gap: 8, marginBottom: 12, borderBottom: "1px solid #dbe3ea", flexWrap: "wrap" }}>
       {[
         { value: "unlinked", group: null, label: "Unlinked appointments", count: tabCounts.unlinked },
-        { value: "linked", group: "pm", label: "Linked appointments - Pitched", count: tabCounts.linked },
-        { value: "linked", group: "without-pm", label: "Linked appointments - Not Pitched", count: tabCounts.linked },
+        { value: "linked", group: "pm", label: "Linked appointments - Pitched", count: tabCounts.linkedPm },
+        { value: "linked", group: "without-pm", label: "Linked appointments - Not Pitched", count: tabCounts.linkedNonPm },
         { value: "quotes-sent", group: null, label: "Quotes Sent" },
       ].map((tab, index) => {
         const selected = activeTab === tab.value && (tab.value !== "linked" || linkedPmGroup === tab.group)
