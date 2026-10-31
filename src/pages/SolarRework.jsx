@@ -485,8 +485,8 @@ export default function SolarRework({ onSelectAppointment }) {
     <div style={{ display: "flex", gap: 8, marginBottom: 12, borderBottom: "1px solid #dbe3ea", flexWrap: "wrap" }}>
       {[
         { value: "unlinked", group: null, label: "Unlinked appointments", count: tabCounts.unlinked },
-        { value: "linked", group: "without-pm", label: 'Linked appointments – Results without "PM"', count: tabCounts.linked },
-        { value: "linked", group: "pm", label: 'Linked appointments – Results including "PM"', count: tabCounts.linked },
+        { value: "linked", group: "pm", label: "Linked appointments - Pitched", count: tabCounts.linked },
+        { value: "linked", group: "without-pm", label: "Linked appointments - Not Pitched", count: tabCounts.linked },
         { value: "quotes-sent", group: null, label: "Quotes Sent" },
       ].map((tab, index) => {
         const selected = activeTab === tab.value && (tab.value !== "linked" || linkedPmGroup === tab.group)
