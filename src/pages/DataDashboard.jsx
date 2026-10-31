@@ -1634,16 +1634,6 @@ function DataDashboard({ standalonePronto = false }) {
             </ResponsiveContainer>}
           </div>
 
-          <div style={{ marginTop:14,background:"#fff",border:"1px solid #dbe3ed",borderRadius:12,padding:16 }}>
-            <div className="data-dashboard-chart-title">Sales value by month</div>
-            <div className="data-dashboard-chart-subtitle">Monthly sales value needs a confirmed deal close-date field. Until then, the monthly chart is a placeholder.</div>
-            <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginTop:12 }}>
-              <div style={{ border:"1px dashed #cbd5e1",borderRadius:8,padding:12,color:"#64748b" }}>Monthly net value sold<br/><strong>Awaiting deal close date</strong></div>
-              <div style={{ border:"1px dashed #cbd5e1",borderRadius:8,padding:12,color:"#64748b" }}>Average value per sold deal<br/><strong>Awaiting reliable deal count</strong></div>
-              <div style={{ border:"1px dashed #cbd5e1",borderRadius:8,padding:12,color:"#64748b" }}>Sold appointments without linked deal<br/><strong>Reconciliation metric to be added</strong></div>
-            </div>
-          </div>
-
           <div className="pronto-table-card">
             {prontoSidLoading ? (
               <div className="pronto-empty">Loading Pronto SID data…</div>
