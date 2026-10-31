@@ -262,7 +262,7 @@ export default function SolarRework({ onSelectAppointment }) {
         let appointmentMarketingById = {}
         if (marketingIds.length) {
           const { data: linkedAppointments, error: appointmentError } = await supabase.from("appointments")
-            .select("appointment_row_id,marketing_row_id,appointment_date,result")
+            .select("appointment_row_id,marketing_row_id,appointment_date,result,name")
             .eq("job_type", "Solar")
             .in("marketing_row_id", marketingIds)
             .order("appointment_date", { ascending: false, nullsFirst: false })
@@ -635,11 +635,11 @@ export default function SolarRework({ onSelectAppointment }) {
           <tbody>
             {activeTab === "lead-view" && !loading && visibleRows.length === 0 && <tr><td colSpan={7} style={{ padding: 36, textAlign: "center", color: "#64748b" }}>No solar leads with an appointment date and time match these filters.</td></tr>}
             {activeTab === "lead-view" && visibleRows.map(row => <tr key={row.marketing_row_id || row.email || row.first_name + row.last_name} onClick={() => row.linkedAppointment && onSelectAppointment?.(row.linkedAppointment)} style={{ borderBottom: "1px solid #edf2f7", cursor: row.linkedAppointment ? "pointer" : "default" }}>
-              <td style={{ padding: "10px 13px", fontWeight: 700 }}>{[row.first_name, row.last_name].filter(Boolean).join(" ") || "Name missing"}<div style={{ ...muted, marginTop: 3 }}>{row.address || "—"}</div></td>
+              <td style={{ padding: "10px 13px", fontWeight: 700 }}>{[row.first_name, row.last_name].filter(Boolean).join(" ") || row.linkedAppointment?.name || "Name missing"}<div style={{ ...muted, marginTop: 3 }}>{row.address || "—"}</div></td>
               <td style={{ padding: "10px 13px" }}>{row.postcode || "—"}</td>
               <td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{row.primary_phone_number || row.secondary_phone_number || "—"}</td>
               <td style={{ padding: "10px 13px" }}>{row.email || "—"}</td>
-              <td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{dateTimeLabel(row.appointment_date_time)}</td>
+              <td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{dateTimeLabel(row.appointment_date_time) || dateTimeLabel(row.linkedAppointment?.appointment_date)}</td>
               <td style={{ padding: "10px 13px" }}>{row.disposition ? <span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, background: "#eff6ff", color: "#1d4ed8", fontSize: 10, fontWeight: 750 }}>{row.disposition}</span> : "—"}</td>
               <td style={{ padding: "10px 13px" }}>{row.quoteSent ? <span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, background: "#dcfce7", color: "#166534", fontSize: 10, fontWeight: 750 }}>Sent</span> : <span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, background: "#f1f5f9", color: "#475569", fontSize: 10, fontWeight: 750 }}>Not sent</span>}</td>
             </tr>)}
