@@ -344,6 +344,13 @@ export default function SolarRework({ onSelectAppointment }) {
         }
       }
 
+      const rowsWithRelated = batch.map(row => ({
+        ...row,
+        relatedAppointments: row.marketing_row_id === null || row.marketing_row_id === undefined
+          ? []
+          : (relatedByMarketingId[String(row.marketing_row_id)] || []).filter(related => related.appointment_row_id !== row.appointment_row_id)
+      }))
+
       const eligibleBatch = rowsWithRelated.filter(row => {
         const email = normalise(row.email_address).toLowerCase()
         const hasRelatedDeal = Boolean(email && dealEmails.has(email))
