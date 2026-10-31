@@ -583,21 +583,21 @@ export default function SolarRework({ onSelectAppointment }) {
           <Search size={15} style={{ position: "absolute", left: 11, top: 12, color: "#64748b" }} />
           <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search name, postcode, phone, email…" style={{ ...inputStyle, width: "100%", paddingLeft: 33, boxSizing: "border-box" }} />
         </div>
-<select value={resultFilter} onChange={event => { setResultFilter(event.target.value); setPage(0) }} style={selectStyle}>
+{activeTab !== "lead-view" && <select value={resultFilter} onChange={event => { setResultFilter(event.target.value); setPage(0) }} style={selectStyle}>
           <option value="all">All results</option>
           <option value="PM">PM</option>
           <option value="PM DNH">PM DNH</option>
           <option value="DNH">DNH</option>
           <option value="no-result">No result</option>
-        </select>
+        </select> }
                 {activeTab !== "quotes-sent" && <select value={leadSourceFilter} onChange={event => { setLeadSourceFilter(event.target.value); setPage(0) }} style={selectStyle}>
           <option value="all">All lead sources</option>
           {leadSourceOptions.map(source => <option key={source} value={source}>{source}</option>)}
         </select>}
-                <select value={yearFilter} onChange={event => setYearFilter(event.target.value)} style={selectStyle}>
+                {activeTab !== "lead-view" && <select value={yearFilter} onChange={event => setYearFilter(event.target.value)} style={selectStyle}>
           <option value="all">All years</option>
           {Array.from({ length: new Date().getFullYear() - 2019 }, (_, index) => String(new Date().getFullYear() - index)).map(year => <option key={year} value={year}>{year}</option>)}
-        </select>
+        </select>}
         {activeTab === "unlinked" && <select value={unlinkedSortOrder} onChange={event => setUnlinkedSortOrder(event.target.value)} style={selectStyle}>
           <option value="desc">Newest to oldest</option><option value="asc">Oldest to newest</option>
         </select>}
@@ -620,7 +620,7 @@ export default function SolarRework({ onSelectAppointment }) {
     <QuoteDailyStatsPanel active={activeTab === "quotes-sent"} loading={quoteStatsLoading} stats={quoteDailyStats} cardStyle={cardStyle} muted={muted} firstSentDate={quoteStatsRange.first ? dateLabel(quoteStatsRange.first) : ""} lastSentDate={quoteStatsRange.last ? dateLabel(quoteStatsRange.last) : ""} />
     <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap" }}>
-        <div style={{ fontWeight: 700, fontSize: 13 }}>{activeTab === "quotes-sent" ? "Quotes Sent" : loading ? "Loading appointments…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${page * PAGE_SIZE + rows.length} ${activeTab !== "unlinked" ? "linked" : "unlinked"} appointments`}</div>
+        <div style={{ fontWeight: 700, fontSize: 13 }}>{activeTab === "quotes-sent" ? "Quotes Sent" : activeTab === "lead-view" ? loading ? "Loading solar leads…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${page * PAGE_SIZE + rows.length} solar leads` : loading ? "Loading appointments…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${page * PAGE_SIZE + rows.length} ${activeTab !== "unlinked" ? "linked" : "unlinked"} appointments`}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button disabled={page === 0 || loading} onClick={() => setPage(value => Math.max(0, value - 1))} style={{ ...selectStyle, padding: "0 12px" }}>Previous</button>
           <span style={muted}>Page {page + 1} of {pageCount}</span>
