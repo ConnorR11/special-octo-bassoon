@@ -503,11 +503,10 @@ export default function SolarRework({ onSelectAppointment }) {
         if (unlinkedResult.error) throw unlinkedResult.error
         if (linkedPmResult.error) throw linkedPmResult.error
         if (linkedNonPmResult.error) throw linkedNonPmResult.error
-        if (!cancelled) setTabCounts({
-          unlinked: unlinkedResult.count ?? 0,
-          linkedPm: linkedPmResult.count ?? 0,
-          linkedNonPm: linkedNonPmResult.count ?? 0
-        })
+        if (!cancelled) setTabCounts(current => ({
+          ...current,
+          unlinked: unlinkedResult.count ?? 0
+        }))
       } catch (err) {
         console.warn("Solar Rework tab totals could not be loaded:", err)
       }
