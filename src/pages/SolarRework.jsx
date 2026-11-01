@@ -338,20 +338,27 @@ export default function SolarRework({ onSelectAppointment }) {
         .order("appointment_row_id", { ascending: false })
       if (yearFilter !== "all") request = request.gte("appointment_date", yearFilter + "-01-01").lt("appointment_date", (Number(yearFilter) + 1) + "-01-01")
       if (resultFilter !== "all") request = request.eq("result", resultFilter)
-      if (activeTab === "linked") request = linkedPmGroup === "pm" ? request.ilike("result", "%PM%") : request.not("result", "ilike", "%PM%")
       if (leadSourceFilter !== "all") request = request.eq("lead_source", leadSourceFilter)
-      if (activeTab === "unlinked") {
-        request = request.is("open_solar_id", null)
-        request = request.range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE - 1)
-      } else {
-        request = request.not("open_solar_id", "is", null).range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE - 1)
-      }
+      if (activeTab === "unlinked") request = request.is("open_solar_id", null)
+      else request = request.not("open_solar_id", "is", null)
       const needle = normalise(query).replace(/[%_,()]/g, " ")
       if (needle) request = request.or("name.ilike.%" + needle + "%,postcode.ilike.%" + needle + "%,address.ilike.%" + needle + "%,phone_number_1.ilike.%" + needle + "%,secondary_phone_number.ilike.%" + needle + "%,email_address.ilike.%" + needle + "%,product.ilike.%" + needle + "%,result.ilike.%" + needle + "%")
-      const { data, error: queryError } = await request
-      if (requestId !== loadRequestId.current) return
-      if (queryError) throw queryError
-      const batch = data || []
+      let batch = []
+      if (activeTab === "linked") {
+        // Fetch every matching linked row in chunks; exclusions must happen before pagination.
+        for (let offset = 0; ; offset += 500) {
+          const { data, error: queryError } = await request.range(offset, offset + 499)
+          if (requestId !== loadRequestId.current) return
+          if (queryError) throw queryError
+          batch = batch.concat(data || [])
+          if (!data || data.length < 500) break
+        }
+      } else {
+        const { data, error: queryError } = await request.range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE)
+        if (requestId !== loadRequestId.current) return
+        if (queryError) throw queryError
+        batch = data || []
+      }
       const marketingIds = [...new Set(batch.map(row => row.marketing_row_id).filter(value => value !== null && value !== undefined && String(value).trim() !== ""))]
       let leadByMarketingId = {}
       if (activeTab === "linked" && marketingIds.length) {
@@ -431,20 +438,26 @@ export default function SolarRework({ onSelectAppointment }) {
           !hasRelatedDeal &&
           !(activeTab === "linked" && (quoteSentAppointmentIds.has(String(row.appointment_row_id)) || (row.marketing_row_id !== null && row.marketing_row_id !== undefined && quoteSentMarketingIds.has(String(row.marketing_row_id)))))
       })
+      const pitchedEligible = eligibleBatch.filter(row => /PM/i.test(normalise(row.result)))
+      const notPitchedEligible = eligibleBatch.filter(row => !/PM/i.test(normalise(row.result)))
+      if (activeTab === "linked") setTabCounts(current => ({ ...current, linkedPm: pitchedEligible.length, linkedNonPm: notPitchedEligible.length }))
+      const groupedEligible = activeTab === "linked" ? (linkedPmGroup === "pm" ? pitchedEligible : notPitchedEligible) : eligibleBatch
       const soldFiltered = activeTab === "linked" && linkedSoldFilter !== "all"
-        ? eligibleBatch.filter(row => {
+        ? groupedEligible.filter(row => {
             const sold = (row.relatedAppointments || []).some(related => normaliseResult(related.result) === "SOLD")
             return linkedSoldFilter === "sold" ? sold : !sold
           })
-        : eligibleBatch
+        : groupedEligible
       const readinessFiltered = activeTab === "linked" && linkedReadinessFilter !== "all"
         ? soldFiltered.filter(row => {
             const ready = getQuoteStages(row).every(stage => stage.complete)
             return linkedReadinessFilter === "ready" ? ready : !ready
           })
         : soldFiltered
-      setHasMore(batch.length > PAGE_SIZE || (activeTab === "linked" && (linkedSoldFilter !== "all" || linkedReadinessFilter !== "all") && readinessFiltered.length === PAGE_SIZE))
-      setRows(readinessFiltered.slice(0, PAGE_SIZE))
+      const start = targetPage * PAGE_SIZE
+      setHasMore(readinessFiltered.length > start + PAGE_SIZE)
+      setRows(readinessFiltered.slice(start, start + PAGE_SIZE))
+      setTotalCount(readinessFiltered.length)
     } catch (err) {
       if (requestId !== loadRequestId.current) return
       console.error("Solar Rework load failed:", err)
