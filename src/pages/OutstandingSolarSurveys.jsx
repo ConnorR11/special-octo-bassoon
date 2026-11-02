@@ -114,6 +114,14 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
       const photoSections = ["Front of Property", "Rear of Property", "Side of Property", "Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Loft Access Point", "Loft Roof Truss", "Internet DC Route", "External DC Route", "Proposed Inverter Location", "Proposed Battery Location", "Proposed Canopy Location", "Proposed Panel Layout", "Alternative Roof Elevations", "Existing Solar Equipment", "Existing EV Charger", "High Electrical Usage Items", "Shading Issues"]
       const outstanding = currentDeals
         .filter(deal => isContractNumberAtLeastS12345(deal.contract_number))
+        .filter(deal => {
+          const dealDocs = docsByDealId.get(String(deal.id)) || []
+          const hasVideo = dealDocs.some(doc => doc.category === "survey_video")
+          const hasBill = dealDocs.some(doc => doc.category === "electricity_bill_epvs_waiver")
+          const hasGeneratedSurveyPdf = dealDocs.some(doc => doc.category === "survey_pdf")
+          // Only retain deals that are still missing at least one of these uploads.
+          return !(hasVideo && hasBill && hasGeneratedSurveyPdf)
+        })
         .map(deal => {
           const dealDocs = docsByDealId.get(String(deal.id)) || []
           const answers = allProgressAnswers.get(String(deal.id)) || {}
