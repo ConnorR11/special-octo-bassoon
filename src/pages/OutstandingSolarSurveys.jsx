@@ -62,30 +62,12 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
     try {
       // Server-side pagination: only load the current page plus one row to
       // determine whether a next page exists. Do not scan/download every deal.
-      let query = supabase
-        .from("deals")
-        .select("*")
-        .gte("contract_number", "S12345")
-        .order("sale_date", { ascending: false, nullsFirst: false })
-        .order("contract_number", { ascending: false })
-        .range(requestedPage * pageSize, requestedPage * pageSize + pageSize)
-
-      const term = requestedSearch.trim()
-      if (term) {
-        const safeTerm = term.replace(/[,%()]/g, " ").trim()
-        if (safeTerm) {
-          query = query.or([
-            `customer_name.ilike.%${safeTerm}%`,
-            `contract_number.ilike.%${safeTerm}%`,
-            `postcode.ilike.%${safeTerm}%`,
-            `address.ilike.%${safeTerm}%`,
-            `salesperson.ilike.%${safeTerm}%`,
-            `branch.ilike.%${safeTerm}%`,
-          ].join(","))
-        }
-      }
-
-      const { data, error: dealsError } = await query
+      // Filter completed uploads in PostgreSQL before applying pagination.
+      const { data, error: dealsError } = await supabase.rpc("list_outstanding_solar_survey_deals", {
+        p_search: requestedSearch.trim() || null,
+        p_offset: requestedPage * pageSize,
+        p_limit: pageSize + 1,
+      })
       if (dealsError) throw dealsError
       const fetchedDeals = data || []
       setHasNextPage(fetchedDeals.length > pageSize)
