@@ -9,7 +9,7 @@ function getWeeks() {
   const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
   monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7))
   const fmt = date => date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
-  return Array.from({ length: 4 }, (_, index) => {
+  return Array.from({ length: 12 }, (_, index) => {
     const end = new Date(monday)
     end.setDate(end.getDate() - (index * 7))
     const start = new Date(end)
@@ -24,7 +24,7 @@ function getWeeks() {
 }
 
 function emptyStats(sid) {
-  return { sid, leads: 0, booked: 0, p: 0 }
+  return { sid, leads: 0, booked: 0 }
 }
 
 function ProntoSidWeeklyBreakdown() {
@@ -40,7 +40,7 @@ function ProntoSidWeeklyBreakdown() {
       setError("")
       try {
         const start = weeks[0].start.toISOString()
-        const end = weeks[3].end.toISOString()
+        const end = weeks[11].end.toISOString()
         const leads = []
         let offset = 0
         while (true) {
@@ -63,7 +63,7 @@ function ProntoSidWeeklyBreakdown() {
         for (let i = 0; i < ids.length; i += 400) {
           const { data: batch, error: appointmentError } = await supabase
             .from("appointments")
-            .select("marketing_row_id,cps_p")
+            .select("marketing_row_id")
             .in("marketing_row_id", ids.slice(i, i + 400))
           if (appointmentError) throw appointmentError
           appointments.push(...(batch || []))
@@ -87,7 +87,6 @@ function ProntoSidWeeklyBreakdown() {
           const related = appointmentsByLead.get(lead.marketing_row_id) || []
           stats.leads += 1
           if (related.length) stats.booked += 1
-          if (related.some(appointment => appointment.cps_p === true)) stats.p += 1
         })
 
         if (!cancelled) setRows([...grouped.values()].sort((a, b) => {
@@ -109,14 +108,13 @@ function ProntoSidWeeklyBreakdown() {
     const stats = row.weeks[week.key]
     sum.leads += stats.leads
     sum.booked += stats.booked
-    sum.p += stats.p
     return sum
   }, emptyStats("TOTAL"))])), [rows, weeks])
 
   return <section style={{ background: "#fff", border: "1px solid #dbe3ed", borderRadius: 12, padding: 18, marginBottom: 22 }}>
     <div>
       <h2 style={{ margin: 0, fontSize: 18, color: "#172033" }}>Pronto SID weekly breakdown</h2>
-      <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12 }}>Lead, booked and P figures by SID, split into each of the last four complete weeks.</p>
+      <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12 }}>Leads and booked percentage by SID, split into each of the last twelve complete weeks.</p>
     </div>
     {loading ? <p style={{ color: "#64748b", fontSize: 13 }}>Loading SID breakdown…</p> : error ? <p style={{ color: "#b91c1c", fontSize: 13 }}>{error}</p> : <>
       <div style={{ overflowX: "auto", marginTop: 14 }}>
@@ -124,10 +122,10 @@ function ProntoSidWeeklyBreakdown() {
           <thead>
             <tr>
               <th rowSpan={2} style={{ position: "sticky", left: 0, zIndex: 2, background: "#fff", textAlign: "left", padding: "9px 8px", borderBottom: "1px solid #dbe3ed" }}>SID</th>
-              {weeks.map(week => <th key={week.key} colSpan={5} style={{ textAlign: "center", padding: "8px 4px", borderBottom: "1px solid #dbe3ed", borderLeft: "1px solid #e2e8f0", color: "#334155", whiteSpace: "nowrap" }}>{week.label}</th>)}
+              {weeks.map(week => <th key={week.key} colSpan={3} style={{ textAlign: "center", padding: "8px 4px", borderBottom: "1px solid #dbe3ed", borderLeft: "1px solid #e2e8f0", color: "#334155", whiteSpace: "nowrap" }}>{week.label}</th>)}
             </tr>
             <tr>
-              {weeks.flatMap(week => ["Leads", "Booked", "Booked %", "P", "P %"].map((heading, index) => <th key={week.key + heading} style={{ textAlign: "right", padding: "7px 8px", borderBottom: "1px solid #dbe3ed", borderLeft: index === 0 ? "1px solid #e2e8f0" : undefined, color: "#64748b", fontWeight: 500, whiteSpace: "nowrap" }}>{heading}</th>))}
+              {weeks.flatMap(week => ["Leads", "Booked", "Booked %"].map((heading, index) => <th key={week.key + heading} style={{ textAlign: "right", padding: "7px 8px", borderBottom: "1px solid #dbe3ed", borderLeft: index === 0 ? "1px solid #e2e8f0" : undefined, color: "#64748b", fontWeight: 500, whiteSpace: "nowrap" }}>{heading}</th>))}
             </tr>
           </thead>
           <tbody>
@@ -139,8 +137,6 @@ function ProntoSidWeeklyBreakdown() {
                   { key: "leads", value: number(stats.leads) },
                   { key: "booked", value: number(stats.booked) },
                   { key: "bookedPct", value: percentage(stats.booked, stats.leads), lowBooked: stats.leads > 0 && (stats.booked / stats.leads) < 0.15 },
-                  { key: "p", value: number(stats.p) },
-                  { key: "pPct", value: percentage(stats.p, stats.leads) },
                 ].map((item, index) => <td key={week.key + item.key} style={{ padding: "9px 8px", textAlign: "right", borderBottom: "1px solid #edf1f5", borderLeft: index === 0 ? "1px solid #e2e8f0" : undefined, color: item.lowBooked ? "#dc2626" : undefined, fontWeight: item.lowBooked ? 700 : 400 }}>{item.value}</td>)
               })}
             </tr>)}
@@ -152,15 +148,13 @@ function ProntoSidWeeklyBreakdown() {
                   { key: "leads", value: number(stats.leads) },
                   { key: "booked", value: number(stats.booked) },
                   { key: "bookedPct", value: percentage(stats.booked, stats.leads) },
-                  { key: "p", value: number(stats.p) },
-                  { key: "pPct", value: percentage(stats.p, stats.leads) },
                 ].map((item, index) => <td key={week.key + "total" + item.key} style={{ padding: "10px 8px", textAlign: "right", borderTop: "2px solid #cbd5e1", borderLeft: index === 0 ? "1px solid #e2e8f0" : undefined, fontWeight: 700 }}>{item.value}</td>)
               })}
             </tr>
           </tbody>
         </table>
       </div>
-      <p style={{ margin: "10px 0 0", color: "#94a3b8", fontSize: 10 }}>Booked counts a lead once if it has at least one linked appointment. P counts a lead once if any linked appointment has CPS P marked true.</p>
+      <p style={{ margin: "10px 0 0", color: "#94a3b8", fontSize: 10 }}>Booked counts a lead once if it has at least one linked appointment. Booked % is booked leads divided by leads received.</p>
     </>}
   </section>
 }
