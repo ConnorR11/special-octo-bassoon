@@ -141,7 +141,7 @@ function ProntoWeeklyComparison() {
               {metrics.map(([label, key]) => <th key={key} colSpan={3} style={{ textAlign: "center", padding: "8px 4px", borderBottom: "1px solid #dbe3ed", borderLeft: "1px solid #e2e8f0", color: "#334155", whiteSpace: "nowrap" }}>{label}</th>)}
             </tr>
             <tr>
-              {metrics.flatMap(([label, key]) => ["L4W", "P4W", "+/-"].map((heading, index) => <th key={key + heading} style={{ textAlign: "right", padding: "7px 6px", borderBottom: "1px solid #dbe3ed", borderLeft: index === 0 ? "1px solid #e2e8f0" : undefined, color: "#64748b", fontWeight: 500, whiteSpace: "nowrap" }}>{heading}</th>))}
+              {metrics.flatMap(([label, key]) => ["L4W", "P4W", "Δ"].map((heading, index) => <th key={key + heading} style={{ textAlign: "right", padding: "7px 6px", borderBottom: "1px solid #dbe3ed", borderLeft: index === 0 ? "1px solid #e2e8f0" : undefined, color: "#64748b", fontWeight: 500, whiteSpace: "nowrap" }}>{heading}</th>))}
             </tr>
           </thead>
           <tbody>{[...new Set([...data.summaries.current.keys(), ...data.summaries.previous.keys()])].sort().map(name => {
