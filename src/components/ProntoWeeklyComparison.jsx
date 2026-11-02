@@ -39,7 +39,7 @@ function ProntoWeeklyComparison() {
         let offset = 0
         while (true) {
           const { data: batch, error: leadError } = await supabase.from("leads")
-            .select("marketing_row_id,introducer,disposition")
+            .select("marketing_row_id,introducer,disposition,received_date_time")
             .eq("lead_source", "Pronto Windows")
             .gte("received_date_time", start).lt("received_date_time", end)
             .order("received_date_time", { ascending: true }).range(offset, offset + 999)
