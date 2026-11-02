@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { supabase } from "../lib/supabase"
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 
 const number = value => new Intl.NumberFormat("en-GB").format(Number(value || 0))
 const percentage = (value, total) => total ? `${((value / total) * 100).toFixed(1)}%` : "0.0%"
+const SID_LINE_COLORS = ["#2563eb", "#0d9488", "#9333ea", "#ea580c", "#64748b", "#dc2626", "#0891b2", "#65a30d", "#c026d3", "#a16207", "#4f46e5", "#0f766e"]
 
 function getWeeks() {
   const today = new Date()
@@ -31,6 +33,7 @@ function ProntoSidWeeklyBreakdown() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [selectedSids, setSelectedSids] = useState(null)
   const weeks = useMemo(getWeeks, [])
 
   useEffect(() => {
@@ -104,6 +107,16 @@ function ProntoSidWeeklyBreakdown() {
     return () => { cancelled = true }
   }, [weeks])
 
+  const activeSids = selectedSids ?? rows.map(row => row.sid)
+  const chartData = useMemo(() => weeks.map(week => {
+    const point = { week: week.label }
+    rows.forEach(row => {
+      const stats = row.weeks[week.key]
+      point[row.sid] = stats.leads ? Number(((stats.booked / stats.leads) * 100).toFixed(1)) : null
+    })
+    return point
+  }), [rows, weeks])
+
   const totals = useMemo(() => Object.fromEntries(weeks.map(week => [week.key, rows.reduce((sum, row) => {
     const stats = row.weeks[week.key]
     sum.leads += stats.leads
@@ -117,6 +130,46 @@ function ProntoSidWeeklyBreakdown() {
       <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12 }}>Leads and booked percentage by SID, split into each of the last twelve complete weeks.</p>
     </div>
     {loading ? <p style={{ color: "#64748b", fontSize: 13 }}>Loading SID breakdown…</p> : error ? <p style={{ color: "#b91c1c", fontSize: 13 }}>{error}</p> : <>
+      <div style={{ marginTop: 18, padding: 14, border: "1px solid #e2e8f0", borderRadius: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 15, color: "#172033" }}>SID booking rate trends</h3>
+            <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 11 }}>Weekly booked percentage over the last 12 complete weeks. Select which SIDs appear.</p>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" onClick={() => setSelectedSids(rows.map(row => row.sid))} style={{ border: "1px solid #cbd5e1", borderRadius: 6, padding: "5px 9px", background: "#fff", fontSize: 11, cursor: "pointer" }}>Select all</button>
+            <button type="button" onClick={() => setSelectedSids([])} style={{ border: "1px solid #cbd5e1", borderRadius: 6, padding: "5px 9px", background: "#fff", fontSize: 11, cursor: "pointer" }}>Clear all</button>
+          </div>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "7px 14px", marginBottom: 12 }}>
+          {rows.map((row, index) => {
+            const checked = activeSids.includes(row.sid)
+            const color = SID_LINE_COLORS[index % SID_LINE_COLORS.length]
+            return <label key={row.sid} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "#334155", cursor: "pointer" }}>
+              <input type="checkbox" checked={checked} onChange={event => setSelectedSids(current => {
+                const selected = current ?? rows.map(item => item.sid)
+                return event.target.checked ? [...selected, row.sid] : selected.filter(sid => sid !== row.sid)
+              })} />
+              <span style={{ width: 9, height: 9, borderRadius: 2, background: color, display: "inline-block" }} />
+              {row.sid}
+            </label>
+          })}
+        </div>
+        <div style={{ width: "100%", height: 330 }}>
+          <ResponsiveContainer>
+            <LineChart data={chartData} margin={{ top: 8, right: 18, left: 0, bottom: 4 }}>
+              <CartesianGrid stroke="#e8edf3" strokeDasharray="3 3" />
+              <XAxis dataKey="week" tick={{ fontSize: 10, fill: "#64748b" }} interval={0} />
+              <YAxis domain={[0, 100]} tickFormatter={value => `${value}%`} tick={{ fontSize: 10, fill: "#64748b" }} width={44} />
+              <Tooltip formatter={(value, name) => [`${value}%`, `SID ${name}`]} />
+              {rows.filter(row => activeSids.includes(row.sid)).map(row => {
+                const index = rows.findIndex(item => item.sid === row.sid)
+                return <Line key={row.sid} type="monotone" dataKey={row.sid} name={row.sid} stroke={SID_LINE_COLORS[index % SID_LINE_COLORS.length]} strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} connectNulls={false} />
+              })}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
       <div style={{ overflowX: "auto", marginTop: 14 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 760 }}>
           <thead>
