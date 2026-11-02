@@ -1529,8 +1529,10 @@ function DataDashboard({ standalonePronto = false }) {
         </>
       ) : activeTab === "pronto" ? (
         <>
-          {standalonePronto && <ProntoWeeklyComparison />
-            <ProntoSidWeeklyBreakdown />}
+          {standalonePronto && <>
+            <ProntoWeeklyComparison />
+            <ProntoSidWeeklyBreakdown />
+          </>}
           <div className="pronto-toolbar">
             <div>
               <div className="data-dashboard-chart-title">Pronto Introducer Lead Counts</div>
