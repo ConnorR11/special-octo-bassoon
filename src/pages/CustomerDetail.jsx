@@ -56,6 +56,7 @@ function CustomerDetail({
   const [epvsStatus, setEpvsStatus] = useState("")
   const [surveyProgress, setSurveyProgress] = useState(["outstanding", "outstanding", "outstanding", "outstanding"])
   const [documentsLoading, setDocumentsLoading] = useState(false)
+  const [openingContract, setOpeningContract] = useState(false)
   const [uploadingCategory, setUploadingCategory] = useState("")
   const [videoUploadProgress, setVideoUploadProgress] = useState(0)
   const [videoUploadStatus, setVideoUploadStatus] = useState("")
@@ -354,6 +355,27 @@ function CustomerDetail({
     }
   }
 
+  async function openContract() {
+    if (!deal?.appointment_row_id) {
+      setDocumentError("This deal does not have a linked appointment, so its contract cannot be located.")
+      return
+    }
+    setOpeningContract(true)
+    setDocumentError("")
+    try {
+      const contractPath = `appointments/${deal.appointment_row_id}/contract.png`
+      const { data, error } = await supabase.storage.from("signatures").createSignedUrl(contractPath, 60)
+      if (error) throw error
+      if (!data?.signedUrl) throw new Error("No signed contract was found for this appointment.")
+      window.open(data.signedUrl, "_blank", "noopener,noreferrer")
+    } catch (err) {
+      console.error("Unable to open signed contract:", err)
+      setDocumentError(err?.message || "Unable to open signed contract.")
+    } finally {
+      setOpeningContract(false)
+    }
+  }
+
   async function openDocument(document) {
     setOpeningDocument(document.id)
     setDocumentError("")
@@ -576,6 +598,9 @@ function CustomerDetail({
               <strong style={{ fontSize: "12px", color: "#444" }}>
                 {deal.contract_number || "—"}
               </strong>
+              <button type="button" onClick={openContract} disabled={openingContract || !deal.appointment_row_id} style={{ marginLeft: 8, border: "1px solid #d7dee8", borderRadius: 6, padding: "6px 10px", background: "#fff", color: "#334155", fontSize: 10, fontWeight: 700, cursor: openingContract || !deal.appointment_row_id ? "not-allowed" : "pointer", opacity: openingContract || !deal.appointment_row_id ? 0.55 : 1 }}>
+                {openingContract ? "Opening…" : "Open Contract"}
+              </button>
             </div>
 
             <div
