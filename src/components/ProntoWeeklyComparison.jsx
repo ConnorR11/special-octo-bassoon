@@ -109,7 +109,7 @@ function ProntoWeeklyComparison() {
   }, [periods])
 
   const metrics = [
-    ["Leads", "leads", "count"], ["DUP", "dup", "count"], ["WN", "wn", "count"], ["OOA", "ooa", "count"],
+    ["Leads", "leads", "count"],
     ["Booked", "booked", "count"], ["Booked %", "bookedRate", "percent"], ["H", "h", "count"], ["C", "c", "count"],
     ["P", "p", "count"], ["S", "s", "count"], ["Lead → H", "hRate", "percent"], ["Lead → P", "pRate", "percent"], ["Net value", "value", "money"],
   ]
