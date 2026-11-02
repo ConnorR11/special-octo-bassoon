@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react"
 import { supabase } from "../lib/supabase"
 
 const number = value => new Intl.NumberFormat("en-GB").format(Number(value || 0))
+const percentage = (value, total) => total ? `${((value / total) * 100).toFixed(1)}%` : "0.0%"
 
 function getWeeks() {
   const today = new Date()
@@ -123,10 +124,10 @@ function ProntoSidWeeklyBreakdown() {
           <thead>
             <tr>
               <th rowSpan={2} style={{ position: "sticky", left: 0, zIndex: 2, background: "#fff", textAlign: "left", padding: "9px 8px", borderBottom: "1px solid #dbe3ed" }}>SID</th>
-              {weeks.map(week => <th key={week.key} colSpan={3} style={{ textAlign: "center", padding: "8px 4px", borderBottom: "1px solid #dbe3ed", borderLeft: "1px solid #e2e8f0", color: "#334155", whiteSpace: "nowrap" }}>{week.label}</th>)}
+              {weeks.map(week => <th key={week.key} colSpan={5} style={{ textAlign: "center", padding: "8px 4px", borderBottom: "1px solid #dbe3ed", borderLeft: "1px solid #e2e8f0", color: "#334155", whiteSpace: "nowrap" }}>{week.label}</th>)}
             </tr>
             <tr>
-              {weeks.flatMap(week => ["Leads", "Booked", "P"].map((heading, index) => <th key={week.key + heading} style={{ textAlign: "right", padding: "7px 8px", borderBottom: "1px solid #dbe3ed", borderLeft: index === 0 ? "1px solid #e2e8f0" : undefined, color: "#64748b", fontWeight: 500 }}>{heading}</th>))}
+              {weeks.flatMap(week => ["Leads", "Booked", "Booked %", "P", "P %"].map((heading, index) => <th key={week.key + heading} style={{ textAlign: "right", padding: "7px 8px", borderBottom: "1px solid #dbe3ed", borderLeft: index === 0 ? "1px solid #e2e8f0" : undefined, color: "#64748b", fontWeight: 500, whiteSpace: "nowrap" }}>{heading}</th>))}
             </tr>
           </thead>
           <tbody>
@@ -134,12 +135,27 @@ function ProntoSidWeeklyBreakdown() {
               <td style={{ position: "sticky", left: 0, zIndex: 1, background: "#fff", padding: "9px 8px", borderBottom: "1px solid #edf1f5", fontWeight: 600, whiteSpace: "nowrap" }}>{row.sid}</td>
               {weeks.flatMap(week => {
                 const stats = row.weeks[week.key]
-                return ["leads", "booked", "p"].map((key, index) => <td key={week.key + key} style={{ padding: "9px 8px", textAlign: "right", borderBottom: "1px solid #edf1f5", borderLeft: index === 0 ? "1px solid #e2e8f0" : undefined }}>{number(stats[key])}</td>)
+                return [
+                  { key: "leads", value: number(stats.leads) },
+                  { key: "booked", value: number(stats.booked) },
+                  { key: "bookedPct", value: percentage(stats.booked, stats.leads), lowBooked: stats.leads > 0 && (stats.booked / stats.leads) < 0.15 },
+                  { key: "p", value: number(stats.p) },
+                  { key: "pPct", value: percentage(stats.p, stats.leads) },
+                ].map((item, index) => <td key={week.key + item.key} style={{ padding: "9px 8px", textAlign: "right", borderBottom: "1px solid #edf1f5", borderLeft: index === 0 ? "1px solid #e2e8f0" : undefined, color: item.lowBooked ? "#dc2626" : undefined, fontWeight: item.lowBooked ? 700 : 400 }}>{item.value}</td>)
               })}
             </tr>)}
             <tr style={{ background: "#f8fafc" }}>
               <td style={{ position: "sticky", left: 0, zIndex: 1, background: "#f8fafc", padding: "10px 8px", borderTop: "2px solid #cbd5e1", fontWeight: 700 }}>TOTAL</td>
-              {weeks.flatMap(week => ["leads", "booked", "p"].map((key, index) => <td key={week.key + "total" + key} style={{ padding: "10px 8px", textAlign: "right", borderTop: "2px solid #cbd5e1", borderLeft: index === 0 ? "1px solid #e2e8f0" : undefined, fontWeight: 700 }}>{number(totals[week.key][key])}</td>))}
+              {weeks.flatMap(week => {
+                const stats = totals[week.key]
+                return [
+                  { key: "leads", value: number(stats.leads) },
+                  { key: "booked", value: number(stats.booked) },
+                  { key: "bookedPct", value: percentage(stats.booked, stats.leads) },
+                  { key: "p", value: number(stats.p) },
+                  { key: "pPct", value: percentage(stats.p, stats.leads) },
+                ].map((item, index) => <td key={week.key + "total" + item.key} style={{ padding: "10px 8px", textAlign: "right", borderTop: "2px solid #cbd5e1", borderLeft: index === 0 ? "1px solid #e2e8f0" : undefined, fontWeight: 700 }}>{item.value}</td>)
+              })}
             </tr>
           </tbody>
         </table>
