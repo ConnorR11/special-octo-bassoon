@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase"
 
 const REPORTS = [
   { id: "missing-result", title: "Appointments missing result", description: "Appointments where no result has been recorded." },
+  { id: "last-week-appointments", title: "Last week's appointments", description: "Review and edit H, C, P, S and result for appointments from the previous Monday to Sunday." },
   { id: "wrong-cps", title: "Wrong CPS", description: "2026 appointments where CPS-P is FALSE, CPS-S is TRUE and is_pickup is FALSE.", group: "CPS Work" },
   { id: "sold-missing-cps-s", title: "Sold · CPS-S not true", description: "2026 appointments marked SOLD where CPS-S is FALSE or NULL.", group: "CPS Work" },
   { id: "pm-pickup-hcps", title: "PM · Pickup / HCPS review", description: '2026 appointments where result contains "PM", is_pickup is not TRUE, and HCPS is not 1110.', group: "CPS Work" },
@@ -36,6 +37,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
   const [search, setSearch] = useState("")
   const [leadTypeEdits, setLeadTypeEdits] = useState({})
   const [hcpsEdits, setHcpsEdits] = useState({})
+  const [appointmentEdits, setAppointmentEdits] = useState({})
   const [savingLeadIds, setSavingLeadIds] = useState({})
   const [saveMessages, setSaveMessages] = useState({})
   const [page, setPage] = useState(0)
@@ -48,6 +50,21 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
   const requestIdRef = useRef(0)
 
   const selectedReport = REPORTS.find(report => report.id === activeReport) || REPORTS[0]
+
+  function getLastWeekRange() {
+    const now = new Date()
+    const daysSinceMonday = (now.getDay() + 6) % 7
+    const thisMonday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysSinceMonday)
+    const lastMonday = new Date(thisMonday)
+    lastMonday.setDate(lastMonday.getDate() - 7)
+    const toDateKey = date => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, "0")
+      const day = String(date.getDate()).padStart(2, "0")
+      return `${year}-${month}-${day}`
+    }
+    return { start: toDateKey(lastMonday), end: toDateKey(thisMonday) }
+  }
 
   async function loadReport(reportId = activeReport, sourceFilter = leadSourceFilter, pageNumber = page, yearFilter = receivedYear) {
     const requestId = ++requestIdRef.current
@@ -82,7 +99,13 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
       {
         let query
 
-        if (reportId === "wrong-cps") {
+        if (reportId === "last-week-appointments") {
+          const { start, end } = getLastWeekRange()
+          query = supabase.from("appointments")
+            .select("appointment_row_id,name,phone_number_1,postcode,appointment_date,product,job_type,branch,rep_allocated,cps_h,cps_c,cps_p,cps_s,result")
+            .gte("appointment_date", start).lt("appointment_date", end)
+            .order("appointment_date", { ascending: true, nullsFirst: false })
+        } else if (reportId === "wrong-cps") {
           query = supabase.from("appointments")
             .select("appointment_row_id,name,phone_number_1,email_address,postcode,address,appointment_date,product,job_type,branch,rep_allocated,cps_h,cps_c,cps_p,cps_s,is_pickup,result")
             .eq("cps_p", false).eq("cps_s", true).eq("is_pickup", false)
@@ -138,12 +161,13 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
           allRows = allRows.slice(0, 25)
           setHasNextPage(false)
         } else {
-          query = query.range(reportId === "missing-lead-type" ? page * pageSize : 0, (reportId === "missing-lead-type" ? page * pageSize : 0) + (reportId === "missing-lead-type" ? pageSize : 999))
+          const pagedReport = ["missing-lead-type", "last-week-appointments"].includes(reportId)
+          query = query.range(pagedReport ? page * pageSize : 0, (pagedReport ? page * pageSize : 0) + (pagedReport ? pageSize : 999))
           const { data, error: queryError } = await query
           if (queryError) throw queryError
 
           const fetchedRows = Array.isArray(data) ? data : []
-          if (reportId === "missing-lead-type") {
+          if (["missing-lead-type", "last-week-appointments"].includes(reportId)) {
             setHasNextPage(fetchedRows.length > pageSize)
             allRows = fetchedRows.slice(0, pageSize)
           } else {
@@ -157,6 +181,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
       setRows(allRows)
       setLeadTypeEdits({})
       setHcpsEdits({})
+      setAppointmentEdits({})
       setSaveMessages({})
     } catch (err) {
       if (requestId !== requestIdRef.current) return
@@ -209,8 +234,8 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
         row.rep_allocated,
         row.email_address,
         row.phone_number_1,
-        row.appointment_date,
-        ["wrong-cps", "pm-pickup-hcps", "sold-missing-cps-s"].includes(activeReport) ? hcps(row) : "",
+        row.appointment_date, row.result,
+        ["wrong-cps", "pm-pickup-hcps", "sold-missing-cps-s", "last-week-appointments"].includes(activeReport) ? hcps(row) : "",
         row.lead_source, row.lead_type, row.marketing_row_id, row.delete_row_id,
         row.first_name, row.last_name, row.primary_phone_number, row.disposition, row.last_time_called,
       ]
@@ -266,6 +291,33 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
     } catch (err) {
       console.error("Unable to update lead type:", err)
       setSaveMessages(current => ({ ...current, [id]: err?.message || "Could not save lead type." }))
+    } finally {
+      setSavingLeadIds(current => ({ ...current, [id]: false }))
+    }
+  }
+
+  async function saveLastWeekAppointment(row) {
+    const id = row.appointment_row_id
+    const edits = appointmentEdits[id] || {}
+    if (!id || !supabase) return
+    const patch = {
+      cps_h: edits.cps_h ?? !!row.cps_h,
+      cps_c: edits.cps_c ?? !!row.cps_c,
+      cps_p: edits.cps_p ?? !!row.cps_p,
+      cps_s: edits.cps_s ?? !!row.cps_s,
+      result: String(edits.result ?? row.result ?? "").trim() || null,
+    }
+    setSavingLeadIds(current => ({ ...current, [id]: true }))
+    setSaveMessages(current => ({ ...current, [id]: "" }))
+    try {
+      const { error: updateError } = await supabase.from("appointments").update(patch).eq("appointment_row_id", id)
+      if (updateError) throw updateError
+      setRows(current => current.map(item => item.appointment_row_id === id ? { ...item, ...patch } : item))
+      setAppointmentEdits(current => { const next = { ...current }; delete next[id]; return next })
+      setSaveMessages(current => ({ ...current, [id]: "Saved" }))
+    } catch (err) {
+      console.error("Unable to update last week's appointment:", err)
+      setSaveMessages(current => ({ ...current, [id]: err?.message || "Could not save appointment." }))
     } finally {
       setSavingLeadIds(current => ({ ...current, [id]: false }))
     }
@@ -380,6 +432,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                         ) : (
                           <><th>Customer</th><th>Appointment</th><th>Postcode</th>{activeReport !== "pm-pickup-hcps" && <th>Product</th>}<th>Job Type</th><th>Branch</th><th>Sales Rep</th>{activeReport !== "pm-pickup-hcps" && <><th>Phone</th><th>Email</th></>}
                           {["wrong-cps", "pm-pickup-hcps", "sold-missing-cps-s"].includes(activeReport) && <><th>Result</th><th>HCPS</th><th>Pickup</th>{activeReport === "pm-pickup-hcps" && <th>Update HCPS</th>}</>}
+                          {activeReport === "last-week-appointments" && <><th>H</th><th>C</th><th>P</th><th>S</th><th>Result</th><th>Save</th>}
                           <th></th></>
                         )}
                       </tr>
@@ -443,6 +496,20 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                                   )}
                                 </>
                               )}
+                              {activeReport === "last-week-appointments" && (
+                                <>
+                                  {["cps_h", "cps_c", "cps_p", "cps_s"].map(field => (
+                                    <td key={field} style={{textAlign:"center"}}><input type="checkbox" aria-label={`${field.toUpperCase()} for ${row.name || row.appointment_row_id}`}
+                                      checked={Boolean((appointmentEdits[row.appointment_row_id] || {})[field] ?? row[field])}
+                                      onChange={event => setAppointmentEdits(current => ({...current,[row.appointment_row_id]:{...(current[row.appointment_row_id] || {}),[field]:event.target.checked}}))}/></td>
+                                  ))}
+                                  <td><input aria-label={`Result for ${row.name || row.appointment_row_id}`} value={(appointmentEdits[row.appointment_row_id] || {}).result ?? row.result ?? ""}
+                                    onChange={event => setAppointmentEdits(current => ({...current,[row.appointment_row_id]:{...(current[row.appointment_row_id] || {}),result:event.target.value}}))}
+                                    style={{width:130,minWidth:110,padding:"6px 7px",border:"1px solid #d7dee7",borderRadius:6,fontSize:11}}/></td>
+                                  <td><button type="button" className="data-clean-open" disabled={!!savingLeadIds[row.appointment_row_id]} onClick={() => saveLastWeekAppointment(row)}>{savingLeadIds[row.appointment_row_id] ? "Saving…" : "Save"}</button>
+                                    {saveMessages[row.appointment_row_id] && <small style={{color:saveMessages[row.appointment_row_id] === "Saved" ? "#15803d" : "#b91c1c"}}>{saveMessages[row.appointment_row_id]}</small>}</td>
+                                </>
+                              )}
                               <td><button type="button" className="data-clean-open" onClick={() => openRow(row)}>Open</button></td>
                             </>
                           )}
@@ -451,7 +518,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                     </tbody>
                   </table>
                 </div>
-                {["missing-lead-type", "duplicate-marketing-row-id"].includes(activeReport) && <div className="data-clean-pagination"><button type="button" className="data-clean-open" disabled={page === 0 || loading} onClick={() => setPage(current => Math.max(0, current - 1))}>Previous</button><span>Page {page + 1}</span><button type="button" className="data-clean-open" disabled={!hasNextPage || loading} onClick={() => setPage(current => current + 1)}>Next</button></div>}
+                {["missing-lead-type", "duplicate-marketing-row-id", "last-week-appointments"].includes(activeReport) && <div className="data-clean-pagination"><button type="button" className="data-clean-open" disabled={page === 0 || loading} onClick={() => setPage(current => Math.max(0, current - 1))}>Previous</button><span>Page {page + 1}</span><button type="button" className="data-clean-open" disabled={!hasNextPage || loading} onClick={() => setPage(current => current + 1)}>Next</button></div>}
               </>
             )}
           </div>
