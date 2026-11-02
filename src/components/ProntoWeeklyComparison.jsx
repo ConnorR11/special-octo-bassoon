@@ -155,7 +155,16 @@ function ProntoWeeklyComparison() {
                 <td key={key + "difference"} style={{ padding: "9px 6px", textAlign: "right", borderBottom: "1px solid #edf1f5", whiteSpace: "nowrap", color: numericValue(current, key) > numericValue(previous, key) ? "#15803d" : numericValue(current, key) < numericValue(previous, key) ? "#b91c1c" : "#64748b", fontWeight: 600 }}>{changeFor(current, previous, key)}</td>
               ])}
             </tr>
-          })}</tbody>
+          })}
+            <tr style={{ background: "#f8fafc" }}>
+              <td style={{ position: "sticky", left: 0, zIndex: 1, background: "#f8fafc", padding: "10px 8px", borderTop: "2px solid #cbd5e1", fontWeight: 700, whiteSpace: "nowrap" }}>TOTAL</td>
+              {metrics.flatMap(([label, key]) => [
+                <td key={key + "total-current"} style={{ padding: "10px 6px", textAlign: "right", borderTop: "2px solid #cbd5e1", borderLeft: "1px solid #e2e8f0", whiteSpace: "nowrap", fontWeight: 700 }}>{valueFor(data.totals.current, key)}</td>,
+                <td key={key + "total-previous"} style={{ padding: "10px 6px", textAlign: "right", borderTop: "2px solid #cbd5e1", whiteSpace: "nowrap", fontWeight: 700 }}>{valueFor(data.totals.previous, key)}</td>,
+                <td key={key + "total-difference"} style={{ padding: "10px 6px", textAlign: "right", borderTop: "2px solid #cbd5e1", whiteSpace: "nowrap", fontWeight: 700, color: numericValue(data.totals.current, key) > numericValue(data.totals.previous, key) ? "#15803d" : numericValue(data.totals.current, key) < numericValue(data.totals.previous, key) ? "#b91c1c" : "#64748b" }}>{changeFor(data.totals.current, data.totals.previous, key)}</td>
+              ])}
+            </tr>
+          </tbody>
         </table>
       </div>
       <p style={{ margin: "10px 0 0", color: "#94a3b8", fontSize: 10 }}>All figures are grouped by introducer. Percentage differences are shown in percentage points. Scroll horizontally to see all metrics.</p>
