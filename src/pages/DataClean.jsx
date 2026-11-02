@@ -432,7 +432,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                         ) : (
                           <><th>Customer</th><th>Appointment</th><th>Postcode</th>{activeReport !== "pm-pickup-hcps" && <th>Product</th>}<th>Job Type</th><th>Branch</th><th>Sales Rep</th>{activeReport !== "pm-pickup-hcps" && <><th>Phone</th><th>Email</th></>}
                           {["wrong-cps", "pm-pickup-hcps", "sold-missing-cps-s"].includes(activeReport) && <><th>Result</th><th>HCPS</th><th>Pickup</th>{activeReport === "pm-pickup-hcps" && <th>Update HCPS</th>}</>}
-                          {activeReport === "last-week-appointments" && <><th>H</th><th>C</th><th>P</th><th>S</th><th>Result</th><th>Save</th>}
+                          {activeReport === "last-week-appointments" && <><th>H</th><th>C</th><th>P</th><th>S</th><th>Result</th><th>Save</th></>}
                           <th></th></>
                         )}
                       </tr>
