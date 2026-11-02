@@ -357,20 +357,29 @@ function CustomerDetail({
 
   async function openContract() {
     if (!deal?.appointment_row_id) {
-      setDocumentError("This deal does not have a linked appointment, so its contract cannot be located.")
+      setDocumentError("This deal does not have a linked appointment, so its digital contract cannot be located.")
       return
     }
     setOpeningContract(true)
     setDocumentError("")
     try {
-      const contractPath = `appointments/${deal.appointment_row_id}/contract.png`
+      const folder = `contract-pdfs/${deal.appointment_row_id}`
+      const { data: files, error: listError } = await supabase.storage.from("signatures").list(folder, {
+        limit: 100,
+        sortBy: { column: "name", order: "desc" },
+      })
+      if (listError) throw listError
+      const contractFiles = (files || []).filter(file => file.name && file.name.toLowerCase().endsWith(".pdf"))
+      if (!contractFiles.length) throw new Error("No digital contract PDF was found for this appointment.")
+      const contractFile = contractFiles[0]
+      const contractPath = `${folder}/${contractFile.name}`
       const { data, error } = await supabase.storage.from("signatures").createSignedUrl(contractPath, 60)
       if (error) throw error
-      if (!data?.signedUrl) throw new Error("No signed contract was found for this appointment.")
+      if (!data?.signedUrl) throw new Error("Could not create a secure link to the digital contract.")
       window.open(data.signedUrl, "_blank", "noopener,noreferrer")
     } catch (err) {
-      console.error("Unable to open signed contract:", err)
-      setDocumentError(err?.message || "Unable to open signed contract.")
+      console.error("Unable to open digital contract:", err)
+      setDocumentError(err?.message || "Unable to open digital contract.")
     } finally {
       setOpeningContract(false)
     }
