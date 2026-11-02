@@ -67,7 +67,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
     return { start: toDateKey(lastMonday), end: toDateKey(thisMonday) }
   }
 
-  async function loadReport(reportId = activeReport, sourceFilter = leadSourceFilter, pageNumber = page, yearFilter = receivedYear) {
+  async function loadReport(reportId = activeReport, sourceFilter = leadSourceFilter, pageNumber = page, yearFilter = receivedYear, resultFilterValue = resultFilter) {
     const requestId = ++requestIdRef.current
 
     if (!supabase) {
@@ -80,7 +80,6 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
     setLoading(true)
     setError("")
     setSearch("")
-    setResultFilter("all")
 
     try {
       let allRows = []
@@ -107,6 +106,8 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
             .select("appointment_row_id,name,phone_number_1,postcode,appointment_date,product,job_type,branch,rep_allocated,cps_h,cps_c,cps_p,cps_s,result")
             .gte("appointment_date", start).lt("appointment_date", end)
             .order("appointment_date", { ascending: true, nullsFirst: false })
+          if (resultFilterValue === "empty") query = query.or('result.is.null,result.eq.""')
+          else if (resultFilterValue !== "all") query = query.eq("result", resultFilterValue)
         } else if (reportId === "wrong-cps") {
           query = supabase.from("appointments")
             .select("appointment_row_id,name,phone_number_1,email_address,postcode,address,appointment_date,product,job_type,branch,rep_allocated,cps_h,cps_c,cps_p,cps_s,is_pickup,result")
@@ -196,8 +197,8 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
   }
 
   useEffect(() => {
-    loadReport(activeReport, leadSourceFilter, page, receivedYear)
-  }, [activeReport, page, leadSourceFilter, receivedYear])
+    loadReport(activeReport, leadSourceFilter, page, receivedYear, resultFilter)
+  }, [activeReport, page, leadSourceFilter, receivedYear, resultFilter])
 
   useEffect(() => {
     let cancelled = false
@@ -227,9 +228,6 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase()
     return rows.filter(row => {
-      const resultValue = text(row.result)
-      if (resultFilter === "empty" && resultValue !== "") return false
-      if (resultFilter !== "all" && resultFilter !== "empty" && resultValue !== resultFilter) return false
       const values = [
         row.name,
         row.appointment_row_id,
@@ -247,7 +245,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
       ]
       return values.map(text).join(" ").toLowerCase().includes(term)
     })
-  }, [rows, search, activeReport, resultFilter])
+  }, [rows, search, activeReport])
 
   function openRow(row) {
     if (activeReport === "missing-lead-type") {
@@ -416,7 +414,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
               <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",justifyContent:"flex-end"}}>
                 {activeReport === "duplicate-marketing-row-id" && <select aria-label="Filter duplicate leads by received year" value={receivedYear} onChange={event => { setPage(0); setReceivedYear(event.target.value); setLeadSourceFilter("") }} style={{height:36,minWidth:120,padding:"0 10px",border:"1px solid #d7dee7",borderRadius:8,background:"#fff",color:"#334155",fontSize:12}}><option value="2026">Received in 2026</option><option value="2025">Received in 2025</option><option value="2024">Received in 2024</option><option value="">All years</option></select>}
                 {activeReport === "duplicate-marketing-row-id" && <select aria-label="Filter duplicate leads by source" value={leadSourceFilter} onChange={event => { setPage(0); setLeadSourceFilter(event.target.value) }} style={{height:36,minWidth:180,padding:"0 10px",border:"1px solid #d7dee7",borderRadius:8,background:"#fff",color:"#334155",fontSize:12}}><option value="">All lead sources</option>{duplicateSources.map(source => <option key={source} value={source}>{source}</option>)}</select>}
-                {activeReport === "last-week-appointments" && <select aria-label="Filter appointments by result" value={resultFilter} onChange={event => setResultFilter(event.target.value)} style={{height:36,minWidth:150,padding:"0 10px",border:"1px solid #d7dee7",borderRadius:8,background:"#fff",color:"#334155",fontSize:12}}>
+                {activeReport === "last-week-appointments" && <select aria-label="Filter appointments by result" value={resultFilter} onChange={event => { setPage(0); setResultFilter(event.target.value) }} style={{height:36,minWidth:150,padding:"0 10px",border:"1px solid #d7dee7",borderRadius:8,background:"#fff",color:"#334155",fontSize:12}}>
                   <option value="all">All results</option>
                   <option value="empty">Empty result</option>
                   {resultFilterOptions.map(option => <option key={option} value={option}>{option}</option>)}
