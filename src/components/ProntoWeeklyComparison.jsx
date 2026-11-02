@@ -113,40 +113,52 @@ function ProntoWeeklyComparison() {
     ["Booked", "booked", "count"], ["Booked %", "bookedRate", "percent"], ["H", "h", "count"], ["C", "c", "count"],
     ["P", "p", "count"], ["S", "s", "count"], ["Lead → H", "hRate", "percent"], ["Lead → P", "pRate", "percent"], ["Net value", "value", "money"],
   ]
-  const valueFor = (stats, key) => key === "bookedRate" ? pct(stats.booked, stats.leads) : key === "hRate" ? pct(stats.h, stats.leads) : key === "pRate" ? pct(stats.p, stats.leads) : key === "value" ? money(stats.value) : number(stats[key])
-  const delta = (a, b, key) => {
-    const av = key === "bookedRate" ? (a.leads ? a.booked / a.leads * 100 : 0) : key === "hRate" ? (a.leads ? a.h / a.leads * 100 : 0) : key === "pRate" ? (a.leads ? a.p / a.leads * 100 : 0) : Number(a[key] || 0)
-    const bv = key === "bookedRate" ? (b.leads ? b.booked / b.leads * 100 : 0) : key === "hRate" ? (b.leads ? b.h / b.leads * 100 : 0) : key === "pRate" ? (b.leads ? b.p / b.leads * 100 : 0) : Number(b[key] || 0)
-    const diff = av - bv
-    return `${diff > 0 ? "+" : ""}${key.endsWith("Rate") ? diff.toFixed(1) + " pp" : key === "value" ? money(diff) : number(diff)}`
+  const numericValue = (stats, key) => key === "bookedRate" ? (stats.leads ? stats.booked / stats.leads * 100 : 0) : key === "hRate" ? (stats.leads ? stats.h / stats.leads * 100 : 0) : key === "pRate" ? (stats.leads ? stats.p / stats.leads * 100 : 0) : Number(stats[key] || 0)
+  const valueFor = (stats, key) => {
+    const value = numericValue(stats, key)
+    return key.endsWith("Rate") ? `${value.toFixed(1)}%` : key === "value" ? money(value) : number(value)
+  }
+  const changeFor = (current, previous, key) => {
+    const difference = numericValue(current, key) - numericValue(previous, key)
+    const formatted = key.endsWith("Rate") ? `${Math.abs(difference).toFixed(1)} pp` : key === "value" ? money(Math.abs(difference)) : number(Math.abs(difference))
+    return `${difference > 0 ? "+" : difference < 0 ? "−" : ""}${formatted}`
   }
 
   return <section style={{ background: "#fff", border: "1px solid #dbe3ed", borderRadius: 12, padding: 18, marginBottom: 22 }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-      <div><h2 style={{ margin: 0, fontSize: 18, color: "#172033" }}>4-week performance comparison</h2><p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12 }}>Four complete Monday–Sunday weeks compared with the four immediately before.</p></div>
-      <span style={{ fontSize: 11, color: "#64748b" }}>Independent of the main date filter</span>
+      <div><h2 style={{ margin: 0, fontSize: 18, color: "#172033" }}>Pronto introducer comparison</h2><p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12 }}>Introducer-level figures for the last four complete weeks versus the four weeks before, with the difference.</p></div>
     </div>
     {loading ? <p style={{ color: "#64748b", fontSize: 13 }}>Loading comparison…</p> : error ? <p style={{ color: "#b91c1c", fontSize: 13 }}>{error}</p> : data && <>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 10, marginTop: 14 }}>
-        {[["Last 4 weeks", periods.current.label], ["Previous 4 weeks", periods.previous.label]].map(([label, range]) => <div key={label} style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: 10 }}><strong style={{ display: "block", fontSize: 12 }}>{label}</strong><span style={{ fontSize: 11, color: "#64748b" }}>{range}</span></div>)}
+      <div style={{ display: "flex", gap: 18, flexWrap: "wrap", margin: "14px 0 10px", fontSize: 11 }}>
+        <span><strong>Last 4 weeks:</strong> {periods.current.label}</span>
+        <span><strong>Previous 4 weeks:</strong> {periods.previous.label}</span>
       </div>
-      <div style={{ overflowX: "auto", marginTop: 14 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 760 }}>
-          <thead><tr>{["Metric", "Last 4 weeks", "Previous 4 weeks", "Change"].map(label => <th key={label} style={{ textAlign: label === "Metric" ? "left" : "right", padding: "9px 10px", borderBottom: "1px solid #dbe3ed", color: "#64748b", fontWeight: 600 }}>{label}</th>)}</tr></thead>
-          <tbody>{metrics.map(([label, key]) => <tr key={key}><td style={{ padding: "9px 10px", borderBottom: "1px solid #edf1f5", fontWeight: 600 }}>{label}</td><td style={{ padding: "9px 10px", textAlign: "right", borderBottom: "1px solid #edf1f5" }}>{valueFor(data.totals.current, key)}</td><td style={{ padding: "9px 10px", textAlign: "right", borderBottom: "1px solid #edf1f5" }}>{valueFor(data.totals.previous, key)}</td><td style={{ padding: "9px 10px", textAlign: "right", borderBottom: "1px solid #edf1f5", color: "#334155" }}>{delta(data.totals.current, data.totals.previous, key)}</td></tr>)}</tbody>
-        </table>
-      </div>
-      <h3 style={{ fontSize: 14, margin: "20px 0 8px" }}>Introducer breakdown</h3>
       <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 900 }}>
-          <thead><tr>{["Introducer", "Leads", "Booked", "Booked %", "H", "C", "P", "S", "Lead → H", "Lead → P", "Net value"].map(label => <th key={label} style={{ textAlign: label === "Introducer" ? "left" : "right", padding: "8px", borderBottom: "1px solid #dbe3ed", color: "#64748b", whiteSpace: "nowrap" }}>{label}</th>)}</tr></thead>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 1500 }}>
+          <thead>
+            <tr>
+              <th rowSpan={2} style={{ position: "sticky", left: 0, zIndex: 2, background: "#fff", textAlign: "left", padding: "9px 8px", borderBottom: "1px solid #dbe3ed" }}>Introducer</th>
+              {metrics.map(([label, key]) => <th key={key} colSpan={3} style={{ textAlign: "center", padding: "8px 4px", borderBottom: "1px solid #dbe3ed", borderLeft: "1px solid #e2e8f0", color: "#334155", whiteSpace: "nowrap" }}>{label}</th>)}
+            </tr>
+            <tr>
+              {metrics.flatMap(([label, key]) => ["Last 4 weeks", "Previous 4 weeks", "Difference"].map((heading, index) => <th key={key + heading} style={{ textAlign: "right", padding: "7px 6px", borderBottom: "1px solid #dbe3ed", borderLeft: index === 0 ? "1px solid #e2e8f0" : undefined, color: "#64748b", fontWeight: 500, whiteSpace: "nowrap" }}>{heading}</th>))}
+            </tr>
+          </thead>
           <tbody>{[...new Set([...data.summaries.current.keys(), ...data.summaries.previous.keys()])].sort().map(name => {
-            const a = data.summaries.current.get(name) || emptyStats(name), b = data.summaries.previous.get(name) || emptyStats(name)
-            return <React.Fragment key={name}><tr><td style={{ padding: 8, borderBottom: "1px solid #edf1f5", fontWeight: 600 }}>{name}</td>{["leads","booked","bookedRate","h","c","p","s","hRate","pRate","value"].map(key => <td key={key} style={{ padding: 8, borderBottom: "1px solid #edf1f5", textAlign: "right", whiteSpace: "nowrap" }}>{valueFor(a,key)}</td>)}</tr></React.Fragment>
+            const current = data.summaries.current.get(name) || emptyStats(name)
+            const previous = data.summaries.previous.get(name) || emptyStats(name)
+            return <tr key={name}>
+              <td style={{ position: "sticky", left: 0, zIndex: 1, background: "#fff", padding: "9px 8px", borderBottom: "1px solid #edf1f5", fontWeight: 600, whiteSpace: "nowrap" }}>{name}</td>
+              {metrics.flatMap(([label, key]) => [
+                <td key={key + "current"} style={{ padding: "9px 6px", textAlign: "right", borderBottom: "1px solid #edf1f5", borderLeft: "1px solid #e2e8f0", whiteSpace: "nowrap" }}>{valueFor(current, key)}</td>,
+                <td key={key + "previous"} style={{ padding: "9px 6px", textAlign: "right", borderBottom: "1px solid #edf1f5", whiteSpace: "nowrap" }}>{valueFor(previous, key)}</td>,
+                <td key={key + "difference"} style={{ padding: "9px 6px", textAlign: "right", borderBottom: "1px solid #edf1f5", whiteSpace: "nowrap", color: numericValue(current, key) > numericValue(previous, key) ? "#15803d" : numericValue(current, key) < numericValue(previous, key) ? "#b91c1c" : "#64748b", fontWeight: 600 }}>{changeFor(current, previous, key)}</td>
+              ])}
+            </tr>
           })}</tbody>
         </table>
       </div>
-      <p style={{ margin: "10px 0 0", color: "#94a3b8", fontSize: 10 }}>Counts are based on distinct leads. Booked means at least one linked appointment; H/C/P/S count a lead once if any linked appointment has that flag. Net value is the sum of net_value on linked deals.</p>
+      <p style={{ margin: "10px 0 0", color: "#94a3b8", fontSize: 10 }}>All figures are grouped by introducer. Percentage differences are shown in percentage points. Scroll horizontally to see all metrics.</p>
     </>}
   </section>
 }
