@@ -66,7 +66,8 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
         .from("deals")
         .select("*")
         .gte("contract_number", "S12345")
-        .order("contract_number", { ascending: true })
+        .order("sale_date", { ascending: false, nullsFirst: false })
+        .order("contract_number", { ascending: false })
         .range(requestedPage * pageSize, requestedPage * pageSize + pageSize)
 
       const term = requestedSearch.trim()
