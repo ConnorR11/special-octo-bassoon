@@ -158,7 +158,7 @@ function DataResults() {
       for (let offset = 0; offset < appointmentIds.length; offset += CHUNK_SIZE) {
         const ids = appointmentIds.slice(offset, offset + CHUNK_SIZE)
         const { data, error: dealError } = await supabase.from("deals")
-          .select("id,appointment_row_id,deal_value,net_value,pipedrive_stage")
+          .select("id,appointment_row_id,customer_name,contract_number,deal_value,net_value,pipedrive_stage")
           .in("appointment_row_id", ids)
         if (dealError) throw dealError
         deals.push(...(data || []))
@@ -191,7 +191,7 @@ function DataResults() {
         if (appointment.cps_s === true) row.s += 1
         ;(dealsByAppointment.get(appointment.appointment_row_id) || []).forEach(deal => {
           if (!dealDetailsById.has(deal.id)) dealDetailsById.set(deal.id, {
-            id: deal.id, appointmentRowId: appointment.appointment_row_id,
+            id: deal.id, customerName: deal.customer_name || "", contractNumber: deal.contract_number || "", appointmentRowId: appointment.appointment_row_id,
             appointmentDate: appointment.appointment_date, source,
             h: appointment.cps_h === true, c: appointment.cps_c === true,
             p: appointment.cps_p === true, s: appointment.cps_s === true,
@@ -353,11 +353,11 @@ function DataResults() {
         <div style={{ overflowX: "auto", maxHeight: 420 }}>
           <table style={{ width: "100%", minWidth: 900, borderCollapse: "separate", borderSpacing: 0 }}>
             <thead><tr>
-              {["Deal ID", "Lead source", "Appointment date", "Appointment ID", "H", "C", "P", "S", "Net value", "Pipedrive stage"].map(label => <th key={label} style={th}>{label}</th>)}
+              {["Customer - Contract", "Lead source", "Appointment date", "Appointment ID", "H", "C", "P", "S", "Net value", "Pipedrive stage"].map(label => <th key={label} style={th}>{label}</th>)}
             </tr></thead>
             <tbody>
               {dealDetails.map(deal => <tr key={deal.id}>
-                <td style={td}>{deal.id}</td><td style={td}>{deal.source}</td><td style={td}>{deal.appointmentDate ? new Date(deal.appointmentDate).toLocaleDateString("en-GB") : "—"}</td>
+                <td style={td}>{[deal.customerName, deal.contractNumber].filter(Boolean).join(" - ") || "—"}</td><td style={td}>{deal.source}</td><td style={td}>{deal.appointmentDate ? new Date(deal.appointmentDate).toLocaleDateString("en-GB") : "—"}</td>
                 <td style={td}>{deal.appointmentRowId || "—"}</td>
                 {[deal.h, deal.c, deal.p, deal.s].map((value, index) => <td key={index} style={{ ...td, textAlign: "center" }}>{value ? "✓" : "—"}</td>)}
                 <td style={{ ...td, textAlign: "right", fontWeight: 650 }}>{money(deal.net)}</td><td style={td}>{deal.stage || "—"}</td>
