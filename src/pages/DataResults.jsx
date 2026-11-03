@@ -248,11 +248,11 @@ function DataResults() {
     try {
       const exportRows = rows.map(row => ({
         "Lead Sources": row.source, Leads: row.leads, Dup: row.dup, WN: row.wn, OOA: row.ooa, INV: row.inv,
-        Total: row.total, Net: row.netLeads, Appointments: row.appointments, "Call Back": row.callback, NC: row.noContact, H: row.h, C: row.c, P: row.p, S: row.s, Net: row.net, Solid: row.solid,
+        Total: row.total, "Net Leads": row.netLeads, "Call Back": row.callback, NC: row.noContact, H: row.h, C: row.c, P: row.p, S: row.s, "Net Value": row.net, Solid: row.solid,
       }))
       exportRows.push({
         "Lead Sources": "TOTAL", Leads: totals.leads || 0, Dup: totals.dup || 0, WN: totals.wn || 0, OOA: totals.ooa || 0,
-        INV: totals.inv || 0, Total: totals.total || 0, "Net Leads": totals.netLeads || 0, Appointments: totals.appointments || 0,
+        INV: totals.inv || 0, Total: totals.total || 0, "Net Leads": totals.netLeads || 0,
         "Call Back": totals.callback || 0, NC: totals.noContact || 0,
         H: totals.h || 0, C: totals.c || 0, P: totals.p || 0, S: totals.s || 0, "Net Value": totals.net || 0, Solid: totals.solid || 0,
       })
@@ -317,25 +317,25 @@ function DataResults() {
             <tr>
               <th rowSpan={2} style={{ ...th, verticalAlign: "middle", minWidth: 150, textAlign: "left" }}>Lead Sources</th>
               <th colSpan={9} style={{ ...th, textAlign: "center", borderBottom: "1px solid #cbd5e1" }}>Leads</th>
-              <th colSpan={7} style={{ ...th, textAlign: "center", borderBottom: "1px solid #cbd5e1", borderLeft: "2px solid #cbd5e1" }}>Appointments</th>
+              <th colSpan={6} style={{ ...th, textAlign: "center", borderBottom: "1px solid #cbd5e1", borderLeft: "2px solid #cbd5e1" }}>Appointments</th>
             </tr>
             <tr>
               {["Leads", "Dup", "WN", "OOA", "INV", "Total", "Net leads", "Call Back", "NC"].map(heading => <th key={heading} style={{ ...th, textAlign: "center" }}>{heading}</th>)}
-              {["Appointments", "H", "C", "P", "S", "Net", "Solid"].map((heading, index) => <th key={heading} style={{ ...th, textAlign: "center", ...(index === 0 ? { borderLeft: "2px solid #cbd5e1" } : {}) }}>{heading}</th>)}
+              {["H", "C", "P", "S", "Net", "Solid"].map(heading => <th key={heading} style={{ ...th, textAlign: "center" }}>{heading}</th>)}
             </tr>
           </thead>
           <tbody>
             {rows.map(row => <tr key={row.source}>
               <td style={{ ...td, fontWeight: 650, position: "sticky", left: 0, background: "#fff", zIndex: 0, textAlign: "left" }}>{row.source}</td>
               {[row.leads, row.dup, row.wn, row.ooa, row.inv, row.total, row.netLeads, row.callback, row.noContact].map((value, index) => <td key={index} style={{ ...td, textAlign: "center" }}>{number(value)}</td>)}
-              {[row.appointments, row.h, row.c, row.p, row.s].map((value, index) => <td key={`appointment-${index}`} style={{ ...td, textAlign: "right", ...(index === 0 ? { borderLeft: "2px solid #cbd5e1" } : {}) }}>{number(value)}</td>)}
+              {[row.h, row.c, row.p, row.s].map((value, index) => <td key={`appointment-${index}`} style={{ ...td, textAlign: "right", ...(index === 0 ? { borderLeft: "2px solid #cbd5e1" } : {}) }}>{number(value)}</td>)}
               <td style={{ ...td, textAlign: "right" }}>{money(row.net)}</td><td style={{ ...td, textAlign: "right" }}>{money(row.solid)}</td>
             </tr>)}
-            {!loading && !rows.length && <tr><td colSpan={17} style={{ ...td, textAlign: "center", padding: 24, color: "#64748b" }}>No leads found in this date range.</td></tr>}
+            {!loading && !rows.length && <tr><td colSpan={16} style={{ ...td, textAlign: "center", padding: 24, color: "#64748b" }}>No leads found in this date range.</td></tr>}
             <tr style={{ background: "#f8fafc" }}>
               <td style={{ ...td, fontWeight: 750, position: "sticky", left: 0, background: "#f8fafc" }}>TOTAL</td>
               {[totals.leads, totals.dup, totals.wn, totals.ooa, totals.inv, totals.total, totals.netLeads, totals.callback, totals.noContact].map((value, index) => <td key={index} style={{ ...td, textAlign: "right", fontWeight: 750 }}>{number(value)}</td>)}
-              {[totals.appointments, totals.h, totals.c, totals.p, totals.s].map((value, index) => <td key={`total-appointment-${index}`} style={{ ...td, textAlign: "right", fontWeight: 750, ...(index === 0 ? { borderLeft: "2px solid #cbd5e1" } : {}) }}>{number(value)}</td>)}
+              {[totals.h, totals.c, totals.p, totals.s].map((value, index) => <td key={`total-appointment-${index}`} style={{ ...td, textAlign: "right", fontWeight: 750, ...(index === 0 ? { borderLeft: "2px solid #cbd5e1" } : {}) }}>{number(value)}</td>)}
               <td style={{ ...td, textAlign: "right", fontWeight: 750 }}>{money(totals.net)}</td><td style={{ ...td, textAlign: "right", fontWeight: 750 }}>{money(totals.solid)}</td>
             </tr>
           </tbody>
