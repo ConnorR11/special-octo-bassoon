@@ -198,7 +198,7 @@ function DataResults() {
         total: row.dup + row.wn + row.ooa + row.inv,
         netLeads: row.leads - row.dup - row.wn - row.ooa - row.inv,
         deals: row.dealIds.size,
-      })).sort((a, b) => b.leads - a.leads || a.source.localeCompare(b.source))
+      })).sort((a, b) => b.net - a.net || b.leads - a.leads || a.source.localeCompare(b.source))
       const netSold = result.reduce((sum, row) => sum + row.net, 0)
       const soldDeals = result.reduce((sum, row) => sum + row.dealIds.size, 0)
       const solid = result.reduce((sum, row) => sum + row.solid, 0)
