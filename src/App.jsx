@@ -14,7 +14,6 @@ import Installations from "./pages/Installations"
 import MarketingTV from "./pages/MarketingTV"
 import MarketingDashboard from "./pages/MarketingDashboard"
 import Leads from "./pages/Leads"
-import LeadExport from "./pages/LeadExport"
 import Contracts from "./pages/Contracts"
 import Balances from "./pages/Balances"
 import RTSList from "./pages/RTSList"
@@ -328,8 +327,6 @@ function App() {
     pageContent = <Users/>
   } else if (page === "tasks") {
     pageContent = <Tasks/>
-  } else if (page === "lead-export") {
-    pageContent = <LeadExport />
   } else if (page === "seo") {
     pageContent = <SEO/>
   } else if (page === "mi") {
