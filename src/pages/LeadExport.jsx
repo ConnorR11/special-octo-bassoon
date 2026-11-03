@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react"
 import { Download, RefreshCw, Users } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
-const PAGE_SIZE = 100
+const PAGE_SIZE = 20
 const START_DATE = "2026-01-01T00:00:00"
 const COLUMNS = [
   ["Name", row => [row.salutations, row.first_name, row.last_name].filter(Boolean).join(" ")],
@@ -37,28 +37,27 @@ export default function LeadExport() {
 
   const loadSources = useCallback(async () => {
     if (!supabase) return
-    const values = new Set()
-    let offset = 0
-    while (true) {
-      const { data, error: queryError } = await supabase.from("leads").select("lead_source").gte("received_date_time", START_DATE).order("received_date_time", { ascending: false }).range(offset, offset + 999)
-      if (queryError) throw queryError
-      const batch = data || []
-      batch.forEach(row => { const value = String(row.lead_source || "").trim(); if (value) values.add(value) })
-      if (batch.length < 1000) break
-      offset += 1000
-    }
-    setSources([...values].sort((a, b) => a.localeCompare(b)))
+    const { data, error: queryError } = await supabase.rpc("get_lead_export_sources")
+    if (queryError) throw queryError
+    setSources((data || []).map(row => row.lead_source).filter(Boolean))
   }, [])
 
   const loadLeads = useCallback(async (pageNumber = 0, sourceValue = source) => {
     if (!supabase) { setError("Supabase is not configured."); setLoading(false); return }
     setLoading(true)
     setError("")
-    let request = supabase.from("leads").select(SELECT_FIELDS, { count: "exact" }).gte("received_date_time", START_DATE).order("received_date_time", { ascending: false }).range(pageNumber * PAGE_SIZE, pageNumber * PAGE_SIZE + PAGE_SIZE - 1)
-    if (sourceValue !== "all") request = request.eq("lead_source", sourceValue)
-    const { data, count, error: queryError } = await request
+    const { data, error: queryError } = await supabase.rpc("get_lead_export_page", {
+      p_source: sourceValue === "all" ? null : sourceValue,
+      p_limit: PAGE_SIZE,
+      p_offset: pageNumber * PAGE_SIZE,
+    })
     if (queryError) { setError(queryError.message); setLeads([]); setTotal(0) }
-    else { setLeads(data || []); setTotal(count || 0); setPage(pageNumber) }
+    else {
+      const rows = data || []
+      setLeads(rows)
+      setTotal(Number(rows[0]?.total_count || 0))
+      setPage(pageNumber)
+    }
     setLoading(false)
   }, [source])
 
