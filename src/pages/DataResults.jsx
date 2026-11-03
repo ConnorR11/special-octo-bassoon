@@ -61,6 +61,7 @@ function DataResults() {
   const [endDate, setEndDate] = useState(defaults.end)
   const [activePreset, setActivePreset] = useState("last-week")
   const [rows, setRows] = useState([])
+  const [dealDetails, setDealDetails] = useState([])
   const [summary, setSummary] = useState({ deals: 0, net: 0, solid: 0 })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -169,14 +170,23 @@ function DataResults() {
         dealsByAppointment.get(deal.appointment_row_id).push(deal)
       })
 
+      const dealDetailsById = new Map()
       appointments.forEach(appointment => {
-        const row = getRow(linkedLeadSources.get(appointment.marketing_row_id) || appointment.lead_source)
+        const source = linkedLeadSources.get(appointment.marketing_row_id) || appointment.lead_source || "(No lead source)"
+        const row = getRow(source)
         row.appointments += 1
         if (appointment.cps_h === true) row.h += 1
         if (appointment.cps_c === true) row.c += 1
         if (appointment.cps_p === true) row.p += 1
         if (appointment.cps_s === true) row.s += 1
         ;(dealsByAppointment.get(appointment.appointment_row_id) || []).forEach(deal => {
+          if (!dealDetailsById.has(deal.id)) dealDetailsById.set(deal.id, {
+            id: deal.id, appointmentRowId: appointment.appointment_row_id,
+            appointmentDate: appointment.appointment_date, source,
+            h: appointment.cps_h === true, c: appointment.cps_c === true,
+            p: appointment.cps_p === true, s: appointment.cps_s === true,
+            net: Number(deal.net_value || 0), stage: deal.pipedrive_stage || "",
+          })
           if (!row.dealIds.has(deal.id)) {
             row.dealIds.add(deal.id)
             row.net += Number(deal.net_value || 0)
@@ -203,11 +213,13 @@ function DataResults() {
       const soldDeals = result.reduce((sum, row) => sum + row.dealIds.size, 0)
       const solid = result.reduce((sum, row) => sum + row.solid, 0)
       setRows(result)
+      setDealDetails([...dealDetailsById.values()].sort((a, b) => String(b.appointmentDate || "").localeCompare(String(a.appointmentDate || "")) || String(a.id).localeCompare(String(b.id))))
       setSummary({ deals: soldDeals, net: netSold, solid })
     } catch (err) {
       console.error("Error loading Data Results:", err)
       setError(err?.message || "Unable to load Data Results.")
       setRows([])
+      setDealDetails([])
       setSummary({ deals: 0, net: 0, solid: 0 })
     } finally {
       setLoading(false)
@@ -320,6 +332,31 @@ function DataResults() {
         </table>
       </div>
       <p style={{ margin: "8px 0 0", color: "#94a3b8", fontSize: 10 }}>Lead outcomes are grouped by lead source using lead received date. Appointments, H/C/P/S and linked deal values are grouped separately using appointment date. Each linked deal is counted once per lead source; Solid excludes Customer Cancelled and Decline stages.</p>
+      <div style={{ marginTop: 22, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "13px 15px", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap" }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 15, color: "#17324a" }}>Linked deals included in report</h2>
+            <p style={{ margin: "4px 0 0", fontSize: 11, color: "#64748b" }}>Deals linked to appointments dated within the selected period.</p>
+          </div>
+          <strong style={{ fontSize: 13, color: "#17324a" }}>{loading ? "Loading…" : number(dealDetails.length) + " deals"}</strong>
+        </div>
+        <div style={{ overflowX: "auto", maxHeight: 420 }}>
+          <table style={{ width: "100%", minWidth: 900, borderCollapse: "separate", borderSpacing: 0 }}>
+            <thead><tr>
+              {["Deal ID", "Lead source", "Appointment date", "Appointment ID", "H", "C", "P", "S", "Net value", "Pipedrive stage"].map(label => <th key={label} style={th}>{label}</th>)}
+            </tr></thead>
+            <tbody>
+              {dealDetails.map(deal => <tr key={deal.id}>
+                <td style={td}>{deal.id}</td><td style={td}>{deal.source}</td><td style={td}>{deal.appointmentDate ? new Date(deal.appointmentDate).toLocaleDateString("en-GB") : "—"}</td>
+                <td style={td}>{deal.appointmentRowId || "—"}</td>
+                {[deal.h, deal.c, deal.p, deal.s].map((value, index) => <td key={index} style={{ ...td, textAlign: "center" }}>{value ? "✓" : "—"}</td>)}
+                <td style={{ ...td, textAlign: "right", fontWeight: 650 }}>{money(deal.net)}</td><td style={td}>{deal.stage || "—"}</td>
+              </tr>)}
+              {!loading && !dealDetails.length && <tr><td colSpan={10} style={{ ...td, textAlign: "center", padding: 22, color: "#64748b" }}>No linked deals found for appointments in this date range.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </section>
   </div>
 }
