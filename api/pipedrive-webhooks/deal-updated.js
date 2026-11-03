@@ -95,6 +95,11 @@ async function logEvent(supabaseUrl, serviceRoleKey, values) {
 */
 
 const PIPEDRIVE_FIELDS = {
+  netSales: {
+    name: "Contract: Net Sales",
+    key: null,
+  },
+
   installationStartDate: {
     name: "Installation: Start Date",
     key: "55177af32aecef5d2f250bd701c2bbee064136fc",
@@ -1107,9 +1112,11 @@ export default async function handler(req, res) {
 
     deal = deal || {}
 
-    // Pipedrive's built-in deal "value" is the source for the CRM net_value.
-    // Only update it when Pipedrive actually supplies a valid numeric value.
-    const netValue = normaliseNumber(deal?.value ?? deal?.net_value)
+    // CRM net_value must come from the Pipedrive custom field "Contract: Net Sales".
+    // Do not substitute Pipedrive's built-in gross deal value.
+    const netValue = normaliseNumber(
+      getCustomFieldValue(deal, fields.netSales.key)
+    )
 
     /*
     |--------------------------------------------------------------------------
