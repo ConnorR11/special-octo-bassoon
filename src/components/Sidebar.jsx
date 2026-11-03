@@ -162,7 +162,6 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={BarChart3} label="MI" active={isActive("mi")} onClick={() => navigate("mi")}/>
             <NavItem icon={Star} label="Reviews" active={isActive("reviews")} onClick={() => navigate("reviews")}/>
             <NavItem icon={FileText} label="Daily Reports" active={isActive("daily-reports")} onClick={() => navigate("daily-reports")} disabled={!isAdministrator} locked={!isAdministrator}/>
-            <NavItem icon={Database} label="Data Results" disabled/>
             <NavItem icon={Building2} label="Fleet" disabled/>
             <NavItem icon={Handshake} label="Agency Agreements" disabled/>
             <NavItem icon={ClipboardList} label="Training Log" disabled/>
@@ -173,6 +172,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
           <Folder visible={canSeeFolder("digitalTeam")} title="Digital Team" icon={Search} open={openFolders.digitalTeam} onClick={() => toggleFolder("digitalTeam")}>
             <NavItem icon={Search} label="SEO" active={isActive("seo")} onClick={() => navigate("seo")}/>
             {isAdministrator && <NavItem icon={BarChart3} label="Pronto" active={isActive("pronto")} onClick={() => navigate("pronto")}/>}
+            <NavItem icon={Database} label="Data Results" disabled/>
           </Folder>
 
           {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}>
