@@ -202,7 +202,7 @@ function DataResults() {
             row.net += Number(deal.net_value || 0)
           }
           const stage = clean(deal.pipedrive_stage)
-          if (!["customer cancelled", "decline", "pending cancellation", "cancellation - awaiting refund"].includes(stage) && !row.solidDealIds.has(deal.id)) {
+          if (!["customer cancelled", "decline", "pending cancellation", "cancellation - awaiting refund", "on hold", "returned to sales", "awaiting funds"].includes(stage) && !row.solidDealIds.has(deal.id)) {
             row.solidDealIds.add(deal.id)
             row.solid += Number(deal.net_value || 0)
           }
