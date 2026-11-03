@@ -186,7 +186,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
     ["Customer",customer],
     ["Property address",address||"To be confirmed"],
     ["System size",d.capacity?d.capacity.toFixed(2)+" kWp":"To be confirmed"],
-    ["Solar panels",d.panelCount?String(d.panelCount)+" × "+(d.panels.find(item=>Number(item?.wattage||item?.power||item?.watts)>0)?.wattage||d.panels.find(item=>Number(item?.power||item?.watts)>0)?.power||450)+" W":"To be confirmed"],
+    ["Solar panels",(()=>{const panelWattage=d.panels.map(item=>Number(item?.wattage??item?.power??item?.watts)).find(value=>Number.isFinite(value)&&value>0);return d.panelCount&&panelWattage?String(d.panelCount)+" × "+panelWattage+" W":"To be confirmed"})()],
     ["Inverter",hardwareLabel(d.inverters,"To be confirmed")],
     ["Battery",hardwareLabel(d.batteries,"To be confirmed")],
     ["Estimated generation",generation?Number(generation).toLocaleString("en-GB")+" kWh / year":"To be confirmed"],
