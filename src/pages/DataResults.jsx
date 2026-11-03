@@ -226,11 +226,11 @@ function DataResults() {
     setExporting(true)
     try {
       const exportRows = rows.map(row => ({
-        "Lead Source": row.source, Leads: row.leads, Dup: row.dup, WN: row.wn, OOA: row.ooa, INV: row.inv,
+        Leads: row.source, Leads: row.leads, Dup: row.dup, WN: row.wn, OOA: row.ooa, INV: row.inv,
         Total: row.total, Net: row.netLeads, Appointments: row.appointments, "Call Back": row.callback, NC: row.noContact, H: row.h, C: row.c, P: row.p, S: row.s, Net: row.net, Solid: row.solid,
       }))
       exportRows.push({
-        "Lead Source": "TOTAL", Leads: totals.leads || 0, Dup: totals.dup || 0, WN: totals.wn || 0, OOA: totals.ooa || 0,
+        Leads: "TOTAL", Leads: totals.leads || 0, Dup: totals.dup || 0, WN: totals.wn || 0, OOA: totals.ooa || 0,
         INV: totals.inv || 0, Total: totals.total || 0, "Net Leads": totals.netLeads || 0, Appointments: totals.appointments || 0,
         "Call Back": totals.callback || 0, NC: totals.noContact || 0,
         H: totals.h || 0, C: totals.c || 0, P: totals.p || 0, S: totals.s || 0, "Net Value": totals.net || 0, Solid: totals.solid || 0,
@@ -294,19 +294,19 @@ function DataResults() {
         <table style={{ width: "100%", minWidth: 1250, borderCollapse: "separate", borderSpacing: 0 }}>
           <thead>
             <tr>
-              <th rowSpan={2} style={{ ...th, verticalAlign: "middle", minWidth: 150 }}>Lead Source</th>
+              <th rowSpan={2} style={{ ...th, verticalAlign: "middle", minWidth: 150, textAlign: "center" }}>Leads</th>
               <th colSpan={9} style={{ ...th, textAlign: "center", borderBottom: "1px solid #cbd5e1" }}>Leads</th>
               <th colSpan={7} style={{ ...th, textAlign: "center", borderBottom: "1px solid #cbd5e1", borderLeft: "2px solid #cbd5e1" }}>Appointments</th>
             </tr>
             <tr>
-              {["Leads received", "Dup", "WN", "OOA", "INV", "Total", "Net leads", "Call Back", "NC"].map(heading => <th key={heading} style={th}>{heading}</th>)}
-              {["Appointments", "H", "C", "P", "S", "Net", "Solid"].map((heading, index) => <th key={heading} style={{ ...th, ...(index === 0 ? { borderLeft: "2px solid #cbd5e1" } : {}) }}>{heading}</th>)}
+              {["Leads received", "Dup", "WN", "OOA", "INV", "Total", "Net leads", "Call Back", "NC"].map(heading => <th key={heading} style={{ ...th, textAlign: "center" }}>{heading}</th>)}
+              {["Appointments", "H", "C", "P", "S", "Net", "Solid"].map((heading, index) => <th key={heading} style={{ ...th, textAlign: "center", ...(index === 0 ? { borderLeft: "2px solid #cbd5e1" } : {}) }}>{heading}</th>)}
             </tr>
           </thead>
           <tbody>
             {rows.map(row => <tr key={row.source}>
-              <td style={{ ...td, fontWeight: 650, position: "sticky", left: 0, background: "#fff", zIndex: 0 }}>{row.source}</td>
-              {[row.leads, row.dup, row.wn, row.ooa, row.inv, row.total, row.netLeads, row.callback, row.noContact].map((value, index) => <td key={index} style={{ ...td, textAlign: "right" }}>{number(value)}</td>)}
+              <td style={{ ...td, fontWeight: 650, position: "sticky", left: 0, background: "#fff", zIndex: 0, textAlign: "center" }}>{row.source}</td>
+              {[row.leads, row.dup, row.wn, row.ooa, row.inv, row.total, row.netLeads, row.callback, row.noContact].map((value, index) => <td key={index} style={{ ...td, textAlign: "center" }}>{number(value)}</td>)}
               {[row.appointments, row.h, row.c, row.p, row.s].map((value, index) => <td key={`appointment-${index}`} style={{ ...td, textAlign: "right", ...(index === 0 ? { borderLeft: "2px solid #cbd5e1" } : {}) }}>{number(value)}</td>)}
               <td style={{ ...td, textAlign: "right" }}>{money(row.net)}</td><td style={{ ...td, textAlign: "right" }}>{money(row.solid)}</td>
             </tr>)}
