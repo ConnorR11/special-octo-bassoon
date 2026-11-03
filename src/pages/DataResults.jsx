@@ -158,20 +158,30 @@ function DataResults() {
       for (let offset = 0; offset < appointmentIds.length; offset += CHUNK_SIZE) {
         const ids = appointmentIds.slice(offset, offset + CHUNK_SIZE)
         const { data, error: dealError } = await supabase.from("deals")
-          .select("id,appointment_row_id,net_value,pipedrive_stage")
+          .select("id,appointment_row_id,deal_value,net_value,pipedrive_stage")
           .in("appointment_row_id", ids)
         if (dealError) throw dealError
         deals.push(...(data || []))
       }
 
+      // Exclude appointments from all appointment KPIs and deal totals when
+      // their linked deal has a zero deal_value.
+      const zeroValueAppointmentIds = new Set(
+        deals.filter(deal => Number(deal.deal_value) === 0).map(deal => deal.appointment_row_id)
+      )
+      const includedAppointments = appointments.filter(
+        appointment => !zeroValueAppointmentIds.has(appointment.appointment_row_id)
+      )
+      const includedAppointmentIds = new Set(includedAppointments.map(item => item.appointment_row_id))
+
       const dealsByAppointment = new Map()
-      deals.forEach(deal => {
+      deals.filter(deal => includedAppointmentIds.has(deal.appointment_row_id)).forEach(deal => {
         if (!dealsByAppointment.has(deal.appointment_row_id)) dealsByAppointment.set(deal.appointment_row_id, [])
         dealsByAppointment.get(deal.appointment_row_id).push(deal)
       })
 
       const dealDetailsById = new Map()
-      appointments.forEach(appointment => {
+      includedAppointments.forEach(appointment => {
         const source = linkedLeadSources.get(appointment.marketing_row_id) || appointment.lead_source || "(No lead source)"
         const row = getRow(source)
         row.appointments += 1
