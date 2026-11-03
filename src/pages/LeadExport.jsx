@@ -82,7 +82,7 @@ export default function LeadExport() {
       setPage(pageNumber)
     }
     setLoading(false)
-  }, [])
+  }, [activeSource.source])
 
   useEffect(() => {
     loadLeads(0)
