@@ -101,6 +101,13 @@ function OpenSolarThumbnail({ row }) {
     {imageUrl ? <img src={imageUrl} alt={"OpenSolar design for " + (normalise(row.name) || "appointment")} loading="lazy" onError={() => setImageUrl("")} style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <span style={{ fontSize: 9, color: "#94a3b8", textAlign: "center", padding: 3 }}>{attempted ? "No preview" : "Design preview"}</span>}
   </div>
 }
+function startOfTodayISO() {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, "0")
+  const day = String(now.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
 function startOfCurrentWeekISO() {
   const now = new Date()
   const day = (now.getDay() + 6) % 7
@@ -333,7 +340,7 @@ export default function SolarRework({ onSelectAppointment }) {
         .not("result", "is", null)
         .neq("result", "")
         .not("result", "ilike", "sold")
-        .lt("appointment_date", activeTab === "linked" ? startOfPreviousWeekISO() : startOfCurrentWeekISO())
+        .lt("appointment_date", activeTab === "linked" ? startOfTodayISO() : startOfCurrentWeekISO())
         .order("appointment_date", { ascending: activeTab === "linked" ? linkedSortOrder === "asc" : unlinkedSortOrder === "asc", nullsFirst: false })
         .order("appointment_row_id", { ascending: false })
       if (yearFilter !== "all") request = request.gte("appointment_date", yearFilter + "-01-01").lt("appointment_date", (Number(yearFilter) + 1) + "-01-01")
@@ -487,7 +494,7 @@ export default function SolarRework({ onSelectAppointment }) {
             .not("result", "is", null)
             .neq("result", "")
             .not("result", "ilike", "sold")
-            .lt("appointment_date", activeTab === "linked" ? startOfPreviousWeekISO() : startOfCurrentWeekISO())
+            .lt("appointment_date", activeTab === "linked" ? startOfTodayISO() : startOfCurrentWeekISO())
           if (yearFilter !== "all") request = request.gte("appointment_date", yearFilter + "-01-01").lt("appointment_date", (Number(yearFilter) + 1) + "-01-01")
           if (resultFilter !== "all") request = request.eq("result", resultFilter)
           if (leadSourceFilter !== "all") request = request.eq("lead_source", leadSourceFilter)
