@@ -159,7 +159,7 @@ function DataResults() {
         if (flags[3]) row.s += 1
         linkedAppointments.forEach(appointment => {
           ;(dealsByAppointment.get(appointment.appointment_row_id) || []).forEach(deal => {
-            if (appointment.cps_s === true && !row.dealIds.has(deal.id)) {
+            if (!row.dealIds.has(deal.id)) {
               row.dealIds.add(deal.id)
               row.net += Number(deal.net_value || 0)
             }
