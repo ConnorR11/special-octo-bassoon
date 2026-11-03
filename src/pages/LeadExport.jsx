@@ -54,7 +54,10 @@ function formatDate(value) {
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
 }
 
-export default function LeadExport() {\n  const [activeSourceId, setActiveSourceId] = useState("smg")\n  const activeSource = LEAD_SOURCES.find(source => source.id === activeSourceId) || LEAD_SOURCES[0]\n  const columns = SOURCE_COLUMNS[activeSource.id]
+export default function LeadExport() {
+  const [activeSourceId, setActiveSourceId] = useState("smg")
+  const activeSource = LEAD_SOURCES.find(source => source.id === activeSourceId) || LEAD_SOURCES[0]
+  const columns = SOURCE_COLUMNS[activeSource.id]
   const [leads, setLeads] = useState([])
   const [page, setPage] = useState(0)
   const [total, setTotal] = useState(0)
@@ -94,7 +97,7 @@ export default function LeadExport() {\n  const [activeSourceId, setActiveSource
       let offset = 0
       while (true) {
         const { data, error: queryError } = await supabase.rpc("get_lead_export_page", {
-          p_source: LEAD_SOURCE,
+          p_source: activeSource.source,
           p_limit: 1000,
           p_offset: offset,
         })
@@ -110,7 +113,7 @@ export default function LeadExport() {\n  const [activeSourceId, setActiveSource
       const url = URL.createObjectURL(blob)
       const link = document.createElement("a")
       link.href = url
-      link.download = "homeshield-${activeSource.id}-leads-2026.csv"
+      link.download = `homeshield-${activeSource.id}-leads-2026.csv`
       document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url)
     } catch (err) { setError(err?.message || "Unable to export leads.") }
     finally { setExporting(false) }
@@ -131,7 +134,7 @@ export default function LeadExport() {\n  const [activeSourceId, setActiveSource
     <div style={{ background: "#fff", border: "1px solid #e3e9ee", borderRadius: 12, overflow: "hidden" }}>
       <div style={{ overflowX: "auto" }}><table style={{ width: "100%", minWidth: 900, borderCollapse: "collapse", fontSize: 12 }}>
         <thead><tr style={{ background: "#f5f8fa", color: "#536575", textAlign: "left" }}>{columns.map(([label]) => <th key={label} style={{ padding: "13px 12px", borderBottom: "1px solid #e3e9ee", whiteSpace: "nowrap" }}>{label}</th>)}</tr></thead>
-        <tbody>{loading ? <tr><td colSpan={columns.length} style={{ padding: 30, textAlign: "center" }}>Loading leads...</td></tr> : leads.length === 0 ? <tr><td colSpan={6} style={{ padding: 30, textAlign: "center" }}>No leads found for this filter.</td></tr> : leads.map((row, index) => <tr key={row.received_date_time + "-" + index} style={{ borderBottom: "1px solid #edf1f4" }}>
+        <tbody>{loading ? <tr><td colSpan={columns.length} style={{ padding: 30, textAlign: "center" }}>Loading leads...</td></tr> : leads.length === 0 ? <tr><td colSpan={columns.length} style={{ padding: 30, textAlign: "center" }}>No leads found for this filter.</td></tr> : leads.map((row, index) => <tr key={row.received_date_time + "-" + index} style={{ borderBottom: "1px solid #edf1f4" }}>
           <td style={{ padding: "11px 12px", whiteSpace: "nowrap" }}>{formatDate(row.received_date_time)}</td><td style={{ padding: "11px 12px", fontWeight: 600, whiteSpace: "nowrap" }}>{[row.first_name,row.last_name].filter(Boolean).join(" ") || "—"}</td><td style={{ padding: "11px 12px", whiteSpace: "nowrap" }}>{row.postcode || "—"}</td><td style={{ padding: "11px 12px", whiteSpace: "nowrap" }}>{row.disposition || "—"}</td><td style={{ padding: "11px 12px", whiteSpace: "pre-wrap" }}>{row.appointment_results || "—"}</td><td style={{ padding: "11px 12px", whiteSpace: "pre-wrap" }}>{row.marketing_note || "—"}</td>
         </tr>)}</tbody>
       </table></div>
