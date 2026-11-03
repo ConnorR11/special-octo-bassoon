@@ -24,8 +24,7 @@ function addDays(value, days) {
 }
 
 function dateRangeDefault() {
-  const now = new Date()
-  return { start: localDate(new Date(now.getFullYear(), now.getMonth(), 1)), end: localDate(now) }
+  return getPresetRange("last-week")
 }
 
 function getPresetRange(preset) {
@@ -60,7 +59,7 @@ function DataResults() {
   const defaults = useMemo(dateRangeDefault, [])
   const [startDate, setStartDate] = useState(defaults.start)
   const [endDate, setEndDate] = useState(defaults.end)
-  const [activePreset, setActivePreset] = useState("this-month")
+  const [activePreset, setActivePreset] = useState("last-week")
   const [rows, setRows] = useState([])
   const [summary, setSummary] = useState({ deals: 0, net: 0, solid: 0 })
   const [loading, setLoading] = useState(false)
