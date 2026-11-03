@@ -30,20 +30,24 @@ const SOURCE_COLUMNS = {
     ["Marketing Note", row => row.marketing_note || ""],
   ],
   "global-solar": [
-    ["Received Date", row => row.received_date_time || ""],
-    ["Name", row => [row.first_name, row.last_name].filter(Boolean).join(" ")],
-    ["Postcode", row => row.postcode || ""],
+    ["Received date", row => row.received_date_time || ""],
+    ["Email", row => row.email || ""],
+    ["Lead source", row => row.lead_source || ""],
+    ["Introducer", row => row.introducer || ""],
     ["Disposition", row => row.disposition || ""],
-    ["Related Appointment Results", row => row.appointment_results || ""],
-    ["Marketing Note", row => row.marketing_note || ""],
+    ["Appointment results", row => row.appointment_results || ""],
+    ["Deal net value", row => row.deal_net_value == null ? "" : Number(row.deal_net_value).toFixed(2)],
+    ["Marketing note", row => row.marketing_note || ""],
   ],
   "global-windows": [
-    ["Received Date", row => row.received_date_time || ""],
-    ["Name", row => [row.first_name, row.last_name].filter(Boolean).join(" ")],
-    ["Postcode", row => row.postcode || ""],
+    ["Received date", row => row.received_date_time || ""],
+    ["Email", row => row.email || ""],
+    ["Lead source", row => row.lead_source || ""],
+    ["Introducer", row => row.introducer || ""],
     ["Disposition", row => row.disposition || ""],
-    ["Related Appointment Results", row => row.appointment_results || ""],
-    ["Marketing Note", row => row.marketing_note || ""],
+    ["Appointment results", row => row.appointment_results || ""],
+    ["Deal net value", row => row.deal_net_value == null ? "" : Number(row.deal_net_value).toFixed(2)],
+    ["Marketing note", row => row.marketing_note || ""],
   ],
 }
 
@@ -132,10 +136,13 @@ export default function LeadExport() {
     </div>
     {error && <div role="alert" style={{ padding: 12, marginBottom: 14, borderRadius: 8, background: "#fff1f0", color: "#a12622", border: "1px solid #f2c8c5", fontSize: 13 }}>{error}</div>}
     <div style={{ background: "#fff", border: "1px solid #e3e9ee", borderRadius: 12, overflow: "hidden" }}>
-      <div style={{ overflowX: "auto" }}><table style={{ width: "100%", minWidth: 900, borderCollapse: "collapse", fontSize: 12 }}>
+      <div style={{ overflowX: "auto" }}><table style={{ width: "100%", minWidth: activeSource.id.startsWith("global-") ? 1250 : 900, borderCollapse: "collapse", fontSize: 12 }}>
         <thead><tr style={{ background: "#f5f8fa", color: "#536575", textAlign: "left" }}>{columns.map(([label]) => <th key={label} style={{ padding: "13px 12px", borderBottom: "1px solid #e3e9ee", whiteSpace: "nowrap" }}>{label}</th>)}</tr></thead>
         <tbody>{loading ? <tr><td colSpan={columns.length} style={{ padding: 30, textAlign: "center" }}>Loading leads...</td></tr> : leads.length === 0 ? <tr><td colSpan={columns.length} style={{ padding: 30, textAlign: "center" }}>No leads found for this filter.</td></tr> : leads.map((row, index) => <tr key={row.received_date_time + "-" + index} style={{ borderBottom: "1px solid #edf1f4" }}>
-          <td style={{ padding: "11px 12px", whiteSpace: "nowrap" }}>{formatDate(row.received_date_time)}</td><td style={{ padding: "11px 12px", fontWeight: 600, whiteSpace: "nowrap" }}>{[row.first_name,row.last_name].filter(Boolean).join(" ") || "—"}</td><td style={{ padding: "11px 12px", whiteSpace: "nowrap" }}>{row.postcode || "—"}</td><td style={{ padding: "11px 12px", whiteSpace: "nowrap" }}>{row.disposition || "—"}</td><td style={{ padding: "11px 12px", whiteSpace: "pre-wrap" }}>{row.appointment_results || "—"}</td><td style={{ padding: "11px 12px", whiteSpace: "pre-wrap" }}>{row.marketing_note || "—"}</td>
+          {columns.map(([label, getter]) => {
+            const value = label === "Received Date" || label === "Received date" ? formatDate(row.received_date_time) : getter(row)
+            return <td key={label} style={{ padding: "11px 12px", fontWeight: label === "Email" ? 600 : 400, whiteSpace: label === "Marketing note" || label === "Marketing Note" || label === "Appointment results" || label === "Related Appointment Results" ? "pre-wrap" : "nowrap" }}>{value === "" || value == null ? "—" : value}</td>
+          })}
         </tr>)}</tbody>
       </table></div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "13px 16px", borderTop: "1px solid #e3e9ee" }}>
