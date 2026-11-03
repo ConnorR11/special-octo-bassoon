@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { RefreshCw, FileSpreadsheet } from "lucide-react"
 import * as XLSX from "xlsx-js-style"
 import { supabase } from "../lib/supabase"
+import LeadExport from "./LeadExport"
 
 const PAGE_SIZE = 1000
 const CHUNK_SIZE = 300
@@ -372,6 +373,9 @@ function DataResults() {
             </tbody>
           </table>
         </div>
+      </div>
+      <div style={{ marginTop: 28 }}>
+        <LeadExport />
       </div>
     </section>
   </div>
