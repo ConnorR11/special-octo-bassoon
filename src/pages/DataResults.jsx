@@ -140,6 +140,19 @@ function DataResults() {
         if (batch.length < PAGE_SIZE) break
       }
 
+      const appointmentMarketingIds = [...new Set(appointments.map(item => item.marketing_row_id).filter(Boolean))]
+      const linkedLeadSources = new Map()
+      for (let offset = 0; offset < appointmentMarketingIds.length; offset += CHUNK_SIZE) {
+        const ids = appointmentMarketingIds.slice(offset, offset + CHUNK_SIZE)
+        const { data, error: linkedLeadError } = await supabase.from("leads")
+          .select("marketing_row_id,lead_source")
+          .in("marketing_row_id", ids)
+        if (linkedLeadError) throw linkedLeadError
+        ;(data || []).forEach(lead => {
+          if (!linkedLeadSources.has(lead.marketing_row_id)) linkedLeadSources.set(lead.marketing_row_id, lead.lead_source)
+        })
+      }
+
       const appointmentIds = [...new Set(appointments.map(item => item.appointment_row_id).filter(Boolean))]
       const deals = []
       for (let offset = 0; offset < appointmentIds.length; offset += CHUNK_SIZE) {
@@ -158,7 +171,7 @@ function DataResults() {
       })
 
       appointments.forEach(appointment => {
-        const row = getRow(appointment.lead_source)
+        const row = getRow(linkedLeadSources.get(appointment.marketing_row_id) || appointment.lead_source)
         row.appointments += 1
         if (appointment.cps_h === true) row.h += 1
         if (appointment.cps_c === true) row.c += 1
