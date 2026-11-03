@@ -84,10 +84,12 @@ function DataResults() {
     try {
       const from = new Date(`${startDate}T00:00:00`).toISOString()
       const to = new Date(`${addDays(endDate, 1)}T00:00:00`).toISOString()
+      // Query 1: leads received during the selected period. These figures describe
+      // the lead cohort and are not affected by when its appointments took place.
       const leads = []
       for (let offset = 0; ; offset += PAGE_SIZE) {
         const { data, error: queryError } = await supabase.from("leads")
-          .select("marketing_row_id,lead_source,disposition,archive_disposition,invalid,appointment_date_time,received_date_time")
+          .select("marketing_row_id,lead_source,disposition,archive_disposition,invalid")
           .gte("received_date_time", from).lt("received_date_time", to)
           .order("received_date_time", { ascending: true })
           .range(offset, offset + PAGE_SIZE - 1)
@@ -97,15 +99,45 @@ function DataResults() {
         if (batch.length < PAGE_SIZE) break
       }
 
-      const marketingIds = [...new Set(leads.map(lead => lead.marketing_row_id).filter(Boolean))]
+      const grouped = new Map()
+      const getRow = source => {
+        const key = String(source || "").trim() || "(No lead source)"
+        if (!grouped.has(key)) grouped.set(key, {
+          source: key, leads: 0, dup: 0, wn: 0, ooa: 0, inv: 0,
+          total: 0, netLeads: 0, callback: 0, noContact: 0, archivedNoContact: 0,
+          appointments: 0, h: 0, c: 0, p: 0, s: 0,
+          net: 0, solid: 0, dealIds: new Set(), solidDealIds: new Set(),
+        })
+        return grouped.get(key)
+      }
+
+      leads.forEach(lead => {
+        const row = getRow(lead.lead_source)
+        row.leads += 1
+        const disposition = clean(lead.disposition)
+        if (disposition === "duplicate") row.dup += 1
+        if (disposition === "wrong number") row.wn += 1
+        if (disposition === "out of area") row.ooa += 1
+        const invalidReason = clean(lead.invalid)
+        if (invalidReason && !["duplicate", "wrong number", "out of area"].includes(invalidReason)) row.inv += 1
+        if (disposition.startsWith("call back")) row.callback += 1
+        if (disposition === "no contact") row.noContact += 1
+        if (clean(lead.archive_disposition) === "no contact") row.archivedNoContact += 1
+      })
+
+      // Query 2: appointments whose appointment date falls in the selected period.
+      // HCPS and their linked deals are calculated from this separate appointment cohort.
       const appointments = []
-      for (let offset = 0; offset < marketingIds.length; offset += CHUNK_SIZE) {
-        const ids = marketingIds.slice(offset, offset + CHUNK_SIZE)
+      for (let offset = 0; ; offset += PAGE_SIZE) {
         const { data, error: appointmentError } = await supabase.from("appointments")
-          .select("appointment_row_id,marketing_row_id,cps_h,cps_c,cps_p,cps_s")
-          .in("marketing_row_id", ids)
+          .select("appointment_row_id,marketing_row_id,lead_source,appointment_date,cps_h,cps_c,cps_p,cps_s")
+          .gte("appointment_date", from).lt("appointment_date", to)
+          .order("appointment_date", { ascending: true })
+          .range(offset, offset + PAGE_SIZE - 1)
         if (appointmentError) throw appointmentError
-        appointments.push(...(data || []))
+        const batch = data || []
+        appointments.push(...batch)
+        if (batch.length < PAGE_SIZE) break
       }
 
       const appointmentIds = [...new Set(appointments.map(item => item.appointment_row_id).filter(Boolean))]
@@ -119,60 +151,36 @@ function DataResults() {
         deals.push(...(data || []))
       }
 
-      const appointmentsByLead = new Map()
-      appointments.forEach(item => {
-        if (!appointmentsByLead.has(item.marketing_row_id)) appointmentsByLead.set(item.marketing_row_id, [])
-        appointmentsByLead.get(item.marketing_row_id).push(item)
-      })
       const dealsByAppointment = new Map()
-      deals.forEach(item => {
-        if (!dealsByAppointment.has(item.appointment_row_id)) dealsByAppointment.set(item.appointment_row_id, [])
-        dealsByAppointment.get(item.appointment_row_id).push(item)
+      deals.forEach(deal => {
+        if (!dealsByAppointment.has(deal.appointment_row_id)) dealsByAppointment.set(deal.appointment_row_id, [])
+        dealsByAppointment.get(deal.appointment_row_id).push(deal)
       })
 
-      const grouped = new Map()
-      leads.forEach(lead => {
-        const source = String(lead.lead_source || "").trim() || "(No lead source)"
-        if (!grouped.has(source)) grouped.set(source, {
-          source, leads: 0, dup: 0, wn: 0, ooa: 0, inv: 0, booked: 0,
-          callback: 0, noContact: 0, archivedNoContact: 0, h: 0, c: 0, p: 0, s: 0,
-          net: 0, solid: 0, dealIds: new Set(),
-        })
-        const row = grouped.get(source)
-        row.leads += 1
-        const disposition = clean(lead.disposition)
-        if (disposition === "duplicate") row.dup += 1
-        if (disposition === "wrong number") row.wn += 1
-        if (disposition === "out of area") row.ooa += 1
-        const invalidReason = clean(lead.invalid)
-        if (invalidReason && !["duplicate", "wrong number", "out of area"].includes(invalidReason)) row.inv += 1
-        if (lead.appointment_date_time || (appointmentsByLead.get(lead.marketing_row_id) || []).length) row.booked += 1
-        if (disposition.startsWith("call back")) row.callback += 1
-        if (disposition === "no contact") row.noContact += 1
-        if (clean(lead.archive_disposition) === "no contact") row.archivedNoContact += 1
-
-        const linkedAppointments = appointmentsByLead.get(lead.marketing_row_id) || []
-        const flags = ["h", "c", "p", "s"].map(flag => linkedAppointments.some(item => item[`cps_${flag}`] === true))
-        if (flags[0]) row.h += 1
-        if (flags[1]) row.c += 1
-        if (flags[2]) row.p += 1
-        if (flags[3]) row.s += 1
-        linkedAppointments.forEach(appointment => {
-          ;(dealsByAppointment.get(appointment.appointment_row_id) || []).forEach(deal => {
-            if (!row.dealIds.has(deal.id)) {
-              row.dealIds.add(deal.id)
-              row.net += Number(deal.net_value || 0)
-            }
-            const stage = clean(deal.pipedrive_stage)
-            if (stage !== "customer cancelled" && stage !== "decline" && !row._solidDealIds?.has(deal.id)) {
-              if (!row._solidDealIds) row._solidDealIds = new Set()
-              row._solidDealIds.add(deal.id)
-              row.solid += Number(deal.net_value || 0)
-            }
-          })
+      appointments.forEach(appointment => {
+        const row = getRow(appointment.lead_source)
+        row.appointments += 1
+        if (appointment.cps_h === true) row.h += 1
+        if (appointment.cps_c === true) row.c += 1
+        if (appointment.cps_p === true) row.p += 1
+        if (appointment.cps_s === true) row.s += 1
+        ;(dealsByAppointment.get(appointment.appointment_row_id) || []).forEach(deal => {
+          if (!row.dealIds.has(deal.id)) {
+            row.dealIds.add(deal.id)
+            row.net += Number(deal.net_value || 0)
+          }
+          const stage = clean(deal.pipedrive_stage)
+          if (stage !== "customer cancelled" && stage !== "decline" && !row.solidDealIds.has(deal.id)) {
+            row.solidDealIds.add(deal.id)
+            row.solid += Number(deal.net_value || 0)
+          }
         })
       })
 
+      grouped.forEach(row => {
+        row.total = row.dup + row.wn + row.ooa + row.inv
+        row.netLeads = row.leads - row.total
+      })
       const result = [...grouped.values()].map(row => ({
         ...row,
         total: row.dup + row.wn + row.ooa + row.inv,
@@ -180,7 +188,7 @@ function DataResults() {
         deals: row.dealIds.size,
       })).sort((a, b) => b.leads - a.leads || a.source.localeCompare(b.source))
       const netSold = result.reduce((sum, row) => sum + row.net, 0)
-      const soldDeals = result.reduce((sum, row) => sum + row.deals, 0)
+      const soldDeals = result.reduce((sum, row) => sum + row.dealIds.size, 0)
       const solid = result.reduce((sum, row) => sum + row.solid, 0)
       setRows(result)
       setSummary({ deals: soldDeals, net: netSold, solid })
@@ -197,7 +205,7 @@ function DataResults() {
   useEffect(() => { loadData() }, [loadData])
 
   const totals = useMemo(() => rows.reduce((sum, row) => {
-    ;["leads", "dup", "wn", "ooa", "inv", "total", "netLeads", "booked", "callback", "noContact", "archivedNoContact", "h", "c", "p", "s", "net", "solid"].forEach(key => { sum[key] = (sum[key] || 0) + Number(row[key] || 0) })
+    ;["leads", "dup", "wn", "ooa", "inv", "total", "netLeads", "callback", "noContact", "archivedNoContact", "appointments", "h", "c", "p", "s", "net", "solid"].forEach(key => { sum[key] = (sum[key] || 0) + Number(row[key] || 0) })
     return sum
   }, {}), [rows])
 
@@ -206,12 +214,12 @@ function DataResults() {
     try {
       const exportRows = rows.map(row => ({
         "Lead Source": row.source, Leads: row.leads, Dup: row.dup, WN: row.wn, OOA: row.ooa, INV: row.inv,
-        Total: row.total, Net: row.netLeads, Booked: row.booked, "Call Back": row.callback, NC: row.noContact,
+        Total: row.total, Net: row.netLeads, Appointments: row.appointments, "Call Back": row.callback, NC: row.noContact,
         "A NC": row.archivedNoContact, H: row.h, C: row.c, P: row.p, S: row.s, Net: row.net, Solid: row.solid,
       }))
       exportRows.push({
         "Lead Source": "TOTAL", Leads: totals.leads || 0, Dup: totals.dup || 0, WN: totals.wn || 0, OOA: totals.ooa || 0,
-        INV: totals.inv || 0, Total: totals.total || 0, "Net Leads": totals.netLeads || 0, Booked: totals.booked || 0,
+        INV: totals.inv || 0, Total: totals.total || 0, "Net Leads": totals.netLeads || 0, Appointments: totals.appointments || 0,
         "Call Back": totals.callback || 0, NC: totals.noContact || 0, "A NC": totals.archivedNoContact || 0,
         H: totals.h || 0, C: totals.c || 0, P: totals.p || 0, S: totals.s || 0, "Net Value": totals.net || 0, Solid: totals.solid || 0,
       })
@@ -272,23 +280,23 @@ function DataResults() {
       {error && <div style={{ padding: 12, marginBottom: 10, borderRadius: 8, background: "#fff1f2", color: "#be123c", fontSize: 12 }}>{error}</div>}
       <div style={{ overflow: "auto", maxHeight: "calc(100vh - 320px)", background: "#fff", border: "1px solid #e2e8f0" }}>
         <table style={{ width: "100%", minWidth: 1250, borderCollapse: "separate", borderSpacing: 0 }}>
-          <thead><tr>{["Lead Source", "Leads", "Dup", "WN", "OOA", "INV", "Total", "Net", "Booked", "Call Back", "NC", "A NC", "H", "C", "P", "S", "Net", "Solid"].map((heading, index) => <th key={heading + index} style={th}>{heading}</th>)}</tr></thead>
+          <thead><tr>{["Lead Source", "Leads received", "Dup", "WN", "OOA", "INV", "Total", "Net leads", "Call Back", "NC", "A NC", "Appointments", "H", "C", "P", "S", "Net", "Solid"].map((heading, index) => <th key={heading + index} style={th}>{heading}</th>)}</tr></thead>
           <tbody>
             {rows.map(row => <tr key={row.source}>
               <td style={{ ...td, fontWeight: 650, position: "sticky", left: 0, background: "#fff", zIndex: 0 }}>{row.source}</td>
-              {[row.leads, row.dup, row.wn, row.ooa, row.inv, row.total, row.netLeads, row.booked, row.callback, row.noContact, row.archivedNoContact, row.h, row.c, row.p, row.s].map((value, index) => <td key={index} style={{ ...td, textAlign: "right" }}>{number(value)}</td>)}
+              {[row.leads, row.dup, row.wn, row.ooa, row.inv, row.total, row.netLeads, row.callback, row.noContact, row.archivedNoContact, row.appointments, row.h, row.c, row.p, row.s].map((value, index) => <td key={index} style={{ ...td, textAlign: "right" }}>{number(value)}</td>)}
               <td style={{ ...td, textAlign: "right" }}>{money(row.net)}</td><td style={{ ...td, textAlign: "right" }}>{money(row.solid)}</td>
             </tr>)}
             {!loading && !rows.length && <tr><td colSpan={18} style={{ ...td, textAlign: "center", padding: 24, color: "#64748b" }}>No leads found in this date range.</td></tr>}
             <tr style={{ background: "#f8fafc" }}>
               <td style={{ ...td, fontWeight: 750, position: "sticky", left: 0, background: "#f8fafc" }}>TOTAL</td>
-              {[totals.leads, totals.dup, totals.wn, totals.ooa, totals.inv, totals.total, totals.netLeads, totals.booked, totals.callback, totals.noContact, totals.archivedNoContact, totals.h, totals.c, totals.p, totals.s].map((value, index) => <td key={index} style={{ ...td, textAlign: "right", fontWeight: 750 }}>{number(value)}</td>)}
+              {[totals.leads, totals.dup, totals.wn, totals.ooa, totals.inv, totals.total, totals.netLeads, totals.callback, totals.noContact, totals.archivedNoContact, totals.appointments, totals.h, totals.c, totals.p, totals.s].map((value, index) => <td key={index} style={{ ...td, textAlign: "right", fontWeight: 750 }}>{number(value)}</td>)}
               <td style={{ ...td, textAlign: "right", fontWeight: 750 }}>{money(totals.net)}</td><td style={{ ...td, textAlign: "right", fontWeight: 750 }}>{money(totals.solid)}</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <p style={{ margin: "8px 0 0", color: "#94a3b8", fontSize: 10 }}>Leads are grouped by lead source using received date. H/C/P/S count each lead once if any linked appointment has that CPS flag. Net Sold includes deals linked to CPS S appointments; Solid excludes Customer Cancelled and Decline stages.</p>
+      <p style={{ margin: "8px 0 0", color: "#94a3b8", fontSize: 10 }}>Lead outcomes are grouped by lead source using lead received date. Appointments, H/C/P/S and linked deal values are grouped separately using appointment date. Each linked deal is counted once per lead source; Solid excludes Customer Cancelled and Decline stages.</p>
     </section>
   </div>
 }
