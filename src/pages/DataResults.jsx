@@ -227,8 +227,7 @@ function DataResults() {
     try {
       const exportRows = rows.map(row => ({
         "Lead Source": row.source, Leads: row.leads, Dup: row.dup, WN: row.wn, OOA: row.ooa, INV: row.inv,
-        Total: row.total, Net: row.netLeads, Appointments: row.appointments, "Call Back": row.callback, NC: row.noContact,
-        "A NC": row.archivedNoContact, H: row.h, C: row.c, P: row.p, S: row.s, Net: row.net, Solid: row.solid,
+        Total: row.total, Net: row.netLeads, Appointments: row.appointments, "Call Back": row.callback, NC: row.noContact, H: row.h, C: row.c, P: row.p, S: row.s, Net: row.net, Solid: row.solid,
       }))
       exportRows.push({
         "Lead Source": "TOTAL", Leads: totals.leads || 0, Dup: totals.dup || 0, WN: totals.wn || 0, OOA: totals.ooa || 0,
