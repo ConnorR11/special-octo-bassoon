@@ -62,6 +62,7 @@ function DataResults() {
   const [activePreset, setActivePreset] = useState("last-week")
   const [rows, setRows] = useState([])
   const [dealDetails, setDealDetails] = useState([])
+  const [dealSourceFilter, setDealSourceFilter] = useState("All")
   const [summary, setSummary] = useState({ deals: 0, net: 0, solid: 0 })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -264,6 +265,11 @@ function DataResults() {
     } finally { setExporting(false) }
   }
 
+  const dealSources = [...new Set(dealDetails.map(deal => deal.source).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+  const visibleDealDetails = dealDetails
+    .filter(deal => dealSourceFilter === "All" || deal.source === dealSourceFilter)
+    .sort((a, b) => String(a.appointmentDate || "").localeCompare(String(b.appointmentDate || "")) || String(a.id).localeCompare(String(b.id)))
+
   const th = { padding: "9px 8px", fontSize: 11, fontWeight: 600, color: "#64748b", textAlign: "left", whiteSpace: "nowrap", borderBottom: "1px solid #dbe2ea", background: "#f8fafc", position: "sticky", top: 0, zIndex: 1 }
   const td = { padding: "8px", fontSize: 11, color: "#172033", whiteSpace: "nowrap", borderBottom: "1px solid #e8edf3" }
   const card = { background: "#fff", color: "#172033", border: "1px solid #e1e7ee", borderRadius: 12, padding: "15px 18px", minWidth: 0, boxShadow: "0 2px 8px rgba(15, 35, 55, 0.08)" }
@@ -348,7 +354,7 @@ function DataResults() {
             <h2 style={{ margin: 0, fontSize: 15, color: "#17324a" }}>Linked deals included in report</h2>
             <p style={{ margin: "4px 0 0", fontSize: 11, color: "#64748b" }}>Deals linked to appointments dated within the selected period.</p>
           </div>
-          <strong style={{ fontSize: 13, color: "#17324a" }}>{loading ? "Loading…" : number(dealDetails.length) + " deals"}</strong>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}><select value={dealSourceFilter} onChange={event => setDealSourceFilter(event.target.value)} style={{ padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 6, background: "#fff", color: "#17324a", fontSize: 12 }}><option value="All">All lead sources</option>{dealSources.map(source => <option key={source} value={source}>{source}</option>)}</select><strong style={{ fontSize: 13, color: "#17324a" }}>{loading ? "Loading…" : number(visibleDealDetails.length) + " deals"}</strong></div>
         </div>
         <div style={{ overflowX: "auto", maxHeight: 420 }}>
           <table style={{ width: "100%", minWidth: 900, borderCollapse: "separate", borderSpacing: 0 }}>
@@ -356,13 +362,13 @@ function DataResults() {
               {["Customer - Contract", "Lead source", "Appointment date", "Appointment ID", "H", "C", "P", "S", "Net value", "Pipedrive stage"].map(label => <th key={label} style={th}>{label}</th>)}
             </tr></thead>
             <tbody>
-              {dealDetails.map(deal => <tr key={deal.id}>
+              {visibleDealDetails.map(deal => <tr key={deal.id}>
                 <td style={td}>{[deal.customerName, deal.contractNumber].filter(Boolean).join(" - ") || "—"}</td><td style={td}>{deal.source}</td><td style={td}>{deal.appointmentDate ? new Date(deal.appointmentDate).toLocaleDateString("en-GB") : "—"}</td>
                 <td style={td}>{deal.appointmentRowId || "—"}</td>
                 {[deal.h, deal.c, deal.p, deal.s].map((value, index) => <td key={index} style={{ ...td, textAlign: "center" }}>{value ? "✓" : "—"}</td>)}
                 <td style={{ ...td, textAlign: "right", fontWeight: 650 }}>{money(deal.net)}</td><td style={td}>{deal.stage || "—"}</td>
               </tr>)}
-              {!loading && !dealDetails.length && <tr><td colSpan={10} style={{ ...td, textAlign: "center", padding: 22, color: "#64748b" }}>No linked deals found for appointments in this date range.</td></tr>}
+              {!loading && !visibleDealDetails.length && <tr><td colSpan={10} style={{ ...td, textAlign: "center", padding: 22, color: "#64748b" }}>No linked deals found for appointments in this date range.</td></tr>}
             </tbody>
           </table>
         </div>
