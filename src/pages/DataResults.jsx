@@ -108,7 +108,7 @@ function DataResults() {
         if (disposition === "duplicate") row.dup += 1
         if (disposition === "wrong number") row.wn += 1
         if (disposition === "out of area") row.ooa += 1
-        if (truthy(lead.invalid) || disposition === "invalid") row.inv += 1
+        const invalidReason = clean(lead.invalid)\n        if (invalidReason && !["duplicate", "wrong number", "out of area"].includes(invalidReason)) row.inv += 1
         if (lead.appointment_date_time || (appointmentsByLead.get(lead.marketing_row_id) || []).length) row.booked += 1
         if (disposition.startsWith("call back")) row.callback += 1
         if (disposition === "no contact") row.noContact += 1
@@ -122,7 +122,7 @@ function DataResults() {
         if (flags[3]) row.s += 1
         linkedAppointments.forEach(appointment => {
           ;(dealsByAppointment.get(appointment.appointment_row_id) || []).forEach(deal => {
-            if (flags[3] && !row.dealIds.has(deal.id)) {
+            if (appointment.cps_s === true && !row.dealIds.has(deal.id)) {
               row.dealIds.add(deal.id)
               row.net += Number(deal.net_value || 0)
             }
@@ -174,7 +174,7 @@ function DataResults() {
       }))
       exportRows.push({
         "Lead Source": "TOTAL", Leads: totals.leads || 0, Dup: totals.dup || 0, WN: totals.wn || 0, OOA: totals.ooa || 0,
-        INV: totals.inv || 0, Total: totals.total || 0, Net: totals.netLeads || 0, Booked: totals.booked || 0,
+        INV: totals.inv || 0, Total: totals.total || 0, "Net Leads": totals.netLeads || 0, Booked: totals.booked || 0,
         "Call Back": totals.callback || 0, NC: totals.noContact || 0, "A NC": totals.archivedNoContact || 0,
         H: totals.h || 0, C: totals.c || 0, P: totals.p || 0, S: totals.s || 0, "Net Value": totals.net || 0, Solid: totals.solid || 0,
       })
