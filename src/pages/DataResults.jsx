@@ -143,11 +143,11 @@ function DataResults() {
         netLeads: row.leads - row.dup - row.wn - row.ooa - row.inv,
         deals: row.dealIds.size,
       })).sort((a, b) => b.leads - a.leads || a.source.localeCompare(b.source))
-      const allDealIds = new Set(deals.map(deal => deal.id))
       const netSold = result.reduce((sum, row) => sum + row.net, 0)
+      const soldDeals = result.reduce((sum, row) => sum + row.deals, 0)
       const solid = result.reduce((sum, row) => sum + row.solid, 0)
       setRows(result)
-      setSummary({ deals: allDealIds.size, net: netSold, solid })
+      setSummary({ deals: soldDeals, net: netSold, solid })
     } catch (err) {
       console.error("Error loading Data Results:", err)
       setError(err?.message || "Unable to load Data Results.")
@@ -189,22 +189,32 @@ function DataResults() {
 
   const th = { padding: "9px 8px", fontSize: 11, fontWeight: 600, color: "#64748b", textAlign: "left", whiteSpace: "nowrap", borderBottom: "1px solid #dbe2ea", background: "#f8fafc", position: "sticky", top: 0, zIndex: 1 }
   const td = { padding: "8px", fontSize: 11, color: "#172033", whiteSpace: "nowrap", borderBottom: "1px solid #e8edf3" }
-  const card = { background: "#fff", border: "1px solid #e1e7ee", borderRadius: 10, padding: "12px 15px", minWidth: 0 }
+  const card = { background: "#fff", color: "#172033", border: "1px solid #e1e7ee", borderRadius: 12, padding: "15px 18px", minWidth: 0, boxShadow: "0 2px 8px rgba(15, 35, 55, 0.08)" }
 
   return <div style={{ background: "#f5f7fa", minHeight: "calc(100vh - 60px)", margin: "-24px -32px", color: "#172033" }}>
-    <section style={{ background: "#062b45", color: "#fff", padding: "24px 28px 20px" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr minmax(260px, 34%)", alignItems: "start", gap: 24 }}>
-        <h1 style={{ margin: "18px 0 0", fontSize: 42, fontWeight: 700, textAlign: "center" }}>Data Results</h1>
-        <div style={{ display: "grid", gap: 12 }}>
-          <label style={{ display: "grid", gap: 6, fontSize: 11, fontWeight: 600 }}>Start Date<input type="date" value={startDate} max={endDate} onChange={event => setStartDate(event.target.value)} style={{ padding: "9px 10px", borderRadius: 7, border: "1px solid #49657a", background: "#36566d", color: "#fff", colorScheme: "dark" }}/></label>
-          <label style={{ display: "grid", gap: 6, fontSize: 11, fontWeight: 600 }}>End Date<input type="date" value={endDate} min={startDate} onChange={event => setEndDate(event.target.value)} style={{ padding: "9px 10px", borderRadius: 7, border: "1px solid #49657a", background: "#36566d", color: "#fff", colorScheme: "dark" }}/></label>
+    <section style={{ background: "linear-gradient(115deg, #062b45 0%, #0b3a59 100%)", color: "#fff", padding: "24px 28px 22px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 28, flexWrap: "wrap" }}>
+        <div style={{ minWidth: 220 }}>
+          <div style={{ fontSize: 10, letterSpacing: "0.14em", fontWeight: 700, color: "#9db7c9", textTransform: "uppercase", marginBottom: 7 }}>Digital Team · Reporting</div>
+          <h1 style={{ margin: 0, fontSize: 34, lineHeight: 1.15, fontWeight: 750 }}>Data Results</h1>
+          <p style={{ margin: "7px 0 0", fontSize: 12, color: "#c3d4e0" }}>Lead source performance and sales outcomes</p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(190px, 1fr))", gap: 12, flex: "0 1 470px" }}>
+          <label style={{ display: "grid", gap: 6, fontSize: 11, fontWeight: 650, color: "#d7e4ed" }}>START DATE<input type="date" value={startDate} max={endDate} onChange={event => setStartDate(event.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "10px 11px", borderRadius: 8, border: "1px solid #496a80", background: "#244a64", color: "#fff", colorScheme: "dark", fontSize: 13 }}/></label>
+          <label style={{ display: "grid", gap: 6, fontSize: 11, fontWeight: 650, color: "#d7e4ed" }}>END DATE<input type="date" value={endDate} min={startDate} onChange={event => setEndDate(event.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "10px 11px", borderRadius: 8, border: "1px solid #496a80", background: "#244a64", color: "#fff", colorScheme: "dark", fontSize: 13 }}/></label>
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 14, marginTop: 28 }}>
-        <div style={card}><div style={{ color: "#7b8794", fontSize: 11 }}>Deals</div><div style={{ fontSize: 21, fontWeight: 650 }}>{loading ? "—" : number(summary.deals)}</div></div>
-        <div style={card}><div style={{ color: "#7b8794", fontSize: 11 }}>Net Sold</div><div style={{ fontSize: 21, fontWeight: 650 }}>{loading ? "—" : money(summary.net)}</div></div>
-        <div style={card}><div style={{ color: "#7b8794", fontSize: 11 }}>Solid</div><div style={{ fontSize: 21, fontWeight: 650 }}>{loading ? "—" : money(summary.solid)}</div></div>
-        <div style={card}><div style={{ color: "#7b8794", fontSize: 11 }}>Drop Off</div><div style={{ fontSize: 21, fontWeight: 650 }}>{loading || !summary.net ? "—" : `${Math.max(0, (summary.net - summary.solid) / summary.net * 100).toFixed(1)}%`}</div></div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 14, marginTop: 24 }}>
+        {[
+          { label: "Deals", value: loading ? "—" : number(summary.deals), detail: "Sold deals in period" },
+          { label: "Net Sold", value: loading ? "—" : money(summary.net), detail: "Net value of sold deals" },
+          { label: "Solid", value: loading ? "—" : money(summary.solid), detail: "Value excluding cancellations" },
+          { label: "Drop Off", value: loading || !summary.net ? "—" : `${Math.max(0, (summary.net - summary.solid) / summary.net * 100).toFixed(1)}%`, detail: "Net value lost before solid" },
+        ].map(item => <div key={item.label} style={card}>
+          <div style={{ fontSize: 11, fontWeight: 650, color: "#64748b", marginBottom: 7 }}>{item.label}</div>
+          <div style={{ fontSize: 25, lineHeight: 1.15, fontWeight: 750, letterSpacing: "-0.025em", color: "#102a43" }}>{item.value}</div>
+          <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 6 }}>{item.detail}</div>
+        </div>)}
       </div>
     </section>
     <section style={{ padding: "14px 22px 24px" }}>
