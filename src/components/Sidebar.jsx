@@ -173,7 +173,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={Search} label="SEO" active={isActive("seo")} onClick={() => navigate("seo")}/>
             {isAdministrator && <NavItem icon={BarChart3} label="Pronto" active={isActive("pronto")} onClick={() => navigate("pronto")}/>}
             <NavItem icon={Database} label="Data Results" active={isActive("data-results")} onClick={() => navigate("data-results")} disabled={!isAdministrator} locked={!isAdministrator}/>
-            <NavItem icon={Download} label="Lead Export" active={isActive("lead-export")} onClick={() => navigate("lead-export")}/>
+            <NavItem icon={Download} label="SMG Solar" active={isActive("lead-export")} onClick={() => navigate("lead-export")}/>
           </Folder>
 
           {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}>
