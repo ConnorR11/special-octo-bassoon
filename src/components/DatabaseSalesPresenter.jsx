@@ -9,71 +9,55 @@ const PRESENTER_PATH = "Homeshield-Solar-Presenter-edited.pdf"
 
 function TandemFinanceSlide() {
   const cyan = "#08c7ed"
-  const pale = "#e6eff7"
+  const pale = "#e8f1f8"
   const rows = [
-    ["Cash price", "£10,000"],
-    ["Deposit", "£0"],
-    ["Amount borrowed", "£10,000"],
-    ["Term", "120 months (10 years)"],
-    ["Monthly repayment", "£103.67"],
-    ["Total amount repayable", "£12,440.40"],
-    ["APR representative", "4.6%"],
-    ["Fixed interest rate", "4.51%"],
-  ]
-  const benefits = [
-    ["▦", "Lower interest rate", "Making renewable energy more affordable for your home."],
-    ["♧", "Flexible terms", "Spread the cost over a term that works for you."],
-    ["☷", "Simple application", "A quick and straightforward process with a trusted UK provider."],
-    ["◉", "Trusted by millions", "Personal finance from a well-established UK lender."],
+    ["Cash Price", "£10,000.00"],
+    ["Deposit", "£0.00"],
+    ["Amount Of Credit", "£10,000.00"],
+    ["Duration of Agreement", "120"],
+    ["Interest Rate % (Fixed p.a.)", "3.6%"],
+    ["Representative % APR", "3.6%"],
+    ["120 Monthly Payments Of", "£99.08"],
+    ["Total Amount Payable", "£11,889.60"],
   ]
   const absolute = (left, top, width, height) => ({ position: "absolute", left, top, width, height, boxSizing: "border-box" })
-  return <div style={{ width: "min(100%, calc((100vh - 160px) * 16 / 9))", maxWidth: "100%", aspectRatio: "16 / 9", position: "relative", overflow: "hidden", flex: "0 1 auto", background: "#061725", color: "#fff", fontFamily: "Arial, Helvetica, sans-serif", boxSizing: "border-box", boxShadow: "0 4px 22px rgba(0,0,0,.25)" }}>
-    <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(90deg,rgba(2,14,27,.98) 0%,rgba(2,17,31,.94) 35%,rgba(2,17,31,.75) 56%,rgba(2,17,31,.18) 100%), linear-gradient(0deg,rgba(2,14,24,.98) 0%,transparent 33%), url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2000&q=90')", backgroundSize: "cover", backgroundPosition: "center right" }} />
-    <div style={{ ...absolute("3.2%", "4.2%", "50%", "4%"), display: "flex", alignItems: "center", gap: "1%", fontSize: "clamp(9px, 1.05vw, 17px)", letterSpacing: ".08em", whiteSpace: "nowrap" }}>
-      <span style={{ display: "inline-block", width: "clamp(14px, 1.65vw, 27px)", height: "clamp(14px, 1.65vw, 27px)", borderRadius: 3, background: cyan, flexShrink: 0 }} /> HOMESHIELD SCOTLAND
+  return <div style={{ width: "min(100%, calc((100vh - 160px) * 16 / 9))", maxWidth: "100%", aspectRatio: "16 / 9", position: "relative", overflow: "hidden", flex: "0 1 auto", background: "radial-gradient(ellipse at 5% 2%, #0879bb 0%, #032a49 30%, #001629 67%, #001222 100%)", color: "#fff", fontFamily: "Arial, Helvetica, sans-serif", boxSizing: "border-box", boxShadow: "0 4px 22px rgba(0,0,0,.25)" }}>
+    <div style={{ ...absolute("2.3%", "3.2%", "58%", "5%"), display: "flex", alignItems: "center", gap: "1.2%", fontSize: "clamp(10px, 1.28vw, 21px)", letterSpacing: ".035em", whiteSpace: "nowrap" }}>
+      <span style={{ width: "clamp(18px, 2.1vw, 34px)", height: "clamp(18px, 2.1vw, 34px)", borderRadius: 5, background: cyan, flexShrink: 0 }} /> HOMESHIELD SCOTLAND
     </div>
-    <div style={{ ...absolute("66%", "4.5%", "31%", "3.5%"), textAlign: "right", fontSize: "clamp(9px, 1.02vw, 16px)", letterSpacing: ".08em", whiteSpace: "nowrap" }}>SOLAR + BATTERY STORAGE</div>
-    <div style={{ ...absolute("3.4%", "10.6%", "53%", "15.5%"), display: "flex", flexDirection: "column", justifyContent: "flex-start", gap: 0, textShadow: "0 2px 8px rgba(0,0,0,.2)" }}>
-      <div style={{ fontSize: "clamp(25px, 3.55vw, 60px)", lineHeight: 1.02, fontWeight: 800, letterSpacing: "-.035em", whiteSpace: "nowrap" }}>Solar &amp; battery finance</div>
-      <div style={{ fontSize: "clamp(23px, 3.45vw, 58px)", lineHeight: 1.03, fontWeight: 800, letterSpacing: "-.035em", color: cyan, whiteSpace: "nowrap" }}>with Government support.</div>
-      <div style={{ marginTop: "1.2%", fontSize: "clamp(10px, 1.48vw, 24px)", lineHeight: 1.22, color: pale, maxWidth: "72%" }}>A lower interest rate, making renewable energy more affordable for your home.</div>
+    <div style={{ ...absolute("69%", "3.5%", "27%", "4.5%"), display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "3%", fontSize: "clamp(8px, 1.05vw, 17px)", whiteSpace: "nowrap", letterSpacing: ".025em" }}>
+      SOLAR + BATTERY STORAGE <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "clamp(18px, 2vw, 32px)", height: "clamp(18px, 2vw, 32px)", borderRadius: 5, background: "#fff", color: "#09223a", fontWeight: 900 }}>⌂</span>
     </div>
-    <div style={{ ...absolute("3.5%", "35.5%", "45.8%", "22.7%"), border: "2px solid "+cyan, borderRadius: 13, overflow: "hidden", background: "#fff" }}>
-      <svg role="img" aria-label="Funded by UK Government. This product is supported by the Warm Homes Loan Scheme." viewBox="0 0 900 250" preserveAspectRatio="xMidYMid meet" style={{ width: "100%", height: "100%", display: "block" }}>
-        <rect width="900" height="250" fill="#ffffff"/>
-        <image href="https://commons.wikimedia.org/wiki/Special:Redirect/file/Coat_of_arms_of_the_United_Kingdom_(2024,_lesser_arms).svg" x="35" y="18" width="190" height="214" preserveAspectRatio="xMidYMid meet" style={{ filter: "grayscale(1) contrast(1.2)" }} />
-        <line x1="270" y1="31" x2="270" y2="219" stroke="#182841" strokeWidth="2"/>
-        <text x="312" y="87" fontFamily="Arial, Helvetica, sans-serif" fontWeight="800" fontSize="51" letterSpacing="-1.8" fill="#070d17">Funded by</text>
-        <text x="312" y="140" fontFamily="Arial, Helvetica, sans-serif" fontWeight="800" fontSize="51" letterSpacing="-1.8" fill="#070d17">UK Government</text>
-        <text x="312" y="183" fontFamily="Arial, Helvetica, sans-serif" fontSize="23" fill="#15213a">This product is supported by the</text>
-        <text x="312" y="211" fontFamily="Arial, Helvetica, sans-serif" fontWeight="700" fontSize="23" fill="#15213a">Warm Homes Loan Scheme.</text>
-      </svg>
+    <div style={{ ...absolute("3.5%", "13.5%", "55%", "24%"), display: "flex", flexDirection: "column", gap: "1.5%" }}>
+      <div style={{ fontSize: "clamp(25px, 4.05vw, 65px)", lineHeight: 1.02, fontWeight: 800, letterSpacing: "-.035em", whiteSpace: "nowrap" }}>Solar &amp; battery finance</div>
+      <div style={{ fontSize: "clamp(24px, 3.95vw, 63px)", lineHeight: 1.02, fontWeight: 800, letterSpacing: "-.035em", color: cyan, whiteSpace: "nowrap" }}>with Government support</div>
+      <div style={{ marginTop: "1.5%", fontSize: "clamp(11px, 1.85vw, 29px)", lineHeight: 1.3, color: pale, maxWidth: "94%" }}>A lower interest rate, making renewable energy<br/>more affordable for your home.</div>
     </div>
-    <div style={{ ...absolute("3%", "59.7%", "46.3%", "23.2%"), display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: "1.5%" }}>
-      {benefits.map(([icon, title, description]) => <div key={title} style={{ display: "grid", gridTemplateColumns: "25% 75%", alignItems: "center", gap: "2%", minWidth: 0, minHeight: 0, border: "1px solid "+cyan, borderRadius: 12, padding: "5% 4%", background: "rgba(2,26,44,.94)", boxSizing: "border-box" }}>
-        <div style={{ color: cyan, fontSize: "clamp(22px, 3.2vw, 51px)", fontWeight: 700, lineHeight: 1, textAlign: "center" }}>{icon}</div>
-        <div style={{ minWidth: 0 }}><div style={{ fontSize: "clamp(9px, 1.08vw, 17px)", lineHeight: 1.12, fontWeight: 800, marginBottom: "4%" }}>{title}</div><div style={{ fontSize: "clamp(7px, .83vw, 13px)", lineHeight: 1.28, color: pale }}>{description}</div></div>
-      </div>)}
-    </div>
-    <div style={{ ...absolute("72%", "8.5%", "25%", "8.5%"), display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "1%", fontSize: "clamp(24px, 3.35vw, 56px)", fontWeight: 800, letterSpacing: "-.05em", whiteSpace: "nowrap", textShadow: "0 2px 8px rgba(0,0,0,.3)" }}>
-      <span style={{ display: "inline-block", width: "clamp(25px, 5.5vw, 88px)", height: "clamp(18px, 3.9vw, 62px)", borderRadius: "55% 0 0 0", background: "linear-gradient(90deg,#08c7ed 0 52%,#176fcb 52% 100%)" }} /><span style={{ display: "inline-block", width: "clamp(16px, 2.6vw, 42px)", height: "clamp(18px, 3.9vw, 62px)", background: "#f53b88", borderRadius: "0 4px 4px 0", marginLeft: "-2.4%" }} /><span style={{ marginLeft: "1%" }}>tandem</span>
-    </div>
-    <div style={{ ...absolute("50.5%", "22.5%", "30.5%", "61.5%"), border: "2px solid "+cyan, borderRadius: 18, padding: "2.2% 2.4%", background: "rgba(2,19,32,.94)", display: "flex", flexDirection: "column", boxShadow: "0 8px 25px rgba(0,0,0,.25)" }}>
-      <div style={{ fontSize: "clamp(7px, .9vw, 14px)", letterSpacing: ".19em", whiteSpace: "nowrap", color: pale }}>TANDEM BANK – REPRESENTATIVE EXAMPLE</div>
-      <div style={{ display: "flex", alignItems: "baseline", gap: "2%", marginTop: "2%" }}><span style={{ color: cyan, fontSize: "clamp(44px, 7vw, 112px)", lineHeight: .9, fontWeight: 900, letterSpacing: "-.06em" }}>4.6%</span><span style={{ color: cyan, fontSize: "clamp(17px, 2.35vw, 38px)", fontWeight: 800 }}>APR</span></div>
-      <div style={{ textAlign: "right", fontSize: "clamp(8px, 1vw, 16px)", lineHeight: 1.1, marginTop: "-.2%" }}>Representative</div>
-      <div style={{ fontSize: "clamp(8px, 1.12vw, 18px)", color: pale, lineHeight: 1.2, margin: "1.8% 0 2.2%" }}>10 year finance (120 months) through <strong>Tandem Bank.</strong></div>
-      <div style={{ flex: "1 1 auto", minHeight: 0, border: "1px solid rgba(8,199,237,.3)", borderRadius: 12, padding: "0 2.2%", display: "grid", gridTemplateRows: "repeat(8, minmax(0, 1fr))", alignContent: "stretch" }}>
-        {rows.map(([label, value], index) => <div key={label} style={{ display: "grid", gridTemplateColumns: "48% 52%", alignItems: "center", minHeight: 0, borderBottom: index === rows.length - 1 ? 0 : "1px solid rgba(8,199,237,.24)", fontSize: "clamp(8px, .92vw, 15px)", lineHeight: 1.1, gap: "2%" }}><span style={{ color: pale }}>{label}</span><span style={{ color: cyan, fontWeight: 800, whiteSpace: "nowrap" }}>{value}</span></div>)}
+    <div style={{ ...absolute("3.2%", "41%", "54%", "32.5%"), border: "2px solid "+cyan, borderRadius: 17, background: "#fff", color: "#07101d", display: "grid", gridTemplateColumns: "37% 63%", alignItems: "center", padding: "2.5% 3.5%", gap: "3%" }}>
+      <div style={{ textAlign: "center", fontSize: "clamp(26px, 5.4vw, 86px)", lineHeight: 1, color: "#080d16" }}>♔</div>
+      <div style={{ borderLeft: "2px solid #17243a", paddingLeft: "6%", minWidth: 0 }}>
+        <div style={{ fontSize: "clamp(22px, 3.4vw, 54px)", lineHeight: 1.05, fontWeight: 800, color: "#050a12" }}>Funded by<br/>UK Government</div>
+        <div style={{ marginTop: "3%", fontSize: "clamp(10px, 1.65vw, 26px)", lineHeight: 1.25, color: "#17243a" }}>This product is supported by the<br/><strong>Warm Homes Loan Scheme.</strong></div>
       </div>
-      <div style={{ marginTop: "2.1%", fontSize: "clamp(5px, .63vw, 10px)", lineHeight: 1.25, color: pale }}>Finance subject to status, affordability and scheme eligibility. The Government supports the interest rate but does not provide the loan. Finance is provided by Tandem Bank through Matrix. Homeshield Scotland Limited is a credit broker, not a lender. Authorised and regulated by the Financial Conduct Authority, FRN 624069. Credit is provided by a panel of lenders with whom we have a commercial relationship.</div>
     </div>
-    <div style={{ ...absolute("0", "84.4%", "100%", "15.6%"), borderTop: "2px solid "+cyan, background: "rgba(2,14,25,.97)", display: "grid", gridTemplateColumns: "30.5% 69.5%", alignItems: "center", padding: "1.3% 3.2% 1.6%", gap: "2.1%" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "18% 82%", alignItems: "center", gap: "3%", height: "100%", borderRight: "2px solid "+cyan, paddingRight: "5%" }}>
-        <div style={{ fontSize: "clamp(25px, 3.7vw, 58px)", color: "#28bfff", textAlign: "center", lineHeight: 1 }}>♙</div>
-        <div style={{ fontSize: "clamp(7px, .93vw, 15px)", lineHeight: 1.25 }}><strong>Representative example only</strong><div style={{ marginTop: 3, color: pale }}>Your actual payments may vary depending on your circumstances and the lender's assessment.</div></div>
+    <div style={{ ...absolute("3.6%", "76%", "53%", "17%"), fontSize: "clamp(10px, 1.72vw, 27px)", lineHeight: 1.38, color: pale }}>
+      The Warm Homes Loan Scheme helps eligible homeowners and private landlords access more affordable finance for eligible home energy improvements, including solar panels and battery storage.
+    </div>
+    <div style={{ ...absolute("58.4%", "12%", "38.5%", "82%"), border: "2px solid "+cyan, borderRadius: 20, padding: "2.1% 2.2%", display: "flex", flexDirection: "column", background: "rgba(0,19,35,.58)", boxShadow: "0 5px 24px rgba(0,0,0,.16)" }}>
+      <div style={{ textAlign: "center", fontSize: "clamp(8px, 1.12vw, 18px)", letterSpacing: ".22em", whiteSpace: "nowrap" }}>V12 – REPRESENTATIVE EXAMPLE</div>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: "2%", marginTop: "2%" }}>
+        <span style={{ color: cyan, fontSize: "clamp(58px, 9.7vw, 155px)", lineHeight: .9, fontWeight: 900, letterSpacing: "-.07em" }}>3.6%</span>
+        <span style={{ color: cyan, fontSize: "clamp(21px, 3.4vw, 54px)", fontWeight: 800 }}>APR</span>
       </div>
-      <div style={{ fontSize: "clamp(7px, .86vw, 14px)", lineHeight: 1.35, color: pale }}>Finance subject to status, affordability and scheme eligibility. The Government supports the interest rate but does not provide the loan. Finance is provided by Tandem Bank through Matrix. Homeshield Scotland Limited is a credit broker, not a lender. Authorised and regulated by the Financial Conduct Authority, FRN 624069. Credit is provided by a panel of lenders with whom we have a commercial relationship.</div>
+      <div style={{ textAlign: "right", fontSize: "clamp(10px, 1.8vw, 28px)", lineHeight: 1.1, marginTop: "-.5%" }}>Representative</div>
+      <div style={{ fontSize: "clamp(9px, 1.55vw, 25px)", lineHeight: 1.2, margin: "1.7% 0 2.2%", color: pale }}>10 year finance (120 months) through <strong>V12.</strong></div>
+      <div style={{ flex: "1 1 auto", minHeight: 0, border: "1px solid rgba(8,199,237,.6)", borderRadius: 13, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: "0 0 12%", minHeight: 20, display: "flex", alignItems: "center", justifyContent: "center", background: cyan, color: "#001629", fontSize: "clamp(9px, 1.3vw, 21px)", fontWeight: 900, letterSpacing: ".12em" }}>REPRESENTATIVE EXAMPLE</div>
+        {rows.map(([label, value], index) => <div key={label} style={{ flex: "1 1 0", minHeight: 0, display: "grid", gridTemplateColumns: "57% 43%", alignItems: "center", borderTop: "1px solid rgba(8,199,237,.45)", padding: "0 3.5%", gap: "2%", fontSize: "clamp(8px, 1.35vw, 21px)", lineHeight: 1.12 }}>
+          <span style={{ color: pale }}>{label}</span><strong style={{ color: cyan, whiteSpace: "nowrap" }}>{value}</strong>
+        </div>)}
+      </div>
+      <div style={{ marginTop: "5%", fontSize: "clamp(6px, .78vw, 12px)", lineHeight: 1.35, color: pale }}>Finance subject to status, affordability and scheme eligibility. The Government supports the interest rate but does not provide the loan. Finance is provided by V12, a trading name of Secure Trust Bank PLC. Homeshield Scotland Limited is a credit broker, not a lender. Authorised and regulated by the Financial Conduct Authority, FRN 624069.</div>
     </div>
   </div>
 }
