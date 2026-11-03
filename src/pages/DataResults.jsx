@@ -182,7 +182,7 @@ function DataResults() {
 
       const dealDetailsById = new Map()
       includedAppointments.forEach(appointment => {
-        const source = linkedLeadSources.get(appointment.marketing_row_id) || appointment.lead_source || "(No lead source)"
+        const source = appointment.lead_source || linkedLeadSources.get(appointment.marketing_row_id) || "(No lead source)"
         const row = getRow(source)
         row.appointments += 1
         if (appointment.cps_h === true) row.h += 1
