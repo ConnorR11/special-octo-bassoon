@@ -264,7 +264,7 @@ function App() {
         <AppointmentActions appointment={selectedAppointment} onUpdated={handleAppointmentUpdated} onConfirm={handleLegacyConfirm} onResult={handleLegacyResult} onOpenPickup={handleOpenPickup}/>
       </div>
       <div className="appointment-detail-host">
-        <AppointmentDetail appointment={selectedAppointment} permissionLevel={effectivePermissionLevel} role={effectiveRole} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated}/>
+        <AppointmentDetail appointment={selectedAppointment} permissionLevel={effectivePermissionLevel} role={effectiveRole} onBack={handleBackToAppointments} onUpdated={handleAppointmentUpdated} onOpenDeal={deal => handleDealSelect(deal, "contracts")}/>
       </div>
     </div>
   } else if (selected) {
