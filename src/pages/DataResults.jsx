@@ -108,7 +108,8 @@ function DataResults() {
         if (disposition === "duplicate") row.dup += 1
         if (disposition === "wrong number") row.wn += 1
         if (disposition === "out of area") row.ooa += 1
-        const invalidReason = clean(lead.invalid)\n        if (invalidReason && !["duplicate", "wrong number", "out of area"].includes(invalidReason)) row.inv += 1
+        const invalidReason = clean(lead.invalid)
+        if (invalidReason && !["duplicate", "wrong number", "out of area"].includes(invalidReason)) row.inv += 1
         if (lead.appointment_date_time || (appointmentsByLead.get(lead.marketing_row_id) || []).length) row.booked += 1
         if (disposition.startsWith("call back")) row.callback += 1
         if (disposition === "no contact") row.noContact += 1
