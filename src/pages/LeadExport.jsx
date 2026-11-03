@@ -5,18 +5,13 @@ import { supabase } from "../lib/supabase"
 const PAGE_SIZE = 20
 const START_DATE = "2026-01-01T00:00:00"
 const COLUMNS = [
-  ["Name", row => [row.salutations, row.first_name, row.last_name].filter(Boolean).join(" ")],
-  ["Phone", row => row.primary_phone_number || ""],
-  ["Secondary Phone", row => row.secondary_phone_number || ""],
-  ["Email", row => row.email || ""],
-  ["Address", row => row.address || ""],
+  ["Received Date", row => row.received_date_time || ""],
+  ["Name", row => [row.first_name, row.last_name].filter(Boolean).join(" ")],
   ["Postcode", row => row.postcode || ""],
-  ["Lead Source", row => row.lead_source || ""],
-  ["Lead Type", row => row.lead_type || ""],
   ["Disposition", row => row.disposition || ""],
-  ["Received", row => row.received_date_time || ""],
+  ["Related Appointment Results", row => row.appointment_results || ""],
+  ["Marketing Note", row => row.marketing_note || ""],
 ]
-const SELECT_FIELDS = "salutations,first_name,last_name,primary_phone_number,secondary_phone_number,email,address,postcode,lead_source,lead_type,disposition,received_date_time"
 
 function csvCell(value) { return '"' + String(value ?? "").replace(/"/g, '""') + '"' }
 function formatDate(value) {
@@ -80,9 +75,11 @@ export default function LeadExport() {
       const rows = []
       let offset = 0
       while (true) {
-        let request = supabase.from("leads").select(SELECT_FIELDS).gte("received_date_time", START_DATE).order("received_date_time", { ascending: false }).range(offset, offset + 999)
-        if (source !== "all") request = request.eq("lead_source", source)
-        const { data, error: queryError } = await request
+        const { data, error: queryError } = await supabase.rpc("get_lead_export_page", {
+          p_source: source === "all" ? null : source,
+          p_limit: 1000,
+          p_offset: offset,
+        })
         if (queryError) throw queryError
         const batch = data || []
         rows.push(...batch)
@@ -114,10 +111,10 @@ export default function LeadExport() {
     </div>
     {error && <div role="alert" style={{ padding: 12, marginBottom: 14, borderRadius: 8, background: "#fff1f0", color: "#a12622", border: "1px solid #f2c8c5", fontSize: 13 }}>{error}</div>}
     <div style={{ background: "#fff", border: "1px solid #e3e9ee", borderRadius: 12, overflow: "hidden" }}>
-      <div style={{ overflowX: "auto" }}><table style={{ width: "100%", minWidth: 1150, borderCollapse: "collapse", fontSize: 12 }}>
-        <thead><tr style={{ background: "#f5f8fa", color: "#536575", textAlign: "left" }}>{["Name","Phone","Secondary Phone","Email","Address","Postcode","Lead Source","Lead Type","Disposition","Received"].map(label => <th key={label} style={{ padding: "13px 12px", borderBottom: "1px solid #e3e9ee", whiteSpace: "nowrap" }}>{label}</th>)}</tr></thead>
-        <tbody>{loading ? <tr><td colSpan={10} style={{ padding: 30, textAlign: "center" }}>Loading leads...</td></tr> : leads.length === 0 ? <tr><td colSpan={10} style={{ padding: 30, textAlign: "center" }}>No leads found for this filter.</td></tr> : leads.map((row, index) => <tr key={row.received_date_time + "-" + index} style={{ borderBottom: "1px solid #edf1f4" }}>
-          <td style={{ padding: "11px 12px", fontWeight: 600, whiteSpace: "nowrap" }}>{[row.salutations,row.first_name,row.last_name].filter(Boolean).join(" ") || "—"}</td><td style={{ padding: "11px 12px", whiteSpace: "nowrap" }}>{row.primary_phone_number || "—"}</td><td style={{ padding: "11px 12px", whiteSpace: "nowrap" }}>{row.secondary_phone_number || "—"}</td><td style={{ padding: "11px 12px" }}>{row.email || "—"}</td><td style={{ padding: "11px 12px" }}>{row.address || "—"}</td><td style={{ padding: "11px 12px", whiteSpace: "nowrap" }}>{row.postcode || "—"}</td><td style={{ padding: "11px 12px", whiteSpace: "nowrap" }}>{row.lead_source || "—"}</td><td style={{ padding: "11px 12px", whiteSpace: "nowrap" }}>{row.lead_type || "—"}</td><td style={{ padding: "11px 12px", whiteSpace: "nowrap" }}>{row.disposition || "—"}</td><td style={{ padding: "11px 12px", whiteSpace: "nowrap" }}>{formatDate(row.received_date_time)}</td>
+      <div style={{ overflowX: "auto" }}><table style={{ width: "100%", minWidth: 900, borderCollapse: "collapse", fontSize: 12 }}>
+        <thead><tr style={{ background: "#f5f8fa", color: "#536575", textAlign: "left" }}>{["Received Date","Name","Postcode","Disposition","Related Appointment Results","Marketing Note"].map(label => <th key={label} style={{ padding: "13px 12px", borderBottom: "1px solid #e3e9ee", whiteSpace: "nowrap" }}>{label}</th>)}</tr></thead>
+        <tbody>{loading ? <tr><td colSpan={6} style={{ padding: 30, textAlign: "center" }}>Loading leads...</td></tr> : leads.length === 0 ? <tr><td colSpan={10} style={{ padding: 30, textAlign: "center" }}>No leads found for this filter.</td></tr> : leads.map((row, index) => <tr key={row.received_date_time + "-" + index} style={{ borderBottom: "1px solid #edf1f4" }}>
+          <td style={{ padding: "11px 12px", whiteSpace: "nowrap" }}>{formatDate(row.received_date_time)}</td><td style={{ padding: "11px 12px", fontWeight: 600, whiteSpace: "nowrap" }}>{[row.first_name,row.last_name].filter(Boolean).join(" ") || "—"}</td><td style={{ padding: "11px 12px", whiteSpace: "nowrap" }}>{row.postcode || "—"}</td><td style={{ padding: "11px 12px", whiteSpace: "nowrap" }}>{row.disposition || "—"}</td><td style={{ padding: "11px 12px", whiteSpace: "pre-wrap" }}>{row.appointment_results || "—"}</td><td style={{ padding: "11px 12px", whiteSpace: "pre-wrap" }}>{row.marketing_note || "—"}</td>
         </tr>)}</tbody>
       </table></div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "13px 16px", borderTop: "1px solid #e3e9ee" }}>
