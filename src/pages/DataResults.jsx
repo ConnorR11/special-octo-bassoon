@@ -28,15 +28,51 @@ function dateRangeDefault() {
   return { start: localDate(new Date(now.getFullYear(), now.getMonth(), 1)), end: localDate(now) }
 }
 
+function getPresetRange(preset) {
+  const today = new Date()
+  today.setHours(12, 0, 0, 0)
+  const day = today.getDay()
+  const thisMonday = new Date(today)
+  thisMonday.setDate(today.getDate() - ((day + 6) % 7))
+  const lastSunday = new Date(thisMonday)
+  lastSunday.setDate(thisMonday.getDate() - 1)
+  const lastMonday = new Date(lastSunday)
+  lastMonday.setDate(lastSunday.getDate() - 6)
+
+  if (preset === "last-week") return { start: localDate(lastMonday), end: localDate(lastSunday) }
+  if (preset === "last-4-weeks") {
+    const start = new Date(lastMonday)
+    start.setDate(lastMonday.getDate() - 21)
+    return { start: localDate(start), end: localDate(lastSunday) }
+  }
+  if (preset === "last-12-weeks") {
+    const start = new Date(lastMonday)
+    start.setDate(lastMonday.getDate() - 77)
+    return { start: localDate(start), end: localDate(lastSunday) }
+  }
+  if (preset === "this-month") return { start: localDate(new Date(today.getFullYear(), today.getMonth(), 1)), end: localDate(today) }
+  if (preset === "last-month") return { start: localDate(new Date(today.getFullYear(), today.getMonth() - 1, 1)), end: localDate(new Date(today.getFullYear(), today.getMonth(), 0)) }
+  if (preset === "ytd") return { start: localDate(new Date(today.getFullYear(), 0, 1)), end: localDate(today) }
+  return { start: localDate(today), end: localDate(today) }
+}
+
 function DataResults() {
   const defaults = useMemo(dateRangeDefault, [])
   const [startDate, setStartDate] = useState(defaults.start)
   const [endDate, setEndDate] = useState(defaults.end)
+  const [activePreset, setActivePreset] = useState("this-month")
   const [rows, setRows] = useState([])
   const [summary, setSummary] = useState({ deals: 0, net: 0, solid: 0 })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [exporting, setExporting] = useState(false)
+
+  const applyPreset = preset => {
+    const range = getPresetRange(preset)
+    setActivePreset(preset)
+    setStartDate(range.start)
+    setEndDate(range.end)
+  }
 
   const loadData = useCallback(async () => {
     if (!supabase || !startDate || !endDate || startDate > endDate) {
@@ -204,7 +240,18 @@ function DataResults() {
           <label style={{ display: "grid", gap: 6, fontSize: 11, fontWeight: 650, color: "#d7e4ed" }}>END DATE<input type="date" value={endDate} min={startDate} onChange={event => setEndDate(event.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "10px 11px", borderRadius: 8, border: "1px solid #496a80", background: "#244a64", color: "#fff", colorScheme: "dark", fontSize: 13 }}/></label>
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 14, marginTop: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: "#a9c0d0", letterSpacing: "0.06em", marginRight: 3 }}>QUICK RANGES</span>
+        {[
+          ["last-week", "Last week"],
+          ["last-4-weeks", "Last 4 weeks"],
+          ["last-12-weeks", "Last 12 weeks"],
+          ["this-month", "This month"],
+          ["last-month", "Last month"],
+          ["ytd", "YTD"],
+        ].map(([key, label]) => <button key={key} type="button" onClick={() => applyPreset(key)} style={{ border: activePreset === key ? "1px solid #d9e9f3" : "1px solid #496a80", borderRadius: 7, padding: "6px 11px", background: activePreset === key ? "#e7f0f6" : "rgba(255,255,255,0.08)", color: activePreset === key ? "#12344b" : "#e4edf3", fontSize: 11, fontWeight: activePreset === key ? 700 : 500, cursor: "pointer" }}>{label}</button>)}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 14, marginTop: 20 }}>
         {[
           { label: "Deals", value: loading ? "—" : number(summary.deals), detail: "Sold deals in period" },
           { label: "Net Sold", value: loading ? "—" : money(summary.net), detail: "Net value of sold deals" },
