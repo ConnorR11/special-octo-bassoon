@@ -6,6 +6,7 @@ import Header from "./components/Header"
 import FitSheet from "./FitSheet"
 import Dashboard from "./pages/Dashboard"
 import DataDashboard from "./pages/DataDashboard"
+import DataResults from "./pages/DataResults"
 import DataClean from "./pages/DataClean"
 import SalesPerformance from "./pages/SalesPerformance"
 import InstallationsPerformance from "./pages/InstallationsPerformance"
@@ -176,7 +177,7 @@ function App() {
   function handleDealUpdated(updatedDeal){const excludedCommissionStages=new Set(["decline","customer cancelled","returned to sales","awaiting funds","on hold","pending cancellation"]);const stage=String(updatedDeal?.pipedrive_stage??"").trim().replace(/\s+/g," ").toLowerCase();const shouldRemoveFromCommissions=excludedCommissionStages.has(stage);setContracts(current=>current.map(contract=>contract.id===updatedDeal.id?updatedDeal:contract));setAllDeals(current=>current.map(contract=>contract.id===updatedDeal.id?updatedDeal:contract));setCommissionDeals(current=>shouldRemoveFromCommissions?current.filter(contract=>contract.id!==updatedDeal.id):current.map(contract=>contract.id===updatedDeal.id?updatedDeal:contract));setSelected(updatedDeal)}
 
   function handlePageChange(newPage) {
-    const requiredPermission={"sales-performance":2,"marketing-dashboard":3,"canvasser-kpi":3,balances:4,mi:4,seo:4,reviews:4,users:4,tasks:4,hotkeys:4,templates:4,"integration-logs":4,"data-dashboard":4,pronto:4,"data-clean":4 ,"solar-backend":4,"unit-analysis":4,"epvs-applications":4,"installations-performance":4}[newPage]
+    const requiredPermission={"sales-performance":2,"marketing-dashboard":3,"canvasser-kpi":3,balances:4,mi:4,seo:4,reviews:4,users:4,tasks:4,hotkeys:4,templates:4,"integration-logs":4,"data-dashboard":4,pronto:4,"data-results":4,"data-clean":4 ,"solar-backend":4,"unit-analysis":4,"epvs-applications":4,"installations-performance":4}[newPage]
     if(requiredPermission&&effectivePermissionLevel<requiredPermission)return
     setSelected(null);setSelectedSourcePage("contracts");setSelectedAppointment(null);setPickupAppointment(null);setPage(newPage)
     if(newPage==="contracts"){setQuery("");setStatus("all");loadContracts(0,"","all")}
@@ -278,6 +279,8 @@ function App() {
     pageContent = <DataDashboard key="data-dashboard" />
   } else if (page === "pronto") {
     pageContent = <DataDashboard key="pronto" standalonePronto />
+  } else if (page === "data-results") {
+    pageContent = <DataResults />
   } else if (page === "data-clean") {
     pageContent = <DataClean onOpenAppointment={handleAppointmentSelect}/>
   } else if (page === "solar-backend") {
