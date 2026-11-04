@@ -7,6 +7,7 @@ import FitSheet from "./FitSheet"
 import Dashboard from "./pages/Dashboard"
 import DataDashboard from "./pages/DataDashboard"
 import DataResults from "./pages/DataResults"
+import DataSpend from "./pages/DataSpend"
 import DataClean from "./pages/DataClean"
 import SalesPerformance from "./pages/SalesPerformance"
 import InstallationsPerformance from "./pages/InstallationsPerformance"
@@ -115,7 +116,7 @@ function App() {
   const effectiveUserEmail = previewUser?.email ?? session?.user?.email ?? ""
 
   useEffect(() => {
-    const restrictedPages = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, balances: 4, mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, "bulk-updater": 4, hotkeys: 4, templates: 4, "integration-logs": 4, "data-dashboard": 4, pronto: 4, "data-clean": 4, "solar-backend": 4, "unit-analysis": 4, "epvs-applications": 4, "outstanding-solar-surveys": 0 }
+    const restrictedPages = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, balances: 4, mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, "bulk-updater": 4, hotkeys: 4, templates: 4, "integration-logs": 4, "data-dashboard": 4, pronto: 4, "data-clean": 4, "data-spend": 4, "solar-backend": 4, "unit-analysis": 4, "epvs-applications": 4, "outstanding-solar-surveys": 0 }
     const requiredPermission = restrictedPages[page]
     if (requiredPermission && effectivePermissionLevel < requiredPermission) {
       setPage("dashboard")
@@ -283,7 +284,7 @@ function App() {
     pageContent = <DataResults />
   } else if (page === "data-clean") {
     pageContent = <DataClean onOpenAppointment={handleAppointmentSelect}/>
-  } else if (page === "solar-backend") {
+  } else if (page === "data-spend") {\n    pageContent = <DataSpend/>\n  } else if (page === "solar-backend") {
     pageContent = <SolarBackend onSelectAppointment={handleAppointmentSelect}/>
   } else if (page === "outstanding-solar-surveys") {
     pageContent = <OutstandingSolarSurveys onSelectDeal={deal => handleDealSelect(deal, page)}/>
