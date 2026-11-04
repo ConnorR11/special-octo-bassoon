@@ -52,7 +52,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
   const [openFolders, setOpenFolders] = React.useState({
     sales: false, marketing: false, installation: false, finance: false,
     customerService: false, admin: false, procurement: false,
-    headOffice: false, digitalTeam: false,
+    headOffice: false, digitalTeam: false, workInProgress: false,
   })
   React.useEffect(() => {
     if (!isDepartmentRestricted || !departmentFolder) return
@@ -175,6 +175,10 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={Database} label="Data Results" active={isActive("data-results")} onClick={() => navigate("data-results")} disabled={!isAdministrator} locked={!isAdministrator}/>
             <NavItem icon={PoundSterling} label="Data Spend" active={isActive("data-spend")} onClick={() => navigate("data-spend")} disabled={!isAdministrator} locked={!isAdministrator}/>
           </Folder>
+
+          {isAdministrator && <Folder title="Work in progress" icon={Wrench} open={openFolders.workInProgress} onClick={() => toggleFolder("workInProgress")}>
+            <div style={{ padding: "8px 14px 10px 42px", color: "#94a3b8", fontSize: 11 }}>Pages being developed will appear here.</div>
+          </Folder>}
 
           {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}>
             <NavItem icon={BarChart3} label="Data Dashboard" active={isActive("data-dashboard")} onClick={() => navigate("data-dashboard")}/>
