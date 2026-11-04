@@ -46,7 +46,6 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
   const canSeeFolder = (folder) => !isDepartmentRestricted || departmentFolder === folder
   const canAccessMarketingDashboard = numericPermissionLevel >= 3
   const canAccessCanvasserKPI = numericPermissionLevel >= 3
-  const canAccessSalesPerformance = numericPermissionLevel >= 2
   const canAccessBalances = numericPermissionLevel >= 4
 
   const [openFolders, setOpenFolders] = React.useState({
@@ -68,7 +67,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
 
   const canAccessRoute = (route) => {
     const requiredPermission = {
-      "sales-performance": 2,
+      "sales-performance": 4,
       "marketing-dashboard": 3,
       "canvasser-kpi": 3,
       balances: 4,
@@ -177,13 +176,12 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
           </Folder>
 
           {isAdministrator && <Folder title="Work in progress" icon={Wrench} open={openFolders.workInProgress} onClick={() => toggleFolder("workInProgress")}>
-            <div style={{ padding: "8px 14px 10px 42px", color: "#94a3b8", fontSize: 11 }}>Pages being developed will appear here.</div>
+            <NavItem icon={BarChart3} label="Sales Performance" active={isActive("sales-performance")} onClick={() => navigate("sales-performance")}/>
           </Folder>}
 
           {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}>
             <NavItem icon={BarChart3} label="Data Dashboard" active={isActive("data-dashboard")} onClick={() => navigate("data-dashboard")}/>
             <NavItem icon={RefreshCw} label="Bulk Updater" active={isActive("bulk-updater")} onClick={() => navigate("bulk-updater")}/>
-            <NavItem icon={BarChart3} label="Sales Performance" active={isActive("sales-performance")} onClick={() => navigate("sales-performance")} disabled={!canAccessSalesPerformance} locked={!canAccessSalesPerformance}/>
             <NavItem icon={CalendarDays} label="Installations Performance" active={isActive("installations-performance")} onClick={() => navigate("installations-performance")}/>
             <NavItem icon={Database} label="Data Clean" active={isActive("data-clean")} onClick={() => navigate("data-clean")}/>
             <NavItem icon={Sun} label="Solar Backend" active={isActive("solar-backend")} onClick={() => navigate("solar-backend")}/>
