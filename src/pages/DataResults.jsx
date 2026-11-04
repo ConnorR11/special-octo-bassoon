@@ -53,7 +53,7 @@ function getPresetRange(preset) {
   }
   if (preset === "this-month") return { start: localDate(new Date(today.getFullYear(), today.getMonth(), 1)), end: localDate(today) }
   if (preset === "last-month") return { start: localDate(new Date(today.getFullYear(), today.getMonth() - 1, 1)), end: localDate(new Date(today.getFullYear(), today.getMonth(), 0)) }
-  if (preset === "ytd") return { start: localDate(new Date(today.getFullYear(), 0, 1)), end: localDate(today) }
+  if (preset === "ytd") return { start: localDate(new Date(today.getFullYear(), 0, 1)), end: localDate(lastSunday) }
   return { start: localDate(today), end: localDate(today) }
 }
 
