@@ -11,6 +11,10 @@ function DataSpend() {
   const [rows, setRows] = useState([])
   const [costs, setCosts] = useState({})
   const [search, setSearch] = useState("")
+  const [hotkeyFilter, setHotkeyFilter] = useState("")
+  const [sourceFilter, setSourceFilter] = useState("")
+  const [hotkeyOptions, setHotkeyOptions] = useState([])
+  const [sourceOptions, setSourceOptions] = useState([])
   const [page, setPage] = useState(0)
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -18,18 +22,20 @@ function DataSpend() {
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
 
-  const loadRows = useCallback(async (nextPage = page, searchValue = search) => {
+  const loadRows = useCallback(async (nextPage = page, searchValue = search, hotkeyValue = hotkeyFilter, sourceValue = sourceFilter) => {
     if (!supabase) return
     setLoading(true)
     setError("")
     setNotice("")
     try {
       let request = supabase.from("leads")
-        .select("delete_row_id,marketing_row_id,first_name,last_name,primary_phone_number,email,postcode,lead_source,introducer,pronto_SID,pronto_c3,disposition,received_date_time,lead_cost", { count: "exact" })
+        .select("delete_row_id,marketing_row_id,first_name,last_name,primary_phone_number,email,postcode,lead_source,introducer,pronto_SID,pronto_c3,disposition,hotkey_status,received_date_time,lead_cost", { count: "exact" })
         .is("lead_cost", null)
         .gte("received_date_time", "2026-01-01T00:00:00")
         .lt("received_date_time", "2027-01-01T00:00:00")
-        .order("received_date_time", { ascending: false, nullsFirst: false })
+      if (hotkeyValue) request = request.eq("hotkey_status", hotkeyValue)
+      if (sourceValue) request = request.eq("lead_source", sourceValue)
+      request = request.order("received_date_time", { ascending: false, nullsFirst: false })
       const term = clean(searchValue)
       if (term) {
         const escaped = term.replace(/[%_]/g, "\\$&").replace(/,/g, "\\,")
@@ -58,9 +64,29 @@ function DataSpend() {
     } finally {
       setLoading(false)
     }
-  }, [page, search])
+  }, [page, search, hotkeyFilter, sourceFilter])
 
-  useEffect(() => { loadRows(0, "") }, [])
+  useEffect(() => {
+    async function loadFilterOptions() {
+      if (!supabase) return
+      const { data, error: optionsError } = await supabase.from("leads")
+        .select("hotkey_status,lead_source")
+        .is("lead_cost", null)
+        .gte("received_date_time", "2026-01-01T00:00:00")
+        .lt("received_date_time", "2027-01-01T00:00:00")
+        .range(0, 9999)
+      if (optionsError) {
+        console.error("Unable to load Data Spend filter options:", optionsError)
+        return
+      }
+      const values = data || []
+      setHotkeyOptions([...new Set(values.map(row => row.hotkey_status).filter(value => clean(value)))].sort((a, b) => a.localeCompare(b)))
+      setSourceOptions([...new Set(values.map(row => row.lead_source).filter(value => clean(value)))].sort((a, b) => a.localeCompare(b)))
+    }
+    loadFilterOptions()
+  }, [])
+
+  useEffect(() => { loadRows(0, "", "", "") }, [])
 
   const saveCost = async row => {
     const key = `${row.delete_row_id}:${row.marketing_row_id}`
@@ -112,8 +138,16 @@ function DataSpend() {
           <Search size={15} style={{ position: "absolute", left: 11, top: 11, color: "#94a3b8" }}/>
           <input value={search} onChange={event => setSearch(event.target.value)} onKeyDown={event => { if (event.key === "Enter") loadRows(0, search) }} placeholder="Search name, postcode, phone, source or advert…" style={{ width: "100%", boxSizing: "border-box", height: 37, border: "1px solid #d5dee8", borderRadius: 8, padding: "0 12px 0 34px", background: "#fff", color: "#172033", fontSize: 12 }}/>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button type="button" onClick={() => loadRows(0, search)} disabled={loading} style={{ display: "inline-flex", alignItems: "center", gap: 7, border: "1px solid #d5dee8", borderRadius: 7, padding: "8px 12px", background: "#fff", color: "#334155", cursor: "pointer" }}><Search size={14}/>Search</button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <select aria-label="Filter by hotkey status" value={hotkeyFilter} onChange={event => { setHotkeyFilter(event.target.value); loadRows(0, search, event.target.value, sourceFilter) }} style={{ height: 37, border: "1px solid #d5dee8", borderRadius: 8, padding: "0 10px", background: "#fff", color: "#334155", fontSize: 12 }}>
+            <option value="">All hotkey statuses</option>
+            {hotkeyOptions.map(option => <option key={option} value={option}>{option}</option>)}
+          </select>
+          <select aria-label="Filter by lead source" value={sourceFilter} onChange={event => { setSourceFilter(event.target.value); loadRows(0, search, hotkeyFilter, event.target.value) }} style={{ height: 37, border: "1px solid #d5dee8", borderRadius: 8, padding: "0 10px", background: "#fff", color: "#334155", fontSize: 12 }}>
+            <option value="">All lead sources</option>
+            {sourceOptions.map(option => <option key={option} value={option}>{option}</option>)}
+          </select>
+          <button type="button" onClick={() => loadRows(0, search)}  disabled={loading} style={{ display: "inline-flex", alignItems: "center", gap: 7, border: "1px solid #d5dee8", borderRadius: 7, padding: "8px 12px", background: "#fff", color: "#334155", cursor: "pointer" }}><Search size={14}/>Search</button>
           <button type="button" onClick={() => loadRows(page, search)} disabled={loading} style={{ display: "inline-flex", alignItems: "center", gap: 7, border: "1px solid #d5dee8", borderRadius: 7, padding: "8px 12px", background: "#fff", color: "#334155", cursor: "pointer" }}><RefreshCw size={14}/>Refresh</button>
         </div>
       </div>
@@ -121,7 +155,7 @@ function DataSpend() {
       {notice && <div style={{ padding: 11, marginBottom: 10, borderRadius: 8, background: "#ecfdf5", color: "#047857", fontSize: 12 }}>{notice}</div>}
       <div style={{ overflow: "auto", maxHeight: "calc(100vh - 330px)", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 9 }}>
         <table style={{ width: "100%", minWidth: 1450, borderCollapse: "separate", borderSpacing: 0 }}>
-          <thead><tr>{["Received", "Lead name", "Postcode", "Phone", "Email", "Lead source", "Introducer", "SID", "C3 / Advert", "Disposition", "Lead cost", "Action"].map(label => <th key={label} style={th}>{label}</th>)}</tr></thead>
+          <thead><tr>{["Received", "Lead name", "Postcode", "Phone", "Email", "Lead source", "Introducer", "SID", "C3 / Advert", "Disposition", "Hotkey status", "Lead cost", "Action"].map(label => <th key={label} style={th}>{label}</th>)}</tr></thead>
           <tbody>
             {rows.map(row => {
               const key = `${row.delete_row_id}:${row.marketing_row_id}`
@@ -136,11 +170,12 @@ function DataSpend() {
                 <td style={td}>{row.pronto_SID || "—"}</td>
                 <td style={td}>{row.pronto_c3 || "—"}</td>
                 <td style={td}>{row.disposition || "—"}</td>
+                <td style={td}>{row.hotkey_status || "—"}</td>
                 <td style={td}><div style={{ display: "flex", alignItems: "center", gap: 5 }}><span>£</span><input aria-label={`Lead cost for ${row.marketing_row_id}`} type="number" min="0" step="0.01" value={costs[key] ?? ""} onChange={event => setCosts(current => ({ ...current, [key]: event.target.value }))} placeholder="0.00" style={{ width: 90, padding: "7px 8px", border: "1px solid #cbd5e1", borderRadius: 6, color: "#172033", fontSize: 12 }}/></div></td>
                 <td style={td}><button type="button" onClick={() => saveCost(row)} disabled={!!saving[key]} style={{ display: "inline-flex", alignItems: "center", gap: 6, border: 0, borderRadius: 6, padding: "7px 10px", background: "#0b3a59", color: "#fff", fontSize: 11, fontWeight: 650, cursor: "pointer", opacity: saving[key] ? .6 : 1 }}><Save size={13}/>{saving[key] ? "Saving…" : "Save"}</button></td>
               </tr>
             })}
-            {!loading && !rows.length && <tr><td colSpan={12} style={{ ...td, textAlign: "center", padding: 30, color: "#64748b" }}>No leads are missing an acquisition cost.</td></tr>}
+            {!loading && !rows.length && <tr><td colSpan={13} style={{ ...td, textAlign: "center", padding: 30, color: "#64748b" }}>No leads are missing an acquisition cost.</td></tr>}
             {loading && <tr><td colSpan={12} style={{ ...td, textAlign: "center", padding: 24, color: "#64748b" }}>Loading leads…</td></tr>}
           </tbody>
         </table>
