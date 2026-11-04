@@ -15,6 +15,33 @@ const REPORTS = [
 
 const LEAD_TYPE_OPTIONS = ["Air Source Heat Pump", "ECO4", "Garden Room", "Solar", "Windows"]
 
+// Hardcoded Pronto C1-to-SID mappings. Add or change entries here as needed.
+// A mapping is applied when the exact bracketed SID appears anywhere in C1.
+const PRONTO_C1_SID_MAPPINGS = [
+  { c1: "(1871)", sid: "1871" },
+  { c1: "(1280)", sid: "1280" },
+  { c1: "(2316)", sid: "2316" },
+  { c1: "(2259)", sid: "2259" },
+  { c1: "(2388)", sid: "2388" },
+  { c1: "(2633)", sid: "2633" },
+  { c1: "(2459)", sid: "2459" },
+  { c1: "(2093)", sid: "2093" },
+  { c1: "(2588)", sid: "2588" },
+  { c1: "(1052)", sid: "1052" },
+  { c1: "(2656)", sid: "2656" },
+  { c1: "(2662)", sid: "2662" },
+  { c1: "(2663)", sid: "2663" },
+  { c1: "(2163)", sid: "2163" },
+  { c1: "(1664)", sid: "1664" },
+  { c1: "(1754)", sid: "1754" },
+]
+
+function getProntoSidFromC1(c1) {
+  const value = text(c1)
+  const match = PRONTO_C1_SID_MAPPINGS.find(mapping => value.includes(mapping.c1))
+  return match?.sid || ""
+}
+
 function formatDate(value) {
   if (!value) return "—"
   const date = new Date(value)
@@ -176,7 +203,32 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
           const fetchedRows = Array.isArray(data) ? data : []
           if (["missing-lead-type", "last-week-appointments", "pronto-windows-missing-sid"].includes(reportId)) {
             setHasNextPage(fetchedRows.length > pageSize)
-            allRows = fetchedRows.slice(0, pageSize)
+
+            if (reportId === "pronto-windows-missing-sid") {
+              // Automatically fill missing SIDs from the editable hardcoded C1 mapping.
+              // Only the exact bracketed code is matched, and existing SIDs are never overwritten.
+              const remainingRows = []
+              for (const row of fetchedRows.slice(0, pageSize)) {
+                const mappedSid = getProntoSidFromC1(row.pronto_c1)
+                if (!mappedSid) {
+                  remainingRows.push(row)
+                  continue
+                }
+
+                const { data: updatedRows, error: sidUpdateError } = await supabase
+                  .from("leads")
+                  .update({ pronto_SID: mappedSid })
+                  .eq("delete_row_id", row.delete_row_id)
+                  .or('pronto_SID.is.null,pronto_SID.eq.""')
+                  .select("delete_row_id")
+
+                if (sidUpdateError) throw sidUpdateError
+                if (!updatedRows?.length) remainingRows.push(row)
+              }
+              allRows = remainingRows
+            } else {
+              allRows = fetchedRows.slice(0, pageSize)
+            }
           } else {
             allRows = fetchedRows
           }
