@@ -177,9 +177,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
 
           {isAdministrator && <Folder title="Work in progress" icon={Wrench} open={openFolders.workInProgress} onClick={() => toggleFolder("workInProgress")}>
             <NavItem icon={BarChart3} label="Sales Performance" active={isActive("sales-performance")} onClick={() => navigate("sales-performance")}/>
-          </Folder>}
 
-          {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}>
             <NavItem icon={BarChart3} label="Data Dashboard" active={isActive("data-dashboard")} onClick={() => navigate("data-dashboard")}/>
             <NavItem icon={RefreshCw} label="Bulk Updater" active={isActive("bulk-updater")} onClick={() => navigate("bulk-updater")}/>
             <NavItem icon={CalendarDays} label="Installations Performance" active={isActive("installations-performance")} onClick={() => navigate("installations-performance")}/>
@@ -187,12 +185,14 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={Sun} label="Solar Backend" active={isActive("solar-backend")} onClick={() => navigate("solar-backend")}/>
             <NavItem icon={Sun} label="Solar Rework" active={isActive("solar-rework")} onClick={() => navigate("solar-rework")}/>
             <NavItem icon={Boxes} label="Unit Analysis" active={isActive("unit-analysis")} onClick={() => navigate("unit-analysis")}/>
-            <NavItem icon={UserCog} label="Users" active={isActive("users")} onClick={() => navigate("users")}/>
             <NavItem icon={ClipboardList} label="Tasks" active={isActive("tasks")} onClick={() => navigate("tasks")}/>
             <NavItem icon={Presentation} label="Templates" active={isActive("templates")} onClick={() => navigate("templates")}/>
+            <NavItem icon={Tag} label="Watts Marketing" active={isActive("hotkeys")} onClick={() => navigate("hotkeys")}/>          </Folder>}
+
+          {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}>
+            <NavItem icon={UserCog} label="Users" active={isActive("users")} onClick={() => navigate("users")}/>
             <NavItem icon={Database} label="API & Webhooks" active={isActive("integration-logs")} onClick={() => navigate("integration-logs")}/>
             <NavItem icon={Link2} label="EPVS Applications" active={isActive("epvs-applications")} onClick={() => navigate("epvs-applications")}/>
-            <NavItem icon={Tag} label="Watts Marketing" active={isActive("hotkeys")} onClick={() => navigate("hotkeys")}/>
             <NavItem icon={Settings} label="Settings" disabled/>
           </Folder>}
         </nav>
