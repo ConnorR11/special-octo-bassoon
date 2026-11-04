@@ -34,6 +34,7 @@ const PRONTO_C1_SID_MAPPINGS = [
   { c1: "(2163)", sid: "2163" },
   { c1: "(1664)", sid: "1664" },
   { c1: "(1754)", sid: "1754" },
+  { c1: "(2528)", sid: "2528" },
 ]
 
 function getProntoSidFromC1(c1) {
