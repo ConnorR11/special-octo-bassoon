@@ -8,6 +8,7 @@ const date = value => value ? new Date(value).toLocaleDateString("en-GB") : "—
 const clean = value => String(value ?? "").trim()
 
 function DataSpend() {
+  const [activeTab, setActiveTab] = useState("missing")
   const [rows, setRows] = useState([])
   const [costs, setCosts] = useState({})
   const [search, setSearch] = useState("")
@@ -22,7 +23,7 @@ function DataSpend() {
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
 
-  const loadRows = useCallback(async (nextPage = page, searchValue = search, hotkeyValue = hotkeyFilter, sourceValue = sourceFilter) => {
+  const loadRows = useCallback(async (nextPage = page, searchValue = search, hotkeyValue = hotkeyFilter, sourceValue = sourceFilter, tabValue = activeTab) => {
     if (!supabase) return
     setLoading(true)
     setError("")
