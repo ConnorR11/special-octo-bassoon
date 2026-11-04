@@ -172,7 +172,8 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
           <Folder visible={canSeeFolder("digitalTeam")} title="Digital Team" icon={Search} open={openFolders.digitalTeam} onClick={() => toggleFolder("digitalTeam")}>
             <NavItem icon={Search} label="SEO" active={isActive("seo")} onClick={() => navigate("seo")}/>
             {isAdministrator && <NavItem icon={BarChart3} label="Pronto" active={isActive("pronto")} onClick={() => navigate("pronto")}/>}
-            <NavItem icon={Database} label="Data Results" active={isActive("data-results")} onClick={() => navigate("data-results")} disabled={!isAdministrator} locked={!isAdministrator}/>\n            <NavItem icon={PoundSterling} label="Data Spend" active={isActive("data-spend")} onClick={() => navigate("data-spend")} disabled={!isAdministrator} locked={!isAdministrator}/>
+            <NavItem icon={Database} label="Data Results" active={isActive("data-results")} onClick={() => navigate("data-results")} disabled={!isAdministrator} locked={!isAdministrator}/>
+            <NavItem icon={PoundSterling} label="Data Spend" active={isActive("data-spend")} onClick={() => navigate("data-spend")} disabled={!isAdministrator} locked={!isAdministrator}/>
           </Folder>
 
           {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}>
