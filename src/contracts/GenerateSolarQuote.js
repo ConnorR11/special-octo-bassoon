@@ -17,11 +17,12 @@ function getQuoteData(appointment) {
   const panels = Array.isArray(hardware.panels) ? hardware.panels : (Array.isArray(epvs.panels) ? epvs.panels : [])
   const inverters = Array.isArray(hardware.inverters) ? hardware.inverters : (Array.isArray(epvs.inverters) ? epvs.inverters : [])
   const batteries = Array.isArray(hardware.batteries) ? hardware.batteries : (Array.isArray(epvs.batteries) ? epvs.batteries : [])
-  const panelCount = panels.reduce((sum, item) => sum + Number(item?.quantity || item?.count || item?.panelCount || item?.panel_count || 0), 0)
-    || Number(epvs.panelCount || epvs.panel_count || epvs.numberOfPanels || epvs.number_of_panels || 0)
   const arrays = Array.isArray(openSolar?.arrays) && openSolar.arrays.length
     ? openSolar.arrays
     : (Array.isArray(epvs?.arrays) ? epvs.arrays : [])
+  const arrayPanelCount = arrays.reduce((sum, array) => sum + Number(array?.panelCount || array?.panel_count || array?.numberOfPanels || array?.number_of_panels || 0), 0)
+  const panelCount = arrayPanelCount || panels.reduce((sum, item) => sum + Number(item?.quantity || item?.count || item?.panelCount || item?.panel_count || 0), 0) || Number(epvs.panelQuantity || epvs.panel_quantity || epvs.panelCount || epvs.panel_count || epvs.numberOfPanels || epvs.number_of_panels || 0)
+  const panelWattage = arrays.map(array => Number(array?.panelWattage || array?.panel_wattage || 0)).find(n => Number.isFinite(n) && n > 0) || Number(epvs.panelWattage || epvs.panel_wattage || 0) || panels.map(item => Number(item?.wattage || item?.power || item?.watts || ((item?.capacityUnit || '').toLowerCase() === 'w' ? item?.capacity : 0) || 0)).find(n => Number.isFinite(n) && n > 0) || null
   const derivedCapacity = arrays.reduce((sum, array) => {
     const wattage = Number(array?.panelWattage || array?.panel_wattage || 0)
     const count = Number(array?.panelCount || array?.panel_count || array?.numberOfPanels || array?.number_of_panels || 0)
@@ -49,7 +50,7 @@ function getQuoteData(appointment) {
   const monthly = paymentMethod.toLowerCase() === "finance" && termYears > 0 && rate >= 0 && financeFactor > 0
     ? Math.max(0, principal) / 1000 * financeFactor
     : null
-  return { epvs, results, openSolar, panels, inverters, batteries, panelCount, capacity, generation, cashPrice, paymentMethod, termYears, rate, deposit, financeFactor, monthly }
+  return { epvs, results, openSolar, panels, inverters, batteries, panelCount, panelWattage, capacity, generation, cashPrice, paymentMethod, termYears, rate, deposit, financeFactor, monthly }
 }
 
 async function imageData(url) {
@@ -143,7 +144,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
     return names.length ? names.join(", ") : fallback
   }
   const equipment = [
-    ["Solar panels",d.panelCount ? String(d.panelCount)+" panels" : "To be confirmed"],
+    ["Solar panels",d.panelCount ? String(d.panelCount)+" panels"+(d.panelWattage ? " · "+d.panelWattage+" W each" : "") : "To be confirmed"],
     ["System capacity",d.capacity ? d.capacity.toFixed(2)+" kWp" : "To be confirmed"],
     ["Inverter",hardwareLabel(d.inverters,"To be confirmed")],
     ["Battery storage",hardwareLabel(d.batteries,"To be confirmed")]
@@ -186,7 +187,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
     ["Customer",customer],
     ["Property address",address||"To be confirmed"],
     ["System size",d.capacity?d.capacity.toFixed(2)+" kWp":"To be confirmed"],
-    ["Solar panels",(()=>{const panelWattage=d.panels.map(item=>Number(item?.wattage??item?.power??item?.watts)).find(value=>Number.isFinite(value)&&value>0);return d.panelCount&&panelWattage?String(d.panelCount)+" × "+panelWattage+" W":"To be confirmed"})()],
+    ["Solar panels",d.panelCount ? String(d.panelCount)+" × "+(d.panelWattage ? d.panelWattage+" W" : "wattage to be confirmed") : "To be confirmed"],
     ["Inverter",hardwareLabel(d.inverters,"To be confirmed")],
     ["Battery",hardwareLabel(d.batteries,"To be confirmed")],
     ["Estimated generation",generation?Number(generation).toLocaleString("en-GB")+" kWh / year":"To be confirmed"],
@@ -256,7 +257,6 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
     return findMatch(panels,"Panels") || findMatch(inverters,"Inverter") || findMatch(batteries,"Battery")
   }
   const panelHardware = findHardware(panels,"Panels")
-  const panelWattage = d.panels.map(item=>Number(item?.wattage||item?.power||item?.watts||item?.capacity||0)).find(n=>n>0) || 450
   const configuredItems = [
     {name:"Panels",type:"Product",quantity:d.panelCount||1},
     {name:"Roof Hooks",type:"Product",quantity:"-"},
