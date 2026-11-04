@@ -57,7 +57,7 @@ function getPresetRange(preset) {
   return { start: localDate(today), end: localDate(today) }
 }
 
-function DataResults() {
+function DataResults({ sourceFilter = null, reportTitle = "Data Results" } = {}) {
   const defaults = useMemo(dateRangeDefault, [])
   const [startDate, setStartDate] = useState(defaults.start)
   const [endDate, setEndDate] = useState(defaults.end)
@@ -91,11 +91,13 @@ function DataResults() {
       // the lead cohort and are not affected by when its appointments took place.
       const leads = []
       for (let offset = 0; ; offset += PAGE_SIZE) {
-        const { data, error: queryError } = await supabase.from("leads")
+        let leadQuery = supabase.from("leads")
           .select("marketing_row_id,lead_source,disposition,archive_disposition,invalid,lead_cost")
           .gte("received_date_time", from).lt("received_date_time", to)
           .order("received_date_time", { ascending: true })
           .range(offset, offset + PAGE_SIZE - 1)
+        if (sourceFilter) leadQuery = leadQuery.eq("lead_source", sourceFilter)
+        const { data, error: queryError } = await leadQuery
         if (queryError) throw queryError
         const batch = data || []
         leads.push(...batch)
@@ -157,7 +159,10 @@ function DataResults() {
         })
       }
 
-      const appointmentIds = [...new Set(appointments.map(item => item.appointment_row_id).filter(Boolean))]
+      const reportAppointments = sourceFilter
+        ? appointments.filter(item => clean(item.lead_source || linkedLeadSources.get(item.marketing_row_id)) === clean(sourceFilter))
+        : appointments
+      const appointmentIds = [...new Set(reportAppointments.map(item => item.appointment_row_id).filter(Boolean))]
       const deals = []
       for (let offset = 0; offset < appointmentIds.length; offset += CHUNK_SIZE) {
         const ids = appointmentIds.slice(offset, offset + CHUNK_SIZE)
@@ -173,7 +178,7 @@ function DataResults() {
       const zeroValueAppointmentIds = new Set(
         deals.filter(deal => Number(deal.deal_value) === 0).map(deal => deal.appointment_row_id)
       )
-      const includedAppointments = appointments.filter(
+      const includedAppointments = reportAppointments.filter(
         appointment => !zeroValueAppointmentIds.has(appointment.appointment_row_id)
       )
       const includedAppointmentIds = new Set(includedAppointments.map(item => item.appointment_row_id))
@@ -238,7 +243,7 @@ function DataResults() {
     } finally {
       setLoading(false)
     }
-  }, [startDate, endDate])
+  }, [startDate, endDate, sourceFilter])
 
   useEffect(() => { loadData() }, [loadData])
 
@@ -263,8 +268,8 @@ function DataResults() {
       const sheet = XLSX.utils.json_to_sheet(exportRows)
       sheet["!cols"] = Object.keys(exportRows[0] || {}).map(key => ({ wch: Math.max(12, key.length + 3) }))
       const workbook = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(workbook, sheet, "Data Results")
-      XLSX.writeFile(workbook, `data-results-${startDate}-to-${endDate}.xlsx`)
+      XLSX.utils.book_append_sheet(workbook, sheet, String(reportTitle).slice(0, 31))
+      XLSX.writeFile(workbook, `${String(reportTitle).toLowerCase().replace(/\\s+/g, "-")}-${startDate}-to-${endDate}.xlsx`)
     } finally { setExporting(false) }
   }
 
@@ -282,7 +287,7 @@ function DataResults() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 28, flexWrap: "wrap" }}>
         <div style={{ minWidth: 220 }}>
           <div style={{ fontSize: 10, letterSpacing: "0.14em", fontWeight: 700, color: "#9db7c9", textTransform: "uppercase", marginBottom: 7 }}>Digital Team · Reporting</div>
-          <h1 style={{ margin: 0, fontSize: 34, lineHeight: 1.15, fontWeight: 750 }}>Data Results</h1>
+          <h1 style={{ margin: 0, fontSize: 34, lineHeight: 1.15, fontWeight: 750 }}>{reportTitle}</h1>
           <p style={{ margin: "7px 0 0", fontSize: 12, color: "#c3d4e0" }}>Lead source performance and sales outcomes</p>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(190px, 1fr))", gap: 12, flex: "0 1 470px" }}>
@@ -388,9 +393,9 @@ function DataResults() {
           </table>
         </div>
       </div>
-      <div style={{ marginTop: 28 }}>
+      {!sourceFilter && <div style={{ marginTop: 28 }}>
         <LeadExport />
-      </div>
+      </div>}
     </section>
   </div>
 }
