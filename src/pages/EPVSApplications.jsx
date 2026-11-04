@@ -52,6 +52,7 @@ export default function EPVSApplications() {
           const { data, error } = await supabase.from("deals")
             .select("id,contract_number,customer_name,phone,email,address,postcode,product,deal_value,sale_date,status,pipedrive_stage")
             .ilike("product", "%solar%")
+            .gte("sale_date", "2026-01-01")
             .order("sale_date", { ascending: false, nullsFirst: false })
             .range(from, from + 999)
           if (error) throw error
