@@ -142,6 +142,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={ClipboardCheck} label="Fit Sheet" active={isActive("fitsheet")} onClick={() => navigate("fitsheet")}/>
             <NavItem icon={KanbanSquare} label="Kanban" active={isActive("installations")} onClick={() => navigate("installations")}/>
             <NavItem icon={AlertTriangle} label="Installation Issues" disabled/>
+            {isAdministrator && <NavItem icon={Link2} label="EPVS Applications" active={isActive("epvs-applications")} onClick={() => navigate("epvs-applications")}/>}
           </Folder>
 
           <Folder visible={canSeeFolder("customerService")} title="Remedials" icon={Headphones} open={openFolders.customerService} onClick={() => toggleFolder("customerService")}>
@@ -192,7 +193,6 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
           {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}>
             <NavItem icon={UserCog} label="Users" active={isActive("users")} onClick={() => navigate("users")}/>
             <NavItem icon={Database} label="API & Webhooks" active={isActive("integration-logs")} onClick={() => navigate("integration-logs")}/>
-            <NavItem icon={Link2} label="EPVS Applications" active={isActive("epvs-applications")} onClick={() => navigate("epvs-applications")}/>
             <NavItem icon={Settings} label="Settings" disabled/>
           </Folder>}
         </nav>
