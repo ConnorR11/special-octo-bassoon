@@ -39,8 +39,7 @@ function DataSpend() {
 
       let request = supabase.from("leads")
         .select("delete_row_id,marketing_row_id,first_name,last_name,primary_phone_number,email,postcode,lead_source,introducer,pronto_SID,pronto_c3,disposition,hotkey_status,received_date_time,lead_cost", { count: "exact" })
-        .is("lead_cost", null)
-        .gte("received_date_time", "2026-01-01T00:00:00")
+                .gte("received_date_time", "2026-01-01T00:00:00")
         .lt("received_date_time", "2027-01-01T00:00:00")
       if (hotkeyValue) request = request.eq("hotkey_status", hotkeyValue)
       if (sourceValue) request = request.eq("lead_source", sourceValue)
