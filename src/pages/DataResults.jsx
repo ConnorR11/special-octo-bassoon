@@ -252,13 +252,13 @@ function DataResults() {
     try {
       const exportRows = rows.map(row => ({
         "Lead Sources": row.source, Spend: row.spend, Leads: row.leads, Dup: row.dup, WN: row.wn, OOA: row.ooa, INV: row.inv,
-        Total: row.total, "Net Leads": row.netLeads, "Call Back": row.callback, NC: row.noContact, H: row.h, C: row.c, P: row.p, S: row.s, "Net Value": row.net, Solid: row.solid, CPL: row.leads ? row.spend / row.leads : 0, CPP: row.p ? row.spend / row.p : 0, "Marketing %": row.solid ? row.spend / row.solid : 0,
+        Total: row.total, "Net Leads": row.netLeads, "Call Back": row.callback, NC: row.noContact, H: row.h, C: row.c, P: row.p, S: row.s, "Net Value": row.net, Solid: row.solid, CPL: row.leads ? row.spend / row.leads : 0, CPP: row.p ? row.spend / row.p : 0, "Data%": row.solid ? row.spend / row.solid : 0,
       }))
       exportRows.push({
         "Lead Sources": "TOTAL", Spend: totals.spend || 0, Leads: totals.leads || 0, Dup: totals.dup || 0, WN: totals.wn || 0, OOA: totals.ooa || 0,
         INV: totals.inv || 0, Total: totals.total || 0, "Net Leads": totals.netLeads || 0,
         "Call Back": totals.callback || 0, NC: totals.noContact || 0,
-        H: totals.h || 0, C: totals.c || 0, P: totals.p || 0, S: totals.s || 0, "Net Value": totals.net || 0, Solid: totals.solid || 0, CPL: totals.leads ? (totals.spend || 0) / totals.leads : 0, CPP: totals.p ? (totals.spend || 0) / totals.p : 0, "Marketing %": totals.solid ? (totals.spend || 0) / totals.solid : 0,
+        H: totals.h || 0, C: totals.c || 0, P: totals.p || 0, S: totals.s || 0, "Net Value": totals.net || 0, Solid: totals.solid || 0, CPL: totals.leads ? (totals.spend || 0) / totals.leads : 0, CPP: totals.p ? (totals.spend || 0) / totals.p : 0, "Data%": totals.solid ? (totals.spend || 0) / totals.solid : 0,
       })
       const sheet = XLSX.utils.json_to_sheet(exportRows)
       sheet["!cols"] = Object.keys(exportRows[0] || {}).map(key => ({ wch: Math.max(12, key.length + 3) }))
@@ -332,7 +332,7 @@ function DataResults() {
             <tr>
               {["Spend", "Leads", "Dup", "WN", "OOA", "INV", "Total", "Net leads", "Call Back", "NC"].map(heading => <th key={heading} style={{ ...th, textAlign: "center", ...(heading === "INV" ? { background: "#fee2e2", color: "#b91c1c" } : {}) }}>{heading}</th>)}
               {["H", "C", "P", "S", "Net", "Solid"].map(heading => <th key={heading} style={{ ...th, textAlign: "center" }}>{heading}</th>)}
-              {["CPL", "CPP", "Marketing %"].map(heading => <th key={heading} style={{ ...th, textAlign: "center", borderLeft: heading === "CPL" ? "2px solid #cbd5e1" : undefined }}>{heading}</th>)}
+              {["CPL", "CPP", "Data%"].map(heading => <th key={heading} style={{ ...th, textAlign: "center", borderLeft: heading === "CPL" ? "2px solid #cbd5e1" : undefined }}>{heading}</th>)}
             </tr>
           </thead>
           <tbody>
