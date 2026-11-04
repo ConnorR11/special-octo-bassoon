@@ -109,16 +109,20 @@ function DataSpend() {
     setError("")
     setNotice("")
     try {
-      const { data, error: updateError } = await supabase.from("leads")
+      let updateRequest = supabase.from("leads")
         .update({ lead_cost: Number(Number(raw).toFixed(2)), lead_cost_source: "manual" })
         .eq("delete_row_id", row.delete_row_id)
         .eq("marketing_row_id", row.marketing_row_id)
-        .is("lead_cost", null)
-        .select("marketing_row_id")
+      if (activeTab === "missing") updateRequest = updateRequest.is("lead_cost", null)
+      const { data, error: updateError } = await updateRequest.select("marketing_row_id")
       if (updateError) throw updateError
       if (!data?.length) throw new Error("This lead was updated elsewhere or could not be saved. Refresh the list and try again.")
-      setRows(current => current.filter(item => !(item.delete_row_id === row.delete_row_id && item.marketing_row_id === row.marketing_row_id)))
-      setTotal(current => Math.max(0, current - 1))
+      if (activeTab === "missing") {
+        setRows(current => current.filter(item => !(item.delete_row_id === row.delete_row_id && item.marketing_row_id === row.marketing_row_id)))
+        setTotal(current => Math.max(0, current - 1))
+      } else {
+        setRows(current => current.map(item => item.delete_row_id === row.delete_row_id && item.marketing_row_id === row.marketing_row_id ? { ...item, lead_cost: Number(Number(raw).toFixed(2)), lead_cost_source: "manual" } : item))
+      }
       setNotice(`Lead cost saved as ${money(raw)}.`)
     } catch (err) {
       setError(err?.message || "Unable to save lead cost.")
@@ -168,7 +172,7 @@ function DataSpend() {
       {notice && <div style={{ padding: 11, marginBottom: 10, borderRadius: 8, background: "#ecfdf5", color: "#047857", fontSize: 12 }}>{notice}</div>}
       <div style={{ overflow: "auto", maxHeight: "calc(100vh - 330px)", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 9 }}>
         <table style={{ width: "100%", minWidth: 1250, borderCollapse: "separate", borderSpacing: 0 }}>
-          <thead><tr>{["Received", "Lead name", "Postcode", "Lead source", "Introducer", "SID", "C3 / Advert", "Disposition", "Hotkey status", "Lead cost", ...(activeTab === "missing" ? ["Action"] : [])].map(label => <th key={label} style={th}>{label}</th>)}</tr></thead>
+          <thead><tr>{["Received", "Lead name", "Postcode", "Lead source", "Introducer", "SID", "C3 / Advert", "Disposition", "Hotkey status", "Lead cost", "Action"].map(label => <th key={label} style={th}>{label}</th>)}</tr></thead>
           <tbody>
             {rows.map(row => {
               const key = `${row.delete_row_id}:${row.marketing_row_id}`
@@ -182,11 +186,11 @@ function DataSpend() {
                 <td style={td}>{row.pronto_c3 || "—"}</td>
                 <td style={td}>{row.disposition || "—"}</td>
                 <td style={td}>{row.hotkey_status || "—"}</td>
-                <td style={td}>{activeTab === "missing" ? <div style={{ display: "flex", alignItems: "center", gap: 5 }}><span>£</span><input aria-label={`Lead cost for ${row.marketing_row_id}`} type="number" min="0" step="0.01" value={costs[key] ?? ""} onChange={event => setCosts(current => ({ ...current, [key]: event.target.value }))} placeholder="0.00" style={{ width: 90, padding: "7px 8px", border: "1px solid #cbd5e1", borderRadius: 6, color: "#172033", fontSize: 12 }}/></div> : <strong>{money(row.lead_cost)}</strong>}</td>
-                {activeTab === "missing" && <td style={td}><button type="button" onClick={() => saveCost(row)} disabled={!!saving[key]} style={{ display: "inline-flex", alignItems: "center", gap: 6, border: 0, borderRadius: 6, padding: "7px 10px", background: "#0b3a59", color: "#fff", fontSize: 11, fontWeight: 650, cursor: "pointer", opacity: saving[key] ? .6 : 1 }}><Save size={13}/>{saving[key] ? "Saving…" : "Save"}</button></td>}
+                <td style={td}><div style={{ display: "flex", alignItems: "center", gap: 5 }}><span>£</span><input aria-label={`Lead cost for ${row.marketing_row_id}`} type="number" min="0" step="0.01" value={costs[key] ?? (row.lead_cost ?? "")} onChange={event => setCosts(current => ({ ...current, [key]: event.target.value }))} placeholder="0.00" style={{ width: 90, padding: "7px 8px", border: "1px solid #cbd5e1", borderRadius: 6, color: "#172033", fontSize: 12 }}/></td>
+                <td style={td}><button type="button" onClick={() => saveCost(row)} disabled={!!saving[key]} style={{ display: "inline-flex", alignItems: "center", gap: 6, border: 0, borderRadius: 6, padding: "7px 10px", background: "#0b3a59", color: "#fff", fontSize: 11, fontWeight: 650, cursor: "pointer", opacity: saving[key] ? .6 : 1 }}><Save size={13}/>{saving[key] ? "Saving…" : "Save"}</button></td>
               </tr>
             })}
-            {!loading && !rows.length && <tr><td colSpan={activeTab === "missing" ? 11 : 10} style={{ ...td, textAlign: "center", padding: 30, color: "#64748b" }}>{activeTab === "missing" ? "No leads are missing an acquisition cost." : "No leads with spend found."}</td></tr>}
+            {!loading && !rows.length && <tr><td colSpan={11} style={{ ...td, textAlign: "center", padding: 30, color: "#64748b" }}>{activeTab === "missing" ? "No leads are missing an acquisition cost." : "No leads with spend found."}</td></tr>}
             {loading && <tr><td colSpan={11} style={{ ...td, textAlign: "center", padding: 24, color: "#64748b" }}>Loading leads…</td></tr>}
           </tbody>
         </table>
