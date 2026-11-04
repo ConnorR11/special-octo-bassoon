@@ -163,8 +163,8 @@ function DataSpend() {
       {error && <div style={{ padding: 11, marginBottom: 10, borderRadius: 8, background: "#fff1f2", color: "#be123c", fontSize: 12 }}>{error}</div>}
       {notice && <div style={{ padding: 11, marginBottom: 10, borderRadius: 8, background: "#ecfdf5", color: "#047857", fontSize: 12 }}>{notice}</div>}
       <div style={{ overflow: "auto", maxHeight: "calc(100vh - 330px)", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 9 }}>
-        <table style={{ width: "100%", minWidth: 1450, borderCollapse: "separate", borderSpacing: 0 }}>
-          <thead><tr>{["Received", "Lead name", "Postcode", "Phone", "Email", "Lead source", "Introducer", "SID", "C3 / Advert", "Disposition", "Hotkey status", "Lead cost", "Action"].map(label => <th key={label} style={th}>{label}</th>)}</tr></thead>
+        <table style={{ width: "100%", minWidth: 1250, borderCollapse: "separate", borderSpacing: 0 }}>
+          <thead><tr>{["Received", "Lead name", "Postcode", "Lead source", "Introducer", "SID", "C3 / Advert", "Disposition", "Hotkey status", "Lead cost", "Action"].map(label => <th key={label} style={th}>{label}</th>)}</tr></thead>
           <tbody>
             {rows.map(row => {
               const key = `${row.delete_row_id}:${row.marketing_row_id}`
@@ -172,8 +172,6 @@ function DataSpend() {
                 <td style={td}>{date(row.received_date_time)}</td>
                 <td style={{ ...td, fontWeight: 650 }}>{[row.first_name, row.last_name].map(clean).filter(Boolean).join(" ") || "—"}</td>
                 <td style={td}>{row.postcode || "—"}</td>
-                <td style={td}>{row.primary_phone_number || "—"}</td>
-                <td style={td}>{row.email || "—"}</td>
                 <td style={td}>{row.lead_source || "—"}</td>
                 <td style={td}>{row.introducer || "—"}</td>
                 <td style={td}>{row.pronto_SID || "—"}</td>
@@ -184,8 +182,8 @@ function DataSpend() {
                 <td style={td}><button type="button" onClick={() => saveCost(row)} disabled={!!saving[key]} style={{ display: "inline-flex", alignItems: "center", gap: 6, border: 0, borderRadius: 6, padding: "7px 10px", background: "#0b3a59", color: "#fff", fontSize: 11, fontWeight: 650, cursor: "pointer", opacity: saving[key] ? .6 : 1 }}><Save size={13}/>{saving[key] ? "Saving…" : "Save"}</button></td>
               </tr>
             })}
-            {!loading && !rows.length && <tr><td colSpan={13} style={{ ...td, textAlign: "center", padding: 30, color: "#64748b" }}>No leads are missing an acquisition cost.</td></tr>}
-            {loading && <tr><td colSpan={12} style={{ ...td, textAlign: "center", padding: 24, color: "#64748b" }}>Loading leads…</td></tr>}
+            {!loading && !rows.length && <tr><td colSpan={11} style={{ ...td, textAlign: "center", padding: 30, color: "#64748b" }}>No leads are missing an acquisition cost.</td></tr>}
+            {loading && <tr><td colSpan={11} style={{ ...td, textAlign: "center", padding: 24, color: "#64748b" }}>Loading leads…</td></tr>}
           </tbody>
         </table>
       </div>
