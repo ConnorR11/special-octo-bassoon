@@ -41,6 +41,7 @@ function DataSpend() {
         .select("delete_row_id,marketing_row_id,first_name,last_name,primary_phone_number,email,postcode,lead_source,introducer,pronto_SID,pronto_c3,disposition,hotkey_status,received_date_time,lead_cost", { count: "exact" })
                 .gte("received_date_time", "2026-01-01T00:00:00")
         .lt("received_date_time", "2027-01-01T00:00:00")
+      request = tabValue === "spent" ? request.not("lead_cost", "is", null) : request.is("lead_cost", null)
       if (hotkeyValue) request = request.eq("hotkey_status", hotkeyValue)
       if (sourceValue) request = request.eq("lead_source", sourceValue)
       request = request.order("received_date_time", { ascending: false, nullsFirst: false })
@@ -135,7 +136,7 @@ function DataSpend() {
       <p style={{ margin: "7px 0 0", fontSize: 12, color: "#c3d4e0" }}>Leads that are missing an acquisition cost</p>
       <div style={{ display: "flex", gap: 12, marginTop: 20, flexWrap: "wrap" }}>
         <div style={{ background: "#fff", color: "#102a43", borderRadius: 10, padding: "13px 17px", minWidth: 175 }}>
-          <div style={{ fontSize: 11, color: "#64748b", fontWeight: 650 }}>Leads missing cost</div>
+          <div style={{ fontSize: 11, color: "#64748b", fontWeight: 650 }}>{activeTab === "missing" ? "Leads missing cost" : "Leads with spend"}</div>
           <div style={{ fontSize: 27, fontWeight: 750, marginTop: 3 }}>{loading ? "—" : total.toLocaleString("en-GB")}</div>
         </div>
       </div>
