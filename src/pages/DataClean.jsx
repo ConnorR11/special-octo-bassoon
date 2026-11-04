@@ -9,6 +9,7 @@ const REPORTS = [
   { id: "sold-missing-cps-s", title: "Sold · CPS-S not true", description: "2026 appointments marked SOLD where CPS-S is FALSE or NULL.", group: "CPS Work" },
   { id: "pm-pickup-hcps", title: "PM · Pickup / HCPS review", description: '2026 appointments where result contains "PM", is_pickup is not TRUE, and HCPS is not 1110.', group: "CPS Work" },
   { id: "missing-lead-type", title: "Leads missing lead type", description: "Leads where lead_type is empty or NULL. Assign one of the approved lead types." },
+  { id: "pronto-windows-missing-sid", title: "Pronto Windows · Missing SID", description: "Pronto Windows leads without a SID. Add the correct Pronto SID to each lead." },
   { id: "duplicate-marketing-row-id", title: "Duplicate marketing row IDs", description: "Lead records sharing a marketing_row_id with another lead. Review each copy before deleting." },
 ]
 
@@ -37,6 +38,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
   const [search, setSearch] = useState("")
   const [resultFilter, setResultFilter] = useState("all")
   const [leadTypeEdits, setLeadTypeEdits] = useState({})
+  const [sidEdits, setSidEdits] = useState({})
   const [hcpsEdits, setHcpsEdits] = useState({})
   const [appointmentEdits, setAppointmentEdits] = useState({})
   const [savingLeadIds, setSavingLeadIds] = useState({})
@@ -132,6 +134,8 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
             .select("appointment_row_id,name,phone_number_1,email_address,postcode,address,appointment_date,product,job_type,branch,rep_allocated,result")
             .or('result.is.null,result.eq.""')
             .order("appointment_date", { ascending: false, nullsFirst: false })
+        } else if (reportId === "pronto-windows-missing-sid") {
+          query = supabase.from("leads").select("delete_row_id,marketing_row_id,first_name,last_name,postcode,received_date_time,pronto_c1,pronto_c2,pronto_c3,pronto_SID").eq("lead_source", "Pronto Windows").or('pronto_SID.is.null,pronto_SID.eq.""').order("received_date_time", { ascending: false, nullsFirst: false })
         } else if (reportId === "missing-lead-type") {
           query = supabase
             .from("leads")
@@ -164,13 +168,13 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
           allRows = allRows.slice(0, 25)
           setHasNextPage(false)
         } else {
-          const pagedReport = ["missing-lead-type", "last-week-appointments"].includes(reportId)
+          const pagedReport = ["missing-lead-type", "last-week-appointments", "pronto-windows-missing-sid"].includes(reportId)
           query = query.range(pagedReport ? page * pageSize : 0, (pagedReport ? page * pageSize : 0) + (pagedReport ? pageSize : 999))
           const { data, error: queryError } = await query
           if (queryError) throw queryError
 
           const fetchedRows = Array.isArray(data) ? data : []
-          if (["missing-lead-type", "last-week-appointments"].includes(reportId)) {
+          if (["missing-lead-type", "last-week-appointments", "pronto-windows-missing-sid"].includes(reportId)) {
             setHasNextPage(fetchedRows.length > pageSize)
             allRows = fetchedRows.slice(0, pageSize)
           } else {
@@ -242,13 +246,14 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
         ["wrong-cps", "pm-pickup-hcps", "sold-missing-cps-s", "last-week-appointments"].includes(activeReport) ? hcps(row) : "",
         row.lead_source, row.lead_type, row.marketing_row_id, row.delete_row_id,
         row.first_name, row.last_name, row.primary_phone_number, row.disposition, row.last_time_called,
+        row.pronto_c1, row.pronto_c2, row.pronto_c3, row.pronto_SID,
       ]
       return values.map(text).join(" ").toLowerCase().includes(term)
     })
   }, [rows, search, activeReport])
 
   function openRow(row) {
-    if (activeReport === "missing-lead-type") {
+    if (activeReport === "missing-lead-type" || activeReport === "pronto-windows-missing-sid") {
       if (typeof onOpenLead === "function") return onOpenLead(row)
       return
     }
@@ -298,6 +303,25 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
     } finally {
       setSavingLeadIds(current => ({ ...current, [id]: false }))
     }
+  }
+
+  async function saveProntoSid(row) {
+    const id = row.delete_row_id
+    const sid = text(sidEdits[id])
+    if (!id || !sid || !supabase) return
+    setSavingLeadIds(current => ({ ...current, [id]: true }))
+    setSaveMessages(current => ({ ...current, [id]: "" }))
+    try {
+      const { data, error: updateError } = await supabase.from("leads").update({ pronto_SID: sid }).eq("delete_row_id", id).is("pronto_SID", null).select("delete_row_id")
+      if (updateError) throw updateError
+      if (!data?.length) throw new Error("The lead was not updated. It may already have a SID; refresh and try again.")
+      setRows(current => current.filter(item => item.delete_row_id !== id))
+      setSidEdits(current => { const next = { ...current }; delete next[id]; return next })
+      setSaveMessages(current => ({ ...current, [id]: "Saved" }))
+    } catch (err) {
+      console.error("Unable to update Pronto SID:", err)
+      setSaveMessages(current => ({ ...current, [id]: err?.message || "Could not save SID." }))
+    } finally { setSavingLeadIds(current => ({ ...current, [id]: false })) }
   }
 
   async function saveLastWeekAppointment(row) {
@@ -436,6 +460,8 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                       <tr>
                         {activeReport === "duplicate-marketing-row-id" ? (
                           <><th>Marketing Row ID</th><th>Customer</th><th>Lead Source</th><th>Received</th><th>Postcode</th><th>Phone</th><th>Disposition</th><th>Archive Date Time</th><th>Copies</th><th>Action</th></>
+                        ) : activeReport === "pronto-windows-missing-sid" ? (
+                          <><th>Customer</th><th>Received</th><th>Postcode</th><th>C1</th><th>C2</th><th>C3</th><th>Add SID</th><th>Save</th></>
                         ) : activeReport === "missing-lead-type" ? (
                           <><th>Lead</th><th>Received</th><th>Postcode</th><th>Lead Source</th><th>Phone</th><th>Email</th><th>Assign Lead Type</th><th></th></>
                         ) : (
@@ -456,6 +482,13 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                               <td>{row.disposition || "—"}</td><td>{formatDate(row.time_archived)}</td>
                               <td><span className="data-clean-badge warning">{row.duplicate_count} copies</span></td>
                               <td><button type="button" className="data-clean-delete" disabled={!!deletingLeadIds[row.delete_row_id]} onClick={() => deleteDuplicateLead(row)}>{deletingLeadIds[row.delete_row_id] ? "Deleting…" : "Delete this row"}</button>{saveMessages[row.delete_row_id] && <small style={{color:"#b91c1c",whiteSpace:"normal",maxWidth:180}}>{saveMessages[row.delete_row_id]}</small>}</td>
+                            </>
+                          ) : activeReport === "pronto-windows-missing-sid" ? (
+                            <>
+                              <td><strong>{[row.first_name, row.last_name].map(text).filter(Boolean).join(" ") || "Unnamed lead"}</strong><small>{row.marketing_row_id || row.delete_row_id}</small></td>
+                              <td>{formatDate(row.received_date_time)}</td><td>{row.postcode || "—"}</td><td>{row.pronto_c1 || "—"}</td><td>{row.pronto_c2 || "—"}</td><td>{row.pronto_c3 || "—"}</td>
+                              <td><input aria-label="Pronto SID" value={sidEdits[row.delete_row_id] ?? ""} onChange={event => setSidEdits(current => ({ ...current, [row.delete_row_id]: event.target.value.trim() }))} placeholder="Enter SID" style={{width:110,padding:"7px 9px",border:"1px solid #d7dee7",borderRadius:7,fontSize:11}} />{saveMessages[row.delete_row_id] && <small style={{color:saveMessages[row.delete_row_id] === "Saved" ? "#15803d" : "#b91c1c"}}>{saveMessages[row.delete_row_id]}</small>}</td>
+                              <td><button type="button" className="data-clean-open" disabled={!text(sidEdits[row.delete_row_id]) || !!savingLeadIds[row.delete_row_id]} onClick={() => saveProntoSid(row)}>{savingLeadIds[row.delete_row_id] ? "Saving…" : "Save SID"}</button></td>
                             </>
                           ) : activeReport === "missing-lead-type" ? (
                             <>
@@ -527,7 +560,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                     </tbody>
                   </table>
                 </div>
-                {["missing-lead-type", "duplicate-marketing-row-id", "last-week-appointments"].includes(activeReport) && <div className="data-clean-pagination"><button type="button" className="data-clean-open" disabled={page === 0 || loading} onClick={() => setPage(current => Math.max(0, current - 1))}>Previous</button><span>Page {page + 1}</span><button type="button" className="data-clean-open" disabled={!hasNextPage || loading} onClick={() => setPage(current => current + 1)}>Next</button></div>}
+                {["missing-lead-type", "duplicate-marketing-row-id", "last-week-appointments", "pronto-windows-missing-sid"].includes(activeReport) && <div className="data-clean-pagination"><button type="button" className="data-clean-open" disabled={page === 0 || loading} onClick={() => setPage(current => Math.max(0, current - 1))}>Previous</button><span>Page {page + 1}</span><button type="button" className="data-clean-open" disabled={!hasNextPage || loading} onClick={() => setPage(current => current + 1)}>Next</button></div>}
               </>
             )}
           </div>
