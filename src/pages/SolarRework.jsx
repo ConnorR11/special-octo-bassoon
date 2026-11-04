@@ -349,7 +349,7 @@ export default function SolarRework({ onSelectAppointment }) {
           .not("sent_at", "is", null)
           .order("sent_at", { ascending: false })
           .range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE)
-        if (activeTab === "quotes-work") quoteRequest = quoteRequest.not("disposition", "in", '("Superseded","Not interested")')
+        if (activeTab === "quotes-work") quoteRequest = quoteRequest.or('disposition.is.null,disposition.not.in.("Superseded","Not interested")')
         if (quoteViewedFilter === "viewed") quoteRequest = quoteRequest.not("last_viewed_at", "is", null)
         if (quoteViewedFilter === "not-viewed") quoteRequest = quoteRequest.is("last_viewed_at", null)
         const needle = normalise(query).replace(/[%_,()]/g, " ")
