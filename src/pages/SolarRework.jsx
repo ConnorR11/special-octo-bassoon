@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import { FileText, Link2, RefreshCw, Search, Sun } from "lucide-react"
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts"
+import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts"
 import { supabase } from "../lib/supabase"
 
 const PAGE_SIZE = 50
@@ -132,20 +132,24 @@ function dateLabel(value) {
 function QuoteDailyStatsPanel({ active, loading, stats, cardStyle, muted, firstSentDate, lastSentDate }) {
   if (!active) return null
   return <div style={{ ...cardStyle, padding: 16, marginBottom: 14 }}>
-    <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Quotes sent by disposition</div>
-    <div style={{ ...muted, marginBottom: 12 }}>{firstSentDate && lastSentDate ? `${firstSentDate} – ${lastSentDate}` : "No quotes sent yet"} · Daily quote totals split by outcome.</div>
+    <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Quote sends and open rate</div>
+    <div style={{ ...muted, marginBottom: 12 }}>{firstSentDate && lastSentDate ? firstSentDate + " – " + lastSentDate : "No quotes sent yet"} · All sent quotes are included; bars are split by disposition and the line shows the daily open rate.</div>
     {loading ? <div style={{ padding: 30, textAlign: "center", color: "#64748b" }}>Loading quote activity…</div> : <div style={{ width: "100%", height: 280 }}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={stats} margin={{ top: 8, right: 14, bottom: 4, left: 0 }}>
+        <ComposedChart data={stats} margin={{ top: 8, right: 14, bottom: 4, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={4} />
-          <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
-          <Tooltip />
+          <YAxis yAxisId="quotes" allowDecimals={false} tick={{ fontSize: 10 }} />
+          <YAxis yAxisId="rate" orientation="right" domain={[0, 100]} tickFormatter={value => value + "%"} tick={{ fontSize: 10 }} />
+          <Tooltip formatter={(value, name) => name === "Open rate" ? [value + "%", name] : [value, name]} />
           <Legend />
-          <Bar dataKey="accepted" name="Accepted" stackId="disposition" fill="#16a34a" />
-          <Bar dataKey="notInterested" name="Not interested" stackId="disposition" fill="#dc2626" />
-          <Bar dataKey="superseded" name="Superseded" stackId="disposition" fill="#9ca3af" radius={[3, 3, 0, 0]} />
-        </BarChart>
+          <Bar yAxisId="quotes" dataKey="accepted" name="Accepted quote" stackId="disposition" fill="#16a34a" />
+          <Bar yAxisId="quotes" dataKey="callBack" name="Call Back" stackId="disposition" fill="#f59e0b" />
+          <Bar yAxisId="quotes" dataKey="notInterested" name="Not interested" stackId="disposition" fill="#dc2626" />
+          <Bar yAxisId="quotes" dataKey="superseded" name="Superseded" stackId="disposition" fill="#94a3b8" />
+          <Bar yAxisId="quotes" dataKey="awaiting" name="Awaiting outcome" stackId="disposition" fill="#0f766e" />
+          <Line yAxisId="rate" type="monotone" dataKey="openRate" name="Open rate" stroke="#2563eb" strokeWidth={2} dot={false} connectNulls />
+        </ComposedChart>
       </ResponsiveContainer>
     </div>}
   </div>
@@ -189,7 +193,7 @@ export default function SolarRework({ onSelectAppointment }) {
       setQuoteStatsLoading(true)
       try {
         const { data, error } = await supabase.from("solar_quotes")
-          .select("sent_at,disposition")
+          .select("sent_at,last_viewed_at,disposition")
           .not("sent_at", "is", null)
           .in("status", ["sent", "delivered", "viewed"])
           .order("sent_at", { ascending: true })
@@ -205,7 +209,7 @@ export default function SolarRework({ onSelectAppointment }) {
           const date = new Date(firstDay)
           date.setDate(date.getDate() + index)
           const key = date.toISOString().slice(0, 10)
-          return { date: key, label: date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }), accepted: 0, notInterested: 0, superseded: 0 }
+          return { date: key, label: date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }), accepted: 0, notInterested: 0, superseded: 0, callBack: 0, awaiting: 0, opened: 0, openRate: 0 }
         })
         const byDate = Object.fromEntries(days.map(day => [day.date, day]))
         for (const quote of sentQuotes) {
@@ -215,7 +219,11 @@ export default function SolarRework({ onSelectAppointment }) {
           if (disposition === "accepted" || disposition === "accepted quote") day.accepted += 1
           else if (disposition === "not interested") day.notInterested += 1
           else if (disposition === "superseded") day.superseded += 1
+          else if (disposition === "call back") day.callBack += 1
+          else day.awaiting += 1
+          if (quote.last_viewed_at) day.opened += 1
         }
+        days.forEach(day => { const sent = day.accepted + day.notInterested + day.superseded + day.callBack + day.awaiting; day.openRate = sent ? Math.round(day.opened / sent * 100) : 0 })
         if (!cancelled) {
           setQuoteDailyStats(days)
           setQuoteStatsRange({ first: firstDate, last: lastDate })
