@@ -284,7 +284,9 @@ function App() {
     pageContent = <DataResults />
   } else if (page === "data-clean") {
     pageContent = <DataClean onOpenAppointment={handleAppointmentSelect}/>
-  } else if (page === "data-spend") {\n    pageContent = <DataSpend/>\n  } else if (page === "solar-backend") {
+  } else if (page === "data-spend") {
+    pageContent = <DataSpend/>
+  } else if (page === "solar-backend") {
     pageContent = <SolarBackend onSelectAppointment={handleAppointmentSelect}/>
   } else if (page === "outstanding-solar-surveys") {
     pageContent = <OutstandingSolarSurveys onSelectDeal={deal => handleDealSelect(deal, page)}/>
