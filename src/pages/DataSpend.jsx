@@ -142,6 +142,9 @@ function DataSpend() {
       </div>
     </section>
     <section style={{ padding: "16px 22px 28px" }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 14, borderBottom: "1px solid #dbe2ea" }}>
+        {[{ id: "missing", label: "Missing cost" }, { id: "spent", label: "Leads with spend" }].map(tab => <button key={tab.id} type="button" onClick={() => { setActiveTab(tab.id); loadRows(0, search, hotkeyFilter, sourceFilter, tab.id) }} style={{ padding: "10px 15px", border: 0, borderBottom: activeTab === tab.id ? "2px solid #0b3a59" : "2px solid transparent", background: "transparent", color: activeTab === tab.id ? "#0b3a59" : "#64748b", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{tab.label}</button>)}
+      </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
         <div style={{ position: "relative", flex: "1 1 320px", maxWidth: 520 }}>
           <Search size={15} style={{ position: "absolute", left: 11, top: 11, color: "#94a3b8" }}/>
@@ -164,7 +167,7 @@ function DataSpend() {
       {notice && <div style={{ padding: 11, marginBottom: 10, borderRadius: 8, background: "#ecfdf5", color: "#047857", fontSize: 12 }}>{notice}</div>}
       <div style={{ overflow: "auto", maxHeight: "calc(100vh - 330px)", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 9 }}>
         <table style={{ width: "100%", minWidth: 1250, borderCollapse: "separate", borderSpacing: 0 }}>
-          <thead><tr>{["Received", "Lead name", "Postcode", "Lead source", "Introducer", "SID", "C3 / Advert", "Disposition", "Hotkey status", "Lead cost", "Action"].map(label => <th key={label} style={th}>{label}</th>)}</tr></thead>
+          <thead><tr>{["Received", "Lead name", "Postcode", "Lead source", "Introducer", "SID", "C3 / Advert", "Disposition", "Hotkey status", "Lead cost", ...(activeTab === "missing" ? ["Action"] : [])].map(label => <th key={label} style={th}>{label}</th>)}</tr></thead>
           <tbody>
             {rows.map(row => {
               const key = `${row.delete_row_id}:${row.marketing_row_id}`
@@ -178,17 +181,17 @@ function DataSpend() {
                 <td style={td}>{row.pronto_c3 || "—"}</td>
                 <td style={td}>{row.disposition || "—"}</td>
                 <td style={td}>{row.hotkey_status || "—"}</td>
-                <td style={td}><div style={{ display: "flex", alignItems: "center", gap: 5 }}><span>£</span><input aria-label={`Lead cost for ${row.marketing_row_id}`} type="number" min="0" step="0.01" value={costs[key] ?? ""} onChange={event => setCosts(current => ({ ...current, [key]: event.target.value }))} placeholder="0.00" style={{ width: 90, padding: "7px 8px", border: "1px solid #cbd5e1", borderRadius: 6, color: "#172033", fontSize: 12 }}/></div></td>
-                <td style={td}><button type="button" onClick={() => saveCost(row)} disabled={!!saving[key]} style={{ display: "inline-flex", alignItems: "center", gap: 6, border: 0, borderRadius: 6, padding: "7px 10px", background: "#0b3a59", color: "#fff", fontSize: 11, fontWeight: 650, cursor: "pointer", opacity: saving[key] ? .6 : 1 }}><Save size={13}/>{saving[key] ? "Saving…" : "Save"}</button></td>
+                <td style={td}>{activeTab === "missing" ? <div style={{ display: "flex", alignItems: "center", gap: 5 }}><span>£</span><input aria-label={`Lead cost for ${row.marketing_row_id}`} type="number" min="0" step="0.01" value={costs[key] ?? ""} onChange={event => setCosts(current => ({ ...current, [key]: event.target.value }))} placeholder="0.00" style={{ width: 90, padding: "7px 8px", border: "1px solid #cbd5e1", borderRadius: 6, color: "#172033", fontSize: 12 }}/></div> : <strong>{money(row.lead_cost)}</strong>}</td>
+                {activeTab === "missing" && <td style={td}><button type="button" onClick={() => saveCost(row)} disabled={!!saving[key]} style={{ display: "inline-flex", alignItems: "center", gap: 6, border: 0, borderRadius: 6, padding: "7px 10px", background: "#0b3a59", color: "#fff", fontSize: 11, fontWeight: 650, cursor: "pointer", opacity: saving[key] ? .6 : 1 }}><Save size={13}/>{saving[key] ? "Saving…" : "Save"}</button></td>}
               </tr>
             })}
-            {!loading && !rows.length && <tr><td colSpan={11} style={{ ...td, textAlign: "center", padding: 30, color: "#64748b" }}>No leads are missing an acquisition cost.</td></tr>}
+            {!loading && !rows.length && <tr><td colSpan={activeTab === "missing" ? 11 : 10} style={{ ...td, textAlign: "center", padding: 30, color: "#64748b" }}>{activeTab === "missing" ? "No leads are missing an acquisition cost." : "No leads with spend found."}</td></tr>}
             {loading && <tr><td colSpan={11} style={{ ...td, textAlign: "center", padding: 24, color: "#64748b" }}>Loading leads…</td></tr>}
           </tbody>
         </table>
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
-        <span style={{ color: "#64748b", fontSize: 11 }}>Showing {total ? page * PAGE_SIZE + 1 : 0}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total.toLocaleString("en-GB")} leads missing a cost</span>
+        <span style={{ color: "#64748b", fontSize: 11 }}>Showing {total ? page * PAGE_SIZE + 1 : 0}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total.toLocaleString("en-GB")} {activeTab === "missing" ? "leads missing a cost" : "leads with spend"}</span>
         <div style={{ display: "flex", gap: 7 }}>
           <button type="button" onClick={() => loadRows(Math.max(0, page - 1), search)} disabled={loading || page === 0} style={{ display: "inline-flex", alignItems: "center", gap: 5, border: "1px solid #d5dee8", borderRadius: 7, padding: "7px 10px", background: "#fff", color: "#334155", cursor: "pointer", opacity: page === 0 ? .5 : 1 }}><ChevronLeft size={14}/>Previous</button>
           <button type="button" onClick={() => loadRows(page + 1, search)} disabled={loading || (page + 1) * PAGE_SIZE >= total} style={{ display: "inline-flex", alignItems: "center", gap: 5, border: "1px solid #d5dee8", borderRadius: 7, padding: "7px 10px", background: "#fff", color: "#334155", cursor: "pointer", opacity: (page + 1) * PAGE_SIZE >= total ? .5 : 1 }}>Next<ChevronRight size={14}/></button>
