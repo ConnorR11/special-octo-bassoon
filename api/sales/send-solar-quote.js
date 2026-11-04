@@ -136,6 +136,14 @@ export default async function handler(req, res) {
 
     const now = new Date().toISOString()
     await db.from("solar_quotes").update({ status: "sent", sent_at: now, customer_email: customerEmail }).eq("id", quote.id)
+    // A newly sent quote replaces any earlier sent quote for this appointment.
+    // Keep the previous quote records and delivery history, but mark their outcomes superseded.
+    const { error: supersedeError } = await db.from("solar_quotes")
+      .update({ disposition: "Superseded", callback_date: null, disposition_updated_at: now, disposition_updated_by: userData.user.id })
+      .eq("appointment_row_id", appointmentRowId)
+      .neq("id", quote.id)
+      .not("sent_at", "is", null)
+    if (supersedeError) console.error("Unable to mark earlier solar quotes as superseded:", supersedeError.message)
     await db.from("solar_quote_events").insert({ quote_id: quote.id, event_type: "sent", channel: "email", recipient: customerEmail, details: { subject, sender } })
     await finishLog({ status: "success", httpStatus: 202, result: { success: true, recipient: customerEmail, sender, subject, appointment_row_id: appointmentRowId, quote_ref: quote.quote_ref } })
     return json(res, 200, { success: true, message: "Solar quote email accepted by Microsoft 365.", recipient: customerEmail })
