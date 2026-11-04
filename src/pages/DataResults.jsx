@@ -91,7 +91,7 @@ function DataResults() {
       const leads = []
       for (let offset = 0; ; offset += PAGE_SIZE) {
         const { data, error: queryError } = await supabase.from("leads")
-          .select("marketing_row_id,lead_source,disposition,archive_disposition,invalid")
+          .select("marketing_row_id,lead_source,disposition,archive_disposition,invalid,lead_cost")
           .gte("received_date_time", from).lt("received_date_time", to)
           .order("received_date_time", { ascending: true })
           .range(offset, offset + PAGE_SIZE - 1)
@@ -105,7 +105,7 @@ function DataResults() {
       const getRow = source => {
         const key = String(source || "").trim() || "(No lead source)"
         if (!grouped.has(key)) grouped.set(key, {
-          source: key, leads: 0, dup: 0, wn: 0, ooa: 0, inv: 0,
+          source: key, spend: 0, leads: 0, dup: 0, wn: 0, ooa: 0, inv: 0,
           total: 0, netLeads: 0, callback: 0, noContact: 0, archivedNoContact: 0,
           appointments: 0, h: 0, c: 0, p: 0, s: 0,
           net: 0, solid: 0, dealIds: new Set(), solidDealIds: new Set(),
@@ -116,6 +116,7 @@ function DataResults() {
       leads.forEach(lead => {
         const row = getRow(lead.lead_source)
         row.leads += 1
+        row.spend += Number(lead.lead_cost || 0)
         const disposition = clean(lead.disposition)
         if (disposition === "duplicate") row.dup += 1
         if (disposition === "wrong number") row.wn += 1
@@ -241,7 +242,7 @@ function DataResults() {
   useEffect(() => { loadData() }, [loadData])
 
   const totals = useMemo(() => rows.reduce((sum, row) => {
-    ;["leads", "dup", "wn", "ooa", "inv", "total", "netLeads", "callback", "noContact", "archivedNoContact", "appointments", "h", "c", "p", "s", "net", "solid"].forEach(key => { sum[key] = (sum[key] || 0) + Number(row[key] || 0) })
+    ;["spend", "leads", "dup", "wn", "ooa", "inv", "total", "netLeads", "callback", "noContact", "archivedNoContact", "appointments", "h", "c", "p", "s", "net", "solid"].forEach(key => { sum[key] = (sum[key] || 0) + Number(row[key] || 0) })
     return sum
   }, {}), [rows])
 
@@ -249,11 +250,11 @@ function DataResults() {
     setExporting(true)
     try {
       const exportRows = rows.map(row => ({
-        "Lead Sources": row.source, Leads: row.leads, Dup: row.dup, WN: row.wn, OOA: row.ooa, INV: row.inv,
+        "Lead Sources": row.source, Spend: row.spend, Leads: row.leads, Dup: row.dup, WN: row.wn, OOA: row.ooa, INV: row.inv,
         Total: row.total, "Net Leads": row.netLeads, "Call Back": row.callback, NC: row.noContact, H: row.h, C: row.c, P: row.p, S: row.s, "Net Value": row.net, Solid: row.solid,
       }))
       exportRows.push({
-        "Lead Sources": "TOTAL", Leads: totals.leads || 0, Dup: totals.dup || 0, WN: totals.wn || 0, OOA: totals.ooa || 0,
+        "Lead Sources": "TOTAL", Spend: totals.spend || 0, Leads: totals.leads || 0, Dup: totals.dup || 0, WN: totals.wn || 0, OOA: totals.ooa || 0,
         INV: totals.inv || 0, Total: totals.total || 0, "Net Leads": totals.netLeads || 0,
         "Call Back": totals.callback || 0, NC: totals.noContact || 0,
         H: totals.h || 0, C: totals.c || 0, P: totals.p || 0, S: totals.s || 0, "Net Value": totals.net || 0, Solid: totals.solid || 0,
@@ -323,24 +324,26 @@ function DataResults() {
           <thead>
             <tr>
               <th rowSpan={2} style={{ ...th, verticalAlign: "middle", minWidth: 150, textAlign: "left" }}>Lead Sources</th>
-              <th colSpan={9} style={{ ...th, textAlign: "center", borderBottom: "1px solid #cbd5e1" }}>Leads</th>
+              <th colSpan={10} style={{ ...th, textAlign: "center", borderBottom: "1px solid #cbd5e1" }}>Leads</th>
               <th colSpan={6} style={{ ...th, textAlign: "center", borderBottom: "1px solid #cbd5e1", borderLeft: "2px solid #cbd5e1" }}>Appointments</th>
             </tr>
             <tr>
-              {["Leads", "Dup", "WN", "OOA", "INV", "Total", "Net leads", "Call Back", "NC"].map(heading => <th key={heading} style={{ ...th, textAlign: "center", ...(heading === "INV" ? { background: "#fee2e2", color: "#b91c1c" } : {}) }}>{heading}</th>)}
+              {["Spend", "Leads", "Dup", "WN", "OOA", "INV", "Total", "Net leads", "Call Back", "NC"].map(heading => <th key={heading} style={{ ...th, textAlign: "center", ...(heading === "INV" ? { background: "#fee2e2", color: "#b91c1c" } : {}) }}>{heading}</th>)}
               {["H", "C", "P", "S", "Net", "Solid"].map(heading => <th key={heading} style={{ ...th, textAlign: "center" }}>{heading}</th>)}
             </tr>
           </thead>
           <tbody>
             {rows.map(row => <tr key={row.source}>
               <td style={{ ...td, fontWeight: 650, position: "sticky", left: 0, background: "#fff", zIndex: 0, textAlign: "left" }}>{row.source}</td>
+              <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{money(row.spend)}</td>
               {[row.leads, row.dup, row.wn, row.ooa, row.inv, row.total, row.netLeads, row.callback, row.noContact].map((value, index) => <td key={index} style={{ ...td, textAlign: "center", ...(index === 4 ? { background: "#fef2f2", color: "#b91c1c", fontWeight: 650 } : {}) }}>{number(value)}</td>)}
               {[row.h, row.c, row.p, row.s].map((value, index) => <td key={`appointment-${index}`} style={{ ...td, textAlign: "right", ...(index === 0 ? { borderLeft: "2px solid #cbd5e1" } : {}) }}>{number(value)}</td>)}
               <td style={{ ...td, textAlign: "right" }}>{money(row.net)}</td><td style={{ ...td, textAlign: "right" }}>{money(row.solid)}</td>
             </tr>)}
-            {!loading && !rows.length && <tr><td colSpan={16} style={{ ...td, textAlign: "center", padding: 24, color: "#64748b" }}>No leads found in this date range.</td></tr>}
+            {!loading && !rows.length && <tr><td colSpan={17} style={{ ...td, textAlign: "center", padding: 24, color: "#64748b" }}>No leads found in this date range.</td></tr>}
             <tr style={{ background: "#f8fafc" }}>
               <td style={{ ...td, fontWeight: 750, position: "sticky", left: 0, background: "#f8fafc" }}>TOTAL</td>
+              <td style={{ ...td, textAlign: "right", fontWeight: 750 }}>{money(totals.spend)}</td>
               {[totals.leads, totals.dup, totals.wn, totals.ooa, totals.inv, totals.total, totals.netLeads, totals.callback, totals.noContact].map((value, index) => <td key={index} style={{ ...td, textAlign: "center", fontWeight: 750, ...(index === 4 ? { background: "#fee2e2", color: "#b91c1c" } : {}) }}>{number(value)}</td>)}
               {[totals.h, totals.c, totals.p, totals.s].map((value, index) => <td key={`total-appointment-${index}`} style={{ ...td, textAlign: "center", fontWeight: 750, ...(index === 0 ? { borderLeft: "2px solid #cbd5e1" } : {}) }}>{number(value)}</td>)}
               <td style={{ ...td, textAlign: "right", fontWeight: 750 }}>{money(totals.net)}</td><td style={{ ...td, textAlign: "right", fontWeight: 750 }}>{money(totals.solid)}</td>
