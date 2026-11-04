@@ -131,6 +131,24 @@ function DataResults({ sourceFilter = null, reportTitle = "Data Results" } = {})
         if (clean(lead.archive_disposition) === "no contact") row.archivedNoContact += 1
       })
 
+      // Appointment rate is based on the selected lead cohort: count each lead once
+      // if it has at least one linked appointment with an appointment date, regardless
+      // of whether that appointment date falls inside the lead received-date period.
+      const leadMarketingIds = [...new Set(leads.map(lead => lead.marketing_row_id).filter(Boolean))]
+      const leadsWithAppointmentDate = new Set()
+      for (let offset = 0; offset < leadMarketingIds.length; offset += CHUNK_SIZE) {
+        const ids = leadMarketingIds.slice(offset, offset + CHUNK_SIZE)
+        const { data, error: rateError } = await supabase.from("appointments")
+          .select("marketing_row_id")
+          .in("marketing_row_id", ids)
+          .not("appointment_date", "is", null)
+        if (rateError) throw rateError
+        ;(data || []).forEach(item => {
+          if (item.marketing_row_id) leadsWithAppointmentDate.add(item.marketing_row_id)
+        })
+      }
+      const appointmentRate = leads.length ? leadsWithAppointmentDate.size / leads.length * 100 : 0
+
       // Query 2: appointments whose appointment date falls in the selected period.
       // HCPS and their linked deals are calculated from this separate appointment cohort.
       const appointments = []
@@ -233,13 +251,13 @@ function DataResults({ sourceFilter = null, reportTitle = "Data Results" } = {})
       const solid = result.reduce((sum, row) => sum + row.solid, 0)
       setRows(result)
       setDealDetails([...dealDetailsById.values()].sort((a, b) => String(b.appointmentDate || "").localeCompare(String(a.appointmentDate || "")) || String(a.id).localeCompare(String(b.id))))
-      setSummary({ deals: soldDeals, net: netSold, solid })
+      setSummary({ deals: soldDeals, net: netSold, solid, appointmentRate })
     } catch (err) {
       console.error("Error loading Data Results:", err)
       setError(err?.message || "Unable to load Data Results.")
       setRows([])
       setDealDetails([])
-      setSummary({ deals: 0, net: 0, solid: 0 })
+      setSummary({ deals: 0, net: 0, solid: 0, appointmentRate: 0 })
     } finally {
       setLoading(false)
     }
@@ -306,12 +324,13 @@ function DataResults({ sourceFilter = null, reportTitle = "Data Results" } = {})
           ["ytd", "YTD"],
         ].map(([key, label]) => <button key={key} type="button" onClick={() => applyPreset(key)} style={{ border: activePreset === key ? "1px solid #d9e9f3" : "1px solid #496a80", borderRadius: 7, padding: "6px 11px", background: activePreset === key ? "#e7f0f6" : "rgba(255,255,255,0.08)", color: activePreset === key ? "#12344b" : "#e4edf3", fontSize: 11, fontWeight: activePreset === key ? 700 : 500, cursor: "pointer" }}>{label}</button>)}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 14, marginTop: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,minmax(0,1fr))", gap: 14, marginTop: 20 }}>
         {[
           { label: "Deals", value: loading ? "—" : number(summary.deals), detail: "Sold deals in period" },
           { label: "Net Sold", value: loading ? "—" : money(summary.net), detail: "Net value of sold deals" },
           { label: "Solid", value: loading ? "—" : money(summary.solid), detail: "Value excluding cancellations" },
           { label: "Drop Off", value: loading || !summary.net ? "—" : `${Math.max(0, (summary.net - summary.solid) / summary.net * 100).toFixed(1)}%`, detail: "Net value lost before solid" },
+          { label: "Appointment Rate", value: loading ? "—" : `${Number(summary.appointmentRate || 0).toFixed(1)}%`, detail: "Leads with a dated appointment" },
         ].map(item => <div key={item.label} style={card}>
           <div style={{ fontSize: 11, fontWeight: 650, color: "#64748b", marginBottom: 7 }}>{item.label}</div>
           <div style={{ fontSize: 25, lineHeight: 1.15, fontWeight: 750, letterSpacing: "-0.025em", color: "#102a43" }}>{item.value}</div>
