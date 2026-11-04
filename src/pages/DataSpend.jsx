@@ -58,14 +58,6 @@ function DataSpend() {
       setRows(nextRows)
       setTotal(count || 0)
       setPage(nextPage)
-      setCosts(current => {
-        const next = { ...current }
-        nextRows.forEach(row => {
-          const key = `${row.delete_row_id}:${row.marketing_row_id}`
-          if (next[key] === undefined) next[key] = ""
-        })
-        return next
-      })
     } catch (err) {
       console.error("Unable to load leads missing acquisition cost:", err)
       setError(err?.message || "Unable to load leads.")
