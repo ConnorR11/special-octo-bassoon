@@ -96,7 +96,7 @@ function DataResults({ sourceFilter = null, reportTitle = "Data Results" } = {})
           .gte("received_date_time", from).lt("received_date_time", to)
           .order("received_date_time", { ascending: true })
           .range(offset, offset + PAGE_SIZE - 1)
-        if (sourceFilter) leadQuery = leadQuery.eq("lead_source", sourceFilter)
+        if (sourceFilter) leadQuery = Array.isArray(sourceFilter) ? leadQuery.in("lead_source", sourceFilter) : leadQuery.eq("lead_source", sourceFilter)
         const { data, error: queryError } = await leadQuery
         if (queryError) throw queryError
         const batch = data || []
@@ -178,7 +178,9 @@ function DataResults({ sourceFilter = null, reportTitle = "Data Results" } = {})
       }
 
       const reportAppointments = sourceFilter
-        ? appointments.filter(item => clean(item.lead_source || linkedLeadSources.get(item.marketing_row_id)) === clean(sourceFilter))
+        ? appointments.filter(item => Array.isArray(sourceFilter)
+          ? sourceFilter.some(source => clean(item.lead_source || linkedLeadSources.get(item.marketing_row_id)) === clean(source))
+          : clean(item.lead_source || linkedLeadSources.get(item.marketing_row_id)) === clean(sourceFilter))
         : appointments
       const appointmentIds = [...new Set(reportAppointments.map(item => item.appointment_row_id).filter(Boolean))]
       const deals = []
@@ -249,9 +251,25 @@ function DataResults({ sourceFilter = null, reportTitle = "Data Results" } = {})
       const netSold = result.reduce((sum, row) => sum + row.net, 0)
       const soldDeals = result.reduce((sum, row) => sum + row.dealIds.size, 0)
       const solid = result.reduce((sum, row) => sum + row.solid, 0)
+      const sourceBreakdown = (sourceFilter ? (Array.isArray(sourceFilter) ? sourceFilter : [sourceFilter]) : [])
+        .reduce((acc, source) => {
+          const sourceRows = result.filter(row => clean(row.source) === clean(source))
+          const sourceLeads = leads.filter(lead => clean(lead.lead_source) === clean(source))
+          const sourceWithAppointments = new Set(sourceLeads.map(lead => lead.marketing_row_id).filter(id => leadsWithAppointmentDate.has(id)))
+          const sourceNet = sourceRows.reduce((sum, row) => sum + row.net, 0)
+          const sourceSolid = sourceRows.reduce((sum, row) => sum + row.solid, 0)
+          acc[source] = {
+            deals: sourceRows.reduce((sum, row) => sum + row.dealIds.size, 0),
+            net: sourceNet,
+            solid: sourceSolid,
+            dropOff: sourceNet ? Math.max(0, (sourceNet - sourceSolid) / sourceNet * 100) : 0,
+            appointmentRate: sourceLeads.length ? sourceWithAppointments.size / sourceLeads.length * 100 : 0,
+          }
+          return acc
+        }, {})
       setRows(result)
       setDealDetails([...dealDetailsById.values()].sort((a, b) => String(b.appointmentDate || "").localeCompare(String(a.appointmentDate || "")) || String(a.id).localeCompare(String(b.id))))
-      setSummary({ deals: soldDeals, net: netSold, solid, appointmentRate })
+      setSummary({ deals: soldDeals, net: netSold, solid, appointmentRate, sourceBreakdown })
     } catch (err) {
       console.error("Error loading Data Results:", err)
       setError(err?.message || "Unable to load Data Results.")
@@ -326,15 +344,16 @@ function DataResults({ sourceFilter = null, reportTitle = "Data Results" } = {})
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5,minmax(0,1fr))", gap: 14, marginTop: 20 }}>
         {[
-          { label: "Deals", value: loading ? "—" : number(summary.deals), detail: "Sold deals in period" },
-          { label: "Net Sold", value: loading ? "—" : money(summary.net), detail: "Net value of sold deals" },
-          { label: "Solid", value: loading ? "—" : money(summary.solid), detail: "Value excluding cancellations" },
-          { label: "Drop Off", value: loading || !summary.net ? "—" : `${Math.max(0, (summary.net - summary.solid) / summary.net * 100).toFixed(1)}%`, detail: "Net value lost before solid" },
-          { label: "Appointment Rate", value: loading ? "—" : `${Number(summary.appointmentRate || 0).toFixed(1)}%`, detail: "Leads with a dated appointment" },
+          { label: "Deals", value: loading ? "—" : number(summary.deals), detail: "Sold deals in period", split: "Windows: " + number(summary.sourceBreakdown?.["Global Windows"]?.deals || 0) + " · Solar: " + number(summary.sourceBreakdown?.["Global Solar"]?.deals || 0) },
+          { label: "Net Sold", value: loading ? "—" : money(summary.net), detail: "Net value of sold deals", split: "Windows: " + money(summary.sourceBreakdown?.["Global Windows"]?.net || 0) + " · Solar: " + money(summary.sourceBreakdown?.["Global Solar"]?.net || 0) },
+          { label: "Solid", value: loading ? "—" : money(summary.solid), detail: "Value excluding cancellations", split: "Windows: " + money(summary.sourceBreakdown?.["Global Windows"]?.solid || 0) + " · Solar: " + money(summary.sourceBreakdown?.["Global Solar"]?.solid || 0) },
+          { label: "Drop Off", value: loading || !summary.net ? "—" : `${Math.max(0, (summary.net - summary.solid) / summary.net * 100).toFixed(1)}%`, detail: "Net value lost before solid", split: "Windows: " + Number(summary.sourceBreakdown?.["Global Windows"]?.dropOff || 0).toFixed(1) + "% · Solar: " + Number(summary.sourceBreakdown?.["Global Solar"]?.dropOff || 0).toFixed(1) + "%" },
+          { label: "Appointment Rate", value: loading ? "—" : `${Number(summary.appointmentRate || 0).toFixed(1)}%`, detail: "Leads with a dated appointment", split: "Windows: " + Number(summary.sourceBreakdown?.["Global Windows"]?.appointmentRate || 0).toFixed(1) + "% · Solar: " + Number(summary.sourceBreakdown?.["Global Solar"]?.appointmentRate || 0).toFixed(1) + "%" },
         ].map(item => <div key={item.label} style={card}>
           <div style={{ fontSize: 11, fontWeight: 650, color: "#64748b", marginBottom: 7 }}>{item.label}</div>
           <div style={{ fontSize: 25, lineHeight: 1.15, fontWeight: 750, letterSpacing: "-0.025em", color: "#102a43" }}>{item.value}</div>
           <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 6 }}>{item.detail}</div>
+          {sourceFilter && Array.isArray(sourceFilter) && <div style={{ fontSize: 10, color: "#64748b", marginTop: 8, lineHeight: 1.5 }}>{item.split}</div>}
         </div>)}
       </div>
     </section>
