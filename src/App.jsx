@@ -7,6 +7,7 @@ import FitSheet from "./FitSheet"
 import Dashboard from "./pages/Dashboard"
 import DataDashboard from "./pages/DataDashboard"
 import DataResults from "./pages/DataResults"
+import GlobalResults from "./pages/GlobalResults"
 import DataSpend from "./pages/DataSpend"
 import DataClean from "./pages/DataClean"
 import SalesPerformance from "./pages/SalesPerformance"
@@ -282,6 +283,8 @@ function App() {
     pageContent = <DataDashboard key="pronto" standalonePronto />
   } else if (page === "data-results") {
     pageContent = <DataResults />
+  } else if (page === "global") {
+    pageContent = <GlobalResults />
   } else if (page === "data-clean") {
     pageContent = <DataClean onOpenAppointment={handleAppointmentSelect}/>
   } else if (page === "data-spend") {
