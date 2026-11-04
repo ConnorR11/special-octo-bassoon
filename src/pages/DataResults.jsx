@@ -252,13 +252,13 @@ function DataResults() {
     try {
       const exportRows = rows.map(row => ({
         "Lead Sources": row.source, Spend: row.spend, Leads: row.leads, Dup: row.dup, WN: row.wn, OOA: row.ooa, INV: row.inv,
-        Total: row.total, "Net Leads": row.netLeads, "Call Back": row.callback, NC: row.noContact, H: row.h, C: row.c, P: row.p, S: row.s, "Net Value": row.net, Solid: row.solid, CPL: row.leads ? row.spend / row.leads : 0, CPP: row.p ? row.spend / row.p : 0, "Marketing %": row.spend ? row.solid / row.spend : 0,
+        Total: row.total, "Net Leads": row.netLeads, "Call Back": row.callback, NC: row.noContact, H: row.h, C: row.c, P: row.p, S: row.s, "Net Value": row.net, Solid: row.solid, CPL: row.leads ? row.spend / row.leads : 0, CPP: row.p ? row.spend / row.p : 0, "Marketing %": row.solid ? row.spend / row.solid : 0,
       }))
       exportRows.push({
         "Lead Sources": "TOTAL", Spend: totals.spend || 0, Leads: totals.leads || 0, Dup: totals.dup || 0, WN: totals.wn || 0, OOA: totals.ooa || 0,
         INV: totals.inv || 0, Total: totals.total || 0, "Net Leads": totals.netLeads || 0,
         "Call Back": totals.callback || 0, NC: totals.noContact || 0,
-        H: totals.h || 0, C: totals.c || 0, P: totals.p || 0, S: totals.s || 0, "Net Value": totals.net || 0, Solid: totals.solid || 0, CPL: totals.leads ? (totals.spend || 0) / totals.leads : 0, CPP: totals.p ? (totals.spend || 0) / totals.p : 0, "Marketing %": totals.spend ? (totals.solid || 0) / totals.spend : 0,
+        H: totals.h || 0, C: totals.c || 0, P: totals.p || 0, S: totals.s || 0, "Net Value": totals.net || 0, Solid: totals.solid || 0, CPL: totals.leads ? (totals.spend || 0) / totals.leads : 0, CPP: totals.p ? (totals.spend || 0) / totals.p : 0, "Marketing %": totals.solid ? (totals.spend || 0) / totals.solid : 0,
       })
       const sheet = XLSX.utils.json_to_sheet(exportRows)
       sheet["!cols"] = Object.keys(exportRows[0] || {}).map(key => ({ wch: Math.max(12, key.length + 3) }))
@@ -344,7 +344,7 @@ function DataResults() {
               <td style={{ ...td, textAlign: "right" }}>{money(row.net)}</td><td style={{ ...td, textAlign: "right" }}>{money(row.solid)}</td>
               <td style={{ ...td, textAlign: "right", borderLeft: "2px solid #cbd5e1" }}>{row.leads ? money2(row.spend / row.leads) : "—"}</td>
               <td style={{ ...td, textAlign: "right" }}>{row.p ? money2(row.spend / row.p) : "—"}</td>
-              <td style={{ ...td, textAlign: "right" }}>{row.spend ? `${(row.solid / row.spend * 100).toFixed(1)}%` : "—"}</td>
+              <td style={{ ...td, textAlign: "right" }}>{row.solid ? `${(row.spend / row.solid * 100).toFixed(1)}%` : "—"}</td>
             </tr>)}
             {!loading && !rows.length && <tr><td colSpan={20} style={{ ...td, textAlign: "center", padding: 24, color: "#64748b" }}>No leads found in this date range.</td></tr>}
             <tr style={{ background: "#f8fafc" }}>
@@ -355,7 +355,7 @@ function DataResults() {
               <td style={{ ...td, textAlign: "right", fontWeight: 750 }}>{money(totals.net)}</td><td style={{ ...td, textAlign: "right", fontWeight: 750 }}>{money(totals.solid)}</td>
               <td style={{ ...td, textAlign: "right", fontWeight: 750, borderLeft: "2px solid #cbd5e1" }}>{totals.leads ? money2(totals.spend / totals.leads) : "—"}</td>
               <td style={{ ...td, textAlign: "right", fontWeight: 750 }}>{totals.p ? money2(totals.spend / totals.p) : "—"}</td>
-              <td style={{ ...td, textAlign: "right", fontWeight: 750 }}>{totals.spend ? `${(totals.solid / totals.spend * 100).toFixed(1)}%` : "—"}</td>
+              <td style={{ ...td, textAlign: "right", fontWeight: 750 }}>{totals.solid ? `${(totals.spend / totals.solid * 100).toFixed(1)}%` : "—"}</td>
             </tr>
           </tbody>
         </table>
