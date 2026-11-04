@@ -186,7 +186,7 @@ function DataSpend() {
                 <td style={td}>{row.pronto_c3 || "—"}</td>
                 <td style={td}>{row.disposition || "—"}</td>
                 <td style={td}>{row.hotkey_status || "—"}</td>
-                <td style={td}><div style={{ display: "flex", alignItems: "center", gap: 5 }}><span>£</span><input aria-label={`Lead cost for ${row.marketing_row_id}`} type="number" min="0" step="0.01" value={costs[key] ?? (row.lead_cost ?? "")} onChange={event => setCosts(current => ({ ...current, [key]: event.target.value }))} placeholder="0.00" style={{ width: 90, padding: "7px 8px", border: "1px solid #cbd5e1", borderRadius: 6, color: "#172033", fontSize: 12 }}/></td>
+                <td style={td}><div style={{ display: "flex", alignItems: "center", gap: 5 }}><span>£</span><input aria-label={`Lead cost for ${row.marketing_row_id}`} type="number" min="0" step="0.01" value={costs[key] ?? (row.lead_cost ?? "")} onChange={event => setCosts(current => ({ ...current, [key]: event.target.value }))} placeholder="0.00" style={{ width: 90, padding: "7px 8px", border: "1px solid #cbd5e1", borderRadius: 6, color: "#172033", fontSize: 12 }}/></div></td>
                 <td style={td}><button type="button" onClick={() => saveCost(row)} disabled={!!saving[key]} style={{ display: "inline-flex", alignItems: "center", gap: 6, border: 0, borderRadius: 6, padding: "7px 10px", background: "#0b3a59", color: "#fff", fontSize: 11, fontWeight: 650, cursor: "pointer", opacity: saving[key] ? .6 : 1 }}><Save size={13}/>{saving[key] ? "Saving…" : "Save"}</button></td>
               </tr>
             })}
