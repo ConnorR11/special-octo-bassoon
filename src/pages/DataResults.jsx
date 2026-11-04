@@ -330,7 +330,7 @@ function DataResults() {
               <th colSpan={3} style={{ ...th, textAlign: "center", borderBottom: "1px solid #cbd5e1", borderLeft: "2px solid #cbd5e1" }}>Marketing Efficiency</th>
             </tr>
             <tr>
-              {["Spend", "Leads", "Dup", "WN", "OOA", "INV", "Total", "Net leads", "Call Back", "NC"].map(heading => <th key={heading} style={{ ...th, textAlign: "center", ...(heading === "INV" ? { background: "#fee2e2", color: "#b91c1c" } : {}) }}>{heading}</th>)}
+              {["Spend", "Leads", "Dup", "WN", "OOA", "INV", "Total", "Net leads", "Call Back", "NC"].map(heading => <th key={heading} style={{ ...th, textAlign: "center", ...(["Spend", "INV", "CPL", "CPP", "Data%"].includes(heading) ? { background: "#fee2e2", color: "#b91c1c" } : {}) }}>{heading}</th>)}
               {["H", "C", "P", "S", "Net", "Solid"].map(heading => <th key={heading} style={{ ...th, textAlign: "center" }}>{heading}</th>)}
               {["CPL", "CPP", "Data%"].map(heading => <th key={heading} style={{ ...th, textAlign: "center", borderLeft: heading === "CPL" ? "2px solid #cbd5e1" : undefined }}>{heading}</th>)}
             </tr>
@@ -338,24 +338,24 @@ function DataResults() {
           <tbody>
             {rows.map(row => <tr key={row.source}>
               <td style={{ ...td, fontWeight: 650, position: "sticky", left: 0, background: "#fff", zIndex: 0, textAlign: "left" }}>{row.source}</td>
-              <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{money(row.spend)}</td>
+              <td style={{ ...td, textAlign: "right", fontWeight: 600, background: "#fef2f2", color: "#b91c1c" }}>{money(row.spend)}</td>
               {[row.leads, row.dup, row.wn, row.ooa, row.inv, row.total, row.netLeads, row.callback, row.noContact].map((value, index) => <td key={index} style={{ ...td, textAlign: "center", ...(index === 4 ? { background: "#fef2f2", color: "#b91c1c", fontWeight: 650 } : {}) }}>{number(value)}</td>)}
               {[row.h, row.c, row.p, row.s].map((value, index) => <td key={`appointment-${index}`} style={{ ...td, textAlign: "right", ...(index === 0 ? { borderLeft: "2px solid #cbd5e1" } : {}) }}>{number(value)}</td>)}
               <td style={{ ...td, textAlign: "right" }}>{money(row.net)}</td><td style={{ ...td, textAlign: "right" }}>{money(row.solid)}</td>
-              <td style={{ ...td, textAlign: "right", borderLeft: "2px solid #cbd5e1" }}>{row.leads ? money2(row.spend / row.leads) : "—"}</td>
-              <td style={{ ...td, textAlign: "right" }}>{row.p ? money2(row.spend / row.p) : "—"}</td>
-              <td style={{ ...td, textAlign: "right" }}>{row.solid ? `${(row.spend / row.solid * 100).toFixed(1)}%` : "—"}</td>
+              <td style={{ ...td, textAlign: "right", borderLeft: "2px solid #cbd5e1", background: "#fef2f2", color: "#b91c1c" }}>{row.leads ? money2(row.spend / row.leads) : "—"}</td>
+              <td style={{ ...td, textAlign: "right", background: "#fef2f2", color: "#b91c1c" }}>{row.p ? money2(row.spend / row.p) : "—"}</td>
+              <td style={{ ...td, textAlign: "right", background: "#fef2f2", color: "#b91c1c" }}>{row.solid ? `${(row.spend / row.solid * 100).toFixed(1)}%` : "—"}</td>
             </tr>)}
             {!loading && !rows.length && <tr><td colSpan={20} style={{ ...td, textAlign: "center", padding: 24, color: "#64748b" }}>No leads found in this date range.</td></tr>}
             <tr style={{ background: "#f8fafc" }}>
               <td style={{ ...td, fontWeight: 750, position: "sticky", left: 0, background: "#f8fafc" }}>TOTAL</td>
-              <td style={{ ...td, textAlign: "right", fontWeight: 750 }}>{money(totals.spend)}</td>
+              <td style={{ ...td, textAlign: "right", fontWeight: 750, background: "#fee2e2", color: "#b91c1c" }}>{money(totals.spend)}</td>
               {[totals.leads, totals.dup, totals.wn, totals.ooa, totals.inv, totals.total, totals.netLeads, totals.callback, totals.noContact].map((value, index) => <td key={index} style={{ ...td, textAlign: "center", fontWeight: 750, ...(index === 4 ? { background: "#fee2e2", color: "#b91c1c" } : {}) }}>{number(value)}</td>)}
               {[totals.h, totals.c, totals.p, totals.s].map((value, index) => <td key={`total-appointment-${index}`} style={{ ...td, textAlign: "center", fontWeight: 750, ...(index === 0 ? { borderLeft: "2px solid #cbd5e1" } : {}) }}>{number(value)}</td>)}
               <td style={{ ...td, textAlign: "right", fontWeight: 750 }}>{money(totals.net)}</td><td style={{ ...td, textAlign: "right", fontWeight: 750 }}>{money(totals.solid)}</td>
-              <td style={{ ...td, textAlign: "right", fontWeight: 750, borderLeft: "2px solid #cbd5e1" }}>{totals.leads ? money2(totals.spend / totals.leads) : "—"}</td>
-              <td style={{ ...td, textAlign: "right", fontWeight: 750 }}>{totals.p ? money2(totals.spend / totals.p) : "—"}</td>
-              <td style={{ ...td, textAlign: "right", fontWeight: 750 }}>{totals.solid ? `${(totals.spend / totals.solid * 100).toFixed(1)}%` : "—"}</td>
+              <td style={{ ...td, textAlign: "right", fontWeight: 750, borderLeft: "2px solid #cbd5e1", background: "#fee2e2", color: "#b91c1c" }}>{totals.leads ? money2(totals.spend / totals.leads) : "—"}</td>
+              <td style={{ ...td, textAlign: "right", fontWeight: 750, background: "#fee2e2", color: "#b91c1c" }}>{totals.p ? money2(totals.spend / totals.p) : "—"}</td>
+              <td style={{ ...td, textAlign: "right", fontWeight: 750, background: "#fee2e2", color: "#b91c1c" }}>{totals.solid ? `${(totals.spend / totals.solid * 100).toFixed(1)}%` : "—"}</td>
             </tr>
           </tbody>
         </table>
