@@ -163,7 +163,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
             .or('result.is.null,result.eq.""')
             .order("appointment_date", { ascending: false, nullsFirst: false })
         } else if (reportId === "pronto-windows-missing-sid") {
-          query = supabase.from("leads").select("delete_row_id,marketing_row_id,first_name,last_name,postcode,received_date_time,pronto_c1,pronto_c2,pronto_c3,pronto_SID").eq("lead_source", "Pronto Windows").or('pronto_SID.is.null,pronto_SID.eq.""').order("received_date_time", { ascending: false, nullsFirst: false })
+          query = supabase.from("leads").select("delete_row_id,marketing_row_id,first_name,last_name,postcode,received_date_time,introducer,pronto_c1,pronto_c2,pronto_c3,pronto_SID").eq("lead_source", "Pronto Windows").or('pronto_SID.is.null,pronto_SID.eq.""').order("received_date_time", { ascending: false, nullsFirst: false })
         } else if (reportId === "missing-lead-type") {
           query = supabase
             .from("leads")
@@ -514,7 +514,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                         {activeReport === "duplicate-marketing-row-id" ? (
                           <><th>Marketing Row ID</th><th>Customer</th><th>Lead Source</th><th>Received</th><th>Postcode</th><th>Phone</th><th>Disposition</th><th>Archive Date Time</th><th>Copies</th><th>Action</th></>
                         ) : activeReport === "pronto-windows-missing-sid" ? (
-                          <><th>Customer</th><th>Received</th><th>Postcode</th><th>C1</th><th>C2</th><th>C3</th><th>Add SID</th><th>Save</th></>
+                          <><th>Customer</th><th>Received</th><th>Postcode</th><th>Introducer</th><th>C1</th><th>C2</th><th>C3</th><th>Add SID</th><th>Save</th></>
                         ) : activeReport === "missing-lead-type" ? (
                           <><th>Lead</th><th>Received</th><th>Postcode</th><th>Lead Source</th><th>Phone</th><th>Email</th><th>Assign Lead Type</th><th></th></>
                         ) : (
@@ -539,7 +539,7 @@ export default function DataClean({ onOpenAppointment, onOpenLead }) {
                           ) : activeReport === "pronto-windows-missing-sid" ? (
                             <>
                               <td><strong>{[row.first_name, row.last_name].map(text).filter(Boolean).join(" ") || "Unnamed lead"}</strong><small>{row.marketing_row_id || row.delete_row_id}</small></td>
-                              <td>{formatDate(row.received_date_time)}</td><td>{row.postcode || "—"}</td><td>{row.pronto_c1 || "—"}</td><td>{row.pronto_c2 || "—"}</td><td>{row.pronto_c3 || "—"}</td>
+                              <td>{formatDate(row.received_date_time)}</td><td>{row.postcode || "—"}</td><td>{row.introducer || "—"}</td><td>{row.pronto_c1 || "—"}</td><td>{row.pronto_c2 || "—"}</td><td>{row.pronto_c3 || "—"}</td>
                               <td><input aria-label="Pronto SID" value={sidEdits[row.delete_row_id] ?? ""} onChange={event => setSidEdits(current => ({ ...current, [row.delete_row_id]: event.target.value.trim() }))} placeholder="Enter SID" style={{width:110,padding:"7px 9px",border:"1px solid #d7dee7",borderRadius:7,fontSize:11}} />{saveMessages[row.delete_row_id] && <small style={{color:saveMessages[row.delete_row_id] === "Saved" ? "#15803d" : "#b91c1c"}}>{saveMessages[row.delete_row_id]}</small>}</td>
                               <td><button type="button" className="data-clean-open" disabled={!text(sidEdits[row.delete_row_id]) || !!savingLeadIds[row.delete_row_id]} onClick={() => saveProntoSid(row)}>{savingLeadIds[row.delete_row_id] ? "Saving…" : "Save SID"}</button></td>
                             </>
