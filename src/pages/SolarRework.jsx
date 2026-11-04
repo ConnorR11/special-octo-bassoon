@@ -158,6 +158,9 @@ export default function SolarRework({ onSelectAppointment }) {
   const [tabCounts, setTabCounts] = useState({ unlinked: null, linkedPm: null, linkedNonPm: null })
   const [hasMore, setHasMore] = useState(false)
   const [savingId, setSavingId] = useState(null)
+  const [quoteDispositionEdits, setQuoteDispositionEdits] = useState({})
+  const [savingQuoteDisposition, setSavingQuoteDisposition] = useState(null)
+  const [quoteDispositionError, setQuoteDispositionError] = useState("")
   const [rowEdits, setRowEdits] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -242,6 +245,40 @@ export default function SolarRework({ onSelectAppointment }) {
     return () => { cancelled = true }
   }, [])
 
+  function updateQuoteDispositionEdit(row, patch) {
+    setQuoteDispositionEdits(current => ({
+      ...current,
+      [row.id]: { disposition: row.disposition || "", callback_date: row.callback_date || "", ...(current[row.id] || {}), ...patch },
+    }))
+  }
+
+  async function saveQuoteDisposition(row) {
+    const edit = quoteDispositionEdits[row.id] || { disposition: row.disposition || "", callback_date: row.callback_date || "" }
+    if (edit.disposition === "Call Back" && !edit.callback_date) {
+      setQuoteDispositionError("Please choose a follow-up date for Call Back.")
+      return
+    }
+    setSavingQuoteDisposition(row.id)
+    setQuoteDispositionError("")
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser()
+      if (userError) throw userError
+      const { data: updated, error: updateError } = await supabase.from("solar_quotes").update({
+        disposition: edit.disposition || null,
+        callback_date: edit.disposition === "Call Back" ? edit.callback_date : null,
+        disposition_updated_at: new Date().toISOString(),
+        disposition_updated_by: userData?.user?.id || null,
+      }).eq("id", row.id).select("id,disposition,callback_date").single()
+      if (updateError) throw updateError
+      setRows(current => current.map(item => item.id === row.id ? { ...item, ...updated } : item))
+      setQuoteDispositionEdits(current => { const next = { ...current }; delete next[row.id]; return next })
+    } catch (err) {
+      setQuoteDispositionError(err?.message || "Unable to save quote disposition.")
+    } finally {
+      setSavingQuoteDisposition(null)
+    }
+  }
+
   async function loadRows(targetPage = page) {
     const requestId = ++loadRequestId.current
     if (!supabase) { setError("Supabase is not configured."); setLoading(false); return }
@@ -307,7 +344,7 @@ export default function SolarRework({ onSelectAppointment }) {
       }
       if (activeTab === "quotes-sent") {
         let quoteRequest = supabase.from("solar_quotes")
-          .select("id,appointment_row_id,quote_ref,customer_name,customer_email,status,created_at,sent_at,last_viewed_at,view_count,expires_at")
+          .select("id,appointment_row_id,quote_ref,customer_name,customer_email,status,created_at,sent_at,last_viewed_at,view_count,expires_at,disposition,callback_date,disposition_notes")
           .in("status", ["sent", "delivered", "viewed"])
           .not("sent_at", "is", null)
           .order("sent_at", { ascending: false })
@@ -572,6 +609,7 @@ export default function SolarRework({ onSelectAppointment }) {
     </div>
 
     {error && <div style={{ marginBottom: 16, padding: 12, borderRadius: 8, background: "#fff1f2", color: "#be123c", fontSize: 12 }}>{error}</div>}
+    {activeTab === "quotes-sent" && quoteDispositionError && <div role="alert" style={{ marginBottom: 12, padding: 10, borderRadius: 7, background: "#fff1f2", color: "#be123c", fontSize: 11 }}>{quoteDispositionError}</div>}
 
     <div style={{ display: "flex", gap: 8, marginBottom: 12, borderBottom: "1px solid #dbe3ea", flexWrap: "wrap" }}>
       {[
@@ -649,7 +687,7 @@ export default function SolarRework({ onSelectAppointment }) {
       <div style={{ overflowX: "auto" }}>
         <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 980, fontSize: 12 }}>
           <thead><tr style={{ background: "#f8fafc", textAlign: "left", color: "#475569" }}>
-            {(activeTab === "quotes-sent" ? ["Customer", "Quote Ref", "Phone", "Email", "Sent", "Last viewed", "Views"] : activeTab === "lead-view" ? ["Lead", "Postcode", "Phone", "Email", "Appointment date & time", "Disposition", "Solar quote"] : ["Name", ...(activeTab === "unlinked" ? ["OpenSolar ID"] : ["Design"]), ...(activeTab === "linked" ? ["Lead disposition", "Appointment result"] : []),"Date",activeTab === "unlinked" ? "Result" : "Quote readiness", ...(activeTab === "linked" ? ["Related appointment result"] : [])]).map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
+            {(activeTab === "quotes-sent" ? ["Customer", "Quote Ref", "Phone", "Email", "Sent", "Last viewed", "Views", "Disposition"] : activeTab === "lead-view" ? ["Lead", "Postcode", "Phone", "Email", "Appointment date & time", "Disposition", "Solar quote"] : ["Name", ...(activeTab === "unlinked" ? ["OpenSolar ID"] : ["Design"]), ...(activeTab === "linked" ? ["Lead disposition", "Appointment result"] : []),"Date",activeTab === "unlinked" ? "Result" : "Quote readiness", ...(activeTab === "linked" ? ["Related appointment result"] : [])]).map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
           </tr></thead>
           <tbody>
             {activeTab === "lead-view" && !loading && visibleRows.length === 0 && <tr><td colSpan={7} style={{ padding: 36, textAlign: "center", color: "#64748b" }}>No solar leads with an appointment date and time match these filters.</td></tr>}
@@ -663,7 +701,7 @@ export default function SolarRework({ onSelectAppointment }) {
               <td style={{ padding: "10px 13px" }}>{row.quoteSent ? <span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, background: "#dcfce7", color: "#166534", fontSize: 10, fontWeight: 750 }}>Sent</span> : <span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, background: "#f1f5f9", color: "#475569", fontSize: 10, fontWeight: 750 }}>Not sent</span>}</td>
             </tr>)}
             {activeTab === "quotes-sent" && !loading && visibleRows.length === 0 && <tr><td colSpan={7} style={{ padding: 36, textAlign: "center", color: "#64748b" }}>No quotes match this filter. Customers appear here after opening their secure quote link.</td></tr>}
-            {activeTab === "quotes-sent" && visibleRows.map(row => <tr key={row.id} onClick={() => { if (row.appointment_row_id) onSelectAppointment?.({ ...row, email: row.email_address || row.customer_email }) }} style={{ borderBottom: "1px solid #edf2f7", cursor: row.appointment_row_id ? "pointer" : "default" }}><td style={{ padding: "10px 13px", fontWeight: 700 }}>{normalise(row.customer_name || row.name) || "Name missing"}<div style={{ ...muted, marginTop: 3 }}>{normalise(row.address)}{row.address && row.postcode ? ", " : ""}{normalise(row.postcode)}</div></td><td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{row.quote_ref || "—"}</td><td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{row.phone_number_1 || row.secondary_phone_number ? <a href={"tel:" + encodeURIComponent(String(row.phone_number_1 || row.secondary_phone_number))} onClick={event => event.stopPropagation()} style={{ color: "#0f766e", fontWeight: 700, textDecoration: "none" }}>{row.phone_number_1 || row.secondary_phone_number}</a> : "—"}</td><td style={{ padding: "10px 13px" }}>{row.customer_email || row.email_address || "—"}</td><td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{dateTimeLabel(row.sent_at)}</td><td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{row.last_viewed_at ? dateTimeLabel(row.last_viewed_at) : <span style={{ display: "inline-flex", alignItems: "center", padding: "4px 8px", borderRadius: 999, background: "#fee2e2", color: "#b91c1c", fontSize: 10, fontWeight: 750 }}>Not Viewed Yet</span>}</td><td style={{ padding: "10px 13px", textAlign: "center" }}>{Number(row.view_count || 0)}</td></tr>)}
+            {activeTab === "quotes-sent" && visibleRows.map(row => <tr key={row.id} onClick={() => { if (row.appointment_row_id) onSelectAppointment?.({ ...row, email: row.email_address || row.customer_email }) }} style={{ borderBottom: "1px solid #edf2f7", cursor: row.appointment_row_id ? "pointer" : "default" }}><td style={{ padding: "10px 13px", fontWeight: 700 }}>{normalise(row.customer_name || row.name) || "Name missing"}<div style={{ ...muted, marginTop: 3 }}>{normalise(row.address)}{row.address && row.postcode ? ", " : ""}{normalise(row.postcode)}</div></td><td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{row.quote_ref || "—"}</td><td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{row.phone_number_1 || row.secondary_phone_number ? <a href={"tel:" + encodeURIComponent(String(row.phone_number_1 || row.secondary_phone_number))} onClick={event => event.stopPropagation()} style={{ color: "#0f766e", fontWeight: 700, textDecoration: "none" }}>{row.phone_number_1 || row.secondary_phone_number}</a> : "—"}</td><td style={{ padding: "10px 13px" }}>{row.customer_email || row.email_address || "—"}</td><td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{dateTimeLabel(row.sent_at)}</td><td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{row.last_viewed_at ? dateTimeLabel(row.last_viewed_at) : <span style={{ display: "inline-flex", alignItems: "center", padding: "4px 8px", borderRadius: 999, background: "#fee2e2", color: "#b91c1c", fontSize: 10, fontWeight: 750 }}>Not Viewed Yet</span>}</td><td style={{ padding: "10px 13px", textAlign: "center" }}>{Number(row.view_count || 0)}</td><td style={{ padding: "8px 10px", minWidth: 205 }} onClick={event => event.stopPropagation()}><div style={{ display: "flex", flexDirection: "column", gap: 5 }}><select value={(quoteDispositionEdits[row.id]?.disposition ?? row.disposition) || ""} onChange={event => { updateQuoteDispositionEdit(row, { disposition: event.target.value, callback_date: event.target.value === "Call Back" ? (quoteDispositionEdits[row.id]?.callback_date || row.callback_date || "") : "" }); setQuoteDispositionError("") }} style={{ ...selectStyle, width: "100%", minWidth: 170, height: 30 }}><option value="">Awaiting outcome</option><option value="Not interested">Not interested</option><option value="Call Back">Call Back</option><option value="Superseded">Superseded</option></select>{(quoteDispositionEdits[row.id]?.disposition ?? row.disposition) === "Call Back" && <input type="date" value={quoteDispositionEdits[row.id]?.callback_date ?? row.callback_date ?? ""} onChange={event => updateQuoteDispositionEdit(row, { callback_date: event.target.value })} style={{ ...inputStyle, height: 29, width: "100%", boxSizing: "border-box" }} />}{quoteDispositionEdits[row.id] && <button type="button" disabled={savingQuoteDisposition === row.id} onClick={() => saveQuoteDisposition(row)} style={{ border: 0, borderRadius: 5, background: "#0f766e", color: "#fff", padding: "6px 9px", fontSize: 10, fontWeight: 700, cursor: "pointer" }}>{savingQuoteDisposition === row.id ? "Saving…" : "Save outcome"}</button>}</div></td></tr>)}
             {activeTab !== "quotes-sent" && activeTab !== "lead-view" && !loading && visibleRows.length === 0 && <tr><td colSpan={activeTab === "linked" ? 7 : 4} style={{ padding: 28, textAlign: "center", color: "#64748b" }}>{"No appointments match these filters."}</td></tr>}
             {activeTab !== "quotes-sent" && activeTab !== "lead-view" && visibleRows.map(row => {
               const linked = row.open_solar_id !== null && row.open_solar_id !== undefined && String(row.open_solar_id).trim() !== ""
