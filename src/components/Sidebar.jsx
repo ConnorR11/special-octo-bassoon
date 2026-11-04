@@ -73,7 +73,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
       "canvasser-kpi": 3,
       balances: 4,
       mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, "bulk-updater": 4,
-      templates: 4, "integration-logs": 4, "data-dashboard": 4, pronto: 4, "data-results": 4, "data-clean": 4, "solar-backend": 4, "unit-analysis": 4, "map-of-installs": 4, "epvs-applications": 4, "installations-performance": 4,
+      templates: 4, "integration-logs": 4, "data-dashboard": 4, pronto: 4, "data-results": 4, "data-clean": 4, "data-spend": 4, "solar-backend": 4, "unit-analysis": 4, "map-of-installs": 4, "epvs-applications": 4, "installations-performance": 4,
     }[route]
     return !requiredPermission || numericPermissionLevel >= requiredPermission
   }
@@ -172,7 +172,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
           <Folder visible={canSeeFolder("digitalTeam")} title="Digital Team" icon={Search} open={openFolders.digitalTeam} onClick={() => toggleFolder("digitalTeam")}>
             <NavItem icon={Search} label="SEO" active={isActive("seo")} onClick={() => navigate("seo")}/>
             {isAdministrator && <NavItem icon={BarChart3} label="Pronto" active={isActive("pronto")} onClick={() => navigate("pronto")}/>}
-            <NavItem icon={Database} label="Data Results" active={isActive("data-results")} onClick={() => navigate("data-results")} disabled={!isAdministrator} locked={!isAdministrator}/>
+            <NavItem icon={Database} label="Data Results" active={isActive("data-results")} onClick={() => navigate("data-results")} disabled={!isAdministrator} locked={!isAdministrator}/>\n            <NavItem icon={PoundSterling} label="Data Spend" active={isActive("data-spend")} onClick={() => navigate("data-spend")} disabled={!isAdministrator} locked={!isAdministrator}/>
           </Folder>
 
           {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}>
