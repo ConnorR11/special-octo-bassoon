@@ -173,6 +173,14 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             {isAdministrator && <NavItem icon={BarChart3} label="Pronto" active={isActive("pronto")} onClick={() => navigate("pronto")}/>} 
           </Folder>
 
+          {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}>
+            <NavItem icon={UserCog} label="Users" active={isActive("users")} onClick={() => navigate("users")}/>
+            <NavItem icon={Database} label="API & Webhooks" active={isActive("integration-logs")} onClick={() => navigate("integration-logs")}/>
+            <NavItem icon={Settings} label="Settings" disabled/>
+          </Folder>}
+
+          <div className="sidebar-divider" />
+
           {isAdministrator && <Folder title="Work in progress" icon={Wrench} open={openFolders.workInProgress} onClick={() => toggleFolder("workInProgress")}>
             <NavItem icon={BarChart3} label="Sales Performance" active={isActive("sales-performance")} onClick={() => navigate("sales-performance")}/>
             <NavItem icon={Search} label="SEO" active={isActive("seo")} onClick={() => navigate("seo")}/>
@@ -189,12 +197,6 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={ClipboardList} label="Tasks" active={isActive("tasks")} onClick={() => navigate("tasks")}/>
             <NavItem icon={Presentation} label="Templates" active={isActive("templates")} onClick={() => navigate("templates")}/>
             <NavItem icon={Tag} label="Watts Marketing" active={isActive("hotkeys")} onClick={() => navigate("hotkeys")}/>          </Folder>}
-
-          {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}>
-            <NavItem icon={UserCog} label="Users" active={isActive("users")} onClick={() => navigate("users")}/>
-            <NavItem icon={Database} label="API & Webhooks" active={isActive("integration-logs")} onClick={() => navigate("integration-logs")}/>
-            <NavItem icon={Settings} label="Settings" disabled/>
-          </Folder>}
         </nav>
 
         <div className="sidebar-footer" style={{marginTop:"auto",flexDirection:"column",alignItems:"stretch",gap:10}}>
