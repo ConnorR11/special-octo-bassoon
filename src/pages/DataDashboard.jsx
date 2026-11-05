@@ -18,6 +18,7 @@ import { supabase } from "../lib/supabase"
 import MapOfAppointments from "./MapOfAppointments"
 import LeadDispositionKanban from "../components/LeadDispositionKanban"
 import ProntoWeeklyComparison from "../components/ProntoWeeklyComparison"
+import ProntoSpend from "../components/ProntoSpend"
 
 const START_YEAR = 2026
 const LEAD_TYPE_COLORS = ["#2563eb", "#0d9488", "#9333ea", "#ea580c", "#64748b", "#dc2626", "#0891b2", "#65a30d", "#c026d3", "#a16207"]
@@ -1533,11 +1534,14 @@ function DataDashboard({ standalonePronto = false }) {
             <button type="button" className={prontoSectionTab === "four-weeks" ? "data-dashboard-tab active" : "data-dashboard-tab"} onClick={() => setProntoSectionTab("four-weeks")}>4W vs Last Week</button>
             <button type="button" className={prontoSectionTab === "all-leads" ? "data-dashboard-tab active" : "data-dashboard-tab"} onClick={() => setProntoSectionTab("all-leads")}>All Leads</button>
             <button type="button" className={prontoSectionTab === "drilldown" ? "data-dashboard-tab active" : "data-dashboard-tab"} onClick={() => setProntoSectionTab("drilldown")}>Drilldown</button>
+            <button type="button" className={prontoSectionTab === "spend" ? "data-dashboard-tab active" : "data-dashboard-tab"} onClick={() => setProntoSectionTab("spend")}>Spend</button>
           </div>}
           {(!standalonePronto || prontoSectionTab === "four-weeks") && <>
             {standalonePronto && <ProntoWeeklyComparison />}
 
           </>}
+
+          {standalonePronto && prontoSectionTab === "spend" && <ProntoSpend />}
 
           {(!standalonePronto || prontoSectionTab === "drilldown") && <>
           <div style={{ marginTop: 24, background: "#fff", border: "1px solid #dbe3ed", borderRadius: 12, padding: 16, minWidth: 0 }}>
