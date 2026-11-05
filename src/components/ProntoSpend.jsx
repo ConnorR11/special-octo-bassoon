@@ -92,6 +92,17 @@ export default function ProntoSpend() {
     return { weeks: [...weeks.values()].sort((a,b) => a.week-b.week), totals }
   }, [leads])
 
+  const chart = useMemo(() => {
+    const width = 1000, height = 300, left = 58, right = 24, top = 20, bottom = 48
+    const values = report.weeks.flatMap(week => channels.map(channel => {
+      const item = week.byChannel[channel.key]
+      return item?.leads ? item.spend / item.leads : null
+    })).filter(value => value !== null && Number.isFinite(value))
+    const max = Math.max(10, Math.ceil((Math.max(...values, 0) * 1.15) / 5) * 5)
+    const x = index => report.weeks.length <= 1 ? (width - left - right) / 2 + left : left + index * (width - left - right) / (report.weeks.length - 1)
+    const y = value => top + (max - value) / max * (height - top - bottom)
+    return { width, height, left, right, top, bottom, max, x, y }
+  }, [report.weeks])
   const cell = { padding: "7px 8px", border: "1px solid #d7dee7", textAlign: "right", whiteSpace: "nowrap", fontSize: 11 }
   const groupHead = color => ({ ...cell, textAlign: "center", background: color, color: "#fff", fontWeight: 700, padding: "8px 5px" })
   const subHead = { ...cell, background: "#eef2f6", fontWeight: 700, textAlign: "center" }
@@ -109,7 +120,47 @@ export default function ProntoSpend() {
       <h2 style={{ margin: 0, fontSize: 18, color: "#172033" }}>Pronto weekly spend</h2>
       <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12 }}>Weekly Pronto Windows lead spend by introducer, with lead volume and cost per lead. Lead cost uses the value recorded on each lead.</p>
     </div>
-    {loading ? <p style={{ color: "#64748b" }}>Loading weekly spend…</p> : error ? <p style={{ color: "#b91c1c" }}>{error}</p> : <div style={{ overflowX: "auto" }}>
+    {loading ? <p style={{ color: "#64748b" }}>Loading weekly spend…</p> : error ? <p style={{ color: "#b91c1c" }}>{error}</p> : <>
+      <div style={{ margin: "16px 0 20px", padding: "14px 12px", border: "1px solid #e2e8f0", borderRadius: 8 }}>
+        <h3 style={{ margin: "0 0 8px", fontSize: 14, color: "#172033" }}>Weekly CPL by introducer</h3>
+        <div style={{ width: "100%", overflowX: "auto" }}>
+          <svg viewBox={`0 0 ${chart.width} ${chart.height}`} role="img" aria-label="Line chart showing weekly cost per lead by introducer" style={{ display: "block", width: "100%", minWidth: 600, height: "auto" }}>
+            {Array.from({ length: 5 }, (_, i) => {
+              const value = chart.max * i / 4
+              const yy = chart.y(value)
+              return <g key={i}>
+                <line x1={chart.left} x2={chart.width - chart.right} y1={yy} y2={yy} stroke="#e2e8f0" strokeDasharray="3 3" />
+                <text x={chart.left - 10} y={yy + 4} textAnchor="end" fontSize="11" fill="#64748b">{money(value)}</text>
+              </g>
+            })}
+            {report.weeks.map((week, i) => <g key={week.key}>
+              <line x1={chart.x(i)} x2={chart.x(i)} y1={chart.top} y2={chart.height - chart.bottom} stroke="#f1f5f9" />
+              <text x={chart.x(i)} y={chart.height - 18} textAnchor="middle" fontSize="11" fill="#64748b">W{week.week}</text>
+            </g>)}
+            {channels.map(channel => {
+              const points = report.weeks.map((week, i) => {
+                const item = week.byChannel[channel.key]
+                return item?.leads ? { x: chart.x(i), y: chart.y(item.spend / item.leads) } : null
+              })
+              const segments = []
+              let current = []
+              points.forEach(point => {
+                if (point) current.push(point)
+                else if (current.length) { segments.push(current); current = [] }
+              })
+              if (current.length) segments.push(current)
+              return <g key={channel.key}>
+                {segments.map((segment, i) => <polyline key={i} points={segment.map(point => `${point.x},${point.y}`).join(" ")} fill="none" stroke={channel.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />)}
+                {points.filter(Boolean).map((point, i) => <circle key={i} cx={point.x} cy={point.y} r="3.5" fill={channel.color} stroke="#fff" strokeWidth="1.5" />)}
+              </g>
+            })}
+          </svg>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 16px", marginTop: 8 }}>
+          {channels.map(channel => <span key={channel.key} style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#475569", fontSize: 11 }}><span style={{ width: 18, height: 3, borderRadius: 2, background: channel.color, display: "inline-block" }} />{channel.label.replace(" Performance", "")}</span>)}
+        </div>
+      </div>
+      <div style={{ overflowX: "auto" }}>
       <table style={{ borderCollapse: "collapse", minWidth: 1250, width: "100%" }}>
         <thead>
           <tr>
