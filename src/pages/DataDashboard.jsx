@@ -1029,7 +1029,13 @@ function DataDashboard({ standalonePronto = false }) {
         .pronto-tree-table.pronto-hide-deal-info tbody tr:not(.pronto-tree-total) td:nth-child(18),
         .pronto-tree-table.pronto-hide-deal-info col:nth-child(19),
         .pronto-tree-table.pronto-hide-deal-info thead tr:not(.pronto-group-header) th:nth-child(19),
-        .pronto-tree-table.pronto-hide-deal-info tbody tr:not(.pronto-tree-total) td:nth-child(19) { display: none; }
+        .pronto-tree-table.pronto-hide-deal-info tbody tr:not(.pronto-tree-total) td:nth-child(19),
+        .pronto-tree-table.pronto-hide-deal-info col:nth-child(20),
+        .pronto-tree-table.pronto-hide-deal-info thead tr:not(.pronto-group-header) th:nth-child(20),
+        .pronto-tree-table.pronto-hide-deal-info tbody tr:not(.pronto-tree-total) td:nth-child(20),
+        .pronto-tree-table.pronto-hide-deal-info col:nth-child(21),
+        .pronto-tree-table.pronto-hide-deal-info thead tr:not(.pronto-group-header) th:nth-child(21),
+        .pronto-tree-table.pronto-hide-deal-info tbody tr:not(.pronto-tree-total) td:nth-child(21) { display: none; }
         /* Clear vertical separators between the table's column groups. */
         .pronto-tree-table thead tr:not(.pronto-group-header) th:nth-child(5),
         .pronto-tree-table tbody tr:not(.pronto-tree-total) td:nth-child(5),
@@ -1707,6 +1713,9 @@ function DataDashboard({ standalonePronto = false }) {
                   <col className="pronto-col-conversion" />
                   <col className="pronto-col-net-value" />
                   <col className="pronto-col-net-value" />
+                  <col className="pronto-col-net-value" />
+                  <col className="pronto-col-net-value" />
+                  <col className="pronto-col-net-value" />
                   <col className="pronto-col-spacer" />
                 </colgroup>
                 <thead>
@@ -1716,7 +1725,7 @@ function DataDashboard({ standalonePronto = false }) {
                     {showProntoLeadInfoColumns && <th colSpan={6} className="pronto-group-title">Lead Info</th>}
                     {showProntoAppointmentColumns && <th colSpan={5} className="pronto-group-title">Appointment Info</th>}
                     {showProntoConversionColumns && <th colSpan={2} className="pronto-group-title">Lead Conversion</th>}
-                    {showProntoDealInfoColumns && <th colSpan={2} className="pronto-group-title">Deal Info</th>}
+                    {showProntoDealInfoColumns && <th colSpan={5} className="pronto-group-title">Deal Info</th>}
                     <th aria-label="Alignment spacer"></th>
                   </tr>
                   <tr>
@@ -1739,6 +1748,9 @@ function DataDashboard({ standalonePronto = false }) {
                     <th>Lead to P</th>
                     <th>Net Value Sold</th>
                     <th>Net Value Solid</th>
+                    <th>CPL</th>
+                    <th>CPB</th>
+                    <th>Data %</th>
                     <th aria-label="Alignment spacer"></th>
                   </tr>
                 </thead>
@@ -1769,6 +1781,9 @@ function DataDashboard({ standalonePronto = false }) {
                         <td>{row.lead_count ? `${(row.cps_p_count / row.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
                         <td>£{formatNumber(Math.round(Number(row.net_value_sold || 0)))}</td>
                         <td>£{formatNumber(Math.round(Number(row.net_value_solid || 0)))}</td>
+                        <td>{getProntoSpend("introducer", row.pronto_sid) && row.lead_count ? (getProntoSpend("introducer", row.pronto_sid) / row.lead_count).toLocaleString("en-GB", { style: "currency", currency: "GBP" }) : "—"}</td>
+                        <td>{getProntoSpend("introducer", row.pronto_sid) && row.booked_count ? (getProntoSpend("introducer", row.pronto_sid) / row.booked_count).toLocaleString("en-GB", { style: "currency", currency: "GBP" }) : "—"}</td>
+                        <td>{Number(row.net_value_solid) > 0 ? (getProntoSpend("introducer", row.pronto_sid) / Number(row.net_value_solid) * 100).toFixed(1) + "%" : "—"}</td>
                         
                         <td aria-hidden="true"></td>
                       </tr>
@@ -1805,6 +1820,9 @@ function DataDashboard({ standalonePronto = false }) {
                                 <td>{sidRow.lead_count ? `${(sidRow.cps_p_count / sidRow.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
                                 <td>£{formatNumber(Math.round(Number(sidRow.net_value_sold || 0)))}</td>
                                 <td>£{formatNumber(Math.round(Number(sidRow.net_value_solid || 0)))}</td>
+                                <td>{getProntoSpend("sid", row.pronto_sid, sidRow.pronto_sid) && sidRow.lead_count ? (getProntoSpend("sid", row.pronto_sid, sidRow.pronto_sid) / sidRow.lead_count).toLocaleString("en-GB", { style: "currency", currency: "GBP" }) : "—"}</td>
+                                <td>{getProntoSpend("sid", row.pronto_sid, sidRow.pronto_sid) && sidRow.booked_count ? (getProntoSpend("sid", row.pronto_sid, sidRow.pronto_sid) / sidRow.booked_count).toLocaleString("en-GB", { style: "currency", currency: "GBP" }) : "—"}</td>
+                                <td>{Number(sidRow.net_value_solid) > 0 ? (getProntoSpend("sid", row.pronto_sid, sidRow.pronto_sid) / Number(sidRow.net_value_solid) * 100).toFixed(1) + "%" : "—"}</td>
                                 
                                 <td aria-hidden="true"></td>
                               </tr>
@@ -1841,6 +1859,9 @@ function DataDashboard({ standalonePronto = false }) {
                                         <td>{c1Row.lead_count ? `${(c1Row.cps_p_count / c1Row.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
                                         <td>£{formatNumber(Math.round(Number(c1Row.net_value_sold || 0)))}</td>
                                         <td>£{formatNumber(Math.round(Number(c1Row.net_value_solid || 0)))}</td>
+                                        <td>{getProntoSpend("c1", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1) && c1Row.lead_count ? (getProntoSpend("c1", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1) / c1Row.lead_count).toLocaleString("en-GB", { style: "currency", currency: "GBP" }) : "—"}</td>
+                                        <td>{getProntoSpend("c1", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1) && c1Row.booked_count ? (getProntoSpend("c1", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1) / c1Row.booked_count).toLocaleString("en-GB", { style: "currency", currency: "GBP" }) : "—"}</td>
+                                        <td>{Number(c1Row.net_value_solid) > 0 ? (getProntoSpend("c1", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1) / Number(c1Row.net_value_solid) * 100).toFixed(1) + "%" : "—"}</td>
                                         
                                         <td aria-hidden="true"></td>
                                       </tr>
@@ -1868,6 +1889,9 @@ function DataDashboard({ standalonePronto = false }) {
                                         <td>{c3Row.lead_count ? `${(c3Row.cps_p_count / c3Row.lead_count * 100).toFixed(1)}%` : "0.0%"}</td>
                                         <td>£{formatNumber(Math.round(Number(c3Row.net_value_sold || 0)))}</td>
                                         <td>£{formatNumber(Math.round(Number(c3Row.net_value_solid || 0)))}</td>
+                                            <td>{getProntoSpend("c3", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1, c3Row.pronto_c3) && c3Row.lead_count ? (getProntoSpend("c3", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1, c3Row.pronto_c3) / c3Row.lead_count).toLocaleString("en-GB", { style: "currency", currency: "GBP" }) : "—"}</td>
+                                            <td>{getProntoSpend("c3", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1, c3Row.pronto_c3) && c3Row.booked_count ? (getProntoSpend("c3", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1, c3Row.pronto_c3) / c3Row.booked_count).toLocaleString("en-GB", { style: "currency", currency: "GBP" }) : "—"}</td>
+                                            <td>{Number(c3Row.net_value_solid) > 0 ? (getProntoSpend("c3", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1, c3Row.pronto_c3) / Number(c3Row.net_value_solid) * 100).toFixed(1) + "%" : "—"}</td>
                                         
                                             <td aria-hidden="true"></td>
                                           </tr>
@@ -1907,6 +1931,9 @@ function DataDashboard({ standalonePronto = false }) {
                     {showProntoDealInfoColumns && <>
                       <td className="pronto-total-group-start"><strong>£{formatNumber(Math.round(filteredProntoSidRows.reduce((sum, row) => sum + Number(row.net_value_sold || 0), 0)))}</strong></td>
                       <td><strong>£{formatNumber(Math.round(filteredProntoSidRows.reduce((sum, row) => sum + Number(row.net_value_solid || 0), 0)))}</strong></td>
+                      <td><strong>{prontoSidTotal ? (filteredProntoSidRows.reduce((sum, row) => sum + getProntoSpend("introducer", row.pronto_sid), 0) / prontoSidTotal).toLocaleString("en-GB", { style: "currency", currency: "GBP" }) : "—"}</strong></td>
+                      <td><strong>{prontoSidRows.reduce((sum, row) => sum + Number(row.booked_count || 0), 0) ? (filteredProntoSidRows.reduce((sum, row) => sum + getProntoSpend("introducer", row.pronto_sid), 0) / prontoSidRows.reduce((sum, row) => sum + Number(row.booked_count || 0), 0)).toLocaleString("en-GB", { style: "currency", currency: "GBP" }) : "—"}</strong></td>
+                      <td><strong>{filteredProntoSidRows.reduce((sum, row) => sum + Number(row.net_value_solid || 0), 0) > 0 ? (filteredProntoSidRows.reduce((sum, row) => sum + getProntoSpend("introducer", row.pronto_sid), 0) / filteredProntoSidRows.reduce((sum, row) => sum + Number(row.net_value_solid || 0), 0) * 100).toFixed(1) + "%" : "—"}</strong></td>
                     </>}
                     <td aria-hidden="true"></td>
                   </tr>
