@@ -114,7 +114,6 @@ export default function ProntoSpend() {
     const lastCompleteWeekStart = new Date(currentWeekStart)
     lastCompleteWeekStart.setDate(lastCompleteWeekStart.getDate() - 7)
 
-    const firstWeek = isoWeekInfo(new Date(Date.UTC(year, 0, 5)))
     const lastWeek = isoWeekInfo(lastCompleteWeekStart)
     const byKey = new Map(report.weeks.map(week => [week.key, week]))
     const rows = []
