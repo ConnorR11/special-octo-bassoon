@@ -157,7 +157,7 @@ function ProntoWeeklyComparison() {
   }
 
   const cellStyle = { padding: "9px 8px", textAlign: "center", borderBottom: "1px solid #edf1f5", whiteSpace: "nowrap" }
-  const headerStyle = { padding: "8px 7px", textAlign: "right", borderBottom: "1px solid #dbe3ed", color: "#64748b", fontWeight: 600, whiteSpace: "nowrap" }
+  const headerStyle = { padding: "8px 7px", textAlign: "center", borderBottom: "1px solid #dbe3ed", color: "#64748b", fontWeight: 600, whiteSpace: "nowrap" }
   const periodKeys = ["ytd", "fourWeeks", "lastWeek"]
   const periodLabels = { ytd: "YTD", fourWeeks: "L4W", lastWeek: "LW" }
   const renderMetricCells = (stats, rowKey) => metrics.flatMap(metric => periodKeys.map(period => (
