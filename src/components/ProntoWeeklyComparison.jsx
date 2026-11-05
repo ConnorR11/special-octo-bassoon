@@ -148,10 +148,8 @@ function ProntoWeeklyComparison() {
   const periodLabels = { ytd: "YTD", fourWeeks: "L4W", lastWeek: "LW" }
   const rankedSids = rows.flatMap(group => group.items.map(item => ({
     ...item,
-    ytdRate: getMetricValue(item.ytd, "bookedRate"),
-    fourWeeksRate: getMetricValue(item.fourWeeks, "bookedRate"),
-    lastWeekRate: getMetricValue(item.lastWeek, "bookedRate"),
-  }))).sort((a, b) => b.ytdRate - a.ytdRate || b.ytd.leads - a.ytd.leads || a.introducer.localeCompare(b.introducer) || a.sid.localeCompare(b.sid, undefined, { numeric: true }))
+    ytdCpb: item.ytd.booked ? item.ytd.spend / item.ytd.booked : Number.POSITIVE_INFINITY,
+  }))).sort((a, b) => a.ytdCpb - b.ytdCpb || b.ytd.leads - a.ytd.leads || a.introducer.localeCompare(b.introducer) || a.sid.localeCompare(b.sid, undefined, { numeric: true }))
   const renderMetricCells = (stats, rowKey) => metrics.flatMap(metric => periodKeys.map((period, index) => {
     const value = getMetricValue(stats[period], metric.key)
     const previousPeriod = index === 1 ? "ytd" : index === 2 ? "fourWeeks" : null
