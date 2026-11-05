@@ -39,6 +39,7 @@ export default function ProntoSpend() {
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [chartPeriod, setChartPeriod] = useState("week")
   useEffect(() => {
     let cancelled = false
     async function load() {
@@ -104,17 +105,43 @@ export default function ProntoSpend() {
     return { weeks: [...weeks.values()].sort((a,b) => a.week-b.week), totals }
   }, [leads])
 
+  const chartData = useMemo(() => {
+    if (chartPeriod === "week") return report.weeks.map(item => ({ ...item, label: String(item.week) }))
+    const periods = new Map()
+    leads.forEach(lead => {
+      if (!lead.received_date_time) return
+      const date = new Date(lead.received_date_time)
+      const year = date.getFullYear()
+      if (year !== 2026) return
+      const month = date.getMonth()
+      const quarter = Math.floor(month / 3) + 1
+      const key = chartPeriod === "month" ? year + "-" + String(month + 1).padStart(2, "0") : year + "-Q" + quarter
+      if (!periods.has(key)) {
+        const byChannel = {}
+        channels.forEach(channel => { byChannel[channel.key] = { cplSpend: 0, cplLeads: 0 } })
+        periods.set(key, { key, label: chartPeriod === "month" ? date.toLocaleDateString("en-GB", { month: "short" }) : "Q" + quarter, byChannel })
+      }
+      const channel = normalise(lead.introducer)
+      const cost = Number(lead.lead_cost)
+      if (lead.lead_cost !== null && lead.lead_cost !== undefined && lead.lead_cost !== "" && cost > 0 && periods.get(key).byChannel[channel]) {
+        periods.get(key).byChannel[channel].cplSpend += cost
+        periods.get(key).byChannel[channel].cplLeads += 1
+      }
+    })
+    return [...periods.values()].sort((a, b) => a.key.localeCompare(b.key))
+  }, [leads, report.weeks, chartPeriod])
+
   const chart = useMemo(() => {
     const width = 1000, height = 300, left = 58, right = 24, top = 20, bottom = 48
-    const values = report.weeks.flatMap(week => channels.map(channel => {
-      const item = week.byChannel[channel.key]
+    const values = chartData.flatMap(period => channels.map(channel => {
+      const item = period.byChannel[channel.key]
       return item?.cplLeads ? item.cplSpend / item.cplLeads : null
     })).filter(value => value !== null && Number.isFinite(value))
     const max = Math.max(10, Math.ceil((Math.max(...values, 0) * 1.15) / 5) * 5)
-    const x = index => report.weeks.length <= 1 ? (width - left - right) / 2 + left : left + index * (width - left - right) / (report.weeks.length - 1)
+    const x = index => chartData.length <= 1 ? (width - left - right) / 2 + left : left + index * (width - left - right) / (chartData.length - 1)
     const y = value => top + (max - value) / max * (height - top - bottom)
     return { width, height, left, right, top, bottom, max, x, y }
-  }, [report.weeks])
+  }, [chartData])
   const cell = { padding: "7px 8px", border: "1px solid #d7dee7", textAlign: "right", whiteSpace: "nowrap", fontSize: 11 }
   const groupHead = color => ({ ...cell, textAlign: "center", background: color, color: "#fff", fontWeight: 700, padding: "8px 5px" })
   const subHead = { ...cell, background: "#eef2f6", fontWeight: 700, textAlign: "center" }
@@ -136,9 +163,14 @@ export default function ProntoSpend() {
     </div>
     {loading ? <p style={{ color: "#64748b" }}>Loading weekly spend…</p> : error ? <p style={{ color: "#b91c1c" }}>{error}</p> : <>
       <div style={{ margin: "16px 0 20px", padding: "14px 12px", border: "1px solid #e2e8f0", borderRadius: 8 }}>
-        <h3 style={{ margin: "0 0 8px", fontSize: 14, color: "#172033" }}>Weekly CPL by introducer</h3>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
+          <h3 style={{ margin: 0, fontSize: 14, color: "#172033" }}>{chartPeriod === "week" ? "Weekly" : chartPeriod === "month" ? "Monthly" : "Quarterly"} CPL by introducer</h3>
+          <div style={{ display: "inline-flex", gap: 4, padding: 3, background: "#eef2f6", borderRadius: 8 }}>
+            {["week", "month", "quarter"].map(period => <button key={period} type="button" onClick={() => setChartPeriod(period)} style={{ border: "1px solid", borderColor: chartPeriod === period ? "#0f766e" : "transparent", borderRadius: 6, padding: "6px 10px", background: chartPeriod === period ? "#fff" : "transparent", color: chartPeriod === period ? "#0f766e" : "#475569", fontSize: 12, fontWeight: 600, cursor: "pointer", textTransform: "capitalize" }}>{period}</button>)}
+          </div>
+        </div>
         <div style={{ width: "100%", overflowX: "auto" }}>
-          <svg viewBox={`0 0 ${chart.width} ${chart.height}`} role="img" aria-label="Line chart showing weekly cost per lead by introducer" style={{ display: "block", width: "100%", minWidth: 600, height: "auto" }}>
+          <svg viewBox={`0 0 ${chart.width} ${chart.height}`} role="img" aria-label={"Line chart showing " + chartPeriod + " cost per lead by introducer"} style={{ display: "block", width: "100%", minWidth: 600, height: "auto" }}>
             {Array.from({ length: 5 }, (_, i) => {
               const value = chart.max * i / 4
               const yy = chart.y(value)
@@ -147,13 +179,13 @@ export default function ProntoSpend() {
                 <text x={chart.left - 10} y={yy + 4} textAnchor="end" fontSize="11" fill="#64748b">{money(value)}</text>
               </g>
             })}
-            {report.weeks.map((week, i) => <g key={week.key}>
+            {chartData.map((period, i) => <g key={period.key}>
               <line x1={chart.x(i)} x2={chart.x(i)} y1={chart.top} y2={chart.height - chart.bottom} stroke="#f1f5f9" />
-              <text x={chart.x(i)} y={chart.height - 18} textAnchor="middle" fontSize="11" fill="#64748b">{week.week}</text>
+              <text x={chart.x(i)} y={chart.height - 18} textAnchor="middle" fontSize="11" fill="#64748b">{period.label}</text>
             </g>)}
             {channels.map(channel => {
-              const points = report.weeks.map((week, i) => {
-                const item = week.byChannel[channel.key]
+              const points = chartData.map((period, i) => {
+                const item = period.byChannel[channel.key]
                 return item?.cplLeads ? { x: chart.x(i), y: chart.y(item.cplSpend / item.cplLeads) } : null
               })
               const segments = []
