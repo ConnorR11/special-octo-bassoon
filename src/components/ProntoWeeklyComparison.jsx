@@ -209,18 +209,13 @@ function ProntoWeeklyComparison() {
             </tr>
           </thead>
           <tbody>
-            {rows.flatMap(group => [
+            {rows.map(group => (
               <tr key={group.introducer + "-summary"} style={{ background: "#f8fafc" }}>
                 <td style={{ position: "sticky", left: 0, zIndex: 1, background: "#f8fafc", padding: "10px 8px", borderBottom: "1px solid #dbe3ed", fontWeight: 700, whiteSpace: "nowrap" }}>{group.introducer}</td>
                 <td style={{ padding: "8px", borderBottom: "1px solid #dbe3ed", whiteSpace: "nowrap", color: "#64748b", fontWeight: 600 }}>ALL SIDs</td>
                 {renderMetricCells(group, group.introducer + "-summary")}
-              </tr>,
-              ...group.items.map(row => <tr key={group.introducer + "-" + row.sid}>
-                <td style={{ position: "sticky", left: 0, zIndex: 1, background: "#fff", padding: "8px", borderBottom: "1px solid #edf1f5", color: "#64748b" }} />
-                <td style={{ padding: "8px 8px 8px 20px", borderBottom: "1px solid #edf1f5", fontWeight: 600, whiteSpace: "nowrap" }}>{row.sid}</td>
-                {renderMetricCells(row, "sid-" + group.introducer + "-" + row.sid)}
-              </tr>)
-            ])}
+              </tr>
+            ))}
             <tr style={{ background: "#e8eef6" }}>
               <td colSpan={2} style={{ position: "sticky", left: 0, zIndex: 1, background: "#e8eef6", padding: "10px 8px", borderTop: "2px solid #94a3b8", fontWeight: 700 }}>TOTAL</td>
               {renderMetricCells(totals, "total")}
