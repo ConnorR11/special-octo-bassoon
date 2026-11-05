@@ -188,6 +188,7 @@ export default function ProntoSpend() {
           {!report.weeks.length && <tr><td colSpan={26} style={{ ...cell, textAlign: "center" }}>No Pronto Windows leads found for 2026.</td></tr>}
         </tbody>
       </table>
-    </div>}
+      </div>
+    </>}
   </section>
 }
