@@ -49,6 +49,7 @@ import OutstandingSolarSurveys from "./pages/OutstandingSolarSurveys"
 import SolarRework from "./pages/SolarRework"
 import BulkUpdater from "./pages/BulkUpdater"
 import Hotkeys from "./pages/Hotkeys"
+import LeadToCall from "./pages/LeadToCall"
 
 const DEALS_PAGE_SIZE = 50
 const REPORTING_PAGE_SIZE = 1000
@@ -279,6 +280,8 @@ function App() {
     pageContent = <BulkUpdater/>
   } else if (page === "hotkeys") {
     pageContent = <Hotkeys/>
+  } else if (page === "lead-to-call") {
+    pageContent = <LeadToCall/>
   } else if (page === "data-dashboard") {
     pageContent = <DataDashboard key="data-dashboard" />
   } else if (page === "pronto") {
