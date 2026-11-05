@@ -119,7 +119,7 @@ export default function ProntoSpend() {
             {channels.map(c => <th key={c.key} colSpan={3} style={groupHead(c.color)}>{c.label}</th>)}
           </tr>
           <tr>
-            {["Total Spent","Leads Total","Cost Per Lead"].map(x => <th key={x} style={subHead}>{x}</th>)}
+            {["Total Spent","Leads Total","CPL"].map(x => <th key={x} style={subHead}>{x}</th>)}
             {channels.map(c => <React.Fragment key={c.key}>{["Spend","Leads","CPL"].map(x => <th key={x} style={subHead}>{x}</th>)}</React.Fragment>)}
           </tr>
         </thead>
