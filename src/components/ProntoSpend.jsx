@@ -70,24 +70,36 @@ export default function ProntoSpend() {
 
   const report = useMemo(() => {
     const weeks = new Map()
-    const totals = { spend: 0, leads: 0, byChannel: {} }
-    channels.forEach(c => { totals.byChannel[c.key] = { spend: 0, leads: 0 } })
+    const totals = { spend: 0, leads: 0, cplSpend: 0, cplLeads: 0, byChannel: {} }
+    channels.forEach(c => { totals.byChannel[c.key] = { spend: 0, leads: 0, cplSpend: 0, cplLeads: 0 } })
     leads.forEach(lead => {
       if (!lead.received_date_time) return
       const info = isoWeekInfo(new Date(lead.received_date_time))
       if (info.year !== 2026) return
       if (!weeks.has(info.key)) {
         const byChannel = {}
-        channels.forEach(c => { byChannel[c.key] = { spend: 0, leads: 0 } })
-        weeks.set(info.key, { ...info, spend: 0, leads: 0, byChannel })
+        channels.forEach(c => { byChannel[c.key] = { spend: 0, leads: 0, cplSpend: 0, cplLeads: 0 } })
+        weeks.set(info.key, { ...info, spend: 0, leads: 0, cplSpend: 0, cplLeads: 0, byChannel })
       }
       const row = weeks.get(info.key)
       const channel = normalise(lead.introducer)
       const spend = Number(lead.lead_cost || 0)
       row.spend += spend; row.leads += 1
       totals.spend += spend; totals.leads += 1
-      if (row.byChannel[channel]) { row.byChannel[channel].spend += spend; row.byChannel[channel].leads += 1 }
-      if (totals.byChannel[channel]) { totals.byChannel[channel].spend += spend; totals.byChannel[channel].leads += 1 }
+      // The graph should only include CPLs explicitly entered and greater than zero.
+      const enteredCpl = lead.lead_cost !== null && lead.lead_cost !== undefined && lead.lead_cost !== "" && Number(lead.lead_cost) > 0
+      if (enteredCpl) {
+        row.cplSpend += spend; row.cplLeads += 1
+        totals.cplSpend += spend; totals.cplLeads += 1
+      }
+      if (row.byChannel[channel]) {
+        row.byChannel[channel].spend += spend; row.byChannel[channel].leads += 1
+        if (enteredCpl) { row.byChannel[channel].cplSpend += spend; row.byChannel[channel].cplLeads += 1 }
+      }
+      if (totals.byChannel[channel]) {
+        totals.byChannel[channel].spend += spend; totals.byChannel[channel].leads += 1
+        if (enteredCpl) { totals.byChannel[channel].cplSpend += spend; totals.byChannel[channel].cplLeads += 1 }
+      }
     })
     return { weeks: [...weeks.values()].sort((a,b) => a.week-b.week), totals }
   }, [leads])
@@ -96,7 +108,7 @@ export default function ProntoSpend() {
     const width = 1000, height = 300, left = 58, right = 24, top = 20, bottom = 48
     const values = report.weeks.flatMap(week => channels.map(channel => {
       const item = week.byChannel[channel.key]
-      return item?.leads ? item.spend / item.leads : null
+      return item?.cplLeads ? item.cplSpend / item.cplLeads : null
     })).filter(value => value !== null && Number.isFinite(value))
     const max = Math.max(10, Math.ceil((Math.max(...values, 0) * 1.15) / 5) * 5)
     const x = index => report.weeks.length <= 1 ? (width - left - right) / 2 + left : left + index * (width - left - right) / (report.weeks.length - 1)
@@ -140,7 +152,7 @@ export default function ProntoSpend() {
             {channels.map(channel => {
               const points = report.weeks.map((week, i) => {
                 const item = week.byChannel[channel.key]
-                return item?.leads ? { x: chart.x(i), y: chart.y(item.spend / item.leads) } : null
+                return item?.cplLeads ? { x: chart.x(i), y: chart.y(item.cplSpend / item.cplLeads) } : null
               })
               const segments = []
               let current = []
