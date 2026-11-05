@@ -167,7 +167,7 @@ function ProntoWeeklyComparison() {
           <thead>
             <tr>
               <th rowSpan={2} style={{ position: "sticky", left: 0, zIndex: 2, background: "#fff", textAlign: "left", padding: "9px 8px", borderBottom: "1px solid #dbe3ed" }}>SID</th>
-              {metrics.map(metric => <th key={metric.key} colSpan={2} style={{ textAlign: "center", padding: "8px 4px", borderBottom: "1px solid #dbe3ed", borderLeft: "1px solid #e2e8f0", color: "#334155", whiteSpace: "nowrap" }}>{metric.label}</th>)}
+              {metrics.map(metric => <th key={metric.key} colSpan={metric.key === "bookedRate" ? 3 : 2} style={{ textAlign: "center", padding: "8px 4px", borderBottom: "1px solid #dbe3ed", borderLeft: "1px solid #e2e8f0", color: "#334155", whiteSpace: "nowrap" }}>{metric.label}</th>)}
             </tr>
             <tr>
               {metrics.flatMap(metric => ["Last 4 weeks", "Last week"].map((heading, index) =>
@@ -181,10 +181,16 @@ function ProntoWeeklyComparison() {
               {metrics.flatMap(metric => {
                 const fourWeeksValue = metric.format(getMetricValue(row.fourWeeks, metric.key), row.fourWeeks)
                 const lastWeekValue = metric.format(getMetricValue(row.lastWeek, metric.key), row.lastWeek)
-                return [
+                const cells = [
                   <td key={metric.key + "-four-weeks"} style={{ ...cellStyle, borderLeft: "1px solid #e2e8f0" }}>{fourWeeksValue}</td>,
                   <td key={metric.key + "-last-week"} style={cellStyle}>{lastWeekValue}</td>,
                 ]
+                if (metric.key === "bookedRate") {
+                  const change = getMetricValue(row.lastWeek, "bookedRate") - getMetricValue(row.fourWeeks, "bookedRate")
+                  const changeColor = change > 0 ? "#15803d" : change < 0 ? "#dc2626" : "#64748b"
+                  cells.push(<td key="bookedRate-change" style={{ ...cellStyle, color: changeColor, fontWeight: 700, borderLeft: "1px solid #e2e8f0" }}>{change > 0 ? "+" : ""}{change.toFixed(1)} pp</td>)
+                }
+                return cells
               })}
             </tr>)}
             <tr style={{ background: "#f8fafc" }}>
@@ -192,10 +198,16 @@ function ProntoWeeklyComparison() {
               {metrics.flatMap(metric => {
                 const fourWeeksValue = metric.format(getMetricValue(totals.fourWeeks, metric.key), totals.fourWeeks)
                 const lastWeekValue = metric.format(getMetricValue(totals.lastWeek, metric.key), totals.lastWeek)
-                return [
+                const cells = [
                   <td key={metric.key + "-total-four-weeks"} style={{ ...cellStyle, borderTop: "2px solid #cbd5e1", borderLeft: "1px solid #e2e8f0", fontWeight: 700 }}>{fourWeeksValue}</td>,
                   <td key={metric.key + "-total-last-week"} style={{ ...cellStyle, borderTop: "2px solid #cbd5e1", fontWeight: 700 }}>{lastWeekValue}</td>,
                 ]
+                if (metric.key === "bookedRate") {
+                  const change = getMetricValue(totals.lastWeek, "bookedRate") - getMetricValue(totals.fourWeeks, "bookedRate")
+                  const changeColor = change > 0 ? "#15803d" : change < 0 ? "#dc2626" : "#64748b"
+                  cells.push(<td key="bookedRate-total-change" style={{ ...cellStyle, borderTop: "2px solid #cbd5e1", borderLeft: "1px solid #e2e8f0", color: changeColor, fontWeight: 700 }}>{change > 0 ? "+" : ""}{change.toFixed(1)} pp</td>)
+                }
+                return cells
               })}
             </tr>
           </tbody>
