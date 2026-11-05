@@ -131,6 +131,8 @@ function ProntoWeeklyComparison() {
     return () => { cancelled = true }
   }, [periods])
 
+  const money = value => new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0))
+
   const metrics = [
     { label: "Spend", key: "spend", format: money },
     { label: "Leads", key: "leads", format: number },
@@ -139,7 +141,6 @@ function ProntoWeeklyComparison() {
     { label: "CPB", key: "cpb", format: money },
   ]
 
-  const money = value => new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0))
   const getMetricValue = (stats, key) => {
     if (key === "cpl") return stats.leads ? stats.spend / stats.leads : 0
     if (key === "cpb") return stats.booked ? stats.spend / stats.booked : 0
