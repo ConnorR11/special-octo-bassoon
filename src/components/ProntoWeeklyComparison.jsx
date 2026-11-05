@@ -158,7 +158,8 @@ function ProntoWeeklyComparison() {
       : metric.key === "bookedRate" && period !== "ytd"
         ? value - getMetricValue(stats.ytd, metric.key)
         : null
-    const changeColor = change === null || Math.abs(change) < 0.005
+    const noComparisonData = period !== "ytd" && stats[period].leads === 0
+    const changeColor = noComparisonData || change === null || Math.abs(change) < 0.005
       ? "#64748b"
       : isCostMetric
         ? (change > 0 ? "#dc2626" : "#15803d")
@@ -168,7 +169,7 @@ function ProntoWeeklyComparison() {
         {metric.key === "bookedRate" || isCostMetric ? (
           <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, whiteSpace: "nowrap" }}>
             <span style={{ color: change === null ? undefined : changeColor, fontWeight: 700 }}>{metric.format(value, stats[period])}</span>
-            {change !== null && <span style={{ color: changeColor, fontSize: 11, fontWeight: 700 }}>
+            {change !== null && !noComparisonData && <span style={{ color: changeColor, fontSize: 11, fontWeight: 700 }}>
               {Math.abs(change) < 0.005 ? "→" : change > 0 ? "↑" : "↓"}
             </span>}
           </span>
