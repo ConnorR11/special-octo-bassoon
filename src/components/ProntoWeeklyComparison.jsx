@@ -25,7 +25,7 @@ function ProntoWeeklyComparison() {
   const [totals, setTotals] = useState({ ytd: emptyStats("TOTAL"), fourWeeks: emptyStats("TOTAL"), lastWeek: emptyStats("TOTAL") })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  const [onlySidsWithLeads, setOnlySidsWithLeads] = useState(false)
+  const [sidLeadPeriod, setSidLeadPeriod] = useState("all")
   const periods = useMemo(getPeriods, [])
 
   useEffect(() => {
@@ -214,7 +214,14 @@ function ProntoWeeklyComparison() {
         </table>
       </div>
       <div style={{ marginTop: 24 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>\n          <h3 style={{ margin: 0, fontSize: 15, color: "#172033" }}>SID performance ranking</h3>\n          <button type="button" role="switch" aria-checked={onlySidsWithLeads} onClick={() => setOnlySidsWithLeads(value => !value)} style={{ display: "inline-flex", alignItems: "center", gap: 8, border: 0, background: "transparent", color: "#334155", fontSize: 11, fontWeight: 600, cursor: "pointer", padding: "4px 0" }}>\n            <span>Only SIDs with leads (YTD / L4W / LW)</span>\n            <span aria-hidden="true" style={{ width: 30, height: 17, borderRadius: 999, background: onlySidsWithLeads ? "#2563eb" : "#cbd5e1", display: "inline-flex", alignItems: "center", padding: 2, boxSizing: "border-box", transition: "background 150ms" }}>\n              <span style={{ width: 13, height: 13, borderRadius: "50%", background: "#fff", transform: onlySidsWithLeads ? "translateX(13px)" : "translateX(0)", transition: "transform 150ms" }} />\n            </span>\n          </button>\n        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
+          <h3 style={{ margin: 0, fontSize: 15, color: "#172033" }}>SID performance ranking</h3>
+          <div role="group" aria-label="Filter SIDs by lead period" style={{ display: "inline-flex", border: "1px solid #cbd5e1", borderRadius: 7, padding: 2, gap: 2 }}>
+            {[["all", "All"], ["ytd", "YTD"], ["fourWeeks", "L4W"], ["lastWeek", "LW"]].map(([value, label]) => (
+              <button key={value} type="button" aria-pressed={sidLeadPeriod === value} onClick={() => setSidLeadPeriod(value)} style={{ border: 0, borderRadius: 5, padding: "5px 9px", fontSize: 11, fontWeight: 600, cursor: "pointer", color: sidLeadPeriod === value ? "#fff" : "#475569", background: sidLeadPeriod === value ? "#2563eb" : "transparent" }}>{label}</button>
+            ))}
+          </div>
+        </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 1050 }}>
             <thead>
