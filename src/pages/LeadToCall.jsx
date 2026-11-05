@@ -124,7 +124,7 @@ export default function LeadToCall() {
       <div style={{ padding:"12px 15px", borderBottom:"1px solid #e2e8f0", display:"flex", justifyContent:"space-between", gap:8, flexWrap:"wrap" }}><strong style={{ fontSize:13 }}>Next leads to phone</strong><span style={small}>Callbacks → Fresh → No Contact (2-hour gap, max 15 attempts)</span></div>
       {loading ? <div style={{ padding:36, textAlign:"center", color:"#64748b" }}>Loading calling queue…</div> : queue.length === 0 ? <div style={{ padding:36, textAlign:"center", color:"#64748b" }}>No eligible leads to call right now.</div> :
         <div style={{ overflowX:"auto" }}><table style={{ width:"100%", borderCollapse:"collapse", minWidth:900, fontSize:12, color:"#334155" }}>
-          <thead><tr style={{ background:"#f8fafc", textAlign:"left" }}>{["#","Priority","Customer","Postcode","Phone","Source","Received","Last called","Attempts","Action"].map(label=><th key={label} style={{ padding:"10px 12px", borderBottom:"1px solid #e2e8f0", whiteSpace:"nowrap" }}>{label}</th>)}</tr></thead>
+          <thead><tr style={{ background:"#f8fafc", textAlign:"left" }}>{["#","Priority","Customer","Postcode","Phone","Source","Disposition","Callback date/time","Received","Last called","Attempts","Action"].map(label=><th key={label} style={{ padding:"10px 12px", borderBottom:"1px solid #e2e8f0", whiteSpace:"nowrap" }}>{label}</th>)}</tr></thead>
           <tbody>{queue.map((lead,index)=><tr key={lead.delete_row_id} style={{ background:index===0?"#eff6ff":index%2?"#fff":"#fafcff" }}>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6" }}>{index+1}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", whiteSpace:"nowrap" }}><span style={{ padding:"4px 7px", borderRadius:99, background:lead.priority===0?"#fef3c7":lead.priority===1?"#dbeafe":"#f1f5f9", color:lead.priority===0?"#92400e":lead.priority===1?"#1d4ed8":"#475569", fontWeight:750 }}>{lead.queueType}</span></td>
@@ -132,6 +132,8 @@ export default function LeadToCall() {
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6" }}>{lead.postcode||"—"}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", whiteSpace:"nowrap" }}>{lead.primary_phone_number||lead.secondary_phone_number||"—"}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6" }}>{lead.lead_source||"Unknown"}</td>
+            <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", whiteSpace:"nowrap" }}>{lead.disposition||"Fresh"}</td>
+            <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", whiteSpace:"nowrap" }}>{lead.callback_date_time ? formatDate(dateValue(lead.callback_date_time)) : "—"}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", whiteSpace:"nowrap" }}>{formatDate(lead.received_date_time)}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", whiteSpace:"nowrap" }}>{lead.last_time_called ? formatDate(dateValue(lead.last_time_called)) : lead.last_called_at ? formatDate(lead.last_called_at) : "Never"}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", textAlign:"center" }}>{lead.attempts}</td>
