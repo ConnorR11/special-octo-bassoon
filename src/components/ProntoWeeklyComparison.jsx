@@ -229,29 +229,28 @@ function ProntoWeeklyComparison() {
         </table>
       </div>
       <div style={{ marginTop: 24 }}>
-        <h3 style={{ margin: "0 0 8px", fontSize: 15, color: "#172033" }}>SID booking rate ranking</h3>
+        <h3 style={{ margin: "0 0 8px", fontSize: 15, color: "#172033" }}>SID performance ranking</h3>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 520 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 1050 }}>
             <thead>
               <tr>
-                <th style={{ ...headerStyle, textAlign: "left" }}>Introducer</th>
-                <th style={{ ...headerStyle, textAlign: "left" }}>SID</th>
-                <th style={{ ...headerStyle, borderLeft: "1px solid #e2e8f0" }}>YTD Booking %</th>
-                <th style={headerStyle}>L4W Booking %</th>
-                <th style={headerStyle}>LW Booking %</th>
+                <th rowSpan={2} style={{ position: "sticky", left: 0, zIndex: 2, background: "#fff", textAlign: "left", padding: "9px 8px", borderBottom: "1px solid #dbe3ed" }}>Introducer</th>
+                <th rowSpan={2} style={{ textAlign: "left", padding: "9px 8px", borderBottom: "1px solid #dbe3ed" }}>SID</th>
+                {metrics.map(metric => <th key={metric.key} colSpan={3} style={{ textAlign: "center", padding: "8px 4px", borderBottom: "1px solid #dbe3ed", borderLeft: "1px solid #e2e8f0", color: "#334155", whiteSpace: "nowrap" }}>{metric.label}</th>)}
+              </tr>
+              <tr>
+                {metrics.flatMap(metric => periodKeys.map(period => <th key={metric.key + period} style={{ ...headerStyle, borderLeft: period === "ytd" ? "1px solid #e2e8f0" : undefined }}>{periodLabels[period]}</th>))}
               </tr>
             </thead>
             <tbody>
               {rankedSids.map((sid, index) => (
                 <tr key={sid.introducer + "-rank-" + sid.sid} style={{ background: index % 2 === 0 ? "#fff" : "#f8fafc" }}>
-                  <td style={{ ...cellStyle, textAlign: "left", fontWeight: 600 }}>{sid.introducer}</td>
-                  <td style={{ ...cellStyle, textAlign: "left" }}>{sid.sid}</td>
-                  <td style={{ ...cellStyle, borderLeft: "1px solid #e2e8f0", fontWeight: 700, color: "#172033" }}>{sid.ytdRate.toFixed(1)}%</td>
-                  <td style={cellStyle}>{sid.fourWeeksRate.toFixed(1)}%</td>
-                  <td style={cellStyle}>{sid.lastWeekRate.toFixed(1)}%</td>
+                  <td style={{ position: "sticky", left: 0, zIndex: 1, background: index % 2 === 0 ? "#fff" : "#f8fafc", padding: "8px", borderBottom: "1px solid #edf1f5", fontWeight: 600, whiteSpace: "nowrap" }}>{sid.introducer}</td>
+                  <td style={{ padding: "8px 8px 8px 20px", borderBottom: "1px solid #edf1f5", fontWeight: 600, whiteSpace: "nowrap" }}>{sid.sid}</td>
+                  {renderMetricCells(sid, "rank-sid-" + sid.introducer + "-" + sid.sid)}
                 </tr>
               ))}
-              {rankedSids.length === 0 && <tr><td colSpan={5} style={{ ...cellStyle, color: "#64748b" }}>No SID data available for these periods.</td></tr>}
+              {rankedSids.length === 0 && <tr><td colSpan={20} style={{ ...cellStyle, color: "#64748b" }}>No SID data available for these periods.</td></tr>}
             </tbody>
           </table>
         </div>
