@@ -91,6 +91,7 @@ function DataDashboard({ standalonePronto = false }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [activeTab, setActiveTab] = useState(standalonePronto ? "pronto" : "overview")
+  const [prontoSectionTab, setProntoSectionTab] = useState("four-weeks")
   const [archivedLeads, setArchivedLeads] = useState([])
   const [archivedLeadCount, setArchivedLeadCount] = useState(0)
   const [archivedLeadsLoading, setArchivedLeadsLoading] = useState(false)
@@ -1528,9 +1529,50 @@ function DataDashboard({ standalonePronto = false }) {
         </>
       ) : activeTab === "pronto" ? (
         <>
-          {standalonePronto && <>
-            <ProntoWeeklyComparison />
+          {standalonePronto && <div className="data-dashboard-tabs" style={{ marginTop: 16, marginBottom: 16 }}>
+            <button type="button" className={prontoSectionTab === "four-weeks" ? "data-dashboard-tab active" : "data-dashboard-tab"} onClick={() => setProntoSectionTab("four-weeks")}>4W vs Last Week</button>
+            <button type="button" className={prontoSectionTab === "all-leads" ? "data-dashboard-tab active" : "data-dashboard-tab"} onClick={() => setProntoSectionTab("all-leads")}>All Leads</button>
+            <button type="button" className={prontoSectionTab === "drilldown" ? "data-dashboard-tab active" : "data-dashboard-tab"} onClick={() => setProntoSectionTab("drilldown")}>Drilldown</button>
+          </div>}
+          {(!standalonePronto || prontoSectionTab === "four-weeks") && <>
+            {standalonePronto && <ProntoWeeklyComparison />}
+          <div style={{ marginTop: 24, background: "#fff", border: "1px solid #dbe3ed", borderRadius: 12, padding: 16, minWidth: 0 }}>
+            <div className="data-dashboard-chart-title">Monthly lead volume and booking rate by introducer</div>
+            <div className="data-dashboard-chart-subtitle">Bars show leads received (left axis); lines show booking rate (right axis).</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "12px 0" }}>
+              <button type="button" onClick={() => setShowProntoVolumeBars((visible) => !visible)} aria-pressed={showProntoVolumeBars} style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "7px 12px", background: showProntoVolumeBars ? "#19385f" : "#fff", color: showProntoVolumeBars ? "#fff" : "#19385f", cursor: "pointer", fontSize: 13 }}>
+                {showProntoVolumeBars ? "Hide volume bars" : "Show volume bars"}
+              </button>
+              <button type="button" onClick={() => setShowProntoBookingLines((visible) => !visible)} aria-pressed={showProntoBookingLines} style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "7px 12px", background: showProntoBookingLines ? "#19385f" : "#fff", color: showProntoBookingLines ? "#fff" : "#19385f", cursor: "pointer", fontSize: 13 }}>
+                {showProntoBookingLines ? "Hide booking lines" : "Show booking lines"}
+              </button>
+            </div>
+            {prontoMonthlyLoading ? <p>Loading monthly trends…</p> : prontoMonthlyError ? <p style={{ color: "#dc2626" }}>{prontoMonthlyError}</p> : <ResponsiveContainer width="100%" height={380}>
+              <ComposedChart data={prontoMonthlyChartData} margin={{ top: 12, right: 18, left: 8, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis yAxisId="volume" orientation="left" allowDecimals={false} />
+                <YAxis yAxisId="rate" orientation="right" domain={[0, prontoMonthlyMaxRate]} ticks={Array.from({ length: prontoMonthlyMaxRate / 10 + 1 }, (_, index) => index * 10)} tickFormatter={(value) => value + "%"} />
+                <Tooltip formatter={(value, name) => String(name).endsWith("__rate") ? (value == null ? "No leads" : Number(value).toFixed(1) + "%") : Number(value).toLocaleString()} />
+                <Legend content={() => (
+                  <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "6px 14px", paddingTop: 8 }}>
+                    {prontoTrendIntroducers.map((name, index) => (
+                      <span key={name} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length], fontSize: 12, whiteSpace: "nowrap" }}>
+                        <span style={{ display: "inline-block", width: 12, height: 8, background: LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length], opacity: 0.6, borderRadius: 2 }} />
+                        <span style={{ display: "inline-block", width: 14, borderTop: "2px solid " + LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length] }} />
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                )} />
+                {showProntoVolumeBars && prontoTrendIntroducers.map((name, index) => <Bar key={name + "-volume"} yAxisId="volume" stackId="monthly-leads" dataKey={name + "__leads"} name={name + " volume"} fill={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} fillOpacity={0.55} />)}
+                {showProntoBookingLines && prontoTrendIntroducers.map((name, index) => <Line key={name + "-rate"} yAxisId="rate" type="monotone" dataKey={name + "__rate"} name={name + " booking %"} stroke={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} strokeWidth={2} dot={false} connectNulls={false} />)}
+              </ComposedChart>
+            </ResponsiveContainer>}
+          </div>
           </>}
+
+          {(!standalonePronto || prontoSectionTab === "drilldown") && <>
           <div className="pronto-toolbar">
             <div>
               <div className="data-dashboard-chart-title">Pronto Introducer Lead Counts</div>
@@ -1602,42 +1644,6 @@ function DataDashboard({ standalonePronto = false }) {
           {prontoSidError && (
             <div className="data-dashboard-error">{prontoSidError}</div>
           )}
-
-          <div style={{ marginTop: 24, background: "#fff", border: "1px solid #dbe3ed", borderRadius: 12, padding: 16, minWidth: 0 }}>
-            <div className="data-dashboard-chart-title">Monthly lead volume and booking rate by introducer</div>
-            <div className="data-dashboard-chart-subtitle">Bars show leads received (left axis); lines show booking rate (right axis).</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "12px 0" }}>
-              <button type="button" onClick={() => setShowProntoVolumeBars((visible) => !visible)} aria-pressed={showProntoVolumeBars} style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "7px 12px", background: showProntoVolumeBars ? "#19385f" : "#fff", color: showProntoVolumeBars ? "#fff" : "#19385f", cursor: "pointer", fontSize: 13 }}>
-                {showProntoVolumeBars ? "Hide volume bars" : "Show volume bars"}
-              </button>
-              <button type="button" onClick={() => setShowProntoBookingLines((visible) => !visible)} aria-pressed={showProntoBookingLines} style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "7px 12px", background: showProntoBookingLines ? "#19385f" : "#fff", color: showProntoBookingLines ? "#fff" : "#19385f", cursor: "pointer", fontSize: 13 }}>
-                {showProntoBookingLines ? "Hide booking lines" : "Show booking lines"}
-              </button>
-            </div>
-            {prontoMonthlyLoading ? <p>Loading monthly trends…</p> : prontoMonthlyError ? <p style={{ color: "#dc2626" }}>{prontoMonthlyError}</p> : <ResponsiveContainer width="100%" height={380}>
-              <ComposedChart data={prontoMonthlyChartData} margin={{ top: 12, right: 18, left: 8, bottom: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis yAxisId="volume" orientation="left" allowDecimals={false} />
-                <YAxis yAxisId="rate" orientation="right" domain={[0, prontoMonthlyMaxRate]} ticks={Array.from({ length: prontoMonthlyMaxRate / 10 + 1 }, (_, index) => index * 10)} tickFormatter={(value) => value + "%"} />
-                <Tooltip formatter={(value, name) => String(name).endsWith("__rate") ? (value == null ? "No leads" : Number(value).toFixed(1) + "%") : Number(value).toLocaleString()} />
-                <Legend content={() => (
-                  <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "6px 14px", paddingTop: 8 }}>
-                    {prontoTrendIntroducers.map((name, index) => (
-                      <span key={name} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length], fontSize: 12, whiteSpace: "nowrap" }}>
-                        <span style={{ display: "inline-block", width: 12, height: 8, background: LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length], opacity: 0.6, borderRadius: 2 }} />
-                        <span style={{ display: "inline-block", width: 14, borderTop: "2px solid " + LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length] }} />
-                        {name}
-                      </span>
-                    ))}
-                  </div>
-                )} />
-                {showProntoVolumeBars && prontoTrendIntroducers.map((name, index) => <Bar key={name + "-volume"} yAxisId="volume" stackId="monthly-leads" dataKey={name + "__leads"} name={name + " volume"} fill={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} fillOpacity={0.55} />)}
-                {showProntoBookingLines && prontoTrendIntroducers.map((name, index) => <Line key={name + "-rate"} yAxisId="rate" type="monotone" dataKey={name + "__rate"} name={name + " booking %"} stroke={LEAD_TYPE_COLORS[index % LEAD_TYPE_COLORS.length]} strokeWidth={2} dot={false} connectNulls={false} />)}
-              </ComposedChart>
-            </ResponsiveContainer>}
-          </div>
-
           <div className="pronto-table-card">
             {prontoSidLoading ? (
               <div className="pronto-empty">Loading Pronto SID data…</div>
@@ -1875,8 +1881,9 @@ function DataDashboard({ standalonePronto = false }) {
               </>
             )}
           </div>
+          </>}
 
-
+          {(!standalonePronto || prontoSectionTab === "all-leads") && <>
           <div style={{ marginTop: 24, background: "#fff", border: "1px solid #dbe3ed", borderRadius: 12, padding: 16, minWidth: 0 }}>
             <div className="data-dashboard-chart-title">Pronto leads and related appointments</div>
             <div className="data-dashboard-chart-subtitle">Leads in the selected date period, with their related appointment records listed underneath.</div>
@@ -1917,6 +1924,7 @@ function DataDashboard({ standalonePronto = false }) {
               <div style={{ color:"#64748b",fontSize:11,marginTop:8 }}>Showing {formatNumber(prontoLeadDetails.length)} leads. Related appointments are matched by marketing_row_id.</div>
             </>}
           </div>
+          </>}
 
         </>
 
