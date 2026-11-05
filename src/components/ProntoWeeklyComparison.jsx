@@ -64,14 +64,14 @@ function ProntoWeeklyComparison() {
         const appointments = []
         for (let i = 0; i < ids.length; i += 400) {
           const { data: batch, error: appointmentError } = await supabase.from("appointments")
-            .select("marketing_row_id,cps_p")
+            .select("marketing_row_id,appointment_date")
             .in("marketing_row_id", ids.slice(i, i + 400))
           if (appointmentError) throw appointmentError
           appointments.push(...(batch || []))
         }
 
         const bookedLeadIds = new Set(
-          appointments.filter(appointment => appointment.cps_p === true).map(appointment => appointment.marketing_row_id)
+          appointments.filter(appointment => appointment.appointment_date !== null && appointment.appointment_date !== "").map(appointment => appointment.marketing_row_id)
         )
         const grouped = new Map()
         const nextTotals = { fourWeeks: emptyStats("TOTAL"), lastWeek: emptyStats("TOTAL") }
@@ -137,6 +137,7 @@ function ProntoWeeklyComparison() {
     { label: "Spend", key: "spend", format: money },
     { label: "Leads", key: "leads", format: number },
     { label: "Booked", key: "booked", format: number },
+    { label: "Booked %", key: "bookedRate", format: value => `${Number(value || 0).toFixed(1)}%` },
     { label: "CPL", key: "cpl", format: money },
     { label: "CPB", key: "cpb", format: money },
   ]
@@ -144,6 +145,7 @@ function ProntoWeeklyComparison() {
   const getMetricValue = (stats, key) => {
     if (key === "cpl") return stats.leads ? stats.spend / stats.leads : 0
     if (key === "cpb") return stats.booked ? stats.spend / stats.booked : 0
+    if (key === "bookedRate") return stats.leads ? stats.booked / stats.leads * 100 : 0
     return Number(stats[key] || 0)
   }
 
@@ -199,7 +201,7 @@ function ProntoWeeklyComparison() {
           </tbody>
         </table>
       </div>
-      <p style={{ margin: "10px 0 0", color: "#94a3b8", fontSize: 10 }}>Booked counts each lead once when at least one linked appointment has CPS P marked true. Booked % is booked leads divided by leads received. The last-week figures are included within the four-week totals.</p>
+      <p style={{ margin: "10px 0 0", color: "#94a3b8", fontSize: 10 }}>Booked counts each lead once when it has at least one linked appointment with a non-empty appointment date. Booked % = booked leads divided by leads received. The last-week figures are included within the four-week totals.</p>
     </>}
   </section>
 }
