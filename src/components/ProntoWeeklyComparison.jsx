@@ -152,18 +152,24 @@ function ProntoWeeklyComparison() {
   }))).sort((a, b) => a.ytdCpb - b.ytdCpb || b.ytd.leads - a.ytd.leads || a.introducer.localeCompare(b.introducer) || a.sid.localeCompare(b.sid, undefined, { numeric: true }))
   const renderMetricCells = (stats, rowKey) => metrics.flatMap(metric => periodKeys.map((period, index) => {
     const value = getMetricValue(stats[period], metric.key)
-    const previousPeriod = index === 1 ? "ytd" : index === 2 ? "fourWeeks" : null
-    const change = metric.key === "bookedRate" && previousPeriod
-      ? value - getMetricValue(stats[previousPeriod], metric.key)
-      : null
-    const changeColor = change > 0.05 ? "#15803d" : change < -0.05 ? "#dc2626" : "#64748b"
+    const isCostMetric = metric.key === "cpl" || metric.key === "cpb"
+    const change = isCostMetric && period !== "ytd"
+      ? value - getMetricValue(stats.ytd, metric.key)
+      : metric.key === "bookedRate" && period !== "ytd"
+        ? value - getMetricValue(stats.ytd, metric.key)
+        : null
+    const changeColor = change === null || Math.abs(change) < 0.005
+      ? "#64748b"
+      : isCostMetric
+        ? (change > 0 ? "#dc2626" : "#15803d")
+        : (change > 0 ? "#15803d" : "#dc2626")
     return (
       <td key={rowKey + "-" + metric.key + "-" + period} style={{ ...cellStyle, borderLeft: period === "ytd" ? "1px solid #e2e8f0" : undefined, fontWeight: rowKey === "total" || rowKey.endsWith("summary") ? 700 : 500, color: rowKey.includes("sid") ? "#475569" : undefined }}>
-        {metric.key === "bookedRate" ? (
+        {metric.key === "bookedRate" || isCostMetric ? (
           <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, whiteSpace: "nowrap" }}>
             <span style={{ color: change === null ? undefined : changeColor, fontWeight: 700 }}>{metric.format(value, stats[period])}</span>
             {change !== null && <span style={{ color: changeColor, fontSize: 11, fontWeight: 700 }}>
-              {change > 0.05 ? "↑" : change < -0.05 ? "↓" : "→"}
+              {Math.abs(change) < 0.005 ? "→" : change > 0 ? "↑" : "↓"}
             </span>}
           </span>
         ) : metric.format(value, stats[period])}
