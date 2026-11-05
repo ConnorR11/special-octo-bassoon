@@ -136,12 +136,6 @@ function ProntoWeeklyComparison() {
     ? (stats.leads ? stats.booked / stats.leads * 100 : 0)
     : Number(stats[key] || 0)
 
-  const formatChange = (fourWeeks, lastWeek, metric) => {
-    const difference = getMetricValue(lastWeek, metric.key) - getMetricValue(fourWeeks, metric.key)
-    if (metric.change === "pp") return `${difference > 0 ? "+" : ""}${difference.toFixed(1)} pp`
-    return `${difference > 0 ? "+" : ""}${number(difference)}`
-  }
-
   const cellStyle = { padding: "9px 8px", textAlign: "right", borderBottom: "1px solid #edf1f5", whiteSpace: "nowrap" }
   const headerStyle = { padding: "8px 7px", textAlign: "right", borderBottom: "1px solid #dbe3ed", color: "#64748b", fontWeight: 600, whiteSpace: "nowrap" }
 
@@ -160,10 +154,10 @@ function ProntoWeeklyComparison() {
           <thead>
             <tr>
               <th rowSpan={2} style={{ position: "sticky", left: 0, zIndex: 2, background: "#fff", textAlign: "left", padding: "9px 8px", borderBottom: "1px solid #dbe3ed" }}>SID</th>
-              {metrics.map(metric => <th key={metric.key} colSpan={3} style={{ textAlign: "center", padding: "8px 4px", borderBottom: "1px solid #dbe3ed", borderLeft: "1px solid #e2e8f0", color: "#334155", whiteSpace: "nowrap" }}>{metric.label}</th>)}
+              {metrics.map(metric => <th key={metric.key} colSpan={2} style={{ textAlign: "center", padding: "8px 4px", borderBottom: "1px solid #dbe3ed", borderLeft: "1px solid #e2e8f0", color: "#334155", whiteSpace: "nowrap" }}>{metric.label}</th>)}
             </tr>
             <tr>
-              {metrics.flatMap(metric => ["Last 4 weeks", "Last week", "Change"].map((heading, index) =>
+              {metrics.flatMap(metric => ["Last 4 weeks", "Last week"].map((heading, index) =>
                 <th key={metric.key + heading} style={{ ...headerStyle, borderLeft: index === 0 ? "1px solid #e2e8f0" : undefined }}>{heading}</th>
               ))}
             </tr>
@@ -174,11 +168,9 @@ function ProntoWeeklyComparison() {
               {metrics.flatMap(metric => {
                 const fourWeeksValue = metric.format(getMetricValue(row.fourWeeks, metric.key), row.fourWeeks)
                 const lastWeekValue = metric.format(getMetricValue(row.lastWeek, metric.key), row.lastWeek)
-                const difference = getMetricValue(row.lastWeek, metric.key) - getMetricValue(row.fourWeeks, metric.key)
                 return [
                   <td key={metric.key + "-four-weeks"} style={{ ...cellStyle, borderLeft: "1px solid #e2e8f0" }}>{fourWeeksValue}</td>,
                   <td key={metric.key + "-last-week"} style={cellStyle}>{lastWeekValue}</td>,
-                  <td key={metric.key + "-change"} style={{ ...cellStyle, color: difference > 0 ? "#15803d" : difference < 0 ? "#b91c1c" : "#64748b", fontWeight: 600 }}>{formatChange(row.fourWeeks, row.lastWeek, metric)}</td>,
                 ]
               })}
             </tr>)}
@@ -187,11 +179,9 @@ function ProntoWeeklyComparison() {
               {metrics.flatMap(metric => {
                 const fourWeeksValue = metric.format(getMetricValue(totals.fourWeeks, metric.key), totals.fourWeeks)
                 const lastWeekValue = metric.format(getMetricValue(totals.lastWeek, metric.key), totals.lastWeek)
-                const difference = getMetricValue(totals.lastWeek, metric.key) - getMetricValue(totals.fourWeeks, metric.key)
                 return [
                   <td key={metric.key + "-total-four-weeks"} style={{ ...cellStyle, borderTop: "2px solid #cbd5e1", borderLeft: "1px solid #e2e8f0", fontWeight: 700 }}>{fourWeeksValue}</td>,
                   <td key={metric.key + "-total-last-week"} style={{ ...cellStyle, borderTop: "2px solid #cbd5e1", fontWeight: 700 }}>{lastWeekValue}</td>,
-                  <td key={metric.key + "-total-change"} style={{ ...cellStyle, borderTop: "2px solid #cbd5e1", fontWeight: 700, color: difference > 0 ? "#15803d" : difference < 0 ? "#b91c1c" : "#64748b" }}>{formatChange(totals.fourWeeks, totals.lastWeek, metric)}</td>,
                 ]
               })}
             </tr>
