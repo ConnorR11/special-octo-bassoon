@@ -51,12 +51,19 @@ export default function LeadToCall() {
         if (appointmentError) throw appointmentError
         ;(appointments || []).forEach(appointment => {
           const key = appointment.marketing_row_id
-          if (!appointmentState.has(key)) appointmentState.set(key, { hasFuture: false, hasRework: false, hasPastAppointment: false })
-          const state = appointmentState.get(key)
-          const appointmentTime = new Date(appointment.appointment_date).getTime()
-          const result = String(appointment.result || "").trim().toUpperCase()
-          if (appointmentTime > Date.now()) state.hasFuture = true
-          else { state.hasPastAppointment = true; if (!["PM", "PM DNH", "SOLD"].includes(result)) state.hasRework = true }
+          const appointmentTime = dateValue(appointment.appointment_date)
+          if (appointmentTime === null) return
+          const existing = appointmentState.get(key)
+          if (!existing || appointmentTime > existing.appointmentTime) {
+            const result = String(appointment.result || "").trim()
+            appointmentState.set(key, {
+              appointmentDate: appointment.appointment_date,
+              appointmentTime,
+              appointmentResult: result,
+              hasFuture: appointmentTime > Date.now(),
+              hasRework: appointmentTime <= Date.now() && !["PM", "PM DNH", "SOLD"].includes(result.toUpperCase()),
+            })
+          }
         })
       }
       const now = Date.now()
@@ -81,7 +88,7 @@ export default function LeadToCall() {
         }
         return false
       })
-      setLeads(eligible.map(lead => ({ ...lead, isRework: Boolean(lead.marketing_row_id && appointmentState.get(lead.marketing_row_id)?.hasRework), isBooked: Boolean(lead.marketing_row_id && appointmentState.get(lead.marketing_row_id)?.hasPastAppointment) })))
+      setLeads(eligible.map(lead => { const appointment = lead.marketing_row_id ? appointmentState.get(lead.marketing_row_id) : null; return { ...lead, isRework: Boolean(appointment?.hasRework), latestAppointmentDate: appointment?.appointmentDate || null, latestAppointmentResult: appointment?.appointmentResult || "" } }))
       setUpdatedAt(Date.now())
     } catch (err) {
       console.error("Lead To Call load failed", err)
@@ -136,14 +143,15 @@ export default function LeadToCall() {
       <div style={{ padding:"12px 15px", borderBottom:"1px solid #e2e8f0", display:"flex", justifyContent:"space-between", gap:8, flexWrap:"wrap" }}><strong style={{ fontSize:13 }}>Next leads to phone</strong><span style={small}>Callbacks → Rework → Fresh → No Contact (2-hour gap, max 15 attempts)</span></div>
       {loading ? <div style={{ padding:36, textAlign:"center", color:"#64748b" }}>Loading calling queue…</div> : queue.length === 0 ? <div style={{ padding:36, textAlign:"center", color:"#64748b" }}>No eligible leads to call right now.</div> :
         <div style={{ overflowX:"auto" }}><table style={{ width:"100%", borderCollapse:"collapse", minWidth:900, fontSize:12, color:"#334155" }}>
-          <thead><tr style={{ background:"#f8fafc", textAlign:"left" }}>{["#","Customer","Postcode","Phone","Source","Booked","Disposition","Callback date/time","Received","Last called","Attempts","Action"].map(label=><th key={label} style={{ padding:"10px 12px", borderBottom:"1px solid #e2e8f0", whiteSpace:"nowrap" }}>{label}</th>)}</tr></thead>
+          <thead><tr style={{ background:"#f8fafc", textAlign:"left" }}>{["#","Customer","Postcode","Phone","Source","Latest appointment","Appointment result","Disposition","Callback date/time","Received","Last called","Attempts","Action"].map(label=><th key={label} style={{ padding:"10px 12px", borderBottom:"1px solid #e2e8f0", whiteSpace:"nowrap" }}>{label}</th>)}</tr></thead>
           <tbody>{queue.map((lead,index)=><tr key={lead.delete_row_id} style={{ background:lead.priority===0?"#fff4d6":lead.priority===1?"#f3e8ff":lead.priority===2?"#eaf3ff":index%2?"#f8fafc":"#ffffff" }}>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6" }}>{index+1}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", fontWeight:750, color:"#0f172a", whiteSpace:"nowrap" }}>{nameOf(lead)}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6" }}>{lead.postcode||"—"}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", whiteSpace:"nowrap" }}>{lead.primary_phone_number||lead.secondary_phone_number||"—"}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6" }}>{lead.lead_source||"Unknown"}</td>
-            <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", whiteSpace:"nowrap", fontWeight:lead.isBooked?700:400, color:lead.isBooked?"#047857":"#94a3b8" }}>{lead.isBooked ? "Yes" : "No"}</td>
+            <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", whiteSpace:"nowrap" }}>{lead.latestAppointmentDate ? formatDate(dateValue(lead.latestAppointmentDate)) : "—"}</td>
+            <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", whiteSpace:"nowrap" }}>{lead.latestAppointmentResult || (lead.latestAppointmentDate ? "No result" : "—")}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", whiteSpace:"nowrap" }}>{lead.disposition||"Fresh"}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", whiteSpace:"nowrap" }}>{lead.callback_date_time ? formatDate(dateValue(lead.callback_date_time)) : "—"}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", whiteSpace:"nowrap" }}>{formatDate(lead.received_date_time)}</td>
