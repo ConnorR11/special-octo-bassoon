@@ -109,6 +109,7 @@ function DataDashboard({ standalonePronto = false }) {
   const [prontoLeadStageFilter, setProntoLeadStageFilter] = useState("all")
   const [prontoLeadDealFilter, setProntoLeadDealFilter] = useState("all")
   const [prontoSidRows, setProntoSidRows] = useState([])
+  const [prontoSpendRows, setProntoSpendRows] = useState([])
   const [prontoDispositionCounts, setProntoDispositionCounts] = useState([])
   const [prontoMonthlyRows, setProntoMonthlyRows] = useState([])
   const [prontoMonthlyLoading, setProntoMonthlyLoading] = useState(false)
@@ -167,6 +168,21 @@ function DataDashboard({ standalonePronto = false }) {
     cutoff.setHours(0, 0, 0, 0)
     cutoff.setDate(cutoff.getDate() - 2)
     return latest >= cutoff
+  }
+
+  function getProntoSpend(groupLevel, introducer, sid = null, c1 = null, c3 = null) {
+    const row = prontoSpendRows.find((item) =>
+      item.group_level === groupLevel &&
+      item.introducer === introducer &&
+      (item.sid ?? null) === sid &&
+      (item.c1 ?? null) === c1 &&
+      (item.c3 ?? null) === c3
+    )
+    return Number(row?.total_spend || 0)
+  }
+
+  function formatProntoSpend(value) {
+    return `£${Number(value || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
   function prontoStatus(value) {
@@ -325,6 +341,9 @@ function DataDashboard({ standalonePronto = false }) {
     try {
       const { data, error: rpcError } = await supabase.rpc("get_pronto_introducer_lead_counts", { date_period: prontoDatePeriod })
       if (rpcError) throw rpcError
+      const { data: spendRows, error: spendError } = await supabase.rpc("get_pronto_lead_cost_rollups", { date_period: prontoDatePeriod })
+      if (spendError) throw spendError
+      setProntoSpendRows(spendRows || [])
       const { data: dispositionRows, error: dispositionError } = await supabase.rpc("get_pronto_disposition_counts", { date_period: prontoDatePeriod })
       if (dispositionError) throw dispositionError
       setProntoDispositionCounts(dispositionRows || [])
@@ -1690,7 +1709,7 @@ function DataDashboard({ standalonePronto = false }) {
                   <tr className="pronto-group-header">
                     <th aria-label="Campaign column"></th>
                     {showProntoDateStatusColumns && <th colSpan={3} className="pronto-group-title">Dates &amp; Status</th>}
-                    {showProntoLeadInfoColumns && <th colSpan={6} className="pronto-group-title">Lead Info</th>}
+                    {showProntoLeadInfoColumns && <th colSpan={7} className="pronto-group-title">Lead Info</th>}
                     {showProntoAppointmentColumns && <th colSpan={4} className="pronto-group-title">Appointment Info</th>}
                     {showProntoConversionColumns && <th colSpan={2} className="pronto-group-title">Lead Conversion</th>}
                     {showProntoDealInfoColumns && <th colSpan={2} className="pronto-group-title">Deal Info</th>}
@@ -1701,6 +1720,7 @@ function DataDashboard({ standalonePronto = false }) {
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("first_lead_date")}>First received{prontoSort.key === "first_lead_date" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("latest_lead_date")}>Latest received{prontoSort.key === "latest_lead_date" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("status")}>Status{prontoSort.key === "status" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
+                    <th>Spend</th>
                     <th><button type="button" className="pronto-sort-header" onClick={() => changeProntoSort("leads")}>Leads{prontoSort.key === "leads" ? (prontoSort.direction === "asc" ? " ↑" : " ↓") : ""}</button></th>
                     <th>Dup</th>
                     <th>WN</th>
@@ -1730,6 +1750,7 @@ function DataDashboard({ standalonePronto = false }) {
                         <td>{formatProntoDate(row.first_lead_date)}</td>
                         <td>{formatProntoDate(row.latest_lead_date)}</td>
                         <td>{prontoStatus(row.latest_lead_date)}</td>
+                        <td>{formatProntoSpend(getProntoSpend("introducer", row.pronto_sid))}</td>
                         <td>{formatNumber(row.lead_count)}</td>
                         <td>{formatNumber(getProntoDispositionCounts("introducer", row.pronto_sid).dup_count)}</td>
                         <td>{formatNumber(getProntoDispositionCounts("introducer", row.pronto_sid).wn_count)}</td>
@@ -1765,6 +1786,7 @@ function DataDashboard({ standalonePronto = false }) {
                                 <td>{formatProntoDate(sidRow.first_lead_date)}</td>
                                 <td>{formatProntoDate(sidRow.latest_lead_date)}</td>
                                 <td>{prontoStatus(sidRow.latest_lead_date)}</td>
+                                <td>{formatProntoSpend(getProntoSpend("sid", row.pronto_sid, sidRow.pronto_sid))}</td>
                                 <td>{formatNumber(sidRow.lead_count)}</td>
                         <td>{formatNumber(getProntoDispositionCounts("sid", row.pronto_sid, sidRow.pronto_sid).dup_count)}</td>
                         <td>{formatNumber(getProntoDispositionCounts("sid", row.pronto_sid, sidRow.pronto_sid).wn_count)}</td>
@@ -1800,6 +1822,7 @@ function DataDashboard({ standalonePronto = false }) {
                                         <td>{formatProntoDate(c1Row.first_lead_date)}</td>
                                         <td>{formatProntoDate(c1Row.latest_lead_date)}</td>
                                         <td>{prontoStatus(c1Row.latest_lead_date)}</td>
+                                        <td>{formatProntoSpend(getProntoSpend("c1", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1))}</td>
                                         <td>{formatNumber(c1Row.lead_count)}</td>
                         <td>{formatNumber(getProntoDispositionCounts("c1", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1).dup_count)}</td>
                         <td>{formatNumber(getProntoDispositionCounts("c1", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1).wn_count)}</td>
@@ -1826,6 +1849,7 @@ function DataDashboard({ standalonePronto = false }) {
                                             <td>{formatProntoDate(c3Row.first_lead_date)}</td>
                                             <td>{formatProntoDate(c3Row.latest_lead_date)}</td>
                                             <td>{prontoStatus(c3Row.latest_lead_date)}</td>
+                                            <td>{formatProntoSpend(getProntoSpend("c3", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1, c3Row.pronto_c3))}</td>
                                             <td>{formatNumber(c3Row.lead_count)}</td>
                         <td>{formatNumber(getProntoDispositionCounts("c3", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1, c3Row.pronto_c3).dup_count)}</td>
                         <td>{formatNumber(getProntoDispositionCounts("c3", row.pronto_sid, sidRow.pronto_sid, c1Row.pronto_c1, c3Row.pronto_c3).wn_count)}</td>
@@ -1858,7 +1882,8 @@ function DataDashboard({ standalonePronto = false }) {
                   <tr className="pronto-tree-total">
                     <td colSpan={showProntoDateStatusColumns ? 4 : 1}><strong>Total Pronto Windows leads</strong></td>
                     {showProntoLeadInfoColumns && <>
-                      <td className="pronto-total-group-start"><strong>{formatNumber(prontoSidTotal)}</strong></td>
+                      <td className="pronto-total-group-start"><strong>{formatProntoSpend(filteredProntoSidRows.reduce((sum, row) => sum + getProntoSpend("introducer", row.pronto_sid), 0))}</strong></td>
+                      <td><strong>{formatNumber(prontoSidTotal)}</strong></td>
                       <td><strong>{formatNumber(prontoDispositionCounts.filter((item) => item.group_level === "introducer").reduce((sum, item) => sum + Number(item.dup_count || 0), 0))}</strong></td>
                       <td><strong>{formatNumber(prontoDispositionCounts.filter((item) => item.group_level === "introducer").reduce((sum, item) => sum + Number(item.wn_count || 0), 0))}</strong></td>
                       <td><strong>{formatNumber(prontoDispositionCounts.filter((item) => item.group_level === "introducer").reduce((sum, item) => sum + Number(item.ooa_count || 0), 0))}</strong></td>
