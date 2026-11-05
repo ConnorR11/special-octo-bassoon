@@ -147,7 +147,13 @@ function ProntoWeeklyComparison() {
   const headerStyle = { padding: "8px 7px", textAlign: "center", borderBottom: "1px solid #dbe3ed", color: "#64748b", fontWeight: 600, whiteSpace: "nowrap" }
   const periodKeys = ["ytd", "fourWeeks", "lastWeek"]
   const periodLabels = { ytd: "YTD", fourWeeks: "L4W", lastWeek: "LW" }
-  const allRankedSids = rows.flatMap(group => group.items.map(item => ({\n    ...item,\n    ytdCpb: item.ytd.booked ? item.ytd.spend / item.ytd.booked : Number.POSITIVE_INFINITY,\n  }))).sort((a, b) => a.ytdCpb - b.ytdCpb || b.ytd.leads - a.ytd.leads || a.introducer.localeCompare(b.introducer) || a.sid.localeCompare(b.sid, undefined, { numeric: true }))\n  const rankedSids = onlySidsWithLeads\n    ? allRankedSids.filter(sid => sid.ytd.leads > 0 || sid.fourWeeks.leads > 0 || sid.lastWeek.leads > 0)\n    : allRankedSids
+  const allRankedSids = rows.flatMap(group => group.items.map(item => ({
+    ...item,
+    ytdCpb: item.ytd.booked ? item.ytd.spend / item.ytd.booked : Number.POSITIVE_INFINITY,
+  }))).sort((a, b) => a.ytdCpb - b.ytdCpb || b.ytd.leads - a.ytd.leads || a.introducer.localeCompare(b.introducer) || a.sid.localeCompare(b.sid, undefined, { numeric: true }))
+  const rankedSids = sidLeadPeriod === "all"
+    ? allRankedSids
+    : allRankedSids.filter(sid => Number(sid[sidLeadPeriod]?.leads || 0) > 0)
   const renderMetricCells = (stats, rowKey) => metrics.flatMap(metric => periodKeys.map((period, index) => {
     const value = getMetricValue(stats[period], metric.key)
     const isCostMetric = metric.key === "cpl" || metric.key === "cpb"
