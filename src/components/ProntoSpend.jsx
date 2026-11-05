@@ -206,28 +206,28 @@ export default function ProntoSpend() {
           {channels.map(channel => <span key={channel.key} style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#475569", fontSize: 11 }}><span style={{ width: 18, height: 3, borderRadius: 2, background: channel.color, display: "inline-block" }} />{channel.label.replace(" Performance", "")}</span>)}
         </div>
       </div>
-      <div style={{ overflowX: "auto" }}>
-      <table style={{ borderCollapse: "collapse", minWidth: 1250, width: "100%" }}>
+      <div style={{ overflow: "auto", maxHeight: 620, position: "relative" }}>
+      <table style={{ borderCollapse: "separate", borderSpacing: 0, minWidth: 1250, width: "100%" }}>
         <thead>
           <tr>
-            <th rowSpan={2} style={{ ...groupHead("#43b8c1"), textAlign: "left" }}>Week</th>
-            <th rowSpan={2} style={{ ...groupHead("#43b8c1"), textAlign: "center" }}>Dates</th>
-            <th colSpan={3} style={groupHead("#43b8c1")}>Overall Performance</th>
-            {channels.map(c => <th key={c.key} colSpan={3} style={groupHead(c.color)}>{c.label}</th>)}
+            <th rowSpan={2} style={{ ...groupHead("#43b8c1"), textAlign: "left", position: "sticky", top: 0, left: 0, zIndex: 6, minWidth: 58 }}>Week</th>
+            <th rowSpan={2} style={{ ...groupHead("#43b8c1"), textAlign: "center", position: "sticky", top: 0, zIndex: 5 }}>Dates</th>
+            <th colSpan={3} style={{ ...groupHead("#43b8c1"), position: "sticky", top: 0, zIndex: 4 }}>Overall Performance</th>
+            {channels.map(c => <th key={c.key} colSpan={3} style={{ ...groupHead(c.color), position: "sticky", top: 0, zIndex: 4 }}>{c.label}</th>)}
           </tr>
           <tr>
-            {["Total Spent","Leads Total","CPL"].map(x => <th key={x} style={subHead}>{x}</th>)}
+            {["Total Spent","Leads Total","CPL"].map(x => <th key={x} style={{ ...subHead, position: "sticky", top: 34, zIndex: 3 }}>{x}</th>)}
             {channels.map(c => <React.Fragment key={c.key}>{["Spend","Leads","CPL"].map(x => <th key={x} style={subHead}>{x}</th>)}</React.Fragment>)}
           </tr>
         </thead>
         <tbody>
           <tr style={{ background: "#e9edf2", fontWeight: 700 }}>
-            <td style={{ ...cell, textAlign: "left" }}>Totals</td><td style={cell}>—</td>
+            <td style={{ ...cell, textAlign: "left", position: "sticky", left: 0, zIndex: 2, background: "#e9edf2", fontWeight: 700 }}>Totals</td><td style={cell}>—</td>
             <td style={cell}>{money(report.totals.spend)}</td><td style={{ ...cell, textAlign: "center" }}>{whole(report.totals.leads)}</td><td style={cell}>{money(report.totals.leads ? report.totals.spend / report.totals.leads : 0)}</td>
             {channels.map(c => rowData(report.totals, c.key))}
           </tr>
           {report.weeks.map(week => <tr key={week.key}>
-            <td style={{ ...cell, textAlign: "center", fontWeight: 700 }}>{week.week}</td><td style={{ ...cell, textAlign: "center" }}>{dateRange(week)}</td>
+            <td style={{ ...cell, textAlign: "center", fontWeight: 700, position: "sticky", left: 0, zIndex: 1, background: "#fff" }}>{week.week}</td><td style={{ ...cell, textAlign: "center" }}>{dateRange(week)}</td>
             <td style={cell}>{money(week.spend)}</td><td style={{ ...cell, textAlign: "center" }}>{whole(week.leads)}</td><td style={cell}>{money(week.leads ? week.spend / week.leads : 0)}</td>
             {channels.map(c => rowData(week, c.key))}
           </tr>)}
