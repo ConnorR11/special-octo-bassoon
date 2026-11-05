@@ -27,8 +27,8 @@ function getPeriods() {
   }
 }
 
-function emptyStats(sid) {
-  return { sid, spend: 0, leads: 0, booked: 0 }
+function emptyStats(label) {
+  return { label, spend: 0, leads: 0, booked: 0 }
 }
 
 function ProntoWeeklyComparison() {
@@ -79,17 +79,17 @@ function ProntoWeeklyComparison() {
         leads.forEach(lead => {
           const received = new Date(lead.received_date_time)
           const sid = String(lead.pronto_SID || "").trim() || "(No SID)"
-          if (!grouped.has(sid)) {
-            grouped.set(sid, {
+          const introducer = String(lead.introducer || "").trim() || "(No introducer)"
+          const groupKey = introducer + "::" + sid
+          if (!grouped.has(groupKey)) {
+            grouped.set(groupKey, {
+              introducer,
               sid,
-              introducers: new Set(),
               fourWeeks: emptyStats(sid),
               lastWeek: emptyStats(sid),
             })
           }
-          const row = grouped.get(sid)
-          const introducer = String(lead.introducer || "").trim()
-          if (introducer) row.introducers.add(introducer)
+          const row = grouped.get(groupKey)
           const isBooked = bookedLeadIds.has(lead.marketing_row_id)
           const isLastWeek = received >= periods.lastWeek.start && received < periods.lastWeek.end
 
@@ -115,11 +115,38 @@ function ProntoWeeklyComparison() {
           }
         })
 
-        const sorted = [...grouped.values()].sort((a, b) => {
-          if (a.sid === "(No SID)") return 1
-          if (b.sid === "(No SID)") return -1
-          return a.sid.localeCompare(b.sid, undefined, { numeric: true })
-        })
+        const introducerGroups = new Map()
+        for (const row of grouped.values()) {
+          if (!introducerGroups.has(row.introducer)) {
+            introducerGroups.set(row.introducer, {
+              introducer: row.introducer,
+              items: [],
+              fourWeeks: emptyStats(row.introducer),
+              lastWeek: emptyStats(row.introducer),
+            })
+          }
+          const group = introducerGroups.get(row.introducer)
+          group.items.push(row)
+          ;["spend", "leads", "booked"].forEach(key => {
+            group.fourWeeks[key] += row.fourWeeks[key]
+            group.lastWeek[key] += row.lastWeek[key]
+          })
+        }
+
+        const sorted = [...introducerGroups.values()]
+          .sort((a, b) => {
+            if (a.introducer === "(No introducer)") return 1
+            if (b.introducer === "(No introducer)") return -1
+            return a.introducer.localeCompare(b.introducer)
+          })
+          .map(group => ({
+            ...group,
+            items: group.items.sort((a, b) => {
+              if (a.sid === "(No SID)") return 1
+              if (b.sid === "(No SID)") return -1
+              return a.sid.localeCompare(b.sid, undefined, { numeric: true })
+            }),
+          }))
         if (!cancelled) {
           setRows(sorted)
           setTotals(nextTotals)
@@ -185,38 +212,58 @@ function ProntoWeeklyComparison() {
             </tr>
           </thead>
           <tbody>
-            {rows.map(row => <tr key={row.sid}>
-              <td style={{ position: "sticky", left: 0, zIndex: 1, background: "#fff", padding: "9px 8px", borderBottom: "1px solid #edf1f5", whiteSpace: "nowrap" }}>{row.introducers.size ? [...row.introducers].sort().join(", ") : "—"}</td>
-              <td style={{ padding: "9px 8px", borderBottom: "1px solid #edf1f5", fontWeight: 600, whiteSpace: "nowrap" }}>{row.sid}</td>
-              {metrics.flatMap(metric => {
-                const fourWeeksValue = metric.format(getMetricValue(row.fourWeeks, metric.key), row.fourWeeks)
-                const lastWeekValue = metric.format(getMetricValue(row.lastWeek, metric.key), row.lastWeek)
-                const cells = [
-                  <td key={metric.key + "-four-weeks"} style={{ ...cellStyle, borderLeft: "1px solid #e2e8f0" }}>{fourWeeksValue}</td>,
-                  <td key={metric.key + "-last-week"} style={cellStyle}>{lastWeekValue}</td>,
-                ]
-                if (metric.key === "bookedRate") {
-                  const change = getMetricValue(row.lastWeek, "bookedRate") - getMetricValue(row.fourWeeks, "bookedRate")
-                  const changeColor = change > 0 ? "#15803d" : change < 0 ? "#dc2626" : "#64748b"
-                  cells.push(<td key="bookedRate-change" style={{ ...cellStyle, color: changeColor, fontWeight: 700, borderLeft: "1px solid #e2e8f0" }}>{change > 0 ? "+" : ""}{change.toFixed(1)} pp</td>)
-                }
-                return cells
-              })}
-            </tr>)}
-            <tr style={{ background: "#f8fafc" }}>
-              <td style={{ position: "sticky", left: 0, zIndex: 1, background: "#f8fafc", padding: "10px 8px", borderTop: "2px solid #cbd5e1", fontWeight: 700 }}>TOTAL</td>
-              <td style={{ padding: "10px 8px", borderTop: "2px solid #cbd5e1" }} />
+            {rows.flatMap(group => [
+              ...group.items.map(row => <tr key={group.introducer + "-" + row.sid}>
+                <td style={{ position: "sticky", left: 0, zIndex: 1, background: "#fff", padding: "9px 8px", borderBottom: "1px solid #edf1f5", whiteSpace: "nowrap" }}>{group.introducer}</td>
+                <td style={{ padding: "9px 8px", borderBottom: "1px solid #edf1f5", fontWeight: 600, whiteSpace: "nowrap" }}>{row.sid}</td>
+                {metrics.flatMap(metric => {
+                  const fourWeeksValue = metric.format(getMetricValue(row.fourWeeks, metric.key), row.fourWeeks)
+                  const lastWeekValue = metric.format(getMetricValue(row.lastWeek, metric.key), row.lastWeek)
+                  const cells = [
+                    <td key={metric.key + "-four-weeks"} style={{ ...cellStyle, borderLeft: "1px solid #e2e8f0" }}>{fourWeeksValue}</td>,
+                    <td key={metric.key + "-last-week"} style={cellStyle}>{lastWeekValue}</td>,
+                  ]
+                  if (metric.key === "bookedRate") {
+                    const change = getMetricValue(row.lastWeek, "bookedRate") - getMetricValue(row.fourWeeks, "bookedRate")
+                    const changeColor = change > 0 ? "#15803d" : change < 0 ? "#dc2626" : "#64748b"
+                    cells.push(<td key="bookedRate-change" style={{ ...cellStyle, color: changeColor, fontWeight: 700, borderLeft: "1px solid #e2e8f0" }}>{change > 0 ? "+" : ""}{change.toFixed(1)} pp</td>)
+                  }
+                  return cells
+                })}
+              </tr>),
+              <tr key={group.introducer + "-subtotal"} style={{ background: "#f1f5f9" }}>
+                <td style={{ position: "sticky", left: 0, zIndex: 1, background: "#f1f5f9", padding: "10px 8px", borderTop: "1px solid #cbd5e1", borderBottom: "2px solid #cbd5e1", fontWeight: 700, whiteSpace: "nowrap" }}>{group.introducer} TOTAL</td>
+                <td style={{ padding: "10px 8px", borderTop: "1px solid #cbd5e1", borderBottom: "2px solid #cbd5e1", fontWeight: 700 }}> </td>
+                {metrics.flatMap(metric => {
+                  const fourWeeksValue = metric.format(getMetricValue(group.fourWeeks, metric.key), group.fourWeeks)
+                  const lastWeekValue = metric.format(getMetricValue(group.lastWeek, metric.key), group.lastWeek)
+                  const cells = [
+                    <td key={metric.key + "-subtotal-four-weeks"} style={{ ...cellStyle, borderTop: "1px solid #cbd5e1", borderBottom: "2px solid #cbd5e1", borderLeft: "1px solid #e2e8f0", fontWeight: 700 }}>{fourWeeksValue}</td>,
+                    <td key={metric.key + "-subtotal-last-week"} style={{ ...cellStyle, borderTop: "1px solid #cbd5e1", borderBottom: "2px solid #cbd5e1", fontWeight: 700 }}>{lastWeekValue}</td>,
+                  ]
+                  if (metric.key === "bookedRate") {
+                    const change = getMetricValue(group.lastWeek, "bookedRate") - getMetricValue(group.fourWeeks, "bookedRate")
+                    const changeColor = change > 0 ? "#15803d" : change < 0 ? "#dc2626" : "#64748b"
+                    cells.push(<td key="bookedRate-subtotal-change" style={{ ...cellStyle, borderTop: "1px solid #cbd5e1", borderBottom: "2px solid #cbd5e1", borderLeft: "1px solid #e2e8f0", color: changeColor, fontWeight: 700 }}>{change > 0 ? "+" : ""}{change.toFixed(1)} pp</td>)
+                  }
+                  return cells
+                })}
+              </tr>
+            ])}
+            <tr style={{ background: "#e8eef6" }}>
+              <td style={{ position: "sticky", left: 0, zIndex: 1, background: "#e8eef6", padding: "10px 8px", borderTop: "2px solid #94a3b8", fontWeight: 700 }}>GRAND TOTAL</td>
+              <td style={{ padding: "10px 8px", borderTop: "2px solid #94a3b8" }} />
               {metrics.flatMap(metric => {
                 const fourWeeksValue = metric.format(getMetricValue(totals.fourWeeks, metric.key), totals.fourWeeks)
                 const lastWeekValue = metric.format(getMetricValue(totals.lastWeek, metric.key), totals.lastWeek)
                 const cells = [
-                  <td key={metric.key + "-total-four-weeks"} style={{ ...cellStyle, borderTop: "2px solid #cbd5e1", borderLeft: "1px solid #e2e8f0", fontWeight: 700 }}>{fourWeeksValue}</td>,
-                  <td key={metric.key + "-total-last-week"} style={{ ...cellStyle, borderTop: "2px solid #cbd5e1", fontWeight: 700 }}>{lastWeekValue}</td>,
+                  <td key={metric.key + "-total-four-weeks"} style={{ ...cellStyle, borderTop: "2px solid #94a3b8", borderLeft: "1px solid #e2e8f0", fontWeight: 700 }}>{fourWeeksValue}</td>,
+                  <td key={metric.key + "-total-last-week"} style={{ ...cellStyle, borderTop: "2px solid #94a3b8", fontWeight: 700 }}>{lastWeekValue}</td>,
                 ]
                 if (metric.key === "bookedRate") {
                   const change = getMetricValue(totals.lastWeek, "bookedRate") - getMetricValue(totals.fourWeeks, "bookedRate")
                   const changeColor = change > 0 ? "#15803d" : change < 0 ? "#dc2626" : "#64748b"
-                  cells.push(<td key="bookedRate-total-change" style={{ ...cellStyle, borderTop: "2px solid #cbd5e1", borderLeft: "1px solid #e2e8f0", color: changeColor, fontWeight: 700 }}>{change > 0 ? "+" : ""}{change.toFixed(1)} pp</td>)
+                  cells.push(<td key="bookedRate-total-change" style={{ ...cellStyle, borderTop: "2px solid #94a3b8", borderLeft: "1px solid #e2e8f0", color: changeColor, fontWeight: 700 }}>{change > 0 ? "+" : ""}{change.toFixed(1)} pp</td>)
                 }
                 return cells
               })}
