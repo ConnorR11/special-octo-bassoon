@@ -149,7 +149,7 @@ export default function ProntoSpend() {
             })}
             {report.weeks.map((week, i) => <g key={week.key}>
               <line x1={chart.x(i)} x2={chart.x(i)} y1={chart.top} y2={chart.height - chart.bottom} stroke="#f1f5f9" />
-              <text x={chart.x(i)} y={chart.height - 18} textAnchor="middle" fontSize="11" fill="#64748b">W{week.week}</text>
+              <text x={chart.x(i)} y={chart.height - 18} textAnchor="middle" fontSize="11" fill="#64748b">{week.week}</text>
             </g>)}
             {channels.map(channel => {
               const points = report.weeks.map((week, i) => {
