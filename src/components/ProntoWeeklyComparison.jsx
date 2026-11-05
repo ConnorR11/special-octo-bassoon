@@ -171,9 +171,9 @@ function ProntoWeeklyComparison() {
       <td key={rowKey + "-" + metric.key + "-" + period} style={{ ...cellStyle, borderLeft: period === "ytd" ? "1px solid #e2e8f0" : undefined, fontWeight: rowKey === "total" || rowKey.endsWith("summary") ? 700 : 500, color: rowKey.includes("sid") ? "#475569" : undefined }}>
         {metric.key === "bookedRate" ? (
           <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, whiteSpace: "nowrap" }}>
-            <span>{metric.format(value, stats[period])}</span>
-            {change !== null && <span style={{ color: changeColor, fontSize: 9, fontWeight: 700 }}>
-              {change > 0.05 ? "↑" : change < -0.05 ? "↓" : "→"} {change > 0 ? "+" : ""}{change.toFixed(1)}pp
+            <span style={{ color: change === null ? undefined : changeColor, fontWeight: 700 }}>{metric.format(value, stats[period])}</span>
+            {change !== null && <span style={{ color: changeColor, fontSize: 11, fontWeight: 700 }}>
+              {change > 0.05 ? "↑" : change < -0.05 ? "↓" : "→"}
             </span>}
           </span>
         ) : metric.format(value, stats[period])}
