@@ -25,7 +25,6 @@ function ProntoWeeklyComparison() {
   const [totals, setTotals] = useState({ ytd: emptyStats("TOTAL"), fourWeeks: emptyStats("TOTAL"), lastWeek: emptyStats("TOTAL") })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  const [expandedIntroducers, setExpandedIntroducers] = useState({})
   const periods = useMemo(getPeriods, [])
 
   useEffect(() => {
@@ -210,24 +209,18 @@ function ProntoWeeklyComparison() {
             </tr>
           </thead>
           <tbody>
-            {rows.flatMap(group => {
-              const expanded = Boolean(expandedIntroducers[group.introducer])
-              const summaryRow = <tr key={group.introducer + "-summary"} style={{ background: "#f8fafc" }}>
+            {rows.flatMap(group => [
+              <tr key={group.introducer + "-summary"} style={{ background: "#f8fafc" }}>
                 <td style={{ position: "sticky", left: 0, zIndex: 1, background: "#f8fafc", padding: "10px 8px", borderBottom: "1px solid #dbe3ed", fontWeight: 700, whiteSpace: "nowrap" }}>{group.introducer}</td>
-                <td style={{ padding: "8px", borderBottom: "1px solid #dbe3ed", whiteSpace: "nowrap" }}>
-                  <button type="button" onClick={() => setExpandedIntroducers(current => ({ ...current, [group.introducer]: !current[group.introducer] }))} aria-expanded={expanded} style={{ border: 0, background: "transparent", color: "#2563eb", cursor: "pointer", padding: 0, font: "inherit", fontWeight: 600 }}>
-                    {expanded ? "▾" : "▸"} {group.items.length} {group.items.length === 1 ? "SID" : "SIDs"}
-                  </button>
-                </td>
+                <td style={{ padding: "8px", borderBottom: "1px solid #dbe3ed", whiteSpace: "nowrap", color: "#64748b", fontWeight: 600 }}>ALL SIDs</td>
                 {renderMetricCells(group, group.introducer + "-summary")}
-              </tr>
-              const sidRows = expanded ? group.items.map(row => <tr key={group.introducer + "-" + row.sid}>
+              </tr>,
+              ...group.items.map(row => <tr key={group.introducer + "-" + row.sid}>
                 <td style={{ position: "sticky", left: 0, zIndex: 1, background: "#fff", padding: "8px", borderBottom: "1px solid #edf1f5", color: "#64748b" }} />
                 <td style={{ padding: "8px 8px 8px 20px", borderBottom: "1px solid #edf1f5", fontWeight: 600, whiteSpace: "nowrap" }}>{row.sid}</td>
                 {renderMetricCells(row, "sid-" + group.introducer + "-" + row.sid)}
-              </tr>) : []
-              return [summaryRow, ...sidRows]
-            })}
+              </tr>)
+            ])}
             <tr style={{ background: "#e8eef6" }}>
               <td colSpan={2} style={{ position: "sticky", left: 0, zIndex: 1, background: "#e8eef6", padding: "10px 8px", borderTop: "2px solid #94a3b8", fontWeight: 700 }}>TOTAL</td>
               {renderMetricCells(totals, "total")}
