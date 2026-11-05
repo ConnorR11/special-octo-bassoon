@@ -160,6 +160,12 @@ function ProntoWeeklyComparison() {
   const headerStyle = { padding: "8px 7px", textAlign: "center", borderBottom: "1px solid #dbe3ed", color: "#64748b", fontWeight: 600, whiteSpace: "nowrap" }
   const periodKeys = ["ytd", "fourWeeks", "lastWeek"]
   const periodLabels = { ytd: "YTD", fourWeeks: "L4W", lastWeek: "LW" }
+  const rankedSids = rows.flatMap(group => group.items.map(item => ({
+    ...item,
+    ytdRate: getMetricValue(item.ytd, "bookedRate"),
+    fourWeeksRate: getMetricValue(item.fourWeeks, "bookedRate"),
+    lastWeekRate: getMetricValue(item.lastWeek, "bookedRate"),
+  }))).sort((a, b) => b.ytdRate - a.ytdRate || b.ytd.leads - a.ytd.leads || a.introducer.localeCompare(b.introducer) || a.sid.localeCompare(b.sid, undefined, { numeric: true }))
   const renderMetricCells = (stats, rowKey) => metrics.flatMap(metric => periodKeys.map((period, index) => {
     const value = getMetricValue(stats[period], metric.key)
     const previousPeriod = index === 1 ? "ytd" : index === 2 ? "fourWeeks" : null
@@ -228,6 +234,34 @@ function ProntoWeeklyComparison() {
             </tr>
           </tbody>
         </table>
+      </div>
+      <div style={{ marginTop: 24 }}>
+        <h3 style={{ margin: "0 0 8px", fontSize: 15, color: "#172033" }}>SID booking rate ranking</h3>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 520 }}>
+            <thead>
+              <tr>
+                <th style={{ ...headerStyle, textAlign: "left" }}>Introducer</th>
+                <th style={{ ...headerStyle, textAlign: "left" }}>SID</th>
+                <th style={{ ...headerStyle, borderLeft: "1px solid #e2e8f0" }}>YTD Booking %</th>
+                <th style={headerStyle}>L4W Booking %</th>
+                <th style={headerStyle}>LW Booking %</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rankedSids.map((sid, index) => (
+                <tr key={sid.introducer + "-rank-" + sid.sid} style={{ background: index % 2 === 0 ? "#fff" : "#f8fafc" }}>
+                  <td style={{ ...cellStyle, textAlign: "left", fontWeight: 600 }}>{sid.introducer}</td>
+                  <td style={{ ...cellStyle, textAlign: "left" }}>{sid.sid}</td>
+                  <td style={{ ...cellStyle, borderLeft: "1px solid #e2e8f0", fontWeight: 700, color: "#172033" }}>{sid.ytdRate.toFixed(1)}%</td>
+                  <td style={cellStyle}>{sid.fourWeeksRate.toFixed(1)}%</td>
+                  <td style={cellStyle}>{sid.lastWeekRate.toFixed(1)}%</td>
+                </tr>
+              ))}
+              {rankedSids.length === 0 && <tr><td colSpan={5} style={{ ...cellStyle, color: "#64748b" }}>No SID data available for these periods.</td></tr>}
+            </tbody>
+          </table>
+        </div>
       </div>
       <p style={{ margin: "10px 0 0", color: "#94a3b8", fontSize: 10 }}>Booked counts each lead once when it has at least one linked appointment with a non-empty appointment date. Booked % = booked leads divided by leads received. YTD and weekly periods are based on lead received date and exclude the current incomplete week.</p>
     </>}
