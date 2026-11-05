@@ -142,7 +142,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={ClipboardCheck} label="Fit Sheet" active={isActive("fitsheet")} onClick={() => navigate("fitsheet")}/>
             <NavItem icon={KanbanSquare} label="Kanban" active={isActive("installations")} onClick={() => navigate("installations")}/>
             <NavItem icon={AlertTriangle} label="Installation Issues" disabled/>
-            {isAdministrator && <NavItem icon={Link2} label="EPVS Applications" active={isActive("epvs-applications")} onClick={() => navigate("epvs-applications")}/>}
+            {canSeeFolder("installation") && <NavItem icon={Link2} label="EPVS Applications" active={isActive("epvs-applications")} onClick={() => navigate("epvs-applications")}/>}
           </Folder>
 
           <Folder visible={canSeeFolder("customerService")} title="Remedials" icon={Headphones} open={openFolders.customerService} onClick={() => toggleFolder("customerService")}>
