@@ -160,11 +160,26 @@ function ProntoWeeklyComparison() {
   const headerStyle = { padding: "8px 7px", textAlign: "center", borderBottom: "1px solid #dbe3ed", color: "#64748b", fontWeight: 600, whiteSpace: "nowrap" }
   const periodKeys = ["ytd", "fourWeeks", "lastWeek"]
   const periodLabels = { ytd: "YTD", fourWeeks: "L4W", lastWeek: "LW" }
-  const renderMetricCells = (stats, rowKey) => metrics.flatMap(metric => periodKeys.map(period => (
-    <td key={rowKey + "-" + metric.key + "-" + period} style={{ ...cellStyle, borderLeft: period === "ytd" ? "1px solid #e2e8f0" : undefined, fontWeight: rowKey === "total" || rowKey.endsWith("summary") ? 700 : 500, color: rowKey.includes("sid") ? "#475569" : undefined }}>
-      {metric.format(getMetricValue(stats[period], metric.key), stats[period])}
-    </td>
-  )))
+  const renderMetricCells = (stats, rowKey) => metrics.flatMap(metric => periodKeys.map((period, index) => {
+    const value = getMetricValue(stats[period], metric.key)
+    const previousPeriod = index === 1 ? "ytd" : index === 2 ? "fourWeeks" : null
+    const change = metric.key === "bookedRate" && previousPeriod
+      ? value - getMetricValue(stats[previousPeriod], metric.key)
+      : null
+    const changeColor = change > 0.05 ? "#15803d" : change < -0.05 ? "#dc2626" : "#64748b"
+    return (
+      <td key={rowKey + "-" + metric.key + "-" + period} style={{ ...cellStyle, borderLeft: period === "ytd" ? "1px solid #e2e8f0" : undefined, fontWeight: rowKey === "total" || rowKey.endsWith("summary") ? 700 : 500, color: rowKey.includes("sid") ? "#475569" : undefined }}>
+        {metric.key === "bookedRate" ? (
+          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, whiteSpace: "nowrap" }}>
+            <span>{metric.format(value, stats[period])}</span>
+            {change !== null && <span style={{ color: changeColor, fontSize: 9, fontWeight: 700 }}>
+              {change > 0.05 ? "↑" : change < -0.05 ? "↓" : "→"} {change > 0 ? "+" : ""}{change.toFixed(1)}pp
+            </span>}
+          </span>
+        ) : metric.format(value, stats[period])}
+      </td>
+    )
+  }))
   return <section style={{ background: "#fff", border: "1px solid #dbe3ed", borderRadius: 12, padding: 18, marginBottom: 22 }}>
     <div>
       <h2 style={{ margin: 0, fontSize: 18, color: "#172033" }}>Pronto SID performance comparison</h2>
