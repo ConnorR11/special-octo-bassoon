@@ -154,6 +154,14 @@ function ProntoWeeklyComparison() {
   const rankedSids = sidLeadPeriod === "all"
     ? allRankedSids
     : allRankedSids.filter(sid => Number(sid[sidLeadPeriod]?.leads || 0) > 0)
+  const rankedSidTotals = rankedSids.reduce((aggregate, sid) => {
+    periodKeys.forEach(period => {
+      aggregate[period].spend += Number(sid[period]?.spend || 0)
+      aggregate[period].leads += Number(sid[period]?.leads || 0)
+      aggregate[period].booked += Number(sid[period]?.booked || 0)
+    })
+    return aggregate
+  }, { ytd: emptyStats("TOTAL"), fourWeeks: emptyStats("TOTAL"), lastWeek: emptyStats("TOTAL") })
   const renderMetricCells = (stats, rowKey) => metrics.flatMap(metric => periodKeys.map((period, index) => {
     const value = getMetricValue(stats[period], metric.key)
     const isCostMetric = metric.key === "cpl" || metric.key === "cpb"
@@ -248,6 +256,12 @@ function ProntoWeeklyComparison() {
                   {renderMetricCells(sid, "rank-sid-" + sid.introducer + "-" + sid.sid)}
                 </tr>
               ))}
+              {rankedSids.length > 0 && (
+                <tr style={{ background: "#e8eef6" }}>
+                  <td colSpan={2} style={{ position: "sticky", left: 0, zIndex: 1, background: "#e8eef6", padding: "10px 8px", borderTop: "2px solid #94a3b8", fontWeight: 700 }}>TOTAL ({rankedSids.length} SIDs)</td>
+                  {renderMetricCells(rankedSidTotals, "total")}
+                </tr>
+              )}
               {rankedSids.length === 0 && <tr><td colSpan={20} style={{ ...cellStyle, color: "#64748b" }}>No SID data available for these periods.</td></tr>}
             </tbody>
           </table>
