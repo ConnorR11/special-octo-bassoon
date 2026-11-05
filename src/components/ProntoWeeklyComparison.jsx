@@ -37,7 +37,7 @@ function ProntoWeeklyComparison() {
         let offset = 0
         while (true) {
           const { data: batch, error: leadError } = await supabase.from("leads")
-            .select("marketing_row_id,pronto_SID,introducer,received_date_time,lead_cost")
+            .select("marketing_row_id,pronto_SID,introducer,received_date_time,lead_cost,appointment_date_time")
             .eq("lead_source", "Pronto Windows")
             .gte("received_date_time", periods.ytd.start.toISOString())
             .lt("received_date_time", periods.fourWeeks.end.toISOString())
@@ -49,19 +49,6 @@ function ProntoWeeklyComparison() {
           offset += 1000
         }
 
-        const ids = [...new Set(leads.map(row => row.marketing_row_id).filter(Boolean))]
-        const appointments = []
-        for (let i = 0; i < ids.length; i += 400) {
-          const { data: batch, error: appointmentError } = await supabase.from("appointments")
-            .select("marketing_row_id,appointment_date")
-            .in("marketing_row_id", ids.slice(i, i + 400))
-          if (appointmentError) throw appointmentError
-          appointments.push(...(batch || []))
-        }
-
-        const bookedLeadIds = new Set(
-          appointments.filter(appointment => appointment.appointment_date !== null && appointment.appointment_date !== "").map(appointment => appointment.marketing_row_id)
-        )
         const grouped = new Map()
         const nextTotals = { ytd: emptyStats("TOTAL"), fourWeeks: emptyStats("TOTAL"), lastWeek: emptyStats("TOTAL") }
 
@@ -80,7 +67,7 @@ function ProntoWeeklyComparison() {
             })
           }
           const row = grouped.get(groupKey)
-          const isBooked = bookedLeadIds.has(lead.marketing_row_id)
+          const isBooked = Boolean(String(lead.appointment_date_time || "").trim())
           const spend = Number(lead.lead_cost || 0)
           const inPeriod = key => received >= periods[key].start && received < periods[key].end
           ;["ytd", "fourWeeks", "lastWeek"].forEach(key => {
