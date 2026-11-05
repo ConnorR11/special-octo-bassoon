@@ -25,6 +25,7 @@ function ProntoWeeklyComparison() {
   const [totals, setTotals] = useState({ ytd: emptyStats("TOTAL"), fourWeeks: emptyStats("TOTAL"), lastWeek: emptyStats("TOTAL") })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [onlySidsWithLeads, setOnlySidsWithLeads] = useState(false)
   const periods = useMemo(getPeriods, [])
 
   useEffect(() => {
@@ -146,10 +147,7 @@ function ProntoWeeklyComparison() {
   const headerStyle = { padding: "8px 7px", textAlign: "center", borderBottom: "1px solid #dbe3ed", color: "#64748b", fontWeight: 600, whiteSpace: "nowrap" }
   const periodKeys = ["ytd", "fourWeeks", "lastWeek"]
   const periodLabels = { ytd: "YTD", fourWeeks: "L4W", lastWeek: "LW" }
-  const rankedSids = rows.flatMap(group => group.items.map(item => ({
-    ...item,
-    ytdCpb: item.ytd.booked ? item.ytd.spend / item.ytd.booked : Number.POSITIVE_INFINITY,
-  }))).sort((a, b) => a.ytdCpb - b.ytdCpb || b.ytd.leads - a.ytd.leads || a.introducer.localeCompare(b.introducer) || a.sid.localeCompare(b.sid, undefined, { numeric: true }))
+  const allRankedSids = rows.flatMap(group => group.items.map(item => ({\n    ...item,\n    ytdCpb: item.ytd.booked ? item.ytd.spend / item.ytd.booked : Number.POSITIVE_INFINITY,\n  }))).sort((a, b) => a.ytdCpb - b.ytdCpb || b.ytd.leads - a.ytd.leads || a.introducer.localeCompare(b.introducer) || a.sid.localeCompare(b.sid, undefined, { numeric: true }))\n  const rankedSids = onlySidsWithLeads\n    ? allRankedSids.filter(sid => sid.ytd.leads > 0 || sid.fourWeeks.leads > 0 || sid.lastWeek.leads > 0)\n    : allRankedSids
   const renderMetricCells = (stats, rowKey) => metrics.flatMap(metric => periodKeys.map((period, index) => {
     const value = getMetricValue(stats[period], metric.key)
     const isCostMetric = metric.key === "cpl" || metric.key === "cpb"
@@ -216,7 +214,7 @@ function ProntoWeeklyComparison() {
         </table>
       </div>
       <div style={{ marginTop: 24 }}>
-        <h3 style={{ margin: "0 0 8px", fontSize: 15, color: "#172033" }}>SID performance ranking</h3>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>\n          <h3 style={{ margin: 0, fontSize: 15, color: "#172033" }}>SID performance ranking</h3>\n          <button type="button" role="switch" aria-checked={onlySidsWithLeads} onClick={() => setOnlySidsWithLeads(value => !value)} style={{ display: "inline-flex", alignItems: "center", gap: 8, border: 0, background: "transparent", color: "#334155", fontSize: 11, fontWeight: 600, cursor: "pointer", padding: "4px 0" }}>\n            <span>Only SIDs with leads (YTD / L4W / LW)</span>\n            <span aria-hidden="true" style={{ width: 30, height: 17, borderRadius: 999, background: onlySidsWithLeads ? "#2563eb" : "#cbd5e1", display: "inline-flex", alignItems: "center", padding: 2, boxSizing: "border-box", transition: "background 150ms" }}>\n              <span style={{ width: 13, height: 13, borderRadius: "50%", background: "#fff", transform: onlySidsWithLeads ? "translateX(13px)" : "translateX(0)", transition: "transform 150ms" }} />\n            </span>\n          </button>\n        </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 1050 }}>
             <thead>
