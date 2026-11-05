@@ -140,8 +140,13 @@ export default function LeadExport() {
         <thead><tr style={{ background: "#f5f8fa", color: "#536575", textAlign: "left" }}>{columns.map(([label]) => <th key={label} style={{ padding: "13px 12px", borderBottom: "1px solid #e3e9ee", whiteSpace: "nowrap" }}>{label}</th>)}</tr></thead>
         <tbody>{loading ? <tr><td colSpan={columns.length} style={{ padding: 30, textAlign: "center" }}>Loading leads...</td></tr> : leads.length === 0 ? <tr><td colSpan={columns.length} style={{ padding: 30, textAlign: "center" }}>No leads found for this filter.</td></tr> : leads.map((row, index) => <tr key={row.received_date_time + "-" + index} style={{ borderBottom: "1px solid #edf1f4" }}>
           {columns.map(([label, getter]) => {
-            const value = label === "Received Date" || label === "Received date" ? formatDate(row.received_date_time) : getter(row)
-            return <td key={label} style={{ padding: "11px 12px", fontWeight: label === "Email" ? 600 : 400, whiteSpace: label === "Marketing note" || label === "Marketing Note" || label === "Appointment results" || label === "Related Appointment Results" ? "pre-wrap" : "nowrap" }}>{value === "" || value == null ? "—" : value}</td>
+            const rawValue = getter(row)
+            const isDate = label === "Received Date" || label === "Received date"
+            const isMoney = label === "Deal net value"
+            const value = isDate ? formatDate(row.received_date_time) : isMoney && rawValue !== "" && rawValue != null
+              ? "£" + Number(rawValue).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+              : rawValue
+            return <td key={label} style={{ padding: "11px 12px", fontWeight: label === "Email" || isMoney ? 600 : 400, whiteSpace: label === "Marketing note" || label === "Marketing Note" || label === "Appointment results" || label === "Related Appointment Results" ? "pre-wrap" : "nowrap" }}>{value === "" || value == null ? "—" : value}</td>
           })}
         </tr>)}</tbody>
       </table></div>
