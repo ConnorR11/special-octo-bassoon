@@ -28,7 +28,7 @@ function getPeriods() {
 }
 
 function emptyStats(sid) {
-  return { sid, leads: 0, booked: 0 }
+  return { sid, spend: 0, leads: 0, booked: 0 }
 }
 
 function ProntoWeeklyComparison() {
@@ -48,7 +48,7 @@ function ProntoWeeklyComparison() {
         let offset = 0
         while (true) {
           const { data: batch, error: leadError } = await supabase.from("leads")
-            .select("marketing_row_id,pronto_SID,received_date_time")
+            .select("marketing_row_id,pronto_SID,received_date_time,lead_cost")
             .eq("lead_source", "Pronto Windows")
             .gte("received_date_time", periods.fourWeeks.start.toISOString())
             .lt("received_date_time", periods.fourWeeks.end.toISOString())
@@ -90,6 +90,9 @@ function ProntoWeeklyComparison() {
           const isBooked = bookedLeadIds.has(lead.marketing_row_id)
           const isLastWeek = received >= periods.lastWeek.start && received < periods.lastWeek.end
 
+          const spend = Number(lead.lead_cost || 0)
+          row.fourWeeks.spend += spend
+          nextTotals.fourWeeks.spend += spend
           row.fourWeeks.leads += 1
           nextTotals.fourWeeks.leads += 1
           if (isBooked) {
@@ -98,6 +101,8 @@ function ProntoWeeklyComparison() {
           }
 
           if (isLastWeek) {
+            row.lastWeek.spend += spend
+            nextTotals.lastWeek.spend += spend
             row.lastWeek.leads += 1
             nextTotals.lastWeek.leads += 1
             if (isBooked) {
@@ -127,14 +132,19 @@ function ProntoWeeklyComparison() {
   }, [periods])
 
   const metrics = [
-    { label: "Leads", key: "leads", format: number, change: "count" },
-    { label: "Booked (CPS P)", key: "booked", format: number, change: "count" },
-    { label: "Booked %", key: "bookedRate", format: (value, stats) => percentage(stats.booked, stats.leads), change: "pp" },
+    { label: "Spend", key: "spend", format: money },
+    { label: "Leads", key: "leads", format: number },
+    { label: "Booked", key: "booked", format: number },
+    { label: "CPL", key: "cpl", format: money },
+    { label: "CPB", key: "cpb", format: money },
   ]
 
-  const getMetricValue = (stats, key) => key === "bookedRate"
-    ? (stats.leads ? stats.booked / stats.leads * 100 : 0)
-    : Number(stats[key] || 0)
+  const money = value => new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0))
+  const getMetricValue = (stats, key) => {
+    if (key === "cpl") return stats.leads ? stats.spend / stats.leads : 0
+    if (key === "cpb") return stats.booked ? stats.spend / stats.booked : 0
+    return Number(stats[key] || 0)
+  }
 
   const cellStyle = { padding: "9px 8px", textAlign: "right", borderBottom: "1px solid #edf1f5", whiteSpace: "nowrap" }
   const headerStyle = { padding: "8px 7px", textAlign: "right", borderBottom: "1px solid #dbe3ed", color: "#64748b", fontWeight: 600, whiteSpace: "nowrap" }
@@ -142,7 +152,7 @@ function ProntoWeeklyComparison() {
   return <section style={{ background: "#fff", border: "1px solid #dbe3ed", borderRadius: 12, padding: 18, marginBottom: 22 }}>
     <div>
       <h2 style={{ margin: 0, fontSize: 18, color: "#172033" }}>Pronto SID performance comparison</h2>
-      <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12 }}>SID-level leads and booked performance for the last four complete weeks, with last week's figures shown alongside.</p>
+      <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12 }}>SID-level spend, leads, booked leads, CPL and CPB for the last four complete weeks versus last week.</p>
     </div>
     {loading ? <p style={{ color: "#64748b", fontSize: 13 }}>Loading SID comparison…</p> : error ? <p style={{ color: "#b91c1c", fontSize: 13 }}>{error}</p> : <>
       <div style={{ display: "flex", gap: 18, flexWrap: "wrap", margin: "14px 0 10px", fontSize: 11 }}>
