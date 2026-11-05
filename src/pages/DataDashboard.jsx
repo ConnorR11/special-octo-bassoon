@@ -1536,6 +1536,10 @@ function DataDashboard({ standalonePronto = false }) {
           </div>}
           {(!standalonePronto || prontoSectionTab === "four-weeks") && <>
             {standalonePronto && <ProntoWeeklyComparison />}
+
+          </>}
+
+          {(!standalonePronto || prontoSectionTab === "drilldown") && <>
           <div style={{ marginTop: 24, background: "#fff", border: "1px solid #dbe3ed", borderRadius: 12, padding: 16, minWidth: 0 }}>
             <div className="data-dashboard-chart-title">Monthly lead volume and booking rate by introducer</div>
             <div className="data-dashboard-chart-subtitle">Bars show leads received (left axis); lines show booking rate (right axis).</div>
@@ -1570,9 +1574,6 @@ function DataDashboard({ standalonePronto = false }) {
               </ComposedChart>
             </ResponsiveContainer>}
           </div>
-          </>}
-
-          {(!standalonePronto || prontoSectionTab === "drilldown") && <>
           <div className="pronto-toolbar">
             <div>
               <div className="data-dashboard-chart-title">Pronto Introducer Lead Counts</div>
