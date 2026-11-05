@@ -170,9 +170,14 @@ function ProntoWeeklyComparison() {
               {metrics.map(metric => <th key={metric.key} colSpan={metric.key === "bookedRate" ? 3 : 2} style={{ textAlign: "center", padding: "8px 4px", borderBottom: "1px solid #dbe3ed", borderLeft: "1px solid #e2e8f0", color: "#334155", whiteSpace: "nowrap" }}>{metric.label}</th>)}
             </tr>
             <tr>
-              {metrics.flatMap(metric => ["Last 4 weeks", "Last week"].map((heading, index) =>
-                <th key={metric.key + heading} style={{ ...headerStyle, borderLeft: index === 0 ? "1px solid #e2e8f0" : undefined }}>{heading}</th>
-              ))}
+              {metrics.flatMap(metric => {
+                const headings = metric.key === "bookedRate"
+                  ? ["Last 4 weeks", "Last week", "Change"]
+                  : ["Last 4 weeks", "Last week"]
+                return headings.map((heading, index) =>
+                  <th key={metric.key + heading} style={{ ...headerStyle, borderLeft: index === 0 || heading === "Change" ? "1px solid #e2e8f0" : undefined }}>{heading}</th>
+                )
+              })}
             </tr>
           </thead>
           <tbody>
