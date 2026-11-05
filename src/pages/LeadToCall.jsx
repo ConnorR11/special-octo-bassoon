@@ -113,7 +113,9 @@ export default function LeadToCall() {
       return !term || [nameOf(lead), lead.postcode, lead.primary_phone_number, lead.secondary_phone_number, lead.lead_source].some(v => String(v || "").toLowerCase().includes(term))
     })
     return prepared.sort((a, b) => a.priority - b.priority ||
-      (a.priority === 0 ? a.callbackAt - b.callbackAt : a.priority === 1 ? new Date(b.received_date_time || 0) - new Date(a.received_date_time || 0) : (a.lastCallAt || 0) - (b.lastCallAt || 0)))
+      (a.priority === 0 ? a.callbackAt - b.callbackAt :
+        a.priority === 1 || a.priority === 3 ? new Date(b.received_date_time || 0) - new Date(a.received_date_time || 0) :
+        (a.lastCallAt || 0) - (b.lastCallAt || 0)))
   }, [leads, search])
 
   const counts = useMemo(() => ({
