@@ -143,25 +143,56 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
   return (
     <section style={styles.page}>
       <style>{`
-        .outstanding-surveys-table-wrap{overflow:auto}
+        .outstanding-surveys-table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
         .outstanding-surveys-table{width:100%;border-collapse:collapse;min-width:850px}
         .outstanding-surveys-table tbody tr:hover{background:#f0f7ff}
         .outstanding-surveys-table tbody tr[data-clickable="true"]{cursor:pointer}
         .outstanding-surveys-table tbody tr[data-clickable="true"]:focus{outline:2px solid #1684c7;outline-offset:-2px}
         .outstanding-surveys-open{border:0;background:transparent;color:#0877bd;font-size:11px;font-weight:750;display:inline-flex;align-items:center;gap:5px;cursor:pointer;padding:5px}
-        @media(max-width:700px){.outstanding-surveys-page{padding:16px 10px!important}}
+        @media(max-width:700px){
+          .outstanding-surveys-page{padding:12px 0!important;width:100%;max-width:100%;min-width:0}
+          .outstanding-surveys-page > div{width:100%;max-width:100%;min-width:0}
+          .outstanding-surveys-page > div > div{border-radius:10px}
+          .outstanding-surveys-toolbar{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:12px!important;padding:14px!important}
+          .outstanding-surveys-toolbar-title{white-space:normal!important;font-size:13px!important}
+          .outstanding-surveys-toolbar-controls{width:100%;margin-left:0!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto;gap:8px!important}
+          .outstanding-surveys-search{grid-column:1 / -1;width:100%;max-width:none!important}
+          .outstanding-surveys-search input{width:100%!important;max-width:none!important;box-sizing:border-box}
+          .outstanding-surveys-updated{grid-column:1;align-self:center}
+          .outstanding-surveys-refresh{grid-column:2;grid-row:2;justify-self:end}
+          .outstanding-surveys-table-wrap{overflow:visible}
+          .outstanding-surveys-table{width:100%;min-width:0;display:block}
+          .outstanding-surveys-table thead{display:none}
+          .outstanding-surveys-table tbody{display:block;width:100%}
+          .outstanding-surveys-table tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 12px;padding:12px 14px;border-bottom:1px solid #e8edf2;background:#fff}
+          .outstanding-surveys-table tbody tr:hover{background:#fff}
+          .outstanding-surveys-table tbody td{display:block;min-width:0;padding:5px 0;border:0;font-size:12px;overflow-wrap:anywhere}
+          .outstanding-surveys-table tbody td:first-child{grid-column:1;grid-row:1}
+          .outstanding-surveys-table tbody td:nth-child(2){grid-column:2;grid-row:1;align-self:center;text-align:right;white-space:nowrap}
+          .outstanding-surveys-table tbody td:nth-child(n+3){grid-column:1 / -1;display:grid;grid-template-columns: minmax(105px, 34%) minmax(0,1fr);gap:8px;align-items:center}
+          .outstanding-surveys-table tbody td:nth-child(n+3)::before{content:attr(data-label);color:#8492a3;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+          .outstanding-surveys-table tbody td:last-child{padding-top:8px}
+          .outstanding-surveys-table tbody td[colspan]{display:block;grid-column:1 / -1}
+          .outstanding-surveys-pagination{padding:12px 14px!important}
+          .outstanding-surveys-pagination button{min-height:38px}
+        }
+        @media(max-width:380px){
+          .outstanding-surveys-table tbody tr{padding:11px 10px;column-gap:8px}
+          .outstanding-surveys-table tbody td:nth-child(2){font-size:11px}
+          .outstanding-surveys-table tbody td:nth-child(n+3){grid-template-columns:95px minmax(0,1fr)}
+        }
       `}</style>
       <div className="outstanding-surveys-page" style={styles.container}>
         <div style={styles.panel}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: 16, flexWrap: "wrap", borderBottom: "1px solid #e8edf2" }}>
-            <div style={{ fontSize: 12, fontWeight: 750, color: "#334155", whiteSpace: "nowrap" }}>Outstanding surveys <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 22, height: 22, padding: "0 6px", marginLeft: 5, boxSizing: "border-box", borderRadius: 999, background: "#e8eef4", color: "#17364b", fontSize: 11 }}>{loading ? "…" : `${rows.length.toLocaleString("en-GB")} on this page`}</span></div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginLeft: "auto" }}>
-              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+          <div className="outstanding-surveys-toolbar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: 16, flexWrap: "wrap", borderBottom: "1px solid #e8edf2" }}>
+            <div className="outstanding-surveys-toolbar-title" style={{ fontSize: 12, fontWeight: 750, color: "#334155", whiteSpace: "nowrap" }}>Outstanding surveys <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 22, height: 22, padding: "0 6px", marginLeft: 5, boxSizing: "border-box", borderRadius: 999, background: "#e8eef4", color: "#17364b", fontSize: 11 }}>{loading ? "…" : `${rows.length.toLocaleString("en-GB")} on this page`}</span></div>
+            <div className="outstanding-surveys-toolbar-controls" style={{ display: "flex", alignItems: "center", gap: 12, marginLeft: "auto" }}>
+              <div className="outstanding-surveys-search" style={{ position: "relative", display: "flex", alignItems: "center" }}>
               <Search size={15} style={{ position: "absolute", left: 11, color: "#94a3b8" }}/>
               <input aria-label="Search outstanding surveys" placeholder="Search customer, contract, postcode…" value={search} onChange={e => changeSearch(e.target.value)} style={{ ...styles.input, paddingLeft: 34, width: 310, maxWidth: "75vw" }}/>
               </div>
-              <span style={{ color: "#94a3b8", fontSize: 10, whiteSpace: "nowrap" }}>{lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : ""}</span>
-              <button type="button" style={styles.button} onClick={() => load(page, search)} disabled={loading}><RefreshCw size={14}/>{loading ? "Refreshing…" : "Refresh list"}</button>
+              <span className="outstanding-surveys-updated" style={{ color: "#94a3b8", fontSize: 10, whiteSpace: "nowrap" }}>{lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : ""}</span>
+              <button className="outstanding-surveys-refresh" type="button" style={styles.button} onClick={() => load(page, search)} disabled={loading}><RefreshCw size={14}/>{loading ? "Refreshing…" : "Refresh list"}</button>
             </div>
           </div>
           {error && <div style={{ margin: 16, padding: 12, borderRadius: 8, background: "#fff1f0", color: "#a12b23", fontSize: 12, display: "flex", gap: 8, alignItems: "center" }}><AlertCircle size={16}/>{error}</div>}
@@ -176,9 +207,9 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
                 {!loading && filteredRows.map(deal => <tr key={deal.id} data-clickable={onSelectDeal ? "true" : "false"} onClick={() => onSelectDeal?.(deal)} onKeyDown={e => { if (onSelectDeal && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onSelectDeal(deal) } }} tabIndex={onSelectDeal ? 0 : undefined} role={onSelectDeal ? "button" : undefined}>
                   <td style={styles.td}><div style={{ fontWeight: 750, color: "#1e293b" }}>{deal.customer_name || "Unnamed customer"}</div><div style={{ color: "#94a3b8", fontSize: 10, marginTop: 4 }}>{deal.contract_number || deal.linked_contract_number || "No contract number"}</div></td>
                   <td style={styles.td}>{deal.postcode || "—"}</td>
-                  <td style={styles.td}>{getPipedriveStage(deal) || "—"}</td>
-                  <td style={styles.td}>{formatDate(deal.sale_date)}</td>
-                  <td style={styles.td}>{deal.salesperson_name || deal.salesperson || "—"}</td>
+                  <td data-label="Pipedrive stage" style={styles.td}>{getPipedriveStage(deal) || "—"}</td>
+                  <td data-label="Sale date" style={styles.td}>{formatDate(deal.sale_date)}</td>
+                  <td data-label="Salesperson" style={styles.td}>{deal.salesperson_name || deal.salesperson || "—"}</td>
                   <td style={styles.td}>
 <SurveyProgressBar progress={deal.surveyProgress} compact />
                   </td>
@@ -186,7 +217,7 @@ export default function OutstandingSolarSurveys({ onSelectDeal }) {
               </tbody>
             </table>
           </div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px", borderTop: "1px solid #e8edf2", flexWrap: "wrap" }}>
+          <div className="outstanding-surveys-pagination" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px", borderTop: "1px solid #e8edf2", flexWrap: "wrap" }}>
             <span style={{ fontSize: 11, color: "#64748b" }}>
               {loading ? "Loading page…" : `Showing ${rows.length ? page * pageSize + 1 : 0}–${page * pageSize + rows.length} · Page ${page + 1}`}
             </span>
