@@ -42,21 +42,32 @@ export default function LeadToCall() {
       if (leadError) throw leadError
       const rows = data || []
       const ids = [...new Set(rows.map(row => row.marketing_row_id).filter(Boolean))]
-      const booked = new Set()
+      const appointmentState = new Map()
       for (let i = 0; i < ids.length; i += 500) {
         const { data: appointments, error: appointmentError } = await supabase.from("appointments")
-          .select("marketing_row_id,appointment_date")
+          .select("marketing_row_id,appointment_date,result")
           .in("marketing_row_id", ids.slice(i, i + 500))
           .not("appointment_date", "is", null)
         if (appointmentError) throw appointmentError
-        ;(appointments || []).forEach(row => booked.add(row.marketing_row_id))
+        ;(appointments || []).forEach(appointment => {
+          const key = appointment.marketing_row_id
+          if (!appointmentState.has(key)) appointmentState.set(key, { hasFuture: false, hasRework: false })
+          const state = appointmentState.get(key)
+          const appointmentTime = new Date(appointment.appointment_date).getTime()
+          const result = String(appointment.result || "").trim().toUpperCase()
+          if (appointmentTime > Date.now()) state.hasFuture = true
+          else if (!["PM", "PM DNH", "SOLD"].includes(result)) state.hasRework = true
+        })
       }
       const now = Date.now()
       const eligible = rows.filter(lead => {
-        if (lead.marketing_row_id && booked.has(lead.marketing_row_id)) return false
+        const appointment = lead.marketing_row_id ? appointmentState.get(lead.marketing_row_id) : null
+        if (appointment?.hasFuture) return false
+        const isRework = Boolean(appointment?.hasRework)
         const disposition = String(lead.disposition || "").trim().toLowerCase()
         const attempts = attemptsOf(lead)
         if (attempts >= 15) return false
+        if (isRework) return true
         if (disposition.includes("call back") || disposition.includes("callback")) {
           const callbackAt = dateValue(lead.callback_date_time)
           return callbackAt !== null && callbackAt <= now
@@ -70,7 +81,7 @@ export default function LeadToCall() {
         }
         return false
       })
-      setLeads(eligible)
+      setLeads(eligible.map(lead => ({ ...lead, isRework: Boolean(lead.marketing_row_id && appointmentState.get(lead.marketing_row_id)?.hasRework) })))
       setUpdatedAt(Date.now())
     } catch (err) {
       console.error("Lead To Call load failed", err)
@@ -89,7 +100,7 @@ export default function LeadToCall() {
       const isCallback = disposition.includes("call back") || disposition.includes("callback")
       const isFresh = !disposition
       const lastCallAt = dateValue(lead.last_time_called) ?? (lead.last_called_at ? new Date(lead.last_called_at).getTime() : null)
-      return { ...lead, priority: isCallback ? 0 : isFresh ? 1 : 2, callbackAt, lastCallAt, attempts: attemptsOf(lead), queueType: isCallback ? "Callback due" : isFresh ? "Fresh lead" : "No Contact" }
+      return { ...lead, priority: lead.isRework ? 1 : isCallback ? 0 : isFresh ? 2 : 3, callbackAt, lastCallAt, attempts: attemptsOf(lead), queueType: lead.isRework ? "Rework" : isCallback ? "Callback due" : isFresh ? "Fresh lead" : "No Contact" }
     }).filter(lead => {
       const term = search.trim().toLowerCase()
       return !term || [nameOf(lead), lead.postcode, lead.primary_phone_number, lead.secondary_phone_number, lead.lead_source].some(v => String(v || "").toLowerCase().includes(term))
@@ -99,9 +110,10 @@ export default function LeadToCall() {
   }, [leads, search])
 
   const counts = useMemo(() => ({
-    callbacks: leads.filter(l => String(l.disposition || "").toLowerCase().includes("call back") || String(l.disposition || "").toLowerCase().includes("callback")).length,
-    fresh: leads.filter(l => !String(l.disposition || "").trim()).length,
-    noContact: leads.filter(l => String(l.disposition || "").trim().toLowerCase() === "no contact").length,
+    callbacks: leads.filter(l => !l.isRework && (String(l.disposition || "").toLowerCase().includes("call back") || String(l.disposition || "").toLowerCase().includes("callback"))).length,
+    rework: leads.filter(l => l.isRework).length,
+    fresh: leads.filter(l => !l.isRework && !String(l.disposition || "").trim()).length,
+    noContact: leads.filter(l => !l.isRework && String(l.disposition || "").trim().toLowerCase() === "no contact").length,
   }), [leads])
 
   const panel = { background:"#fff", border:"1px solid #e2e8f0", borderRadius:12 }
@@ -113,7 +125,7 @@ export default function LeadToCall() {
       <button type="button" onClick={load} disabled={loading} style={{ display:"inline-flex", alignItems:"center", gap:7, padding:"9px 13px", border:"1px solid #cbd5e1", borderRadius:8, background:"#fff", cursor:"pointer", fontWeight:650 }}><RefreshCw size={14}/>{loading ? "Refreshing…" : "Refresh queue"}</button>
     </div>
     <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))", gap:10, marginBottom:16 }}>
-      {[["Callbacks due",counts.callbacks],["Fresh leads",counts.fresh],["No Contact ready",counts.noContact]].map(([label,value])=><div key={label} style={{ ...panel, padding:"13px 15px" }}><div style={small}>{label}</div><div style={{ fontSize:24, fontWeight:800, color:"#0f172a", marginTop:4 }}>{value.toLocaleString("en-GB")}</div></div>)}
+      {[["Callbacks due",counts.callbacks],["Rework",counts.rework],["Fresh leads",counts.fresh],["No Contact ready",counts.noContact]].map(([label,value])=><div key={label} style={{ ...panel, padding:"13px 15px" }}><div style={small}>{label}</div><div style={{ fontSize:24, fontWeight:800, color:"#0f172a", marginTop:4 }}>{value.toLocaleString("en-GB")}</div></div>)}
     </div>
     <div style={{ ...panel, padding:12, marginBottom:12, display:"flex", alignItems:"center", gap:9 }}>
       <Search size={16} color="#64748b"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, postcode, phone or source…" style={{ border:0, outline:0, flex:1, minWidth:120, fontSize:13, background:"transparent" }}/>
@@ -121,11 +133,11 @@ export default function LeadToCall() {
     </div>
     {error && <div role="alert" style={{ ...panel, padding:13, color:"#b91c1c", marginBottom:12 }}>{error}</div>}
     <div style={{ ...panel, overflow:"hidden" }}>
-      <div style={{ padding:"12px 15px", borderBottom:"1px solid #e2e8f0", display:"flex", justifyContent:"space-between", gap:8, flexWrap:"wrap" }}><strong style={{ fontSize:13 }}>Next leads to phone</strong><span style={small}>Callbacks → Fresh → No Contact (2-hour gap, max 15 attempts)</span></div>
+      <div style={{ padding:"12px 15px", borderBottom:"1px solid #e2e8f0", display:"flex", justifyContent:"space-between", gap:8, flexWrap:"wrap" }}><strong style={{ fontSize:13 }}>Next leads to phone</strong><span style={small}>Callbacks → Rework → Fresh → No Contact (2-hour gap, max 15 attempts)</span></div>
       {loading ? <div style={{ padding:36, textAlign:"center", color:"#64748b" }}>Loading calling queue…</div> : queue.length === 0 ? <div style={{ padding:36, textAlign:"center", color:"#64748b" }}>No eligible leads to call right now.</div> :
         <div style={{ overflowX:"auto" }}><table style={{ width:"100%", borderCollapse:"collapse", minWidth:900, fontSize:12, color:"#334155" }}>
           <thead><tr style={{ background:"#f8fafc", textAlign:"left" }}>{["#","Customer","Postcode","Phone","Source","Disposition","Callback date/time","Received","Last called","Attempts","Action"].map(label=><th key={label} style={{ padding:"10px 12px", borderBottom:"1px solid #e2e8f0", whiteSpace:"nowrap" }}>{label}</th>)}</tr></thead>
-          <tbody>{queue.map((lead,index)=><tr key={lead.delete_row_id} style={{ background:lead.priority===0?"#fff4d6":lead.priority===1?"#eaf3ff":index%2?"#f8fafc":"#ffffff" }}>
+          <tbody>{queue.map((lead,index)=><tr key={lead.delete_row_id} style={{ background:lead.priority===0?"#fff4d6":lead.priority===1?"#f3e8ff":lead.priority===2?"#eaf3ff":index%2?"#f8fafc":"#ffffff" }}>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6" }}>{index+1}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", fontWeight:750, color:"#0f172a", whiteSpace:"nowrap" }}>{nameOf(lead)}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6" }}>{lead.postcode||"—"}</td>
@@ -140,6 +152,6 @@ export default function LeadToCall() {
           </tr>)}</tbody>
         </table></div>}
     </div>
-    <div style={{ ...small, marginTop:10 }}>Queue refreshes when you press Refresh. Last refreshed: {updatedAt ? formatDate(updatedAt) : "—"}. Leads with an appointment date, excluded hotkey statuses, or 15 call attempts are omitted.</div>
+    <div style={{ ...small, marginTop:10 }}>Queue refreshes when you press Refresh. Last refreshed: {updatedAt ? formatDate(updatedAt) : "—"}. Future appointments, PM, PM DNH and SOLD results, excluded hotkey statuses, and leads with 15 call attempts are omitted. Past appointments without one of those results are classified as Rework.</div>
   </div>
 }
