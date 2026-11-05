@@ -120,7 +120,9 @@ export default function ProntoSpend() {
   const subHead = { ...cell, background: "#eef2f6", fontWeight: 700, textAlign: "center" }
   const rowData = (item, key) => {
     const data = item.byChannel[key] || { spend: 0, leads: 0 }
-    return <><td style={cell}>{money(data.spend)}</td><td style={{ ...cell, textAlign: "center" }}>{whole(data.leads)}</td><td style={cell}>{money(data.leads ? data.spend / data.leads : 0)}</td></>
+    const missingSpend = data.leads > 0 && data.spend <= 0
+    const warningCell = missingSpend ? { background: "#fee2e2", color: "#b91c1c", fontWeight: 700, borderColor: "#fecaca" } : {}
+    return <><td style={{ ...cell, ...warningCell }}>{money(data.spend)}</td><td style={{ ...cell, ...warningCell, textAlign: "center" }}>{whole(data.leads)}</td><td style={{ ...cell, ...warningCell }}>{money(data.leads ? data.spend / data.leads : 0)}</td></>
   }
   const dateRange = item => {
     const start = new Date(item.start.getTime() + item.start.getTimezoneOffset() * 60000)
