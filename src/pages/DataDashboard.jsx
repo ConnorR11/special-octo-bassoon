@@ -942,7 +942,9 @@ function DataDashboard({ standalonePronto = false }) {
           background: #fff;
           border: 1px solid #dfe5ec;
           border-radius: 12px;
-          overflow: hidden;
+          overflow-x: auto;
+          overflow-y: hidden;
+          max-width: 100%;
         }
 
         .pronto-table {
@@ -976,7 +978,7 @@ function DataDashboard({ standalonePronto = false }) {
         .pronto-column-controls-label { color: #64748b; font-size: 12px; font-weight: 600; margin-right: 4px; }
         .pronto-column-toggle { border: 1px solid #cbd5e1; border-radius: 7px; padding: 7px 11px; background: #fff; color: #24364b; font-size: 12px; font-weight: 600; cursor: pointer; }
         .pronto-column-toggle[aria-pressed="true"] { background: #e8f2ff; border-color: #93b4e8; color: #17406b; }
-        .pronto-tree-table { min-width: 1120px; }
+        .pronto-tree-table { min-width: 1660px; }
         .pronto-tree-table.pronto-hide-date-status col:nth-child(2),
         .pronto-tree-table.pronto-hide-date-status col:nth-child(3),
         .pronto-tree-table.pronto-hide-date-status col:nth-child(4),
@@ -1004,9 +1006,6 @@ function DataDashboard({ standalonePronto = false }) {
         .pronto-tree-table.pronto-hide-lead-info col:nth-child(10),
         .pronto-tree-table.pronto-hide-lead-info thead tr:not(.pronto-group-header) th:nth-child(10),
         .pronto-tree-table.pronto-hide-lead-info tbody tr:not(.pronto-tree-total) td:nth-child(10) { display: none; }
-        .pronto-tree-table.pronto-hide-appointment col:nth-child(11),
-        .pronto-tree-table.pronto-hide-appointment thead tr:not(.pronto-group-header) th:nth-child(11),
-        .pronto-tree-table.pronto-hide-appointment tbody tr:not(.pronto-tree-total) td:nth-child(11),
         .pronto-tree-table.pronto-hide-appointment col:nth-child(12),
         .pronto-tree-table.pronto-hide-appointment thead tr:not(.pronto-group-header) th:nth-child(12),
         .pronto-tree-table.pronto-hide-appointment tbody tr:not(.pronto-tree-total) td:nth-child(12),
@@ -1015,43 +1014,47 @@ function DataDashboard({ standalonePronto = false }) {
         .pronto-tree-table.pronto-hide-appointment tbody tr:not(.pronto-tree-total) td:nth-child(13),
         .pronto-tree-table.pronto-hide-appointment col:nth-child(14),
         .pronto-tree-table.pronto-hide-appointment thead tr:not(.pronto-group-header) th:nth-child(14),
-        .pronto-tree-table.pronto-hide-appointment tbody tr:not(.pronto-tree-total) td:nth-child(14) { display: none; }
-        .pronto-tree-table.pronto-hide-conversion col:nth-child(15),
-        .pronto-tree-table.pronto-hide-conversion thead tr:not(.pronto-group-header) th:nth-child(15),
-        .pronto-tree-table.pronto-hide-conversion tbody tr:not(.pronto-tree-total) td:nth-child(15),
+        .pronto-tree-table.pronto-hide-appointment tbody tr:not(.pronto-tree-total) td:nth-child(14),
+        .pronto-tree-table.pronto-hide-appointment col:nth-child(15),
+        .pronto-tree-table.pronto-hide-appointment thead tr:not(.pronto-group-header) th:nth-child(15),
+        .pronto-tree-table.pronto-hide-appointment tbody tr:not(.pronto-tree-total) td:nth-child(15) { display: none; }
         .pronto-tree-table.pronto-hide-conversion col:nth-child(16),
         .pronto-tree-table.pronto-hide-conversion thead tr:not(.pronto-group-header) th:nth-child(16),
-        .pronto-tree-table.pronto-hide-conversion tbody tr:not(.pronto-tree-total) td:nth-child(16) { display: none; }
-        .pronto-tree-table.pronto-hide-deal-info col:nth-child(17),
-        .pronto-tree-table.pronto-hide-deal-info thead tr:not(.pronto-group-header) th:nth-child(17),
-        .pronto-tree-table.pronto-hide-deal-info tbody tr:not(.pronto-tree-total) td:nth-child(17),
+        .pronto-tree-table.pronto-hide-conversion tbody tr:not(.pronto-tree-total) td:nth-child(16),
+        .pronto-tree-table.pronto-hide-conversion col:nth-child(17),
+        .pronto-tree-table.pronto-hide-conversion thead tr:not(.pronto-group-header) th:nth-child(17),
+        .pronto-tree-table.pronto-hide-conversion tbody tr:not(.pronto-tree-total) td:nth-child(17) { display: none; }
         .pronto-tree-table.pronto-hide-deal-info col:nth-child(18),
         .pronto-tree-table.pronto-hide-deal-info thead tr:not(.pronto-group-header) th:nth-child(18),
-        .pronto-tree-table.pronto-hide-deal-info tbody tr:not(.pronto-tree-total) td:nth-child(18) { display: none; }
+        .pronto-tree-table.pronto-hide-deal-info tbody tr:not(.pronto-tree-total) td:nth-child(18),
+        .pronto-tree-table.pronto-hide-deal-info col:nth-child(19),
+        .pronto-tree-table.pronto-hide-deal-info thead tr:not(.pronto-group-header) th:nth-child(19),
+        .pronto-tree-table.pronto-hide-deal-info tbody tr:not(.pronto-tree-total) td:nth-child(19) { display: none; }
         /* Clear vertical separators between the table's column groups. */
         .pronto-tree-table thead tr:not(.pronto-group-header) th:nth-child(5),
         .pronto-tree-table tbody tr:not(.pronto-tree-total) td:nth-child(5),
         .pronto-tree-table thead tr:not(.pronto-group-header) th:nth-child(11),
         .pronto-tree-table tbody tr:not(.pronto-tree-total) td:nth-child(11),
-        .pronto-tree-table thead tr:not(.pronto-group-header) th:nth-child(15),
-        .pronto-tree-table tbody tr:not(.pronto-tree-total) td:nth-child(15),
-        .pronto-tree-table thead tr:not(.pronto-group-header) th:nth-child(17),
-        .pronto-tree-table tbody tr:not(.pronto-tree-total) td:nth-child(17) {
+        .pronto-tree-table thead tr:not(.pronto-group-header) th:nth-child(16),
+        .pronto-tree-table tbody tr:not(.pronto-tree-total) td:nth-child(16),
+        .pronto-tree-table thead tr:not(.pronto-group-header) th:nth-child(18),
+        .pronto-tree-table tbody tr:not(.pronto-tree-total) td:nth-child(18) {
           border-left: 2px solid #cbd5e1;
         }
         .pronto-tree-table tbody tr.pronto-tree-total td.pronto-total-group-start {
           border-left: 2px solid #cbd5e1;
         }
-        .pronto-tree-table col.pronto-col-name { width: 22%; }
+        .pronto-tree-table col.pronto-col-name { width: 17%; }
         .pronto-tree-table col.pronto-col-first { width: 8%; }
         .pronto-tree-table col.pronto-col-latest { width: 8%; }
         .pronto-tree-table col.pronto-col-status { width: 5%; }
+        .pronto-tree-table col.pronto-col-spend { width: 8%; }
         .pronto-tree-table col.pronto-col-leads { width: 5%; }
         .pronto-tree-table col.pronto-col-disposition { width: 4%; }
         .pronto-tree-table col.pronto-col-appointment { width: 4%; }
         .pronto-tree-table col.pronto-col-booked { width: 4%; }
         .pronto-tree-table col.pronto-col-conversion { width: 6%; }
-        .pronto-tree-table col.pronto-col-net-value { width: 10%; }
+        .pronto-tree-table col.pronto-col-net-value { width: 9%; }
         .pronto-tree-table col.pronto-col-booked-percent { width: 6%; }
         .pronto-tree-table col.pronto-col-spacer { width: 2%; }
         .pronto-tree-table th:nth-child(13),
@@ -1689,6 +1692,7 @@ function DataDashboard({ standalonePronto = false }) {
                   <col className="pronto-col-first" />
                   <col className="pronto-col-latest" />
                   <col className="pronto-col-status" />
+                  <col className="pronto-col-spend" />
                   <col className="pronto-col-leads" />
                   <col className="pronto-col-disposition" />
                   <col className="pronto-col-disposition" />
@@ -1703,14 +1707,14 @@ function DataDashboard({ standalonePronto = false }) {
                   <col className="pronto-col-conversion" />
                   <col className="pronto-col-net-value" />
                   <col className="pronto-col-net-value" />
-                  <col className="pronto-col-booked-percent" />
+                  <col className="pronto-col-spacer" />
                 </colgroup>
                 <thead>
                   <tr className="pronto-group-header">
                     <th aria-label="Campaign column"></th>
                     {showProntoDateStatusColumns && <th colSpan={3} className="pronto-group-title">Dates &amp; Status</th>}
-                    {showProntoLeadInfoColumns && <th colSpan={7} className="pronto-group-title">Lead Info</th>}
-                    {showProntoAppointmentColumns && <th colSpan={4} className="pronto-group-title">Appointment Info</th>}
+                    {showProntoLeadInfoColumns && <th colSpan={6} className="pronto-group-title">Lead Info</th>}
+                    {showProntoAppointmentColumns && <th colSpan={5} className="pronto-group-title">Appointment Info</th>}
                     {showProntoConversionColumns && <th colSpan={2} className="pronto-group-title">Lead Conversion</th>}
                     {showProntoDealInfoColumns && <th colSpan={2} className="pronto-group-title">Deal Info</th>}
                     <th aria-label="Alignment spacer"></th>
