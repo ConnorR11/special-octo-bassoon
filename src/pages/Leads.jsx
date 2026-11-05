@@ -97,11 +97,11 @@ function normaliseCount(value) {
   return Number.isFinite(n) && n >= 0 ? n : 0
 }
 
-function isWithinThreeHours(value) {
+function isWithinTwoHours(value) {
   if (!value) return false
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return false
-  return Date.now() - date.getTime() < 3 * 60 * 60 * 1000
+  return Date.now() - date.getTime() < 2 * 60 * 60 * 1000
 }
 
 function cardStyle(extra = {}) {
@@ -185,12 +185,12 @@ export default function Leads() {
     setLoadingQueue(true)
     try {
       const now = new Date().toISOString()
-      const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
+      const threeHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
 
       const { data, error: queryError } = await supabase
         .from("leads")
         .select(QUEUE_SELECT)
-        .or(`last_called_at.is.null,last_called_at.lte.${threeHoursAgo}`)
+        .or(`last_called_at.is.null,last_called_at.lte.${twoHoursAgo}`)
         .or(`claim_expires_at.is.null,claim_expires_at.lte.${now}`)
         .order("call_count", { ascending: true })
         .order("received_date_time", { ascending: false, nullsFirst: false })
@@ -554,7 +554,7 @@ export default function Leads() {
           </div>
 
           <div style={{ marginTop:15, paddingTop:14, borderTop:"1px solid #eef2f7", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-            <MiniStat icon={<Timer size={15} />} label="3h rule" value="Enabled" />
+            <MiniStat icon={<Timer size={15} />} label="2h rule" value="Enabled" />
             <MiniStat icon={<UserRound size={15} />} label="Claim lease" value="10 min" />
           </div>
         </div>
