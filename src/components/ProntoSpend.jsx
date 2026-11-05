@@ -105,6 +105,49 @@ export default function ProntoSpend() {
     return { weeks: [...weeks.values()].sort((a,b) => a.week-b.week), totals }
   }, [leads])
 
+  const tableWeeks = useMemo(() => {
+    const year = 2026
+    const currentWeekStart = new Date()
+    currentWeekStart.setHours(0, 0, 0, 0)
+    const day = currentWeekStart.getDay() || 7
+    currentWeekStart.setDate(currentWeekStart.getDate() - day + 1)
+    const lastCompleteWeekStart = new Date(currentWeekStart)
+    lastCompleteWeekStart.setDate(lastCompleteWeekStart.getDate() - 7)
+
+    const firstWeek = isoWeekInfo(new Date(Date.UTC(year, 0, 5)))
+    const lastWeek = isoWeekInfo(lastCompleteWeekStart)
+    const byKey = new Map(report.weeks.map(week => [week.key, week]))
+    const rows = []
+    for (let weekNumber = 2; weekNumber <= (lastWeek.year === year ? lastWeek.week : 53); weekNumber++) {
+      const monday = new Date(Date.UTC(year, 0, 5))
+      monday.setUTCDate(monday.getUTCDate() + (weekNumber - 2) * 7)
+      const info = isoWeekInfo(monday)
+      if (info.year !== year || info.week > lastWeek.week) break
+      const existing = byKey.get(info.key)
+      if (existing) rows.push(existing)
+      else {
+        const byChannel = {}
+        channels.forEach(channel => { byChannel[channel.key] = { spend: 0, leads: 0, cplSpend: 0, cplLeads: 0 } })
+        rows.push({ ...info, spend: 0, leads: 0, cplSpend: 0, cplLeads: 0, byChannel })
+      }
+    }
+    return rows
+  }, [report.weeks])
+
+  const tableTotals = useMemo(() => {
+    const totals = { spend: 0, leads: 0, byChannel: {} }
+    channels.forEach(channel => { totals.byChannel[channel.key] = { spend: 0, leads: 0 } })
+    tableWeeks.forEach(week => {
+      totals.spend += week.spend
+      totals.leads += week.leads
+      channels.forEach(channel => {
+        totals.byChannel[channel.key].spend += week.byChannel[channel.key]?.spend || 0
+        totals.byChannel[channel.key].leads += week.byChannel[channel.key]?.leads || 0
+      })
+    })
+    return totals
+  }, [tableWeeks])
+
   const chartData = useMemo(() => {
     if (chartPeriod === "week") return report.weeks.map(item => ({ ...item, label: String(item.week) }))
     const periods = new Map()
@@ -223,15 +266,15 @@ export default function ProntoSpend() {
         <tbody>
           <tr style={{ background: "#e9edf2", fontWeight: 700 }}>
             <td style={{ ...cell, textAlign: "left", position: "sticky", left: 0, zIndex: 2, background: "#e9edf2", fontWeight: 700 }}>Totals</td><td style={cell}>—</td>
-            <td style={cell}>{money(report.totals.spend)}</td><td style={{ ...cell, textAlign: "center" }}>{whole(report.totals.leads)}</td><td style={cell}>{money(report.totals.leads ? report.totals.spend / report.totals.leads : 0)}</td>
-            {channels.map(c => rowData(report.totals, c.key))}
+            <td style={cell}>{money(tableTotals.spend)}</td><td style={{ ...cell, textAlign: "center" }}>{whole(tableTotals.leads)}</td><td style={cell}>{money(tableTotals.leads ? tableTotals.spend / tableTotals.leads : 0)}</td>
+            {channels.map(c => rowData(tableTotals, c.key))}
           </tr>
-          {report.weeks.map(week => <tr key={week.key}>
+          {tableWeeks.map(week => <tr key={week.key}>
             <td style={{ ...cell, textAlign: "center", fontWeight: 700, position: "sticky", left: 0, zIndex: 1, background: "#fff" }}>{week.week}</td><td style={{ ...cell, textAlign: "center" }}>{dateRange(week)}</td>
             <td style={cell}>{money(week.spend)}</td><td style={{ ...cell, textAlign: "center" }}>{whole(week.leads)}</td><td style={cell}>{money(week.leads ? week.spend / week.leads : 0)}</td>
             {channels.map(c => rowData(week, c.key))}
           </tr>)}
-          {!report.weeks.length && <tr><td colSpan={26} style={{ ...cell, textAlign: "center" }}>No Pronto Windows leads found for 2026.</td></tr>}
+          {!tableWeeks.length && <tr><td colSpan={26} style={{ ...cell, textAlign: "center" }}>No Pronto Windows leads found for 2026.</td></tr>}
         </tbody>
       </table>
       </div>
