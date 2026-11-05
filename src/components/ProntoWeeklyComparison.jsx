@@ -48,7 +48,7 @@ function ProntoWeeklyComparison() {
         let offset = 0
         while (true) {
           const { data: batch, error: leadError } = await supabase.from("leads")
-            .select("marketing_row_id,pronto_SID,received_date_time,lead_cost")
+            .select("marketing_row_id,pronto_SID,introducer,received_date_time,lead_cost")
             .eq("lead_source", "Pronto Windows")
             .gte("received_date_time", periods.fourWeeks.start.toISOString())
             .lt("received_date_time", periods.fourWeeks.end.toISOString())
@@ -82,11 +82,14 @@ function ProntoWeeklyComparison() {
           if (!grouped.has(sid)) {
             grouped.set(sid, {
               sid,
+              introducers: new Set(),
               fourWeeks: emptyStats(sid),
               lastWeek: emptyStats(sid),
             })
           }
           const row = grouped.get(sid)
+          const introducer = String(lead.introducer || "").trim()
+          if (introducer) row.introducers.add(introducer)
           const isBooked = bookedLeadIds.has(lead.marketing_row_id)
           const isLastWeek = received >= periods.lastWeek.start && received < periods.lastWeek.end
 
@@ -163,10 +166,11 @@ function ProntoWeeklyComparison() {
         <span><strong>Last week:</strong> {periods.lastWeek.label}</span>
       </div>
       <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 690 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 780 }}>
           <thead>
             <tr>
-              <th rowSpan={2} style={{ position: "sticky", left: 0, zIndex: 2, background: "#fff", textAlign: "left", padding: "9px 8px", borderBottom: "1px solid #dbe3ed" }}>SID</th>
+              <th rowSpan={2} style={{ position: "sticky", left: 0, zIndex: 2, background: "#fff", textAlign: "left", padding: "9px 8px", borderBottom: "1px solid #dbe3ed" }}>Introducer</th>
+              <th rowSpan={2} style={{ textAlign: "left", padding: "9px 8px", borderBottom: "1px solid #dbe3ed" }}>SID</th>
               {metrics.map(metric => <th key={metric.key} colSpan={metric.key === "bookedRate" ? 3 : 2} style={{ textAlign: "center", padding: "8px 4px", borderBottom: "1px solid #dbe3ed", borderLeft: "1px solid #e2e8f0", color: "#334155", whiteSpace: "nowrap" }}>{metric.label}</th>)}
             </tr>
             <tr>
@@ -182,7 +186,8 @@ function ProntoWeeklyComparison() {
           </thead>
           <tbody>
             {rows.map(row => <tr key={row.sid}>
-              <td style={{ position: "sticky", left: 0, zIndex: 1, background: "#fff", padding: "9px 8px", borderBottom: "1px solid #edf1f5", fontWeight: 600, whiteSpace: "nowrap" }}>{row.sid}</td>
+              <td style={{ position: "sticky", left: 0, zIndex: 1, background: "#fff", padding: "9px 8px", borderBottom: "1px solid #edf1f5", whiteSpace: "nowrap" }}>{row.introducers.size ? [...row.introducers].sort().join(", ") : "—"}</td>
+              <td style={{ padding: "9px 8px", borderBottom: "1px solid #edf1f5", fontWeight: 600, whiteSpace: "nowrap" }}>{row.sid}</td>
               {metrics.flatMap(metric => {
                 const fourWeeksValue = metric.format(getMetricValue(row.fourWeeks, metric.key), row.fourWeeks)
                 const lastWeekValue = metric.format(getMetricValue(row.lastWeek, metric.key), row.lastWeek)
@@ -200,6 +205,7 @@ function ProntoWeeklyComparison() {
             </tr>)}
             <tr style={{ background: "#f8fafc" }}>
               <td style={{ position: "sticky", left: 0, zIndex: 1, background: "#f8fafc", padding: "10px 8px", borderTop: "2px solid #cbd5e1", fontWeight: 700 }}>TOTAL</td>
+              <td style={{ padding: "10px 8px", borderTop: "2px solid #cbd5e1" }} />
               {metrics.flatMap(metric => {
                 const fourWeeksValue = metric.format(getMetricValue(totals.fourWeeks, metric.key), totals.fourWeeks)
                 const lastWeekValue = metric.format(getMetricValue(totals.lastWeek, metric.key), totals.lastWeek)
