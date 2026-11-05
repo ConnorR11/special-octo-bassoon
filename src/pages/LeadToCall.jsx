@@ -107,7 +107,7 @@ export default function LeadToCall() {
       const isCallback = disposition.includes("call back") || disposition.includes("callback")
       const isFresh = !disposition
       const lastCallAt = dateValue(lead.last_time_called) ?? (lead.last_called_at ? new Date(lead.last_called_at).getTime() : null)
-      return { ...lead, priority: isCallback ? 0 : lead.disposition?.trim().toLowerCase() === "no contact" ? 3 : lead.isRework ? 1 : isFresh ? 2 : 4, callbackAt, lastCallAt, attempts: attemptsOf(lead), queueType: isCallback ? "Callback due" : lead.disposition?.trim().toLowerCase() === "no contact" ? "No Contact" : lead.isRework ? "Rework" : isFresh ? "Fresh lead" : "No Contact" }
+      return { ...lead, priority: isCallback ? 0 : isFresh ? 1 : lead.isRework ? 2 : lead.disposition?.trim().toLowerCase() === "no contact" ? 3 : 4, callbackAt, lastCallAt, attempts: attemptsOf(lead), queueType: isCallback ? "Callback due" : lead.disposition?.trim().toLowerCase() === "no contact" ? "No Contact" : lead.isRework ? "Rework" : isFresh ? "Fresh lead" : "No Contact" }
     }).filter(lead => {
       const term = search.trim().toLowerCase()
       return !term || [nameOf(lead), lead.postcode, lead.primary_phone_number, lead.secondary_phone_number, lead.lead_source].some(v => String(v || "").toLowerCase().includes(term))
