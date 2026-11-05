@@ -143,9 +143,9 @@ export default function LeadToCall() {
       <div style={{ padding:"12px 15px", borderBottom:"1px solid #e2e8f0", display:"flex", justifyContent:"space-between", gap:8, flexWrap:"wrap" }}><strong style={{ fontSize:13 }}>Next leads to phone</strong><span style={small}>Callbacks → Rework → Fresh → No Contact (2-hour gap, max 15 attempts)</span></div>
       {loading ? <div style={{ padding:36, textAlign:"center", color:"#64748b" }}>Loading calling queue…</div> : queue.length === 0 ? <div style={{ padding:36, textAlign:"center", color:"#64748b" }}>No eligible leads to call right now.</div> :
         <div style={{ overflowX:"auto" }}><table style={{ width:"100%", borderCollapse:"collapse", minWidth:900, fontSize:12, color:"#334155" }}>
-          <thead><tr style={{ background:"#f8fafc", textAlign:"left" }}>{["#","Customer","Postcode","Source","Latest appointment","Appointment result","Disposition","Callback date/time","Received","Last called","Attempts","Action"].map(label=><th key={label} style={{ padding:"10px 12px", borderBottom:"1px solid #e2e8f0", whiteSpace:"nowrap" }}>{label}</th>)}</tr></thead>
+          <thead><tr style={{ background:"#f8fafc", textAlign:"left" }}>{["Received","Customer","Postcode","Source","Latest appointment","Appointment result","Disposition","Callback date/time","Last called","Attempts"].map(label=><th key={label} style={{ padding:"10px 12px", borderBottom:"1px solid #e2e8f0", whiteSpace:"nowrap" }}>{label}</th>)}</tr></thead>
           <tbody>{queue.map((lead,index)=><tr key={lead.delete_row_id} style={{ background:lead.priority===0?"#fff4d6":lead.priority===1?"#f3e8ff":lead.priority===2?"#eaf3ff":index%2?"#f8fafc":"#ffffff" }}>
-            <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6" }}>{index+1}</td>
+            <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", whiteSpace:"nowrap" }}>{formatDate(lead.received_date_time)}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", fontWeight:750, color:"#0f172a", whiteSpace:"nowrap" }}>{nameOf(lead)}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6" }}>{lead.postcode||"—"}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6" }}>{lead.lead_source||"Unknown"}</td>
@@ -153,10 +153,8 @@ export default function LeadToCall() {
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", whiteSpace:"nowrap" }}>{lead.latestAppointmentResult || (lead.latestAppointmentDate ? "No result" : "—")}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", whiteSpace:"nowrap" }}>{lead.disposition||"Fresh"}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", whiteSpace:"nowrap" }}>{lead.callback_date_time ? formatDate(dateValue(lead.callback_date_time)) : "—"}</td>
-            <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", whiteSpace:"nowrap" }}>{formatDate(lead.received_date_time)}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", whiteSpace:"nowrap" }}>{lead.last_time_called ? formatDate(dateValue(lead.last_time_called)) : lead.last_called_at ? formatDate(lead.last_called_at) : "Never"}</td>
             <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6", textAlign:"center" }}>{lead.attempts}</td>
-            <td style={{ padding:"11px 12px", borderBottom:"1px solid #eef2f6" }}><a href={lead.primary_phone_number ? `tel:${lead.primary_phone_number}` : lead.secondary_phone_number ? `tel:${lead.secondary_phone_number}` : undefined} style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"7px 10px", borderRadius:7, background:"#0f766e", color:"#fff", textDecoration:"none", fontWeight:750, opacity:lead.primary_phone_number||lead.secondary_phone_number?1:.45, pointerEvents:lead.primary_phone_number||lead.secondary_phone_number?"auto":"none" }}><Phone size={13}/>Call</a></td>
           </tr>)}</tbody>
         </table></div>}
     </div>
