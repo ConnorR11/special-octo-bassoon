@@ -36,6 +36,7 @@ function ProntoWeeklyComparison() {
   const [totals, setTotals] = useState({ fourWeeks: emptyStats("TOTAL"), lastWeek: emptyStats("TOTAL") })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [expandedIntroducers, setExpandedIntroducers] = useState({})
   const periods = useMemo(getPeriods, [])
 
   useEffect(() => {
@@ -192,12 +193,12 @@ function ProntoWeeklyComparison() {
         <span><strong>Last 4 weeks:</strong> {periods.fourWeeks.label}</span>
         <span><strong>Last week:</strong> {periods.lastWeek.label}</span>
       </div>
-      <h3 style={{ margin: "16px 0 8px", fontSize: 14, color: "#172033" }}>Introducer performance summary</h3>
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 780 }}>
+      <div style={{ overflowX: "auto", marginTop: 14 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 820 }}>
           <thead>
             <tr>
               <th rowSpan={2} style={{ position: "sticky", left: 0, zIndex: 2, background: "#fff", textAlign: "left", padding: "9px 8px", borderBottom: "1px solid #dbe3ed" }}>Introducer</th>
+              <th rowSpan={2} style={{ textAlign: "left", padding: "9px 8px", borderBottom: "1px solid #dbe3ed" }}>SID</th>
               {metrics.map(metric => <th key={metric.key} colSpan={metric.key === "bookedRate" ? 3 : 2} style={{ textAlign: "center", padding: "8px 4px", borderBottom: "1px solid #dbe3ed", borderLeft: "1px solid #e2e8f0", color: "#334155", whiteSpace: "nowrap" }}>{metric.label}</th>)}
             </tr>
             <tr>
@@ -208,25 +209,52 @@ function ProntoWeeklyComparison() {
             </tr>
           </thead>
           <tbody>
-            {rows.map(group => <tr key={group.introducer}>
-              <td style={{ position: "sticky", left: 0, zIndex: 1, background: "#fff", padding: "10px 8px", borderBottom: "1px solid #edf1f5", fontWeight: 600, whiteSpace: "nowrap" }}>{group.introducer}</td>
-              {metrics.flatMap(metric => {
-                const fourWeeksValue = metric.format(getMetricValue(group.fourWeeks, metric.key), group.fourWeeks)
-                const lastWeekValue = metric.format(getMetricValue(group.lastWeek, metric.key), group.lastWeek)
-                const cells = [
-                  <td key={metric.key + "-summary-four-weeks"} style={{ ...cellStyle, borderLeft: "1px solid #e2e8f0" }}>{fourWeeksValue}</td>,
-                  <td key={metric.key + "-summary-last-week"} style={cellStyle}>{lastWeekValue}</td>,
-                ]
-                if (metric.key === "bookedRate") {
-                  const change = getMetricValue(group.lastWeek, "bookedRate") - getMetricValue(group.fourWeeks, "bookedRate")
-                  const changeColor = change > 0 ? "#15803d" : change < 0 ? "#dc2626" : "#64748b"
-                  cells.push(<td key="summary-bookedRate-change" style={{ ...cellStyle, borderLeft: "1px solid #e2e8f0", color: changeColor, fontWeight: 700 }}>{change > 0 ? "+" : ""}{change.toFixed(1)} pp</td>)
-                }
-                return cells
-              })}
-            </tr>)}
+            {rows.flatMap(group => {
+              const expanded = Boolean(expandedIntroducers[group.introducer])
+              const summaryRow = <tr key={group.introducer + "-summary"} style={{ background: "#f8fafc" }}>
+                <td style={{ position: "sticky", left: 0, zIndex: 1, background: "#f8fafc", padding: "10px 8px", borderBottom: "1px solid #dbe3ed", fontWeight: 700, whiteSpace: "nowrap" }}>{group.introducer}</td>
+                <td style={{ padding: "8px", borderBottom: "1px solid #dbe3ed", whiteSpace: "nowrap" }}>
+                  <button type="button" onClick={() => setExpandedIntroducers(current => ({ ...current, [group.introducer]: !current[group.introducer] }))} aria-expanded={expanded} style={{ border: 0, background: "transparent", color: "#2563eb", cursor: "pointer", padding: 0, font: "inherit", fontWeight: 600 }}>
+                    {expanded ? "▾" : "▸"} {group.items.length} {group.items.length === 1 ? "SID" : "SIDs"}
+                  </button>
+                </td>
+                {metrics.flatMap(metric => {
+                  const fourWeeksValue = metric.format(getMetricValue(group.fourWeeks, metric.key), group.fourWeeks)
+                  const lastWeekValue = metric.format(getMetricValue(group.lastWeek, metric.key), group.lastWeek)
+                  const cells = [
+                    <td key={metric.key + "-summary-four-weeks"} style={{ ...cellStyle, borderLeft: "1px solid #e2e8f0", fontWeight: 700 }}>{fourWeeksValue}</td>,
+                    <td key={metric.key + "-summary-last-week"} style={{ ...cellStyle, fontWeight: 700 }}>{lastWeekValue}</td>,
+                  ]
+                  if (metric.key === "bookedRate") {
+                    const change = getMetricValue(group.lastWeek, "bookedRate") - getMetricValue(group.fourWeeks, "bookedRate")
+                    const changeColor = change > 0 ? "#15803d" : change < 0 ? "#dc2626" : "#64748b"
+                    cells.push(<td key="summary-bookedRate-change" style={{ ...cellStyle, borderLeft: "1px solid #e2e8f0", color: changeColor, fontWeight: 700 }}>{change > 0 ? "+" : ""}{change.toFixed(1)} pp</td>)
+                  }
+                  return cells
+                })}
+              </tr>
+              const sidRows = expanded ? group.items.map(row => <tr key={group.introducer + "-" + row.sid}>
+                <td style={{ position: "sticky", left: 0, zIndex: 1, background: "#fff", padding: "8px", borderBottom: "1px solid #edf1f5", color: "#64748b" }} />
+                <td style={{ padding: "8px 8px 8px 20px", borderBottom: "1px solid #edf1f5", fontWeight: 600, whiteSpace: "nowrap" }}>{row.sid}</td>
+                {metrics.flatMap(metric => {
+                  const fourWeeksValue = metric.format(getMetricValue(row.fourWeeks, metric.key), row.fourWeeks)
+                  const lastWeekValue = metric.format(getMetricValue(row.lastWeek, metric.key), row.lastWeek)
+                  const cells = [
+                    <td key={metric.key + "-sid-four-weeks"} style={{ ...cellStyle, borderLeft: "1px solid #e2e8f0", color: "#475569" }}>{fourWeeksValue}</td>,
+                    <td key={metric.key + "-sid-last-week"} style={{ ...cellStyle, color: "#475569" }}>{lastWeekValue}</td>,
+                  ]
+                  if (metric.key === "bookedRate") {
+                    const change = getMetricValue(row.lastWeek, "bookedRate") - getMetricValue(row.fourWeeks, "bookedRate")
+                    const changeColor = change > 0 ? "#15803d" : change < 0 ? "#dc2626" : "#64748b"
+                    cells.push(<td key="sid-bookedRate-change" style={{ ...cellStyle, color: changeColor, fontWeight: 600, borderLeft: "1px solid #e2e8f0" }}>{change > 0 ? "+" : ""}{change.toFixed(1)} pp</td>)
+                  }
+                  return cells
+                })}
+              </tr>) : []
+              return [summaryRow, ...sidRows]
+            })}
             <tr style={{ background: "#e8eef6" }}>
-              <td style={{ position: "sticky", left: 0, zIndex: 1, background: "#e8eef6", padding: "10px 8px", borderTop: "2px solid #94a3b8", fontWeight: 700 }}>GRAND TOTAL</td>
+              <td colSpan={2} style={{ position: "sticky", left: 0, zIndex: 1, background: "#e8eef6", padding: "10px 8px", borderTop: "2px solid #94a3b8", fontWeight: 700 }}>GRAND TOTAL</td>
               {metrics.flatMap(metric => {
                 const fourWeeksValue = metric.format(getMetricValue(totals.fourWeeks, metric.key), totals.fourWeeks)
                 const lastWeekValue = metric.format(getMetricValue(totals.lastWeek, metric.key), totals.lastWeek)
@@ -244,53 +272,6 @@ function ProntoWeeklyComparison() {
             </tr>
           </tbody>
         </table>
-      </div>
-
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", margin: "22px 0 8px" }}>
-        <h3 style={{ margin: 0, fontSize: 14, color: "#172033" }}>SID breakdown</h3>
-        <span style={{ color: "#94a3b8", fontSize: 10 }}>Expand an introducer to view its individual SIDs</span>
-      </div>
-      <div style={{ display: "grid", gap: 8 }}>
-        {rows.map(group => <details key={group.introducer} style={{ border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden" }}>
-          <summary style={{ cursor: "pointer", listStylePosition: "inside", padding: "10px 12px", background: "#f8fafc", color: "#172033", fontSize: 12, fontWeight: 600 }}>
-            {group.introducer} <span style={{ color: "#64748b", fontWeight: 400 }}>· {group.items.length} {group.items.length === 1 ? "SID" : "SIDs"}</span>
-          </summary>
-          <div style={{ overflowX: "auto", padding: "0 8px 8px" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 760 }}>
-              <thead>
-                <tr>
-                  <th rowSpan={2} style={{ textAlign: "left", padding: "9px 8px", borderBottom: "1px solid #dbe3ed" }}>SID</th>
-                  {metrics.map(metric => <th key={metric.key} colSpan={metric.key === "bookedRate" ? 3 : 2} style={{ textAlign: "center", padding: "8px 4px", borderBottom: "1px solid #dbe3ed", borderLeft: "1px solid #e2e8f0", color: "#334155", whiteSpace: "nowrap" }}>{metric.label}</th>)}
-                </tr>
-                <tr>
-                  {metrics.flatMap(metric => {
-                    const headings = metric.key === "bookedRate" ? ["Last 4 weeks", "Last week", "Change"] : ["Last 4 weeks", "Last week"]
-                    return headings.map((heading, index) => <th key={metric.key + heading} style={{ ...headerStyle, borderLeft: index === 0 || heading === "Change" ? "1px solid #e2e8f0" : undefined }}>{heading}</th>)
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {group.items.map(row => <tr key={row.sid}>
-                  <td style={{ padding: "9px 8px", borderBottom: "1px solid #edf1f5", fontWeight: 600, whiteSpace: "nowrap" }}>{row.sid}</td>
-                  {metrics.flatMap(metric => {
-                    const fourWeeksValue = metric.format(getMetricValue(row.fourWeeks, metric.key), row.fourWeeks)
-                    const lastWeekValue = metric.format(getMetricValue(row.lastWeek, metric.key), row.lastWeek)
-                    const cells = [
-                      <td key={metric.key + "-sid-four-weeks"} style={{ ...cellStyle, borderLeft: "1px solid #e2e8f0" }}>{fourWeeksValue}</td>,
-                      <td key={metric.key + "-sid-last-week"} style={cellStyle}>{lastWeekValue}</td>,
-                    ]
-                    if (metric.key === "bookedRate") {
-                      const change = getMetricValue(row.lastWeek, "bookedRate") - getMetricValue(row.fourWeeks, "bookedRate")
-                      const changeColor = change > 0 ? "#15803d" : change < 0 ? "#dc2626" : "#64748b"
-                      cells.push(<td key="sid-bookedRate-change" style={{ ...cellStyle, color: changeColor, fontWeight: 700, borderLeft: "1px solid #e2e8f0" }}>{change > 0 ? "+" : ""}{change.toFixed(1)} pp</td>)
-                    }
-                    return cells
-                  })}
-                </tr>)}
-              </tbody>
-            </table>
-          </div>
-        </details>)}
       </div>
       <p style={{ margin: "10px 0 0", color: "#94a3b8", fontSize: 10 }}>Booked counts each lead once when it has at least one linked appointment with a non-empty appointment date. Booked % = booked leads divided by leads received. The last-week figures are included within the four-week totals.</p>
     </>}
