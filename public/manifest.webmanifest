@@ -1,0 +1,22 @@
+{
+  "name": "Homeshield CRM",
+  "short_name": "Homeshield CRM",
+  "description": "Homeshield sales and operations CRM",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone"
+  ],
+  "orientation": "any",
+  "background_color": "#f6f8fb",
+  "theme_color": "#003B70",
+  "icons": [
+    {
+      "src": "/homeshield-logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
