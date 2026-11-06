@@ -230,10 +230,8 @@ function inferSapZone(postcode) {
   return code || null
 }
 
-function getSapZone(postcode, selectedZone) {
-  const selected = SAP_ZONES.find((zone) => zone.code === String(selectedZone || ""))
-  const inferredCode = inferSapZone(postcode)
-  const code = selected?.code || inferredCode
+function getSapZone(postcode) {
+  const code = inferSapZone(postcode)
   return code ? SAP_ZONES.find((zone) => zone.code === code) || null : null
 }
 
