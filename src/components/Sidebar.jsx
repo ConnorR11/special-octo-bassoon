@@ -38,7 +38,7 @@ function getDepartmentFolder(department) {
   return departmentMap[value] || null
 }
 
-function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel = 1, department = "" }) {
+function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel = 1, department = "", userName = "" }) {
   const numericPermissionLevel = Number(permissionLevel) || 0
   const isAdministrator = numericPermissionLevel >= 4
   const isDepartmentRestricted = numericPermissionLevel === 1 || numericPermissionLevel === 2
@@ -47,6 +47,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
   const canAccessMarketingDashboard = numericPermissionLevel >= 3
   const canAccessCanvasserKPI = numericPermissionLevel >= 3
   const canAccessBalances = numericPermissionLevel >= 4
+  const canAccessQuotesToWork = isAdministrator || String(userName).trim().toLowerCase() === "kenneth newton"
 
   const [openFolders, setOpenFolders] = React.useState({
     sales: false, marketing: false, installation: false, finance: false,
@@ -68,13 +69,14 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
   const canAccessRoute = (route) => {
     const requiredPermission = {
       "sales-performance": 4,
+      "quotes-to-work": 4,
       "marketing-dashboard": 3,
       "canvasser-kpi": 3,
       balances: 4,
       mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, "bulk-updater": 4,
       templates: 4, "integration-logs": 4, "data-dashboard": 4, pronto: 4, global: 4, "data-results": 4, "data-clean": 4, "data-spend": 4, "solar-backend": 4, "unit-analysis": 4, "map-of-installs": 4, "installations-performance": 4,
     }[route]
-    return !requiredPermission || numericPermissionLevel >= requiredPermission
+    return route === "quotes-to-work" ? canAccessQuotesToWork : (!requiredPermission || numericPermissionLevel >= requiredPermission)
   }
 
   React.useEffect(() => {
@@ -127,6 +129,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={PoundSterling} label="Commissions" active={isActive("commissions")} onClick={() => navigate("commissions")}/>
             <NavItem icon={Trophy} label="Sales KPI" active={isActive("sales-kpi")} onClick={() => navigate("sales-kpi")}/>
             <NavItem icon={ClipboardCheck} label="Outstanding Solar Surveys" active={isActive("outstanding-solar-surveys")} onClick={() => navigate("outstanding-solar-surveys")}/>
+            <NavItem icon={FileText} label="Quotes To Work" active={isActive("quotes-to-work")} onClick={() => navigate("quotes-to-work")} disabled={!canAccessQuotesToWork} locked={!canAccessQuotesToWork}/>
           </Folder>
 
 
