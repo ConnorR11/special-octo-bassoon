@@ -370,7 +370,6 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
           .in("status", ["sent", "delivered", "viewed"])
           .not("sent_at", "is", null)
           .order("sent_at", { ascending: false })
-          .range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE)
         if (activeTab === "quotes-work") {
           quoteRequest = quoteRequest.or('disposition.is.null,disposition.not.in.("Superseded","Not interested","Accepted quote")')
           if (appointmentsFromLast7Days.length) {
@@ -395,8 +394,16 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
           if (appointmentsError) throw appointmentsError
           appointmentById = Object.fromEntries((appointments || []).map(item => [String(item.appointment_row_id), item]))
         }
-        setRows(quoteBatch.map(item => ({ ...appointmentById[String(item.appointment_row_id)], ...item })).slice(0, PAGE_SIZE))
-        setHasMore(quoteBatch.length > PAGE_SIZE)
+        const joinedQuotes = quoteBatch
+          .map(item => ({ ...appointmentById[String(item.appointment_row_id)], ...item }))
+          .sort((a, b) => {
+            const aDate = a.appointment_date ? new Date(a.appointment_date).getTime() : Number.POSITIVE_INFINITY
+            const bDate = b.appointment_date ? new Date(b.appointment_date).getTime() : Number.POSITIVE_INFINITY
+            return aDate - bDate
+          })
+        const pageStart = targetPage * PAGE_SIZE
+        setRows(joinedQuotes.slice(pageStart, pageStart + PAGE_SIZE))
+        setHasMore(joinedQuotes.length > pageStart + PAGE_SIZE)
         setLoading(false)
         return
       }
