@@ -23,7 +23,7 @@ export default function LeadToCall() {
   const [leads, setLeads] = useState([])
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(1)
-  const [counts, setCounts] = useState({ total:0, callbacks:0, rework:0, fresh:0, no_contact:0 })
+  const [counts, setCounts] = useState({ total:0, callbacks:0, upcoming_callbacks:0, rework:0, fresh:0, no_contact:0 })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [updatedAt, setUpdatedAt] = useState(null)
@@ -47,13 +47,13 @@ export default function LeadToCall() {
         latestAppointmentResult: lead.latest_appointment_result || "",
         attempts: attemptsOf(lead),
       })))
-      setCounts(result?.counts || { total:0, callbacks:0, rework:0, fresh:0, no_contact:0 })
+      setCounts(result?.counts || { total:0, callbacks:0, upcoming_callbacks:0, rework:0, fresh:0, no_contact:0 })
       setUpdatedAt(Date.now())
     } catch (err) {
       console.error("Lead To Call load failed", err)
       setError(err?.message || "Unable to load the calling queue.")
       setLeads([])
-      setCounts({ total:0, callbacks:0, rework:0, fresh:0, no_contact:0 })
+      setCounts({ total:0, callbacks:0, upcoming_callbacks:0, rework:0, fresh:0, no_contact:0 })
     } finally { setLoading(false) }
   }, [page, search])
 
@@ -70,7 +70,7 @@ export default function LeadToCall() {
       <button type="button" onClick={load} disabled={loading} style={{ display:"inline-flex", alignItems:"center", gap:7, padding:"9px 13px", border:"1px solid #cbd5e1", borderRadius:8, background:"#fff", cursor:"pointer", fontWeight:650 }}><RefreshCw size={14}/>{loading ? "Refreshing…" : "Refresh queue"}</button>
     </div>
     <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))", gap:10, marginBottom:16 }}>
-      {[[ "Callbacks due",counts.callbacks],[ "Fresh leads",counts.fresh],[ "Rework",counts.rework],[ "No Contact ready",counts.no_contact]].map(([label,value])=><div key={label} style={{ ...panel, padding:"13px 15px" }}><div style={small}>{label}</div><div style={{ fontSize:24, fontWeight:800, color:"#0f172a", marginTop:4 }}>{Number(value || 0).toLocaleString("en-GB")}</div></div>)}
+      {[[ "Callbacks due",counts.callbacks],[ "Fresh leads",counts.fresh],[ "Rework",counts.rework],[ "No Contact ready",counts.no_contact]].map(([label,value])=><div key={label} style={{ ...panel, padding:"13px 15px" }}><div style={small}>{label}</div><div style={{ fontSize:24, fontWeight:800, color:"#0f172a", marginTop:4 }}>{Number(value || 0).toLocaleString("en-GB")}</div>{label === "Callbacks due" && <div style={{ ...small, marginTop:5 }}>{Number(counts.upcoming_callbacks || 0).toLocaleString("en-GB")} additional callbacks scheduled beyond the next 5 minutes</div>}</div>)}
     </div>
     <div style={{ ...panel, padding:12, marginBottom:12, display:"flex", alignItems:"center", gap:9 }}>
       <Search size={16} color="#64748b"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, postcode, phone or source…" style={{ border:0, outline:0, flex:1, minWidth:120, fontSize:13, background:"transparent"}}/>
