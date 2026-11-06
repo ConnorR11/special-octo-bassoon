@@ -216,7 +216,7 @@ const POSTCODE_ZONE_GROUPS = {
 
 const POSTCODE_TO_SAP_ZONE = Object.fromEntries(
   Object.entries(POSTCODE_ZONE_GROUPS).flatMap(([zoneCode, districts]) =>
-    districts.split(/\\s+/).map((district) => [district, zoneCode])
+    districts.split(/\s+/).map((district) => [district, zoneCode])
   )
 )
 
@@ -224,8 +224,8 @@ function inferSapZone(postcode) {
   const outward = String(postcode || "")
     .trim()
     .toUpperCase()
-    .replace(/\\s+/g, "")
-    .match(/^[A-Z]{1,2}\\d{1,2}/)?.[0]
+    .replace(/\s+/g, "")
+    .match(/^[A-Z]{1,2}\d{1,2}/)?.[0]
   const code = outward ? POSTCODE_TO_SAP_ZONE[outward] : null
   return code || null
 }
