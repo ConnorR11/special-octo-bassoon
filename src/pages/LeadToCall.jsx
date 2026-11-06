@@ -70,7 +70,7 @@ export default function LeadToCall() {
       <button type="button" onClick={load} disabled={loading} style={{ display:"inline-flex", alignItems:"center", gap:7, padding:"9px 13px", border:"1px solid #cbd5e1", borderRadius:8, background:"#fff", cursor:"pointer", fontWeight:650 }}><RefreshCw size={14}/>{loading ? "Refreshing…" : "Refresh queue"}</button>
     </div>
     <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))", gap:10, marginBottom:16 }}>
-      {[[ "Callbacks due",counts.callbacks],[ "Rework",counts.rework],[ "Fresh leads",counts.fresh],[ "No Contact ready",counts.no_contact]].map(([label,value])=><div key={label} style={{ ...panel, padding:"13px 15px" }}><div style={small}>{label}</div><div style={{ fontSize:24, fontWeight:800, color:"#0f172a", marginTop:4 }}>{Number(value || 0).toLocaleString("en-GB")}</div></div>)}
+      {[[ "Callbacks due",counts.callbacks],[ "Fresh leads",counts.fresh],[ "Rework",counts.rework],[ "No Contact ready",counts.no_contact]].map(([label,value])=><div key={label} style={{ ...panel, padding:"13px 15px" }}><div style={small}>{label}</div><div style={{ fontSize:24, fontWeight:800, color:"#0f172a", marginTop:4 }}>{Number(value || 0).toLocaleString("en-GB")}</div></div>)}
     </div>
     <div style={{ ...panel, padding:12, marginBottom:12, display:"flex", alignItems:"center", gap:9 }}>
       <Search size={16} color="#64748b"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, postcode, phone or source…" style={{ border:0, outline:0, flex:1, minWidth:120, fontSize:13, background:"transparent"}}/>
@@ -78,7 +78,7 @@ export default function LeadToCall() {
     </div>
     {error && <div role="alert" style={{ ...panel, padding:13, color:"#b91c1c", marginBottom:12 }}>{error}</div>}
     <div style={{ ...panel, overflow:"hidden" }}>
-      <div style={{ padding:"12px 15px", borderBottom:"1px solid #e2e8f0", display:"flex", justifyContent:"space-between", gap:8, flexWrap:"wrap" }}><strong style={{ fontSize:13 }}>Next leads to phone</strong><span style={small}>Callbacks → Rework → Fresh → No Contact (2-hour gap, max 15 attempts)</span></div>
+      <div style={{ padding:"12px 15px", borderBottom:"1px solid #e2e8f0", display:"flex", justifyContent:"space-between", gap:8, flexWrap:"wrap" }}><strong style={{ fontSize:13 }}>Next leads to phone</strong><span style={small}>Callbacks → Fresh → Rework → No Contact (2-hour gap, max 15 attempts)</span></div>
       {loading ? <div style={{ padding:36, textAlign:"center", color:"#64748b" }}>Loading calling queue…</div> : leads.length === 0 ? <div style={{ padding:36, textAlign:"center", color:"#64748b" }}>No eligible leads to call right now.</div> :
         <div style={{ overflowX:"auto" }}><table style={{ width:"100%", borderCollapse:"collapse", minWidth:900, fontSize:12, color:"#334155" }}>
           <thead><tr style={{ background:"#f8fafc", textAlign:"left" }}>{["Received","Customer","Postcode","Source","Latest appointment","Appointment result","Disposition","Callback date/time","Last called","Attempts"].map(label=><th key={label} style={{ padding:"10px 12px", borderBottom:"1px solid #e2e8f0", whiteSpace:"nowrap" }}>{label}</th>)}</tr></thead>
