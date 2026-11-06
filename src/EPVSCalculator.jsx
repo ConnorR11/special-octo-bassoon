@@ -192,66 +192,49 @@ function Toggle({ label, value, onChange }) {
 
 
 const SAP_ZONES = [
-  { code: "1", name: "London", sunshine: 4.27 },
-  { code: "2", name: "Brighton", sunshine: 4.44 },
-  { code: "3", name: "Southampton", sunshine: 4.67 },
-  { code: "4", name: "Plymouth", sunshine: 4.75 },
-  { code: "5E", name: "Bristol", sunshine: 4.54 },
-  { code: "5W", name: "Cardiff", sunshine: 4.31 },
-  { code: "6", name: "Birmingham", sunshine: 4.11 },
-  { code: "7E", name: "Manchester", sunshine: 3.75 },
-  { code: "7W", name: "Chester", sunshine: 4.31 },
-  { code: "8E", name: "Carlisle", sunshine: 3.89 },
   { code: "8S", name: "Dumfries", sunshine: 3.59 },
-  { code: "9E", name: "Newcastle", sunshine: 4.25 },
   { code: "9S", name: "Edinburgh", sunshine: 3.97 },
-  { code: "10", name: "Middlesbrough", sunshine: 3.82 },
-  { code: "11", name: "Sheffield", sunshine: 4.07 },
-  { code: "12", name: "Norwich", sunshine: 4.41 },
-  { code: "13", name: "Aberystwyth", sunshine: 4.05 },
+  { code: "9E", name: "Newcastle", sunshine: 4.25 },
   { code: "14", name: "Glasgow", sunshine: 3.38 },
   { code: "15", name: "Dundee", sunshine: 4.00 },
   { code: "16", name: "Aberdeen", sunshine: 3.97 },
   { code: "17", name: "Inverness", sunshine: 3.42 },
-  { code: "18", name: "Stornoway", sunshine: 3.44 },
   { code: "19", name: "Kirkwall", sunshine: 3.32 },
-  { code: "20", name: "Lerwick", sunshine: 3.17 },
-  { code: "21", name: "Belfast", sunshine: 3.50 },
 ]
 
+// Postcode districts are grouped exactly as supplied in the approved postcode table.
+const POSTCODE_ZONE_GROUPS = {
+  "16": "AB10 AB11 AB12 AB13 AB14 AB15 AB16 AB21 AB22 AB23 AB24 AB25 AB30 AB31 AB32 AB33 AB34 AB35 AB36 AB37 AB38 AB39 AB41 AB42 AB43 AB44 AB45 AB51 AB52 AB53 AB54 AB55 AB56 IV30 IV31 IV32 IV36 PH26",
+  "15": "DD1 DD10 DD11 DD2 DD3 DD4 DD5 DD6 DD7 DD8 DD9 EH1 EH10 EH11 EH12 EH13 EH14 EH15 EH16 EH17 EH18 EH19 EH2 EH20 EH21 EH22 EH23 EH24 EH25 EH26 EH27 EH28 EH29 EH3 EH30 EH31 EH32 EH33 EH34 EH35 EH36 EH37 EH38 EH39 EH4 EH40 EH41 EH42 EH47 EH48 EH49 EH5 EH51 EH52 EH53 EH54 EH55 EH6 EH7 EH77 EH8 EH9 EH91 EH95 EH99 KY1 KY10 KY11 KY12 KY13 KY14 KY15 KY16 KY2 KY3 KY4 KY5 KY6 KY7 KY8 KY9 PH1 PH10 PH11 PH12 PH13 PH14 PH15 PH16 PH17 PH18 PH2 PH3 PH4 PH5 PH6 PH7 PH8 PH9",
+  "8S": "DG1 DG10 DG11 DG12 DG13 DG14 DG16 DG2 DG3 DG4 DG5 DG6 DG7 DG8 DG9",
+  "9S": "EH43 EH44 EH45 EH46 TD1 TD10 TD11 TD13 TD14 TD2 TD3 TD4 TD5 TD6 TD7 TD8 TD9",
+  "14": "FK1 FK10 FK11 FK12 FK13 FK14 FK15 FK16 FK17 FK18 FK19 FK2 FK20 FK21 FK3 FK4 FK5 FK6 FK7 FK8 FK9 G1 G11 G12 G13 G14 G15 G2 G20 G21 G22 G23 G3 G31 G32 G33 G34 G4 G40 G41 G42 G43 G44 G45 G46 G5 G51 G52 G53 G58 G60 G61 G62 G63 G64 G65 G66 G67 G68 G69 G71 G72 G73 G74 G75 G76 G77 G78 G81 G82 G83 G84 G9 KA1 KA10 KA11 KA12 KA13 KA14 KA15 KA16 KA17 KA18 KA19 KA2 KA20 KA21 KA22 KA23 KA24 KA25 KA26 KA27 KA28 KA29 KA3 KA30 KA4 KA5 KA6 KA7 KA8 KA9 ML1 ML10 ML11 ML12 ML2 ML3 ML4 ML5 ML6 ML7 ML8 ML9 PA1 PA10 PA11 PA12 PA13 PA14 PA15 PA16 PA17 PA18 PA19 PA2 PA20 PA21 PA22 PA23 PA24 PA25 PA26 PA27 PA28 PA29 PA3 PA30 PA31 PA32 PA33 PA34 PA35 PA36 PA37 PA38 PA4 PA41 PA42 PA43 PA44 PA45 PA46 PA47 PA48 PA49 PA5 PA6 PA60 PA61 PA62 PA63 PA64 PA65 PA66 PA67 PA68 PA69 PA7 PA70 PA71 PA72 PA73 PA74 PA75 PA76 PA77 PA78 PA8 PA80 PA9 PH49 PH50",
+  "17": "IV1 IV10 IV11 IV12 IV13 IV14 IV15 IV16 IV17 IV18 IV19 IV2 IV20 IV21 IV22 IV23 IV24 IV25 IV26 IV27 IV28 IV3 IV4 IV40 IV41 IV42 IV43 IV44 IV45 IV46 IV47 IV48 IV49 IV5 IV51 IV52 IV53 IV54 IV55 IV56 IV6 IV63 IV7 IV8 IV9 KW1 KW10 KW11 KW12 KW13 KW14 KW2 KW3 KW5 KW6 KW7 KW8 KW9 PH19 PH20 PH21 PH22 PH23 PH24 PH25 PH30 PH31 PH32 PH33 PH34 PH35 PH36 PH37 PH38 PH39 PH40 PH41 PH42 PH43 PH44",
+  "19": "KW15 KW16 KW17",
+  "9E": "TD12 TD15",
+}
+
+const POSTCODE_TO_SAP_ZONE = Object.fromEntries(
+  Object.entries(POSTCODE_ZONE_GROUPS).flatMap(([zoneCode, districts]) =>
+    districts.split(/\\s+/).map((district) => [district, zoneCode])
+  )
+)
+
 function inferSapZone(postcode) {
-  const outward = String(postcode || "").trim().toUpperCase().split(/\s+/)[0]
-  if (/^(G|PA)/.test(outward)) return "14"
-  if (/^DD/.test(outward)) return "15"
-  if (/^AB/.test(outward)) return "16"
-  if (/^IV/.test(outward)) return "17"
-  if (/^HS/.test(outward)) return "18"
-  if (/^KW/.test(outward)) return "19"
-  if (/^ZE/.test(outward)) return "20"
-  if (/^EH/.test(outward)) return "9S"
-  if (/^DG/.test(outward)) return "8S"
-  if (/^CA/.test(outward)) return "8E"
-  if (/^NE/.test(outward)) return "9E"
-  if (/^TS/.test(outward)) return "10"
-  if (/^S/.test(outward)) return "11"
-  if (/^NR/.test(outward)) return "12"
-  if (/^(SY23|SY24|SY25)/.test(outward)) return "13"
-  if (/^BT/.test(outward)) return "21"
-  if (/^CH/.test(outward)) return "7W"
-  if (/^(M|OL)/.test(outward)) return "7E"
-  if (/^(B|CV)/.test(outward)) return "6"
-  if (/^CF/.test(outward)) return "5W"
-  if (/^BS/.test(outward)) return "5E"
-  if (/^PL/.test(outward)) return "4"
-  if (/^SO/.test(outward)) return "3"
-  if (/^BN/.test(outward)) return "2"
-  if (/^(E|EC|N|NW|SE|SW|W|WC)/.test(outward)) return "1"
-  return "14"
+  const outward = String(postcode || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\\s+/g, "")
+    .match(/^[A-Z]{1,2}\\d{1,2}/)?.[0]
+  const code = outward ? POSTCODE_TO_SAP_ZONE[outward] : null
+  return code || null
 }
 
 function getSapZone(postcode, selectedZone) {
-  const code = selectedZone || inferSapZone(postcode)
-  return SAP_ZONES.find((zone) => zone.code === code) || SAP_ZONES.find((zone) => zone.code === "14")
+  const selected = SAP_ZONES.find((zone) => zone.code === String(selectedZone || ""))
+  const inferredCode = inferSapZone(postcode)
+  const code = selected?.code || inferredCode
+  return code ? SAP_ZONES.find((zone) => zone.code === code) || null : null
 }
 
 function fluxProfileForConsumption(consumption) {
@@ -1213,7 +1196,7 @@ export default function EPVSCalculator({
       fluxPeakImport: Number(data.fluxPeakImport || 0),
       fluxPeakExport: Number(data.fluxPeakExport || 0),
       fluxStandingCharge: Number(data.fluxStandingCharge || 0),
-      sunshineHours: sapZone.sunshine,
+      sunshineHours: sapZone?.sunshine ?? 0,
       existingGeneration: data.existingSolar
         ? Number(data.existingGeneration || 0)
         : 0,
@@ -1355,7 +1338,7 @@ export default function EPVSCalculator({
           fluxPeakImport,
           fluxPeakExport,
           fluxStandingCharge: Number(data.fluxStandingCharge || 0) * inflationMultiplier,
-          sunshineHours: getSapZone(data.postcode, data.sapZone).sunshine,
+          sunshineHours: getSapZone(data.postcode, data.sapZone)?.sunshine ?? 0,
           existingGeneration,
           existingSolarSelfConsumption: data.existingSolar
             ? Number(data.existingSolarSelfConsumption || 0)
@@ -1626,6 +1609,11 @@ export default function EPVSCalculator({
     // A ref prevents rapid repeat clicks before React has rendered the disabled state.
     if (saveInFlightRef.current) return
 
+    if (!getSapZone(data.postcode, data.sapZone)) {
+      setSaveError("This postcode is not included in the approved SAP postcode table. Check the postcode before saving the EPVS calculation.")
+      return
+    }
+
     if (!hasRequiredEnergyInputs) {
       setSaveError(
         "Please enter annual electricity consumption, current import rate, current export rate and current standing charge before saving the calculation."
@@ -1685,7 +1673,8 @@ export default function EPVSCalculator({
     String(data.annualConsumption ?? "").trim() !== "" &&
     String(data.importRate ?? "").trim() !== "" &&
     String(data.exportRate ?? "").trim() !== "" &&
-    String(data.standingCharge ?? "").trim() !== ""
+    String(data.standingCharge ?? "").trim() !== "" &&
+    Boolean(getSapZone(data.postcode, data.sapZone))
 
   const reset = () => {
     setData(appointmentInitial)
