@@ -2186,7 +2186,7 @@ export default function EPVSCalculator({
                   }}
                 >
                   <input
-                    type="number"
+                    type="text"
                     value={array.panelCount}
                     min={1}
                     style={inputStyle}
@@ -2207,7 +2207,7 @@ export default function EPVSCalculator({
                   }}
                 >
                   <input
-                    type="number"
+                    type="text"
                     value={array.panelWattage || 0}
                     readOnly
                     aria-label="Panel wattage (Wp)"
@@ -2231,7 +2231,7 @@ export default function EPVSCalculator({
                   }}
                 >
                   <input
-                    type="number"
+                    type="text"
                     value={array.orientation}
                     min={-180}
                     max={180}
@@ -2253,7 +2253,7 @@ export default function EPVSCalculator({
                   }}
                 >
                   <input
-                    type="number"
+                    type="text"
                     value={array.pitch}
                     min={0}
                     max={90}
@@ -2275,7 +2275,7 @@ export default function EPVSCalculator({
                   }}
                 >
                   <input
-          type="number"
+          type="text"
           value={array.irradiance}
           readOnly
           aria-label="Irradiance / Kk"
@@ -2299,7 +2299,7 @@ export default function EPVSCalculator({
                   }}
                 >
                   <input
-                    type="number"
+                    type="text"
                     value={array.shading}
                     min={0}
                     max={1}
