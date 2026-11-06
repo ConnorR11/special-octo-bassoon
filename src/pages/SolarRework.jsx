@@ -668,6 +668,7 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
     </div>
     )}
 
+    {activeTab !== "quotes-work" && (
     <div style={{ ...cardStyle, padding: 13, marginBottom: 14 }}>
       <div style={{ display: "grid", gridTemplateColumns: activeTab === "linked" ? "minmax(200px,2fr) repeat(6,minmax(120px,1fr))" : activeTab === "unlinked" ? "minmax(200px,2fr) repeat(4,minmax(125px,1fr))" : (activeTab === "quotes-sent" || activeTab === "quotes-work") ? "minmax(220px,2fr) minmax(170px,1fr)" : "minmax(220px,2fr)", gap: 10, alignItems: "center" }}>
         <div style={{ position: "relative" }}>
@@ -707,12 +708,17 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
         </select>}
       </div>
     </div>
+    )}
 
     <QuoteDailyStatsPanel active={!quotesOnly && activeTab === "quotes-sent"} loading={quoteStatsLoading} stats={quoteDailyStats} cardStyle={cardStyle} muted={muted} firstSentDate={quoteStatsRange.first ? dateLabel(quoteStatsRange.first) : ""} lastSentDate={quoteStatsRange.last ? dateLabel(quoteStatsRange.last) : ""} />
     <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap" }}>
         <div style={{ fontWeight: 700, fontSize: 13 }}>{(activeTab === "quotes-sent" || activeTab === "quotes-work") ? (activeTab === "quotes-work" ? "Quotes to work" : "Quotes Sent") : activeTab === "lead-view" ? loading ? "Loading solar leads…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${page * PAGE_SIZE + rows.length} solar leads` : loading ? "Loading appointments…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${Math.min((page + 1) * PAGE_SIZE, totalCount || rows.length)} of ${totalCount.toLocaleString("en-GB")} ${activeTab !== "unlinked" ? "linked" : "unlinked"} appointments`}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {activeTab === "quotes-work" && <div style={{ position: "relative", flex: "1 1 260px", maxWidth: 420 }}>
+          <Search size={15} style={{ position: "absolute", left: 11, top: 12, color: "#64748b" }} />
+          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search name, postcode, phone, email…" style={{ ...inputStyle, width: "100%", paddingLeft: 33, boxSizing: "border-box" }} />
+        </div>}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
           <button disabled={page === 0 || loading} onClick={() => setPage(value => Math.max(0, value - 1))} style={{ ...selectStyle, padding: "0 12px" }}>Previous</button>
           <span style={muted}>Page {page + 1} of {pageCount}</span>
           <button disabled={!hasMore || loading} onClick={() => setPage(value => Math.min(pageCount - 1, value + 1))} style={{ ...selectStyle, padding: "0 12px" }}>Next</button>
