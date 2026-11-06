@@ -154,7 +154,7 @@ function QuoteDailyStatsPanel({ active, loading, stats, cardStyle, muted, firstS
     </div>}
   </div>
 }
-export default function SolarRework({ onSelectAppointment }) {
+export default function SolarRework({ onSelectAppointment, quotesOnly = false }) {
   const [rows, setRows] = useState([])
   const [totalCount, setTotalCount] = useState(0)
   const [linkedCount, setLinkedCount] = useState(0)
@@ -182,7 +182,7 @@ export default function SolarRework({ onSelectAppointment }) {
   const [quoteStatsLoading, setQuoteStatsLoading] = useState(false)
   const [linkedReadinessFilter, setLinkedReadinessFilter] = useState("all")
   const [page, setPage] = useState(0)
-  const [activeTab, setActiveTab] = useState("unlinked")
+  const [activeTab, setActiveTab] = useState(quotesOnly ? "quotes-work" : "unlinked")
   const [linkedReadinessTab, setLinkedReadinessTab] = useState("not-ready")
   const loadRequestId = useRef(0)
 
@@ -604,6 +604,7 @@ export default function SolarRework({ onSelectAppointment }) {
   const muted = { color: "#64748b", fontSize: 11 }
 
   return <div style={{ maxWidth: 1500, margin: "0 auto", color: "#1f2937" }}>
+    {quotesOnly ? <div style={{ marginBottom: 20 }}><h1 style={{ margin: 0, fontSize: 24, fontWeight: 750 }}>Quotes To Work</h1><p style={{ margin: "7px 0 0", color: "#64748b", fontSize: 13 }}>Sent solar quotes that need an outcome or follow-up.</p><button onClick={() => loadRows(page)} disabled={loading} style={{ marginTop: 12, border: "1px solid #cbd5e1", background: "#fff", borderRadius: 8, padding: "9px 13px", display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 650, cursor: loading ? "wait" : "pointer" }}><RefreshCw size={14} /> Refresh list</button></div> : <>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
@@ -617,9 +618,11 @@ export default function SolarRework({ onSelectAppointment }) {
       </button>
     </div>
 
+    </>}
     {error && <div style={{ marginBottom: 16, padding: 12, borderRadius: 8, background: "#fff1f2", color: "#be123c", fontSize: 12 }}>{error}</div>}
     {activeTab === "quotes-sent" && quoteDispositionError && <div role="alert" style={{ marginBottom: 12, padding: 10, borderRadius: 7, background: "#fff1f2", color: "#be123c", fontSize: 11 }}>{quoteDispositionError}</div>}
 
+    {!quotesOnly && (
     <div style={{ display: "flex", gap: 8, marginBottom: 12, borderBottom: "1px solid #dbe3ea", flexWrap: "wrap" }}>
       {[
         { value: "unlinked", group: null, label: "Unlinked appointments", count: tabCounts.unlinked },
@@ -643,6 +646,7 @@ export default function SolarRework({ onSelectAppointment }) {
         </button>
       })}
     </div>
+    )}
 
     <div style={{ ...cardStyle, padding: 13, marginBottom: 14 }}>
       <div style={{ display: "grid", gridTemplateColumns: activeTab === "linked" ? "minmax(200px,2fr) repeat(6,minmax(120px,1fr))" : activeTab === "unlinked" ? "minmax(200px,2fr) repeat(4,minmax(125px,1fr))" : (activeTab === "quotes-sent" || activeTab === "quotes-work") ? "minmax(220px,2fr) minmax(170px,1fr)" : "minmax(220px,2fr)", gap: 10, alignItems: "center" }}>
@@ -684,7 +688,7 @@ export default function SolarRework({ onSelectAppointment }) {
       </div>
     </div>
 
-    <QuoteDailyStatsPanel active={activeTab === "quotes-sent"} loading={quoteStatsLoading} stats={quoteDailyStats} cardStyle={cardStyle} muted={muted} firstSentDate={quoteStatsRange.first ? dateLabel(quoteStatsRange.first) : ""} lastSentDate={quoteStatsRange.last ? dateLabel(quoteStatsRange.last) : ""} />
+    <QuoteDailyStatsPanel active={!quotesOnly && activeTab === "quotes-sent"} loading={quoteStatsLoading} stats={quoteDailyStats} cardStyle={cardStyle} muted={muted} firstSentDate={quoteStatsRange.first ? dateLabel(quoteStatsRange.first) : ""} lastSentDate={quoteStatsRange.last ? dateLabel(quoteStatsRange.last) : ""} />
     <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap" }}>
         <div style={{ fontWeight: 700, fontSize: 13 }}>{(activeTab === "quotes-sent" || activeTab === "quotes-work") ? (activeTab === "quotes-work" ? "Quotes to work" : "Quotes Sent") : activeTab === "lead-view" ? loading ? "Loading solar leads…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${page * PAGE_SIZE + rows.length} solar leads` : loading ? "Loading appointments…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${Math.min((page + 1) * PAGE_SIZE, totalCount || rows.length)} of ${totalCount.toLocaleString("en-GB")} ${activeTab !== "unlinked" ? "linked" : "unlinked"} appointments`}</div>
