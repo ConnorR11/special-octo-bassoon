@@ -221,11 +221,15 @@ const POSTCODE_TO_SAP_ZONE = Object.fromEntries(
 )
 
 function inferSapZone(postcode) {
-  const outward = String(postcode || "")
+  const compact = String(postcode || "")
     .trim()
     .toUpperCase()
     .replace(/\s+/g, "")
-    .match(/^[A-Z]{1,2}\d{1,2}/)?.[0]
+  // Prefer parsing the complete UK postcode so outward districts such as ML1
+  // are not accidentally read as ML14 when the space is omitted.
+  const outward =
+    compact.match(/^([A-Z]{1,2}\d[A-Z\d]?)\d[A-Z]{2}$/)?.[1] ||
+    compact.match(/^[A-Z]{1,2}\d{1,2}/)?.[0]
   const code = outward ? POSTCODE_TO_SAP_ZONE[outward] : null
   return code || null
 }
