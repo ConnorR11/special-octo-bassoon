@@ -351,17 +351,19 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
         return
       }
       if (activeTab === "quotes-sent" || activeTab === "quotes-work") {
-        // Quotes To Work excludes appointments scheduled in the previous complete
-        // Monday–Sunday week. Quotes Sent remains an unfiltered historical view.
-        let appointmentsFromLastWeek = []
+        // Quotes To Work excludes appointments from the rolling 7 days
+        // immediately before now. Quotes Sent remains an unfiltered historical view.
+        let appointmentsFromLast7Days = []
         if (activeTab === "quotes-work") {
-          const { data: lastWeekAppointments, error: lastWeekError } = await supabase.from("appointments")
+          const now = new Date()
+          const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+          const { data: recentAppointments, error: recentAppointmentsError } = await supabase.from("appointments")
             .select("appointment_row_id")
-            .gte("appointment_date", startOfPreviousWeekISO())
-            .lt("appointment_date", startOfCurrentWeekISO())
+            .gte("appointment_date", sevenDaysAgo.toISOString())
+            .lt("appointment_date", now.toISOString())
             .not("appointment_date", "is", null)
-          if (lastWeekError) throw lastWeekError
-          appointmentsFromLastWeek = (lastWeekAppointments || []).map(item => String(item.appointment_row_id)).filter(Boolean)
+          if (recentAppointmentsError) throw recentAppointmentsError
+          appointmentsFromLast7Days = (recentAppointments || []).map(item => String(item.appointment_row_id)).filter(Boolean)
         }
         let quoteRequest = supabase.from("solar_quotes")
           .select("id,appointment_row_id,quote_ref,customer_name,customer_email,status,created_at,sent_at,last_viewed_at,view_count,expires_at,storage_path,disposition,callback_date,disposition_notes")
@@ -371,8 +373,8 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
           .range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE)
         if (activeTab === "quotes-work") {
           quoteRequest = quoteRequest.or('disposition.is.null,disposition.not.in.("Superseded","Not interested","Accepted quote")')
-          if (appointmentsFromLastWeek.length) {
-            const excludedIds = appointmentsFromLastWeek.map(id => '"' + id.replace(/"/g, '\\"') + '"').join(",")
+          if (appointmentsFromLast7Days.length) {
+            const excludedIds = appointmentsFromLast7Days.map(id => '"' + id.replace(/"/g, '\\"') + '"').join(",")
             quoteRequest = quoteRequest.not("appointment_row_id", "in", "(" + excludedIds + ")")
           }
         }
