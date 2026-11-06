@@ -388,11 +388,14 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
         const ids = [...new Set(quoteBatch.map(item => item.appointment_row_id).filter(Boolean))]
         let appointmentById = {}
         if (ids.length) {
-          const { data: appointments, error: appointmentsError } = await supabase.from("appointments")
-            .select("appointment_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,open_solar_id,epvs_calculation,rep_allocated")
-            .in("appointment_row_id", ids)
-          if (appointmentsError) throw appointmentsError
-          appointmentById = Object.fromEntries((appointments || []).map(item => [String(item.appointment_row_id), item]))
+          // Kenneth and other restricted sales users may see the quote but not
+          // the linked appointment row under the appointments RLS policy.
+          // Fetch only the appointment date through a narrowly scoped RPC that
+          // returns dates for appointment IDs which have a solar quote.
+          const { data: appointmentDates, error: appointmentDatesError } = await supabase
+            .rpc("get_solar_quote_appointment_dates", { p_appointment_ids: ids })
+          if (appointmentDatesError) throw appointmentDatesError
+          appointmentById = Object.fromEntries((appointmentDates || []).map(item => [String(item.appointment_row_id), item]))
         }
         const joinedQuotes = quoteBatch
           .map(item => ({ ...appointmentById[String(item.appointment_row_id)], ...item }))
