@@ -351,13 +351,31 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
         return
       }
       if (activeTab === "quotes-sent" || activeTab === "quotes-work") {
+        // Quotes To Work excludes appointments scheduled in the previous complete
+        // Monday–Sunday week. Quotes Sent remains an unfiltered historical view.
+        let appointmentsFromLastWeek = []
+        if (activeTab === "quotes-work") {
+          const { data: lastWeekAppointments, error: lastWeekError } = await supabase.from("appointments")
+            .select("appointment_row_id")
+            .gte("appointment_date", startOfPreviousWeekISO())
+            .lt("appointment_date", startOfCurrentWeekISO())
+            .not("appointment_date", "is", null)
+          if (lastWeekError) throw lastWeekError
+          appointmentsFromLastWeek = (lastWeekAppointments || []).map(item => String(item.appointment_row_id)).filter(Boolean)
+        }
         let quoteRequest = supabase.from("solar_quotes")
           .select("id,appointment_row_id,quote_ref,customer_name,customer_email,status,created_at,sent_at,last_viewed_at,view_count,expires_at,storage_path,disposition,callback_date,disposition_notes")
           .in("status", ["sent", "delivered", "viewed"])
           .not("sent_at", "is", null)
           .order("sent_at", { ascending: false })
           .range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE)
-        if (activeTab === "quotes-work") quoteRequest = quoteRequest.or('disposition.is.null,disposition.not.in.("Superseded","Not interested","Accepted quote")')
+        if (activeTab === "quotes-work") {
+          quoteRequest = quoteRequest.or('disposition.is.null,disposition.not.in.("Superseded","Not interested","Accepted quote")')
+          if (appointmentsFromLastWeek.length) {
+            const excludedIds = appointmentsFromLastWeek.map(id => '"' + id.replace(/"/g, '\\"') + '"').join(",")
+            quoteRequest = quoteRequest.not("appointment_row_id", "in", "(" + excludedIds + ")")
+          }
+        }
         if (quoteViewedFilter === "viewed") quoteRequest = quoteRequest.not("last_viewed_at", "is", null)
         if (quoteViewedFilter === "not-viewed") quoteRequest = quoteRequest.is("last_viewed_at", null)
         const needle = normalise(query).replace(/[%_,()]/g, " ")
