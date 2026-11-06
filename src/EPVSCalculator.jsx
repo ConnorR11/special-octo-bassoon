@@ -2713,7 +2713,7 @@ export default function EPVSCalculator({
               <div style={{ padding: 8, borderBottom: "1px solid #dbe3ec", borderLeft: "1px solid #dbe3ec" }}>
                 <Input
                   label=""
-                  type="number"
+                  type="text"
                   value={data.fluxDayImport}
                   readOnly
                   onChange={(value) => update("fluxDayImport", value)}
@@ -2725,7 +2725,7 @@ export default function EPVSCalculator({
               <div style={{ padding: 8, borderBottom: "1px solid #dbe3ec", borderLeft: "1px solid #dbe3ec" }}>
                 <Input
                   label=""
-                  type="number"
+                  type="text"
                   value={data.fluxDayExport}
                   readOnly
                   onChange={(value) => update("fluxDayExport", value)}
@@ -2749,7 +2749,7 @@ export default function EPVSCalculator({
               <div style={{ padding: 8, borderBottom: "1px solid #dbe3ec", borderLeft: "1px solid #dbe3ec" }}>
                 <Input
                   label=""
-                  type="number"
+                  type="text"
                   value={data.fluxImport}
                   readOnly
                   onChange={(value) => update("fluxImport", value)}
@@ -2761,7 +2761,7 @@ export default function EPVSCalculator({
               <div style={{ padding: 8, borderBottom: "1px solid #dbe3ec", borderLeft: "1px solid #dbe3ec" }}>
                 <Input
                   label=""
-                  type="number"
+                  type="text"
                   value={data.fluxExport}
                   readOnly
                   onChange={(value) => update("fluxExport", value)}
@@ -2785,7 +2785,7 @@ export default function EPVSCalculator({
               <div style={{ padding: 8, borderBottom: "1px solid #dbe3ec", borderLeft: "1px solid #dbe3ec" }}>
                 <Input
                   label=""
-                  type="number"
+                  type="text"
                   value={data.fluxPeakImport}
                   readOnly
                   onChange={(value) => update("fluxPeakImport", value)}
@@ -2797,7 +2797,7 @@ export default function EPVSCalculator({
               <div style={{ padding: 8, borderBottom: "1px solid #dbe3ec", borderLeft: "1px solid #dbe3ec" }}>
                 <Input
                   label=""
-                  type="number"
+                  type="text"
                   value={data.fluxPeakExport}
                   readOnly
                   onChange={(value) => update("fluxPeakExport", value)}
@@ -2826,7 +2826,7 @@ export default function EPVSCalculator({
               >
                 <Input
                   label=""
-                  type="number"
+                  type="text"
                   value={data.fluxStandingCharge}
                   readOnly
                   onChange={(value) =>
