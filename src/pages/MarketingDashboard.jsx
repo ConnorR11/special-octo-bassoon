@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react"
 import { Megaphone, Target, Phone, CalendarDays, Users, RefreshCw, AlertCircle, BriefcaseBusiness, Filter, X, Clock, MapPin } from "lucide-react"
 import Stat from "../components/Stat"
 import { supabase } from "../lib/supabase"
+import LeadToCall from "./LeadToCall"
 
 function getLondonDayBounds() {
   const now = new Date()
@@ -55,7 +56,7 @@ function AppointmentRow({ appointment, onClick }) {
   return <button type="button" onClick={() => onClick?.(appointment)} style={{ appearance: "none", border: 0, background: "transparent", width: "100%", textAlign: "left", cursor: "pointer", font: "inherit", color: "inherit", display: "grid", gridTemplateColumns: "minmax(180px,1.4fr) minmax(120px,1fr) minmax(110px,1fr) minmax(130px,1fr) minmax(130px,1fr)", gap: 16, alignItems: "center", padding: "14px 0", borderBottom: "1px solid #eef2f7" }}><div style={{ minWidth: 0 }}><div style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={appointment?.name || "Unnamed customer"}>{appointment?.name || "Unnamed customer"}</div><div style={{ display: "flex", alignItems: "center", gap: 5, color: "#64748b", fontSize: 12, marginTop: 4 }}><Clock size={12} />Submitted {formatDateTime(appointment?.submission_date)}</div></div><div style={{ minWidth: 0 }}><div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>Canvasser</div><div style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={appointment?.canvasser_name || appointment?.canvasser}>{displayValue(appointment?.canvasser_name || appointment?.canvasser)}</div></div><div style={{ minWidth: 0 }}><div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>Job Type</div><div style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayValue(appointment?.job_type)}</div></div><div style={{ minWidth: 0 }}><div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>Lead Source</div><div style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayValue(appointment?.lead_source)}</div></div><div style={{ minWidth: 0 }}><div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>Appointment</div><div style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={formatDateTime(appointment?.appointment_date)}><CalendarDays size={13} />{formatDateTime(appointment?.appointment_date)}</div></div></button>
 }
 
-export default function MarketingDashboard({ onSelectAppointment }) {
+function MadeTodayDashboard({ onSelectAppointment }) {
   const [appointments, setAppointments] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -123,5 +124,28 @@ export default function MarketingDashboard({ onSelectAppointment }) {
       {loading ? <div style={{ padding: "35px 0", textAlign: "center", color: "#64748b" }}>Loading today's appointments...</div> : filteredAppointments.length === 0 ? <div style={{ padding: "35px 0", textAlign: "center", color: "#64748b" }}>{hasFilters ? "No appointments match the selected filters." : "No appointments have been generated today."}</div> : <div style={{ overflowX: "auto" }}><div style={{ minWidth: 850 }}><div style={{ display: "grid", gridTemplateColumns: "minmax(180px,1.4fr) minmax(120px,1fr) minmax(110px,1fr) minmax(130px,1fr) minmax(130px,1fr)", gap: 16, padding: "0 0 10px", borderBottom: "1px solid #e2e8f0", color: "#94a3b8", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}><div>Customer</div><div>Canvasser</div><div>Job Type</div><div>Lead Source</div><div>Appointment</div></div>{filteredAppointments.map((appointment) => <AppointmentRow key={appointment.appointment_row_id || `${appointment.name}-${appointment.submission_date}`} appointment={appointment} onClick={onSelectAppointment} />)}</div></div>}
     </div>
     {lastUpdated && <div style={{ marginTop: 16, color: "#94a3b8", fontSize: 12 }}>Last updated {lastUpdated.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} · Auto-refreshes every 60 seconds</div>}
+  </section>
+}
+
+
+export default function MarketingDashboard({ onSelectAppointment }) {
+  const [activeTab, setActiveTab] = useState("made-today")
+  const tabStyle = (active) => ({
+    padding: "10px 16px",
+    border: 0,
+    borderBottom: active ? "2px solid #0f172a" : "2px solid transparent",
+    background: "transparent",
+    color: active ? "#0f172a" : "#64748b",
+    fontWeight: active ? 700 : 600,
+    cursor: "pointer",
+    fontSize: 14,
+  })
+
+  return <section>
+    <div role="tablist" aria-label="Marketing dashboard sections" style={{ display:"flex", gap:8, borderBottom:"1px solid #e2e8f0", marginBottom:20 }}>
+      <button type="button" role="tab" aria-selected={activeTab === "made-today"} onClick={() => setActiveTab("made-today")} style={tabStyle(activeTab === "made-today")}>Made Today</button>
+      <button type="button" role="tab" aria-selected={activeTab === "leads-to-call"} onClick={() => setActiveTab("leads-to-call")} style={tabStyle(activeTab === "leads-to-call")}>Leads To Call</button>
+    </div>
+    {activeTab === "made-today" ? <MadeTodayDashboard onSelectAppointment={onSelectAppointment} /> : <LeadToCall />}
   </section>
 }
