@@ -116,17 +116,19 @@ function App() {
   const effectivePermissionLevel = previewUser?.permission_level ?? profile?.permission_level ?? 0
   const effectiveRole = previewUser?.role ?? profile?.role ?? ""
   const effectiveUserEmail = previewUser?.email ?? session?.user?.email ?? ""
+  const effectiveUserName = String((previewUser || profile)?.full_name || (previewUser || profile)?.display_name || "").trim().toLowerCase()
+  const canAccessQuotesToWork = Number(effectivePermissionLevel) >= 4 || effectiveUserName === "kenneth newton"
   const effectiveDepartment = String((previewUser || profile)?.department || "").trim().toLowerCase()
   const canSeeInstallationsFolder = ![1, 2].includes(Number(effectivePermissionLevel)) || ["installation", "installations"].includes(effectiveDepartment)
 
   useEffect(() => {
-    const restrictedPages = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, balances: 4, mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, "bulk-updater": 4, hotkeys: 4, templates: 4, "integration-logs": 4, "data-dashboard": 4, pronto: 4, global: 4, "data-clean": 4, "data-spend": 4, "solar-backend": 4, "unit-analysis": 4, "outstanding-solar-surveys": 0 }
+    const restrictedPages = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, balances: 4, mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, "bulk-updater": 4, hotkeys: 4, templates: 4, "integration-logs": 4, "data-dashboard": 4, pronto: 4, global: 4, "data-clean": 4, "data-spend": 4, "solar-backend": 4, "unit-analysis": 4, "outstanding-solar-surveys": 0, "quotes-to-work": 4 }
     const requiredPermission = restrictedPages[page]
-    if ((requiredPermission && effectivePermissionLevel < requiredPermission) || (page === "epvs-applications" && !canSeeInstallationsFolder)) {
+    if ((requiredPermission && effectivePermissionLevel < requiredPermission) || (page === "quotes-to-work" && !canAccessQuotesToWork) || (page === "epvs-applications" && !canSeeInstallationsFolder)) {
       setPage("dashboard")
       if (window.location.pathname !== "/") window.history.replaceState({}, "", "/")
     }
-  }, [page, effectivePermissionLevel, canSeeInstallationsFolder])
+  }, [page, effectivePermissionLevel, canSeeInstallationsFolder, canAccessQuotesToWork])
 
   async function loadContracts(pageNumber = 0, searchValue = query, statusValue = status) {
     setLoading(true); setError("")
@@ -298,6 +300,8 @@ function App() {
     pageContent = <SolarBackend onSelectAppointment={handleAppointmentSelect}/>
   } else if (page === "outstanding-solar-surveys") {
     pageContent = <OutstandingSolarSurveys onSelectDeal={deal => handleDealSelect(deal, page)}/>
+  } else if (page === "quotes-to-work") {
+    pageContent = <SolarRework quotesOnly onSelectAppointment={handleAppointmentSelect}/>
   } else if (page === "solar-rework") {
     pageContent = <SolarRework onSelectAppointment={handleAppointmentSelect}/>
   } else if (page === "unit-analysis") {
@@ -355,7 +359,7 @@ function App() {
   }
 
   return <div className="app">
-    <Sidebar page={page} setPage={handlePageChange} mobile={mobile} setMobile={setMobile} onSignOut={handleSignOut} permissionLevel={effectivePermissionLevel} department={previewUser?.department ?? profile?.department ?? ""}/>
+    <Sidebar page={page} setPage={handlePageChange} mobile={mobile} userName={(previewUser || profile)?.full_name || (previewUser || profile)?.display_name || ""} setMobile={setMobile} onSignOut={handleSignOut} permissionLevel={effectivePermissionLevel} department={previewUser?.department ?? profile?.department ?? ""}/>
     <main>
       <Header page={headerPage} setMobile={setMobile}/>
       {error&&page!=="epvs"&&page!=="epvs-applications"&&<div className="error"><b>Database error</b><span>{error}</span></div>}
