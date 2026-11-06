@@ -546,7 +546,7 @@ function FitSheet({ setSelected }) {
       { label: "ABERDEEN", teams: ["Paul Duncan", "Paul Falconer"] },
       { label: "FIFE", teams: ["Jon Gray"] },
       { label: "EDINBURGH", teams: ["Vladimir Ivanovs", "Vlad Team 2"] },
-      { label: "TEAMS 1–11", teams: ["Darren Green", "Nicky McHugh", "Ian Kidd", "Daniel Barron", "John Cannon", "Andrei Vlasov", "Lloyd Reid", "James Clarke"] },
+      { label: "TEAMS 1–11", teams: ["Darren Green", "Nicky McHugh", "Ian Kidd", "Daniel Barron", "Dmytro Mykhailenko Team 1", "John Cannon", "Andrei Vlasov", "Lloyd Reid", "Matt White", "David Coyle", "James Clarke", "Jamie Adamson"] },
     ]
     const normalise = (value) => String(value || "").trim().toLocaleLowerCase()
     const actualTeams = [...new Set(jobs.map((job) => String(job.team || "").trim()).filter(Boolean))]
