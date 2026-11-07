@@ -93,6 +93,7 @@ function DataDashboard({ standalonePronto = false }) {
   const [error, setError] = useState("")
   const [activeTab, setActiveTab] = useState(standalonePronto ? "pronto" : "overview")
   const [prontoSectionTab, setProntoSectionTab] = useState("four-weeks")
+  const [prontoWorkspaceTab, setProntoWorkspaceTab] = useState("pronto")
   const [archivedLeads, setArchivedLeads] = useState([])
   const [archivedLeadCount, setArchivedLeadCount] = useState(0)
   const [archivedLeadsLoading, setArchivedLeadsLoading] = useState(false)
@@ -1558,6 +1559,11 @@ function DataDashboard({ standalonePronto = false }) {
         </>
       ) : activeTab === "pronto" ? (
         <>
+          {standalonePronto && <div className="data-dashboard-tabs" style={{ marginTop: 8, marginBottom: 12, borderBottom: "1px solid #dbe3ed" }}>
+            <button type="button" className={prontoWorkspaceTab === "pronto" ? "data-dashboard-tab active" : "data-dashboard-tab"} onClick={() => setProntoWorkspaceTab("pronto")}>Pronto</button>
+            <button type="button" className={prontoWorkspaceTab === "mvf" ? "data-dashboard-tab active" : "data-dashboard-tab"} onClick={() => setProntoWorkspaceTab("mvf")}>MVF</button>
+          </div>}
+          {(!standalonePronto || prontoWorkspaceTab === "pronto") ? <>
           {standalonePronto && <div className="data-dashboard-tabs" style={{ marginTop: 16, marginBottom: 16 }}>
             <button type="button" className={prontoSectionTab === "four-weeks" ? "data-dashboard-tab active" : "data-dashboard-tab"} onClick={() => setProntoSectionTab("four-weeks")}>4W vs Last Week</button>
             <button type="button" className={prontoSectionTab === "all-leads" ? "data-dashboard-tab active" : "data-dashboard-tab"} onClick={() => setProntoSectionTab("all-leads")}>All Leads</button>
@@ -1986,6 +1992,11 @@ function DataDashboard({ standalonePronto = false }) {
             </>}
           </div>
           </>}
+
+          </> : <div style={{ background: "#fff", border: "1px solid #dbe3ed", borderRadius: 12, padding: 20, marginTop: 16 }}>
+            <div className="data-dashboard-chart-title">MVF reporting</div>
+            <div className="data-dashboard-chart-subtitle">This workspace is ready for MVF-specific tracking, metrics and reports. Existing Pronto reports remain under the Pronto tab.</div>
+          </div>}
 
         </>
 
