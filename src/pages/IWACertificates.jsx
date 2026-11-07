@@ -272,7 +272,6 @@ export default function IWACertificates() {
                 <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>{money(row.contract_value)}</td>
                 <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>{money(row.premium)}</td>
                 <td style={{ padding: "12px 13px" }}>{row.payment_method || "—"}</td>
-                <td style={{ padding: "12px 13px" }}><span style={{ display: "inline-block", borderRadius: 20, padding: "4px 9px", background: row.match_status === "approved" ? "#e8f6ee" : row.match_status === "excluded" ? "#f1f2f4" : "#fff5df", color: row.match_status === "approved" ? "#187044" : row.match_status === "excluded" ? "#626b73" : "#8b5a00", whiteSpace: "nowrap", fontWeight: 600 }}>{row.match_status === "unmatched" ? "Awaiting match" : row.match_status}</span></td>
                 <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>
                   {row.deal_row_id
                     ? <button onClick={() => removeMatch(row)} title="Break deal link" aria-label={`Break deal link for ${row.certificate_id}`} style={{ border: "1px solid #dce2e7", borderRadius: 7, width: 32, height: 32, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#fff", color: "#a33b35", cursor: "pointer" }}><Unlink size={15}/></button>
