@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react"
-import { Search, RefreshCw, ShieldCheck, FileText, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, RefreshCw, ShieldCheck, FileText, ChevronLeft, ChevronRight, Link2, X, CheckCircle2 } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
 const PAGE_SIZE = 50
@@ -28,6 +28,12 @@ export default function IWACertificates() {
   const [page, setPage] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [matchingCertificate, setMatchingCertificate] = useState(null)
+  const [dealSearch, setDealSearch] = useState("")
+  const [dealResults, setDealResults] = useState([])
+  const [dealSearchLoading, setDealSearchLoading] = useState(false)
+  const [matchSaving, setMatchSaving] = useState(false)
+  const [matchError, setMatchError] = useState("")
 
   const loadCounts = useCallback(async () => {
     const statuses = ["unmatched", "approved", "excluded"]
@@ -57,7 +63,7 @@ export default function IWACertificates() {
     setLoading(true)
     setError("")
     try {
-      let request = supabase.from("iwa_certificates").select("id,certificate_id,installation_type,customer_name,installation_address,cover_period,contract_value,premium,payment_method,issue_date_text,completion_date_text,match_status", { count: "exact" }).order("certificate_id", { ascending: true }).range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+      let request = supabase.from("iwa_certificates").select("id,certificate_id,installation_type,customer_name,installation_address,cover_period,contract_value,premium,payment_method,issue_date_text,completion_date_text,match_status,deal_row_id", { count: "exact" }).order("certificate_id", { ascending: true }).range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
       if (status !== "all") request = request.eq("match_status", status)
       const term = search.trim()
       if (term) {
@@ -76,6 +82,48 @@ export default function IWACertificates() {
   }, [page, status, search, loadCounts])
 
   useEffect(() => { loadRows() }, [loadRows])
+  const searchDeals = async value => {
+    setDealSearch(value)
+    setMatchError("")
+    const term = value.trim()
+    if (term.length < 2) { setDealResults([]); return }
+    setDealSearchLoading(true)
+    try {
+      const result = await supabase.from("deals")
+        .select("id,contract_number,customer_name,address,postcode,product,deal_value,sale_date,status")
+        .or("customer_name.ilike.%"+term+"%,postcode.ilike.%"+term+"%,address.ilike.%"+term+"%,contract_number.ilike.%"+term+"%")
+        .order("sale_date", { ascending: false }).limit(30)
+      if (result.error) throw result.error
+      setDealResults(result.data || [])
+    } catch (err) {
+      setMatchError(err.message || "Unable to search deals.")
+      setDealResults([])
+    } finally { setDealSearchLoading(false) }
+  }
+
+  const approveMatch = async deal => {
+    if (!matchingCertificate) return
+    setMatchSaving(true)
+    setMatchError("")
+    const result = await supabase.from("iwa_certificates")
+      .update({ deal_row_id: deal.id, match_status: "approved" })
+      .eq("id", matchingCertificate.id)
+    setMatchSaving(false)
+    if (result.error) { setMatchError(result.error.message); return }
+    setMatchingCertificate(null)
+    setDealSearch("")
+    setDealResults([])
+    await loadRows()
+  }
+
+  const removeMatch = async row => {
+    if (!window.confirm("Remove this deal link and return the certificate to awaiting match?")) return
+    const result = await supabase.from("iwa_certificates")
+      .update({ deal_row_id: null, match_status: "unmatched" }).eq("id", row.id)
+    if (result.error) setError(result.error.message)
+    else await loadRows()
+  }
+
 
   const card = (label, value, icon, tint) => (
     <div style={{ background: "#fff", border: "1px solid #e7ebef", borderRadius: 12, padding: 18, display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
@@ -114,7 +162,7 @@ export default function IWACertificates() {
               {["Certificate ID","Customer / Installation address","Installation type","Cover period","Contract value","Premium","Payment method","Match status"].map(label => <th key={label} style={{ padding: "12px 13px", fontWeight: 650, whiteSpace: "nowrap", borderBottom: "1px solid #e9edf0" }}>{label}</th>)}
             </tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan="8" style={{ padding: 30, textAlign: "center", color: "#7b858e" }}>Loading certificates…</td></tr> : rows.length === 0 ? <tr><td colSpan="8" style={{ padding: 30, textAlign: "center", color: "#7b858e" }}>No certificates found.</td></tr> : rows.map(row => <tr key={row.id} style={{ borderBottom: "1px solid #eef1f3" }}>
+              {loading ? <tr><td colSpan="9" style={{ padding: 30, textAlign: "center", color: "#7b858e" }}>Loading certificates…</td></tr> : rows.length === 0 ? <tr><td colSpan="8" style={{ padding: 30, textAlign: "center", color: "#7b858e" }}>No certificates found.</td></tr> : rows.map(row => <tr key={row.id} style={{ borderBottom: "1px solid #eef1f3" }}>
                 <td style={{ padding: "12px 13px", fontWeight: 650, whiteSpace: "nowrap", color: "#23445c" }}>{row.certificate_id}</td>
                 <td style={{ padding: "12px 13px", maxWidth: 300 }}><div style={{ fontWeight: 600 }}>{row.customer_name || "—"}</div><div style={{ color: "#7b858e", marginTop: 3 }}>{row.installation_address || "—"}</div></td>
                 <td style={{ padding: "12px 13px" }}>{row.installation_type || "—"}</td>
@@ -123,6 +171,11 @@ export default function IWACertificates() {
                 <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>{money(row.premium)}</td>
                 <td style={{ padding: "12px 13px" }}>{row.payment_method || "—"}</td>
                 <td style={{ padding: "12px 13px" }}><span style={{ display: "inline-block", borderRadius: 20, padding: "4px 9px", background: row.match_status === "approved" ? "#e8f6ee" : row.match_status === "excluded" ? "#f1f2f4" : "#fff5df", color: row.match_status === "approved" ? "#187044" : row.match_status === "excluded" ? "#626b73" : "#8b5a00", whiteSpace: "nowrap", fontWeight: 600 }}>{row.match_status === "unmatched" ? "Awaiting match" : row.match_status}</span></td>
+                <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>
+                  {row.deal_row_id
+                    ? <button onClick={() => removeMatch(row)} style={{ border: "1px solid #dce2e7", borderRadius: 7, padding: "6px 9px", background: "#fff", color: "#a33b35", cursor: "pointer" }}>Remove link</button>
+                    : <button onClick={() => { setMatchingCertificate(row); setDealSearch(row.customer_name || ""); setDealResults([]); setMatchError(""); }} style={{ border: "1px solid #cbd8e2", borderRadius: 7, padding: "6px 9px", background: "#f5f9fc", color: "#23445c", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}><Link2 size={13}/> Find Deal</button>}
+                </td>
               </tr>)}
             </tbody>
           </table>
@@ -135,6 +188,31 @@ export default function IWACertificates() {
           </div>
         </div>
       </div>
+
+      {matchingCertificate && <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(15,25,35,.48)", display: "flex", justifyContent: "center", alignItems: "center", padding: 18 }}>
+        <div style={{ background: "#fff", borderRadius: 14, width: "min(900px,100%)", maxHeight: "90vh", overflow: "auto", boxShadow: "0 20px 60px rgba(0,0,0,.22)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: 18, borderBottom: "1px solid #e9edf0" }}>
+            <div><h2 style={{ margin: 0, fontSize: 19 }}>Match IWA certificate</h2><div style={{ color: "#77818b", fontSize: 12 }}>Certificate {matchingCertificate.certificate_id}</div></div>
+            <button onClick={() => setMatchingCertificate(null)} style={{ border: 0, background: "transparent", cursor: "pointer" }}><X size={20}/></button>
+          </div>
+          <div style={{ padding: 20 }}>
+            <div style={{ background: "#f7f9fb", border: "1px solid #e8edf1", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+              <strong>{matchingCertificate.customer_name || "Customer not recorded"}</strong>
+              <div style={{ color: "#66727d", fontSize: 13 }}>{matchingCertificate.installation_address || "Address not recorded"}</div>
+              <div style={{ fontSize: 12, color: "#66727d", marginTop: 8 }}>Type: {matchingCertificate.installation_type || "—"} · Contract: {money(matchingCertificate.contract_value)} · Premium: {money(matchingCertificate.premium)}</div>
+            </div>
+            <input value={dealSearch} onChange={e => searchDeals(e.target.value)} placeholder="Search customer, postcode, address or contract number…" style={{ width: "100%", boxSizing: "border-box", border: "1px solid #dce2e7", borderRadius: 8, padding: 11 }}/>
+            {matchError && <div style={{ color: "#b42318", marginTop: 10 }}>{matchError}</div>}
+            <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+              {dealSearchLoading ? <div>Searching deals…</div> : dealResults.length === 0 ? <div style={{ color: "#77818b", padding: 16 }}>Enter at least two characters, or no deals found.</div> : dealResults.map(deal => <div key={deal.id} style={{ border: "1px solid #e5eaee", borderRadius: 9, padding: 12, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                <div><strong>{deal.customer_name || "Unnamed customer"} · {deal.contract_number || "No contract number"}</strong><div style={{ fontSize: 12, color: "#77818b" }}>{[deal.address, deal.postcode].filter(Boolean).join(", ")} · {deal.product || "Product not specified"}</div><div style={{ fontSize: 11, color: "#77818b" }}>{deal.sale_date || "No sale date"} · {deal.status || "No status"}</div></div>
+                <button disabled={matchSaving} onClick={() => approveMatch(deal)} style={{ background: "#176b45", color: "#fff", border: 0, borderRadius: 8, padding: "8px 12px", cursor: "pointer" }}><CheckCircle2 size={14}/> {matchSaving ? "Saving…" : "Approve Match"}</button>
+              </div>)}
+            </div>
+            <div style={{ fontSize: 11, color: "#77818b", marginTop: 14 }}>The deal row ID is only saved after you select Approve Match.</div>
+          </div>
+        </div>
+      </div>}
     </div>
   )
 }
