@@ -46,7 +46,7 @@ export default function MarketingAudiences() {
             <div style={{padding:12}}>
               <div style={{fontSize:10,color:"#64748b",marginBottom:9}}>Last calculated: {a.aggregated_at?new Date(a.aggregated_at).toLocaleString("en-GB"):"Not yet calculated"}</div>
               <div style={{display:"flex",flexWrap:"wrap",gap:5,margin:"0 0 10px"}}>
-                {["All lead sources","Disposition: No Contact","Excludes Return Accepted","Excludes Return Open","Excludes booked appointments"].map(x=><span key={x} style={{fontSize:9,padding:"4px 6px",borderRadius:20,background:"#f1f5f9",color:"#334155"}}>{x}</span>)}
+                {["Job type: Windows or Solar","Disposition: No Contact","Excludes Return Accepted","Excludes Return Open","Excludes booked appointments"].map(x=><span key={x} style={{fontSize:9,padding:"4px 6px",borderRadius:20,background:"#f1f5f9",color:"#334155"}}>{x}</span>)}
               </div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:6,marginBottom:10}}>
                 <div style={{background:"#f0fdfa",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>Total leads</div><strong style={{fontSize:21,color:"#134e4a"}}>{Number(a.aggregation?.total_leads||0).toLocaleString("en-GB")}</strong></div>
