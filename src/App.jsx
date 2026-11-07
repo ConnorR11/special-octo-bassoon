@@ -333,6 +333,8 @@ function App() {
     pageContent = <MarketingDashboard/>
   } else if (page === "marketing-audiences") {
     pageContent = <MarketingAudiences/>
+  } else if (page === "iwa-certificates") {
+    pageContent = <IWACertificates/>
   } else if (page === "leads") {
     pageContent = <Leads/>
   } else if (page === "rts-list") {
