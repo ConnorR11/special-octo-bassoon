@@ -26,7 +26,7 @@ export default function MarketingAudiences() {
   async function remove(a){
     if(!window.confirm("Delete the audience “"+a.name+"”?"))return
     const {error}=await supabase.from("marketing_audiences").delete().eq("id",a.id)
-    if(error)setError(error.message);else{setAudiences(v=>v.filter(x=>x.id!==a.id));if(editing===a.id)startNew()}
+    if(error)setError(error.message);else setAudiences(v=>v.filter(x=>x.id!==a.id))
   }
 
   return <section style={{maxWidth:1400,margin:"0 auto",color:"#0f172a"}}>
@@ -57,12 +57,11 @@ export default function MarketingAudiences() {
               </table>
             </div>
           </div> : <div style={{display:"flex",justifyContent:"space-between",gap:8}}>
-            <button onClick={()=>editAudience(a)} style={{border:0,background:"transparent",textAlign:"left",padding:0,cursor:"pointer",minWidth:0}}><strong style={{display:"block",fontSize:13,color:"#0f172a"}}>{a.name}</strong><span style={{display:"block",fontSize:11,color:"#64748b",marginTop:3}}>{a.description||"No description"}</span></button>
+            <div><strong style={{display:"block",fontSize:13,color:"#0f172a"}}>{a.name}</strong><span style={{display:"block",fontSize:11,color:"#64748b",marginTop:3}}>{a.description||"No description"}</span></div>
             <button onClick={()=>remove(a)} title="Delete audience" style={{border:0,background:"transparent",color:"#b91c1c",cursor:"pointer"}}>Delete</button>
           </div>}
         </div>)}
       </div>
-    </div>
     <p style={{fontSize:11,color:"#64748b",marginTop:14}}>These are saved audience segments only. No messages are sent from this page.</p>
   </section>
 }
