@@ -19,6 +19,7 @@ function Header({ page, setMobile }) {
 
   const pageTitle = {
     pronto: "Pronto",
+    facebook: "Facebook",
     hotkeys: "Watts Marketing",
     "sales-performance": "Sales Performance",
     "installations-performance": "Installations Performance",
@@ -31,6 +32,7 @@ function Header({ page, setMobile }) {
 
   const pageSubtitle = {
     pronto: "Pronto lead and campaign performance",
+    facebook: "Meta audience strategy and export plan",
     hotkeys: "Watts Marketing and SPF Solar hotkey leads",
     "sales-performance": "Overview of your sales performance and activity",
     "installations-performance": "Jobs grouped by installation start date",
