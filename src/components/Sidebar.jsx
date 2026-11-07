@@ -1,6 +1,6 @@
 import React from "react"
 import {
-  LayoutDashboard, Download, Tag, FileText, ChevronDown, ChevronRight, BarChart3, CalendarDays,
+  LayoutDashboard, Users, Download, Tag, FileText, ChevronDown, ChevronRight, BarChart3, CalendarDays,
   Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck,
   Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound,
   MessageCircle, UserCog, FileCheck, LogOut, ClipboardList, Lock, KanbanSquare,
@@ -115,6 +115,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
 
           <Folder visible={canSeeFolder("marketing")} title="Marketing" icon={Megaphone} open={openFolders.marketing} onClick={() => toggleFolder("marketing")}>
             <NavItem icon={Target} label="Leads" active={isActive("leads")} onClick={() => navigate("leads")}/>
+            <NavItem icon={Users} label="Audiences" active={isActive("marketing-audiences")} onClick={() => navigate("marketing-audiences")}/>
             <NavItem icon={Phone} label="Call Log" onClick={() => setShowCallLog(true)}/>
             <NavItem icon={CalendarDays} label="Booked Leads" disabled/>
             <NavItem icon={Handshake} label="Commissions" disabled/>
