@@ -1384,7 +1384,7 @@ function DataDashboard({ standalonePronto = false }) {
             Head Office
           </div>
 
-          <h1>{standalonePronto ? "Pronto" : "Data Dashboard"}</h1>
+          <h1>{standalonePronto ? "Lead Sources" : "Data Dashboard"}</h1>
 
         </div>
 
