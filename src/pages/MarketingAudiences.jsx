@@ -7,8 +7,8 @@ const blank = { name:"", description:"", introducer:"", disposition:"", postcode
 
 export default function MarketingAudiences() {
   const [audiences,setAudiences]=useState([])
-  const [noContactBreakdown,setNoContactBreakdown]=useState([])
-  const [noContactSummary,setNoContactSummary]=useState(null)
+  const [noContactBreakdown,setNoContactBreakdown]=useState({})
+  const [noContactSummary,setNoContactSummary]=useState({})
   const [noContactStatsLoading,setNoContactStatsLoading]=useState(true)
   const [draft,setDraft]=useState(blank)
   const [editing,setEditing]=useState(null)
@@ -24,10 +24,10 @@ export default function MarketingAudiences() {
     setLoading(true); setError("")
     const {data,error}=await supabase.from("marketing_audiences").select("*").order("updated_at",{ascending:false})
     if(error)setError(error.message); else setAudiences(data||[])
-    const stats = await supabase.from("marketing_no_contact_audience_breakdown").select("lead_type,total_leads,uk_mobile_numbers,email_addresses").order("total_leads",{ascending:false})
-    if(!stats.error)setNoContactBreakdown(stats.data||[]); else setError(stats.error.message)
-    const summary = await supabase.from("marketing_no_contact_audience_summary").select("total_leads,unique_uk_mobile_numbers,unique_email_addresses").single()
-    if(!summary.error)setNoContactSummary(summary.data); else setError(summary.error.message)
+    const stats = await supabase.from("marketing_no_contact_age_breakdown").select("age_band,lead_type,total_leads,uk_mobile_numbers,email_addresses").order("total_leads",{ascending:false})
+    if(!stats.error)setNoContactBreakdown((stats.data||[]).reduce((acc,row)=>({...acc,[row.age_band]:[...(acc[row.age_band]||[]),row]}),{})); else setError(stats.error.message)
+    const summary = await supabase.from("marketing_no_contact_age_summary").select("age_band,total_leads,unique_uk_mobile_numbers,unique_email_addresses")
+    if(!summary.error)setNoContactSummary((summary.data||[]).reduce((acc,row)=>({...acc,[row.age_band]:row}),{})); else setError(summary.error.message)
     setNoContactStatsLoading(false)
     setLoading(false)
   }
@@ -84,23 +84,23 @@ export default function MarketingAudiences() {
       <div style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:12,padding:17}}>
         <h2 style={{fontSize:16,margin:"0 0 14px"}}>Saved audiences</h2>
         {loading?<p style={{color:"#64748b"}}>Loading…</p>:audiences.length===0?<p style={{color:"#64748b",fontSize:13}}>No audiences saved yet. Create your first segment.</p>:audiences.map(a=><div key={a.id} style={{padding:"13px 0",borderTop:"1px solid #edf2f7"}}>
-          {a.filters?.audienceType === "no_contact_all_sources" ? <div style={{width:"100%"}}>
+          {a.filters?.audienceType === "no_contact_age_band" ? <div style={{width:"100%"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
               <div><strong style={{fontSize:15,color:"#0f172a"}}>{a.name}</strong><p style={{fontSize:12,color:"#64748b",margin:"5px 0 0"}}>{a.description}</p></div>
               <button onClick={()=>remove(a)} title="Delete audience" style={{border:0,background:"transparent",color:"#b91c1c",cursor:"pointer"}}>Delete</button>
             </div>
             <div style={{display:"flex",flexWrap:"wrap",gap:6,margin:"12px 0"}}>
-              {["All lead sources","Last 2 years","Disposition: No Contact","Excludes Return Accepted","Excludes Return Open","No previous appointment"].map(x=><span key={x} style={{fontSize:10,padding:"5px 7px",borderRadius:20,background:"#f1f5f9",color:"#334155"}}>{x}</span>)}
+              {["All lead sources",(a.filters.ageBand==="0_6"?"Last 6 months":a.filters.ageBand==="6_12"?"6–12 months ago":"12–24 months ago"),"Disposition: No Contact","Excludes Return Accepted","Excludes Return Open","No previous appointment"].map(x=><span key={x} style={{fontSize:10,padding:"5px 7px",borderRadius:20,background:"#f1f5f9",color:"#334155"}}>{x}</span>)}
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:7,marginBottom:12}}>
-              <div style={{background:"#f0fdfa",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>Total leads</div><strong style={{fontSize:19,color:"#134e4a"}}>{noContactStatsLoading?"…":Number(noContactSummary?.total_leads||0).toLocaleString("en-GB")}</strong></div>
-              <div style={{background:"#f8fafc",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>UK mobiles</div><strong style={{fontSize:19}}>{noContactStatsLoading?"…":Number(noContactSummary?.unique_uk_mobile_numbers||0).toLocaleString("en-GB")}</strong></div>
-              <div style={{background:"#f8fafc",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>Emails</div><strong style={{fontSize:19}}>{noContactStatsLoading?"…":Number(noContactSummary?.unique_email_addresses||0).toLocaleString("en-GB")}</strong></div>
+              <div style={{background:"#f0fdfa",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>Total leads</div><strong style={{fontSize:19,color:"#134e4a"}}>{noContactStatsLoading?"…":Number(noContactSummary[a.filters.ageBand]?.total_leads||0).toLocaleString("en-GB")}</strong></div>
+              <div style={{background:"#f8fafc",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>UK mobiles</div><strong style={{fontSize:19}}>{noContactStatsLoading?"…":Number(noContactSummary[a.filters.ageBand]?.unique_uk_mobile_numbers||0).toLocaleString("en-GB")}</strong></div>
+              <div style={{background:"#f8fafc",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>Emails</div><strong style={{fontSize:19}}>{noContactStatsLoading?"…":Number(noContactSummary[a.filters.ageBand]?.unique_email_addresses||0).toLocaleString("en-GB")}</strong></div>
             </div>
             <div style={{overflowX:"auto"}}>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
                 <thead><tr>{["Lead type","Total","UK mobiles","Emails"].map(x=><th key={x} style={{textAlign:x==="Lead type"?"left":"right",padding:"7px 5px",borderBottom:"1px solid #e2e8f0",color:"#64748b",whiteSpace:"nowrap"}}>{x}</th>)}</tr></thead>
-                <tbody>{noContactBreakdown.map(x=><tr key={x.lead_type}><td style={{padding:"7px 5px",borderBottom:"1px solid #f1f5f9"}}>{x.lead_type}</td><td style={{textAlign:"right",padding:"7px 5px",borderBottom:"1px solid #f1f5f9"}}>{Number(x.total_leads).toLocaleString("en-GB")}</td><td style={{textAlign:"right",padding:"7px 5px",borderBottom:"1px solid #f1f5f9"}}>{Number(x.uk_mobile_numbers).toLocaleString("en-GB")}</td><td style={{textAlign:"right",padding:"7px 5px",borderBottom:"1px solid #f1f5f9"}}>{Number(x.email_addresses).toLocaleString("en-GB")}</td></tr>)}</tbody>
+                <tbody>{(noContactBreakdown[a.filters.ageBand]||[]).map(x=><tr key={x.lead_type}><td style={{padding:"7px 5px",borderBottom:"1px solid #f1f5f9"}}>{x.lead_type}</td><td style={{textAlign:"right",padding:"7px 5px",borderBottom:"1px solid #f1f5f9"}}>{Number(x.total_leads).toLocaleString("en-GB")}</td><td style={{textAlign:"right",padding:"7px 5px",borderBottom:"1px solid #f1f5f9"}}>{Number(x.uk_mobile_numbers).toLocaleString("en-GB")}</td><td style={{textAlign:"right",padding:"7px 5px",borderBottom:"1px solid #f1f5f9"}}>{Number(x.email_addresses).toLocaleString("en-GB")}</td></tr>)}</tbody>
               </table>
             </div>
           </div> : <div style={{display:"flex",justifyContent:"space-between",gap:8}}>
