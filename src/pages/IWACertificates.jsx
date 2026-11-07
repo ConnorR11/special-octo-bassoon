@@ -34,6 +34,13 @@ export default function IWACertificates() {
   const [dealSearchLoading, setDealSearchLoading] = useState(false)
   const [matchSaving, setMatchSaving] = useState(false)
   const [matchError, setMatchError] = useState("")
+  const [activeTab, setActiveTab] = useState("certificates-sent")
+  const [toSendRows, setToSendRows] = useState([])
+  const [toSendCount, setToSendCount] = useState(0)
+  const [toSendSearch, setToSendSearch] = useState("")
+  const [toSendPage, setToSendPage] = useState(0)
+  const [toSendLoading, setToSendLoading] = useState(false)
+  const [toSendError, setToSendError] = useState("")
 
   const loadCounts = useCallback(async () => {
     const statuses = ["unmatched", "approved", "excluded"]
@@ -82,6 +89,39 @@ export default function IWACertificates() {
   }, [page, status, search, loadCounts])
 
   useEffect(() => { loadRows() }, [loadRows])
+
+  const loadToSend = useCallback(async () => {
+    if (!supabase) return
+    setToSendLoading(true)
+    setToSendError("")
+    try {
+      let request = supabase.from("deals")
+        .select("id,contract_number,customer_name,address,postcode,product,deal_value,sale_date,salesperson_name,status,iwa_certificates!iwa_certificates_deal_row_id_fkey(id)", { count: "exact" })
+        .is("iwa_certificates", null)
+        .order("sale_date", { ascending: false, nullsFirst: false })
+        .range(toSendPage * PAGE_SIZE, (toSendPage + 1) * PAGE_SIZE - 1)
+      const term = toSendSearch.trim()
+      if (term) {
+        const safe = term.replace(/[%_]/g, "\\  useEffect(() => { loadRows() }, [loadRows])
+").replace(/,/g, "\\,")
+        request = request.or(`customer_name.ilike.%${safe}%,contract_number.ilike.%${safe}%,postcode.ilike.%${safe}%,address.ilike.%${safe}%`)
+      }
+      const { data, error: queryError, count } = await request
+      if (queryError) throw queryError
+      setToSendRows(data || [])
+      setToSendCount(count || 0)
+    } catch (err) {
+      setToSendError(err?.message || "Unable to load deals awaiting an IWA certificate.")
+      setToSendRows([])
+      setToSendCount(0)
+    } finally {
+      setToSendLoading(false)
+    }
+  }, [toSendPage, toSendSearch])
+
+  useEffect(() => {
+    if (activeTab === "to-send") loadToSend()
+  }, [activeTab, loadToSend])
   const searchDeals = async value => {
     setDealSearch(value)
     setMatchError("")
@@ -150,6 +190,11 @@ export default function IWACertificates() {
         <button onClick={loadRows} disabled={loading} style={{ border: "1px solid #dce2e7", borderRadius: 8, background: "#fff", padding: "9px 13px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "#34495a" }}><RefreshCw size={15}/> Refresh</button>
       </div>
 
+      <div style={{ display: "flex", gap: 8, borderBottom: "1px solid #e3e8ec", marginBottom: 18 }}>
+        <button onClick={() => setActiveTab("certificates-sent")} style={{ border: 0, borderBottom: activeTab === "certificates-sent" ? "3px solid #23445c" : "3px solid transparent", background: "transparent", padding: "11px 16px", color: activeTab === "certificates-sent" ? "#23445c" : "#6f7b85", fontWeight: 650, cursor: "pointer" }}>Certificates Sent</button>
+        <button onClick={() => setActiveTab("to-send")} style={{ border: 0, borderBottom: activeTab === "to-send" ? "3px solid #23445c" : "3px solid transparent", background: "transparent", padding: "11px 16px", color: activeTab === "to-send" ? "#23445c" : "#6f7b85", fontWeight: 650, cursor: "pointer" }}>To Send <span style={{ marginLeft: 6, background: "#edf2f6", borderRadius: 12, padding: "2px 7px", fontSize: 11 }}>{toSendCount.toLocaleString("en-GB")}</span></button>
+      </div>
+      {activeTab === "certificates-sent" && <>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(175px,1fr))", gap: 12, marginBottom: 20 }}>
         {card("Total certificates", counts.total, <FileText size={19}/>, "#edf3f8")}
         {card("Awaiting match", counts.unmatched, <Search size={19}/>, "#fff5df")}
@@ -199,6 +244,41 @@ export default function IWACertificates() {
           </div>
         </div>
       </div>
+
+      </>}
+
+      {activeTab === "to-send" && <div style={{ background: "#fff", border: "1px solid #e7ebef", borderRadius: 12, overflow: "hidden" }}>
+        <div style={{ padding: 15, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", borderBottom: "1px solid #edf0f2" }}>
+          <div style={{ flex: "1 1 320px", position: "relative" }}><Search size={16} style={{ position: "absolute", left: 11, top: 11, color: "#8a949d" }}/><input value={toSendSearch} onChange={e => { setToSendSearch(e.target.value); setToSendPage(0) }} placeholder="Search customer, contract, postcode or address..." style={{ width: "100%", boxSizing: "border-box", border: "1px solid #dce2e7", borderRadius: 8, padding: "9px 10px 9px 34px", fontSize: 13 }}/></div>
+          <button onClick={loadToSend} disabled={toSendLoading} style={{ border: "1px solid #dce2e7", borderRadius: 8, background: "#fff", padding: "9px 13px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "#34495a" }}><RefreshCw size={15}/> Refresh</button>
+        </div>
+        {toSendError && <div style={{ padding: 14, color: "#b42318", background: "#fff4f2", fontSize: 13 }}>{toSendError}</div>}
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1050, fontSize: 12 }}>
+            <thead><tr style={{ background: "#f8fafb", color: "#66727d", textAlign: "left" }}>
+              {["Contract number","Customer","Address","Product","Sold date","Salesperson","Deal value"].map(label => <th key={label} style={{ padding: "12px 13px", fontWeight: 650, whiteSpace: "nowrap", borderBottom: "1px solid #e9edf0" }}>{label}</th>)}
+            </tr></thead>
+            <tbody>
+              {toSendLoading ? <tr><td colSpan="7" style={{ padding: 30, textAlign: "center", color: "#7b858e" }}>Loading deals…</td></tr> : toSendRows.length === 0 ? <tr><td colSpan="7" style={{ padding: 30, textAlign: "center", color: "#7b858e" }}>No deals awaiting an IWA certificate.</td></tr> : toSendRows.map(deal => <tr key={deal.id} style={{ borderBottom: "1px solid #eef1f3" }}>
+                <td style={{ padding: "12px 13px", fontWeight: 650, color: "#23445c", whiteSpace: "nowrap" }}>{deal.contract_number || "—"}</td>
+                <td style={{ padding: "12px 13px", fontWeight: 600 }}>{deal.customer_name || "—"}</td>
+                <td style={{ padding: "12px 13px", color: "#66727d" }}>{[deal.address, deal.postcode].filter(Boolean).join(", ") || "—"}</td>
+                <td style={{ padding: "12px 13px" }}>{deal.product || "—"}</td>
+                <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>{deal.sale_date || "—"}</td>
+                <td style={{ padding: "12px 13px" }}>{deal.salesperson_name || "—"}</td>
+                <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>{deal.deal_value == null ? "—" : formatCurrency(Number(deal.deal_value))}</td>
+              </tr>)}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ padding: "12px 15px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, borderTop: "1px solid #edf0f2", color: "#77818b", fontSize: 12 }}>
+          <span>Showing {toSendRows.length ? toSendPage * PAGE_SIZE + 1 : 0}–{toSendPage * PAGE_SIZE + toSendRows.length} of {toSendCount.toLocaleString("en-GB")}</span>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button disabled={toSendPage === 0 || toSendLoading} onClick={() => setToSendPage(value => Math.max(0, value - 1))} style={{ border: "1px solid #dce2e7", borderRadius: 7, padding: "7px 10px", background: "#fff", cursor: "pointer", opacity: toSendPage === 0 ? .45 : 1 }}><ChevronLeft size={15}/></button>
+            <button disabled={toSendLoading || toSendRows.length < PAGE_SIZE} onClick={() => setToSendPage(value => value + 1)} style={{ border: "1px solid #dce2e7", borderRadius: 7, padding: "7px 10px", background: "#fff", cursor: "pointer", opacity: toSendRows.length < PAGE_SIZE ? .45 : 1 }}><ChevronRight size={15}/></button>
+          </div>
+        </div>
+      </div>}
 
       {matchingCertificate && <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(15,25,35,.48)", display: "flex", justifyContent: "center", alignItems: "center", padding: 18 }}>
         <div style={{ background: "#fff", borderRadius: 14, width: "min(900px,100%)", maxHeight: "90vh", overflow: "auto", boxShadow: "0 20px 60px rgba(0,0,0,.22)" }}>
