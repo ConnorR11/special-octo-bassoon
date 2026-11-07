@@ -97,7 +97,7 @@ export default function IWACertificates() {
     setToSendError("")
     try {
       let request = supabase.from("deals")
-        .select("id,contract_number,customer_name,address,postcode,product,deal_value,net_value,sale_date,installation_start_date,salesperson_name,status,iwa_certificates!iwa_certificates_deal_row_id_fkey(id)", { count: "exact" })
+        .select("id,contract_number,customer_name,address,postcode,email,product,deal_value,net_value,sale_date,installation_start_date,salesperson_name,status,iwa_certificates!iwa_certificates_deal_row_id_fkey(id)", { count: "exact" })
         .is("iwa_certificates", null)
         .gte("sale_date", "2024-01-01")
         .eq("product", "Windows")
@@ -298,20 +298,21 @@ export default function IWACertificates() {
         </div>
         {toSendError && <div style={{ padding: 14, color: "#b42318", background: "#fff4f2", fontSize: 13 }}>{toSendError}</div>}
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1050, fontSize: 12 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1250, fontSize: 12 }}>
             <thead><tr style={{ background: "#f8fafb", color: "#66727d", textAlign: "left" }}>
-              {["Contract number","Customer","Address","Product","Sold date","Installation start","Salesperson","Deal value"].map(label => <th key={label} style={{ padding: "12px 13px", fontWeight: 650, whiteSpace: "nowrap", borderBottom: "1px solid #e9edf0" }}>{label}</th>)}
+              {["Customer Name","Address","Email Address","Deposit Amount","Date Deposit Paid","Type of Install","Date of Completion","Total Contract Value","Other Information"].map(label => <th key={label} style={{ padding: "12px 13px", fontWeight: 650, whiteSpace: "nowrap", borderBottom: "1px solid #e9edf0" }}>{label}</th>)}
             </tr></thead>
             <tbody>
-              {toSendLoading ? <tr><td colSpan="8" style={{ padding: 30, textAlign: "center", color: "#7b858e" }}>Loading deals…</td></tr> : toSendRows.length === 0 ? <tr><td colSpan="7" style={{ padding: 30, textAlign: "center", color: "#7b858e" }}>No deals awaiting an IWA certificate.</td></tr> : toSendRows.map(deal => <tr key={deal.id} style={{ borderBottom: "1px solid #eef1f3" }}>
-                <td style={{ padding: "12px 13px", fontWeight: 650, color: "#23445c", whiteSpace: "nowrap" }}>{deal.contract_number || "—"}</td>
+              {toSendLoading ? <tr><td colSpan="9" style={{ padding: 30, textAlign: "center", color: "#7b858e" }}>Loading deals…</td></tr> : toSendRows.length === 0 ? <tr><td colSpan="9" style={{ padding: 30, textAlign: "center", color: "#7b858e" }}>No deals awaiting an IWA certificate.</td></tr> : toSendRows.map(deal => <tr key={deal.id} style={{ borderBottom: "1px solid #eef1f3" }}>
                 <td style={{ padding: "12px 13px", fontWeight: 600 }}>{deal.customer_name || "—"}</td>
-                <td style={{ padding: "12px 13px", color: "#66727d" }}>{[deal.address, deal.postcode].filter(Boolean).join(", ") || "—"}</td>
+                <td style={{ padding: "12px 13px", color: "#66727d", minWidth: 260 }}>{[deal.address, deal.postcode].filter(Boolean).join(", ") || "—"}</td>
+                <td style={{ padding: "12px 13px" }}>{deal.email || "—"}</td>
+                <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>N/A</td>
+                <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>N/A</td>
                 <td style={{ padding: "12px 13px" }}>{deal.product || "—"}</td>
-                <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>{deal.sale_date || "—"}</td>
-                <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>{deal.installation_start_date || "—"}</td>
-                <td style={{ padding: "12px 13px" }}>{deal.salesperson_name || "—"}</td>
+                <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>N/A</td>
                 <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>{deal.deal_value == null ? "—" : formatCurrency(Number(deal.deal_value))}</td>
+                <td style={{ padding: "12px 13px" }}>N/A</td>
               </tr>)}
             </tbody>
           </table>
