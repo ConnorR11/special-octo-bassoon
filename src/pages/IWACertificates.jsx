@@ -154,7 +154,7 @@ export default function IWACertificates() {
     if (term.length < 2) { setDealResults([]); return }
     setDealSearchLoading(true)
     try {
-      const safe = term.replace(/[%_]/g, "\\$&").replace(/,/g, "\\,")
+      const safe = term.replace(/[%_]/g, "\\      const safe = term.replace(/[%_]/g, "\\$&").replace(/,/g, "\\,")
       const targetValue = parseAmount(certificate.contract_value)
       if (!targetValue) { setDealResults([]); setMatchError("This certificate does not have a valid contract value to filter deals."); return }
       const result = await supabase.from("deals")
@@ -164,7 +164,23 @@ export default function IWACertificates() {
         .or(`customer_name.ilike.%${safe}%,postcode.ilike.%${safe}%,address.ilike.%${safe}%,contract_number.ilike.%${safe}%`)
         .not("sale_date", "is", null)
         .lt("sale_date", completionDate)
+        .order("sale_date", { ascending: false }).limit(100)").replace(/,/g, "\\,")
+      const pipedriveId = /^\\d+$/.test(term) ? term : null
+      const targetValue = parseAmount(certificate.contract_value)
+      if (!pipedriveId && !targetValue) { setDealResults([]); setMatchError("This certificate does not have a valid contract value to filter deals."); return }
+      let request = supabase.from("deals")
+        .select("id,pipedrive_deal_id,contract_number,customer_name,address,postcode,product,deal_value,sale_date,status")
+        .not("product", "ilike", "%solar%")
+        .not("sale_date", "is", null)
+        .lt("sale_date", completionDate)
         .order("sale_date", { ascending: false }).limit(100)
+      if (pipedriveId) {
+        request = request.eq("pipedrive_deal_id", pipedriveId)
+      } else {
+        request = request.eq("deal_value", targetValue)
+          .or(`customer_name.ilike.%${safe}%,postcode.ilike.%${safe}%,address.ilike.%${safe}%,contract_number.ilike.%${safe}%`)
+      }
+      const result = await request
       if (result.error) throw result.error
       setDealResults((result.data || []).filter(deal => !String(deal.product || "").toLowerCase().includes("solar")))
     } catch (err) {
