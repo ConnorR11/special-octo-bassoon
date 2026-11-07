@@ -37,33 +37,30 @@ export default function MarketingAudiences() {
     <div style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:12,padding:17}}>
       <h2 style={{fontSize:16,margin:"0 0 14px"}}>Saved audiences</h2>
       {loading?<p style={{color:"#64748b"}}>Loading…</p>:audiences.length===0?<p style={{color:"#64748b",fontSize:13}}>No audiences saved yet.</p>:<>
-        {noContactAudiences.length>0&&<div style={{margin:"14px 0",border:"1px solid #cbd5e1",borderRadius:14,overflow:"hidden",background:"#fff",boxShadow:"0 3px 10px rgba(15,35,65,0.07)"}}>
-          <div style={{background:"#12345a",padding:"15px 18px"}}>
-            <strong style={{fontSize:16,color:"#fff",display:"block"}}>No Contact</strong>
-            <p style={{fontSize:12,color:"#d7e3f1",margin:"5px 0 0"}}>No Contact leads across all three age ranges, excluding leads with booked appointments.</p>
-          </div>
-          <div style={{padding:"8px 17px 14px"}}>
-            {noContactAudiences.sort((a,b) => (["0_6","6_12","12_24"].indexOf(a.filters?.ageBand)-["0_6","6_12","12_24"].indexOf(b.filters?.ageBand))).map((a,index)=><div key={a.id} style={{padding:"15px 0",borderBottom:index===noContactAudiences.length-1?"none":"1px solid #e2e8f0"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}>
-                <strong style={{fontSize:14,color:"#12345a"}}>{ageBandLabel(a.filters?.ageBand)}</strong>
-                <span style={{fontSize:10,color:"#64748b"}}>Last calculated: {a.aggregated_at?new Date(a.aggregated_at).toLocaleString("en-GB"):"Not yet calculated"}</span>
+        {noContactAudiences.length>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:14,alignItems:"start",margin:"14px 0"}}>
+          {noContactAudiences.sort((a,b) => (["0_6","6_12","12_24"].indexOf(a.filters?.ageBand)-["0_6","6_12","12_24"].indexOf(b.filters?.ageBand))).map(a=><div key={a.id} style={{minWidth:0,border:"1px solid #cbd5e1",borderRadius:14,overflow:"hidden",background:"#fff",boxShadow:"0 3px 10px rgba(15,35,65,0.07)"}}>
+            <div style={{background:"#12345a",padding:"13px 15px"}}>
+              <strong style={{fontSize:15,color:"#fff",display:"block"}}>{ageBandLabel(a.filters?.ageBand)}</strong>
+              <span style={{fontSize:10,color:"#d7e3f1"}}>No Contact audience</span>
+            </div>
+            <div style={{padding:12}}>
+              <div style={{fontSize:10,color:"#64748b",marginBottom:9}}>Last calculated: {a.aggregated_at?new Date(a.aggregated_at).toLocaleString("en-GB"):"Not yet calculated"}</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:5,margin:"0 0 10px"}}>
+                {["All lead sources","Disposition: No Contact","Excludes Return Accepted","Excludes Return Open","Excludes booked appointments"].map(x=><span key={x} style={{fontSize:9,padding:"4px 6px",borderRadius:20,background:"#f1f5f9",color:"#334155"}}>{x}</span>)}
               </div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:6,margin:"0 0 12px"}}>
-                {[ "All lead sources",ageBandLabel(a.filters?.ageBand),"Disposition: No Contact","Excludes Return Accepted","Excludes Return Open","Excludes leads with booked appointments"].map(x=><span key={x} style={{fontSize:10,padding:"5px 7px",borderRadius:20,background:"#f1f5f9",color:"#334155"}}>{x}</span>)}
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:7,marginBottom:12}}>
-                <div style={{background:"#f0fdfa",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>Total leads</div><strong style={{fontSize:19,color:"#134e4a"}}>{Number(a.aggregation?.total_leads||0).toLocaleString("en-GB")}</strong></div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr",gap:6,marginBottom:10}}>
+                <div style={{background:"#f0fdfa",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>Total leads</div><strong style={{fontSize:21,color:"#134e4a"}}>{Number(a.aggregation?.total_leads||0).toLocaleString("en-GB")}</strong></div>
                 <div style={{background:"#f8fafc",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>UK mobiles</div><strong style={{fontSize:19}}>{Number(a.aggregation?.unique_uk_mobile_numbers||0).toLocaleString("en-GB")}</strong></div>
                 <div style={{background:"#f8fafc",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>Emails</div><strong style={{fontSize:19}}>{Number(a.aggregation?.unique_email_addresses||0).toLocaleString("en-GB")}</strong></div>
               </div>
               <div style={{overflowX:"auto"}}>
-                <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
-                  <thead><tr>{["Lead type","Total","UK mobiles","Emails"].map(x=><th key={x} style={{textAlign:x==="Lead type"?"left":"right",padding:"7px 5px",borderBottom:"1px solid #e2e8f0",color:"#64748b",whiteSpace:"nowrap"}}>{x}</th>)}</tr></thead>
-                  <tbody>{(a.aggregation?.lead_types||[]).map(x=><tr key={x.name}><td style={{padding:"7px 5px",borderBottom:"1px solid #f1f5f9"}}>{x.name}</td><td style={{textAlign:"right",padding:"7px 5px",borderBottom:"1px solid #f1f5f9"}}>{Number(x.total).toLocaleString("en-GB")}</td><td style={{textAlign:"right",padding:"7px 5px",borderBottom:"1px solid #f1f5f9"}}>{Number(x.mobiles).toLocaleString("en-GB")}</td><td style={{textAlign:"right",padding:"7px 5px",borderBottom:"1px solid #f1f5f9"}}>{Number(x.emails).toLocaleString("en-GB")}</td></tr>)}</tbody>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
+                  <thead><tr>{["Lead type","Total","Mobiles","Emails"].map(x=><th key={x} style={{textAlign:x==="Lead type"?"left":"right",padding:"6px 3px",borderBottom:"1px solid #e2e8f0",color:"#64748b",whiteSpace:"nowrap"}}>{x}</th>)}</tr></thead>
+                  <tbody>{(a.aggregation?.lead_types||[]).map(x=><tr key={x.name}><td style={{padding:"6px 3px",borderBottom:"1px solid #f1f5f9",overflowWrap:"anywhere"}}>{x.name}</td><td style={{textAlign:"right",padding:"6px 3px",borderBottom:"1px solid #f1f5f9"}}>{Number(x.total).toLocaleString("en-GB")}</td><td style={{textAlign:"right",padding:"6px 3px",borderBottom:"1px solid #f1f5f9"}}>{Number(x.mobiles).toLocaleString("en-GB")}</td><td style={{textAlign:"right",padding:"6px 3px",borderBottom:"1px solid #f1f5f9"}}>{Number(x.emails).toLocaleString("en-GB")}</td></tr>)}</tbody>
                 </table>
               </div>
-            </div>)}
-          </div>
+            </div>
+          </div>)}
         </div>}
         {otherAudiences.map(a=><div key={a.id} style={{margin:"14px 0",border:"1px solid #cbd5e1",borderRadius:14,padding:14}}>
           <strong style={{display:"block",fontSize:13,color:"#0f172a"}}>{a.name}</strong>
