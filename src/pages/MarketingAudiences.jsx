@@ -48,7 +48,7 @@ export default function MarketingAudiences() {
               <div style={{display:"flex",flexWrap:"wrap",gap:5,margin:"0 0 10px"}}>
                 {["All lead sources","Disposition: No Contact","Excludes Return Accepted","Excludes Return Open","Excludes booked appointments"].map(x=><span key={x} style={{fontSize:9,padding:"4px 6px",borderRadius:20,background:"#f1f5f9",color:"#334155"}}>{x}</span>)}
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr",gap:6,marginBottom:10}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:6,marginBottom:10}}>
                 <div style={{background:"#f0fdfa",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>Total leads</div><strong style={{fontSize:21,color:"#134e4a"}}>{Number(a.aggregation?.total_leads||0).toLocaleString("en-GB")}</strong></div>
                 <div style={{background:"#f8fafc",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>UK mobiles</div><strong style={{fontSize:19}}>{Number(a.aggregation?.unique_uk_mobile_numbers||0).toLocaleString("en-GB")}</strong></div>
                 <div style={{background:"#f8fafc",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>Emails</div><strong style={{fontSize:19}}>{Number(a.aggregation?.unique_email_addresses||0).toLocaleString("en-GB")}</strong></div>
