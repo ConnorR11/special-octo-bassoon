@@ -1,6 +1,6 @@
 import React from "react"
 import {
-  LayoutDashboard, Users, Download, Tag, FileText, ChevronDown, ChevronRight, BarChart3, CalendarDays,
+  LayoutDashboard, Users, Download, Tag, FileText, ChevronDown, ChevronRight, BarChart3, CalendarDays, Facebook,
   Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck,
   Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound,
   MessageCircle, UserCog, FileCheck, LogOut, ClipboardList, Lock, KanbanSquare,
@@ -186,7 +186,8 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
 
           {isAdministrator && <Folder title="Work in progress" icon={Wrench} open={openFolders.workInProgress} onClick={() => toggleFolder("workInProgress")}>
             <NavItem icon={BarChart3} label="Marketing Dashboard" active={isActive("marketing-dashboard")} onClick={() => navigate("marketing-dashboard")} disabled={!canAccessMarketingDashboard} locked={!canAccessMarketingDashboard}/>
-            <NavItem icon={Users} label="Marketing Audiences" active={isActive("marketing-audiences")} onClick={() => navigate("marketing-audiences")}/>\n            <NavItem icon={FileCheck} label="IWA Certificates" active={isActive("iwa-certificates")} onClick={() => navigate("iwa-certificates")}/>
+            <NavItem icon={Users} label="Marketing Audiences" active={isActive("marketing-audiences")} onClick={() => navigate("marketing-audiences")}/>
+            <NavItem icon={Facebook} label="Facebook" active={isActive("facebook")} onClick={() => navigate("facebook")}/>\n            <NavItem icon={FileCheck} label="IWA Certificates" active={isActive("iwa-certificates")} onClick={() => navigate("iwa-certificates")}/>
             <NavItem icon={BarChart3} label="Sales Performance" active={isActive("sales-performance")} onClick={() => navigate("sales-performance")}/>
             <NavItem icon={Search} label="SEO" active={isActive("seo")} onClick={() => navigate("seo")}/>
             <NavItem icon={Database} label="Data Results" active={isActive("data-results")} onClick={() => navigate("data-results")}/>
