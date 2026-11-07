@@ -163,7 +163,7 @@ export default function IWACertificates() {
     setDealResults([])
     setMatchError("")
     setExactMatchMode(true)
-    const completionParts = String(row.completion_date_text || "").trim().match(/^(\d{1,2})\\/(\d{1,2})\\/(\d{4})$/)
+    const completionParts = String(row.completion_date_text || "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
     const targetValue = parseAmount(row.contract_value)
     if (!completionParts || !row.customer_name?.trim() || !targetValue) {
       setMatchError("An exact match needs a customer name, a valid completion date and a contract value greater than £0.")
@@ -336,7 +336,7 @@ export default function IWACertificates() {
               <div style={{ color: "#66727d", fontSize: 13 }}>{matchingCertificate.installation_address || "Address not recorded"}</div>
               <div style={{ fontSize: 12, color: "#66727d", marginTop: 8 }}>Type: {matchingCertificate.installation_type || "—"} · Completed: {matchingCertificate.completion_date_text || "—"} · Contract: {money(matchingCertificate.contract_value)} · Premium: {money(matchingCertificate.premium)}</div>
             </div>
-            {!exactMatchMode && <input value={dealSearch} onChange={e => searchDeals(e.target.value)} placeholder="Search customer, postcode, address or contract number…" style={{ width: "100%", boxSizing: "border-box", border: "1px solid #dce2e7", borderRadius: 8, padding: 11 }}/>
+            {!exactMatchMode && <input value={dealSearch} onChange={e => searchDeals(e.target.value)} placeholder="Search customer, postcode, address or contract number…" style={{ width: "100%", boxSizing: "border-box", border: "1px solid #dce2e7", borderRadius: 8, padding: 11 }}/>}
             {exactMatchMode && <div style={{ color: "#66727d", fontSize: 12, marginTop: 8 }}>Exact criteria: customer name and deal value match; sold date is before completion date. IWA value: {money(matchingCertificate.contract_value)} · Completion: {matchingCertificate.completion_date_text || "—"}</div>}
             {matchError && <div style={{ color: exactMatchMode && dealResults.length === 0 ? "#8b5a00" : "#b42318", marginTop: 10 }}>{matchError}</div>}
             <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
