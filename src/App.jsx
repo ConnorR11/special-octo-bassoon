@@ -16,6 +16,7 @@ import Installations from "./pages/Installations"
 import MarketingTV from "./pages/MarketingTV"
 import MarketingDashboard from "./pages/MarketingDashboard"
 import MarketingAudiences from "./pages/MarketingAudiences"
+import Facebook from "./pages/Facebook"
 import Leads from "./pages/Leads"
 import Contracts from "./pages/Contracts"
 import Balances from "./pages/Balances"
@@ -333,6 +334,8 @@ function App() {
     pageContent = <MarketingDashboard/>
   } else if (page === "marketing-audiences") {
     pageContent = <MarketingAudiences/>
+  } else if (page === "facebook") {
+    pageContent = <Facebook/>
   } else if (page === "iwa-certificates") {
     pageContent = <IWACertificates/>
   } else if (page === "leads") {
