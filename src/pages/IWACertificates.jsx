@@ -54,7 +54,7 @@ export default function IWACertificates() {
     const mapped = Object.fromEntries(results)
     setCounts({ total: results.reduce((sum, [, count]) => sum + count, 0), ...mapped })
     const { count: awaitingSendCount, error: toSendCountError } = await supabase.from("deals")
-      .select("id", { count: "exact", head: true })
+      .select("id,iwa_certificates!iwa_certificates_deal_row_id_fkey(id)", { count: "exact", head: true })
       .is("iwa_certificates", null)
       .gte("sale_date", "2024-01-01")
       .eq("product", "Windows")
