@@ -103,6 +103,7 @@ export default function IWACertificates() {
         .eq("product", "Windows")
         .not("installation_start_date", "is", null)
         .gt("net_value", 0)
+        .eq("balance_outstanding", 0)
         .order("sale_date", { ascending: false, nullsFirst: false })
         .range(toSendPage * PAGE_SIZE, (toSendPage + 1) * PAGE_SIZE - 1)
       const term = toSendSearch.trim()
