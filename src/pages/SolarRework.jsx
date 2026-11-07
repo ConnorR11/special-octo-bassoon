@@ -414,7 +414,7 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
         return
       }
       let request = supabase.from("appointments")
-        .select("appointment_row_id,marketing_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,lead_source,open_solar_id,epvs_calculation,rep_allocated,solar_rework_visit_booked,solar_rework_visit_date,solar_rework_message_left")
+        .select("appointment_row_id,marketing_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,lead_source,open_solar_id,epvs_calculation,rep_allocated")
         .eq("job_type", "Solar")
         .not("result", "is", null)
         .neq("result", "")
@@ -601,21 +601,6 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
     return () => { cancelled = true }
   }, [yearFilter, resultFilter, leadSourceFilter, query])
 
-  async function updateSolarReworkFields(row, patch) {
-    const id = row.appointment_row_id
-    try {
-      const { data, error } = await supabase.from("appointments")
-        .update(patch)
-        .eq("appointment_row_id", id)
-        .select("appointment_row_id,solar_rework_visit_booked,solar_rework_visit_date,solar_rework_message_left")
-        .single()
-      if (error) throw error
-      setRows(current => current.map(item => item.appointment_row_id === id ? { ...item, ...data } : item))
-    } catch (err) {
-      setError(err?.message || "Unable to update solar rework follow-up.")
-    }
-  }
-
   async function saveOpenSolarId(row) {
     const value = normalise(rowEdits[row.appointment_row_id])
     if (!value) { setError("Enter an OpenSolar ID before saving."); return }
@@ -755,7 +740,7 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
       <div style={{ overflowX: "auto" }}>
         <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 980, fontSize: 12 }}>
           <thead><tr style={{ background: "#f8fafc", textAlign: "left", color: "#475569" }}>
-            {((activeTab === "quotes-sent" || activeTab === "quotes-work") ? ["Customer", ...(activeTab === "quotes-sent" ? ["Quote Ref"] : []), ...(activeTab === "quotes-work" ? ["Appointment Date"] : []), "Phone", "Email", "Sent / Last viewed", "Views", "Disposition", ...(activeTab === "quotes-work" ? ["Open"] : [])] : activeTab === "lead-view" ? ["Lead", "Postcode", "Phone", "Email", "Appointment date & time", "Disposition", "Solar quote"] : ["Name", ...(activeTab === "unlinked" ? ["OpenSolar ID"] : ["Design"]), ...(activeTab === "linked" ? ["Lead disposition", "Appointment result"] : []),"Date",activeTab === "unlinked" ? "Result" : "Quote readiness", ...(activeTab === "linked" ? ["Related appointment result", "Visit booked", "Visit date", "Message left"] : [])]).map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
+            {((activeTab === "quotes-sent" || activeTab === "quotes-work") ? ["Customer", ...(activeTab === "quotes-sent" ? ["Quote Ref"] : []), ...(activeTab === "quotes-work" ? ["Appointment Date"] : []), "Phone", "Email", "Sent / Last viewed", "Views", "Disposition", ...(activeTab === "quotes-work" ? ["Open"] : [])] : activeTab === "lead-view" ? ["Lead", "Postcode", "Phone", "Email", "Appointment date & time", "Disposition", "Solar quote"] : ["Name", ...(activeTab === "unlinked" ? ["OpenSolar ID"] : ["Design"]), ...(activeTab === "linked" ? ["Lead disposition", "Appointment result"] : []),"Date",activeTab === "unlinked" ? "Result" : "Quote readiness", ...(activeTab === "linked" ? ["Related appointment result"] : [])]).map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
           </tr></thead>
           <tbody>
             {activeTab === "lead-view" && !loading && visibleRows.length === 0 && <tr><td colSpan={7} style={{ padding: 36, textAlign: "center", color: "#64748b" }}>No solar leads with an appointment date and time match these filters.</td></tr>}
@@ -770,7 +755,7 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
             </tr>)}
             {(activeTab === "quotes-sent" || activeTab === "quotes-work") && !loading && visibleRows.length === 0 && <tr><td colSpan={activeTab === "quotes-work" ? 10 : 8} style={{ padding: 36, textAlign: "center", color: "#64748b" }}>No quotes match this filter.</td></tr>}
             {(activeTab === "quotes-sent" || activeTab === "quotes-work") && visibleRows.map(row => <tr key={row.id} onClick={() => { if (row.appointment_row_id) onSelectAppointment?.({ ...row, email: row.email_address || row.customer_email, _loadFullAppointment: true }) }} style={{ borderBottom: "1px solid #edf2f7", cursor: row.appointment_row_id ? "pointer" : "default" }}><td style={{ padding: "10px 13px", fontWeight: 700 }}>{normalise(row.customer_name || row.name) || "Name missing"}<div style={{ ...muted, marginTop: 3 }}>{normalise(row.address)}{row.address && row.postcode ? ", " : ""}{normalise(row.postcode)}</div></td>{activeTab === "quotes-sent" && <td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{row.quote_ref || "—"}</td>}{activeTab === "quotes-work" && <td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{row.appointment_date ? dateTimeLabel(row.appointment_date) : "—"}</td>}<td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{row.phone_number_1 || row.secondary_phone_number ? <a href={"tel:" + encodeURIComponent(String(row.phone_number_1 || row.secondary_phone_number))} onClick={event => event.stopPropagation()} style={{ color: "#0f766e", fontWeight: 700, textDecoration: "none" }}>{row.phone_number_1 || row.secondary_phone_number}</a> : "—"}</td><td style={{ padding: "10px 13px" }}>{row.customer_email || row.email_address || "—"}</td><td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}><div>{dateTimeLabel(row.sent_at)}</div><div style={{ marginTop: 4, color: "#64748b", fontSize: 11 }}>{row.last_viewed_at ? "Last viewed: " + dateTimeLabel(row.last_viewed_at) : "Not viewed yet"}</div></td><td style={{ padding: "10px 13px", textAlign: "center" }}>{Number(row.view_count || 0)}</td>{activeTab === "quotes-work" ? (<td style={{ padding: "8px 10px", minWidth: 205 }} onClick={event => event.stopPropagation()}><div style={{ display: "flex", flexDirection: "column", gap: 5 }}><select value={(quoteDispositionEdits[row.id]?.disposition ?? row.disposition) || ""} onChange={event => { updateQuoteDispositionEdit(row, { disposition: event.target.value, callback_date: event.target.value === "Call Back" ? (quoteDispositionEdits[row.id]?.callback_date || row.callback_date || "") : "", visit_date: event.target.value === "Visit booked" ? (quoteDispositionEdits[row.id]?.visit_date || row.visit_date || "") : "" }); setQuoteDispositionError("") }} style={{ ...selectStyle, width: "100%", minWidth: 170, height: 30 }}><option value="">Awaiting outcome</option><option value="Not interested">Not interested</option><option value="Call Back">Call Back</option><option value="Visit booked">Visit booked</option><option value="Message Left">Message Left</option><option value="Superseded">Superseded</option><option value="Accepted quote">Accepted quote</option></select>{(quoteDispositionEdits[row.id]?.disposition ?? row.disposition) === "Call Back" && <input type="date" value={quoteDispositionEdits[row.id]?.callback_date ?? row.callback_date ?? ""} onChange={event => updateQuoteDispositionEdit(row, { callback_date: event.target.value })} style={{ ...inputStyle, height: 29, width: "100%", boxSizing: "border-box" }} />}{(quoteDispositionEdits[row.id]?.disposition ?? row.disposition) === "Visit booked" && <input type="date" value={quoteDispositionEdits[row.id]?.visit_date ?? row.visit_date ?? ""} onChange={event => updateQuoteDispositionEdit(row, { visit_date: event.target.value })} style={{ ...inputStyle, height: 29, width: "100%", boxSizing: "border-box" }} />}{quoteDispositionEdits[row.id] && <button type="button" disabled={savingQuoteDisposition === row.id} onClick={() => saveQuoteDisposition(row)} style={{ border: 0, borderRadius: 5, background: "#0f766e", color: "#fff", padding: "6px 9px", fontSize: 10, fontWeight: 700, cursor: "pointer" }}>{savingQuoteDisposition === row.id ? "Saving…" : "Save outcome"}</button>}</div></td>) : (<td style={{ padding: "10px 13px", minWidth: 150 }}><div style={{ display: "flex", flexDirection: "column", gap: 4 }}><span style={{ color: row.disposition ? "#334155" : "#94a3b8", fontWeight: row.disposition ? 650 : 400 }}>{row.disposition || "Awaiting outcome"}</span>{row.disposition === "Call Back" && row.callback_date && <span style={{ fontSize: 10, color: "#64748b" }}>Follow-up: {new Date(row.callback_date + "T00:00:00").toLocaleDateString("en-GB")}</span>}</div></td>)}{activeTab === "quotes-work" && <td style={{ padding: "8px 10px", textAlign: "center" }} onClick={event => event.stopPropagation()}><button type="button" title="Open sent quote" aria-label="Open sent quote" disabled={!row.storage_path} onClick={async event => { event.stopPropagation(); const popup = window.open("", "_blank"); if (!popup) return; try { const { data, error } = await supabase.storage.from("signatures").createSignedUrl(row.storage_path, 300, { download: false }); if (error || !data?.signedUrl) throw error || new Error("Could not create quote link."); popup.location.href = data.signedUrl; } catch (error) { popup.close(); setQuoteDispositionError(error?.message || "Unable to open this quote."); } }} style={{ width: 30, height: 28, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", border: "1px solid #cbd5e1", borderRadius: 5, background: "#fff", color: "#0f766e", cursor: row.storage_path ? "pointer" : "not-allowed" }}><FileText size={15} /></button></td>}</tr>)}
-            {activeTab !== "quotes-sent" && activeTab !== "quotes-work" && activeTab !== "lead-view" && !loading && visibleRows.length === 0 && <tr><td colSpan={activeTab === "linked" ? 10 : 4} style={{ padding: 28, textAlign: "center", color: "#64748b" }}>{"No appointments match these filters."}</td></tr>}
+            {activeTab !== "quotes-sent" && activeTab !== "quotes-work" && activeTab !== "lead-view" && !loading && visibleRows.length === 0 && <tr><td colSpan={activeTab === "linked" ? 7 : 4} style={{ padding: 28, textAlign: "center", color: "#64748b" }}>{"No appointments match these filters."}</td></tr>}
             {activeTab !== "quotes-sent" && activeTab !== "quotes-work" && activeTab !== "lead-view" && visibleRows.map(row => {
               const linked = row.open_solar_id !== null && row.open_solar_id !== undefined && String(row.open_solar_id).trim() !== ""
               return <tr key={row.appointment_row_id} onClick={() => onSelectAppointment?.(row)} onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelectAppointment?.(row) } }} tabIndex={0} role="button" aria-label={"Open appointment for " + (normalise(row.name) || "unnamed customer")} style={{ borderBottom: "1px solid #edf2f7", cursor: "pointer" }}>
@@ -828,21 +813,6 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
                     </div>
                   })()}
                 </td>
-                {activeTab === "linked" && <td style={{ padding: "6px 10px", minWidth: 110 }} onClick={event => event.stopPropagation()}>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", cursor: "pointer" }}>
-                    <input type="checkbox" checked={Boolean(row.solar_rework_visit_booked)} onChange={event => updateSolarReworkFields(row, { solar_rework_visit_booked: event.target.checked })} />
-                    {row.solar_rework_visit_booked ? "Yes" : "No"}
-                  </label>
-                </td>}
-                {activeTab === "linked" && <td style={{ padding: "6px 10px", minWidth: 135 }} onClick={event => event.stopPropagation()}>
-                  <input type="date" value={row.solar_rework_visit_date || ""} onChange={event => updateSolarReworkFields(row, { solar_rework_visit_date: event.target.value || null })} style={{ ...inputStyle, height: 30, minWidth: 125, boxSizing: "border-box" }} aria-label={"Visit date for " + (normalise(row.name) || "appointment")} />
-                </td>}
-                {activeTab === "linked" && <td style={{ padding: "6px 10px", minWidth: 105 }} onClick={event => event.stopPropagation()}>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", cursor: "pointer" }}>
-                    <input type="checkbox" checked={Boolean(row.solar_rework_message_left)} onChange={event => updateSolarReworkFields(row, { solar_rework_message_left: event.target.checked })} />
-                    {row.solar_rework_message_left ? "Yes" : "No"}
-                  </label>
-                </td>}
                 {activeTab === "linked" && <td style={{ padding: "6px 10px", minWidth: 170 }}>
                   {row.relatedAppointments?.length ? <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                     {row.relatedAppointments.map(related => <div key={related.appointment_row_id} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
