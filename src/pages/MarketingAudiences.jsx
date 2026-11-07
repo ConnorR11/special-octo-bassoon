@@ -34,6 +34,20 @@ export default function MarketingAudiences() {
       <button onClick={refreshAggregations} disabled={refreshing||loading} style={{border:0,borderRadius:8,padding:"10px 14px",background:refreshing?"#94a3b8":"#12345a",color:"#fff",fontWeight:700,cursor:refreshing||loading?"default":"pointer"}}>{refreshing?"Refreshing…":"Refresh audience figures"}</button>
     </div>
     {error&&<div style={{padding:12,background:"#fef2f2",color:"#991b1b",borderRadius:8,marginBottom:12}}>{error}</div>}
+    <div style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:12,padding:17,marginBottom:16}}>
+      <h2 style={{fontSize:16,margin:"0 0 5px"}}>Audience development priority list</h2>
+      <p style={{fontSize:12,color:"#64748b",margin:"0 0 13px"}}>Planned audiences to build next, in recommended order. These are notes only; they have not yet been created as saved audiences.</p>
+      <ol style={{margin:0,paddingLeft:22,display:"grid",gap:10}}>
+        <li><strong>No Contact – Windows and No Contact – Solar</strong><div style={{fontSize:12,color:"#64748b"}}>Separate the existing No Contact audiences by product, retaining the 0–6, 6–12 and 12–24 month age bands.</div></li>
+        <li><strong>Contacted – Not Booked</strong><div style={{fontSize:12,color:"#64748b"}}>Leads successfully contacted but with no appointment booked.</div></li>
+        <li><strong>Previous Appointment – Not Sold</strong><div style={{fontSize:12,color:"#64748b"}}>Leads who had an appointment but did not convert into a sale.</div></li>
+        <li><strong>Old Leads – 24–48 Months</strong><div style={{fontSize:12,color:"#64748b"}}>Older enquiries, split by product for reactivation testing.</div></li>
+        <li><strong>Call Back</strong><div style={{fontSize:12,color:"#64748b"}}>Leads with a Call Back disposition.</div></li>
+        <li><strong>Quotes Not Sold</strong><div style={{fontSize:12,color:"#64748b"}}>Customers who received a quote but have not purchased.</div></li>
+        <li><strong>Cancelled / Declined</strong><div style={{fontSize:12,color:"#64748b"}}>Previously engaged customers who cancelled or declined.</div></li>
+        <li><strong>Cross-Sell Opportunities</strong><div style={{fontSize:12,color:"#64748b"}}>Existing Windows customers for Solar campaigns, and existing Solar customers for Windows campaigns.</div></li>
+      </ol>
+    </div>
     <div style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:12,padding:17}}>
       <h2 style={{fontSize:16,margin:"0 0 14px"}}>Saved audiences</h2>
       {loading?<p style={{color:"#64748b"}}>Loading…</p>:audiences.length===0?<p style={{color:"#64748b",fontSize:13}}>No audiences saved yet.</p>:<>
