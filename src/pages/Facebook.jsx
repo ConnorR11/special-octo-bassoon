@@ -1,5 +1,5 @@
 import React from "react"
-import { Facebook, Users, Target, ShieldCheck, RefreshCw, BarChart3, Mail, MessageSquare, CheckCircle2 } from "lucide-react"
+import { Facebook as FacebookIcon, Users, Target, ShieldCheck, RefreshCw, BarChart3, Mail, MessageSquare, CheckCircle2 } from "lucide-react"
 
 const Section = ({ number, title, children }) => (
   <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 20, marginBottom: 16 }}>
@@ -37,7 +37,7 @@ export default function Facebook() {
 
   return <main style={{ maxWidth: 1180, margin: "0 auto", color: "#172033", paddingBottom: 32 }}>
     <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 22 }}>
-      <div style={{ width: 48, height: 48, borderRadius: 13, background: "#eaf2ff", color: "#1877f2", display: "grid", placeItems: "center" }}><Facebook size={25}/></div>
+      <div style={{ width: 48, height: 48, borderRadius: 13, background: "#eaf2ff", color: "#1877f2", display: "grid", placeItems: "center" }}><FacebookIcon size={25}/></div>
       <div><h1 style={{ margin: 0, fontSize: 25 }}>Facebook</h1><p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 13 }}>Proposed CRM-to-Meta audience strategy and implementation plan</p></div>
     </div>
 
