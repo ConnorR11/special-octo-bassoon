@@ -163,7 +163,7 @@ export default function IWACertificates() {
     setDealResults([])
     setMatchError("")
     setExactMatchMode(true)
-    const completionParts = String(row.completion_date_text || "").trim().match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/)
+    const completionParts = String(row.completion_date_text || "").trim().match(/^(\d{1,2})\\/(\d{1,2})\\/(\d{4})$/)
     const targetValue = parseAmount(row.contract_value)
     if (!completionParts || !row.customer_name?.trim() || !targetValue) {
       setMatchError("An exact match needs a customer name, a valid completion date and a contract value greater than £0.")
@@ -179,9 +179,9 @@ export default function IWACertificates() {
         .lt("sale_date", completionDate)
         .order("sale_date", { ascending: false }).limit(100)
       if (result.error) throw result.error
-      const normalizedName = row.customer_name.trim().replace(/\\s+/g, " ").toLocaleLowerCase("en-GB")
+      const normalizedName = row.customer_name.trim().replace(/\s+/g, " ").toLocaleLowerCase("en-GB")
       const exact = (result.data || []).filter(deal =>
-        String(deal.customer_name || "").trim().replace(/\\s+/g, " ").toLocaleLowerCase("en-GB") === normalizedName &&
+        String(deal.customer_name || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("en-GB") === normalizedName &&
         Number(deal.deal_value) === targetValue
       )
       setDealResults(exact)
