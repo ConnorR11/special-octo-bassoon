@@ -90,7 +90,7 @@ export default function MarketingAudiences() {
               <button onClick={()=>remove(a)} title="Delete audience" style={{border:0,background:"transparent",color:"#b91c1c",cursor:"pointer"}}>Delete</button>
             </div>
             <div style={{display:"flex",flexWrap:"wrap",gap:6,margin:"12px 0"}}>
-              {["All lead sources","Last 2 years","Disposition: No Contact","Excludes Return Accepted","Excludes Return Open"].map(x=><span key={x} style={{fontSize:10,padding:"5px 7px",borderRadius:20,background:"#f1f5f9",color:"#334155"}}>{x}</span>)}
+              {["All lead sources","Last 2 years","Disposition: No Contact","Excludes Return Accepted","Excludes Return Open","No previous appointment"].map(x=><span key={x} style={{fontSize:10,padding:"5px 7px",borderRadius:20,background:"#f1f5f9",color:"#334155"}}>{x}</span>)}
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:7,marginBottom:12}}>
               <div style={{background:"#f0fdfa",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>Total leads</div><strong style={{fontSize:19,color:"#134e4a"}}>{noContactStatsLoading?"…":Number(noContactSummary?.total_leads||0).toLocaleString("en-GB")}</strong></div>
