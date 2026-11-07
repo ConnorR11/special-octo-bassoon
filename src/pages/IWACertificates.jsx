@@ -87,37 +87,20 @@ export default function IWACertificates() {
     setMatchError("")
     const term = value.trim()
     if (!matchingCertificate) { setDealResults([]); return }
-    const completionParts = String(matchingCertificate.completion_date_text || "").trim().match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/)
+    const completionParts = String(matchingCertificate.completion_date_text || "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
     if (!completionParts) {
       setDealResults([])
       setMatchError("This IWA certificate does not have a valid completion date, so deals cannot be matched.")
       return
     }
-    const completionDate = `${completionParts[3]}-${completionParts[2].padStart(2, "0")}-${completionParts[1].padStart(2, "0")}`
+    const completionDate = \`\${completionParts[3]}-\${completionParts[2].padStart(2, "0")}-\${completionParts[1].padStart(2, "0")}\`
     if (term.length < 2) { setDealResults([]); return }
     setDealSearchLoading(true)
     try {
-      const safe = term.replace(/[%_]/g, "\\\\  const searchDeals = async value => {
-    setDealSearch(value)
-    setMatchError("")
-    const term = value.trim()
-    if (term.length < 2) { setDealResults([]); return }
-    setDealSearchLoading(true)
-    try {
+      const safe = term.replace(/[%_]/g, "\\$&").replace(/,/g, "\\,")
       const result = await supabase.from("deals")
         .select("id,contract_number,customer_name,address,postcode,product,deal_value,sale_date,status")
-        .or("customer_name.ilike.%"+term+"%,postcode.ilike.%"+term+"%,address.ilike.%"+term+"%,contract_number.ilike.%"+term+"%")
-        .order("sale_date", { ascending: false }).limit(30)
-      if (result.error) throw result.error
-      setDealResults(result.data || [])
-    } catch (err) {
-      setMatchError(err.message || "Unable to search deals.")
-      setDealResults([])
-    } finally { setDealSearchLoading(false) }
-  }").replace(/,/g, "\\\\,")
-      const result = await supabase.from("deals")
-        .select("id,contract_number,customer_name,address,postcode,product,deal_value,sale_date,status")
-        .or(`customer_name.ilike.%${safe}%,postcode.ilike.%${safe}%,address.ilike.%${safe}%,contract_number.ilike.%${safe}%`)
+        .or(\`customer_name.ilike.%\${safe}%,postcode.ilike.%\${safe}%,address.ilike.%\${safe}%,contract_number.ilike.%\${safe}%\`)
         .not("sale_date", "is", null)
         .lt("sale_date", completionDate)
         .order("sale_date", { ascending: false }).limit(30)
