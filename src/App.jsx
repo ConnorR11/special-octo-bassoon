@@ -15,6 +15,7 @@ import InstallationsPerformance from "./pages/InstallationsPerformance"
 import Installations from "./pages/Installations"
 import MarketingTV from "./pages/MarketingTV"
 import MarketingDashboard from "./pages/MarketingDashboard"
+import MarketingAudiences from "./pages/MarketingAudiences"
 import Leads from "./pages/Leads"
 import Contracts from "./pages/Contracts"
 import Balances from "./pages/Balances"
@@ -329,6 +330,8 @@ function App() {
     pageContent = <MarketingTV onSelectAppointment={handleAppointmentSelect}/>
   } else if (page === "marketing-dashboard") {
     pageContent = <MarketingDashboard/>
+  } else if (page === "marketing-audiences") {
+    pageContent = <MarketingAudiences/>
   } else if (page === "leads") {
     pageContent = <Leads/>
   } else if (page === "rts-list") {
