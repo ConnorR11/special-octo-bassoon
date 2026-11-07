@@ -93,14 +93,14 @@ export default function IWACertificates() {
       setMatchError("This IWA certificate does not have a valid completion date, so deals cannot be matched.")
       return
     }
-    const completionDate = \`\${completionParts[3]}-\${completionParts[2].padStart(2, "0")}-\${completionParts[1].padStart(2, "0")}\`
+    const completionDate = `${completionParts[3]}-${completionParts[2].padStart(2, "0")}-${completionParts[1].padStart(2, "0")}`
     if (term.length < 2) { setDealResults([]); return }
     setDealSearchLoading(true)
     try {
       const safe = term.replace(/[%_]/g, "\\$&").replace(/,/g, "\\,")
       const result = await supabase.from("deals")
         .select("id,contract_number,customer_name,address,postcode,product,deal_value,sale_date,status")
-        .or(\`customer_name.ilike.%\${safe}%,postcode.ilike.%\${safe}%,address.ilike.%\${safe}%,contract_number.ilike.%\${safe}%\`)
+        .or(`customer_name.ilike.%${safe}%,postcode.ilike.%${safe}%,address.ilike.%${safe}%,contract_number.ilike.%${safe}%`)
         .not("sale_date", "is", null)
         .lt("sale_date", completionDate)
         .order("sale_date", { ascending: false }).limit(30)
