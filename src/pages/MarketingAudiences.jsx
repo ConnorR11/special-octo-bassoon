@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase"
 export default function MarketingAudiences() {
   const [audiences,setAudiences]=useState([])
   const [loading,setLoading]=useState(true)
+  const [refreshing,setRefreshing]=useState(false)
   const [error,setError]=useState("")
 
   async function loadAudiences() {
@@ -15,6 +16,14 @@ export default function MarketingAudiences() {
   }
   useEffect(()=>{loadAudiences()},[])
 
+  async function refreshAggregations(){
+    setRefreshing(true);setError("")
+    const {error}=await supabase.rpc("refresh_marketing_audience_aggregations")
+    if(error)setError(error.message)
+    else await loadAudiences()
+    setRefreshing(false)
+  }
+
   async function remove(a){
     if(!window.confirm("Delete the audience “"+a.name+"”?"))return
     const {error}=await supabase.from("marketing_audiences").delete().eq("id",a.id)
@@ -24,6 +33,7 @@ export default function MarketingAudiences() {
   return <section style={{maxWidth:1400,margin:"0 auto",color:"#0f172a"}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap",marginBottom:22}}>
       <div><h1 style={{fontSize:24,margin:0}}>Marketing audiences</h1><p style={{margin:"6px 0 0",color:"#64748b",fontSize:13}}>Saved audience segments and their latest aggregated reach.</p></div>
+      <button onClick={refreshAggregations} disabled={refreshing||loading} style={{border:0,borderRadius:8,padding:"10px 14px",background:refreshing?"#94a3b8":"#12345a",color:"#fff",fontWeight:700,cursor:refreshing||loading?"default":"pointer"}}>{refreshing?"Refreshing…":"Refresh audience figures"}</button>
     </div>
     {error&&<div style={{padding:12,background:"#fef2f2",color:"#991b1b",borderRadius:8,marginBottom:12}}>{error}</div>}
       <div style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:12,padding:17}}>
@@ -35,6 +45,7 @@ export default function MarketingAudiences() {
               <button onClick={()=>remove(a)} title="Delete audience" style={{border:"1px solid rgba(255,255,255,.35)",borderRadius:7,background:"rgba(255,255,255,.08)",color:"#fff",padding:"6px 10px",cursor:"pointer",flexShrink:0}}>Delete</button>
             </div>
             <div style={{padding:"15px 17px 17px"}}>
+            <div style={{fontSize:10,color:"#64748b",marginBottom:10}}>Last calculated: {a.aggregated_at?new Date(a.aggregated_at).toLocaleString("en-GB"):"Not yet calculated"}</div>
             <div style={{display:"flex",flexWrap:"wrap",gap:6,margin:"0 0 12px"}}>
               {["All lead sources",(a.filters.ageBand==="0_6"?"Last 6 months":a.filters.ageBand==="6_12"?"6–12 months ago":"12–24 months ago"),"Disposition: No Contact","Excludes Return Accepted","Excludes Return Open","Excludes leads with booked appointments"].map(x=><span key={x} style={{fontSize:10,padding:"5px 7px",borderRadius:20,background:"#f1f5f9",color:"#334155"}}>{x}</span>)}
             </div>
