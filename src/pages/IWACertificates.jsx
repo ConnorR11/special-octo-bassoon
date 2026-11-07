@@ -53,6 +53,16 @@ export default function IWACertificates() {
     }))
     const mapped = Object.fromEntries(results)
     setCounts({ total: results.reduce((sum, [, count]) => sum + count, 0), ...mapped })
+    const { count: awaitingSendCount, error: toSendCountError } = await supabase.from("deals")
+      .select("id", { count: "exact", head: true })
+      .is("iwa_certificates", null)
+      .gte("sale_date", "2024-01-01")
+      .eq("product", "Windows")
+      .not("installation_start_date", "is", null)
+      .gt("net_value", 0)
+      .eq("balance_outstanding", 0)
+    if (toSendCountError) throw toSendCountError
+    setToSendCount(awaitingSendCount || 0)
     let from = 0
     let contractValue = 0
     let premium = 0
@@ -236,21 +246,21 @@ export default function IWACertificates() {
         <button onClick={loadRows} disabled={loading} style={{ border: "1px solid #dce2e7", borderRadius: 8, background: "#fff", padding: "9px 13px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "#34495a" }}><RefreshCw size={15}/> Refresh</button>
       </div>
 
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(175px,1fr))", gap: 12, marginBottom: 20 }}>
+        {card("Total certificates", counts.total, <FileText size={19}/>, "#edf3f8")}
+        {card("Awaiting match", counts.unmatched, <Search size={19}/>, "#fff5df")}
+        {card("Approved matches", counts.approved, <ShieldCheck size={19}/>, "#e8f6ee")}
+        {card("To Send", toSendCount, <FileText size={19}/>, "#f1f2f4")}
+        {card("Total contract value", formatCurrency(financialTotals.contractValue), <span style={{fontSize:19,fontWeight:700}}>£</span>, "#edf3f8")}
+        {card("Total premium", formatCurrency(financialTotals.premium), <span style={{fontSize:19,fontWeight:700}}>£</span>, "#e8f6ee")}
+      </div>
+
       <div style={{ display: "flex", gap: 8, borderBottom: "1px solid #e3e8ec", marginBottom: 18 }}>
         <button onClick={() => { setActiveTab("sent-unmatched"); setPage(0) }} style={{ border: 0, borderBottom: activeTab === "sent-unmatched" ? "3px solid #23445c" : "3px solid transparent", background: "transparent", padding: "11px 16px", color: activeTab === "sent-unmatched" ? "#23445c" : "#6f7b85", fontWeight: 650, cursor: "pointer" }}>Sent - Unmatched <span style={{ marginLeft: 6, background: "#edf2f6", borderRadius: 12, padding: "2px 7px", fontSize: 11 }}>{counts.unmatched.toLocaleString("en-GB")}</span></button>
         <button onClick={() => { setActiveTab("sent-matched"); setPage(0) }} style={{ border: 0, borderBottom: activeTab === "sent-matched" ? "3px solid #23445c" : "3px solid transparent", background: "transparent", padding: "11px 16px", color: activeTab === "sent-matched" ? "#23445c" : "#6f7b85", fontWeight: 650, cursor: "pointer" }}>Sent - Matched <span style={{ marginLeft: 6, background: "#edf2f6", borderRadius: 12, padding: "2px 7px", fontSize: 11 }}>{counts.approved.toLocaleString("en-GB")}</span></button>
         <button onClick={() => setActiveTab("to-send")} style={{ border: 0, borderBottom: activeTab === "to-send" ? "3px solid #23445c" : "3px solid transparent", background: "transparent", padding: "11px 16px", color: activeTab === "to-send" ? "#23445c" : "#6f7b85", fontWeight: 650, cursor: "pointer" }}>To Send <span style={{ marginLeft: 6, background: "#edf2f6", borderRadius: 12, padding: "2px 7px", fontSize: 11 }}>{toSendCount.toLocaleString("en-GB")}</span></button>
       </div>
       {activeTab !== "to-send" && <>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(175px,1fr))", gap: 12, marginBottom: 20 }}>
-        {card("Total certificates", counts.total, <FileText size={19}/>, "#edf3f8")}
-        {card("Awaiting match", counts.unmatched, <Search size={19}/>, "#fff5df")}
-        {card("Approved matches", counts.approved, <ShieldCheck size={19}/>, "#e8f6ee")}
-        {card("Excluded", counts.excluded, <FileText size={19}/>, "#f1f2f4")}
-        {card("Total contract value", formatCurrency(financialTotals.contractValue), <span style={{fontSize:19,fontWeight:700}}>£</span>, "#edf3f8")}
-        {card("Total premium", formatCurrency(financialTotals.premium), <span style={{fontSize:19,fontWeight:700}}>£</span>, "#e8f6ee")}
-      </div>
-
       <div style={{ background: "#fff", border: "1px solid #e7ebef", borderRadius: 12, overflow: "hidden" }}>
         <div style={{ padding: 15, display: "flex", gap: 10, flexWrap: "wrap", borderBottom: "1px solid #edf0f2" }}>
           <div style={{ flex: "1 1 280px", position: "relative" }}><Search size={16} style={{ position: "absolute", left: 11, top: 11, color: "#8a949d" }}/><input value={search} onChange={e => { setSearch(e.target.value); setPage(0) }} placeholder="Search certificate, customer or address..." style={{ width: "100%", boxSizing: "border-box", border: "1px solid #dce2e7", borderRadius: 8, padding: "9px 10px 9px 34px", fontSize: 13 }}/></div>
