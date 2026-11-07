@@ -143,14 +143,18 @@ export default function IWACertificates() {
     setDealSearchLoading(true)
     try {
       const safe = term.replace(/[%_]/g, "\\$&").replace(/,/g, "\\,")
+      const targetValue = parseAmount(matchingCertificate.contract_value)
+      if (!targetValue) { setDealResults([]); setMatchError("This certificate does not have a valid contract value to filter deals."); return }
       const result = await supabase.from("deals")
         .select("id,contract_number,customer_name,address,postcode,product,deal_value,sale_date,status")
+        .eq("deal_value", targetValue)
+        .not("product", "ilike", "%solar%")
         .or(`customer_name.ilike.%${safe}%,postcode.ilike.%${safe}%,address.ilike.%${safe}%,contract_number.ilike.%${safe}%`)
         .not("sale_date", "is", null)
         .lt("sale_date", completionDate)
-        .order("sale_date", { ascending: false }).limit(30)
+        .order("sale_date", { ascending: false }).limit(100)
       if (result.error) throw result.error
-      setDealResults(result.data || [])
+      setDealResults((result.data || []).filter(deal => !String(deal.product || "").toLowerCase().includes("solar")))
     } catch (err) {
       setMatchError(err.message || "Unable to search deals.")
       setDealResults([])
@@ -336,7 +340,10 @@ export default function IWACertificates() {
               <div style={{ color: "#66727d", fontSize: 13 }}>{matchingCertificate.installation_address || "Address not recorded"}</div>
               <div style={{ fontSize: 12, color: "#66727d", marginTop: 8 }}>Type: {matchingCertificate.installation_type || "—"} · Completed: {matchingCertificate.completion_date_text || "—"} · Contract: {money(matchingCertificate.contract_value)} · Premium: {money(matchingCertificate.premium)}</div>
             </div>
-            {!exactMatchMode && <input value={dealSearch} onChange={e => searchDeals(e.target.value)} placeholder="Search customer, postcode, address or contract number…" style={{ width: "100%", boxSizing: "border-box", border: "1px solid #dce2e7", borderRadius: 8, padding: 11 }}/>}
+            {!exactMatchMode && <>
+              <div style={{ fontSize: 12, color: "#66727d", marginBottom: 8 }}>Deal value filter: <strong>{formatCurrency(parseAmount(matchingCertificate.contract_value))}</strong> · Solar deals are excluded · Sold before completion date</div>
+              <input value={dealSearch} onChange={e => searchDeals(e.target.value)} placeholder="Search customer, postcode, address or contract number…" style={{ width: "100%", boxSizing: "border-box", border: "1px solid #dce2e7", borderRadius: 8, padding: 11 }}/>
+            </>}
             {exactMatchMode && <div style={{ color: "#66727d", fontSize: 12, marginTop: 8 }}>Exact criteria: customer name and deal value match; sold date is before completion date. IWA value: {money(matchingCertificate.contract_value)} · Completion: {matchingCertificate.completion_date_text || "—"}</div>}
             {matchError && <div style={{ color: exactMatchMode && dealResults.length === 0 ? "#8b5a00" : "#b42318", marginTop: 10 }}>{matchError}</div>}
             <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
