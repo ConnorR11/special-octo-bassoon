@@ -8,6 +8,17 @@ const money = value => {
   return String(value).trim()
 }
 
+const parseAmount = value => {
+  const parsed = Number(String(value ?? "").replace(/[^0-9.-]/g, ""))
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const formatCurrency = value => new Intl.NumberFormat("en-GB", {
+  style: "currency",
+  currency: "GBP",
+  maximumFractionDigits: 0,
+}).format(value)
+
 export default function IWACertificates() {
   const [rows, setRows] = useState([])
   const [counts, setCounts] = useState({ total: 0, unmatched: 0, approved: 0, excluded: 0 })
