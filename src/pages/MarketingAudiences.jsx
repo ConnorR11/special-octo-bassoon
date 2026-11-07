@@ -44,7 +44,7 @@ export default function MarketingAudiences() {
             </div>
             <div style={{padding:"15px 17px 17px"}}>
             <div style={{display:"flex",flexWrap:"wrap",gap:6,margin:"0 0 12px"}}>
-              {["All lead sources",(a.filters.ageBand==="0_6"?"Last 6 months":a.filters.ageBand==="6_12"?"6–12 months ago":"12–24 months ago"),"Disposition: No Contact","Excludes Return Accepted","Excludes Return Open","No previous appointment"].map(x=><span key={x} style={{fontSize:10,padding:"5px 7px",borderRadius:20,background:"#f1f5f9",color:"#334155"}}>{x}</span>)}
+              {["All lead sources",(a.filters.ageBand==="0_6"?"Last 6 months":a.filters.ageBand==="6_12"?"6–12 months ago":"12–24 months ago"),"Disposition: No Contact","Excludes Return Accepted","Excludes Return Open","Excludes leads with booked appointments"].map(x=><span key={x} style={{fontSize:10,padding:"5px 7px",borderRadius:20,background:"#f1f5f9",color:"#334155"}}>{x}</span>)}
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:7,marginBottom:12}}>
               <div style={{background:"#f0fdfa",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>Total leads</div><strong style={{fontSize:19,color:"#134e4a"}}>{noContactStatsLoading?"…":Number(noContactSummary[a.filters.ageBand]?.total_leads||0).toLocaleString("en-GB")}</strong></div>
