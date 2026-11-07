@@ -24,12 +24,6 @@ export default function MarketingAudiences() {
     setRefreshing(false)
   }
 
-  async function remove(a){
-    if(!window.confirm("Delete the audience “"+a.name+"”?"))return
-    const {error}=await supabase.from("marketing_audiences").delete().eq("id",a.id)
-    if(error)setError(error.message);else setAudiences(v=>v.filter(x=>x.id!==a.id))
-  }
-
   return <section style={{maxWidth:1400,margin:"0 auto",color:"#0f172a"}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap",marginBottom:22}}>
       <div><h1 style={{fontSize:24,margin:0}}>Marketing audiences</h1><p style={{margin:"6px 0 0",color:"#64748b",fontSize:13}}>Saved audience segments and their latest aggregated reach.</p></div>
@@ -42,7 +36,7 @@ export default function MarketingAudiences() {
           {a.filters?.audienceType === "no_contact_age_band" ? <div style={{width:"100%"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,background:"#12345a",padding:"15px 18px"}}>
               <div><strong style={{fontSize:16,color:"#fff",display:"block"}}>{a.name}</strong><p style={{fontSize:12,color:"#d7e3f1",margin:"5px 0 0"}}>{a.description}</p></div>
-              <button onClick={()=>remove(a)} title="Delete audience" style={{border:"1px solid rgba(255,255,255,.35)",borderRadius:7,background:"rgba(255,255,255,.08)",color:"#fff",padding:"6px 10px",cursor:"pointer",flexShrink:0}}>Delete</button>
+
             </div>
             <div style={{padding:"15px 17px 17px"}}>
             <div style={{fontSize:10,color:"#64748b",marginBottom:10}}>Last calculated: {a.aggregated_at?new Date(a.aggregated_at).toLocaleString("en-GB"):"Not yet calculated"}</div>
@@ -63,7 +57,7 @@ export default function MarketingAudiences() {
             </div>
           </div> : <div style={{display:"flex",justifyContent:"space-between",gap:8,padding:14}}>
             <div><strong style={{display:"block",fontSize:13,color:"#0f172a"}}>{a.name}</strong><span style={{display:"block",fontSize:11,color:"#64748b",marginTop:3}}>{a.description||"No description"}</span></div>
-            <button onClick={()=>remove(a)} title="Delete audience" style={{border:0,background:"transparent",color:"#b91c1c",cursor:"pointer"}}>Delete</button>
+
           </div>}
         </div>)}
       </div>
