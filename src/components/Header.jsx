@@ -2,7 +2,7 @@ import React from "react"
 import { Menu } from "lucide-react"
 
 function Header({ page, setMobile }) {
-  if (page === "dashboard") {
+  if (page === "dashboard" || page === "pronto") {
     return (
       <div className="home-mobile-menu">
         <button
