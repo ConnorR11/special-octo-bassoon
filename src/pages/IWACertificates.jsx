@@ -63,7 +63,7 @@ export default function IWACertificates() {
     setLoading(true)
     setError("")
     try {
-      let request = supabase.from("iwa_certificates").select("id,certificate_id,installation_type,customer_name,installation_address,cover_period,contract_value,premium,payment_method,issue_date_text,completion_date_text,match_status,deal_row_id", { count: "exact" }).order("certificate_id", { ascending: true }).range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+      let request = supabase.from("iwa_certificates").select("id,certificate_id,installation_type,customer_name,installation_address,cover_period,contract_value,premium,payment_method,issue_date_text,completion_date_text,match_status,deal_row_id", { count: "exact" }).order("issue_date_text", { ascending: false, nullsFirst: false }).order("certificate_id", { ascending: false }).range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
       if (status !== "all") request = request.eq("match_status", status)
       const term = search.trim()
       if (term) {
