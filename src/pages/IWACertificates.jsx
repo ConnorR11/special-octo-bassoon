@@ -185,7 +185,7 @@ export default function IWACertificates() {
                 <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>
                   {row.deal_row_id
                     ? <button onClick={() => removeMatch(row)} style={{ border: "1px solid #dce2e7", borderRadius: 7, padding: "6px 9px", background: "#fff", color: "#a33b35", cursor: "pointer" }}>Remove link</button>
-                    : <button onClick={() => { setMatchingCertificate(row); setDealSearch(""); setDealResults([]); setMatchError(""); searchDeals(row.customer_name || ""); }} style={{ border: "1px solid #cbd8e2", borderRadius: 7, padding: "6px 9px", background: "#f5f9fc", color: "#23445c", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}><Link2 size={13}/> Find Deal</button>}
+                    : <button onClick={() => { setMatchingCertificate(row); setDealSearch(row.customer_name || ""); setDealResults([]); setMatchError(""); }} style={{ border: "1px solid #cbd8e2", borderRadius: 7, padding: "6px 9px", background: "#f5f9fc", color: "#23445c", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}><Link2 size={13}/> Find Deal</button>}
                 </td>
               </tr>)}
             </tbody>
