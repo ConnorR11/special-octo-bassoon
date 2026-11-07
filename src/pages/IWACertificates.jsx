@@ -10,7 +10,8 @@ const money = value => {
 
 export default function IWACertificates() {
   const [rows, setRows] = useState([])
-  const [counts, setCounts] = useState({ total: 0, unmatched: 0, approved: 0, excluded: 0 })\n  const [financialTotals, setFinancialTotals] = useState({ contractValue: 0, premium: 0 })
+  const [counts, setCounts] = useState({ total: 0, unmatched: 0, approved: 0, excluded: 0 })
+  const [financialTotals, setFinancialTotals] = useState({ contractValue: 0, premium: 0 })
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState("all")
   const [page, setPage] = useState(0)
@@ -25,7 +26,19 @@ export default function IWACertificates() {
       return [value, count || 0]
     }))
     const mapped = Object.fromEntries(results)
-    setCounts({ total: results.reduce((sum, [, count]) => sum + count, 0), ...mapped })\n    let from = 0\n    let contractValue = 0\n    let premium = 0\n    while (true) {\n      const { data, error: totalsError } = await supabase.from("iwa_certificates").select("contract_value,premium").order("certificate_id", { ascending: true }).range(from, from + 999)\n      if (totalsError) throw totalsError\n      const batch = data || []\n      for (const row of batch) { contractValue += parseAmount(row.contract_value); premium += parseAmount(row.premium) }\n      if (batch.length < 1000) break\n      from += 1000\n    }\n    setFinancialTotals({ contractValue, premium })
+    setCounts({ total: results.reduce((sum, [, count]) => sum + count, 0), ...mapped })
+    let from = 0
+    let contractValue = 0
+    let premium = 0
+    while (true) {
+      const { data, error: totalsError } = await supabase.from("iwa_certificates").select("contract_value,premium").order("certificate_id", { ascending: true }).range(from, from + 999)
+      if (totalsError) throw totalsError
+      const batch = data || []
+      for (const row of batch) { contractValue += parseAmount(row.contract_value); premium += parseAmount(row.premium) }
+      if (batch.length < 1000) break
+      from += 1000
+    }
+    setFinancialTotals({ contractValue, premium })
   }, [])
 
   const loadRows = useCallback(async () => {
@@ -71,7 +84,9 @@ export default function IWACertificates() {
         {card("Total certificates", counts.total, <FileText size={19}/>, "#edf3f8")}
         {card("Awaiting match", counts.unmatched, <Search size={19}/>, "#fff5df")}
         {card("Approved matches", counts.approved, <ShieldCheck size={19}/>, "#e8f6ee")}
-        {card("Excluded", counts.excluded, <FileText size={19}/>, "#f1f2f4")}\n        {card("Total contract value", formatCurrency(financialTotals.contractValue), <span style={{fontSize:19,fontWeight:700}}>£</span>, "#edf3f8")}\n        {card("Total premium", formatCurrency(financialTotals.premium), <span style={{fontSize:19,fontWeight:700}}>£</span>, "#e8f6ee")}
+        {card("Excluded", counts.excluded, <FileText size={19}/>, "#f1f2f4")}
+        {card("Total contract value", formatCurrency(financialTotals.contractValue), <span style={{fontSize:19,fontWeight:700}}>£</span>, "#edf3f8")}
+        {card("Total premium", formatCurrency(financialTotals.premium), <span style={{fontSize:19,fontWeight:700}}>£</span>, "#e8f6ee")}
       </div>
 
       <div style={{ background: "#fff", border: "1px solid #e7ebef", borderRadius: 12, overflow: "hidden" }}>
