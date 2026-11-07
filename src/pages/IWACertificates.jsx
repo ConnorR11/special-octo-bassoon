@@ -126,13 +126,13 @@ export default function IWACertificates() {
   useEffect(() => {
     if (activeTab === "to-send") loadToSend()
   }, [activeTab, loadToSend])
-  const searchDeals = async value => {
+  const searchDeals = async (value, certificate = matchingCertificate) => {
     setExactMatchMode(false)
     setDealSearch(value)
     setMatchError("")
     const term = value.trim()
-    if (!matchingCertificate) { setDealResults([]); return }
-    const completionParts = String(matchingCertificate.completion_date_text || "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+    if (!certificate) { setDealResults([]); return }
+    const completionParts = String(certificate.completion_date_text || "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
     if (!completionParts) {
       setDealResults([])
       setMatchError("This IWA certificate does not have a valid completion date, so deals cannot be matched.")
@@ -143,7 +143,7 @@ export default function IWACertificates() {
     setDealSearchLoading(true)
     try {
       const safe = term.replace(/[%_]/g, "\\$&").replace(/,/g, "\\,")
-      const targetValue = parseAmount(matchingCertificate.contract_value)
+      const targetValue = parseAmount(certificate.contract_value)
       if (!targetValue) { setDealResults([]); setMatchError("This certificate does not have a valid contract value to filter deals."); return }
       const result = await supabase.from("deals")
         .select("id,contract_number,customer_name,address,postcode,product,deal_value,sale_date,status")
@@ -275,7 +275,7 @@ export default function IWACertificates() {
                     ? <button onClick={() => removeMatch(row)} style={{ border: "1px solid #dce2e7", borderRadius: 7, padding: "6px 9px", background: "#fff", color: "#a33b35", cursor: "pointer" }}>Remove link</button>
                     : <div style={{ display: "flex", gap: 6 }}>
                       <button onClick={() => findExactMatches(row)} style={{ border: "1px solid #b8d8c7", borderRadius: 7, padding: "6px 9px", background: "#f0faf4", color: "#176b45", cursor: "pointer", whiteSpace: "nowrap" }}>Exact match</button>
-                      <button onClick={() => { setMatchingCertificate(row); setDealSearch(row.customer_name || ""); setDealResults([]); setMatchError(""); setExactMatchMode(false); }} style={{ border: "1px solid #cbd8e2", borderRadius: 7, padding: "6px 9px", background: "#f5f9fc", color: "#23445c", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}><Link2 size={13}/> Find Deal</button>
+                      <button onClick={() => { setMatchingCertificate(row); setDealSearch(row.customer_name || ""); setDealResults([]); setMatchError(""); setExactMatchMode(false); searchDeals(row.customer_name || "", row); }} style={{ border: "1px solid #cbd8e2", borderRadius: 7, padding: "6px 9px", background: "#f5f9fc", color: "#23445c", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}><Link2 size={13}/> Find Deal</button>
                     </div>}
                 </td>
               </tr>)}
