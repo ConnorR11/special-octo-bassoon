@@ -102,8 +102,7 @@ export default function IWACertificates() {
         .range(toSendPage * PAGE_SIZE, (toSendPage + 1) * PAGE_SIZE - 1)
       const term = toSendSearch.trim()
       if (term) {
-        const safe = term.replace(/[%_]/g, "\\  useEffect(() => { loadRows() }, [loadRows])
-").replace(/,/g, "\\,")
+        const safe = term.replace(/[%_]/g, "\\$&").replace(/,/g, "\\,")
         request = request.or(`customer_name.ilike.%${safe}%,contract_number.ilike.%${safe}%,postcode.ilike.%${safe}%,address.ilike.%${safe}%`)
       }
       const { data, error: queryError, count } = await request
