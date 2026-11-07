@@ -8,6 +8,7 @@ const blank = { name:"", description:"", introducer:"", disposition:"", postcode
 export default function MarketingAudiences() {
   const [audiences,setAudiences]=useState([])
   const [noContactBreakdown,setNoContactBreakdown]=useState([])
+  const [noContactSummary,setNoContactSummary]=useState(null)
   const [noContactStatsLoading,setNoContactStatsLoading]=useState(true)
   const [draft,setDraft]=useState(blank)
   const [editing,setEditing]=useState(null)
@@ -25,6 +26,8 @@ export default function MarketingAudiences() {
     if(error)setError(error.message); else setAudiences(data||[])
     const stats = await supabase.from("marketing_no_contact_audience_breakdown").select("lead_type,total_leads,uk_mobile_numbers,email_addresses").order("total_leads",{ascending:false})
     if(!stats.error)setNoContactBreakdown(stats.data||[]); else setError(stats.error.message)
+    const summary = await supabase.from("marketing_no_contact_audience_summary").select("total_leads,unique_uk_mobile_numbers,unique_email_addresses").single()
+    if(!summary.error)setNoContactSummary(summary.data); else setError(summary.error.message)
     setNoContactStatsLoading(false)
     setLoading(false)
   }
@@ -90,9 +93,9 @@ export default function MarketingAudiences() {
               {["All lead sources","Last 2 years","Disposition: No Contact","Excludes Return Accepted","Excludes Return Open"].map(x=><span key={x} style={{fontSize:10,padding:"5px 7px",borderRadius:20,background:"#f1f5f9",color:"#334155"}}>{x}</span>)}
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:7,marginBottom:12}}>
-              <div style={{background:"#f0fdfa",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>Total leads</div><strong style={{fontSize:19,color:"#134e4a"}}>{noContactStatsLoading?"…":noContactBreakdown.reduce((n,x)=>n+Number(x.total_leads||0),0).toLocaleString("en-GB")}</strong></div>
-              <div style={{background:"#f8fafc",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>UK mobiles</div><strong style={{fontSize:19}}>{noContactStatsLoading?"…":noContactBreakdown.reduce((n,x)=>n+Number(x.uk_mobile_numbers||0),0).toLocaleString("en-GB")}</strong></div>
-              <div style={{background:"#f8fafc",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>Emails</div><strong style={{fontSize:19}}>{noContactStatsLoading?"…":noContactBreakdown.reduce((n,x)=>n+Number(x.email_addresses||0),0).toLocaleString("en-GB")}</strong></div>
+              <div style={{background:"#f0fdfa",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>Total leads</div><strong style={{fontSize:19,color:"#134e4a"}}>{noContactStatsLoading?"…":Number(noContactSummary?.total_leads||0).toLocaleString("en-GB")}</strong></div>
+              <div style={{background:"#f8fafc",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>UK mobiles</div><strong style={{fontSize:19}}>{noContactStatsLoading?"…":Number(noContactSummary?.unique_uk_mobile_numbers||0).toLocaleString("en-GB")}</strong></div>
+              <div style={{background:"#f8fafc",borderRadius:8,padding:9}}><div style={{fontSize:10,color:"#64748b"}}>Emails</div><strong style={{fontSize:19}}>{noContactStatsLoading?"…":Number(noContactSummary?.unique_email_addresses||0).toLocaleString("en-GB")}</strong></div>
             </div>
             <div style={{overflowX:"auto"}}>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
