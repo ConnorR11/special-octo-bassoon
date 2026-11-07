@@ -24,7 +24,6 @@ export default function IWACertificates() {
   const [counts, setCounts] = useState({ total: 0, unmatched: 0, approved: 0, excluded: 0 })
   const [financialTotals, setFinancialTotals] = useState({ contractValue: 0, premium: 0 })
   const [search, setSearch] = useState("")
-  const [status, setStatus] = useState("all")
   const [page, setPage] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -35,7 +34,7 @@ export default function IWACertificates() {
   const [matchSaving, setMatchSaving] = useState(false)
   const [matchError, setMatchError] = useState("")
   const [exactMatchMode, setExactMatchMode] = useState(false)
-  const [activeTab, setActiveTab] = useState("certificates-sent")
+  const [activeTab, setActiveTab] = useState("sent-unmatched")
   const [toSendRows, setToSendRows] = useState([])
   const [toSendCount, setToSendCount] = useState(0)
   const [toSendSearch, setToSendSearch] = useState("")
@@ -72,7 +71,7 @@ export default function IWACertificates() {
     setError("")
     try {
       let request = supabase.from("iwa_certificates").select("id,certificate_id,installation_type,customer_name,installation_address,cover_period,contract_value,premium,payment_method,issue_date_text,completion_date_text,match_status,deal_row_id", { count: "exact" }).order("issue_date", { ascending: false, nullsFirst: false }).order("certificate_id", { ascending: false }).range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
-      if (status !== "all") request = request.eq("match_status", status)
+      request = request.eq("match_status", activeTab === "sent-matched" ? "approved" : "unmatched")
       const term = search.trim()
       if (term) {
         const safe = term.replace(/[%_]/g, "\\$&").replace(/,/g, "\\,")
@@ -87,7 +86,7 @@ export default function IWACertificates() {
     } finally {
       setLoading(false)
     }
-  }, [page, status, search, loadCounts])
+  }, [page, activeTab, search, loadCounts])
 
   useEffect(() => { loadRows() }, [loadRows])
 
@@ -232,10 +231,11 @@ export default function IWACertificates() {
       </div>
 
       <div style={{ display: "flex", gap: 8, borderBottom: "1px solid #e3e8ec", marginBottom: 18 }}>
-        <button onClick={() => setActiveTab("certificates-sent")} style={{ border: 0, borderBottom: activeTab === "certificates-sent" ? "3px solid #23445c" : "3px solid transparent", background: "transparent", padding: "11px 16px", color: activeTab === "certificates-sent" ? "#23445c" : "#6f7b85", fontWeight: 650, cursor: "pointer" }}>Certificates Sent</button>
+        <button onClick={() => { setActiveTab("sent-unmatched"); setPage(0) }} style={{ border: 0, borderBottom: activeTab === "sent-unmatched" ? "3px solid #23445c" : "3px solid transparent", background: "transparent", padding: "11px 16px", color: activeTab === "sent-unmatched" ? "#23445c" : "#6f7b85", fontWeight: 650, cursor: "pointer" }}>Sent - Unmatched <span style={{ marginLeft: 6, background: "#edf2f6", borderRadius: 12, padding: "2px 7px", fontSize: 11 }}>{counts.unmatched.toLocaleString("en-GB")}</span></button>
+        <button onClick={() => { setActiveTab("sent-matched"); setPage(0) }} style={{ border: 0, borderBottom: activeTab === "sent-matched" ? "3px solid #23445c" : "3px solid transparent", background: "transparent", padding: "11px 16px", color: activeTab === "sent-matched" ? "#23445c" : "#6f7b85", fontWeight: 650, cursor: "pointer" }}>Sent - Matched <span style={{ marginLeft: 6, background: "#edf2f6", borderRadius: 12, padding: "2px 7px", fontSize: 11 }}>{counts.approved.toLocaleString("en-GB")}</span></button>
         <button onClick={() => setActiveTab("to-send")} style={{ border: 0, borderBottom: activeTab === "to-send" ? "3px solid #23445c" : "3px solid transparent", background: "transparent", padding: "11px 16px", color: activeTab === "to-send" ? "#23445c" : "#6f7b85", fontWeight: 650, cursor: "pointer" }}>To Send <span style={{ marginLeft: 6, background: "#edf2f6", borderRadius: 12, padding: "2px 7px", fontSize: 11 }}>{toSendCount.toLocaleString("en-GB")}</span></button>
       </div>
-      {activeTab === "certificates-sent" && <>
+      {activeTab !== "to-send" && <>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(175px,1fr))", gap: 12, marginBottom: 20 }}>
         {card("Total certificates", counts.total, <FileText size={19}/>, "#edf3f8")}
         {card("Awaiting match", counts.unmatched, <Search size={19}/>, "#fff5df")}
@@ -248,9 +248,7 @@ export default function IWACertificates() {
       <div style={{ background: "#fff", border: "1px solid #e7ebef", borderRadius: 12, overflow: "hidden" }}>
         <div style={{ padding: 15, display: "flex", gap: 10, flexWrap: "wrap", borderBottom: "1px solid #edf0f2" }}>
           <div style={{ flex: "1 1 280px", position: "relative" }}><Search size={16} style={{ position: "absolute", left: 11, top: 11, color: "#8a949d" }}/><input value={search} onChange={e => { setSearch(e.target.value); setPage(0) }} placeholder="Search certificate, customer or address..." style={{ width: "100%", boxSizing: "border-box", border: "1px solid #dce2e7", borderRadius: 8, padding: "9px 10px 9px 34px", fontSize: 13 }}/></div>
-          <select value={status} onChange={e => { setStatus(e.target.value); setPage(0) }} style={{ border: "1px solid #dce2e7", borderRadius: 8, padding: "9px 12px", background: "#fff", color: "#34495a" }}>
-            <option value="all">All statuses</option><option value="unmatched">Awaiting match</option><option value="approved">Approved</option><option value="excluded">Excluded</option>
-          </select>
+
         </div>
         {error && <div style={{ padding: 14, color: "#b42318", background: "#fff4f2", fontSize: 13 }}>{error}</div>}
         <div style={{ overflowX: "auto" }}>
@@ -281,7 +279,7 @@ export default function IWACertificates() {
           </table>
         </div>
         <div style={{ padding: "12px 15px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, borderTop: "1px solid #edf0f2", color: "#77818b", fontSize: 12 }}>
-          <span>Showing {rows.length ? page * PAGE_SIZE + 1 : 0}–{page * PAGE_SIZE + rows.length} of {status === "all" ? counts.total : counts[status] || 0}</span>
+          <span>Showing {rows.length ? page * PAGE_SIZE + 1 : 0}–{page * PAGE_SIZE + rows.length} of {activeTab === "sent-matched" ? counts.approved : counts.unmatched}</span>
           <div style={{ display: "flex", gap: 8 }}>
             <button disabled={page === 0 || loading} onClick={() => setPage(value => Math.max(0, value - 1))} style={{ border: "1px solid #dce2e7", borderRadius: 7, padding: "7px 10px", background: "#fff", cursor: "pointer", opacity: page === 0 ? .45 : 1 }}><ChevronLeft size={15}/></button>
             <button disabled={loading || rows.length < PAGE_SIZE} onClick={() => setPage(value => value + 1)} style={{ border: "1px solid #dce2e7", borderRadius: 7, padding: "7px 10px", background: "#fff", cursor: "pointer", opacity: rows.length < PAGE_SIZE ? .45 : 1 }}><ChevronRight size={15}/></button>
