@@ -96,11 +96,12 @@ export default function IWACertificates() {
     setToSendError("")
     try {
       let request = supabase.from("deals")
-        .select("id,contract_number,customer_name,address,postcode,product,deal_value,sale_date,installation_start_date,salesperson_name,status,iwa_certificates!iwa_certificates_deal_row_id_fkey(id)", { count: "exact" })
+        .select("id,contract_number,customer_name,address,postcode,product,deal_value,net_value,sale_date,installation_start_date,salesperson_name,status,iwa_certificates!iwa_certificates_deal_row_id_fkey(id)", { count: "exact" })
         .is("iwa_certificates", null)
         .gte("sale_date", "2024-01-01")
         .eq("product", "Windows")
         .not("installation_start_date", "is", null)
+        .gt("net_value", 0)
         .order("sale_date", { ascending: false, nullsFirst: false })
         .range(toSendPage * PAGE_SIZE, (toSendPage + 1) * PAGE_SIZE - 1)
       const term = toSendSearch.trim()
