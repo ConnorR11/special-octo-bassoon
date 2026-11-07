@@ -172,7 +172,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
           </Folder>
 
           <Folder visible={canSeeFolder("digitalTeam")} title="Digital Team" icon={Search} open={openFolders.digitalTeam} onClick={() => toggleFolder("digitalTeam")}>
-            {isAdministrator && <NavItem icon={BarChart3} label="Pronto" active={isActive("pronto")} onClick={() => navigate("pronto")}/>}
+            {isAdministrator && <NavItem icon={BarChart3} label="Lead Sources" active={isActive("pronto")} onClick={() => navigate("pronto")}/>}
           </Folder>
 
           {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}>
