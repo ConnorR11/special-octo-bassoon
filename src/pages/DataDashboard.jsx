@@ -1994,8 +1994,7 @@ function DataDashboard({ standalonePronto = false }) {
           </>}
 
           </> : <div style={{ background: "#fff", border: "1px solid #dbe3ed", borderRadius: 12, padding: 20, marginTop: 16 }}>
-            <div className="data-dashboard-chart-title">MVF reporting</div>
-            <div className="data-dashboard-chart-subtitle">This workspace is ready for MVF-specific tracking, metrics and reports. Existing Pronto reports remain under the Pronto tab.</div>
+            <GlobalResults />
           </div>}
 
         </>
