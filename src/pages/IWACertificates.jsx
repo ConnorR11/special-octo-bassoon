@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react"
-import { Search, RefreshCw, ShieldCheck, FileText, ChevronLeft, ChevronRight, Link2, X, CheckCircle2 } from "lucide-react"
+import { Search, RefreshCw, ShieldCheck, FileText, ChevronLeft, ChevronRight, Link2, Unlink, X, CheckCircle2 } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
 const PAGE_SIZE = 50
@@ -12,6 +12,8 @@ const parseAmount = value => {
   const parsed = Number(String(value ?? "").replace(/[^0-9.-]/g, ""))
   return Number.isFinite(parsed) ? parsed : 0
 }
+
+const formatIssueDate = value => value ? new Date(`${value}T00:00:00`).toLocaleDateString("en-GB") : "—"
 
 const formatCurrency = value => new Intl.NumberFormat("en-GB", {
   style: "currency",
@@ -70,7 +72,7 @@ export default function IWACertificates() {
     setLoading(true)
     setError("")
     try {
-      let request = supabase.from("iwa_certificates").select("id,certificate_id,installation_type,customer_name,installation_address,cover_period,contract_value,premium,payment_method,issue_date_text,completion_date_text,match_status,deal_row_id", { count: "exact" }).order("issue_date", { ascending: false, nullsFirst: false }).order("certificate_id", { ascending: false }).range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+      let request = supabase.from("iwa_certificates").select("id,certificate_id,installation_type,customer_name,installation_address,cover_period,contract_value,premium,payment_method,issue_date,completion_date_text,match_status,deal_row_id", { count: "exact" }).order("issue_date", { ascending: false, nullsFirst: false }).order("certificate_id", { ascending: false }).range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
       request = request.eq("match_status", activeTab === "sent-matched" ? "approved" : "unmatched")
       const term = search.trim()
       if (term) {
@@ -256,12 +258,13 @@ export default function IWACertificates() {
         </div>
         {error && <div style={{ padding: 14, color: "#b42318", background: "#fff4f2", fontSize: 13 }}>{error}</div>}
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1120, fontSize: 12 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1160, fontSize: 12 }}>
             <thead><tr style={{ background: "#f8fafb", color: "#66727d", textAlign: "left" }}>
-              {["Certificate ID","Customer / Installation address","Installation type","Cover period","Contract value","Premium","Payment method","Match status"].map(label => <th key={label} style={{ padding: "12px 13px", fontWeight: 650, whiteSpace: "nowrap", borderBottom: "1px solid #e9edf0" }}>{label}</th>)}
+              {["Issued date","Certificate ID","Customer / Installation address","Installation type","Cover period","Contract value","Premium","Payment method",""].map(label => <th key={label} style={{ padding: "12px 13px", fontWeight: 650, whiteSpace: "nowrap", borderBottom: "1px solid #e9edf0" }}>{label}</th>)}
             </tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan="9" style={{ padding: 30, textAlign: "center", color: "#7b858e" }}>Loading certificates…</td></tr> : rows.length === 0 ? <tr><td colSpan="8" style={{ padding: 30, textAlign: "center", color: "#7b858e" }}>No certificates found.</td></tr> : rows.map(row => <tr key={row.id} style={{ borderBottom: "1px solid #eef1f3" }}>
+              {loading ? <tr><td colSpan="9" style={{ padding: 30, textAlign: "center", color: "#7b858e" }}>Loading certificates…</td></tr> : rows.length === 0 ? <tr><td colSpan="9" style={{ padding: 30, textAlign: "center", color: "#7b858e" }}>No certificates found.</td></tr> : rows.map(row => <tr key={row.id} style={{ borderBottom: "1px solid #eef1f3" }}>
+                <td style={{ padding: "12px 13px", whiteSpace: "nowrap", color: "#66727d" }}>{formatIssueDate(row.issue_date)}</td>
                 <td style={{ padding: "12px 13px", fontWeight: 650, whiteSpace: "nowrap", color: "#23445c" }}>{row.certificate_id}</td>
                 <td style={{ padding: "12px 13px", maxWidth: 300 }}><div style={{ fontWeight: 600 }}>{row.customer_name || "—"}</div><div style={{ color: "#7b858e", marginTop: 3 }}>{row.installation_address || "—"}</div></td>
                 <td style={{ padding: "12px 13px" }}>{row.installation_type || "—"}</td>
@@ -272,7 +275,7 @@ export default function IWACertificates() {
                 <td style={{ padding: "12px 13px" }}><span style={{ display: "inline-block", borderRadius: 20, padding: "4px 9px", background: row.match_status === "approved" ? "#e8f6ee" : row.match_status === "excluded" ? "#f1f2f4" : "#fff5df", color: row.match_status === "approved" ? "#187044" : row.match_status === "excluded" ? "#626b73" : "#8b5a00", whiteSpace: "nowrap", fontWeight: 600 }}>{row.match_status === "unmatched" ? "Awaiting match" : row.match_status}</span></td>
                 <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>
                   {row.deal_row_id
-                    ? <button onClick={() => removeMatch(row)} style={{ border: "1px solid #dce2e7", borderRadius: 7, padding: "6px 9px", background: "#fff", color: "#a33b35", cursor: "pointer" }}>Remove link</button>
+                    ? <button onClick={() => removeMatch(row)} title="Break deal link" aria-label={`Break deal link for ${row.certificate_id}`} style={{ border: "1px solid #dce2e7", borderRadius: 7, width: 32, height: 32, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#fff", color: "#a33b35", cursor: "pointer" }}><Unlink size={15}/></button>
                     : <div style={{ display: "flex", gap: 6 }}>
                       <button onClick={() => findExactMatches(row)} style={{ border: "1px solid #b8d8c7", borderRadius: 7, padding: "6px 9px", background: "#f0faf4", color: "#176b45", cursor: "pointer", whiteSpace: "nowrap" }}>Exact match</button>
                       <button onClick={() => { setMatchingCertificate(row); setDealSearch(row.customer_name || ""); setDealResults([]); setMatchError(""); setExactMatchMode(false); searchDeals(row.customer_name || "", row); }} style={{ border: "1px solid #cbd8e2", borderRadius: 7, padding: "6px 9px", background: "#f5f9fc", color: "#23445c", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}><Link2 size={13}/> Find Deal</button>
