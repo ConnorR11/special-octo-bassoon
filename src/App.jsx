@@ -300,8 +300,6 @@ function App() {
     pageContent = <OutstandingSolarSurveys onSelectDeal={deal => handleDealSelect(deal, page)}/>
   } else if (page === "quotes-to-work") {
     pageContent = <SolarRework quotesOnly onSelectAppointment={handleAppointmentSelect}/>
-  } else if (page === "solar-rework") {
-    pageContent = <SolarRework onSelectAppointment={handleAppointmentSelect}/>
   } else if (page === "unit-analysis") {
     pageContent = <UnitAnalysis/>
   } else if (page === "epvs-applications") {
