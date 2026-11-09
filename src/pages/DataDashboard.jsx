@@ -83,7 +83,7 @@ function formatMonth(value) {
       })
 }
 
-function DataDashboard({ standalonePronto = false }) {
+function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeader = false }) {
   const [rows, setRows] = useState([])
   const [typeNames, setTypeNames] = useState([])
   const [leadSources, setLeadSources] = useState([])
@@ -93,7 +93,9 @@ function DataDashboard({ standalonePronto = false }) {
   const [leadSourcesLoading, setLeadSourcesLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  const [activeTab, setActiveTab] = useState(standalonePronto ? "pronto" : "overview")
+  const [internalActiveTab, setInternalActiveTab] = useState(standalonePronto ? "pronto" : "overview")
+  const activeTab = embeddedTab || internalActiveTab
+  const setActiveTab = setInternalActiveTab
   const [prontoSectionTab, setProntoSectionTab] = useState("four-weeks")
   const [prontoWorkspaceTab, setProntoWorkspaceTab] = useState("pronto")
   const [archivedLeads, setArchivedLeads] = useState([])
@@ -1379,7 +1381,7 @@ function DataDashboard({ standalonePronto = false }) {
         }
       `}</style>
 
-      <div className="data-dashboard-head">
+      {!hideHeader && <div className="data-dashboard-head">
         <div>
           <div className="data-dashboard-eyebrow">
             Head Office
@@ -1402,9 +1404,9 @@ function DataDashboard({ standalonePronto = false }) {
 
           Refresh
         </button>
-      </div>
+      </div>}
 
-      {!standalonePronto && <div className="data-dashboard-tabs">
+      {!standalonePronto && !embeddedTab && <div className="data-dashboard-tabs">
         <button
           type="button"
           className={`data-dashboard-tab ${activeTab === "overview" ? "active" : ""}`}
