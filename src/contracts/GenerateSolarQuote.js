@@ -47,7 +47,7 @@ function getQuoteData(appointment) {
   const deposit = Number(epvs.deposit ?? 0)
   const adminFee = Math.max(0, Number(epvs.adminFee ?? 0))
   const financeFactor = Number(epvs.financeFactor ?? 0)
-  const monthly = paymentMethod.toLowerCase() === "finance" && Number.isFinite(Number(results.monthlyPayment))
+  const monthly = paymentMethod.toLowerCase() === "finance" && results.monthlyPayment !== null && results.monthlyPayment !== undefined && Number.isFinite(Number(results.monthlyPayment))
     ? Number(results.monthlyPayment)
     : null
   return { calculation, epvs, results, openSolar, panels, inverters, batteries, panelCount, panelWattage, capacity, generation, cashPrice, paymentMethod, termYears, rate, deposit, financeFactor, monthly, adminFee }
@@ -107,8 +107,9 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
   if (error) throw error
   const record = saved || appointment
   const d = getQuoteData(record)
-  if (!d.calculation?.data || !d.calculation?.results || !d.calculation?.thirtyYearProjection) {
-    throw new Error("A complete saved EPVS calculation is required before generating the solar quote.")
+  if (!d.calculation?.data || !d.calculation?.results || !d.calculation?.thirtyYearProjection ||
+      !Number.isFinite(Number(d.calculation?.data?.adminFee))) {
+    throw new Error("A complete saved EPVS calculation, including the admin fee, is required before generating the solar quote. Please save the EPVS calculation first.")
   }
   const openSolarImageUrl = String(d.openSolar?.imageUrl || "").trim()
   const pdf = new jsPDF({ unit: "mm", format: "a4" })
