@@ -57,6 +57,8 @@ function CustomerDetail({
   const [surveyProgress, setSurveyProgress] = useState(["outstanding", "outstanding", "outstanding", "outstanding"])
   const [documentsLoading, setDocumentsLoading] = useState(false)
   const [openingContract, setOpeningContract] = useState(false)
+  const [contractFiles, setContractFiles] = useState([])
+  const [contractFilesLoading, setContractFilesLoading] = useState(false)
   const [uploadingCategory, setUploadingCategory] = useState("")
   const [videoUploadProgress, setVideoUploadProgress] = useState(0)
   const [videoUploadStatus, setVideoUploadStatus] = useState("")
@@ -136,6 +138,38 @@ function CustomerDetail({
     setDocumentNotice("")
     loadDocuments()
   }, [deal?.id])
+
+  async function loadContractFiles() {
+    if (!deal?.appointment_row_id || !supabase) {
+      setContractFiles([])
+      return
+    }
+    setContractFilesLoading(true)
+    try {
+      const folder = `contract-pdfs/${deal.appointment_row_id}`
+      const { data: files, error } = await supabase.storage.from("signatures").list(folder, { limit: 100 })
+      if (error) throw error
+      const pdfFiles = (files || [])
+        .filter(file => file?.name && !file.name.startsWith(".") && file.name.toLowerCase().endsWith(".pdf"))
+        .sort((a, b) => {
+          const dateA = new Date(a.created_at || a.updated_at || 0).getTime()
+          const dateB = new Date(b.created_at || b.updated_at || 0).getTime()
+          return dateB - dateA || b.name.localeCompare(a.name)
+        })
+      setContractFiles(pdfFiles.map(file => ({ ...file, storagePath: `${folder}/${file.name}` })))
+    } catch (error) {
+      console.error("Unable to load contract files:", error)
+      setDocumentError(error?.message || "Unable to load contract files.")
+      setContractFiles([])
+    } finally {
+      setContractFilesLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    setContractFiles([])
+    loadContractFiles()
+  }, [deal?.id, deal?.appointment_row_id])
 
   useEffect(() => {
     if (!deal?.id || !surveyAnswersLoaded) return
@@ -355,27 +389,13 @@ function CustomerDetail({
     }
   }
 
-  async function openContract() {
-    if (!deal?.appointment_row_id) {
-      setDocumentError("This deal does not have a linked appointment, so its digital contract cannot be located.")
-      return
-    }
+  async function openContractFile(contractFile) {
     setOpeningContract(true)
     setDocumentError("")
     try {
-      const folder = `contract-pdfs/${deal.appointment_row_id}`
-      const { data: files, error: listError } = await supabase.storage.from("signatures").list(folder, {
-        limit: 100,
-        sortBy: { column: "name", order: "desc" },
-      })
-      if (listError) throw listError
-      const contractFiles = (files || []).filter(file => file.name && file.name.toLowerCase().endsWith(".pdf"))
-      if (!contractFiles.length) throw new Error("No digital contract PDF was found for this appointment.")
-      const contractFile = contractFiles[0]
-      const contractPath = `${folder}/${contractFile.name}`
-      const { data, error } = await supabase.storage.from("signatures").createSignedUrl(contractPath, 60)
+      const { data, error } = await supabase.storage.from("signatures").createSignedUrl(contractFile.storagePath, 60)
       if (error) throw error
-      if (!data?.signedUrl) throw new Error("Could not create a secure link to the digital contract.")
+      if (!data?.signedUrl) throw new Error("Could not create a secure link to this contract.")
       window.open(data.signedUrl, "_blank", "noopener,noreferrer")
     } catch (err) {
       console.error("Unable to open digital contract:", err)
@@ -607,9 +627,6 @@ function CustomerDetail({
               <strong style={{ fontSize: "12px", color: "#444" }}>
                 {deal.contract_number || "—"}
               </strong>
-              <button type="button" onClick={openContract} disabled={openingContract || !deal.appointment_row_id} style={{ marginLeft: 8, border: "1px solid #d7dee8", borderRadius: 6, padding: "6px 10px", background: "#fff", color: "#334155", fontSize: 10, fontWeight: 700, cursor: openingContract || !deal.appointment_row_id ? "not-allowed" : "pointer", opacity: openingContract || !deal.appointment_row_id ? 0.55 : 1 }}>
-                {openingContract ? "Opening…" : "Open Contract"}
-              </button>
             </div>
 
             <div
@@ -766,8 +783,25 @@ function CustomerDetail({
       </div>
 
       <div role="tablist" aria-label="Deal details tabs" style={{display:"flex",gap:6,borderBottom:"1px solid #dfe5eb",marginBottom:18,overflowX:"auto"}}>
-        {[{key:"details",label:"Deal information"},{key:"survey",label:"Survey & Documents"}].map(tab => <button key={tab.key} type="button" role="tab" aria-selected={activeTab===tab.key} onClick={()=>setActiveTab(tab.key)} style={{flex:"0 0 auto",padding:"12px 16px",border:0,borderBottom:activeTab===tab.key?"3px solid #002d49":"3px solid transparent",marginBottom:-1,background:"transparent",color:activeTab===tab.key?"#002d49":"#64748b",fontSize:12,fontWeight:activeTab===tab.key?700:600,cursor:"pointer"}}>{tab.label}</button>)}
+        {[{key:"details",label:"Deal information"},{key:"survey",label:"Survey & Documents"},{key:"contracts",label:"Contract Files"}].map(tab => <button key={tab.key} type="button" role="tab" aria-selected={activeTab===tab.key} onClick={()=>setActiveTab(tab.key)} style={{flex:"0 0 auto",padding:"12px 16px",border:0,borderBottom:activeTab===tab.key?"3px solid #002d49":"3px solid transparent",marginBottom:-1,background:"transparent",color:activeTab===tab.key?"#002d49":"#64748b",fontSize:12,fontWeight:activeTab===tab.key?700:600,cursor:"pointer"}}>{tab.label}</button>)}
       </div>
+
+      {activeTab === "contracts" && <div className="card" style={{ marginBottom: 18 }}>
+        <div className="card-head"><div><h2>Contract Files</h2><p>Digital contracts linked to this appointment, newest first</p></div></div>
+        <div style={{ padding: "0 20px 20px", display: "grid", gap: 0 }}>
+          {!deal.appointment_row_id && <div style={{ padding: "12px 0", color: "#75818b", fontSize: 11 }}>This deal does not have a linked appointment.</div>}
+          {deal.appointment_row_id && contractFilesLoading && <div style={{ padding: "12px 0", color: "#75818b", fontSize: 11 }}>Loading contract files…</div>}
+          {deal.appointment_row_id && !contractFilesLoading && contractFiles.length === 0 && <div style={{ padding: "12px 0", color: "#75818b", fontSize: 11 }}>No contract PDFs found for this appointment.</div>}
+          {contractFiles.map((file, index) => <div key={file.name} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: index === contractFiles.length - 1 ? 0 : "1px solid #edf0f2" }}>
+            <div style={{ width: 34, height: 34, borderRadius: 8, background: "#e8f1f8", color: "#17364b", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto" }}><FileUp size={16}/></div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div title={file.name} style={{ fontSize: 11, fontWeight: 650, color: "#263645", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name}</div>
+              <div style={{ marginTop: 4, fontSize: 9, color: "#89939c" }}>{file.created_at || file.updated_at ? new Date(file.created_at || file.updated_at).toLocaleString("en-GB") : "Date unavailable"}</div>
+            </div>
+            <button type="button" onClick={() => openContractFile(file)} disabled={openingContract} style={{ border: "1px solid #d7dee8", borderRadius: 6, padding: "7px 10px", background: "#fff", color: "#334155", fontSize: 10, fontWeight: 700, cursor: openingContract ? "wait" : "pointer", opacity: openingContract ? 0.6 : 1 }}>{openingContract ? "Opening…" : "Open"}</button>
+          </div>)}
+        </div>
+      </div>}
 
       {activeTab === "survey" && <>
       <div className="card" style={{ marginBottom: 18 }}>
