@@ -164,7 +164,7 @@ export default function MarketingDashboard({ onSelectAppointment, permissionLeve
       case "leads-to-call": return <LeadToCall />
       case "lead-sources": return <DataDashboard standalonePronto embeddedTab="pronto" hideHeader />
       case "data-spend": return <DataSpend />
-      case "data-results": return <DataResults />
+      case "data-results": return <DataResults embedded />
       case "lead-export": return <LeadExport />
       case "data-overview": return <DataDashboard embeddedTab="overview" hideHeader />
       case "data-map-appointments": return <DataDashboard embeddedTab="map-appointments" hideHeader />
