@@ -133,33 +133,86 @@ function MadeTodayDashboard({ onSelectAppointment }) {
 
 
 export default function MarketingDashboard({ onSelectAppointment, permissionLevel = 0 }) {
-  const [activeTab, setActiveTab] = useState("made-today")
+  const [activeSection, setActiveSection] = useState("overview")
+  const [activePage, setActivePage] = useState("made-today")
   const canAccessDataResults = Number(permissionLevel) >= 4
-  const tabStyle = (active) => ({
-    padding: "10px 16px",
-    border: 0,
-    borderBottom: active ? "2px solid #0f172a" : "2px solid transparent",
-    background: "transparent",
-    color: active ? "#0f172a" : "#64748b",
-    fontWeight: active ? 700 : 600,
-    cursor: "pointer",
-    fontSize: 14,
-  })
 
-  return <section>
-    <h1 style={{ margin: "0 0 16px", fontSize: 26 }}>Marketing Dashboard</h1>
-    <div role="tablist" aria-label="Marketing dashboard sections" style={{ display:"flex", gap:8, borderBottom:"1px solid #e2e8f0", marginBottom:20 }}>
-      <button type="button" role="tab" aria-selected={activeTab === "made-today"} onClick={() => setActiveTab("made-today")} style={tabStyle(activeTab === "made-today")}>Made Today</button>
-      <button type="button" role="tab" aria-selected={activeTab === "leads-to-call"} onClick={() => setActiveTab("leads-to-call")} style={tabStyle(activeTab === "leads-to-call")}>Leads To Call</button>
-      {canAccessDataResults && <button type="button" role="tab" aria-selected={activeTab === "lead-sources"} onClick={() => setActiveTab("lead-sources")} style={tabStyle(activeTab === "lead-sources")}>Lead Sources</button>}
-      <button type="button" role="tab" aria-selected={activeTab === "data-spend"} onClick={() => setActiveTab("data-spend")} style={tabStyle(activeTab === "data-spend")}>Data Spend</button>
-      {canAccessDataResults && <button type="button" role="tab" aria-selected={activeTab === "data-results"} onClick={() => setActiveTab("data-results")} style={tabStyle(activeTab === "data-results")}>Data Results</button>}
-      {canAccessDataResults && <button type="button" role="tab" aria-selected={activeTab === "lead-export"} onClick={() => setActiveTab("lead-export")} style={tabStyle(activeTab === "lead-export")}>Lead Export</button>}
-      <button type="button" role="tab" aria-selected={activeTab === "data-overview"} onClick={() => setActiveTab("data-overview")} style={tabStyle(activeTab === "data-overview")}>Overview</button>
-      <button type="button" role="tab" aria-selected={activeTab === "data-map-appointments"} onClick={() => setActiveTab("data-map-appointments")} style={tabStyle(activeTab === "data-map-appointments")}>Map of Appointments</button>
-      <button type="button" role="tab" aria-selected={activeTab === "data-archived-leads"} onClick={() => setActiveTab("data-archived-leads")} style={tabStyle(activeTab === "data-archived-leads")}>Archived Leads</button>
-      <button type="button" role="tab" aria-selected={activeTab === "data-kanban"} onClick={() => setActiveTab("data-kanban")} style={tabStyle(activeTab === "data-kanban")}>Kanban</button>
+  const sections = [
+    { id: "overview", label: "Overview", icon: "▦", description: "Daily activity and headline performance", pages: [{ id: "made-today", label: "Made Today" }] },
+    { id: "lead-management", label: "Lead Management", icon: "♙", description: "Work, review and manage incoming leads", pages: [{ id: "leads-to-call", label: "Leads To Call" }, { id: "data-kanban", label: "Kanban" }, { id: "data-archived-leads", label: "Archived Leads" }] },
+    { id: "lead-acquisition", label: "Lead Acquisition", icon: "◎", description: "Understand lead sources, spend and acquisition costs", pages: [{ id: "lead-sources", label: "Lead Sources", adminOnly: true }, { id: "data-spend", label: "Data Spend" }] },
+    { id: "reporting", label: "Reporting", icon: "▤", description: "Detailed performance reports and exports", pages: [{ id: "data-overview", label: "Performance Overview" }, { id: "data-map-appointments", label: "Map of Appointments" }, { id: "data-results", label: "Data Results", adminOnly: true }, { id: "lead-export", label: "Lead Export", adminOnly: true }] },
+  ]
+
+  const visibleSections = sections.map(section => ({
+    ...section,
+    pages: section.pages.filter(page => !page.adminOnly || canAccessDataResults),
+  }))
+  const currentSection = visibleSections.find(section => section.id === activeSection) || visibleSections[0]
+  const currentPage = currentSection.pages.find(page => page.id === activePage) || currentSection.pages[0]
+
+  function openSection(section) {
+    const next = visibleSections.find(item => item.id === section)
+    if (!next) return
+    setActiveSection(section)
+    if (!next.pages.some(page => page.id === activePage)) setActivePage(next.pages[0]?.id || "made-today")
+  }
+
+  function renderPage() {
+    switch (currentPage?.id) {
+      case "made-today": return <MadeTodayDashboard onSelectAppointment={onSelectAppointment} />
+      case "leads-to-call": return <LeadToCall />
+      case "lead-sources": return <DataDashboard standalonePronto embeddedTab="pronto" hideHeader />
+      case "data-spend": return <DataSpend />
+      case "data-results": return <DataResults />
+      case "lead-export": return <LeadExport />
+      case "data-overview": return <DataDashboard embeddedTab="overview" hideHeader />
+      case "data-map-appointments": return <DataDashboard embeddedTab="map-appointments" hideHeader />
+      case "data-archived-leads": return <DataDashboard embeddedTab="archived-leads" hideHeader />
+      case "data-kanban": return <DataDashboard embeddedTab="kanban" hideHeader />
+      default: return <MadeTodayDashboard onSelectAppointment={onSelectAppointment} />
+    }
+  }
+
+  return <section className="marketing-dashboard">
+    <div style={{ marginBottom: 20 }}>
+      <h1 style={{ margin: "0 0 5px", fontSize: 26 }}>Marketing Dashboard</h1>
+      <p style={{ margin: 0, color: "#64748b", fontSize: 13 }}>Your marketing activity, lead management and acquisition performance in one place.</p>
     </div>
-    {activeTab === "made-today" ? <MadeTodayDashboard onSelectAppointment={onSelectAppointment} /> : activeTab === "leads-to-call" ? <LeadToCall /> : activeTab === "lead-sources" ? <DataDashboard standalonePronto embeddedTab="pronto" hideHeader /> : activeTab === "data-results" ? <DataResults /> : activeTab === "lead-export" ? <LeadExport /> : activeTab === "data-overview" ? <DataDashboard embeddedTab="overview" hideHeader /> : activeTab === "data-map-appointments" ? <DataDashboard embeddedTab="map-appointments" hideHeader /> : activeTab === "data-archived-leads" ? <DataDashboard embeddedTab="archived-leads" hideHeader /> : activeTab === "data-kanban" ? <DataDashboard embeddedTab="kanban" hideHeader /> : <DataSpend />}
+
+    <div role="tablist" aria-label="Marketing dashboard sections" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10, marginBottom: 18 }}>
+      {visibleSections.map(section => {
+        const active = activeSection === section.id
+        return <button key={section.id} type="button" role="tab" aria-selected={active} onClick={() => openSection(section.id)} style={{ minWidth: 0, textAlign: "left", display: "flex", alignItems: "center", gap: 12, padding: "13px 15px", border: active ? "1px solid #94a3b8" : "1px solid #e2e8f0", borderRadius: 10, background: active ? "#f1f5f9" : "#fff", color: "#0f172a", cursor: "pointer", boxShadow: active ? "inset 0 0 0 1px #cbd5e1" : "none" }}>
+          <span aria-hidden="true" style={{ width: 34, height: 34, flex: "0 0 34px", display: "grid", placeItems: "center", borderRadius: 8, background: active ? "#dbeafe" : "#f1f5f9", color: "#334155", fontSize: 20 }}>{section.icon}</span>
+          <span style={{ minWidth: 0 }}>
+            <span style={{ display: "block", fontSize: 14, fontWeight: 700 }}>{section.label}</span>
+            <span style={{ display: "block", marginTop: 3, fontSize: 11, lineHeight: 1.35, color: "#64748b" }}>{section.description}</span>
+          </span>
+        </button>
+      })}
+    </div>
+
+    <div style={{ display: "grid", gridTemplateColumns: "190px minmax(0, 1fr)", gap: 18, alignItems: "start" }}>
+      <aside aria-label={currentSection.label + " pages"} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, position: "sticky", top: 12 }}>
+        <div style={{ padding: "7px 9px 10px", color: "#64748b", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em" }}>{currentSection.label}</div>
+        <nav style={{ display: "grid", gap: 4 }}>
+          {currentSection.pages.map(page => {
+            const active = currentPage?.id === page.id
+            return <button key={page.id} type="button" onClick={() => setActivePage(page.id)} aria-current={active ? "page" : undefined} style={{ width: "100%", border: 0, borderRadius: 7, padding: "10px 9px", textAlign: "left", background: active ? "#eff6ff" : "transparent", color: active ? "#1d4ed8" : "#475569", fontSize: 13, fontWeight: active ? 700 : 600, cursor: "pointer" }}>{page.label}</button>
+          })}
+        </nav>
+      </aside>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 19, color: "#0f172a" }}>{currentPage?.label}</h2>
+            <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 12 }}>{currentSection.description}</p>
+          </div>
+        </div>
+        {renderPage()}
+      </div>
+    </div>
+    <style>{`@media(max-width:900px){.marketing-dashboard>div[role="tablist"]{grid-template-columns:repeat(2,minmax(0,1fr))!important}.marketing-dashboard>div[style*="190px"]{grid-template-columns:minmax(0,1fr)!important}.marketing-dashboard aside[aria-label] nav{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))!important}.marketing-dashboard aside[aria-label]{position:static!important}}`}</style>
   </section>
 }
