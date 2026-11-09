@@ -14,6 +14,7 @@ import InstallationsPerformance from "./pages/InstallationsPerformance"
 import Installations from "./pages/Installations"
 import MarketingTV from "./pages/MarketingTV"
 import MarketingDashboard from "./pages/MarketingDashboard"
+import DigitalTeam from "./pages/DigitalTeam"
 import MarketingAudiences from "./pages/MarketingAudiences"
 import Facebook from "./pages/Facebook"
 import Leads from "./pages/Leads"
@@ -329,10 +330,8 @@ function App() {
     pageContent = <MarketingTV onSelectAppointment={handleAppointmentSelect}/>
   } else if (page === "marketing-dashboard") {
     pageContent = <MarketingDashboard/>
-  } else if (page === "marketing-audiences") {
-    pageContent = <MarketingAudiences/>
-  } else if (page === "facebook") {
-    pageContent = <Facebook/>
+  } else if (page === "digital-team") {
+    pageContent = <DigitalTeam/>
   } else if (page === "iwa-certificates") {
     pageContent = <IWACertificates/>
   } else if (page === "leads") {
