@@ -66,12 +66,7 @@ if (source.includes("function drawThirtyYearBreakdown")) {
 const helper = String.raw`
 function drawThirtyYearBreakdown(pdf, page, ctx, epvs, appointment) {
   const projection = epvs?.thirtyYearProjection || {}
-  // Match the EPVS calculator: the admin fee is a Year 1 cost for both
-  // cash and finance contracts, even when the saved projection predates it.
-  const savedAdminFee = epvs?.data?.adminFee ?? appointment?.admin_fee_amount
-  const adminFee = savedAdminFee !== null && savedAdminFee !== undefined && String(savedAdminFee).trim() !== ""
-    ? Math.max(0, Number(savedAdminFee) || 0)
-    : 399
+  // Admin fee is a separate contract line and is never part of EPVS projections.
   const scenario = projection?.scenarios?.averageInflation
   const rows = Array.isArray(scenario?.rows)
     ? scenario.rows
@@ -147,14 +142,12 @@ function drawThirtyYearBreakdown(pdf, page, ctx, epvs, appointment) {
     x += widths[index]
   })
 
-  const paymentValue = (row) =>
-    valueFrom(row, "yearlyPayment", "payment") -
-    (Number(row?.year) === 1 ? adminFee : 0)
+  const paymentValue = (row) => valueFrom(row, "yearlyPayment")
 
-  const totalPayments = rows.reduce(
+  const totalPayments = Number(scenario?.totals?.yearlyPayment ?? rows.reduce(
     (total, row) => total + paymentValue(row),
     0
-  )
+  ))
 
   let y = headerY + headerHeight
   let cumulativeBenefit = 0
@@ -185,9 +178,9 @@ function drawThirtyYearBreakdown(pdf, page, ctx, epvs, appointment) {
     const exportBenefit = exportValue(row)
     const benefit = solar + battery + exportBenefit
     const payment = paymentValue(row)
-    const netAnnual = benefit + payment
+    const netAnnual = Number(row?.netAnnualBenefit ?? (benefit + payment))
     cumulativeBenefit += benefit
-    const netPosition = totalPayments + cumulativeBenefit
+    const netPosition = Number(row?.cumulativePosition ?? (totalPayments + cumulativeBenefit))
 
     totals.generation += Number(row?.generation || 0)
     totals.solar += solar
@@ -239,8 +232,8 @@ function drawThirtyYearBreakdown(pdf, page, ctx, epvs, appointment) {
     money(totals.export),
     money(totals.annualBenefit),
     money(totals.payments),
-    money(totals.netAnnual),
-    money(totals.finalNetPosition),
+    money(Number(scenario?.totals?.netAnnualBenefit ?? totals.netAnnual)),
+    money(Number(rows[rows.length - 1]?.cumulativePosition ?? totals.finalNetPosition)),
     money(totals.billPre),
     money(totals.billPost),
   ]
