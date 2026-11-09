@@ -4,6 +4,7 @@ import Stat from "../components/Stat"
 import { supabase } from "../lib/supabase"
 import LeadToCall from "./LeadToCall"
 import DataSpend from "./DataSpend"
+import DataResults from "./DataResults"
 
 function getLondonDayBounds() {
   const now = new Date()
@@ -129,8 +130,9 @@ function MadeTodayDashboard({ onSelectAppointment }) {
 }
 
 
-export default function MarketingDashboard({ onSelectAppointment }) {
+export default function MarketingDashboard({ onSelectAppointment, permissionLevel = 0 }) {
   const [activeTab, setActiveTab] = useState("made-today")
+  const canAccessDataResults = Number(permissionLevel) >= 4
   const tabStyle = (active) => ({
     padding: "10px 16px",
     border: 0,
@@ -148,7 +150,8 @@ export default function MarketingDashboard({ onSelectAppointment }) {
       <button type="button" role="tab" aria-selected={activeTab === "made-today"} onClick={() => setActiveTab("made-today")} style={tabStyle(activeTab === "made-today")}>Made Today</button>
       <button type="button" role="tab" aria-selected={activeTab === "leads-to-call"} onClick={() => setActiveTab("leads-to-call")} style={tabStyle(activeTab === "leads-to-call")}>Leads To Call</button>
       <button type="button" role="tab" aria-selected={activeTab === "data-spend"} onClick={() => setActiveTab("data-spend")} style={tabStyle(activeTab === "data-spend")}>Data Spend</button>
+      {canAccessDataResults && <button type="button" role="tab" aria-selected={activeTab === "data-results"} onClick={() => setActiveTab("data-results")} style={tabStyle(activeTab === "data-results")}>Data Results</button>}
     </div>
-    {activeTab === "made-today" ? <MadeTodayDashboard onSelectAppointment={onSelectAppointment} /> : activeTab === "leads-to-call" ? <LeadToCall /> : <DataSpend />}
+    {activeTab === "made-today" ? <MadeTodayDashboard onSelectAppointment={onSelectAppointment} /> : activeTab === "leads-to-call" ? <LeadToCall /> : activeTab === "data-results" ? <DataResults /> : <DataSpend />}
   </section>
 }
