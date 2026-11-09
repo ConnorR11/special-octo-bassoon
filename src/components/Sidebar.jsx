@@ -186,7 +186,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             {isAdministrator && <NavItem icon={BarChart3} label="Lead Sources" active={isActive("pronto")} onClick={() => navigate("pronto")}/>}
             {isAdministrator && <NavItem icon={Search} label="Digital Team" active={isActive("digital-team")} onClick={() => navigate("digital-team")}/>}
             <NavItem icon={BarChart3} label="Marketing Dashboard" active={isActive("marketing-dashboard")} onClick={() => navigate("marketing-dashboard")} disabled={!canAccessMarketingDashboard} locked={!canAccessMarketingDashboard}/>
-            <NavItem icon={Facebook} label="Facebook" active={isActive("facebook")} onClick={() => navigate("facebook")}/>\n            <NavItem icon={FileCheck} label="IWA Certificates" active={isActive("iwa-certificates")} onClick={() => navigate("iwa-certificates")}/>
+            <NavItem icon={FileCheck} label="IWA Certificates" active={isActive("iwa-certificates")} onClick={() => navigate("iwa-certificates")}/>
             <NavItem icon={BarChart3} label="Sales Performance" active={isActive("sales-performance")} onClick={() => navigate("sales-performance")}/>
             <NavItem icon={Database} label="Data Results" active={isActive("data-results")} onClick={() => navigate("data-results")}/>
 
