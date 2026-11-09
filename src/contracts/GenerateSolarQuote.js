@@ -105,7 +105,8 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
   if (!appointment) throw new Error("An appointment is required to create a solar quote.")
   const { data: saved, error } = await supabase.from("appointments").select("*").eq("appointment_row_id", appointment.appointment_row_id).maybeSingle()
   if (error) throw error
-  const record = saved || appointment
+  if (!saved) throw new Error("The saved appointment could not be loaded. The quote must use the latest saved EPVS calculation.")
+  const record = saved
   const d = getQuoteData(record)
   if (!d.calculation?.data || !d.calculation?.results || !d.calculation?.thirtyYearProjection ||
       !Number.isFinite(Number(d.calculation?.data?.adminFee))) {
