@@ -3,6 +3,7 @@ import { Megaphone, Target, Phone, CalendarDays, Users, RefreshCw, AlertCircle, 
 import Stat from "../components/Stat"
 import { supabase } from "../lib/supabase"
 import LeadToCall from "./LeadToCall"
+import DataSpend from "./DataSpend"
 
 function getLondonDayBounds() {
   const now = new Date()
@@ -146,7 +147,8 @@ export default function MarketingDashboard({ onSelectAppointment }) {
     <div role="tablist" aria-label="Marketing dashboard sections" style={{ display:"flex", gap:8, borderBottom:"1px solid #e2e8f0", marginBottom:20 }}>
       <button type="button" role="tab" aria-selected={activeTab === "made-today"} onClick={() => setActiveTab("made-today")} style={tabStyle(activeTab === "made-today")}>Made Today</button>
       <button type="button" role="tab" aria-selected={activeTab === "leads-to-call"} onClick={() => setActiveTab("leads-to-call")} style={tabStyle(activeTab === "leads-to-call")}>Leads To Call</button>
+      <button type="button" role="tab" aria-selected={activeTab === "data-spend"} onClick={() => setActiveTab("data-spend")} style={tabStyle(activeTab === "data-spend")}>Data Spend</button>
     </div>
-    {activeTab === "made-today" ? <MadeTodayDashboard onSelectAppointment={onSelectAppointment} /> : <LeadToCall />}
+    {activeTab === "made-today" ? <MadeTodayDashboard onSelectAppointment={onSelectAppointment} /> : activeTab === "leads-to-call" ? <LeadToCall /> : <DataSpend />}
   </section>
 }
