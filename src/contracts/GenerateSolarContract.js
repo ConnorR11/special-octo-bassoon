@@ -598,7 +598,7 @@ const EXPRESS_FIT_DISCLAIMER = "By signing and returning this document you are p
 
 async function drawContractTotalAndSignature(pdf, ctx, data, results, appointment, y) {
   const width = ctx.width - ctx.padding * 2
-  const price = results?.systemCost ?? data?.systemCost ?? appointment?.system_cost ?? appointment?.contract_value ?? appointment?.sale_value ?? appointment?.price
+  const price = results?.systemCost ?? data?.systemCost ?? 0
   const cardHeight = 38
 
   pdf.setFillColor(...ctx.accent)
@@ -1361,6 +1361,9 @@ export async function GenerateSolarContract({ appointment, previewOnly = false }
     try {
       epvs = JSON.parse(epvs)
     } catch {}
+  }
+  if (!epvs?.data || !epvs?.results || !epvs?.thirtyYearProjection) {
+    throw new Error("A complete saved EPVS calculation is required before generating the solar contract.")
   }
 
   const pageSize = pages.find((page) => page.settings?.page_size)?.settings?.page_size || "A4"
