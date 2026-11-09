@@ -95,21 +95,16 @@ function CustomerDetail({
     { key: "electricity_bill_epvs_waiver", label: "2. Electricity Bill", accept: "application/pdf,image/jpeg,image/png,image/webp", multiple: true, hint: "Upload a PDF or image. Bill and waiver can be attached separately." },
   ]
 
-  async function openLinkedAppointment() {
-    if (!deal?.appointment_row_id || !supabase) return
-    setMessage("")
-    try {
-      const { data, error } = await supabase
-        .from("appointments")
-        .select("*")
-        .eq("appointment_row_id", deal.appointment_row_id)
-        .maybeSingle()
-      if (error) throw error
-      if (!data) throw new Error("The linked appointment could not be found or is not available to your account.")
-      onOpenAppointment?.(data)
-    } catch (error) {
-      setMessage(error?.message || "Unable to open the linked appointment.")
+  function openLinkedAppointment() {
+    const appointmentRowId = String(deal?.appointment_row_id || "").trim()
+    if (!appointmentRowId) {
+      setMessage("This deal does not have a linked appointment_row_id.")
+      return
     }
+    onOpenAppointment?.({
+      appointment_row_id: appointmentRowId,
+      _loadFullAppointment: true,
+    })
   }
 
   async function loadDocuments() {
