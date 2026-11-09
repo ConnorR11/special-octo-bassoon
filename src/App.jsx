@@ -35,20 +35,17 @@ import DailyReports from "./pages/DailyReports"
 import Reviews from "./pages/Reviews"
 import IntegrationLogs from "./pages/IntegrationLogs"
 import Templates from "./pages/Templates"
-import SolarBackend from "./pages/SolarBackend"
 import AdminUserPreview from "./components/AdminUserPreview"
 import ContractFile from "./pages/ContractFile"
 import OverstayFormFile from "./pages/OverstayFormFile"
 import SurveyVideoFile from "./pages/SurveyVideoFile"
 import SurveyPdfFile from "./pages/SurveyPdfFile"
 import SolarBillFile from "./pages/SolarBillFile"
-import UnitAnalysis from "./pages/UnitAnalysis"
 import EPVSApplications from "./pages/EPVSApplications"
 import OutstandingSolarSurveys from "./pages/OutstandingSolarSurveys"
 import SolarRework from "./pages/SolarRework"
 import Hotkeys from "./pages/Hotkeys"
 import LeadToCall from "./pages/LeadToCall"
-import IWACertificates from "./pages/IWACertificates"
 
 const DEALS_PAGE_SIZE = 50
 const REPORTING_PAGE_SIZE = 1000
@@ -121,7 +118,7 @@ function App() {
   const canSeeInstallationsFolder = ![1, 2].includes(Number(effectivePermissionLevel)) || ["installation", "installations"].includes(effectiveDepartment)
 
   useEffect(() => {
-    const restrictedPages = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, balances: 4, mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, hotkeys: 4, templates: 4, "integration-logs": 4, pronto: 4, global: 4, "solar-backend": 4, "unit-analysis": 4, "outstanding-solar-surveys": 0, "quotes-to-work": 4, "iwa-certificates": 4 }
+    const restrictedPages = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, balances: 4, mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, hotkeys: 4, templates: 4, "integration-logs": 4, pronto: 4, global: 4, "outstanding-solar-surveys": 0, "quotes-to-work": 4 }
     const requiredPermission = restrictedPages[page]
     const lacksPagePermission = page === "quotes-to-work"
       ? !canAccessQuotesToWork
@@ -288,14 +285,10 @@ function App() {
     pageContent = <DataDashboard key="pronto" standalonePronto />
   } else if (page === "global") {
     pageContent = <GlobalResults />
-  } else if (page === "solar-backend") {
-    pageContent = <SolarBackend onSelectAppointment={handleAppointmentSelect}/>
   } else if (page === "outstanding-solar-surveys") {
     pageContent = <OutstandingSolarSurveys onSelectDeal={deal => handleDealSelect(deal, page)}/>
   } else if (page === "quotes-to-work") {
     pageContent = <SolarRework quotesOnly onSelectAppointment={handleAppointmentSelect}/>
-  } else if (page === "unit-analysis") {
-    pageContent = <UnitAnalysis/>
   } else if (page === "epvs-applications") {
     pageContent = <EPVSApplications/>
   } else if (page === "sales-performance") {
@@ -318,8 +311,6 @@ function App() {
     pageContent = <MarketingDashboard permissionLevel={effectivePermissionLevel}/>
   } else if (page === "digital-team") {
     pageContent = <DigitalTeam permissionLevel={effectivePermissionLevel} onOpenAppointment={handleAppointmentSelect}/>
-  } else if (page === "iwa-certificates") {
-    pageContent = <IWACertificates/>
   } else if (page === "leads") {
     pageContent = <Leads/>
   } else if (page === "rts-list") {
