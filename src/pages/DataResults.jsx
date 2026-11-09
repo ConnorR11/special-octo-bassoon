@@ -56,7 +56,7 @@ function getPresetRange(preset) {
   return { start: localDate(today), end: localDate(today) }
 }
 
-function DataResults({ sourceFilter = null, reportTitle = "Data Results" } = {}) {
+function DataResults({ sourceFilter = null, reportTitle = "Data Results", embedded = false } = {}) {
   const defaults = useMemo(dateRangeDefault, [])
   const [startDate, setStartDate] = useState(defaults.start)
   const [endDate, setEndDate] = useState(defaults.end)
@@ -317,12 +317,12 @@ function DataResults({ sourceFilter = null, reportTitle = "Data Results" } = {})
   const td = { padding: "8px", fontSize: 11, color: "#172033", whiteSpace: "nowrap", borderBottom: "1px solid #e8edf3" }
   const card = { background: "#fff", color: "#172033", border: "1px solid #e1e7ee", borderRadius: 12, padding: "15px 18px", minWidth: 0, boxShadow: "0 2px 8px rgba(15, 35, 55, 0.08)" }
 
-  return <div style={{ background: "#f5f7fa", minHeight: "calc(100vh - 60px)", margin: "-24px -32px", color: "#172033" }}>
-    <section style={{ background: "linear-gradient(115deg, #062b45 0%, #0b3a59 100%)", color: "#fff", padding: "24px 28px 22px" }}>
+  return <div style={{ background: embedded ? "transparent" : "#f5f7fa", minHeight: embedded ? "auto" : "calc(100vh - 60px)", margin: embedded ? 0 : "-24px -32px", color: "#172033", borderRadius: embedded ? 10 : 0, overflow: "hidden" }}>
+    <section style={{ background: "linear-gradient(115deg, #102f55 0%, #174b7c 100%)", color: "#fff", padding: embedded ? "20px 22px 18px" : "24px 28px 22px", borderRadius: embedded ? "10px 10px 0 0" : 0 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 28, flexWrap: "wrap" }}>
         <div style={{ minWidth: 220 }}>
           <div style={{ fontSize: 10, letterSpacing: "0.14em", fontWeight: 700, color: "#9db7c9", textTransform: "uppercase", marginBottom: 7 }}>Digital Team · Reporting</div>
-          <h1 style={{ margin: 0, fontSize: 34, lineHeight: 1.15, fontWeight: 750 }}>{reportTitle}</h1>
+          <h1 style={{ margin: 0, fontSize: embedded ? 28 : 34, lineHeight: 1.15, fontWeight: 750, letterSpacing: "-.025em" }}>{reportTitle}</h1>
           <p style={{ margin: "7px 0 0", fontSize: 12, color: "#c3d4e0" }}>Lead source performance and sales outcomes</p>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(190px, 1fr))", gap: 12, flex: "0 1 470px" }}>
@@ -356,13 +356,13 @@ function DataResults({ sourceFilter = null, reportTitle = "Data Results" } = {})
         </div>)}
       </div>
     </section>
-    <section style={{ padding: "14px 22px 24px" }}>
+    <section style={{ padding: embedded ? "16px 0 4px" : "14px 22px 24px" }}>
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginBottom: 10 }}>
         <button type="button" onClick={loadData} disabled={loading} style={{ display: "inline-flex", alignItems: "center", gap: 7, border: "1px solid #d5dee8", borderRadius: 7, padding: "8px 12px", background: "#fff", color: "#334155", cursor: "pointer" }}><RefreshCw size={14}/>Refresh</button>
         <button type="button" onClick={exportExcel} disabled={loading || exporting || !rows.length} style={{ display: "inline-flex", alignItems: "center", gap: 7, border: "1px solid #d5dee8", borderRadius: 7, padding: "8px 12px", background: "#fff", color: "#334155", cursor: "pointer" }}><FileSpreadsheet size={14}/>{exporting ? "Exporting…" : "Export Excel"}</button>
       </div>
       {error && <div style={{ padding: 12, marginBottom: 10, borderRadius: 8, background: "#fff1f2", color: "#be123c", fontSize: 12 }}>{error}</div>}
-      <div style={{ overflow: "auto", maxHeight: "calc(100vh - 320px)", background: "#fff", border: "1px solid #e2e8f0" }}>
+      <div style={{ overflow: "auto", maxHeight: "calc(100vh - 320px)", background: "#fff", border: "1px solid #dbe5ef", borderRadius: 10, boxShadow: "0 2px 8px rgba(15,35,55,.04)" }}>
         <table style={{ width: "100%", minWidth: 1500, borderCollapse: "separate", borderSpacing: 0 }}>
           <thead>
             <tr>
@@ -405,7 +405,7 @@ function DataResults({ sourceFilter = null, reportTitle = "Data Results" } = {})
         </table>
       </div>
       <p style={{ margin: "8px 0 0", color: "#94a3b8", fontSize: 10 }}>Lead outcomes are grouped by lead source using lead received date. Appointments, H/C/P/S and linked deal values are grouped separately using appointment date. Each linked deal is counted once per lead source; Solid excludes Customer Cancelled and Decline stages.</p>
-      <div style={{ marginTop: 22, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden" }}>
+      <div style={{ marginTop: 18, background: "#fff", border: "1px solid #dbe5ef", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 8px rgba(15,35,55,.04)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "13px 15px", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap" }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 15, color: "#17324a" }}>Linked deals included in report</h2>
