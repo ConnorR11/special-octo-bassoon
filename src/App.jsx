@@ -320,7 +320,7 @@ function App() {
   } else if (page === "marketing-dashboard") {
     pageContent = <MarketingDashboard permissionLevel={effectivePermissionLevel}/>
   } else if (page === "digital-team") {
-    pageContent = <DigitalTeam/>
+    pageContent = <DigitalTeam permissionLevel={effectivePermissionLevel}/>
   } else if (page === "iwa-certificates") {
     pageContent = <IWACertificates/>
   } else if (page === "leads") {
