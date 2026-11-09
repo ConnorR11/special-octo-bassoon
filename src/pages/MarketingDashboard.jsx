@@ -180,39 +180,33 @@ export default function MarketingDashboard({ onSelectAppointment, permissionLeve
       <p style={{ margin: 0, color: "#64748b", fontSize: 13 }}>Your marketing activity, lead management and acquisition performance in one place.</p>
     </div>
 
-    <div role="tablist" aria-label="Marketing dashboard sections" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10, marginBottom: 18 }}>
+    <div role="tablist" aria-label="Marketing dashboard sections" className="marketing-dashboard-sections" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12, marginBottom: 20 }}>
       {visibleSections.map(section => {
         const active = activeSection === section.id
-        return <button key={section.id} type="button" role="tab" aria-selected={active} onClick={() => openSection(section.id)} style={{ minWidth: 0, textAlign: "left", display: "flex", alignItems: "center", gap: 12, padding: "13px 15px", border: active ? "1px solid #94a3b8" : "1px solid #e2e8f0", borderRadius: 10, background: active ? "#f1f5f9" : "#fff", color: "#0f172a", cursor: "pointer", boxShadow: active ? "inset 0 0 0 1px #cbd5e1" : "none" }}>
-          <span aria-hidden="true" style={{ width: 34, height: 34, flex: "0 0 34px", display: "grid", placeItems: "center", borderRadius: 8, background: active ? "#dbeafe" : "#f1f5f9", color: "#334155", fontSize: 20 }}>{section.icon}</span>
+        return <button key={section.id} type="button" role="tab" aria-selected={active} onClick={() => openSection(section.id)} style={{ minWidth: 0, minHeight: 68, textAlign: "left", display: "flex", alignItems: "center", gap: 11, padding: "11px 14px", border: active ? "1px solid #94a3b8" : "1px solid #e2e8f0", borderRadius: 10, background: active ? "#f8fafc" : "#fff", color: "#0f172a", cursor: "pointer", boxShadow: active ? "0 1px 2px rgba(15,23,42,.06), inset 0 0 0 1px #cbd5e1" : "0 1px 2px rgba(15,23,42,.025)", transition: "background .15s ease, border-color .15s ease" }}>
+          <span aria-hidden="true" style={{ width: 34, height: 34, flex: "0 0 34px", display: "grid", placeItems: "center", borderRadius: 8, background: active ? "#e2e8f0" : "#f1f5f9", color: "#334155", fontSize: 18 }}>{section.icon}</span>
           <span style={{ minWidth: 0 }}>
-            <span style={{ display: "block", fontSize: 14, fontWeight: 700 }}>{section.label}</span>
-            <span style={{ display: "block", marginTop: 3, fontSize: 11, lineHeight: 1.35, color: "#64748b" }}>{section.description}</span>
+            <span style={{ display: "block", fontSize: 13, fontWeight: 700 }}>{section.label}</span>
+            <span style={{ display: "block", marginTop: 3, fontSize: 10, lineHeight: 1.35, color: "#64748b" }}>{section.description}</span>
           </span>
         </button>
       })}
     </div>
 
-    <div style={{ display: "grid", gridTemplateColumns: "190px minmax(0, 1fr)", gap: 18, alignItems: "start" }}>
-      <aside aria-label={currentSection.label + " pages"} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, position: "sticky", top: 12 }}>
-        <div style={{ padding: "7px 9px 10px", color: "#64748b", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em" }}>{currentSection.label}</div>
-        <nav style={{ display: "grid", gap: 4 }}>
+    <div className="marketing-dashboard-workspace" style={{ display: "grid", gridTemplateColumns: "176px minmax(0, 1fr)", gap: 20, alignItems: "start" }}>
+      <aside aria-label={currentSection.label + " pages"} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 9, position: "sticky", top: 12 }}>
+        <div style={{ padding: "8px 9px 11px", color: "#64748b", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em" }}>{currentSection.label}</div>
+        <nav style={{ display: "grid", gap: 3 }}>
           {currentSection.pages.map(page => {
             const active = currentPage?.id === page.id
-            return <button key={page.id} type="button" onClick={() => setActivePage(page.id)} aria-current={active ? "page" : undefined} style={{ width: "100%", border: 0, borderRadius: 7, padding: "10px 9px", textAlign: "left", background: active ? "#eff6ff" : "transparent", color: active ? "#1d4ed8" : "#475569", fontSize: 13, fontWeight: active ? 700 : 600, cursor: "pointer" }}>{page.label}</button>
+            return <button key={page.id} type="button" onClick={() => setActivePage(page.id)} aria-current={active ? "page" : undefined} style={{ width: "100%", border: 0, borderLeft: active ? "3px solid #2563eb" : "3px solid transparent", borderRadius: "0 7px 7px 0", padding: "10px 9px", textAlign: "left", background: active ? "#eff6ff" : "transparent", color: active ? "#1d4ed8" : "#475569", fontSize: 12, fontWeight: active ? 700 : 600, cursor: "pointer" }}>{page.label}</button>
           })}
         </nav>
       </aside>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: 19, color: "#0f172a" }}>{currentPage?.label}</h2>
-            <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 12 }}>{currentSection.description}</p>
-          </div>
-        </div>
+      <div style={{ minWidth: 0, paddingTop: 1 }}>
         {renderPage()}
       </div>
     </div>
-    <style>{`@media(max-width:900px){.marketing-dashboard>div[role="tablist"]{grid-template-columns:repeat(2,minmax(0,1fr))!important}.marketing-dashboard>div[style*="190px"]{grid-template-columns:minmax(0,1fr)!important}.marketing-dashboard aside[aria-label] nav{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))!important}.marketing-dashboard aside[aria-label]{position:static!important}}`}</style>
+    <style>{`@media(max-width:900px){.marketing-dashboard-sections{grid-template-columns:repeat(2,minmax(0,1fr))!important}.marketing-dashboard-workspace{grid-template-columns:minmax(0,1fr)!important;gap:12px!important}.marketing-dashboard-workspace aside[aria-label]{position:static!important}.marketing-dashboard-workspace aside[aria-label] nav{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))!important}}`}</style>
   </section>
 }
