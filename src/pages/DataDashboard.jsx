@@ -20,6 +20,7 @@ import LeadDispositionKanban from "../components/LeadDispositionKanban"
 import ProntoWeeklyComparison from "../components/ProntoWeeklyComparison"
 import ProntoSpend from "../components/ProntoSpend"
 import GlobalResults from "./GlobalResults"
+import Hotkeys from "./Hotkeys"
 
 const START_YEAR = 2026
 const LEAD_TYPE_COLORS = ["#2563eb", "#0d9488", "#9333ea", "#ea580c", "#64748b", "#dc2626", "#0891b2", "#65a30d", "#c026d3", "#a16207"]
@@ -1563,6 +1564,7 @@ function DataDashboard({ standalonePronto = false }) {
           {standalonePronto && <div className="data-dashboard-tabs" style={{ marginTop: 8, marginBottom: 12, borderBottom: "1px solid #dbe3ed" }}>
             <button type="button" className={prontoWorkspaceTab === "pronto" ? "data-dashboard-tab active" : "data-dashboard-tab"} onClick={() => setProntoWorkspaceTab("pronto")}>Pronto</button>
             <button type="button" className={prontoWorkspaceTab === "mvf" ? "data-dashboard-tab active" : "data-dashboard-tab"} onClick={() => setProntoWorkspaceTab("mvf")}>MVF</button>
+            <button type="button" className={prontoWorkspaceTab === "watts" ? "data-dashboard-tab active" : "data-dashboard-tab"} onClick={() => setProntoWorkspaceTab("watts")}>Watts Marketing</button>
           </div>}
           {(!standalonePronto || prontoWorkspaceTab === "pronto") ? <>
           {standalonePronto && <div className="data-dashboard-tabs" style={{ marginTop: 16, marginBottom: 16 }}>
@@ -1994,9 +1996,9 @@ function DataDashboard({ standalonePronto = false }) {
           </div>
           </>}
 
-          </> : <div style={{ background: "#fff", border: "1px solid #dbe3ed", borderRadius: 12, padding: 20, marginTop: 16 }}>
+          </> : prontoWorkspaceTab === "mvf" ? <div style={{ background: "#fff", border: "1px solid #dbe3ed", borderRadius: 12, padding: 20, marginTop: 16 }}>
             <GlobalResults />
-          </div>}
+          </div> : <Hotkeys />}
 
         </>
 
