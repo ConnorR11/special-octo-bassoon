@@ -1289,9 +1289,10 @@ export async function GenerateSolarContract({ appointment, previewOnly = false }
       .maybeSingle()
 
     if (savedAppointmentError) throw savedAppointmentError
-    if (savedAppointment) {
-      appointment = savedAppointment
+    if (!savedAppointment) {
+      throw new Error("The saved appointment could not be loaded. The contract must use the latest saved EPVS calculation.")
     }
+    appointment = savedAppointment
   }
 
   let contractNumber = String(appointment?.contract_number || "").trim()
