@@ -36,7 +36,7 @@ function drawEpvsContractSummary(pdf, ctx, data, results, epvs, startY) {
   const financeRate = Number(data?.financeRate || 0)
   const monthlyPayment = Number(results?.monthlyPayment || 0)
   const deposit = Number(data?.deposit || 0)
-  const totalRepayment = finance && monthlyPayment > 0 && financeTerm > 0 ? monthlyPayment * financeTerm * 12 + deposit : null
+  const totalRepayment = finance ? Number(results?.totalContractValue ?? 0) : null
 
   const value = (raw, suffix = "", decimals = 2) => {
     if (raw === null || raw === undefined || raw === "" || !Number.isFinite(Number(raw))) return "N/A"
