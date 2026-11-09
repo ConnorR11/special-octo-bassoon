@@ -53,6 +53,7 @@ function App() {
   const [session, setSession] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [profile, setProfile] = useState(null)
+  const [profileLoaded, setProfileLoaded] = useState(false)
   const [previewUser, setPreviewUser] = useState(null)
   const [contracts, setContracts] = useState([])
   const [allDeals, setAllDeals] = useState([])
@@ -88,13 +89,15 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!session || !supabase) { setProfile(null); setPreviewUser(null); return }
+    if (!session || !supabase) { setProfile(null); setPreviewUser(null); setProfileLoaded(false); return }
     let mounted = true
+    setProfileLoaded(false)
     async function loadProfileAndPreview() {
       const { data: profileData, error: profileError } = await supabase.from("profiles").select("*").eq("auth_user_id", session.user.id).maybeSingle()
       if (!mounted) return
       if (profileError) console.error("Error loading user profile:", profileError)
       setProfile(profileData || null)
+      setProfileLoaded(true)
       const { data: previewId, error: previewError } = await supabase.rpc("current_preview_profile_id")
       if (previewError) { console.error("Error loading admin preview:", previewError); return }
       if (!previewId) { setPreviewUser(null); return }
@@ -117,6 +120,7 @@ function App() {
   const canSeeInstallationsFolder = ![1, 2].includes(Number(effectivePermissionLevel)) || ["installation", "installations"].includes(effectiveDepartment)
 
   useEffect(() => {
+    if (!session || !profileLoaded) return
     const restrictedPages = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, balances: 4, mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, hotkeys: 4, templates: 4, "integration-logs": 4, pronto: 4, global: 4, "outstanding-solar-surveys": 0, "quotes-to-work": 4 }
     const requiredPermission = restrictedPages[page]
     const lacksPagePermission = page === "quotes-to-work"
@@ -126,7 +130,7 @@ function App() {
       setPage("dashboard")
       if (window.location.pathname !== "/") window.history.replaceState({}, "", "/")
     }
-  }, [page, effectivePermissionLevel, canSeeInstallationsFolder, canAccessQuotesToWork])
+  }, [page, session, profileLoaded, effectivePermissionLevel, canSeeInstallationsFolder, canAccessQuotesToWork])
 
   async function loadContracts(pageNumber = 0, searchValue = query, statusValue = status) {
     setLoading(true); setError("")
