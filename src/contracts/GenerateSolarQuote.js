@@ -50,7 +50,7 @@ function getQuoteData(appointment) {
   const monthly = paymentMethod.toLowerCase() === "finance" && Number.isFinite(Number(results.monthlyPayment))
     ? Number(results.monthlyPayment)
     : null
-  return { epvs, results, openSolar, panels, inverters, batteries, panelCount, panelWattage, capacity, generation, cashPrice, paymentMethod, termYears, rate, deposit, financeFactor, monthly, adminFee }
+  return { calculation, epvs, results, openSolar, panels, inverters, batteries, panelCount, panelWattage, capacity, generation, cashPrice, paymentMethod, termYears, rate, deposit, financeFactor, monthly, adminFee }
 }
 
 async function imageData(url) {
@@ -107,6 +107,9 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
   if (error) throw error
   const record = saved || appointment
   const d = getQuoteData(record)
+  if (!d.calculation?.data || !d.calculation?.results || !d.calculation?.thirtyYearProjection) {
+    throw new Error("A complete saved EPVS calculation is required before generating the solar quote.")
+  }
   const openSolarImageUrl = String(d.openSolar?.imageUrl || "").trim()
   const pdf = new jsPDF({ unit: "mm", format: "a4" })
   const w = 210, h = 297, margin = 18
@@ -422,7 +425,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
       rowY30+=rowH30
     })
     tx30=tableX30
-    const totalVals=["TOTAL",fmtNum30(totalRaw30[1]),...totalRaw30.slice(2).map(fmtMoney30)]
+    const totalVals=["TOTAL",fmtNum30(totalRaw30[1]),...totalRaw30.slice(2).map(fmtMoney30)]\n    totalVals[8]=fmtMoney30(projectionRows30[projectionRows30.length-1]?.cumulativePosition ?? totalRaw30[8])
     totalVals.forEach((val,index)=>{
       pdf.setFillColor(...(index===5||index===8?blue:[82,92,100]));pdf.setDrawColor(255,255,255);pdf.rect(tx30,rowY30,widths30[index],totalH30,"FD")
       pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(5.2);pdf.text(String(val),tx30+widths30[index]-0.7,rowY30+3.7,{align:"right"});tx30+=widths30[index]
