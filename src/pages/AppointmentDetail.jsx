@@ -26,6 +26,85 @@ function Badge({value}){return <span style={{display:"inline-flex",alignItems:"c
 function CpsSummary({values}){const items=[["H",values.cps_h],["C",values.cps_c],["P",values.cps_p],["S",values.cps_s]];const all=items.every(x=>x[1]);return <><div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>{items.map(([l,a])=><div key={l} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5}}><span style={{fontSize:9,fontWeight:700,color:"#59636c"}}>{l}</span><span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:23,height:23,borderRadius:"50%",background:a?"#20a464":"#e8ecef",color:a?"#fff":"#9aa3aa"}}>{a?<Check size={13}/>:<X size={13}/>}</span></div>)}</div><div style={{marginTop:12,textAlign:"center",fontSize:10,fontWeight:700,color:all?"#159447":"#8a949c"}}>{all?"All complete":"Incomplete"}</div></>}
 function SignaturePad({title,wording,signature,setSignature,setSignedAt}){const ref=useRef(null),drawing=useRef(false);const point=e=>{const c=ref.current;if(!c)return null;const r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*(c.width/r.width),y:(e.clientY-r.top)*(c.height/r.height)}};const start=e=>{e.preventDefault();const c=ref.current,ctx=c?.getContext("2d");if(!c||!ctx)return;setSignedAt?.(current=>current||new Date().toISOString());drawing.current=true;const p=point(e);if(!p)return;ctx.beginPath();ctx.moveTo(p.x,p.y);c.setPointerCapture?.(e.pointerId)};const draw=e=>{if(!drawing.current)return;e.preventDefault();const c=ref.current,ctx=c?.getContext("2d"),p=point(e);if(!c||!ctx||!p)return;ctx.lineWidth=2.2;ctx.lineCap="round";ctx.lineJoin="round";ctx.strokeStyle="#10212b";ctx.lineTo(p.x,p.y);ctx.stroke();setSignature(c.toDataURL("image/png"))};const stop=e=>{drawing.current=false;try{ref.current?.releasePointerCapture?.(e.pointerId)}catch{}};const clear=()=>{const c=ref.current,ctx=c?.getContext("2d");if(!c||!ctx)return;ctx.clearRect(0,0,c.width,c.height);setSignature("");setSignedAt?.("")};return <div style={{marginTop:16,paddingTop:16,borderTop:"1px solid #edf0f2"}}><div style={{fontSize:12,fontWeight:800,color:"#10233f",marginBottom:7}}>{title}</div><div style={{fontSize:10,lineHeight:1.55,color:"#59636c",background:"#f7f9fa",border:"1px solid #e7eaed",borderRadius:6,padding:10,marginBottom:9}}>{wording}</div><label style={{display:"block",fontSize:10,color:"#666",marginBottom:6}}>Customer Signature</label><div style={{border:"1px solid #d8dde1",borderRadius:6,background:"#fff",overflow:"hidden",touchAction:"none"}}><canvas ref={ref} width={900} height={240} onPointerDown={start} onPointerMove={draw} onPointerUp={stop} onPointerCancel={stop} style={{display:"block",width:"100%",height:150,cursor:"crosshair",touchAction:"none"}}/></div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6}}><span style={{fontSize:9,color:signature?"#6d757c":"#aaa"}}>{signature?"Signature captured":"Draw your signature above"}</span><button type="button" onClick={clear} style={link}>Clear signature</button></div></div>}
 
+function ContractPdfPreview({url}) {
+ const containerRef=useRef(null)
+ const [pdfDocument,setPdfDocument]=useState(null)
+ const [pageCount,setPageCount]=useState(0)
+ const [previewError,setPreviewError]=useState("")
+ const [loading,setLoading]=useState(true)
+
+ useEffect(()=>{
+  let cancelled=false
+  let pdfjs
+  const load=async()=>{
+   try{
+    if(!window.pdfjsLib){
+     await new Promise((resolve,reject)=>{
+      const existing=document.querySelector('script[data-contract-pdfjs="true"]')
+      if(existing){existing.addEventListener("load",resolve,{once:true});existing.addEventListener("error",reject,{once:true});if(window.pdfjsLib)resolve();return}
+      const script=document.createElement("script")
+      script.src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
+      script.async=true
+      script.dataset.contractPdfjs="true"
+      script.onload=resolve
+      script.onerror=()=>reject(new Error("The PDF preview renderer could not be loaded."))
+      document.head.appendChild(script)
+     })
+    }
+    pdfjs=window.pdfjsLib
+    if(!pdfjs)throw new Error("The PDF preview renderer is unavailable.")
+    pdfjs.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"
+    const response=await fetch(url)
+    if(!response.ok)throw new Error("Unable to load the generated contract PDF.")
+    const bytes=await response.arrayBuffer()
+    const documentTask=pdfjs.getDocument({data:bytes})
+    const pdf=await documentTask.promise
+    if(cancelled){pdf.destroy();return}
+    setPdfDocument(pdf)
+    setPageCount(pdf.numPages)
+    setLoading(false)
+   }catch(error){
+    if(!cancelled){setPreviewError(error?.message||"Unable to render the contract preview.");setLoading(false)}
+   }
+  }
+  setLoading(true);setPreviewError("");setPdfDocument(null);setPageCount(0)
+  load()
+  return()=>{cancelled=true}
+ },[url])
+
+ useEffect(()=>{
+  if(!pdfDocument||!pageCount||!containerRef.current)return
+  let cancelled=false
+  const renderPages=async()=>{
+   const width=Math.max(280,containerRef.current.clientWidth-24)
+   for(let pageNumber=1;pageNumber<=pageCount;pageNumber++){
+    if(cancelled)return
+    const canvas=containerRef.current.querySelector('[data-pdf-page="'+pageNumber+'"]')
+    if(!canvas)continue
+    const page=await pdfDocument.getPage(pageNumber)
+    const base=page.getViewport({scale:1})
+    const viewport=page.getViewport({scale:Math.min(2,Math.max(0.5,width/base.width))})
+    const ratio=window.devicePixelRatio||1
+    canvas.width=Math.floor(viewport.width*ratio)
+    canvas.height=Math.floor(viewport.height*ratio)
+    canvas.style.width=viewport.width+"px"
+    canvas.style.height=viewport.height+"px"
+    const context=canvas.getContext("2d")
+    context.setTransform(ratio,0,0,ratio,0,0)
+    await page.render({canvasContext:context,viewport}).promise
+   }
+  }
+  renderPages().catch(error=>{if(!cancelled)setPreviewError(error?.message||"Unable to render the contract pages.")})
+  return()=>{cancelled=true}
+ },[pdfDocument,pageCount])
+
+ return <div ref={containerRef} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:12,width:"100%",minHeight:260,maxHeight:"65vh",overflowY:"auto",padding:12,boxSizing:"border-box",background:"#eef1f4",border:"1px solid #d8dde1",borderRadius:6}}>
+  {loading&&<div style={{padding:30,color:"#59636c",fontSize:12}}>Loading contract preview…</div>}
+  {previewError&&<div style={{padding:24,textAlign:"center",color:"#8b3333",fontSize:12}}>{previewError}<div style={{marginTop:10}}><a href={url} target="_blank" rel="noreferrer" style={{color:"#1684cf",fontWeight:700}}>Open PDF separately</a></div></div>}
+  {!loading&&!previewError&&Array.from({length:pageCount},(_,index)=><canvas key={index+1} data-pdf-page={index+1} style={{display:"block",maxWidth:"100%",height:"auto",background:"#fff",boxShadow:"0 1px 5px rgba(0,0,0,.18)"}}/>)}
+ </div>
+}
+
 export default function AppointmentDetail({appointment,onBack,onUpdated,onOpenDeal,permissionLevel,role}){
  const canCps=Number(permissionLevel)>=4
  const [signatureSignedAt,setSignatureSignedAt]=useState("");const [expressFitSignedAt,setExpressFitSignedAt]=useState("");const [segDisclaimerSignedAt,setSegDisclaimerSignedAt]=useState("")
@@ -225,7 +304,7 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,onOpenDe
    {!isSold(result)&&normalise(result)==="bo"&&<><ResultField label="Arrival Time" value={arrivalTime} onChange={setArrivalTime} type="time" required/><ResultField label="Monthly Electricity Spend (£)" value={solarMonthlySpend} onChange={setSolarMonthlySpend} type="number"/><ResultField label="Sales Note" value={salesNote} onChange={setSalesNote} type="textarea"/><ResultField label="Customers Email" value={customerEmail} onChange={setCustomerEmail} type="email"/><OverstayReasonField value={overstayReason} onChange={setOverstayReason}/></>}{isSold(result)&&soldStep===1&&<OverstayReasonField value={overstayReason} onChange={setOverstayReason}/>}{!isSold(result)&&normalise(result)==="nci"&&<ResultField label="Sales Note" value={salesNote} onChange={setSalesNote} type="textarea"/>}
    {normalise(result)==="reapp"&&<ResultField label="New appointment date" value={newAppointmentDate} onChange={setNewAppointmentDate} type="datetime-local"/>}
    {isSold(result)&&soldStep===3&&<><div style={{fontSize:11,color:"#59636c",lineHeight:1.5,marginBottom:12}}>The contract has been previewed. Enter the name of the person signing, then collect all three required signatures.</div><ResultField label="Signee (person signing the contract)" value={signeeName} onChange={setSigneeName} required/><SignaturePad title="1. Contract Acceptance" wording="I confirm that I have read, understood and agree to the terms and conditions of this contract, including the specification of the works and products to be supplied and installed." signature={signature} setSignature={setSignature} setSignedAt={setSignatureSignedAt}/><SignaturePad title="2. Express Fit Acceptance" wording="I confirm that I understand and accept the Express Fit installation process and agree that the works will be carried out in accordance with the Express Fit specification and associated terms provided to me." signature={expressFitSignature} setSignature={setExpressFitSignature} setSignedAt={setExpressFitSignedAt}/><SignaturePad title="3. SEG Disclaimer" wording={`The savings calculations include Smart Export Guarantee (SEG) payments which you receive for any export of energy to the grid, subject to the utility company criteria and requirements. We strongly recommend that all customers carry out their own research into SEG payments and tariffs available as these vary from supplier to supplier. Not registering for SEG will mean you do not receive the export payments detailed in the proposal.\n\nSEG tariffs are likely to change regularly and may go up or down. You may have to change suppliers and you should also check that the rate you buy your electricity at, does not outweigh the benefits of changing. The figures should be considered as an illustration and will differ, up or down, during the lifetime of your solar system.`} signature={segSignature} setSignature={setSegSignature} setSignedAt={setSegDisclaimerSignedAt}/></>}
-   {isSold(result)&&(soldStep===2||soldStep===4)&&<><div style={{fontSize:11,color:"#59636c",marginBottom:12}}>{contractSent?"The contract has been emailed to the customer.":soldStep===2?"Review the contract before collecting the customer signatures.":"Review the signed contract below, then send it to the customer by email."}</div>{contractPreviewUrl?<iframe title="Digital Solar Contract Preview" src={contractPreviewUrl} style={{display:"block",width:"100%",height:"65vh",border:"1px solid #d8dde1",borderRadius:6}}/>:<div style={{padding:24,textAlign:"center",color:"#8a949c"}}>Contract preview unavailable.</div>}</>}
+   {isSold(result)&&(soldStep===2||soldStep===4)&&<><div style={{fontSize:11,color:"#59636c",marginBottom:12}}>{contractSent?"The contract has been emailed to the customer.":soldStep===2?"Review the contract before collecting the customer signatures.":"Review the signed contract below, then send it to the customer by email."}</div>{contractPreviewUrl?<ContractPdfPreview url={contractPreviewUrl}/>:<div style={{padding:24,textAlign:"center",color:"#8a949c"}}>Contract preview unavailable.</div>}</>}
    {error&&<div style={{marginTop:12,padding:10,background:"#fbeaea",color:"#8b3333",borderRadius:6,fontSize:10,lineHeight:1.5}}>{error}</div>}
    <div style={{display:"flex",justifyContent:"space-between",gap:8,marginTop:18,flexWrap:"wrap"}}><div><button type="button" onClick={()=>{setShowResult(false);setSignature("");setExpressFitSignature("");setSegSignature("");setError("");if(contractPreviewUrl){URL.revokeObjectURL(contractPreviewUrl);setContractPreviewUrl("")}}} style={secondary}>Cancel</button></div><div style={{display:"flex",justifyContent:"flex-end",gap:8,flexWrap:"wrap"}}>{isSold(result)&&soldStep>1&&<button type="button" onClick={()=>{setError("");setSoldStep(s=>s-1)}} disabled={saving} style={secondary}>Back</button>}{isSold(result)&&soldStep===1&&<button type="button" onClick={continueSoldWorkflow} disabled={saving} style={{...primary,opacity:saving ? 0.65 : 1}}>Continue to preview</button>}{isSold(result)&&soldStep===2&&<button type="button" onClick={continueSoldWorkflow} disabled={saving} style={{...primary,opacity:saving ? 0.65 : 1}}>{saving?"Preparing preview...":"Continue to signatures"}</button>}{isSold(result)&&soldStep===3&&<button type="button" onClick={continueSoldWorkflow} disabled={saving} style={{...primary,opacity:saving ? 0.65 : 1}}>{saving?"Saving signatures...":"Continue to send"}</button>}{isSold(result)&&soldStep===4&&<><button type="button" onClick={sendContractEmail} disabled={sendingContract||contractSent} style={{...primary,opacity:sendingContract||contractSent?0.65:1}}>{sendingContract?"Sending...":contractSent?"Email sent":"Send"}</button></>}{!isSold(result)&&<button type="button" onClick={saveResult} disabled={saving} style={{...primary,opacity:saving ? 0.65 : 1}}>{saving||sendingOverstay?"Saving...":"Save Result"}</button>}</div></div>
   </div></div>}
