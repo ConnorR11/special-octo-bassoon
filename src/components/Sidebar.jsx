@@ -172,7 +172,6 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
           </Folder>
 
           <Folder visible={canSeeFolder("digitalTeam")} title="Digital Team" icon={Search} open={openFolders.digitalTeam} onClick={() => toggleFolder("digitalTeam")}>
-            {isAdministrator && <NavItem icon={BarChart3} label="Lead Sources" active={isActive("pronto")} onClick={() => navigate("pronto")}/>}
           </Folder>
 
           {isAdministrator && <Folder title="Administration" icon={Settings} open={openFolders.admin} onClick={() => toggleFolder("admin")}>
@@ -184,6 +183,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
           <div className="sidebar-divider" />
 
           {isAdministrator && <Folder title="Work in progress" icon={Wrench} open={openFolders.workInProgress} onClick={() => toggleFolder("workInProgress")}>
+            {isAdministrator && <NavItem icon={BarChart3} label="Lead Sources" active={isActive("pronto")} onClick={() => navigate("pronto")}/>}
             <NavItem icon={BarChart3} label="Marketing Dashboard" active={isActive("marketing-dashboard")} onClick={() => navigate("marketing-dashboard")} disabled={!canAccessMarketingDashboard} locked={!canAccessMarketingDashboard}/>
             <NavItem icon={Users} label="Marketing Audiences" active={isActive("marketing-audiences")} onClick={() => navigate("marketing-audiences")}/>
             <NavItem icon={Facebook} label="Facebook" active={isActive("facebook")} onClick={() => navigate("facebook")}/>\n            <NavItem icon={FileCheck} label="IWA Certificates" active={isActive("iwa-certificates")} onClick={() => navigate("iwa-certificates")}/>
