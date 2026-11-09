@@ -325,8 +325,8 @@ function DataResults({ sourceFilter = null, reportTitle = "Data Results", embedd
           <div style={{ fontSize: 10, letterSpacing: "0.14em", fontWeight: 700, color: "#9db7c9", textTransform: "uppercase", marginBottom: 7 }}>Digital Team · Reporting</div>
           <h1 style={{ margin: 0, fontSize: embedded ? 25 : 30, lineHeight: 1.15, fontWeight: 750, letterSpacing: "-.025em" }}>{reportTitle}</h1>
           <p style={{ margin: "5px 0 0", fontSize: 11, color: "#c3d4e0" }}>Lead source performance and sales outcomes</p>
-          <div style={{ marginTop: 12 }}><button type="button" onClick={exportExcel} disabled={loading || exporting || !rows.length} style={{ display: "inline-flex", alignItems: "center", gap: 7, border: "1px solid #d5dee8", borderRadius: 7, padding: "8px 12px", background: "#fff", color: "#334155", cursor: "pointer" }}><FileSpreadsheet size={14}/>{exporting ? "Exporting…" : "Export Excel"}</button></div>
         </div>
+        <button type="button" onClick={exportExcel} disabled={loading || exporting || !rows.length} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, border: "1px solid rgba(255,255,255,0.65)", borderRadius: 8, padding: "9px 15px", background: "#fff", color: "#173b5d", fontSize: 12, fontWeight: 650, cursor: loading || exporting || !rows.length ? "not-allowed" : "pointer", opacity: loading || exporting || !rows.length ? 0.65 : 1, boxShadow: "0 2px 5px rgba(0,0,0,0.12)" }}><FileSpreadsheet size={16}/>{exporting ? "Exporting…" : "Export"}</button>
       </div>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 14, flexWrap: "wrap", marginTop: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
