@@ -184,11 +184,10 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
 
           {isAdministrator && <Folder title="Work in progress" icon={Wrench} open={openFolders.workInProgress} onClick={() => toggleFolder("workInProgress")}>
             {isAdministrator && <NavItem icon={BarChart3} label="Lead Sources" active={isActive("pronto")} onClick={() => navigate("pronto")}/>}
+            {isAdministrator && <NavItem icon={Search} label="Digital Team" active={isActive("digital-team")} onClick={() => navigate("digital-team")}/>}
             <NavItem icon={BarChart3} label="Marketing Dashboard" active={isActive("marketing-dashboard")} onClick={() => navigate("marketing-dashboard")} disabled={!canAccessMarketingDashboard} locked={!canAccessMarketingDashboard}/>
-            <NavItem icon={Users} label="Marketing Audiences" active={isActive("marketing-audiences")} onClick={() => navigate("marketing-audiences")}/>
             <NavItem icon={Facebook} label="Facebook" active={isActive("facebook")} onClick={() => navigate("facebook")}/>\n            <NavItem icon={FileCheck} label="IWA Certificates" active={isActive("iwa-certificates")} onClick={() => navigate("iwa-certificates")}/>
             <NavItem icon={BarChart3} label="Sales Performance" active={isActive("sales-performance")} onClick={() => navigate("sales-performance")}/>
-            <NavItem icon={Search} label="SEO" active={isActive("seo")} onClick={() => navigate("seo")}/>
             <NavItem icon={Database} label="Data Results" active={isActive("data-results")} onClick={() => navigate("data-results")}/>
 
             <NavItem icon={BarChart3} label="Data Dashboard" active={isActive("data-dashboard")} onClick={() => navigate("data-dashboard")}/>
