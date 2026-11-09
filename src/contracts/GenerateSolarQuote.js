@@ -408,7 +408,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
     const totalRaw30=Array(11).fill(0)
     const bodyRows30=projectionRows30.slice(0,30).map(row=>{
       const solar=solarOf30(row),battery=batteryOf30(row),exportValue=exportOf30(row)
-      const benefit=Number(row?.annualBenefit ?? (solar+battery+exportValue))
+      const benefit=solar+battery+exportValue
       const payment=paymentOf30(row)
       const netAnnual=netAnnualOf30(row)
       const netPosition=netPositionOf30(row)
