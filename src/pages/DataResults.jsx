@@ -327,21 +327,23 @@ function DataResults({ sourceFilter = null, reportTitle = "Data Results", embedd
           <p style={{ margin: "5px 0 0", fontSize: 11, color: "#c3d4e0" }}>Lead source performance and sales outcomes</p>
           <div style={{ marginTop: 12 }}><button type="button" onClick={exportExcel} disabled={loading || exporting || !rows.length} style={{ display: "inline-flex", alignItems: "center", gap: 7, border: "1px solid #d5dee8", borderRadius: 7, padding: "8px 12px", background: "#fff", color: "#334155", cursor: "pointer" }}><FileSpreadsheet size={14}/>{exporting ? "Exporting…" : "Export Excel"}</button></div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(160px, 1fr))", gap: 10, flex: "0 1 420px" }}>
-          <label style={{ display: "grid", gap: 6, fontSize: 11, fontWeight: 650, color: "#d7e4ed" }}>START DATE<input type="date" value={startDate} max={endDate} onChange={event => setStartDate(event.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1px solid #496a80", background: "#244a64", color: "#fff", colorScheme: "dark", fontSize: 13 }}/></label>
-          <label style={{ display: "grid", gap: 6, fontSize: 11, fontWeight: 650, color: "#d7e4ed" }}>END DATE<input type="date" value={endDate} min={startDate} onChange={event => setEndDate(event.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "10px 11px", borderRadius: 8, border: "1px solid #496a80", background: "#244a64", color: "#fff", colorScheme: "dark", fontSize: 13 }}/></label>
-        </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, color: "#a9c0d0", letterSpacing: "0.06em", marginRight: 3 }}>QUICK RANGES</span>
-        {[
-          ["last-week", "Last week"],
-          ["last-4-weeks", "Last 4 weeks"],
-          ["last-12-weeks", "Last 12 weeks"],
-          ["this-month", "This month"],
-          ["last-month", "Last month"],
-          ["ytd", "YTD"],
-        ].map(([key, label]) => <button key={key} type="button" onClick={() => applyPreset(key)} style={{ border: activePreset === key ? "1px solid #d9e9f3" : "1px solid #496a80", borderRadius: 7, padding: "5px 10px", background: activePreset === key ? "#e7f0f6" : "rgba(255,255,255,0.08)", color: activePreset === key ? "#12344b" : "#e4edf3", fontSize: 11, fontWeight: activePreset === key ? 700 : 500, cursor: "pointer" }}>{label}</button>)}
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 14, flexWrap: "wrap", marginTop: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: "#a9c0d0", letterSpacing: "0.06em", marginRight: 3 }}>QUICK RANGES</span>
+          {[
+            ["last-week", "Last week"],
+            ["last-4-weeks", "Last 4 weeks"],
+            ["last-12-weeks", "Last 12 weeks"],
+            ["this-month", "This month"],
+            ["last-month", "Last month"],
+            ["ytd", "YTD"],
+          ].map(([key, label]) => <button key={key} type="button" onClick={() => applyPreset(key)} style={{ border: activePreset === key ? "1px solid #d9e9f3" : "1px solid #496a80", borderRadius: 7, padding: "5px 10px", background: activePreset === key ? "#e7f0f6" : "rgba(255,255,255,0.08)", color: activePreset === key ? "#12344b" : "#e4edf3", fontSize: 11, fontWeight: activePreset === key ? 700 : 500, cursor: "pointer" }}>{label}</button>)}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(160px, 1fr))", gap: 10, flex: "0 1 420px" }}>
+          <label style={{ display: "grid", gap: 5, fontSize: 11, fontWeight: 650, color: "#d7e4ed" }}>START DATE<input type="date" value={startDate} max={endDate} onChange={event => setStartDate(event.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "7px 10px", borderRadius: 8, border: "1px solid #496a80", background: "#244a64", color: "#fff", colorScheme: "dark", fontSize: 13 }}/></label>
+          <label style={{ display: "grid", gap: 5, fontSize: 11, fontWeight: 650, color: "#d7e4ed" }}>END DATE<input type="date" value={endDate} min={startDate} onChange={event => setEndDate(event.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "7px 10px", borderRadius: 8, border: "1px solid #496a80", background: "#244a64", color: "#fff", colorScheme: "dark", fontSize: 13 }}/></label>
+        </div>
       </div>
     </section>
     <section style={{ padding: embedded ? "16px 0 4px" : "14px 22px 24px" }}>
