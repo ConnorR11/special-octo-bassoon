@@ -1259,7 +1259,6 @@ export default function EPVSCalculator({
   const thirtyYearProjection = useMemo(() => {
     const systemCost = Number(data.systemCost || 0)
     const deposit = Number(data.deposit || 0)
-    const adminFee = Math.max(0, Number(data.adminFee || 0))
     // EPVS panel degradation:
     // Year 1 uses the first-year manufacturer degradation figure.
     // Years 2+ use the ongoing annual degradation figure.
@@ -1350,17 +1349,16 @@ export default function EPVSCalculator({
         const paymentMethod = String(data.paymentMethod || "").trim().toLowerCase()
         const systemCostValue = Math.max(0, Number(data.systemCost) || 0)
         const isCashPayment = paymentMethod === "cash"
-        // Calculate finance payments inline so this projection cannot
-        // reference a missing block-scoped financeAnnualPayment variable.
-        // Cash pays the system cost in Year 1; the admin fee is also
-        // counted in Year 1 for both cash and finance purchases.
+        // EPVS Year 1 payments exclude the separate contract admin fee.
+        // Cash records the system cost once; finance records annual instalments
+        // during the finance term plus the deposit in Year 1.
         const yearlyPayment = isCashPayment
-          ? (year === 1 ? systemCostValue + adminFee : 0)
+          ? (year === 1 ? systemCostValue : 0)
           : (
               !isCashPayment && year <= Number(data.financeTerm || 0)
                 ? monthlyPaymentForYear(data) * 12
                 : 0
-            ) + (year === 1 ? deposit + adminFee : 0)
+            ) + (year === 1 ? deposit : 0)
 
         const netAnnualBenefit = yearModel.annualSaving - yearlyPayment
         cumulativePosition += netAnnualBenefit
