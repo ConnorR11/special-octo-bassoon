@@ -1,13 +1,15 @@
 import React, { useState } from "react"
-import { Users, Facebook as FacebookIcon, Search } from "lucide-react"
+import { Users, Facebook as FacebookIcon, Search, RefreshCw } from "lucide-react"
 import MarketingAudiences from "./MarketingAudiences"
 import Facebook from "./Facebook"
 import SEO from "./SEO"
+import BulkUpdater from "./BulkUpdater"
 
 const tabs = [
   { id: "audiences", label: "Marketing Audiences", icon: Users },
   { id: "facebook", label: "Facebook", icon: FacebookIcon },
   { id: "seo", label: "SEO", icon: Search },
+  { id: "bulk-updater", label: "Bulk Updater", icon: RefreshCw },
 ]
 
 export default function DigitalTeam() {
@@ -23,6 +25,6 @@ export default function DigitalTeam() {
     <div role="tablist" aria-label="Digital Team sections" style={{ display: "flex", gap: 8, borderBottom: "1px solid #e2e8f0", marginBottom: 20, overflowX: "auto" }}>
       {tabs.map(({ id, label, icon: Icon }) => <button key={id} type="button" role="tab" aria-selected={activeTab === id} onClick={() => setActiveTab(id)} style={tabStyle(activeTab === id)}><Icon size={16}/>{label}</button>)}
     </div>
-    {activeTab === "audiences" ? <MarketingAudiences/> : activeTab === "facebook" ? <Facebook/> : <SEO/>}
+    {activeTab === "audiences" ? <MarketingAudiences/> : activeTab === "facebook" ? <Facebook/> : activeTab === "seo" ? <SEO/> : <BulkUpdater/>}
   </section>
 }
