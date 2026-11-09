@@ -426,6 +426,19 @@ function drawAccreditationLogo(pdf, item, x, y, width, height, accent) {
   pdf.setFillColor(255, 255, 255)
   pdf.roundedRect(x, y, width, height, 2.5, 2.5, "F")
 
+  if (logoType === "epvs") {
+    pdf.setTextColor(72, 170, 77)
+    pdf.setFont("helvetica", "bold")
+    pdf.setFontSize(23)
+    pdf.text("epvs", x + width / 2, y + height * 0.48, { align: "center" })
+    pdf.setTextColor(70, 82, 92)
+    pdf.setFont("helvetica", "normal")
+    pdf.setFontSize(4.8)
+    pdf.text("ENERGY PERFORMANCE", x + width / 2, y + height * 0.64, { align: "center" })
+    pdf.text("VALIDATION SCHEME", x + width / 2, y + height * 0.75, { align: "center" })
+    return
+  }
+
   if (logoType === "mcs") {
     const size = Math.min(height - 5, width - 5)
     const bx = x + (width - size) / 2
