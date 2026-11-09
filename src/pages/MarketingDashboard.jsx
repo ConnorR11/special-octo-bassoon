@@ -196,12 +196,14 @@ export default function MarketingDashboard({ onSelectAppointment, permissionLeve
     <div role="tablist" aria-label="Marketing dashboard sections" className="marketing-dashboard-sections" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12, marginBottom: 20 }}>
       {visibleSections.map(section => {
         const active = activeSection === section.id
-        return <button key={section.id} type="button" role="tab" aria-selected={active} onClick={() => openSection(section.id)} style={{ minWidth: 0, minHeight: 68, textAlign: "left", display: "flex", alignItems: "center", gap: 11, padding: "11px 14px", border: active ? "1px solid #94a3b8" : "1px solid #e2e8f0", borderRadius: 10, background: active ? "#f8fafc" : "#fff", color: "#0f172a", cursor: "pointer", boxShadow: active ? "0 1px 2px rgba(15,23,42,.06), inset 0 0 0 1px #cbd5e1" : "0 1px 2px rgba(15,23,42,.025)", transition: "background .15s ease, border-color .15s ease" }}>
-          <span aria-hidden="true" style={{ width: 34, height: 34, flex: "0 0 34px", display: "grid", placeItems: "center", borderRadius: 8, background: active ? "#e2e8f0" : "#f1f5f9", color: "#334155", fontSize: 18 }}>{section.icon}</span>
-          <span style={{ minWidth: 0 }}>
-            <span style={{ display: "block", fontSize: 13, fontWeight: 700 }}>{section.label}</span>
-            <span style={{ display: "block", marginTop: 3, fontSize: 10, lineHeight: 1.35, color: "#64748b" }}>{section.description}</span>
+        const isReporting = section.id === "reporting"
+        return <button key={section.id} type="button" role="tab" aria-selected={active} onClick={() => openSection(section.id)} style={{ minWidth: 0, minHeight: 68, textAlign: "left", display: "flex", alignItems: "center", gap: 11, padding: "11px 14px", border: isReporting ? "1px solid #c4b5fd" : active ? "1px solid #94a3b8" : "1px solid #e2e8f0", borderRadius: 10, background: isReporting ? (active ? "#ede9fe" : "#f5f3ff") : active ? "#f8fafc" : "#fff", color: isReporting ? "#4c1d95" : "#0f172a", cursor: "pointer", boxShadow: isReporting ? "0 2px 5px rgba(91,33,182,.08), inset 0 0 0 1px rgba(196,181,253,.35)" : active ? "0 1px 2px rgba(15,23,42,.06), inset 0 0 0 1px #cbd5e1" : "0 1px 2px rgba(15,23,42,.025)", transition: "background .15s ease, border-color .15s ease" }}>
+          <span aria-hidden="true" style={{ width: 36, height: 36, flex: "0 0 36px", display: "grid", placeItems: "center", borderRadius: 9, background: isReporting ? "#ddd6fe" : active ? "#e2e8f0" : "#f1f5f9", color: isReporting ? "#6d28d9" : "#334155", fontSize: 18 }}>{section.icon}</span>
+          <span style={{ minWidth: 0, flex: 1 }}>
+            <span style={{ display: "block", fontSize: 13, fontWeight: 750, color: isReporting ? "#5b21b6" : "#0f172a" }}>{section.label}</span>
+            <span style={{ display: "block", marginTop: 3, fontSize: 10, lineHeight: 1.35, color: isReporting ? "#6d5a91" : "#64748b" }}>{section.description}</span>
           </span>
+          {isReporting && <span style={{ alignSelf: "flex-start", marginLeft: "auto", padding: "3px 6px", borderRadius: 5, background: "#6d28d9", color: "#fff", fontSize: 8, fontWeight: 800, letterSpacing: ".07em" }}>REPORTS</span>}
         </button>
       })}
     </div>
