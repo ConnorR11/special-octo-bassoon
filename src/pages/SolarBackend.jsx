@@ -3,6 +3,7 @@ import { Sun, BarChart3, Link2 } from "lucide-react"
 import SolarAppointmentAnalysis from "./SolarAppointmentAnalysis"
 import OpenSolarIds from "./OpenSolarIds"
 import SalesPresenterUsage from "./SalesPresenterUsage"
+import SolarRework from "./SolarRework"
 
 export default function SolarBackend({ onSelectAppointment }) {
   const [activeTab, setActiveTab] = useState("analysis")
@@ -33,7 +34,7 @@ export default function SolarBackend({ onSelectAppointment }) {
           <div>
             <div className="solar-backend-eyebrow">Administration</div>
             <h1 className="solar-backend-heading">Solar Backend</h1>
-            <p className="solar-backend-subtitle">Analyse solar appointments and manage OpenSolar project IDs.</p>
+            <p className="solar-backend-subtitle">Analyse solar appointments, manage OpenSolar IDs and work through solar rework.</p>
           </div>
         </div>
 
@@ -47,6 +48,9 @@ export default function SolarBackend({ onSelectAppointment }) {
           <button type="button" className={`solar-backend-tab ${activeTab === "presenter" ? "active" : ""}`} onClick={() => setActiveTab("presenter")}>
             <BarChart3 size={15}/>Sales Presenter Usage
           </button>
+          <button type="button" className={`solar-backend-tab ${activeTab === "rework" ? "active" : ""}`} onClick={() => setActiveTab("rework")}>
+            <Sun size={15}/>Solar Rework
+          </button>
         </div>
 
         <div className="solar-backend-content">
@@ -54,8 +58,10 @@ export default function SolarBackend({ onSelectAppointment }) {
             <SolarAppointmentAnalysis embedded onSelectAppointment={onSelectAppointment}/>
           ) : activeTab === "opensolar" ? (
             <OpenSolarIds embedded/>
-          ) : (
+          ) : activeTab === "presenter" ? (
             <SalesPresenterUsage/>
+          ) : (
+            <SolarRework onSelectAppointment={onSelectAppointment}/>
           )}
         </div>
       </div>
