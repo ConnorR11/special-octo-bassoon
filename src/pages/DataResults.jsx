@@ -318,19 +318,19 @@ function DataResults({ sourceFilter = null, reportTitle = "Data Results", embedd
   const card = { background: "#fff", color: "#172033", border: "1px solid #e1e7ee", borderRadius: 12, padding: "15px 18px", minWidth: 0, boxShadow: "0 2px 8px rgba(15, 35, 55, 0.08)" }
 
   return <div style={{ background: embedded ? "transparent" : "#f5f7fa", minHeight: embedded ? "auto" : "calc(100vh - 60px)", margin: embedded ? 0 : "-24px -32px", color: "#172033", borderRadius: embedded ? 10 : 0, overflow: "hidden" }}>
-    <section style={{ background: "linear-gradient(115deg, #102f55 0%, #174b7c 100%)", color: "#fff", padding: embedded ? "20px 22px 18px" : "24px 28px 22px", borderRadius: embedded ? "10px 10px 0 0" : 0 }}>
+    <section style={{ background: "linear-gradient(115deg, #102f55 0%, #174b7c 100%)", color: "#fff", padding: embedded ? "16px 22px 14px" : "20px 28px 18px", borderRadius: embedded ? "10px 10px 0 0" : 0 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 28, flexWrap: "wrap" }}>
         <div style={{ minWidth: 220 }}>
           <div style={{ fontSize: 10, letterSpacing: "0.14em", fontWeight: 700, color: "#9db7c9", textTransform: "uppercase", marginBottom: 7 }}>Digital Team · Reporting</div>
-          <h1 style={{ margin: 0, fontSize: embedded ? 28 : 34, lineHeight: 1.15, fontWeight: 750, letterSpacing: "-.025em" }}>{reportTitle}</h1>
-          <p style={{ margin: "7px 0 0", fontSize: 12, color: "#c3d4e0" }}>Lead source performance and sales outcomes</p>
+          <h1 style={{ margin: 0, fontSize: embedded ? 25 : 30, lineHeight: 1.15, fontWeight: 750, letterSpacing: "-.025em" }}>{reportTitle}</h1>
+          <p style={{ margin: "5px 0 0", fontSize: 11, color: "#c3d4e0" }}>Lead source performance and sales outcomes</p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(190px, 1fr))", gap: 12, flex: "0 1 470px" }}>
-          <label style={{ display: "grid", gap: 6, fontSize: 11, fontWeight: 650, color: "#d7e4ed" }}>START DATE<input type="date" value={startDate} max={endDate} onChange={event => setStartDate(event.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "10px 11px", borderRadius: 8, border: "1px solid #496a80", background: "#244a64", color: "#fff", colorScheme: "dark", fontSize: 13 }}/></label>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(160px, 1fr))", gap: 10, flex: "0 1 420px" }}>
+          <label style={{ display: "grid", gap: 6, fontSize: 11, fontWeight: 650, color: "#d7e4ed" }}>START DATE<input type="date" value={startDate} max={endDate} onChange={event => setStartDate(event.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1px solid #496a80", background: "#244a64", color: "#fff", colorScheme: "dark", fontSize: 13 }}/></label>
           <label style={{ display: "grid", gap: 6, fontSize: 11, fontWeight: 650, color: "#d7e4ed" }}>END DATE<input type="date" value={endDate} min={startDate} onChange={event => setEndDate(event.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "10px 11px", borderRadius: 8, border: "1px solid #496a80", background: "#244a64", color: "#fff", colorScheme: "dark", fontSize: 13 }}/></label>
         </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
         <span style={{ fontSize: 10, fontWeight: 700, color: "#a9c0d0", letterSpacing: "0.06em", marginRight: 3 }}>QUICK RANGES</span>
         {[
           ["last-week", "Last week"],
@@ -339,9 +339,11 @@ function DataResults({ sourceFilter = null, reportTitle = "Data Results", embedd
           ["this-month", "This month"],
           ["last-month", "Last month"],
           ["ytd", "YTD"],
-        ].map(([key, label]) => <button key={key} type="button" onClick={() => applyPreset(key)} style={{ border: activePreset === key ? "1px solid #d9e9f3" : "1px solid #496a80", borderRadius: 7, padding: "6px 11px", background: activePreset === key ? "#e7f0f6" : "rgba(255,255,255,0.08)", color: activePreset === key ? "#12344b" : "#e4edf3", fontSize: 11, fontWeight: activePreset === key ? 700 : 500, cursor: "pointer" }}>{label}</button>)}
+        ].map(([key, label]) => <button key={key} type="button" onClick={() => applyPreset(key)} style={{ border: activePreset === key ? "1px solid #d9e9f3" : "1px solid #496a80", borderRadius: 7, padding: "5px 10px", background: activePreset === key ? "#e7f0f6" : "rgba(255,255,255,0.08)", color: activePreset === key ? "#12344b" : "#e4edf3", fontSize: 11, fontWeight: activePreset === key ? 700 : 500, cursor: "pointer" }}>{label}</button>)}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,minmax(0,1fr))", gap: 14, marginTop: 20 }}>
+    </section>
+    <section style={{ padding: embedded ? "16px 0 4px" : "14px 22px 24px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,minmax(0,1fr))", gap: 14, marginTop: 0 }}>
         {[
           { label: "Deals", value: loading ? "—" : number(summary.deals), detail: "Sold deals in period", split: "Windows: " + number(summary.sourceBreakdown?.["Global Windows"]?.deals || 0) + " · Solar: " + number(summary.sourceBreakdown?.["Global Solar"]?.deals || 0) },
           { label: "Net Sold", value: loading ? "—" : money(summary.net), detail: "Net value of sold deals", split: "Windows: " + money(summary.sourceBreakdown?.["Global Windows"]?.net || 0) + " · Solar: " + money(summary.sourceBreakdown?.["Global Solar"]?.net || 0) },
@@ -355,8 +357,7 @@ function DataResults({ sourceFilter = null, reportTitle = "Data Results", embedd
           {sourceFilter && Array.isArray(sourceFilter) && <div style={{ fontSize: 10, color: "#64748b", marginTop: 8, lineHeight: 1.5 }}>{item.split}</div>}
         </div>)}
       </div>
-    </section>
-    <section style={{ padding: embedded ? "16px 0 4px" : "14px 22px 24px" }}>
+
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginBottom: 10 }}>
         <button type="button" onClick={loadData} disabled={loading} style={{ display: "inline-flex", alignItems: "center", gap: 7, border: "1px solid #d5dee8", borderRadius: 7, padding: "8px 12px", background: "#fff", color: "#334155", cursor: "pointer" }}><RefreshCw size={14}/>Refresh</button>
         <button type="button" onClick={exportExcel} disabled={loading || exporting || !rows.length} style={{ display: "inline-flex", alignItems: "center", gap: 7, border: "1px solid #d5dee8", borderRadius: 7, padding: "8px 12px", background: "#fff", color: "#334155", cursor: "pointer" }}><FileSpreadsheet size={14}/>{exporting ? "Exporting…" : "Export Excel"}</button>
