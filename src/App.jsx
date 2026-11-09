@@ -6,7 +6,6 @@ import Header from "./components/Header"
 import FitSheet from "./FitSheet"
 import Dashboard from "./pages/Dashboard"
 import DataDashboard from "./pages/DataDashboard"
-import DataResults from "./pages/DataResults"
 import GlobalResults from "./pages/GlobalResults"
 import DataClean from "./pages/DataClean"
 import SalesPerformance from "./pages/SalesPerformance"
@@ -189,7 +188,7 @@ function App() {
   function handleDealUpdated(updatedDeal){const excludedCommissionStages=new Set(["decline","customer cancelled","returned to sales","awaiting funds","on hold","pending cancellation"]);const stage=String(updatedDeal?.pipedrive_stage??"").trim().replace(/\s+/g," ").toLowerCase();const shouldRemoveFromCommissions=excludedCommissionStages.has(stage);setContracts(current=>current.map(contract=>contract.id===updatedDeal.id?updatedDeal:contract));setAllDeals(current=>current.map(contract=>contract.id===updatedDeal.id?updatedDeal:contract));setCommissionDeals(current=>shouldRemoveFromCommissions?current.filter(contract=>contract.id!==updatedDeal.id):current.map(contract=>contract.id===updatedDeal.id?updatedDeal:contract));setSelected(updatedDeal)}
 
   function handlePageChange(newPage) {
-    const requiredPermission={"sales-performance":4,"marketing-dashboard":3,"canvasser-kpi":3,balances:4,mi:4,seo:4,reviews:4,users:4,tasks:4,hotkeys:4,templates:4,"integration-logs":4,"data-dashboard":4,pronto:4,"data-results":4,global:4,"data-clean":4 ,"solar-backend":4,"unit-analysis":4,"installations-performance":4,"quotes-to-work":4,"iwa-certificates":4}[newPage]
+    const requiredPermission={"sales-performance":4,"marketing-dashboard":3,"canvasser-kpi":3,balances:4,mi:4,seo:4,reviews:4,users:4,tasks:4,hotkeys:4,templates:4,"integration-logs":4,"data-dashboard":4,pronto:4,global:4,"data-clean":4 ,"solar-backend":4,"unit-analysis":4,"installations-performance":4,"quotes-to-work":4,"iwa-certificates":4}[newPage]
     if((requiredPermission&&effectivePermissionLevel<requiredPermission&&!(newPage==="quotes-to-work"&&canAccessQuotesToWork))||(newPage==="epvs-applications"&&!canSeeInstallationsFolder))return
     setSelected(null);setSelectedSourcePage("contracts");setSelectedAppointment(null);setPickupAppointment(null);setPage(newPage)
     if(newPage==="contracts"){setQuery("");setStatus("all");loadContracts(0,"","all")}
@@ -293,8 +292,6 @@ function App() {
     pageContent = <DataDashboard key="data-dashboard" />
   } else if (page === "pronto") {
     pageContent = <DataDashboard key="pronto" standalonePronto />
-  } else if (page === "data-results") {
-    pageContent = <DataResults />
   } else if (page === "global") {
     pageContent = <GlobalResults />
   } else if (page === "data-clean") {
@@ -328,7 +325,7 @@ function App() {
   } else if (page === "marketing-tv") {
     pageContent = <MarketingTV onSelectAppointment={handleAppointmentSelect}/>
   } else if (page === "marketing-dashboard") {
-    pageContent = <MarketingDashboard/>
+    pageContent = <MarketingDashboard permissionLevel={effectivePermissionLevel}/>
   } else if (page === "digital-team") {
     pageContent = <DigitalTeam/>
   } else if (page === "iwa-certificates") {
