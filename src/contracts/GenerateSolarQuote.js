@@ -387,9 +387,15 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
   const batteryOf30=row=>numeric30(row,"batteryBenefit","battery")||numeric30(row,"batterySelfConsumptionBenefit")+numeric30(row,"forceChargeBenefit")
   const exportOf30=row=>numeric30(row,"exportBenefit")
   const benefitOf30=row=>solarOf30(row)+batteryOf30(row)+exportOf30(row)
-  const savedAdminFee30=d.epvs?.adminFee??calculation?.data?.adminFee??record.admin_fee_amount
-  const adminFee30=savedAdminFee30!==null&&savedAdminFee30!==undefined&&String(savedAdminFee30).trim()!==""?Math.max(0,Number(savedAdminFee30)||0):399
-  const paymentOf30=row=>numeric30(row,"yearlyPayment","payment")-(Number(row?.year)===1?adminFee30:0)
+  const isCashPayment30=String(d.epvs?.paymentMethod??calculation?.data?.paymentMethod??"").trim().toLowerCase()==="cash"
+  const systemCost30=Math.max(0,Number(d.epvs?.systemCost??calculation?.data?.systemCost??0))
+  const deposit30=Math.max(0,Number(d.epvs?.deposit??calculation?.data?.deposit??0))
+  const financeTerm30=Math.max(0,Number(d.epvs?.financeTerm??calculation?.data?.financeTerm??0))
+  const financeFactor30=Math.max(0,Number(d.epvs?.financeFactor??calculation?.data?.financeFactor??0))
+  const monthlyFinancePayment30=Math.max(0,systemCost30-deposit30)/1000*financeFactor30
+  const paymentOf30=row=>isCashPayment30
+    ? (Number(row?.year)===1?-systemCost30:0)
+    : -((Number(row?.year)<=financeTerm30?monthlyFinancePayment30*12:0)+(Number(row?.year)===1?deposit30:0))
   const fmtNum30=n=>Number(n||0).toLocaleString("en-GB",{maximumFractionDigits:0})
   const fmtMoney30=n=>money(n).replace(".00","")
   if(!projectionRows30.length){
