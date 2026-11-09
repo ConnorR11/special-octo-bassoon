@@ -71,17 +71,25 @@ function DataSpend() {
   useEffect(() => {
     async function loadFilterOptions() {
       if (!supabase) return
-      const { data, error: optionsError } = await supabase.from("leads")
-        .select("hotkey_status,lead_source")
-        .is("lead_cost", null)
-        .gte("received_date_time", "2026-01-01T00:00:00")
-        .lt("received_date_time", "2027-01-01T00:00:00")
-        .range(0, 9999)
-      if (optionsError) {
-        console.error("Unable to load Data Spend filter options:", optionsError)
-        return
+      // Fetch every matching row in bounded batches. The API may cap each response,
+      // so a single large range can silently omit sources that exist later in the result set.
+      const values = []
+      const batchSize = 1000
+      for (let from = 0; ; from += batchSize) {
+        const { data, error: optionsError } = await supabase.from("leads")
+          .select("hotkey_status,lead_source")
+          .is("lead_cost", null)
+          .gte("received_date_time", "2026-01-01T00:00:00")
+          .lt("received_date_time", "2027-01-01T00:00:00")
+          .order("lead_source", { ascending: true, nullsFirst: false })
+          .range(from, from + batchSize - 1)
+        if (optionsError) {
+          console.error("Unable to load Data Spend filter options:", optionsError)
+          return
+        }
+        values.push(...(data || []))
+        if (!data || data.length < batchSize) break
       }
-      const values = data || []
       setHotkeyOptions([...new Set(values.map(row => row.hotkey_status).filter(value => clean(value)))].sort((a, b) => a.localeCompare(b)))
       setSourceOptions([...new Set(values.map(row => row.lead_source).filter(value => clean(value)))].sort((a, b) => a.localeCompare(b)))
     }
