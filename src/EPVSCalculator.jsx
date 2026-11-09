@@ -717,8 +717,8 @@ export default function EPVSCalculator({
       customerName: saved.customerName || appointment?.name || "",
       address: saved.address || appointment?.address || "",
       postcode: saved.postcode || appointment?.postcode || "",
-      // Solar admin fee is a separate customer cost and is paid in Year 1,
-      // regardless of whether the system is purchased with cash or finance.
+      // Admin fee is stored separately for the contract and is excluded from
+      // all EPVS Year 1 and 30-year payment calculations.
       adminFee:
         appointment?.admin_fee_amount !== null &&
         appointment?.admin_fee_amount !== undefined &&
