@@ -75,22 +75,21 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection, data = {} })
         forceChargeBenefit +
         exportBenefit
       const isCash = String(data.paymentMethod || "").trim().toLowerCase() === "cash"
-      const adminFee = Math.max(0, Number(data.adminFee || 0))
       const systemCost = Math.max(0, Number(data.systemCost || 0))
       const deposit = Math.max(0, Number(data.deposit || 0))
       const financeTermYears = Math.max(0, Number(data.financeTerm || 0))
       const financeFactor = Math.max(0, Number(data.financeFactor || 0))
       const monthlyFinancePayment = Math.max(0, systemCost - deposit) / 1000 * financeFactor
-      // Calculate displayed payments directly from the payment inputs rather
-      // than relying on a saved projection row that may predate the admin fee.
-      // The admin fee is a Year 1 cost for both cash and finance.
+      // Calculate displayed payments from the system cost and finance inputs.
+      // The separate contract admin fee is deliberately excluded from the EPVS
+      // Year 1 payment and 30-year payback projection.
       const yearlyPayment = isCash
         ? Number(row.year) === 1
-          ? -(systemCost + adminFee)
+          ? -systemCost
           : 0
         : -(
             (Number(row.year) <= financeTermYears ? monthlyFinancePayment * 12 : 0) +
-            (Number(row.year) === 1 ? deposit + adminFee : 0)
+            (Number(row.year) === 1 ? deposit : 0)
           )
 
       return {
@@ -121,7 +120,7 @@ export default function ThirtyYearBreakdown({ thirtyYearProjection, data = {} })
         displayNetPosition: totalPayments + cumulativeBenefit,
       }
     })
-  }, [rows, data.paymentMethod, data.systemCost, data.deposit, data.financeTerm, data.financeFactor, data.adminFee])
+  }, [rows, data.paymentMethod, data.systemCost, data.deposit, data.financeTerm, data.financeFactor])
 
   const totals = useMemo(
     () =>
