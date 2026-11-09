@@ -277,7 +277,7 @@ function App() {
       </div>
     </div>
   } else if (selected) {
-    pageContent = <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated} permissionLevel={effectivePermissionLevel}/>
+    pageContent = <CustomerDetail deal={selected} onBack={handleBackToDeals} onUpdated={handleDealUpdated} onOpenAppointment={handleAppointmentSelect} permissionLevel={effectivePermissionLevel}/>
   } else if (page === "dashboard") {
     pageContent = homeContent
   } else if (page === "hotkeys") {
