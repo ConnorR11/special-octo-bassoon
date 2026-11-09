@@ -5,7 +5,6 @@ import Sidebar from "./components/Sidebar"
 import Header from "./components/Header"
 import FitSheet from "./FitSheet"
 import Dashboard from "./pages/Dashboard"
-import DataDashboard from "./pages/DataDashboard"
 import GlobalResults from "./pages/GlobalResults"
 import SalesPerformance from "./pages/SalesPerformance"
 import InstallationsPerformance from "./pages/InstallationsPerformance"
@@ -281,8 +280,6 @@ function App() {
     pageContent = <Hotkeys/>
   } else if (page === "lead-to-call") {
     pageContent = <LeadToCall/>
-  } else if (page === "pronto") {
-    pageContent = <DataDashboard key="pronto" standalonePronto />
   } else if (page === "global") {
     pageContent = <GlobalResults />
   } else if (page === "outstanding-solar-surveys") {
