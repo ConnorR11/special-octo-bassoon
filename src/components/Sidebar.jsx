@@ -74,7 +74,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
       "canvasser-kpi": 3,
       balances: 4,
       mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, "bulk-updater": 4,
-      templates: 4, "integration-logs": 4, "data-dashboard": 4, pronto: 4, global: 4, "data-results": 4, "data-clean": 4, "data-spend": 4, "solar-backend": 4, "unit-analysis": 4, "map-of-installs": 4, "installations-performance": 4,
+      templates: 4, "integration-logs": 4, "data-dashboard": 4, pronto: 4, global: 4, "data-clean": 4, "data-spend": 4, "solar-backend": 4, "unit-analysis": 4, "map-of-installs": 4, "installations-performance": 4,
     }[route]
     return route === "quotes-to-work" ? canAccessQuotesToWork : (!requiredPermission || numericPermissionLevel >= requiredPermission)
   }
@@ -188,8 +188,6 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={BarChart3} label="Marketing Dashboard" active={isActive("marketing-dashboard")} onClick={() => navigate("marketing-dashboard")} disabled={!canAccessMarketingDashboard} locked={!canAccessMarketingDashboard}/>
             <NavItem icon={FileCheck} label="IWA Certificates" active={isActive("iwa-certificates")} onClick={() => navigate("iwa-certificates")}/>
             <NavItem icon={BarChart3} label="Sales Performance" active={isActive("sales-performance")} onClick={() => navigate("sales-performance")}/>
-            <NavItem icon={Database} label="Data Results" active={isActive("data-results")} onClick={() => navigate("data-results")}/>
-
             <NavItem icon={BarChart3} label="Data Dashboard" active={isActive("data-dashboard")} onClick={() => navigate("data-dashboard")}/>
             <NavItem icon={RefreshCw} label="Bulk Updater" active={isActive("bulk-updater")} onClick={() => navigate("bulk-updater")}/>
             <NavItem icon={CalendarDays} label="Installations Performance" active={isActive("installations-performance")} onClick={() => navigate("installations-performance")}/>
