@@ -174,7 +174,7 @@ export default function MarketingDashboard({ onSelectAppointment, permissionLeve
     }
   }
 
-  return <section className="marketing-dashboard">
+  return <section className="marketing-dashboard" style={{ marginTop: -20 }}>
     <div style={{ position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, minHeight: 112, padding: "20px 24px", marginBottom: 20, borderRadius: 13, background: "linear-gradient(115deg, #10264a 0%, #173b69 58%, #24558a 100%)", boxShadow: "0 5px 16px rgba(15, 35, 67, .14)" }}>
       <div aria-hidden="true" style={{ position: "absolute", right: -34, top: -95, width: 260, height: 260, border: "1px solid rgba(255,255,255,.10)", borderRadius: "50%", boxShadow: "0 0 0 28px rgba(255,255,255,.035), 0 0 0 58px rgba(255,255,255,.025)" }} />
       <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 16 }}>
