@@ -206,8 +206,8 @@ export default function MarketingDashboard({ onSelectAppointment, permissionLeve
       })}
     </div>
 
-    <div className="marketing-dashboard-workspace" style={{ display: "grid", gridTemplateColumns: "176px minmax(0, 1fr)", gap: 20, alignItems: "start" }}>
-      <aside aria-label={currentSection.label + " pages"} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 9, position: "sticky", top: 12 }}>
+    <div className="marketing-dashboard-workspace" style={{ display: "grid", gridTemplateColumns: activeSection === "reporting" ? "minmax(0, 1fr)" : "176px minmax(0, 1fr)", gap: 20, alignItems: "start" }}>
+      {activeSection !== "reporting" && <aside aria-label={currentSection.label + " pages"} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 9, position: "sticky", top: 12 }}>
         <div style={{ padding: "8px 9px 11px", color: "#64748b", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em" }}>{currentSection.label}</div>
         <nav style={{ display: "grid", gap: 3 }}>
           {currentSection.pages.map(page => {
@@ -215,14 +215,22 @@ export default function MarketingDashboard({ onSelectAppointment, permissionLeve
             return <button key={page.id} type="button" onClick={() => setActivePage(page.id)} aria-current={active ? "page" : undefined} style={{ width: "100%", border: 0, borderLeft: active ? "3px solid #2563eb" : "3px solid transparent", borderRadius: "0 7px 7px 0", padding: "10px 9px", textAlign: "left", background: active ? "#eff6ff" : "transparent", color: active ? "#1d4ed8" : "#475569", fontSize: 12, fontWeight: active ? 700 : 600, cursor: "pointer" }}>{page.label}</button>
           })}
         </nav>
-      </aside>
+      </aside>}
       <div style={{ minWidth: 0, padding: 16, border: "1px solid #bfdbfe", borderTop: "4px solid #3b82f6", borderRadius: 12, background: "linear-gradient(180deg, #eff6ff 0%, #f8fbff 100%)", boxShadow: "0 3px 12px rgba(37,99,235,.07)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 14, paddingBottom: 12, borderBottom: "1px solid #bfdbfe" }}>
-          <span style={{ width: 30, height: 30, display: "grid", placeItems: "center", borderRadius: 8, background: "#dbeafe", color: "#2563eb", fontSize: 16 }}>{currentSection.icon}</span>
-          <div>
-            <div style={{ color: "#1d4ed8", fontSize: 13, fontWeight: 800 }}>{currentSection.label} workspace</div>
-            <div style={{ color: "#54749b", fontSize: 10 }}>{currentSection.description}</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 14, paddingBottom: 12, borderBottom: "1px solid #bfdbfe" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
+            <span style={{ width: 30, height: 30, display: "grid", placeItems: "center", borderRadius: 8, background: "#dbeafe", color: "#2563eb", fontSize: 16, flexShrink: 0 }}>{currentSection.icon}</span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ color: "#1d4ed8", fontSize: 13, fontWeight: 800 }}>{currentSection.label} workspace</div>
+              <div style={{ color: "#54749b", fontSize: 10 }}>{currentSection.description}</div>
+            </div>
           </div>
+          {activeSection === "reporting" && <label style={{ display: "flex", alignItems: "center", gap: 10, color: "#173b69", fontSize: 12, fontWeight: 750, whiteSpace: "nowrap" }}>
+            Report
+            <select aria-label="Select report" value={currentPage?.id || ""} onChange={event => setActivePage(event.target.value)} style={{ minWidth: 230, maxWidth: "min(360px, 65vw)", padding: "10px 36px 10px 12px", border: "1px solid #93c5fd", borderRadius: 9, background: "#fff", color: "#173b69", fontSize: 12, fontWeight: 700, cursor: "pointer", boxShadow: "0 1px 3px rgba(37,99,235,.08)" }}>
+              {currentSection.pages.map(page => <option key={page.id} value={page.id}>{page.label}</option>)}
+            </select>
+          </label>}
         </div>
         {renderPage()}
       </div>
