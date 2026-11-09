@@ -648,14 +648,11 @@ async function drawContractTotalAndSignature(pdf, ctx, data, results, appointmen
   const tableMid = tableLeft + (tableRight - tableLeft) * 0.58
   const rowHeight = (tableBottom - tableTop) / 4
 
-  const systemCost = Number(price || 0)
-  const explicitDeposit = Number(data?.deposit || appointment?.deposit || 0)
-  const financeMonths = Number(data?.financeTerm || 0) * 12
-  const inferredDeposit = data?.paymentMethod === "Finance" && financeMonths > 0
-    ? Number(results?.totalContractValue || 0) - Number(results?.monthlyPayment || 0) * financeMonths
-    : 0
-  const deposit = explicitDeposit > 0 ? explicitDeposit : Math.max(0, inferredDeposit)
-  const adminFee = 399
+  // Financial values in the contract are read from the saved EPVS calculation.
+  // The admin fee remains a separate contract line and is not part of EPVS payments.
+  const systemCost = Number(price ?? 0)
+  const deposit = Math.max(0, Number(data?.deposit ?? 0))
+  const adminFee = Math.max(0, Number(data?.adminFee ?? 0))
   const totalCost = systemCost + adminFee
 
   const paymentRows = [
