@@ -218,12 +218,12 @@ export default function MarketingDashboard({ onSelectAppointment, permissionLeve
           })}
         </nav>
       </aside>
-      <div style={{ minWidth: 0, padding: 16, border: "1px solid #ddd6fe", borderTop: "4px solid #7c3aed", borderRadius: 12, background: "linear-gradient(180deg, #f5f3ff 0%, #faf9ff 100%)", boxShadow: "0 3px 12px rgba(91,33,182,.06)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 14, paddingBottom: 12, borderBottom: "1px solid #ddd6fe" }}>
-          <span style={{ width: 30, height: 30, display: "grid", placeItems: "center", borderRadius: 8, background: "#ede9fe", color: "#6d28d9", fontSize: 16 }}>{currentSection.icon}</span>
+      <div style={{ minWidth: 0, padding: 16, border: "1px solid #bfdbfe", borderTop: "4px solid #3b82f6", borderRadius: 12, background: "linear-gradient(180deg, #eff6ff 0%, #f8fbff 100%)", boxShadow: "0 3px 12px rgba(37,99,235,.07)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 14, paddingBottom: 12, borderBottom: "1px solid #bfdbfe" }}>
+          <span style={{ width: 30, height: 30, display: "grid", placeItems: "center", borderRadius: 8, background: "#dbeafe", color: "#2563eb", fontSize: 16 }}>{currentSection.icon}</span>
           <div>
-            <div style={{ color: "#5b21b6", fontSize: 13, fontWeight: 800 }}>{currentSection.label} workspace</div>
-            <div style={{ color: "#7c6b9d", fontSize: 10 }}>{currentSection.description}</div>
+            <div style={{ color: "#1d4ed8", fontSize: 13, fontWeight: 800 }}>{currentSection.label} workspace</div>
+            <div style={{ color: "#54749b", fontSize: 10 }}>{currentSection.description}</div>
           </div>
         </div>
         {renderPage()}
