@@ -1669,12 +1669,15 @@ export default function EPVSCalculator({
     }
   }
 
-  const hasRequiredEnergyInputs =
-    String(data.annualConsumption ?? "").trim() !== "" &&
-    String(data.importRate ?? "").trim() !== "" &&
-    String(data.exportRate ?? "").trim() !== "" &&
-    String(data.standingCharge ?? "").trim() !== "" &&
-    Boolean(getSapZone(data.postcode, data.sapZone))
+  const missingRequiredEnergyInputs = [
+    String(data.annualConsumption ?? "").trim() === "" ? "Annual electricity consumption" : null,
+    String(data.importRate ?? "").trim() === "" ? "Current import rate" : null,
+    String(data.exportRate ?? "").trim() === "" ? "Current export rate" : null,
+    String(data.standingCharge ?? "").trim() === "" ? "Current standing charge" : null,
+    !getSapZone(data.postcode, data.sapZone) ? "A valid SAP postcode zone" : null,
+  ].filter(Boolean)
+
+  const hasRequiredEnergyInputs = missingRequiredEnergyInputs.length === 0
 
   const reset = () => {
     setData(appointmentInitial)
@@ -2866,6 +2869,20 @@ export default function EPVSCalculator({
     </button>
   }
 >
+  {!savingCalculation && missingRequiredEnergyInputs.length > 0 && (
+    <p
+      style={{
+        margin: "0 0 12px",
+        color: "#dc2626",
+        fontSize: 12,
+        lineHeight: 1.5,
+        fontWeight: 500,
+      }}
+      role="status"
+    >
+      To enable saving, please enter: {missingRequiredEnergyInputs.join(", ")}.
+    </p>
+  )}
   <div style={{ ...styles.grid, gridTemplateColumns: "repeat(4, minmax(0, 1fr))", alignItems: "end" }}>
 
     <Input
