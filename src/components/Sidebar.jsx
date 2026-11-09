@@ -69,12 +69,12 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
   const canAccessRoute = (route) => {
     const requiredPermission = {
       "sales-performance": 4,
-      "quotes-to-work": 4, "iwa-certificates": 4,
+      "quotes-to-work": 4,
       "marketing-dashboard": 3,
       "canvasser-kpi": 3,
       balances: 4,
       mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4,
-      templates: 4, "integration-logs": 4, pronto: 4, global: 4, "data-spend": 4, "solar-backend": 4, "unit-analysis": 4, "map-of-installs": 4, "installations-performance": 4,
+      templates: 4, "integration-logs": 4, pronto: 4, global: 4, "data-spend": 4, "map-of-installs": 4, "installations-performance": 4,
     }[route]
     return route === "quotes-to-work" ? canAccessQuotesToWork : (!requiredPermission || numericPermissionLevel >= requiredPermission)
   }
@@ -186,11 +186,8 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             {isAdministrator && <NavItem icon={BarChart3} label="Lead Sources" active={isActive("pronto")} onClick={() => navigate("pronto")}/>}
             {isAdministrator && <NavItem icon={Search} label="Digital Team" active={isActive("digital-team")} onClick={() => navigate("digital-team")}/>}
             <NavItem icon={BarChart3} label="Marketing Dashboard" active={isActive("marketing-dashboard")} onClick={() => navigate("marketing-dashboard")} disabled={!canAccessMarketingDashboard} locked={!canAccessMarketingDashboard}/>
-            <NavItem icon={FileCheck} label="IWA Certificates" active={isActive("iwa-certificates")} onClick={() => navigate("iwa-certificates")}/>
             <NavItem icon={BarChart3} label="Sales Performance" active={isActive("sales-performance")} onClick={() => navigate("sales-performance")}/>
             <NavItem icon={CalendarDays} label="Installations Performance" active={isActive("installations-performance")} onClick={() => navigate("installations-performance")}/>
-            <NavItem icon={Sun} label="Solar Backend" active={isActive("solar-backend")} onClick={() => navigate("solar-backend")}/>
-            <NavItem icon={Boxes} label="Unit Analysis" active={isActive("unit-analysis")} onClick={() => navigate("unit-analysis")}/>
             <NavItem icon={ClipboardList} label="Tasks" active={isActive("tasks")} onClick={() => navigate("tasks")}/>
             <NavItem icon={Presentation} label="Templates" active={isActive("templates")} onClick={() => navigate("templates")}/>
           </Folder>}
