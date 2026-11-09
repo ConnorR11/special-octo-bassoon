@@ -7,7 +7,6 @@ import FitSheet from "./FitSheet"
 import Dashboard from "./pages/Dashboard"
 import DataDashboard from "./pages/DataDashboard"
 import GlobalResults from "./pages/GlobalResults"
-import DataClean from "./pages/DataClean"
 import SalesPerformance from "./pages/SalesPerformance"
 import InstallationsPerformance from "./pages/InstallationsPerformance"
 import Installations from "./pages/Installations"
@@ -122,7 +121,7 @@ function App() {
   const canSeeInstallationsFolder = ![1, 2].includes(Number(effectivePermissionLevel)) || ["installation", "installations"].includes(effectiveDepartment)
 
   useEffect(() => {
-    const restrictedPages = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, balances: 4, mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, hotkeys: 4, templates: 4, "integration-logs": 4, pronto: 4, global: 4, "data-clean": 4, "solar-backend": 4, "unit-analysis": 4, "outstanding-solar-surveys": 0, "quotes-to-work": 4, "iwa-certificates": 4 }
+    const restrictedPages = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, balances: 4, mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, hotkeys: 4, templates: 4, "integration-logs": 4, pronto: 4, global: 4, "solar-backend": 4, "unit-analysis": 4, "outstanding-solar-surveys": 0, "quotes-to-work": 4, "iwa-certificates": 4 }
     const requiredPermission = restrictedPages[page]
     const lacksPagePermission = page === "quotes-to-work"
       ? !canAccessQuotesToWork
@@ -289,8 +288,6 @@ function App() {
     pageContent = <DataDashboard key="pronto" standalonePronto />
   } else if (page === "global") {
     pageContent = <GlobalResults />
-  } else if (page === "data-clean") {
-    pageContent = <DataClean onOpenAppointment={handleAppointmentSelect}/>
   } else if (page === "solar-backend") {
     pageContent = <SolarBackend onSelectAppointment={handleAppointmentSelect}/>
   } else if (page === "outstanding-solar-surveys") {
@@ -320,7 +317,7 @@ function App() {
   } else if (page === "marketing-dashboard") {
     pageContent = <MarketingDashboard permissionLevel={effectivePermissionLevel}/>
   } else if (page === "digital-team") {
-    pageContent = <DigitalTeam permissionLevel={effectivePermissionLevel}/>
+    pageContent = <DigitalTeam permissionLevel={effectivePermissionLevel} onOpenAppointment={handleAppointmentSelect}/>
   } else if (page === "iwa-certificates") {
     pageContent = <IWACertificates/>
   } else if (page === "leads") {
