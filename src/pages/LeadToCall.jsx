@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react"
-import { RefreshCw, Search, ChevronLeft, ChevronRight } from "lucide-react"
+import { RefreshCw, Search, ChevronLeft, ChevronRight, DownloadCloud } from "lucide-react"
 import { supabase } from "../lib/supabase"
 
 const PAGE_SIZE = 50
@@ -27,6 +27,8 @@ export default function LeadToCall() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [updatedAt, setUpdatedAt] = useState(null)
+  const [syncingGlide, setSyncingGlide] = useState(false)
+  const [syncMessage, setSyncMessage] = useState("")
 
   const load = useCallback(async () => {
     if (!supabase) { setError("Supabase is not configured."); return }
@@ -60,6 +62,36 @@ export default function LeadToCall() {
   useEffect(() => { load() }, [load])
   useEffect(() => { setPage(1) }, [search])
 
+  async function update250FromGlide() {
+    if (syncingGlide) return
+    if (!window.confirm("Update up to 250 eligible CRM leads from Glide? Only leads with a different last-time-called value will be processed. Blank Glide values are skipped; no new leads will be inserted.")) return
+    setSyncingGlide(true)
+    setSyncMessage("")
+    setError("")
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError) throw sessionError
+      const token = sessionData?.session?.access_token
+      if (!token) throw new Error("Your session has expired. Please sign in again.")
+      const response = await fetch("/api/admin/glide-leads-preview", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ limit: 250, offset: 0, execute: true })
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok || payload.error) throw new Error(payload.detail || payload.error || "Glide update failed.")
+      const updated = Number(payload.updated || 0)
+      const failed = Number(payload.failed || 0)
+      const proposed = Number(payload.proposedFieldChanges || 0)
+      setSyncMessage(`Glide batch complete: ${updated} leads updated, ${failed} failed, ${Number(payload.skippedSameLastCall || 0).toLocaleString("en-GB")} already up to date. ${proposed.toLocaleString("en-GB")} field changes identified.`)
+      await load()
+    } catch (err) {
+      setError(err?.message || "Unable to update leads from Glide.")
+    } finally {
+      setSyncingGlide(false)
+    }
+  }
+
   const totalPages = Math.max(1, Math.ceil((counts.total || 0) / PAGE_SIZE))
   const panel = { background:"#fff", border:"1px solid #e2e8f0", borderRadius:12 }
   const small = { fontSize:11, color:"#64748b" }
@@ -68,6 +100,7 @@ export default function LeadToCall() {
     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:12, flexWrap:"wrap", marginBottom:18 }}>
       <div><h1 style={{ margin:0, fontSize:24, color:"#0f172a" }}>Lead To Call</h1><div style={{ ...small, marginTop:5 }}>One prioritised queue showing the next eligible leads for the canvassing team.</div></div>
       <button type="button" onClick={load} disabled={loading} style={{ display:"inline-flex", alignItems:"center", gap:7, padding:"9px 13px", border:"1px solid #cbd5e1", borderRadius:8, background:"#fff", cursor:"pointer", fontWeight:650 }}><RefreshCw size={14}/>{loading ? "Refreshing…" : "Refresh queue"}</button>
+      <button type="button" onClick={update250FromGlide} disabled={syncingGlide || loading} style={{ display:"inline-flex", alignItems:"center", gap:7, padding:"9px 13px", border:"1px solid #1d4ed8", borderRadius:8, background:"#1d4ed8", color:"#fff", cursor:"pointer", fontWeight:700, opacity:syncingGlide||loading?.65:1 }}><DownloadCloud size={14}/>{syncingGlide ? "Updating 250 leads…" : "Update 250 from Glide"}</button>
     </div>
     <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))", gap:10, marginBottom:16 }}>
       {[[ "Callbacks due",counts.callbacks],[ "Fresh leads",counts.fresh],[ "Rework",counts.rework],[ "No Contact ready",counts.no_contact]].map(([label,value])=><div key={label} style={{ ...panel, padding:"13px 15px" }}><div style={small}>{label}</div><div style={{ fontSize:24, fontWeight:800, color:"#0f172a", marginTop:4 }}>{Number(value || 0).toLocaleString("en-GB")}</div>{label === "Callbacks due" && <div style={{ ...small, marginTop:5 }}>{Number(counts.upcoming_callbacks || 0).toLocaleString("en-GB")} additional callbacks scheduled beyond the next 5 minutes</div>}</div>)}
@@ -76,6 +109,7 @@ export default function LeadToCall() {
       <Search size={16} color="#64748b"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, postcode, phone or source…" style={{ border:0, outline:0, flex:1, minWidth:120, fontSize:13, background:"transparent"}}/>
       <span style={small}>{(counts.total || 0).toLocaleString("en-GB")} in queue</span>
     </div>
+    {syncMessage && <div role="status" style={{ ...panel, padding:13, color:"#166534", marginBottom:12, background:"#f0fdf4", borderColor:"#bbf7d0" }}>{syncMessage}</div>}
     {error && <div role="alert" style={{ ...panel, padding:13, color:"#b91c1c", marginBottom:12 }}>{error}</div>}
     <div style={{ ...panel, overflow:"hidden" }}>
       <div style={{ padding:"12px 15px", borderBottom:"1px solid #e2e8f0", display:"flex", justifyContent:"space-between", gap:8, flexWrap:"wrap" }}><strong style={{ fontSize:13 }}>Next leads to phone</strong><span style={small}>Callbacks → Fresh → Rework → No Contact (2-hour gap, max 15 attempts)</span></div>
