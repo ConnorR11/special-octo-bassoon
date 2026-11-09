@@ -357,8 +357,8 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
 
   // EPVS stores the 30-year projection on the calculation object itself, alongside data.
   // Read the same path used by EpvsPdfRenderer rather than only reading calculation.data.
-  const calculation=record?.epvs_calculation||{}
-  const projection30=calculation?.thirtyYearProjection||calculation?.data?.thirtyYearProjection||d.epvs?.thirtyYearProjection||{}
+  const calculation=d.calculation
+  const projection30=calculation?.thirtyYearProjection||d.epvs?.thirtyYearProjection||{}
   const scenario30=projection30?.scenarios?.averageInflation
   const projectionRows30=Array.isArray(scenario30?.rows)?scenario30.rows:(Array.isArray(scenario30)?scenario30:[])
   const tableX30=margin,tableY30=46,tableW30=w-margin*2
