@@ -1,6 +1,6 @@
 import React from "react"
 import {
-  LayoutDashboard, Users, Download, Tag, FileText, ChevronDown, ChevronRight, BarChart3, CalendarDays, Facebook,
+  LayoutDashboard, Users, Download, Tag, FileText, ChevronDown, ChevronRight, BarChart3, CalendarDays,
   Wrench, PoundSterling, CreditCard, Headphones, Settings, Target, ClipboardCheck,
   Megaphone, Phone, Handshake, Trophy, AlertTriangle, Receipt, UserRound,
   MessageCircle, UserCog, FileCheck, LogOut, ClipboardList, Lock, KanbanSquare,
