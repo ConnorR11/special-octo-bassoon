@@ -150,7 +150,7 @@ function drawThirtyYearBreakdown(pdf, page, ctx, epvs, appointment) {
   ))
 
   let y = headerY + headerHeight
-  let cumulativeBenefit = 0
+  let cumulativeNetPosition = 0
   const totals = {
     generation: 0,
     solar: 0,
@@ -178,9 +178,10 @@ function drawThirtyYearBreakdown(pdf, page, ctx, epvs, appointment) {
     const exportBenefit = exportValue(row)
     const benefit = annualBenefit(row)
     const payment = paymentValue(row)
-    const netAnnual = Number(row?.netAnnualBenefit ?? (benefit + payment))
-    cumulativeBenefit += benefit
-    const netPosition = Number(row?.cumulativePosition ?? (totalPayments + cumulativeBenefit))
+    // Keep the dependent columns consistent with the displayed benefit and payment.
+    const netAnnual = benefit + payment
+    cumulativeNetPosition += netAnnual
+    const netPosition = cumulativeNetPosition
 
     totals.generation += Number(row?.generation || 0)
     totals.solar += solar
@@ -232,8 +233,8 @@ function drawThirtyYearBreakdown(pdf, page, ctx, epvs, appointment) {
     money(totals.export),
     money(totals.annualBenefit),
     money(totals.payments),
-    money(Number(scenario?.totals?.netAnnualBenefit ?? totals.netAnnual)),
-    money(Number(rows[rows.length - 1]?.cumulativePosition ?? totals.finalNetPosition)),
+    money(totals.netAnnual),
+    money(totals.finalNetPosition),
     money(totals.billPre),
     money(totals.billPost),
   ]
