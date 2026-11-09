@@ -189,7 +189,7 @@ export default function MarketingDashboard({ onSelectAppointment, permissionLeve
       </div>
       <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 7, padding: "7px 11px", borderRadius: 999, border: "1px solid rgba(255,255,255,.2)", background: "rgba(255,255,255,.09)", color: "#e2e8f0", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", whiteSpace: "nowrap" }}>
         <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#86efac", boxShadow: "0 0 0 3px rgba(134,239,172,.15)" }} />
-        MARKETING & SALES
+        MARKETING
       </div>
     </div>
 
