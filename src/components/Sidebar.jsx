@@ -201,7 +201,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={Boxes} label="Unit Analysis" active={isActive("unit-analysis")} onClick={() => navigate("unit-analysis")}/>
             <NavItem icon={ClipboardList} label="Tasks" active={isActive("tasks")} onClick={() => navigate("tasks")}/>
             <NavItem icon={Presentation} label="Templates" active={isActive("templates")} onClick={() => navigate("templates")}/>
-            <NavItem icon={Tag} label="Watts Marketing" active={isActive("hotkeys")} onClick={() => navigate("hotkeys")}/>          </Folder>}
+          </Folder>}
         </nav>
 
         <div className="sidebar-footer" style={{marginTop:"auto",flexDirection:"column",alignItems:"stretch",gap:10}}>
