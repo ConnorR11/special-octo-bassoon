@@ -3,6 +3,7 @@ import * as tus from "tus-js-client"
 import {
   ArrowLeft,
   Save,
+  CalendarDays,
   MapPin,
   ExternalLink,
   FileUp,
@@ -36,6 +37,7 @@ function CustomerDetail({
   deal,
   onBack,
   onUpdated,
+  onOpenAppointment,
   permissionLevel = 0,
 }) {
   const [salesperson, setSalesperson] = useState(
@@ -92,6 +94,23 @@ function CustomerDetail({
     { key: "survey_photos", label: "Survey Checklist & Photos", accept: "image/jpeg,image/png,image/webp", multiple: true, hint: "Complete the checklist below and upload labelled survey photos here. Generate the combined survey PDF when finished." },
     { key: "electricity_bill_epvs_waiver", label: "2. Electricity Bill", accept: "application/pdf,image/jpeg,image/png,image/webp", multiple: true, hint: "Upload a PDF or image. Bill and waiver can be attached separately." },
   ]
+
+  async function openLinkedAppointment() {
+    if (!deal?.appointment_row_id || !supabase) return
+    setMessage("")
+    try {
+      const { data, error } = await supabase
+        .from("appointments")
+        .select("*")
+        .eq("appointment_row_id", deal.appointment_row_id)
+        .maybeSingle()
+      if (error) throw error
+      if (!data) throw new Error("The linked appointment could not be found or is not available to your account.")
+      onOpenAppointment?.(data)
+    } catch (error) {
+      setMessage(error?.message || "Unable to open the linked appointment.")
+    }
+  }
 
   async function loadDocuments() {
     if (!deal?.id || !supabase) return
@@ -542,28 +561,50 @@ function CustomerDetail({
           Back to Deals
         </button>
 
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "7px",
-            padding: "9px 14px",
-            border: 0,
-            borderRadius: "7px",
-            background: "#172554",
-            color: "#fff",
-            fontSize: "11px",
-            fontWeight: 600,
-            cursor: saving ? "default" : "pointer",
-            opacity: saving ? 0.6 : 1,
-          }}
-        >
-          <Save size={15} />
-          {saving ? "Saving..." : "Save changes"}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {deal?.appointment_row_id && <button
+            type="button"
+            onClick={openLinkedAppointment}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "7px",
+              padding: "9px 14px",
+              border: "1px solid #cbd5e1",
+              borderRadius: "7px",
+              background: "#fff",
+              color: "#172554",
+              fontSize: "11px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            <CalendarDays size={15} />
+            Open appointment
+          </button>}
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "7px",
+              padding: "9px 14px",
+              border: 0,
+              borderRadius: "7px",
+              background: "#172554",
+              color: "#fff",
+              fontSize: "11px",
+              fontWeight: 600,
+              cursor: saving ? "default" : "pointer",
+              opacity: saving ? 0.6 : 1,
+            }}
+          >
+            <Save size={15} />
+            {saving ? "Saving..." : "Save changes"}
+          </button>
+        </div>
       </div>
 
       <div
