@@ -181,8 +181,8 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
   // Compact specification table.
   const generation=Number(d.generation || 0)
   // Use the saved EPVS first-year pre-install electricity bill, converted from annual to monthly.
-  const savedCalculation=record?.epvs_calculation||{}
-  const savedProjection=savedCalculation?.thirtyYearProjection||savedCalculation?.data?.thirtyYearProjection||d.epvs?.thirtyYearProjection||{}
+  const savedCalculation=d.calculation
+  const savedProjection=savedCalculation?.thirtyYearProjection||d.epvs?.thirtyYearProjection||{}
   const savedScenario=savedProjection?.scenarios?.averageInflation
   const savedRows=Array.isArray(savedScenario?.rows)?savedScenario.rows:(Array.isArray(savedScenario)?savedScenario:[])
   const annualPreInstallBill=Number(savedRows.find(row=>Number(row?.year)===1)?.billPreInstall ?? savedRows[0]?.billPreInstall)
@@ -426,7 +426,8 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
       rowY30+=rowH30
     })
     tx30=tableX30
-    const totalVals=["TOTAL",fmtNum30(totalRaw30[1]),...totalRaw30.slice(2).map(fmtMoney30)]\n    totalVals[8]=fmtMoney30(projectionRows30[projectionRows30.length-1]?.cumulativePosition ?? totalRaw30[8])
+    const totalVals=["TOTAL",fmtNum30(totalRaw30[1]),...totalRaw30.slice(2).map(fmtMoney30)]
+    totalVals[8]=fmtMoney30(projectionRows30[projectionRows30.length-1]?.cumulativePosition ?? totalRaw30[8])
     totalVals.forEach((val,index)=>{
       pdf.setFillColor(...(index===5||index===8?blue:[82,92,100]));pdf.setDrawColor(255,255,255);pdf.rect(tx30,rowY30,widths30[index],totalH30,"FD")
       pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(5.2);pdf.text(String(val),tx30+widths30[index]-0.7,rowY30+3.7,{align:"right"});tx30+=widths30[index]
