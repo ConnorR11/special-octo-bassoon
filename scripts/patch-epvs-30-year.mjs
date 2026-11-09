@@ -176,7 +176,7 @@ function drawThirtyYearBreakdown(pdf, page, ctx, epvs, appointment) {
     const solar = solarValue(row)
     const battery = batteryValue(row)
     const exportBenefit = exportValue(row)
-    const benefit = solar + battery + exportBenefit
+    const benefit = Number(row?.annualBenefit ?? (solar + battery + exportBenefit))
     const payment = paymentValue(row)
     const netAnnual = Number(row?.netAnnualBenefit ?? (benefit + payment))
     cumulativeBenefit += benefit
