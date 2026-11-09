@@ -1362,8 +1362,9 @@ export async function GenerateSolarContract({ appointment, previewOnly = false }
       epvs = JSON.parse(epvs)
     } catch {}
   }
-  if (!epvs?.data || !epvs?.results || !epvs?.thirtyYearProjection) {
-    throw new Error("A complete saved EPVS calculation is required before generating the solar contract.")
+  if (!epvs?.data || !epvs?.results || !epvs?.thirtyYearProjection ||
+      !Number.isFinite(Number(epvs?.data?.adminFee))) {
+    throw new Error("A complete saved EPVS calculation, including the admin fee, is required before generating the solar contract. Please save the EPVS calculation first.")
   }
 
   const pageSize = pages.find((page) => page.settings?.page_size)?.settings?.page_size || "A4"
