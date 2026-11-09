@@ -6,6 +6,7 @@ import LeadToCall from "./LeadToCall"
 import DataSpend from "./DataSpend"
 import DataResults from "./DataResults"
 import LeadExport from "./LeadExport"
+import DataDashboard from "./DataDashboard"
 
 function getLondonDayBounds() {
   const now = new Date()
@@ -153,7 +154,11 @@ export default function MarketingDashboard({ onSelectAppointment, permissionLeve
       <button type="button" role="tab" aria-selected={activeTab === "data-spend"} onClick={() => setActiveTab("data-spend")} style={tabStyle(activeTab === "data-spend")}>Data Spend</button>
       {canAccessDataResults && <button type="button" role="tab" aria-selected={activeTab === "data-results"} onClick={() => setActiveTab("data-results")} style={tabStyle(activeTab === "data-results")}>Data Results</button>}
       {canAccessDataResults && <button type="button" role="tab" aria-selected={activeTab === "lead-export"} onClick={() => setActiveTab("lead-export")} style={tabStyle(activeTab === "lead-export")}>Lead Export</button>}
+      <button type="button" role="tab" aria-selected={activeTab === "data-overview"} onClick={() => setActiveTab("data-overview")} style={tabStyle(activeTab === "data-overview")}>Overview</button>
+      <button type="button" role="tab" aria-selected={activeTab === "data-map-appointments"} onClick={() => setActiveTab("data-map-appointments")} style={tabStyle(activeTab === "data-map-appointments")}>Map of Appointments</button>
+      <button type="button" role="tab" aria-selected={activeTab === "data-archived-leads"} onClick={() => setActiveTab("data-archived-leads")} style={tabStyle(activeTab === "data-archived-leads")}>Archived Leads</button>
+      <button type="button" role="tab" aria-selected={activeTab === "data-kanban"} onClick={() => setActiveTab("data-kanban")} style={tabStyle(activeTab === "data-kanban")}>Kanban</button>
     </div>
-    {activeTab === "made-today" ? <MadeTodayDashboard onSelectAppointment={onSelectAppointment} /> : activeTab === "leads-to-call" ? <LeadToCall /> : activeTab === "data-results" ? <DataResults /> : activeTab === "lead-export" ? <LeadExport /> : <DataSpend />}
+    {activeTab === "made-today" ? <MadeTodayDashboard onSelectAppointment={onSelectAppointment} /> : activeTab === "leads-to-call" ? <LeadToCall /> : activeTab === "data-results" ? <DataResults /> : activeTab === "lead-export" ? <LeadExport /> : activeTab === "data-overview" ? <DataDashboard embeddedTab="overview" hideHeader /> : activeTab === "data-map-appointments" ? <DataDashboard embeddedTab="map-appointments" hideHeader /> : activeTab === "data-archived-leads" ? <DataDashboard embeddedTab="archived-leads" hideHeader /> : activeTab === "data-kanban" ? <DataDashboard embeddedTab="kanban" hideHeader /> : <DataSpend />}
   </section>
 }
