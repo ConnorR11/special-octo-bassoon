@@ -39,18 +39,18 @@ function getQuoteData(appointment) {
   const generation = Number(results.generation || results.annualGeneration || results.annual_generation || epvs.generation || epvs.annualGeneration || epvs.annual_generation || epvs.estimatedGeneration || epvs.estimated_generation || epvs.annualProduction || epvs.annual_production || openSolar.annualGeneration || openSolar.annual_generation || derivedGeneration || 0)
   // The quote cash price must always come from the EPVS system cost, not the calculated finance total.
   const cashPrice = Number(epvs.systemCost ?? 0)
-  const paymentMethod = String(epvs.paymentMethod || calculation?.paymentMethod || calculation?.payment_method || appointment?.payment_method || "").trim()
-  const termYears = Number(epvs.financeTerm ?? calculation?.financeTerm ?? appointment?.finance_term ?? 0)
-  const rate = Number(epvs.financeRate ?? calculation?.financeRate ?? appointment?.finance_rate ?? 0)
-  const deposit = Number(epvs.deposit ?? appointment?.deposit ?? 0)
-  const principal = Math.max(0, cashPrice - deposit)
-  const months = Math.max(1, Math.round(termYears * 12))
-  const financeFactor = Number(epvs.financeFactor ?? calculation?.financeFactor ?? appointment?.finance_factor ?? 0)
-  // Only calculate a finance figure when the selected appointment has a complete finance setup.
-  const monthly = paymentMethod.toLowerCase() === "finance" && termYears > 0 && rate >= 0 && financeFactor > 0
-    ? Math.max(0, principal) / 1000 * financeFactor
+  // All commercial and payment figures are read from the saved EPVS calculation.
+  // Do not reconstruct finance payments from appointment fields or recalculate them here.
+  const paymentMethod = String(epvs.paymentMethod || "").trim()
+  const termYears = Number(epvs.financeTerm ?? 0)
+  const rate = Number(epvs.financeRate ?? 0)
+  const deposit = Number(epvs.deposit ?? 0)
+  const adminFee = Math.max(0, Number(epvs.adminFee ?? 0))
+  const financeFactor = Number(epvs.financeFactor ?? 0)
+  const monthly = paymentMethod.toLowerCase() === "finance" && Number.isFinite(Number(results.monthlyPayment))
+    ? Number(results.monthlyPayment)
     : null
-  return { epvs, results, openSolar, panels, inverters, batteries, panelCount, panelWattage, capacity, generation, cashPrice, paymentMethod, termYears, rate, deposit, financeFactor, monthly }
+  return { epvs, results, openSolar, panels, inverters, batteries, panelCount, panelWattage, capacity, generation, cashPrice, paymentMethod, termYears, rate, deposit, financeFactor, monthly, adminFee }
 }
 
 async function imageData(url) {
@@ -204,7 +204,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
   })
 
   // Every quote displays both the cash price and monthly finance illustration.
-  const priceY=252
+  const priceY=247
   pdf.setFillColor(...blue);pdf.roundedRect(margin,priceY,w-margin*2,25,3,3,"F")
   const priceHalf=(w-margin*2)/2
   pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(8)
@@ -214,7 +214,10 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
   pdf.text(money(d.cashPrice),margin+8,priceY+17)
   pdf.text(d.monthly == null ? "Not selected" : money(d.monthly)+" / month",margin+priceHalf+6,priceY+17)
   pdf.setFont("helvetica","normal");pdf.setFontSize(6.5)
-  pdf.text(d.monthly == null ? "Select a finance product in the appointment to show monthly payments." : "Finance illustration at "+d.rate.toFixed(1)+"% over "+d.termYears+" years; subject to lender approval and confirmed terms.",margin+8,priceY+22)
+  pdf.text(d.monthly == null ? "No saved EPVS finance payment is available." : "Saved EPVS finance illustration at "+d.rate.toFixed(1)+"% over "+d.termYears+" years; subject to lender approval and confirmed terms.",margin+8,priceY+22)
+  pdf.setTextColor(...navy);pdf.setFont("helvetica","bold");pdf.setFontSize(8)
+  pdf.text("ADMIN FEE",margin+5,priceY+34)
+  pdf.setFont("helvetica","normal");pdf.text(money(d.adminFee),w-margin-5,priceY+34,{align:"right"})
   footer(1)
 
   // PAGE 2 — Itemised equipment and service breakdown.
@@ -387,35 +390,25 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
   const batteryOf30=row=>numeric30(row,"batteryBenefit","battery")||numeric30(row,"batterySelfConsumptionBenefit")+numeric30(row,"forceChargeBenefit")
   const exportOf30=row=>numeric30(row,"exportBenefit")
   const benefitOf30=row=>solarOf30(row)+batteryOf30(row)+exportOf30(row)
-  const isCashPayment30=String(d.epvs?.paymentMethod??calculation?.data?.paymentMethod??"").trim().toLowerCase()==="cash"
-  const systemCost30=Math.max(0,Number(d.epvs?.systemCost??calculation?.data?.systemCost??0))
-  const deposit30=Math.max(0,Number(d.epvs?.deposit??calculation?.data?.deposit??0))
-  const financeTerm30=Math.max(0,Number(d.epvs?.financeTerm??calculation?.data?.financeTerm??0))
-  const financeFactor30=Math.max(0,Number(d.epvs?.financeFactor??calculation?.data?.financeFactor??0))
-  const monthlyFinancePayment30=Math.max(0,systemCost30-deposit30)/1000*financeFactor30
-  const paymentOf30=row=>isCashPayment30
-    ? (Number(row?.year)===1?-systemCost30:0)
-    : -((Number(row?.year)<=financeTerm30?monthlyFinancePayment30*12:0)+(Number(row?.year)===1?deposit30:0))
+  // Render the saved EPVS projection values verbatim. The admin fee is separate.
+  const paymentOf30=row=>Number(row?.yearlyPayment ?? 0)
+  const netAnnualOf30=row=>Number(row?.netAnnualBenefit ?? 0)
+  const netPositionOf30=row=>Number(row?.cumulativePosition ?? 0)
   const fmtNum30=n=>Number(n||0).toLocaleString("en-GB",{maximumFractionDigits:0})
   const fmtMoney30=n=>money(n).replace(".00","")
   if(!projectionRows30.length){
     text("No saved 30-year EPVS projection is available for this appointment. Please recalculate and save the EPVS results before issuing this quotation.",tableX30,tableY30+20,tableW30,9,muted,"normal",4.5)
   } else {
     let rowY30=tableY30+headerH30
-    let cumulative30=0
-    const totals30=Array(10).fill(0)
-    const bodyRows30=projectionRows30.slice(0,30).map(row=>{
-      const solar=solarOf30(row),battery=batteryOf30(row),exportValue=exportOf30(row),benefit=solar+battery+exportValue
-      const payment=paymentOf30(row),netAnnual=benefit+payment
-      cumulative30+=benefit
-      return [String(row?.year||""),fmtNum30(row?.generation),fmtMoney30(solar),fmtMoney30(battery),fmtMoney30(exportValue),fmtMoney30(benefit),fmtMoney30(payment),fmtMoney30(netAnnual),fmtMoney30(cumulative30+projectionRows30.reduce((sum,r)=>sum+paymentOf30(r),0)),fmtMoney30(row?.billPreInstall),fmtMoney30(row?.billPostInstall)].map((v,i)=>({v,n:[1,2,3,4,5,6,7,8,9,10].includes(i)?Number(String(v).replace(/[£,]/g,"")):0}))
-    })
     const totalRaw30=Array(11).fill(0)
-    bodyRows30.forEach((cells,index)=>{
-      const row=projectionRows30[index]
-      const solar=solarOf30(row),battery=batteryOf30(row),exportValue=exportOf30(row),benefit=solar+battery+exportValue,payment=paymentOf30(row)
-      const vals=[String(row?.year||""),fmtNum30(row?.generation),fmtMoney30(solar),fmtMoney30(battery),fmtMoney30(exportValue),fmtMoney30(benefit),fmtMoney30(payment),fmtMoney30(benefit+payment),fmtMoney30(benefit+payment),fmtMoney30(row?.billPreInstall),fmtMoney30(row?.billPostInstall)]
-      const nums=[0,Number(row?.generation)||0,solar,battery,exportValue,benefit,payment,benefit+payment,benefit+payment,Number(row?.billPreInstall)||0,Number(row?.billPostInstall)||0]
+    const bodyRows30=projectionRows30.slice(0,30).map(row=>{
+      const solar=solarOf30(row),battery=batteryOf30(row),exportValue=exportOf30(row)
+      const benefit=Number(row?.annualBenefit ?? (solar+battery+exportValue))
+      const payment=paymentOf30(row)
+      const netAnnual=netAnnualOf30(row)
+      const netPosition=netPositionOf30(row)
+      const vals=[String(row?.year||""),fmtNum30(row?.generation),fmtMoney30(solar),fmtMoney30(battery),fmtMoney30(exportValue),fmtMoney30(benefit),fmtMoney30(payment),fmtMoney30(netAnnual),fmtMoney30(netPosition),fmtMoney30(row?.billPreInstall),fmtMoney30(row?.billPostInstall)]
+      const nums=[0,Number(row?.generation)||0,solar,battery,exportValue,benefit,payment,netAnnual,netPosition,Number(row?.billPreInstall)||0,Number(row?.billPostInstall)||0]
       tx30=tableX30
       vals.forEach((val,index)=>{
         const highlighted=index===5||index===8
