@@ -356,8 +356,7 @@ export default function Facebook() {
     <div style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: "1px solid #e2e8f0", marginBottom: 18 }}>
       <button type="button" role="tab" aria-selected={activeTab === "facebook"} onClick={() => setActiveTab("facebook")} style={tabStyle(activeTab === "facebook")}><FacebookIcon size={16}/>Facebook Ads</button>
       <button type="button" role="tab" aria-selected={activeTab === "google"} onClick={() => setActiveTab("google")} style={tabStyle(activeTab === "google")}><BarChart3 size={16}/>Google Ads</button>
-      <button type="button" role="tab" aria-selected={activeTab === "landing"} onClick={() => setActiveTab("landing")} style={tabStyle(activeTab === "landing")}><Target size={16}/>Landing Pages & Tracking</button>
     </div>
-    {activeTab === "facebook" ? <FacebookAdsTab/> : activeTab === "google" ? <GoogleAdsTab/> : <LandingPagesTab/>}
+    {activeTab === "facebook" ? <FacebookAdsTab/> : <GoogleAdsTab/>}
   </section>
 }
