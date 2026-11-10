@@ -118,7 +118,6 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={Phone} label="Call Log" onClick={() => setShowCallLog(true)}/>
             <NavItem icon={CalendarDays} label="Booked Leads" disabled/>
             <NavItem icon={Handshake} label="Commissions" disabled/>
-            <NavItem icon={Trophy} label="Canvasser KPI" active={isActive("canvasser-kpi")} onClick={() => navigate("canvasser-kpi")} disabled={!canAccessCanvasserKPI} locked={!canAccessCanvasserKPI}/>
           </Folder>
 
           <Folder visible={canSeeFolder("sales")} title="Sales" icon={Target} open={openFolders.sales} onClick={() => toggleFolder("sales")}>
