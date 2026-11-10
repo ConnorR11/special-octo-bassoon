@@ -16,7 +16,7 @@ import SurveyProgressBar from "../components/SurveyProgressBar"
 
 const surveyPhotoSectionGroups = [
   { title: "Property & installation", sections: ["Front of Property", "Rear of Property", "Side of Property", "Proposed Canopy Location"] },
-  { title: "Electrical & battery", sections: ["Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Internet DC Route", "External DC Route", "Existing EV Charger", "High Electrical Usage Items"] },
+  { title: "Electrical & battery", sections: ["Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Internal DC Route", "External DC Route", "Existing EV Charger", "High Electrical Usage Items"] },
   { title: "Roof & solar panels", sections: ["Loft Roof Truss", "Proposed Panel Layout", "Alternative Roof Elevations", "Existing Solar Equipment", "Shading Issues"] },
   { title: "Measurements & access", sections: ["Loft Access Point", "Proposed Inverter Location", "Proposed Battery Location"] },
 ]
@@ -88,7 +88,7 @@ function CustomerDetail({
   ]
   const answeredSurveyCount = surveyQuestions.filter(([, key]) => String(surveyAnswers[key] || "").trim()).length
   const surveyCompletion = Math.round((answeredSurveyCount / surveyQuestions.length) * 100)
-  const surveyPhotoSections = ["Front of Property", "Rear of Property", "Side of Property", "Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Loft Access Point", "Loft Roof Truss", "Internet DC Route", "External DC Route", "Proposed Inverter Location", "Proposed Battery Location", "Proposed Canopy Location", "Proposed Panel Layout", "Alternative Roof Elevations", "Existing Solar Equipment", "Existing EV Charger", "High Electrical Usage Items", "Shading Issues"]
+  const surveyPhotoSections = ["Front of Property", "Rear of Property", "Side of Property", "Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Loft Access Point", "Loft Roof Truss", "Internal DC Route", "External DC Route", "Proposed Inverter Location", "Proposed Battery Location", "Proposed Canopy Location", "Proposed Panel Layout", "Alternative Roof Elevations", "Existing Solar Equipment", "Existing EV Charger", "High Electrical Usage Items", "Shading Issues"]
   const documentCategories = [
     { key: "survey_video", label: "1. Survey Video", accept: "video/*", multiple: false, hint: "Common video formats. Maximum 500 MB per file." },
     { key: "survey_photos", label: "Survey Checklist & Photos", accept: "image/jpeg,image/png,image/webp", multiple: true, hint: "Complete the checklist below and upload labelled survey photos here. Generate the combined survey PDF when finished." },
@@ -124,7 +124,7 @@ function CustomerDetail({
       const docRows = surveyDocs || []
       const answerValues = Object.values(surveyAnswerRow?.answers || {})
       const answeredCount = answerValues.filter(value => String(value ?? "").trim()).length
-      const photoSections = ["Front of Property", "Rear of Property", "Side of Property", "Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Loft Access Point", "Loft Roof Truss", "Internet DC Route", "External DC Route", "Proposed Inverter Location", "Proposed Battery Location", "Proposed Canopy Location", "Proposed Panel Layout", "Alternative Roof Elevations", "Existing Solar Equipment", "Existing EV Charger", "High Electrical Usage Items", "Shading Issues"]
+      const photoSections = ["Front of Property", "Rear of Property", "Side of Property", "Close Up of Consumer Unit", "Close Up of Electricity Meter", "Close Up of Cut Out", "Wide Of Consumer Unit", "Loft Access Point", "Loft Roof Truss", "Internal DC Route", "External DC Route", "Proposed Inverter Location", "Proposed Battery Location", "Proposed Canopy Location", "Proposed Panel Layout", "Alternative Roof Elevations", "Existing Solar Equipment", "Existing EV Charger", "High Electrical Usage Items", "Shading Issues"]
       const savedPhotoSections = new Set(docRows.filter(doc => doc.category === "survey_photos").map(doc => doc.survey_section || "Front of Property"))
       const photoCount = docRows.filter(doc => doc.category === "survey_photos").length
       setSurveyProgress([
