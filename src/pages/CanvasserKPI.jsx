@@ -132,17 +132,23 @@ export default function CanvasserKPI() {
 
   function downloadCsv() {
     const header = ["Name", "H", "C", "P", "S", "NET", "H TO P"]
-    const data = rows.map((row) => [row.name, row.h, row.c, row.p, row.s, row.net.toFixed(2), formatPercent(row.hToP)])
-    const csv = [header, ...data].map((line) => line.map(csvEscape).join(",")).join("\\n")
+    const total = ["Total", visibleTotals.h, visibleTotals.c, visibleTotals.p, visibleTotals.s, toNumber(visibleTotals.net).toFixed(2), formatPercent(visibleTotals.hToP)]
+    const data = rows.map((row) => [row.name, row.h, row.c, row.p, row.s, toNumber(row.net).toFixed(2), formatPercent(row.hToP)])
+    // Use real CRLF row separators (not the literal characters "\\n") so Excel
+    // opens each canvasser on its own row and keeps the seven fields aligned.
+    const csv = "\\uFEFF" + [header, total, ...data].map((line) => line.map(csvEscape).join(",")).join("\\r\\n")
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url
-    link.download = `canvasser-results-${startDate}-to-${endDate}${productFilter !== "all" ? `-${productFilter.toLowerCase().replace(/[^a-z0-9]+/g, "-")}` : ""}.csv`
+    const productSuffix = productFilter !== "all" ? `-${productFilter.toLowerCase().replace(/[^a-z0-9]+/g, "-")}` : ""
+    const sourceSuffix = leadSourceGroup !== "all" ? `-${leadSourceGroup}` : ""
+    const canvasserSuffix = canvasserFilter !== "all" ? `- ${canvasserFilter.toLowerCase().replace(/[^a-z0-9]+/g, "-")}` : ""
+    link.download = `canvasser-results-${startDate}-to-${endDate}${productSuffix}${sourceSuffix}${canvasserSuffix}.csv`
     document.body.appendChild(link)
     link.click()
     link.remove()
-    URL.revokeObjectURL(url)
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
   const hasActiveFilters = canvasserFilter !== "all" || productFilter !== "all" || leadSourceGroup !== "all"
