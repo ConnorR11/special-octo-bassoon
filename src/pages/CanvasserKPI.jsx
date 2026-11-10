@@ -48,10 +48,18 @@ const PRODUCT_TYPES = [
   "Roughcasting",
 ]
 
+function lastWeekRange() {
+  const start = new Date(`${startOfWeek(londonToday())}T12:00:00`)
+  start.setDate(start.getDate() - 7)
+  const end = new Date(start)
+  end.setDate(end.getDate() + 6)
+  const format = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+  return { start: format(start), end: format(end) }
+}
+
 export default function CanvasserKPI() {
-  const today = londonToday()
-  const [startDate, setStartDate] = useState("2025-12-29")
-  const [endDate, setEndDate] = useState("2026-11-08")
+  const [startDate, setStartDate] = useState(() => lastWeekRange().start)
+  const [endDate, setEndDate] = useState(() => lastWeekRange().end)
   const [allRows, setAllRows] = useState([])
   const [totals, setTotals] = useState({ h: 0, c: 0, p: 0, s: 0, net: 0, hToP: 0 })
   const [loading, setLoading] = useState(true)
