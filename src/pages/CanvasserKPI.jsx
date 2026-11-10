@@ -136,7 +136,7 @@ export default function CanvasserKPI() {
     const data = rows.map((row) => [row.name, row.h, row.c, row.p, row.s, toNumber(row.net).toFixed(2), formatPercent(row.hToP)])
     // Use real CRLF row separators (not the literal characters "\\n") so Excel
     // opens each canvasser on its own row and keeps the seven fields aligned.
-    const csv = "\\uFEFF" + [header, total, ...data].map((line) => line.map(csvEscape).join(",")).join("\\r\\n")
+    const csv = "\uFEFF" + [header, total, ...data].map((line) => line.map(csvEscape).join(",")).join("\r\n")
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
