@@ -10,7 +10,7 @@ import SolarBackend from "./SolarBackend"
 import UnitAnalysis from "./UnitAnalysis"
 
 const tabs = [
-  { id: "audiences", label: "Marketing Audiences", icon: Users },
+  { id: "audiences", label: "Email/SMS Campaigns", icon: Users },
   { id: "facebook", label: "Lead Generation", icon: FacebookIcon },
   { id: "seo", label: "SEO", icon: Search },
   { id: "bulk-updater", label: "Bulk Updater", icon: RefreshCw },
