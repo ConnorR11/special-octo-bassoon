@@ -304,6 +304,19 @@ function LandingPagesTab() {
 }
 
 
+function FacebookAdsTab() {
+  const [facebookTab, setFacebookTab] = useState("plan")
+  const tabStyle = active => ({ padding: "9px 13px", border: 0, borderBottom: active ? "2px solid #1877f2" : "2px solid transparent", background: "transparent", color: active ? "#1554a6" : "#64748b", fontWeight: active ? 700 : 600, cursor: "pointer", fontSize: 12 })
+  return <div style={{ color: "#172033" }}>
+    <div style={{ display: "flex", gap: 8, borderBottom: "1px solid #e2e8f0", marginBottom: 16 }}>
+      <button type="button" role="tab" aria-selected={facebookTab === "plan"} onClick={() => setFacebookTab("plan")} style={tabStyle(facebookTab === "plan")}>Campaign plan</button>
+      <button type="button" role="tab" aria-selected={facebookTab === "audiences"} onClick={() => setFacebookTab("audiences")} style={tabStyle(facebookTab === "audiences")}>Audience setup</button>
+    </div>
+    {facebookTab === "plan" ? <CampaignsTab/> : <AudiencesTab/>}
+  </div>
+}
+
+
 function GoogleAdsTab() {
   const [googleTab, setGoogleTab] = useState("plan")
   const tabStyle = active => ({ padding: "9px 13px", border: 0, borderBottom: active ? "2px solid #4285f4" : "2px solid transparent", background: "transparent", color: active ? "#174ea6" : "#64748b", fontWeight: active ? 700 : 600, cursor: "pointer", fontSize: 12 })
@@ -451,15 +464,14 @@ function GoogleAdsTab() {
 }
 
 export default function Facebook() {
-  const [activeTab, setActiveTab] = useState("audiences")
+  const [activeTab, setActiveTab] = useState("facebook")
   const tabStyle = active => ({ display: "inline-flex", alignItems: "center", gap: 7, padding: "11px 16px", border: 0, borderBottom: active ? "2px solid #1877f2" : "2px solid transparent", background: "transparent", color: active ? "#1554a6" : "#64748b", fontWeight: active ? 700 : 600, cursor: "pointer", fontSize: 13 })
   return <section style={{ maxWidth: 1400, margin: "0 auto" }}>
     <div style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: "1px solid #e2e8f0", marginBottom: 18 }}>
-      <button type="button" role="tab" aria-selected={activeTab === "audiences"} onClick={() => setActiveTab("audiences")} style={tabStyle(activeTab === "audiences")}><Users size={16}/>Audiences</button>
-      <button type="button" role="tab" aria-selected={activeTab === "campaigns"} onClick={() => setActiveTab("campaigns")} style={tabStyle(activeTab === "campaigns")}><BarChart3 size={16}/>Facebook Campaigns</button>
+      <button type="button" role="tab" aria-selected={activeTab === "facebook"} onClick={() => setActiveTab("facebook")} style={tabStyle(activeTab === "facebook")}><FacebookIcon size={16}/>Facebook Ads</button>
       <button type="button" role="tab" aria-selected={activeTab === "google"} onClick={() => setActiveTab("google")} style={tabStyle(activeTab === "google")}><BarChart3 size={16}/>Google Ads</button>
       <button type="button" role="tab" aria-selected={activeTab === "landing"} onClick={() => setActiveTab("landing")} style={tabStyle(activeTab === "landing")}><Target size={16}/>Landing Pages & Tracking</button>
     </div>
-    {activeTab === "audiences" ? <AudiencesTab/> : activeTab === "campaigns" ? <CampaignsTab/> : activeTab === "google" ? <GoogleAdsTab/> : <LandingPagesTab/>}
+    {activeTab === "facebook" ? <FacebookAdsTab/> : activeTab === "google" ? <GoogleAdsTab/> : <LandingPagesTab/>}
   </section>
 }
