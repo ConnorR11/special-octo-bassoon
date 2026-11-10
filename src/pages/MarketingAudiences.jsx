@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react"
 import { supabase } from "../lib/supabase"
 
 
-export default function MarketingAudiences() {
+function AudienceTab() {
   const [audiences,setAudiences]=useState([])
   const [loading,setLoading]=useState(true)
   const [refreshing,setRefreshing]=useState(false)
@@ -83,5 +83,21 @@ export default function MarketingAudiences() {
       </>}
     </div>
     <p style={{fontSize:11,color:"#64748b",marginTop:14}}>Audience totals and lead-type breakdowns are stored directly on each saved audience record. No messages are sent from this page.</p>
+  </section>
+}
+
+
+export default function MarketingAudiences() {
+  const [activeTab, setActiveTab] = useState("audiences")
+  const tabStyle = active => ({ padding: "10px 15px", border: 0, borderBottom: active ? "2px solid #12345a" : "2px solid transparent", background: "transparent", color: active ? "#12345a" : "#64748b", fontWeight: active ? 700 : 600, cursor: "pointer", fontSize: 13 })
+  return <section style={{ maxWidth: 1400, margin: "0 auto", color: "#0f172a" }}>
+    <div style={{ display: "flex", gap: 8, borderBottom: "1px solid #e2e8f0", marginBottom: 18 }}>
+      <button type="button" role="tab" aria-selected={activeTab === "audiences"} onClick={() => setActiveTab("audiences")} style={tabStyle(activeTab === "audiences")}>Audiences</button>
+      <button type="button" role="tab" aria-selected={activeTab === "campaigns"} onClick={() => setActiveTab("campaigns")} style={tabStyle(activeTab === "campaigns")}>Campaigns</button>
+    </div>
+    {activeTab === "audiences" ? <AudienceTab/> : <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 20, minHeight: 180 }}>
+      <h2 style={{ margin: 0, fontSize: 18 }}>Email/SMS campaigns</h2>
+      <p style={{ margin: "7px 0 0", color: "#64748b", fontSize: 13 }}>No campaigns have been created yet.</p>
+    </section>}
   </section>
 }
