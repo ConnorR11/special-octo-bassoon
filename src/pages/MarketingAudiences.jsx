@@ -95,22 +95,26 @@ export default function MarketingAudiences() {
     { id: "campaigns", label: "Campaigns", icon: Send, description: "Plan and manage email and SMS campaigns." },
   ]
   const current = tabs.find(tab => tab.id === activeTab) || tabs[0]
-  return <section className="email-campaigns-workspace" style={{ maxWidth: 1400, margin: "0 auto", color: "#0f172a" }}>
-    <div role="tablist" aria-label="Email and SMS campaign sections" style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 12, marginBottom: 20 }}>
-      {tabs.map(({id,label,icon:Icon,description}) => {
-        const active = activeTab === id
-        return <button key={id} type="button" role="tab" aria-selected={active} onClick={() => setActiveTab(id)} style={{ minWidth: 0, minHeight: 68, textAlign: "left", display: "flex", alignItems: "center", gap: 11, padding: "11px 14px", border: active ? "1px solid #93c5fd" : "1px solid #e2e8f0", borderRadius: 10, background: active ? "#eff6ff" : "#fff", color: "#0f172a", cursor: "pointer", boxShadow: active ? "0 1px 3px rgba(37,99,235,.10), inset 0 0 0 1px #bfdbfe" : "0 1px 2px rgba(15,23,42,.025)" }}>
-          <span style={{ width: 36, height: 36, flex: "0 0 36px", display: "grid", placeItems: "center", borderRadius: 9, background: active ? "#dbeafe" : "#f1f5f9", color: active ? "#1d4ed8" : "#334155" }}><Icon size={18}/></span>
-          <span style={{ minWidth: 0, flex: 1 }}><span style={{ display: "block", fontSize: 13, fontWeight: 750, color: active ? "#1d4ed8" : "#0f172a" }}>{label}</span><span style={{ display: "block", marginTop: 3, fontSize: 10, lineHeight: 1.35, color: "#64748b" }}>{description}</span></span>
-        </button>
-      })}
-    </div>
+  const CurrentIcon = current.icon
+  return <section className="email-campaigns-workspace" style={{ maxWidth: 1400, margin: "0 auto", color: "#0f172a", minWidth: 0 }}>
     <div style={{ minWidth: 0, padding: 16, border: "1px solid #bfdbfe", borderTop: "4px solid #3b82f6", borderRadius: 12, background: "linear-gradient(180deg, #eff6ff 0%, #f8fbff 100%)", boxShadow: "0 3px 12px rgba(37,99,235,.07)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 14, paddingBottom: 12, borderBottom: "1px solid #bfdbfe" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+          <span style={{ width: 30, height: 30, display: "grid", placeItems: "center", borderRadius: 8, background: "#dbeafe", color: "#2563eb" }}><CurrentIcon size={16}/></span>
+          <div><div style={{ color: "#1d4ed8", fontSize: 13, fontWeight: 800 }}>{current.label} workspace</div><div style={{ color: "#54749b", fontSize: 10 }}>{current.description}</div></div>
+        </div>
+        <label style={{ display: "flex", alignItems: "center", gap: 10, color: "#173b69", fontSize: 12, fontWeight: 750, whiteSpace: "nowrap" }}>
+          Page
+          <select aria-label="Select Email/SMS Campaigns page" value={activeTab} onChange={event => setActiveTab(event.target.value)} style={{ minWidth: 230, maxWidth: "min(360px, 65vw)", padding: "10px 36px 10px 12px", border: "1px solid #93c5fd", borderRadius: 9, background: "#fff", color: "#173b69", fontSize: 12, fontWeight: 700, cursor: "pointer", boxShadow: "0 1px 3px rgba(37,99,235,.08)" }}>
+            {tabs.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
+          </select>
+        </label>
+      </div>
       {activeTab === "audiences" ? <AudienceTab/> : <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 20, minHeight: 180 }}>
         <h2 style={{ margin: 0, fontSize: 18 }}>Email/SMS campaigns</h2>
         <p style={{ margin: "7px 0 0", color: "#64748b", fontSize: 13 }}>No campaigns have been created yet.</p>
       </section>}
     </div>
-    <style>{'@media(max-width:700px){.email-campaigns-workspace [role="tablist"]{grid-template-columns:1fr!important}}'}</style>
+    <style>{'@media(max-width:700px){.email-campaigns-workspace select{min-width:0!important;max-width:55vw!important}}'}</style>
   </section>
 }
