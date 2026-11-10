@@ -59,8 +59,7 @@ export default function CanvasserKPI() {
   const [filterOpen, setFilterOpen] = useState(false)
   const [canvasserFilter, setCanvasserFilter] = useState("all")
   const [productFilter, setProductFilter] = useState("all")
-  const [leadSources, setLeadSources] = useState([])
-  const [selectedLeadSources, setSelectedLeadSources] = useState([])
+  const [leadSourceGroup, setLeadSourceGroup] = useState("all")
 
   async function loadData() {
     if (!supabase) {
@@ -80,24 +79,14 @@ export default function CanvasserKPI() {
     setLoading(true)
     setError("")
     try {
-      const [resultsResponse, sourcesResponse] = await Promise.all([
-        supabase.rpc("get_canvasser_results", {
-          p_start_date: startDate,
-          p_end_date: endDate,
-          p_canvasser: null,
-          p_job_type: productFilter === "all" ? null : productFilter,
-          p_lead_sources: selectedLeadSources.length ? selectedLeadSources : null,
-        }),
-        supabase.rpc("get_canvasser_lead_sources", {
-          p_start_date: startDate,
-          p_end_date: endDate,
-          p_job_type: productFilter === "all" ? null : productFilter,
-        }),
-      ])
-      if (resultsResponse.error) throw resultsResponse.error
-      if (sourcesResponse.error) throw sourcesResponse.error
-      setLeadSources((sourcesResponse.data || []).map((row) => row.lead_source).filter(Boolean).sort((a, b) => a.localeCompare(b)))
-      const data = resultsResponse.data
+      const { data, error: rpcError } = await supabase.rpc("get_canvasser_results", {
+        p_start_date: startDate,
+        p_end_date: endDate,
+        p_canvasser: null,
+        p_job_type: productFilter === "all" ? null : productFilter,
+        p_lead_source_group: leadSourceGroup === "all" ? null : leadSourceGroup,
+      })
+      if (rpcError) throw rpcError
 
       const resultRows = (data || []).map((row) => ({
         name: String(row.name || "Unassigned"),
@@ -122,7 +111,7 @@ export default function CanvasserKPI() {
     }
   }
 
-  useEffect(() => { loadData() }, [startDate, endDate, productFilter, selectedLeadSources])
+  useEffect(() => { loadData() }, [startDate, endDate, productFilter, leadSourceGroup])
 
   const rows = useMemo(
     () => canvasserFilter === "all" ? allRows : allRows.filter((row) => row.name === canvasserFilter),
@@ -156,7 +145,7 @@ export default function CanvasserKPI() {
     URL.revokeObjectURL(url)
   }
 
-  const hasActiveFilters = canvasserFilter !== "all" || productFilter !== "all" || selectedLeadSources.length > 0
+  const hasActiveFilters = canvasserFilter !== "all" || productFilter !== "all" || leadSourceGroup !== "all"
 
   return <section className="canvasser-kpi-page">
     <style>{`
@@ -207,20 +196,18 @@ export default function CanvasserKPI() {
               <option value="all">All product types</option>
               {PRODUCT_TYPES.map((product) => <option key={product} value={product}>{product}</option>)}
             </select>
-            <label>Lead source <span style={{fontWeight:400,color:"#98a2b3"}}>({selectedLeadSources.length} selected)</span></label>
-            <div className="ckpi-source-list">
-              {leadSources.map((source) => <label className="ckpi-source-option" key={source}>
-                <input type="checkbox" checked={selectedLeadSources.includes(source)} onChange={(event) => setSelectedLeadSources((current) => event.target.checked ? [...current, source] : current.filter((item) => item !== source))} />
-                <span>{source}</span>
-              </label>)}
-              {!leadSources.length && <div className="ckpi-source-empty">No lead sources for this date/product selection.</div>}
-            </div>
+            <label htmlFor="canvasser-lead-source-filter">Lead source</label>
+            <select id="canvasser-lead-source-filter" value={leadSourceGroup} onChange={(event) => setLeadSourceGroup(event.target.value)}>
+              <option value="all">All lead sources</option>
+              <option value="core">Core</option>
+              <option value="hotkeys">Hotkeys</option>
+            </select>
             <label htmlFor="canvasser-filter">Canvasser</label>
             <select id="canvasser-filter" value={canvasserFilter} onChange={(event) => setCanvasserFilter(event.target.value)}>
               <option value="all">All Canvassers</option>
               {allRows.map((row) => <option key={row.name} value={row.name}>{row.name}</option>)}
             </select>
-            <div className="ckpi-filter-actions"><button type="button" className="ckpi-filter-clear" onClick={() => { setProductFilter("all"); setCanvasserFilter("all"); setSelectedLeadSources([]) }}>Clear filters</button><button type="button" className="ckpi-filter-clear" onClick={() => setFilterOpen(false)}>Done</button></div>
+            <div className="ckpi-filter-actions"><button type="button" className="ckpi-filter-clear" onClick={() => { setProductFilter("all"); setCanvasserFilter("all"); setLeadSourceGroup("all") }}>Clear filters</button><button type="button" className="ckpi-filter-clear" onClick={() => setFilterOpen(false)}>Done</button></div>
           </div>}
         </div>
         <button type="button" className="ckpi-download" onClick={downloadCsv} disabled={loading || !rows.length}><Download size={15} /> Download</button>
