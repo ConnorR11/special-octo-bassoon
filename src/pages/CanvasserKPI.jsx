@@ -8,12 +8,6 @@ function londonToday() {
   return `${values.year}-${values.month}-${values.day}`
 }
 
-function shiftDate(value, days) {
-  const date = new Date(`${value}T12:00:00`)
-  date.setDate(date.getDate() + days)
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
-}
-
 function startOfWeek(value) {
   const date = new Date(`${value}T12:00:00`)
   const day = date.getDay()
@@ -21,44 +15,10 @@ function startOfWeek(value) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
 }
 
-function isTrue(value) {
-  if (value === true) return true
-  if (typeof value === "string") return ["true", "t", "1", "yes", "y"].includes(value.trim().toLowerCase())
-  return value === 1
-}
-
 function toNumber(value) {
   if (value === null || value === undefined || value === "") return 0
   const parsed = Number(String(value).replace(/£/g, "").replace(/,/g, "").replace(/%/g, "").trim())
   return Number.isFinite(parsed) ? parsed : 0
-}
-
-function display(value, fallback = "Unassigned") {
-  const text = String(value ?? "").trim()
-  return text || fallback
-}
-
-function normaliseEmail(value) {
-  return String(value ?? "").trim().toLowerCase()
-}
-
-function getDealValue(appointment) {
-  const deals = appointment?.deals
-  const deal = Array.isArray(deals) ? deals[0] : deals
-  return toNumber(deal?.net_value ?? appointment?.net_value ?? 0)
-}
-
-function makeStats(rows) {
-  return rows.reduce((stats, row) => {
-    if (isTrue(row.cps_h)) stats.h += 1
-    if (isTrue(row.cps_c)) stats.c += 1
-    if (isTrue(row.cps_p)) stats.p += 1
-    if (isTrue(row.cps_s)) {
-      stats.s += 1
-      stats.net += getDealValue(row)
-    }
-    return stats
-  }, { h: 0, c: 0, p: 0, s: 0, net: 0 })
 }
 
 function formatCurrency(value) {
@@ -71,19 +31,34 @@ function formatPercent(value) {
 
 function csvEscape(value) {
   const text = String(value ?? "")
-  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
+  return /[",\\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
 }
+
+const PRODUCT_TYPES = [
+  "Windows",
+  "Solar",
+  "Air Source Heat Pump",
+  "ASHP",
+  "Boiler",
+  "ECO4",
+  "Garden Room",
+  "Garden Rooms",
+  "Roofline",
+  "Roughcast",
+  "Roughcasting",
+]
 
 export default function CanvasserKPI() {
   const today = londonToday()
-  const [startDate, setStartDate] = useState(startOfWeek(today))
-  const [endDate, setEndDate] = useState(today)
-  const [appointments, setAppointments] = useState([])
-  const [profiles, setProfiles] = useState([])
+  const [startDate, setStartDate] = useState("2025-12-29")
+  const [endDate, setEndDate] = useState("2026-11-08")
+  const [allRows, setAllRows] = useState([])
+  const [totals, setTotals] = useState({ h: 0, c: 0, p: 0, s: 0, net: 0, hToP: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [filterOpen, setFilterOpen] = useState(false)
   const [canvasserFilter, setCanvasserFilter] = useState("all")
+  const [productFilter, setProductFilter] = useState("all")
 
   async function loadData() {
     if (!supabase) {
@@ -94,7 +69,8 @@ export default function CanvasserKPI() {
     if (!startDate || !endDate) return
     if (startDate > endDate) {
       setError("Start date must be before or equal to the end date.")
-      setAppointments([])
+      setAllRows([])
+      setTotals({ h: 0, c: 0, p: 0, s: 0, net: 0, hToP: 0 })
       setLoading(false)
       return
     }
@@ -102,50 +78,46 @@ export default function CanvasserKPI() {
     setLoading(true)
     setError("")
     try {
-      const start = new Date(`${startDate}T00:00:00`)
-      const endExclusive = new Date(`${shiftDate(endDate, 1)}T00:00:00`)
-      const [appointmentsResult, profilesResult] = await Promise.all([
-        supabase.from("appointments").select("*, deals(net_value)").gte("appointment_date", start.toISOString()).lt("appointment_date", endExclusive.toISOString()).order("appointment_date", { ascending: true }),
-        supabase.from("profiles").select("email, full_name, display_name").order("full_name", { ascending: true }),
-      ])
-      if (appointmentsResult.error) throw appointmentsResult.error
-      if (profilesResult.error) throw profilesResult.error
-      setAppointments(appointmentsResult.data || [])
-      setProfiles(profilesResult.data || [])
+      const { data, error: rpcError } = await supabase.rpc("get_canvasser_results", {
+        p_start_date: startDate,
+        p_end_date: endDate,
+        p_canvasser: null,
+        p_job_type: productFilter === "all" ? null : productFilter,
+      })
+      if (rpcError) throw rpcError
+
+      const resultRows = (data || []).map((row) => ({
+        name: String(row.name || "Unassigned"),
+        h: toNumber(row.h),
+        c: toNumber(row.c),
+        p: toNumber(row.p),
+        s: toNumber(row.s),
+        net: toNumber(row.net),
+        hToP: toNumber(row.h_to_p),
+        isTotal: row.is_total === true,
+      }))
+      const totalRow = resultRows.find((row) => row.isTotal)
+      setTotals(totalRow || { h: 0, c: 0, p: 0, s: 0, net: 0, hToP: 0 })
+      setAllRows(resultRows.filter((row) => !row.isTotal))
     } catch (err) {
       console.error("Error loading canvasser KPI data:", err)
       setError(err?.message || "Unable to load canvasser KPI data.")
-      setAppointments([])
+      setAllRows([])
+      setTotals({ h: 0, c: 0, p: 0, s: 0, net: 0, hToP: 0 })
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => { loadData() }, [startDate, endDate])
+  useEffect(() => { loadData() }, [startDate, endDate, productFilter])
 
-  const nameByEmail = useMemo(() => profiles.reduce((map, profile) => {
-    const email = normaliseEmail(profile.email)
-    const name = String(profile.full_name || "").trim()
-    if (email && name) map[email] = name
-    return map
-  }, {}), [profiles])
+  const rows = useMemo(
+    () => canvasserFilter === "all" ? allRows : allRows.filter((row) => row.name === canvasserFilter),
+    [allRows, canvasserFilter]
+  )
 
-  const allRows = useMemo(() => {
-    const grouped = new Map()
-    appointments.forEach((appointment) => {
-      const email = normaliseEmail(appointment.canvasser)
-      const key = email || "unassigned"
-      if (!grouped.has(key)) grouped.set(key, [])
-      grouped.get(key).push(appointment)
-    })
-    return Array.from(grouped.entries()).map(([key, rows]) => {
-      const stats = makeStats(rows)
-      return { name: key === "unassigned" ? "Unassigned" : (nameByEmail[key] || display(rows[0]?.canvasser)), ...stats, hToP: stats.h > 0 ? (stats.p / stats.h) * 100 : 0 }
-    }).sort((a, b) => b.net - a.net || b.s - a.s || b.hToP - a.hToP || a.name.localeCompare(b.name))
-  }, [appointments, nameByEmail])
-
-  const rows = useMemo(() => canvasserFilter === "all" ? allRows : allRows.filter((row) => row.name === canvasserFilter), [allRows, canvasserFilter])
-  const totals = useMemo(() => {
+  const visibleTotals = useMemo(() => {
+    if (canvasserFilter === "all") return totals
     const stats = rows.reduce((total, row) => ({
       h: total.h + row.h,
       c: total.c + row.c,
@@ -153,23 +125,25 @@ export default function CanvasserKPI() {
       s: total.s + row.s,
       net: total.net + row.net,
     }), { h: 0, c: 0, p: 0, s: 0, net: 0 })
-    return { ...stats, hToP: stats.h > 0 ? (stats.p / stats.h) * 100 : 0 }
-  }, [rows])
+    return { ...stats, hToP: stats.h > 0 ? stats.p / stats.h * 100 : 0 }
+  }, [rows, totals, canvasserFilter])
 
   function downloadCsv() {
     const header = ["Name", "H", "C", "P", "S", "NET", "H TO P"]
     const data = rows.map((row) => [row.name, row.h, row.c, row.p, row.s, row.net.toFixed(2), formatPercent(row.hToP)])
-    const csv = [header, ...data].map((line) => line.map(csvEscape).join(",")).join("\n")
+    const csv = [header, ...data].map((line) => line.map(csvEscape).join(",")).join("\\n")
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url
-    link.download = `canvasser-results-${startDate}-to-${endDate}.csv`
+    link.download = `canvasser-results-${startDate}-to-${endDate}${productFilter !== "all" ? `-${productFilter.toLowerCase().replace(/[^a-z0-9]+/g, "-")}` : ""}.csv`
     document.body.appendChild(link)
     link.click()
     link.remove()
     URL.revokeObjectURL(url)
   }
+
+  const hasActiveFilters = canvasserFilter !== "all" || productFilter !== "all"
 
   return <section className="canvasser-kpi-page">
     <style>{`
@@ -187,9 +161,10 @@ export default function CanvasserKPI() {
       .ckpi-toolbar{height:42px;display:flex;justify-content:flex-end;align-items:center;gap:8px}
       .ckpi-download,.ckpi-filter-button{display:inline-flex;align-items:center;gap:7px;border:0;border-radius:7px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
       .ckpi-download{background:#0789e8;color:#fff}.ckpi-download:hover{background:#087ed3}.ckpi-download:disabled{opacity:.55;cursor:default}
-      .ckpi-filter-wrap{position:relative}.ckpi-filter-button{background:#f0f0f0;color:#777;min-width:114px;justify-content:center}.ckpi-filter-button.active{color:#555}.ckpi-filter-button:hover{background:#e8e8e8}
-      .ckpi-filter-menu{position:absolute;right:0;top:42px;z-index:20;width:230px;padding:12px;background:#fff;border:1px solid #e0e4e8;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
-      .ckpi-filter-menu label{display:block;font-size:10px;font-weight:700;color:#667085;margin-bottom:6px}.ckpi-filter-menu select{width:100%;height:34px;border:1px solid #dfe3e8;border-radius:6px;background:#fff;padding:0 8px;font-size:12px;outline:none}
+      .ckpi-filter-wrap{position:relative}.ckpi-filter-button{background:#f0f0f0;color:#777;min-width:114px;justify-content:center}.ckpi-filter-button.active{color:#087ed3;background:#eaf5ff}.ckpi-filter-button:hover{background:#e8e8e8}
+      .ckpi-filter-menu{position:absolute;right:0;top:42px;z-index:20;width:245px;padding:14px;background:#fff;border:1px solid #e0e4e8;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+      .ckpi-filter-menu label{display:block;font-size:10px;font-weight:700;color:#667085;margin:0 0 6px}.ckpi-filter-menu select{width:100%;height:36px;border:1px solid #dfe3e8;border-radius:6px;background:#fff;padding:0 8px;font-size:12px;outline:none;margin-bottom:12px}.ckpi-filter-menu select:last-of-type{margin-bottom:0}
+      .ckpi-filter-actions{display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:8px}.ckpi-filter-clear{border:0;background:transparent;color:#087ed3;font-size:11px;font-weight:700;cursor:pointer;padding:5px 0}
       .ckpi-table{overflow:hidden;border-radius:2px}.ckpi-table-head,.ckpi-table-total,.ckpi-table-row{display:grid;grid-template-columns:minmax(300px,1fr) 65px 65px 65px 65px 120px 100px;align-items:center}
       .ckpi-table-head{min-height:31px;font-size:8px;color:#555;font-weight:700}.ckpi-table-head>div:not(:first-child){text-align:center}
       .ckpi-table-total{min-height:38px;background:#002d49;color:#fff;font-size:12px;font-weight:700}.ckpi-table-total>div{padding:0 7px}.ckpi-table-total>div:not(:first-child){text-align:center}
@@ -212,15 +187,27 @@ export default function CanvasserKPI() {
     <div className="ckpi-card ckpi-results">
       <div className="ckpi-toolbar">
         <div className="ckpi-filter-wrap">
-          <button type="button" className={`ckpi-filter-button ${canvasserFilter !== "all" ? "active" : ""}`} onClick={() => setFilterOpen((value) => !value)}><Filter size={13} /> Filter <ChevronDown size={13} /></button>
-          {filterOpen && <div className="ckpi-filter-menu"><label htmlFor="canvasser-filter">Canvasser</label><select id="canvasser-filter" value={canvasserFilter} onChange={(event) => { setCanvasserFilter(event.target.value); setFilterOpen(false) }}><option value="all">All Canvassers</option>{allRows.map((row) => <option key={row.name} value={row.name}>{row.name}</option>)}</select></div>}
+          <button type="button" className={`ckpi-filter-button ${hasActiveFilters ? "active" : ""}`} onClick={() => setFilterOpen((value) => !value)}><Filter size={13} /> Filter {hasActiveFilters ? "•" : ""} <ChevronDown size={13} /></button>
+          {filterOpen && <div className="ckpi-filter-menu">
+            <label htmlFor="canvasser-product-filter">Product type</label>
+            <select id="canvasser-product-filter" value={productFilter} onChange={(event) => setProductFilter(event.target.value)}>
+              <option value="all">All product types</option>
+              {PRODUCT_TYPES.map((product) => <option key={product} value={product}>{product}</option>)}
+            </select>
+            <label htmlFor="canvasser-filter">Canvasser</label>
+            <select id="canvasser-filter" value={canvasserFilter} onChange={(event) => setCanvasserFilter(event.target.value)}>
+              <option value="all">All Canvassers</option>
+              {allRows.map((row) => <option key={row.name} value={row.name}>{row.name}</option>)}
+            </select>
+            <div className="ckpi-filter-actions"><button type="button" className="ckpi-filter-clear" onClick={() => { setProductFilter("all"); setCanvasserFilter("all") }}>Clear filters</button><button type="button" className="ckpi-filter-clear" onClick={() => setFilterOpen(false)}>Done</button></div>
+          </div>}
         </div>
         <button type="button" className="ckpi-download" onClick={downloadCsv} disabled={loading || !rows.length}><Download size={15} /> Download</button>
       </div>
       {error && <div className="ckpi-error">{error}</div>}
       <div className="ckpi-table">
         <div className="ckpi-table-head"><div>NAME</div><div>H</div><div>C</div><div>P</div><div>S</div><div>NET</div><div>H TO P</div></div>
-        <div className="ckpi-table-total"><div>Total</div><div>{totals.h}</div><div>{totals.c}</div><div>{totals.p}</div><div>{totals.s}</div><div>{formatCurrency(totals.net)}</div><div>{formatPercent(totals.hToP)}</div></div>
+        <div className="ckpi-table-total"><div>Total</div><div>{visibleTotals.h}</div><div>{visibleTotals.c}</div><div>{visibleTotals.p}</div><div>{visibleTotals.s}</div><div>{formatCurrency(visibleTotals.net)}</div><div>{formatPercent(visibleTotals.hToP)}</div></div>
         {loading ? <div className="ckpi-loading">Loading canvasser results…</div> : rows.length ? rows.map((row) => <div className="ckpi-table-row" key={row.name}><div className="ckpi-name">{row.name}</div><div>{row.h}</div><div>{row.c}</div><div>{row.p}</div><div>{row.s}</div><div>{formatCurrency(row.net)}</div><div>{formatPercent(row.hToP)}</div></div>) : <div className="ckpi-empty">No canvasser results found for the selected dates.</div>}
       </div>
     </div>
