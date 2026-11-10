@@ -142,7 +142,7 @@ export default function MarketingDashboard({ onSelectAppointment, permissionLeve
     { id: "overview", label: "Overview", icon: "▦", description: "Daily activity and headline performance", pages: [{ id: "made-today", label: "Made Today" }] },
     { id: "lead-management", label: "Lead Management", icon: "♙", description: "Work, review and manage incoming leads", pages: [{ id: "leads-to-call", label: "Leads To Call" }, { id: "data-kanban", label: "Kanban" }, { id: "data-archived-leads", label: "Archived Leads" }] },
     { id: "lead-acquisition", label: "Lead Acquisition", icon: "◎", description: "Understand lead sources, spend and acquisition costs", pages: [{ id: "lead-sources", label: "Lead Sources", adminOnly: true }, { id: "data-spend", label: "Data Spend" }] },
-    { id: "reporting", label: "Reporting", icon: "▤", description: "Detailed performance reports and exports", pages: [{ id: "data-overview", label: "Performance Overview" }, { id: "data-map-appointments", label: "Map of Appointments" }, { id: "canvasser-kpi", label: "Canvasser KPI", minPermission: 3 }, { id: "data-results", label: "Data Results", adminOnly: true }, { id: "lead-export", label: "Lead Export", adminOnly: true }] },
+    { id: "reporting", label: "Reporting", icon: "▤", description: "Detailed performance reports and exports", pages: [{ id: "data-overview", label: "Performance Overview" }, { id: "canvasser-kpi", label: "Canvasser KPI", minPermission: 3 }, { id: "data-results", label: "Data Results", adminOnly: true }, { id: "lead-export", label: "Lead Export", adminOnly: true }] },
   ]
 
   const visibleSections = sections.map(section => ({
@@ -168,7 +168,6 @@ export default function MarketingDashboard({ onSelectAppointment, permissionLeve
       case "data-results": return <DataResults embedded />
       case "lead-export": return <LeadExport />
       case "data-overview": return <DataDashboard embeddedTab="overview" hideHeader />
-      case "data-map-appointments": return <DataDashboard embeddedTab="map-appointments" hideHeader />
       case "canvasser-kpi": return <CanvasserKPI/>
       case "data-archived-leads": return <DataDashboard embeddedTab="archived-leads" hideHeader />
       case "data-kanban": return <DataDashboard embeddedTab="kanban" hideHeader />
