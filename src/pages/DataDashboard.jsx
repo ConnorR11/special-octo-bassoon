@@ -15,7 +15,6 @@ import {
   YAxis,
 } from "recharts"
 import { supabase } from "../lib/supabase"
-import MapOfAppointments from "./MapOfAppointments"
 import LeadDispositionKanban from "../components/LeadDispositionKanban"
 import ProntoWeeklyComparison from "../components/ProntoWeeklyComparison"
 import ProntoSpend from "../components/ProntoSpend"
@@ -1416,13 +1415,6 @@ function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeade
         </button>
         <button
           type="button"
-          className={`data-dashboard-tab ${activeTab === "map-appointments" ? "active" : ""}`}
-          onClick={() => setActiveTab("map-appointments")}
-        >
-          Map of Appointments
-        </button>
-        <button
-          type="button"
           className={`data-dashboard-tab ${activeTab === "archived-leads" ? "active" : ""}`}
           onClick={() => { setArchivedLeadsPage(0); setActiveTab("archived-leads") }}
         >
@@ -2048,9 +2040,7 @@ function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeade
         </div>
       ) : activeTab === "kanban" ? (
         <LeadDispositionKanban />
-      ) : (
-        <MapOfAppointments />
-      )}
+      ) : null}
     </section>
   )
 }
