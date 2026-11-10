@@ -7,6 +7,7 @@ import DataSpend from "./DataSpend"
 import DataResults from "./DataResults"
 import LeadExport from "./LeadExport"
 import DataDashboard from "./DataDashboard"
+import CanvasserKPI from "./CanvasserKPI"
 
 function getLondonDayBounds() {
   const now = new Date()
@@ -141,12 +142,12 @@ export default function MarketingDashboard({ onSelectAppointment, permissionLeve
     { id: "overview", label: "Overview", icon: "▦", description: "Daily activity and headline performance", pages: [{ id: "made-today", label: "Made Today" }] },
     { id: "lead-management", label: "Lead Management", icon: "♙", description: "Work, review and manage incoming leads", pages: [{ id: "leads-to-call", label: "Leads To Call" }, { id: "data-kanban", label: "Kanban" }, { id: "data-archived-leads", label: "Archived Leads" }] },
     { id: "lead-acquisition", label: "Lead Acquisition", icon: "◎", description: "Understand lead sources, spend and acquisition costs", pages: [{ id: "lead-sources", label: "Lead Sources", adminOnly: true }, { id: "data-spend", label: "Data Spend" }] },
-    { id: "reporting", label: "Reporting", icon: "▤", description: "Detailed performance reports and exports", pages: [{ id: "data-overview", label: "Performance Overview" }, { id: "data-map-appointments", label: "Map of Appointments" }, { id: "data-results", label: "Data Results", adminOnly: true }, { id: "lead-export", label: "Lead Export", adminOnly: true }] },
+    { id: "reporting", label: "Reporting", icon: "▤", description: "Detailed performance reports and exports", pages: [{ id: "data-overview", label: "Performance Overview" }, { id: "data-map-appointments", label: "Map of Appointments" }, { id: "canvasser-kpi", label: "Canvasser KPI", minPermission: 3 }, { id: "data-results", label: "Data Results", adminOnly: true }, { id: "lead-export", label: "Lead Export", adminOnly: true }] },
   ]
 
   const visibleSections = sections.map(section => ({
     ...section,
-    pages: section.pages.filter(page => !page.adminOnly || canAccessDataResults),
+    pages: section.pages.filter(page => (!page.adminOnly || canAccessDataResults) && (!page.minPermission || Number(permissionLevel) >= page.minPermission)),
   }))
   const currentSection = visibleSections.find(section => section.id === activeSection) || visibleSections[0]
   const currentPage = currentSection.pages.find(page => page.id === activePage) || currentSection.pages[0]
@@ -168,6 +169,7 @@ export default function MarketingDashboard({ onSelectAppointment, permissionLeve
       case "lead-export": return <LeadExport />
       case "data-overview": return <DataDashboard embeddedTab="overview" hideHeader />
       case "data-map-appointments": return <DataDashboard embeddedTab="map-appointments" hideHeader />
+      case "canvasser-kpi": return <CanvasserKPI/>
       case "data-archived-leads": return <DataDashboard embeddedTab="archived-leads" hideHeader />
       case "data-kanban": return <DataDashboard embeddedTab="kanban" hideHeader />
       default: return <MadeTodayDashboard onSelectAppointment={onSelectAppointment} />
