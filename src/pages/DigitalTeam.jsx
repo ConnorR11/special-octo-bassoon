@@ -29,10 +29,11 @@ export default function DigitalTeam({ permissionLevel = 1, onOpenAppointment }) 
   const [activeConnorTab, setActiveConnorTab] = useState("bulk-updater")
   const visibleTabs = Number(permissionLevel) >= 4 ? tabs : tabs.filter(tab => tab.id !== "connor")
   const tabStyle = (active) => ({
-    display: "inline-flex", alignItems: "center", gap: 8, padding: "11px 15px",
-    border: 0, borderBottom: active ? "2px solid #0f172a" : "2px solid transparent",
-    background: "transparent", color: active ? "#0f172a" : "#64748b",
-    fontWeight: active ? 700 : 600, cursor: "pointer", fontSize: 14, whiteSpace: "nowrap",
+    minWidth: 0, minHeight: 68, textAlign: "left", display: "flex", alignItems: "center", gap: 11,
+    padding: "11px 14px", border: active ? "1px solid #93c5fd" : "1px solid #e2e8f0",
+    borderRadius: 10, background: active ? "#eff6ff" : "#fff", color: "#0f172a",
+    cursor: "pointer", boxShadow: active ? "0 1px 3px rgba(37,99,235,.10), inset 0 0 0 1px #bfdbfe" : "0 1px 2px rgba(15,23,42,.025)",
+    fontWeight: active ? 750 : 600, fontSize: 13, whiteSpace: "nowrap",
   })
   return <section>
     <div style={{ position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, minHeight: 112, padding: "20px 24px", marginBottom: 16, borderRadius: 13, background: "linear-gradient(115deg, #10264a 0%, #173b69 58%, #24558a 100%)", boxShadow: "0 5px 16px rgba(15, 35, 67, .14)" }}>
@@ -52,8 +53,8 @@ export default function DigitalTeam({ permissionLevel = 1, onOpenAppointment }) 
         DIGITAL TEAM
       </div>
     </div>
-    <div role="tablist" aria-label="Digital Team sections" style={{ display: "flex", gap: 8, borderBottom: "1px solid #e2e8f0", marginBottom: 20, overflowX: "auto" }}>
-      {visibleTabs.map(({ id, label, icon: Icon }) => <button key={id} type="button" role="tab" aria-selected={activeTab === id} onClick={() => setActiveTab(id)} style={tabStyle(activeTab === id)}><Icon size={16}/>{label}</button>)}
+    <div role="tablist" aria-label="Digital Team sections" style={{ display: "grid", gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))`, gap: 12, marginBottom: 20 }}>
+      {visibleTabs.map(({ id, label, icon: Icon }) => <button key={id} type="button" role="tab" aria-selected={activeTab === id} onClick={() => setActiveTab(id)} style={tabStyle(activeTab === id)}><span style={{ width: 36, height: 36, flex: "0 0 36px", display: "grid", placeItems: "center", borderRadius: 9, background: activeTab === id ? "#dbeafe" : "#f1f5f9", color: activeTab === id ? "#1d4ed8" : "#334155" }}><Icon size={18}/></span><span>{label}</span></button>)}
     </div>
     {activeTab === "audiences" ? <MarketingAudiences/> : activeTab === "facebook" ? <Facebook/> : activeTab === "website" ? <Website/> : activeTab === "connor" ? <div>
       <div role="tablist" aria-label="Connor sections" style={{ display: "flex", gap: 5, borderBottom: "1px solid #e2e8f0", marginBottom: 18, overflowX: "auto" }}>
