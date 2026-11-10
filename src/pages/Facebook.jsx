@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { Facebook as FacebookIcon, Users, ShieldCheck, RefreshCw, BarChart3, Mail, MessageSquare, CheckCircle2 } from "lucide-react"
+import { Facebook as FacebookIcon, Users, Target, ShieldCheck, RefreshCw, BarChart3, Mail, MessageSquare, CheckCircle2 } from "lucide-react"
 
 const Section = ({ number, title, children }) => (
   <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 20, marginBottom: 16 }}>
