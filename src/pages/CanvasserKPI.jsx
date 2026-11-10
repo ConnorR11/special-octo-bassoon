@@ -59,6 +59,8 @@ export default function CanvasserKPI() {
   const [filterOpen, setFilterOpen] = useState(false)
   const [canvasserFilter, setCanvasserFilter] = useState("all")
   const [productFilter, setProductFilter] = useState("all")
+  const [leadSources, setLeadSources] = useState([])
+  const [selectedLeadSources, setSelectedLeadSources] = useState([])
 
   async function loadData() {
     if (!supabase) {
@@ -78,13 +80,24 @@ export default function CanvasserKPI() {
     setLoading(true)
     setError("")
     try {
-      const { data, error: rpcError } = await supabase.rpc("get_canvasser_results", {
-        p_start_date: startDate,
-        p_end_date: endDate,
-        p_canvasser: null,
-        p_job_type: productFilter === "all" ? null : productFilter,
-      })
-      if (rpcError) throw rpcError
+      const [resultsResponse, sourcesResponse] = await Promise.all([
+        supabase.rpc("get_canvasser_results", {
+          p_start_date: startDate,
+          p_end_date: endDate,
+          p_canvasser: null,
+          p_job_type: productFilter === "all" ? null : productFilter,
+          p_lead_sources: selectedLeadSources.length ? selectedLeadSources : null,
+        }),
+        supabase.rpc("get_canvasser_lead_sources", {
+          p_start_date: startDate,
+          p_end_date: endDate,
+          p_job_type: productFilter === "all" ? null : productFilter,
+        }),
+      ])
+      if (resultsResponse.error) throw resultsResponse.error
+      if (sourcesResponse.error) throw sourcesResponse.error
+      setLeadSources((sourcesResponse.data || []).map((row) => row.lead_source).filter(Boolean).sort((a, b) => a.localeCompare(b)))
+      const data = resultsResponse.data
 
       const resultRows = (data || []).map((row) => ({
         name: String(row.name || "Unassigned"),
@@ -109,7 +122,7 @@ export default function CanvasserKPI() {
     }
   }
 
-  useEffect(() => { loadData() }, [startDate, endDate, productFilter])
+  useEffect(() => { loadData() }, [startDate, endDate, productFilter, selectedLeadSources])
 
   const rows = useMemo(
     () => canvasserFilter === "all" ? allRows : allRows.filter((row) => row.name === canvasserFilter),
@@ -143,7 +156,7 @@ export default function CanvasserKPI() {
     URL.revokeObjectURL(url)
   }
 
-  const hasActiveFilters = canvasserFilter !== "all" || productFilter !== "all"
+  const hasActiveFilters = canvasserFilter !== "all" || productFilter !== "all" || selectedLeadSources.length > 0
 
   return <section className="canvasser-kpi-page">
     <style>{`
@@ -164,7 +177,7 @@ export default function CanvasserKPI() {
       .ckpi-filter-wrap{position:relative}.ckpi-filter-button{background:#f0f0f0;color:#777;min-width:114px;justify-content:center}.ckpi-filter-button.active{color:#087ed3;background:#eaf5ff}.ckpi-filter-button:hover{background:#e8e8e8}
       .ckpi-filter-menu{position:absolute;right:0;top:42px;z-index:20;width:245px;padding:14px;background:#fff;border:1px solid #e0e4e8;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
       .ckpi-filter-menu label{display:block;font-size:10px;font-weight:700;color:#667085;margin:0 0 6px}.ckpi-filter-menu select{width:100%;height:36px;border:1px solid #dfe3e8;border-radius:6px;background:#fff;padding:0 8px;font-size:12px;outline:none;margin-bottom:12px}.ckpi-filter-menu select:last-of-type{margin-bottom:0}
-      .ckpi-filter-actions{display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:8px}.ckpi-filter-clear{border:0;background:transparent;color:#087ed3;font-size:11px;font-weight:700;cursor:pointer;padding:5px 0}
+      .ckpi-source-list{max-height:190px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:6px;padding:5px;margin:0 0 12px}.ckpi-source-option{display:flex!important;align-items:center;gap:8px;padding:6px 5px;margin:0!important;font-size:12px!important;font-weight:500!important;color:#344054!important;cursor:pointer}.ckpi-source-option input{margin:0;accent-color:#0789e8}.ckpi-source-empty{padding:8px;color:#98a2b3;font-size:11px}.ckpi-filter-actions{display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:8px}.ckpi-filter-clear{border:0;background:transparent;color:#087ed3;font-size:11px;font-weight:700;cursor:pointer;padding:5px 0}
       .ckpi-table{overflow:hidden;border-radius:2px}.ckpi-table-head,.ckpi-table-total,.ckpi-table-row{display:grid;grid-template-columns:minmax(300px,1fr) 65px 65px 65px 65px 120px 100px;align-items:center}
       .ckpi-table-head{min-height:31px;font-size:8px;color:#555;font-weight:700}.ckpi-table-head>div:not(:first-child){text-align:center}
       .ckpi-table-total{min-height:38px;background:#002d49;color:#fff;font-size:12px;font-weight:700}.ckpi-table-total>div{padding:0 7px}.ckpi-table-total>div:not(:first-child){text-align:center}
@@ -194,12 +207,20 @@ export default function CanvasserKPI() {
               <option value="all">All product types</option>
               {PRODUCT_TYPES.map((product) => <option key={product} value={product}>{product}</option>)}
             </select>
+            <label>Lead source <span style={{fontWeight:400,color:"#98a2b3"}}>({selectedLeadSources.length} selected)</span></label>
+            <div className="ckpi-source-list">
+              {leadSources.map((source) => <label className="ckpi-source-option" key={source}>
+                <input type="checkbox" checked={selectedLeadSources.includes(source)} onChange={(event) => setSelectedLeadSources((current) => event.target.checked ? [...current, source] : current.filter((item) => item !== source))} />
+                <span>{source}</span>
+              </label>)}
+              {!leadSources.length && <div className="ckpi-source-empty">No lead sources for this date/product selection.</div>}
+            </div>
             <label htmlFor="canvasser-filter">Canvasser</label>
             <select id="canvasser-filter" value={canvasserFilter} onChange={(event) => setCanvasserFilter(event.target.value)}>
               <option value="all">All Canvassers</option>
               {allRows.map((row) => <option key={row.name} value={row.name}>{row.name}</option>)}
             </select>
-            <div className="ckpi-filter-actions"><button type="button" className="ckpi-filter-clear" onClick={() => { setProductFilter("all"); setCanvasserFilter("all") }}>Clear filters</button><button type="button" className="ckpi-filter-clear" onClick={() => setFilterOpen(false)}>Done</button></div>
+            <div className="ckpi-filter-actions"><button type="button" className="ckpi-filter-clear" onClick={() => { setProductFilter("all"); setCanvasserFilter("all"); setSelectedLeadSources([]) }}>Clear filters</button><button type="button" className="ckpi-filter-clear" onClick={() => setFilterOpen(false)}>Done</button></div>
           </div>}
         </div>
         <button type="button" className="ckpi-download" onClick={downloadCsv} disabled={loading || !rows.length}><Download size={15} /> Download</button>
