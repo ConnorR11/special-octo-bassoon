@@ -189,14 +189,162 @@ function CampaignsTab() {
   </div>
 }
 
+
+function GoogleAdsTab() {
+  const [googleTab, setGoogleTab] = useState("plan")
+  const tabStyle = active => ({ padding: "9px 13px", border: 0, borderBottom: active ? "2px solid #4285f4" : "2px solid transparent", background: "transparent", color: active ? "#174ea6" : "#64748b", fontWeight: active ? 700 : 600, cursor: "pointer", fontSize: 12 })
+  const card = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 18, marginBottom: 15 }
+  const th = { textAlign: "left", padding: "10px 9px", background: "#f1f5f9", color: "#475569", fontSize: 11 }
+  const td = { padding: "11px 9px", borderBottom: "1px solid #edf1f5", fontSize: 12, verticalAlign: "top" }
+  return <div style={{ color: "#172033" }}>
+    <div style={{ display: "flex", gap: 8, borderBottom: "1px solid #e2e8f0", marginBottom: 16 }}>
+      <button type="button" role="tab" aria-selected={googleTab === "plan"} onClick={() => setGoogleTab("plan")} style={tabStyle(googleTab === "plan")}>Campaign plan</button>
+      <button type="button" role="tab" aria-selected={googleTab === "audiences"} onClick={() => setGoogleTab("audiences")} style={tabStyle(googleTab === "audiences")}>Audience setup</button>
+    </div>
+    {googleTab === "plan" ? <>
+      <div style={{ ...card, background: "#eff6ff", borderColor: "#bfdbfe" }}>
+        <div style={{ color: "#174ea6", fontWeight: 800, fontSize: 14, marginBottom: 5 }}>Recommended weekly budget · £1,000</div>
+        <p style={{ margin: 0, color: "#1e3a8a", fontSize: 13, lineHeight: 1.6 }}>Capture existing demand from people actively searching for windows, doors, solar panels and battery storage. Keep product campaigns separate and optimise against qualified appointments and sales, not just form fills.</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(145px,1fr))", gap: 9, marginTop: 13 }}>
+          {[["Daily average","£142.86"],["Weekly budget","£1,000"],["Monthly equivalent","£4,333"],["Annual equivalent","£52,000"]].map(([k,v])=><div key={k} style={{ background: "#fff", border: "1px solid #dbeafe", borderRadius: 9, padding: 11 }}><div style={{ fontSize: 10, color: "#64748b" }}>{k}</div><strong style={{ display: "block", fontSize: 19, color: "#173b66", marginTop: 3 }}>{v}</strong></div>)}
+        </div>
+      </div>
+      <section style={card}>
+        <h2 style={{ margin: "0 0 6px", fontSize: 17 }}>Campaign structure and budget</h2>
+        <p style={{ margin: "0 0 12px", color: "#64748b", fontSize: 12 }}>Planning allocation. Google may spend above an average daily budget on individual days, while respecting its monthly charging limit. Review actual spend weekly.</p>
+        <div style={{ overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", minWidth: 650 }}><thead><tr>{["Campaign","Daily average","Weekly budget","Share","Purpose"].map(x=><th key={x} style={th}>{x}</th>)}</tr></thead><tbody>
+          {[
+            ["Windows Search","£78.57","£550","55%","High-intent double glazing, replacement windows and doors searches."],
+            ["Solar Search","£50.00","£350","35%","Solar panel installation, home batteries and solar pricing searches."],
+            ["Brand Search","£7.14","£50","5%","Protect searches for Homeshield and brand/product combinations."],
+            ["Remarketing","£7.14","£50","5%","Re-engage eligible previous website visitors where audience size allows."]
+          ].map(r=><tr key={r[0]}>{r.map((v,i)=><td key={i} style={td}>{i===0?<strong>{v}</strong>:v}</td>)}</tr>)}
+        </tbody></table></div>
+        <p style={{ margin: "12px 0 0", color: "#64748b", fontSize: 11 }}>If remarketing lists are too small to serve, move that £50 into the best-performing Search campaign. Brand spend should be checked for incremental value and competitor pressure.</p>
+      </section>
+      <section style={card}>
+        <h2 style={{ margin: "0 0 10px", fontSize: 17 }}>Recommended Search ad groups</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 12 }}>
+          <div style={{ background: "#f8fafc", borderRadius: 9, padding: 13 }}><strong>Windows & doors</strong><ul style={{ paddingLeft: 18, margin: "7px 0 0", fontSize: 12, lineHeight: 1.7 }}><li>Double glazing installers</li><li>Replacement windows</li><li>uPVC windows</li><li>Window prices / quotes</li><li>Composite and replacement doors</li></ul></div>
+          <div style={{ background: "#f8fafc", borderRadius: 9, padding: 13 }}><strong>Solar</strong><ul style={{ paddingLeft: 18, margin: "7px 0 0", fontSize: 12, lineHeight: 1.7 }}><li>Solar panel installers</li><li>Solar panels for homes</li><li>Solar battery storage</li><li>Solar installation costs</li><li>Solar and battery packages</li></ul></div>
+        </div>
+        <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 12 }}>Start with tightly themed exact and phrase match keywords, then expand based on the search-terms report. Add negatives for jobs, careers, DIY, training, free panels and irrelevant commercial intent.</p>
+      </section>
+      <section style={card}>
+        <h2 style={{ margin: "0 0 10px", fontSize: 17 }}>Location, ads and landing pages</h2>
+        <ul style={{ paddingLeft: 20, margin: 0, fontSize: 12, lineHeight: 1.8 }}>
+          <li>Target only the postcodes and towns Homeshield genuinely services. Use the location option for people regularly in or located in the target areas, not merely interested in them.</li>
+          <li>Separate Windows and Solar campaigns, ad copy and landing pages. Split regions only when there is enough data to manage them independently.</li>
+          <li>Use responsive search ads with local proof, reviews, product benefits and a clear quote action.</li>
+          <li>Only advertise discounts, finance rates, savings or scheme eligibility when the exact claim is current, approved and substantiated.</li>
+          <li>Use call assets during staffed hours and track qualified calls, not just clicks on phone numbers.</li>
+        </ul>
+      </section>
+      <section style={card}>
+        <h2 style={{ margin: "0 0 10px", fontSize: 17 }}>Conversion tracking and CRM feedback</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(175px,1fr))", gap: 8 }}>
+          {[
+            ["Enquiry submitted","Track validated form submissions and deduplicate repeat events."],
+            ["Qualified phone call","Count calls that meet a meaningful duration and quality threshold."],
+            ["Appointment booked","Import CRM booking outcomes with a consistent click identifier."],
+            ["Sale / installation","Feed back sold and completed outcomes where tracking and consent requirements are met."]
+          ].map(([a,b])=><div key={a} style={{ background: "#f8fafc", borderRadius: 9, padding: 12 }}><strong style={{ fontSize: 12 }}>{a}</strong><p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 11, lineHeight: 1.5 }}>{b}</p></div>)}
+        </div>
+        <p style={{ margin: "11px 0 0", color: "#64748b", fontSize: 12 }}>Initially use validated enquiries as a conversion while checking data quality. Once reliable, prioritise qualified appointments and offline sales imports so bidding can optimise towards commercial outcomes.</p>
+      </section>
+      <section style={card}>
+        <h2 style={{ margin: "0 0 10px", fontSize: 17 }}>First four weeks</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 10 }}>
+          {[
+            ["Week 1 · Launch","Check conversion tracking, service areas, keywords, landing pages and lead delivery. Start with the planned budget."],
+            ["Week 2 · Search quality","Review search terms, add negative keywords, assess device and location performance."],
+            ["Week 3 · Lead quality","Compare contact rates, appointments and cost per booked appointment by campaign."],
+            ["Week 4 · Reallocate","Shift spend towards the best qualified demand while keeping the overall weekly budget near £1,000."]
+          ].map(([a,b])=><div key={a} style={{ borderLeft: "3px solid #4285f4", background: "#f8fafc", padding: 12, borderRadius: "0 8px 8px 0" }}><strong style={{ fontSize: 12 }}>{a}</strong><p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 11, lineHeight: 1.5 }}>{b}</p></div>)}
+        </div>
+      </section>
+      <div style={{ color: "#94a3b8", fontSize: 11, padding: "0 2px 10px" }}>Planning only. No Google Ads account has been connected and no campaigns or budgets have been created.</div>
+    </> : <>
+      <div style={{ ...card, background: "#eff6ff", borderColor: "#bfdbfe" }}>
+        <strong style={{ color: "#174ea6", fontSize: 14 }}>Audience strategy: separate observation from targeting</strong>
+        <p style={{ margin: "6px 0 0", color: "#1e3a8a", fontSize: 12, lineHeight: 1.6 }}>For Search campaigns, add useful audience segments in Observation first. This lets Homeshield compare performance without restricting who can see Search ads. Use Targeting only when intentionally running a tightly defined audience-only campaign.</p>
+      </div>
+      <section style={card}>
+        <h2 style={{ margin: "0 0 10px", fontSize: 17 }}>1. Build first-party website audiences in GA4</h2>
+        <ol style={{ paddingLeft: 20, margin: 0, fontSize: 12, lineHeight: 1.8 }}>
+          <li>Link the correct Google Ads account to the Homeshield GA4 property and enable the required personalised advertising and data-sharing settings.</li>
+          <li>Confirm the Google tag and Consent Mode implementation, including the site's cookie consent choices, before collecting advertising audiences.</li>
+          <li>Create separate Windows and Solar audiences; do not mix product journeys.</li>
+          <li>Publish the audiences to the linked Google Ads account and check they populate before relying on them.</li>
+        </ol>
+      </section>
+      <section style={card}>
+        <h2 style={{ margin: "0 0 10px", fontSize: 17 }}>2. Recommended audience segments</h2>
+        <div style={{ overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}><thead><tr>{["Audience","Suggested membership rule","Use"].map(x=><th key={x} style={th}>{x}</th>)}</tr></thead><tbody>
+          {[
+            ["Windows site visitors – 30 days","Visited windows, doors or relevant quote pages in the last 30 days; exclude completed enquiry confirmation events.","Display remarketing and Search Observation."],
+            ["Solar site visitors – 30 days","Visited solar, battery or solar quote pages in the last 30 days; exclude completed enquiry confirmation events.","Solar remarketing and Search Observation."],
+            ["Quote / form starters – 30 days","Started a relevant quote or enquiry journey but did not submit; exclude converters.","High-intent remarketing, where volume allows."],
+            ["All website visitors – 90 days","Any eligible site visitor in the last 90 days; exclude recent converters and existing customers where identifiable.","Broader remarketing fallback."],
+            ["Past converters – 180 days","Completed lead submission or booked appointment, segmented by product and event.","Exclusions from acquisition; analyse separately."],
+            ["Existing customers","Completed Windows or Solar customers, kept as separate groups.","Exclude same-product acquisition; consider cross-sell only with appropriate permissions."]
+          ].map(r=><tr key={r[0]}>{r.map((v,i)=><td key={i} style={td}>{i===0?<strong>{v}</strong>:v}</td>)}</tr>)}
+        </tbody></table></div>
+        <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 11 }}>These are audience definitions, not guaranteed audience sizes. Membership depends on eligible consented traffic, tagging and Google's minimum thresholds.</p>
+      </section>
+      <section style={card}>
+        <h2 style={{ margin: "0 0 10px", fontSize: 17 }}>3. Add audiences to Search campaigns</h2>
+        <ul style={{ paddingLeft: 20, margin: 0, fontSize: 12, lineHeight: 1.8 }}>
+          <li>Open each Search campaign or ad group, go to Audiences and add the relevant segments in <strong>Observation</strong>.</li>
+          <li>For Windows Search, observe Windows visitors, quote starters, past Windows converters and relevant in-market home improvement segments.</li>
+          <li>For Solar Search, observe Solar visitors, solar quote starters, past Solar converters and relevant solar / renewable-energy segments.</li>
+          <li>Review performance by audience after meaningful volume. Do not assume an audience is better simply because it has a higher conversion rate on a tiny sample.</li>
+          <li>Keep Search keyword targeting open; Observation should not narrow the campaign's reach.</li>
+        </ul>
+      </section>
+      <section style={card}>
+        <h2 style={{ margin: "0 0 10px", fontSize: 17 }}>4. In-market and custom segments</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 }}>
+          <div style={{ background: "#f8fafc", borderRadius: 9, padding: 13 }}><strong>Windows / home improvement</strong><p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12, lineHeight: 1.6 }}>Test available Google in-market or detailed-demographic segments relevant to home improvement, windows, doors and home renovation. Segment availability varies by campaign type.</p></div>
+          <div style={{ background: "#f8fafc", borderRadius: 9, padding: 13 }}><strong>Solar / energy</strong><p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12, lineHeight: 1.6 }}>Test available renewable energy, solar and energy-efficiency segments. Build custom segments around relevant search terms and competitor/product research where the campaign type supports them.</p></div>
+        </div>
+      </section>
+      <section style={card}>
+        <h2 style={{ margin: "0 0 10px", fontSize: 17 }}>5. Customer Match from the CRM</h2>
+        <ol style={{ paddingLeft: 20, margin: 0, fontSize: 12, lineHeight: 1.8 }}>
+          <li>Create separate, purpose-specific lists: completed Windows customers, completed Solar customers, Windows enquiries and Solar enquiries.</li>
+          <li>Only upload first-party data where Homeshield has the required notices, lawful basis and permissions for the intended advertising use, and has honoured objections and suppression requests.</li>
+          <li>Normalise email and phone data, minimise fields, protect exports and document the audience purpose and refresh date.</li>
+          <li>Check current Google Customer Match eligibility, account requirements and policy restrictions before attempting an upload. Do not assume every CRM contact is eligible.</li>
+          <li>Use customer lists for appropriate exclusions, observation or remarketing where permitted; keep product groups separate.</li>
+        </ol>
+      </section>
+      <section style={card}>
+        <h2 style={{ margin: "0 0 10px", fontSize: 17 }}>6. Exclusions and audience hygiene</h2>
+        <ul style={{ paddingLeft: 20, margin: 0, fontSize: 12, lineHeight: 1.8 }}>
+          <li>Exclude recent converters from the same product's lead-generation remarketing and acquisition where appropriate.</li>
+          <li>Exclude completed Windows customers from Windows acquisition; exclude completed Solar customers from Solar acquisition. Do not automatically exclude them from the other product's cross-sell activity.</li>
+          <li>Refresh CRM lists regularly and remove records that become ineligible, object or request suppression.</li>
+          <li>Set sensible membership durations and avoid retaining audiences longer than the campaign purpose requires.</li>
+        </ul>
+      </section>
+      <section style={{ ...card, background: "#fffaf0", borderColor: "#f3dfb5" }}>
+        <h2 style={{ margin: "0 0 7px", fontSize: 15, color: "#854d0e" }}>Privacy and measurement guardrails</h2>
+        <p style={{ margin: 0, color: "#78350f", fontSize: 12, lineHeight: 1.7 }}>A CRM record or email/SMS marketing permission does not automatically make someone eligible for Google personalised advertising or Customer Match. Confirm the lawful basis, transparency, consent signals where required, Google's policies and current Customer Match eligibility. Keep consent mode and cookie controls working as intended, and do not upload sensitive or unnecessary customer data.</p>
+      </section>
+    </>}
+  </div>
+}
+
 export default function Facebook() {
   const [activeTab, setActiveTab] = useState("audiences")
   const tabStyle = active => ({ display: "inline-flex", alignItems: "center", gap: 7, padding: "11px 16px", border: 0, borderBottom: active ? "2px solid #1877f2" : "2px solid transparent", background: "transparent", color: active ? "#1554a6" : "#64748b", fontWeight: active ? 700 : 600, cursor: "pointer", fontSize: 13 })
   return <section style={{ maxWidth: 1400, margin: "0 auto" }}>
     <div style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: "1px solid #e2e8f0", marginBottom: 18 }}>
       <button type="button" role="tab" aria-selected={activeTab === "audiences"} onClick={() => setActiveTab("audiences")} style={tabStyle(activeTab === "audiences")}><Users size={16}/>Audiences</button>
-      <button type="button" role="tab" aria-selected={activeTab === "campaigns"} onClick={() => setActiveTab("campaigns")} style={tabStyle(activeTab === "campaigns")}><BarChart3 size={16}/>Campaigns</button>
+      <button type="button" role="tab" aria-selected={activeTab === "campaigns"} onClick={() => setActiveTab("campaigns")} style={tabStyle(activeTab === "campaigns")}><BarChart3 size={16}/>Facebook Campaigns</button>
+      <button type="button" role="tab" aria-selected={activeTab === "google"} onClick={() => setActiveTab("google")} style={tabStyle(activeTab === "google")}><BarChart3 size={16}/>Google Ads</button>
     </div>
-    {activeTab === "audiences" ? <AudiencesTab/> : <CampaignsTab/>}
+    {activeTab === "audiences" ? <AudiencesTab/> : activeTab === "campaigns" ? <CampaignsTab/> : <GoogleAdsTab/>}
   </section>
 }
