@@ -56,11 +56,23 @@ export default function DigitalTeam({ permissionLevel = 1, onOpenAppointment }) 
     <div role="tablist" aria-label="Digital Team sections" style={{ display: "grid", gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))`, gap: 12, marginBottom: 20 }}>
       {visibleTabs.map(({ id, label, icon: Icon }) => <button key={id} type="button" role="tab" aria-selected={activeTab === id} onClick={() => setActiveTab(id)} style={tabStyle(activeTab === id)}><span style={{ width: 36, height: 36, flex: "0 0 36px", display: "grid", placeItems: "center", borderRadius: 9, background: activeTab === id ? "#dbeafe" : "#f1f5f9", color: activeTab === id ? "#1d4ed8" : "#334155" }}><Icon size={18}/></span><span>{label}</span></button>)}
     </div>
-    {activeTab === "audiences" ? <MarketingAudiences/> : activeTab === "facebook" ? <Facebook/> : activeTab === "website" ? <Website/> : activeTab === "connor" ? <div>
-      <div role="tablist" aria-label="Connor sections" style={{ display: "flex", gap: 5, borderBottom: "1px solid #e2e8f0", marginBottom: 18, overflowX: "auto" }}>
-        {connorTabs.map(({ id, label, icon: Icon }) => <button key={id} type="button" role="tab" aria-selected={activeConnorTab === id} onClick={() => setActiveConnorTab(id)} style={tabStyle(activeConnorTab === id)}><Icon size={15}/>{label}</button>)}
-      </div>
-      {activeConnorTab === "bulk-updater" ? <BulkUpdater/> : activeConnorTab === "data-clean" ? <DataClean onOpenAppointment={onOpenAppointment}/> : activeConnorTab === "iwa-certificates" ? <IWACertificates/> : activeConnorTab === "solar-backend" ? <SolarBackend onSelectAppointment={onOpenAppointment}/> : <UnitAnalysis/>}
-    </div> : null}
+    <div className="digital-team-workspace" style={{ minWidth: 0, padding: 16, border: "1px solid #bfdbfe", borderTop: "4px solid #3b82f6", borderRadius: 12, background: "linear-gradient(180deg, #eff6ff 0%, #f8fbff 100%)", boxShadow: "0 3px 12px rgba(37,99,235,.07)" }}>
+      {activeTab === "audiences" ? <MarketingAudiences/> : activeTab === "facebook" ? <Facebook/> : activeTab === "website" ? <Website/> : <div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 14, paddingBottom: 12, borderBottom: "1px solid #bfdbfe" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+            <span style={{ width: 30, height: 30, display: "grid", placeItems: "center", borderRadius: 8, background: "#dbeafe", color: "#2563eb" }}><UserRound size={16}/></span>
+            <div><div style={{ color: "#1d4ed8", fontSize: 13, fontWeight: 800 }}>Connor workspace</div><div style={{ color: "#54749b", fontSize: 10 }}>Digital operations and CRM tools</div></div>
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 10, color: "#173b69", fontSize: 12, fontWeight: 750, whiteSpace: "nowrap" }}>
+            Page
+            <select aria-label="Select Connor page" value={activeConnorTab} onChange={event => setActiveConnorTab(event.target.value)} style={{ minWidth: 230, maxWidth: "min(360px, 65vw)", padding: "10px 36px 10px 12px", border: "1px solid #93c5fd", borderRadius: 9, background: "#fff", color: "#173b69", fontSize: 12, fontWeight: 700, cursor: "pointer", boxShadow: "0 1px 3px rgba(37,99,235,.08)" }}>
+              {connorTabs.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
+            </select>
+          </label>
+        </div>
+        {activeConnorTab === "bulk-updater" ? <BulkUpdater/> : activeConnorTab === "data-clean" ? <DataClean onOpenAppointment={onOpenAppointment}/> : activeConnorTab === "iwa-certificates" ? <IWACertificates/> : activeConnorTab === "solar-backend" ? <SolarBackend onSelectAppointment={onOpenAppointment}/> : <UnitAnalysis/>}
+      </div>}
+    </div>
+    <style>{'@media(max-width:700px){.digital-team-workspace{padding:10px!important}.digital-team-workspace select{min-width:0!important;max-width:55vw!important}}'}</style>
   </section>
 }
