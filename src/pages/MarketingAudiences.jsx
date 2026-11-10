@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 import { supabase } from "../lib/supabase"
-import { Megaphone, Users, Send, RefreshCw } from "lucide-react"
+import { Users, Send } from "lucide-react"
 
 
 function AudienceTab() {
@@ -95,19 +95,7 @@ export default function MarketingAudiences() {
     { id: "campaigns", label: "Campaigns", icon: Send, description: "Plan and manage email and SMS campaigns." },
   ]
   const current = tabs.find(tab => tab.id === activeTab) || tabs[0]
-  return <section className="marketing-dashboard" style={{ maxWidth: 1400, margin: "-20px auto 0", color: "#0f172a" }}>
-    <div style={{ position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, minHeight: 112, padding: "20px 24px", marginBottom: 20, borderRadius: 13, background: "linear-gradient(115deg, #10264a 0%, #173b69 58%, #24558a 100%)", boxShadow: "0 5px 16px rgba(15, 35, 67, .14)" }}>
-      <div aria-hidden="true" style={{ position: "absolute", right: -34, top: -95, width: 260, height: 260, border: "1px solid rgba(255,255,255,.10)", borderRadius: "50%", boxShadow: "0 0 0 28px rgba(255,255,255,.035), 0 0 0 58px rgba(255,255,255,.025)" }} />
-      <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 16 }}>
-        <div style={{ width: 48, height: 48, flex: "0 0 48px", display: "grid", placeItems: "center", borderRadius: 12, background: "rgba(255,255,255,.13)", border: "1px solid rgba(255,255,255,.18)", color: "#fff" }}><Megaphone size={24} strokeWidth={1.9}/></div>
-        <div>
-          <div style={{ marginBottom: 5, color: "#bfdbfe", fontSize: 10, fontWeight: 800, letterSpacing: ".15em", textTransform: "uppercase" }}>Homeshield · Growth & Performance</div>
-          <h1 style={{ margin: 0, color: "#fff", fontSize: 27, lineHeight: 1.15, fontWeight: 750, letterSpacing: "-.025em" }}>Email/SMS Campaigns</h1>
-          <p style={{ margin: "6px 0 0", color: "rgba(226,232,240,.88)", fontSize: 12 }}>Manage customer audiences and campaign activity in one place.</p>
-        </div>
-      </div>
-      <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 7, padding: "7px 11px", borderRadius: 999, border: "1px solid rgba(255,255,255,.2)", background: "rgba(255,255,255,.09)", color: "#e2e8f0", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", whiteSpace: "nowrap" }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#86efac", boxShadow: "0 0 0 3px rgba(134,239,172,.15)" }}/>CAMPAIGNS</div>
-    </div>
+  return <section className="email-campaigns-workspace" style={{ maxWidth: 1400, margin: "0 auto", color: "#0f172a" }}>
     <div role="tablist" aria-label="Email and SMS campaign sections" style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 12, marginBottom: 20 }}>
       {tabs.map(({id,label,icon:Icon,description}) => {
         const active = activeTab === id
@@ -118,15 +106,10 @@ export default function MarketingAudiences() {
       })}
     </div>
     <div style={{ minWidth: 0, padding: 16, border: "1px solid #bfdbfe", borderTop: "4px solid #3b82f6", borderRadius: 12, background: "linear-gradient(180deg, #eff6ff 0%, #f8fbff 100%)", boxShadow: "0 3px 12px rgba(37,99,235,.07)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 14, paddingBottom: 12, borderBottom: "1px solid #bfdbfe" }}>
-        <span style={{ width: 30, height: 30, display: "grid", placeItems: "center", borderRadius: 8, background: "#dbeafe", color: "#2563eb" }}><current.icon size={16}/></span>
-        <div><div style={{ color: "#1d4ed8", fontSize: 13, fontWeight: 800 }}>{current.label}</div><div style={{ color: "#54749b", fontSize: 10 }}>{current.description}</div></div>
-      </div>
       {activeTab === "audiences" ? <AudienceTab/> : <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 20, minHeight: 180 }}>
         <h2 style={{ margin: 0, fontSize: 18 }}>Email/SMS campaigns</h2>
         <p style={{ margin: "7px 0 0", color: "#64748b", fontSize: 13 }}>No campaigns have been created yet.</p>
       </section>}
     </div>
-    <style>{'@media(max-width:700px){.marketing-dashboard{margin-top:0!important}.marketing-dashboard [role="tablist"]{grid-template-columns:1fr!important}}'}</style>
+    <style>{'@media(max-width:700px){.email-campaigns-workspace [role="tablist"]{grid-template-columns:1fr!important}}'}</style>
   </section>
-}
