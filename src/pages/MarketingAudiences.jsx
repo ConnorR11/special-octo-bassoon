@@ -113,3 +113,4 @@ export default function MarketingAudiences() {
     </div>
     <style>{'@media(max-width:700px){.email-campaigns-workspace [role="tablist"]{grid-template-columns:1fr!important}}'}</style>
   </section>
+}
