@@ -11,7 +11,7 @@ import UnitAnalysis from "./UnitAnalysis"
 
 const tabs = [
   { id: "audiences", label: "Email/SMS Campaigns", icon: Users },
-  { id: "facebook", label: "Lead Generation", icon: FacebookIcon },
+  { id: "facebook", label: "Paid Ads", icon: FacebookIcon },
   { id: "seo", label: "SEO", icon: Search },
   { id: "bulk-updater", label: "Bulk Updater", icon: RefreshCw },
   { id: "data-clean", label: "Data Clean", icon: Database },
