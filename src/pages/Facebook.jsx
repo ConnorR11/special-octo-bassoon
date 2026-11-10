@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useState } from "react"
 import { Facebook as FacebookIcon, Users, Target, ShieldCheck, RefreshCw, BarChart3, Mail, MessageSquare, CheckCircle2 } from "lucide-react"
 
 const Section = ({ number, title, children }) => (
@@ -13,7 +13,7 @@ const Section = ({ number, title, children }) => (
 
 const Bullet = ({ children }) => <li style={{ marginBottom: 8, lineHeight: 1.55 }}>{children}</li>
 
-export default function Facebook() {
+function AudiencesTab() {
   const audiences = [
     ["Windows – All Enquiries", "All eligible Windows enquiries. Use for broad product retargeting and campaign exclusions where appropriate."],
     ["Solar – All Enquiries", "All eligible Solar enquiries, kept separate from Windows for relevant creative and offers."],
@@ -113,4 +113,90 @@ export default function Facebook() {
     </div>
     <p style={{ margin: "14px 2px 0", color: "#94a3b8", fontSize: 11 }}>Planning document only · No audience data has been exported or sent to Meta.</p>
   </main>
+}
+ 
+function CampaignsTab() {
+  const card = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 18, marginBottom: 15 }
+  const th = { textAlign: "left", padding: "10px 9px", background: "#f1f5f9", color: "#475569", fontSize: 11, whiteSpace: "nowrap" }
+  const td = { padding: "11px 9px", borderBottom: "1px solid #edf1f5", fontSize: 12, verticalAlign: "top" }
+  const campaigns = [
+    { name: "Windows | New customer acquisition", objective: "Leads", budget: "£25/day · £750/month", creatives: "5", cpc: "£1.00–£2.20", cpl: "£25–£45", audience: "Broad Scotland homeowner targeting; test 1% lookalike from completed Windows customers when seed size allows.", message: "Windows, doors, home comfort, product quality, finance/offer messaging where currently approved." },
+    { name: "Solar | New customer acquisition", objective: "Leads", budget: "£25/day · £750/month", creatives: "5", cpc: "£1.30–£2.80", cpl: "£35–£65", audience: "Broad eligible Scottish homeowners; separate Solar completed-customer lookalike test.", message: "Potential bill savings, battery storage, system design, customer proof and realistic payback education." },
+    { name: "Warm audiences | Retargeting", objective: "Leads / conversions", budget: "£10/day · £300/month", creatives: "4 (2 Windows, 2 Solar)", cpc: "£0.60–£1.60", cpl: "£15–£35", audience: "Recent website visitors, Facebook/Instagram engagers and eligible CRM audiences: contacted-not-booked, quote-not-sold and appointment-not-sold.", message: "Trust, reviews, FAQs, objections, reminders and clear next steps. Keep product and sales-stage messaging relevant." }
+  ]
+  const creativePlan = [
+    ["1. Customer proof", "Short customer testimonial / installation video", "Trust and reassurance"],
+    ["2. Transformation", "Before-and-after carousel (3–5 cards)", "Show the home improvement clearly"],
+    ["3. Product explainer", "15–30 second vertical video", "Explain product, process and key benefits"],
+    ["4. Offer / proposition", "Static image or simple motion graphic", "One clear offer or reason to enquire; use only currently approved claims"],
+    ["5. Education", "Carousel or talking-head video", "Answer a common objection or explain the next step"]
+  ]
+  return <div style={{ color: "#172033" }}>
+    <div style={{ ...card, background: "#eff6ff", borderColor: "#bfdbfe" }}>
+      <div style={{ color: "#1e40af", fontWeight: 800, fontSize: 14, marginBottom: 5 }}>Recommended pilot · 30 days</div>
+      <div style={{ fontSize: 13, color: "#1e3a8a", lineHeight: 1.6 }}>Start with a controlled £60/day test budget (£1,800 over 30 days). Keep Windows and Solar acquisition separate so their lead costs and quality can be judged independently. Add a small retargeting budget and scale only after CRM outcomes—not just cheap leads—support it.</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 10, marginTop: 14 }}>
+        {[["Daily budget","£60"],["30-day budget","£1,800"],["Campaigns","3"],["Creative assets","14"]].map(([label,value])=><div key={label} style={{ background: "#fff", border: "1px solid #dbeafe", borderRadius: 9, padding: 11 }}><div style={{ fontSize: 10, color: "#64748b" }}>{label}</div><strong style={{ display: "block", fontSize: 20, color: "#173b66", marginTop: 3 }}>{value}</strong></div>)}
+      </div>
+    </div>
+    <section style={card}>
+      <h2 style={{ margin: "0 0 6px", fontSize: 17 }}>Campaign structure and planning estimates</h2>
+      <p style={{ margin: "0 0 13px", color: "#64748b", fontSize: 12, lineHeight: 1.55 }}>Indicative starting assumptions for planning—not live Meta forecasts or guaranteed results. Actual CPC/CPL will vary by season, creative, location, landing page, offer and lead form quality. Reassess using Homeshield's booked appointments and sold outcomes.</p>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", minWidth: 850, borderCollapse: "collapse" }}>
+          <thead><tr>{["Campaign","Budget","Creatives","Est. CPC","Est. CPL","Audience / approach"].map(x=><th key={x} style={th}>{x}</th>)}</tr></thead>
+          <tbody>{campaigns.map(c=><tr key={c.name}><td style={td}><strong>{c.name}</strong><div style={{ color: "#64748b", marginTop: 4 }}>{c.objective}</div></td><td style={{ ...td, whiteSpace: "nowrap" }}>{c.budget}</td><td style={td}>{c.creatives}</td><td style={{ ...td, whiteSpace: "nowrap" }}>{c.cpc}</td><td style={{ ...td, whiteSpace: "nowrap", fontWeight: 700, color: "#14532d" }}>{c.cpl}</td><td style={td}>{c.audience}</td></tr>)}</tbody>
+        </table>
+      </div>
+      <div style={{ marginTop: 13, padding: 12, borderRadius: 8, background: "#f8fafc", fontSize: 12, color: "#475569" }}><strong>Budget allocation:</strong> Windows £750 + Solar £750 + Retargeting £300 = £1,800 per 30-day pilot. The retargeting campaign can be split into separate ad sets by product once each audience is large enough to deliver.</div>
+    </section>
+    <section style={card}>
+      <h2 style={{ margin: "0 0 6px", fontSize: 17 }}>Creative production plan</h2>
+      <p style={{ margin: "0 0 12px", color: "#64748b", fontSize: 12 }}>Build five core concepts per product for acquisition (10 assets total), plus four retargeting variants. Adapt each concept into 9:16 vertical and 4:5 feed formats where possible.</p>
+      <div style={{ overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", minWidth: 550 }}><thead><tr>{["Creative","Format / concept","Purpose"].map(x=><th key={x} style={th}>{x}</th>)}</tr></thead><tbody>{creativePlan.map(([a,b,c])=><tr key={a}><td style={td}><strong>{a}</strong></td><td style={td}>{b}</td><td style={td}>{c}</td></tr>)}</tbody></table></div>
+      <p style={{ margin: "12px 0 0", color: "#64748b", fontSize: 11 }}>Retargeting variants: customer review, quote follow-up reassurance, FAQs/objection handling, and a simple book-a-survey call to action. Keep Solar and Windows assets distinct.</p>
+    </section>
+    <section style={card}>
+      <h2 style={{ margin: "0 0 10px", fontSize: 17 }}>How to use the CRM audiences</h2>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 }}>
+        {[
+          ["Prospecting","Broad Scotland audiences first. Test completed Windows and Solar customer lookalikes as separate ad sets only when each seed is sufficiently large and eligible."],
+          ["Warm retargeting","Use recent site visitors and social engagers, then eligible CRM groups such as contacted-not-booked and quote-not-sold. Apply product-specific creative."],
+          ["Suppressions","Exclude recent leads already booked, sold customers for the same product, duplicate records and all applicable advertising suppression records."],
+          ["Win-back","Test older cancelled/declined or no-contact audiences separately with low spend and tailored creative; do not mix them into the main warm pool."]
+        ].map(([title,desc])=><div key={title} style={{ background: "#f8fafc", borderRadius: 9, padding: 13 }}><strong style={{ fontSize: 13 }}>{title}</strong><p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12, lineHeight: 1.5 }}>{desc}</p></div>)}
+      </div>
+    </section>
+    <section style={card}>
+      <h2 style={{ margin: "0 0 10px", fontSize: 17 }}>30-day optimisation plan</h2>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 10 }}>
+        {[
+          ["Days 1–7 · Learn","Launch all three campaigns with the planned creative mix. Check tracking, lead delivery and CRM source attribution daily. Avoid making decisions from a handful of leads."],
+          ["Days 8–14 · Improve","Compare CPC, CTR, form completion and CPL by creative. Pause clear underperformers only after enough delivery; replace with new angles."],
+          ["Days 15–21 · Quality","Compare contact rate, booked appointments and cost per booked appointment by campaign and audience. Tighten poor-quality placements or forms."],
+          ["Days 22–30 · Reallocate","Move budget toward the product/audience combinations generating better qualified appointments and sales. Plan the next creative batch from objections and winning messages."]
+        ].map(([title,desc])=><div key={title} style={{ borderLeft: "3px solid #3b82f6", background: "#f8fafc", padding: 12, borderRadius: "0 8px 8px 0" }}><strong style={{ fontSize: 12 }}>{title}</strong><p style={{ margin: "5px 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.5 }}>{desc}</p></div>)}
+      </div>
+    </section>
+    <section style={card}>
+      <h2 style={{ margin: "0 0 8px", fontSize: 17 }}>Measurement dashboard</h2>
+      <p style={{ margin: "0 0 10px", color: "#64748b", fontSize: 12 }}>Track these at campaign, ad set and creative level, then join them to CRM outcomes using a consistent campaign/source naming convention.</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 8 }}>
+        {[["Delivery","Spend · Reach · Frequency · CPM"],["Traffic","Link CPC · CTR · Landing page views"],["Lead generation","Leads · Form completion · CPL"],["Sales quality","Contact rate · Booked rate · Cost per booked appointment"],["Commercial result","Sold rate · Cost per sale · Revenue / spend"]].map(([title,desc])=><div key={title} style={{ padding: 11, background: "#f8fafc", borderRadius: 8 }}><strong style={{ fontSize: 12 }}>{title}</strong><div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>{desc}</div></div>)}
+      </div>
+    </section>
+    <div style={{ color: "#94a3b8", fontSize: 11, padding: "0 2px 10px" }}>Planning assumptions only. No campaigns have been created, no ads have been published and no budget has been spent.</div>
+  </div>
+}
+
+export default function Facebook() {
+  const [activeTab, setActiveTab] = useState("audiences")
+  const tabStyle = active => ({ display: "inline-flex", alignItems: "center", gap: 7, padding: "11px 16px", border: 0, borderBottom: active ? "2px solid #1877f2" : "2px solid transparent", background: "transparent", color: active ? "#1554a6" : "#64748b", fontWeight: active ? 700 : 600, cursor: "pointer", fontSize: 13 })
+  return <section style={{ maxWidth: 1400, margin: "0 auto" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 9, borderBottom: "1px solid #e2e8f0", marginBottom: 18 }}>
+      <button type="button" role="tab" aria-selected={activeTab === "audiences"} onClick={() => setActiveTab("audiences")} style={tabStyle(activeTab === "audiences")}><Users size={16}/>Audiences</button>
+      <button type="button" role="tab" aria-selected={activeTab === "campaigns"} onClick={() => setActiveTab("campaigns")} style={tabStyle(activeTab === "campaigns")}><BarChart3 size={16}/>Campaigns</button>
+    </div>
+    {activeTab === "audiences" ? <AudiencesTab/> : <CampaignsTab/>}
+  </section>
 }
