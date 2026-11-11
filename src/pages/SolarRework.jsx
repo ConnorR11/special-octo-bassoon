@@ -156,6 +156,7 @@ function QuoteDailyStatsPanel({ active, loading, stats, cardStyle, muted, firstS
 }
 export default function SolarRework({ onSelectAppointment, quotesOnly = false }) {
   const [rows, setRows] = useState([])
+  const [callbackRows, setCallbackRows] = useState([])
   const [totalCount, setTotalCount] = useState(0)
   const [linkedCount, setLinkedCount] = useState(0)
   const [tabCounts, setTabCounts] = useState({ unlinked: null, linkedPm: null, linkedNonPm: null })
@@ -417,6 +418,10 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
             const bDate = b.appointment_date ? new Date(b.appointment_date).getTime() : Number.POSITIVE_INFINITY
             return aDate - bDate
           })
+        setCallbackRows(activeTab === "quotes-work"
+          ? joinedQuotes.filter(item => item.disposition === "Call Back" && item.callback_date)
+              .sort((a, b) => String(a.callback_date).localeCompare(String(b.callback_date)))
+          : [])
         const pageStart = targetPage * PAGE_SIZE
         setRows(joinedQuotes.slice(pageStart, pageStart + PAGE_SIZE))
         setHasMore(joinedQuotes.length > pageStart + PAGE_SIZE)
@@ -734,6 +739,30 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
     )}
 
     <QuoteDailyStatsPanel active={!quotesOnly && activeTab === "quotes-sent"} loading={quoteStatsLoading} stats={quoteDailyStats} cardStyle={cardStyle} muted={muted} firstSentDate={quoteStatsRange.first ? dateLabel(quoteStatsRange.first) : ""} lastSentDate={quoteStatsRange.last ? dateLabel(quoteStatsRange.last) : ""} />
+    {activeTab === "quotes-work" && <div style={{ ...cardStyle, padding: 0, overflow: "hidden", marginBottom: 14 }}>
+      <div style={{ padding: "14px 16px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ fontWeight: 700, fontSize: 13 }}>Callbacks</div>
+        <span style={{ ...muted, fontSize: 11 }}>{callbackRows.length} scheduled</span>
+      </div>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 760, fontSize: 12 }}>
+          <thead><tr style={{ background: "#f8fafc", textAlign: "left", color: "#475569" }}>
+            {["Customer", "Callback Date", "Appointment Date", "Phone", "Email", "Sent"].map(heading => <th key={heading} style={{ padding: "10px 13px", borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" }}>{heading}</th>)}
+          </tr></thead>
+          <tbody>
+            {!loading && callbackRows.length === 0 && <tr><td colSpan={6} style={{ padding: 24, textAlign: "center", color: "#64748b" }}>No callbacks scheduled.</td></tr>}
+            {callbackRows.map(row => <tr key={row.id} onClick={() => { if (row.appointment_row_id) onSelectAppointment?.({ ...row, email: row.email_address || row.customer_email, _loadFullAppointment: true }) }} style={{ borderBottom: "1px solid #edf2f7", cursor: row.appointment_row_id ? "pointer" : "default" }}>
+              <td style={{ padding: "10px 13px", fontWeight: 700 }}>{normalise(row.customer_name || row.name) || "Name missing"}</td>
+              <td style={{ padding: "10px 13px", whiteSpace: "nowrap", fontWeight: 700 }}>{new Date(row.callback_date + "T00:00:00").toLocaleDateString("en-GB")}</td>
+              <td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{row.appointment_date ? dateTimeLabel(row.appointment_date) : "—"}</td>
+              <td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{row.phone_number_1 || row.secondary_phone_number || "—"}</td>
+              <td style={{ padding: "10px 13px" }}>{row.customer_email || row.email_address || "—"}</td>
+              <td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{dateTimeLabel(row.sent_at)}</td>
+            </tr>)}
+          </tbody>
+        </table>
+      </div>
+    </div>}
     <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap" }}>
         <div style={{ fontWeight: 700, fontSize: 13 }}>{(activeTab === "quotes-sent" || activeTab === "quotes-work") ? (activeTab === "quotes-work" ? "Quotes to work" : "Quotes Sent") : activeTab === "lead-view" ? loading ? "Loading solar leads…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${page * PAGE_SIZE + rows.length} solar leads` : loading ? "Loading appointments…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${Math.min((page + 1) * PAGE_SIZE, totalCount || rows.length)} of ${totalCount.toLocaleString("en-GB")} ${activeTab !== "unlinked" ? "linked" : "unlinked"} appointments`}</div>
