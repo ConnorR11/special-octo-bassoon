@@ -162,17 +162,35 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false, p
   const [standalonePermissionLevel, setStandalonePermissionLevel] = useState(null)
 
   useEffect(() => {
-    if (!quotesOnly || !supabase) return
+    if (!quotesOnly) return
     let cancelled = false
+    // During administrator preview, enforce the permission level of the
+    // impersonated user. Otherwise use the signed-in user's own profile.
+    if (previewUser) {
+      setStandalonePermissionLevel(Number(previewUser.permission_level) || 0)
+      return () => { cancelled = true }
+    }
+    if (!supabase) {
+      setStandalonePermissionLevel(0)
+      return () => { cancelled = true }
+    }
     ;(async () => {
       const { data: authData } = await supabase.auth.getUser()
       const authUserId = authData?.user?.id
-      if (!authUserId) return
-      const { data: profile } = await supabase.from("profiles").select("permission_level").eq("auth_user_id", authUserId).maybeSingle()
+      if (!authUserId) {
+        if (!cancelled) setStandalonePermissionLevel(0)
+        return
+      }
+      const { data: profile, error: profileError } = await supabase.from("profiles").select("permission_level").eq("auth_user_id", authUserId).maybeSingle()
+      if (profileError) {
+        console.error("Unable to check To Send access:", profileError)
+        if (!cancelled) setStandalonePermissionLevel(0)
+        return
+      }
       if (!cancelled) setStandalonePermissionLevel(Number(profile?.permission_level) || 0)
     })()
     return () => { cancelled = true }
-  }, [quotesOnly])
+  }, [quotesOnly, previewUser?.id, previewUser?.permission_level])
 
   const [totalCount, setTotalCount] = useState(0)
   const [linkedCount, setLinkedCount] = useState(0)
