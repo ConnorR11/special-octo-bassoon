@@ -408,6 +408,11 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
           .not("sent_at", "is", null)
           .order("sent_at", { ascending: false })
         if (activeTab === "quotes-work") {
+          // Kenneth Newton is restricted to solar quotes sent on or before 8 November 2026.
+          // UK local midnight at the start of 9 November is UTC in this period.
+          if (currentAuthUserId === "9ec19caa-84f1-4aea-930f-d60ced77a900") {
+            quoteRequest = quoteRequest.lt("sent_at", "2026-11-09T00:00:00Z")
+          }
           quoteRequest = quoteRequest.or('disposition.is.null,disposition.not.in.("Superseded","Not interested","Accepted quote")')
           if (appointmentsFromLast7Days.length) {
             const excludedIds = appointmentsFromLast7Days.map(id => '"' + id.replace(/"/g, '\\"') + '"').join(",")
