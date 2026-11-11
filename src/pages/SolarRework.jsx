@@ -422,9 +422,12 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
           ? joinedQuotes.filter(item => item.disposition === "Call Back" && item.callback_date)
               .sort((a, b) => String(a.callback_date).localeCompare(String(b.callback_date)))
           : [])
+        const quotesForWork = activeTab === "quotes-work"
+          ? joinedQuotes.filter(item => item.disposition !== "Call Back")
+          : joinedQuotes
         const pageStart = targetPage * PAGE_SIZE
-        setRows(joinedQuotes.slice(pageStart, pageStart + PAGE_SIZE))
-        setHasMore(joinedQuotes.length > pageStart + PAGE_SIZE)
+        setRows(quotesForWork.slice(pageStart, pageStart + PAGE_SIZE))
+        setHasMore(quotesForWork.length > pageStart + PAGE_SIZE)
         setLoading(false)
         return
       }
