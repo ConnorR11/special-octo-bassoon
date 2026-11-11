@@ -757,7 +757,7 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
             {!loading && callbackRows.length === 0 && <tr><td colSpan={9} style={{ padding: 24, textAlign: "center", color: "#64748b" }}>No callbacks scheduled.</td></tr>}
             {callbackRows.map(row => <tr key={row.id} onClick={() => { if (row.appointment_row_id) onSelectAppointment?.({ ...row, email: row.email_address || row.customer_email, _loadFullAppointment: true }) }} style={{ borderBottom: "1px solid #edf2f7", cursor: row.appointment_row_id ? "pointer" : "default" }}>
               <td style={{ padding: "10px 13px", fontWeight: 700 }}>{normalise(row.customer_name || row.name) || "Name missing"}</td>
-              <td style={{ padding: "10px 13px", whiteSpace: "nowrap", fontWeight: 700 }}>{new Date(row.callback_date + "T00:00:00").toLocaleDateString("en-GB")}</td>
+              <td style={{ padding: "10px 13px", whiteSpace: "nowrap", fontWeight: 700, background: row.callback_date < new Date().toLocaleDateString("en-CA", { timeZone: "Europe/London" }) ? "#fff1db" : "transparent", color: row.callback_date < new Date().toLocaleDateString("en-CA", { timeZone: "Europe/London" }) ? "#9a3412" : "inherit" }}>{new Date(row.callback_date + "T00:00:00").toLocaleDateString("en-GB")}</td>
               <td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{row.appointment_date ? dateTimeLabel(row.appointment_date) : "—"}</td>
               <td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{row.phone_number_1 || row.secondary_phone_number || "—"}</td>
               <td style={{ padding: "10px 13px" }}>{row.customer_email || row.email_address || "—"}</td>
