@@ -15,7 +15,7 @@ function dateLabel(value) {
   const d = new Date(value)
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
 }
-function money(value) {
+function dateTimeLabel(value) { if (!value) return "—"; const d = new Date(value); return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString("en-GB", { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" }) }\nfunction money(value) {
   const n = Number(value)
   return Number.isFinite(n) && n ? n.toLocaleString("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }) : "—"
 }
@@ -49,7 +49,7 @@ function progressFor(deal, docs, answers, epvs, appointment, units) {
     { key:"opensolar", state:signed ? "done" : "empty", detail:signed ? dateLabel(appointment?.customer_signed_at) : "No signature recorded" },
     { key:"bill", state:billComplete ? "done" : "empty", detail:billComplete ? "Uploaded" : "Not uploaded" },
     { key:"hies", state:"unknown", detail:"No linked CRM record" },
-    { key:"epvs", state:epvsSubmitted ? "done" : "empty", detail:epvs?.status || "No linked submission" },
+    { key:"epvs", state:epvsSubmitted ? (validated ? "done" : "partial") : "empty", detail:epvs?.status || "No linked submission", submittedAt:epvs?.epvs_created_at, updatedAt:epvs?.epvs_updated_at || epvs?.last_activity_at, reference:epvs?.epvs_validation_id, validationStatusId:epvs?.validation_status_id, lastActivityType:epvs?.raw_payload?.last_activity_type },
     { key:"validated", state:validated ? "done" : epvsSubmitted ? "partial" : "empty", detail:epvs?.status || "Not submitted" },
     { key:"product", state:orderedUnits.length ? "done" : "empty", detail:orderedUnits.length ? `${orderedUnits.length} units · ${supplier || "Supplier not recorded"} · ${dateLabel(orderDate)}` : "Not ordered" },
     { key:"scaffold", state:"unknown", detail:"No structured booking record" },
@@ -92,7 +92,7 @@ export default function SolarPipeline({ onSelectDeal }) {
       const [docsResult, answersResult, epvsResult, appointmentsResult, unitsResult] = await Promise.all([
         ids.length ? supabase.from("deal_documents").select("deal_id,category,file_name,survey_section,created_at").in("deal_id", ids) : Promise.resolve({ data: [], error: null }),
         ids.length ? supabase.from("deal_survey_answers").select("deal_id,answers,updated_at").in("deal_id", ids) : Promise.resolve({ data: [], error: null }),
-        ids.length ? supabase.from("epvs_submissions").select("linked_deal_id,status,epvs_created_at,last_activity_at").in("linked_deal_id", ids) : Promise.resolve({ data: [], error: null }),
+        ids.length ? supabase.from("epvs_submissions").select("linked_deal_id,status,epvs_validation_id,validation_status_id,epvs_created_at,epvs_updated_at,last_activity_at,raw_payload").in("linked_deal_id", ids) : Promise.resolve({ data: [], error: null }),
         appointmentIds.length ? supabase.from("appointments").select("appointment_row_id,contract_number,signature_path,express_fit_signature_path,seg_disclaimer_signature_path,customer_signed_at,branch,job_type,product").in("appointment_row_id", appointmentIds) : Promise.resolve({ data: [], error: null }),
         ids.length ? supabase.from("units").select("UUID,appointment_id,contract_number,supplier,ordered_date,unit_type").in("contract_number", solarDeals.map(d => d.contract_number).filter(Boolean)) : Promise.resolve({ data: [], error: null }),
       ])
@@ -183,7 +183,7 @@ export default function SolarPipeline({ onSelectDeal }) {
                 <div style={{fontWeight:700,color:"#172b4d",marginTop:3}}>{row.customer_name||"Unnamed customer"}</div>
                 <div style={{fontSize:10,color:"#64748b",marginTop:3}}>{row.contract_number||"No contract number"}</div>
               </td>
-              {row.progress.cells.filter(c=>["survey","epvs","product","scaffold","confirmation"].includes(c.key)).map(cell=><td key={cell.key} style={td}>{cell.key==="survey" ? <div style={{display:"grid",gap:5,minWidth:130}}>{cell.parts.map(part=><div key={part.label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:5}}><span style={{fontSize:9,color:"#475569"}}>{part.label}</span><StatusPill state={part.complete?"done":part.partial?"partial":"empty"} label={part.count || (part.complete?"Complete":"Missing")}/></div>)}</div> : <StatusPill state={cell.state} label={cell.key==="epvs"?(cell.state==="done"?"Submitted":"Not Submitted"):cell.key==="product"?(cell.state==="done"?"Ordered":"Not Ordered"):cell.key==="scaffold"?"Not Tracked":(cell.state==="done"?"Complete":cell.state==="partial"?"Booked":"Not Booked")} detail={cell.detail}/>}</td>)}
+              {row.progress.cells.filter(c=>["survey","epvs","product","scaffold","confirmation"].includes(c.key)).map(cell=><td key={cell.key} style={td}>{cell.key==="survey" ? <div style={{display:"grid",gap:5,minWidth:130}}>{cell.parts.map(part=><div key={part.label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:5}}><span style={{fontSize:9,color:"#475569"}}>{part.label}</span><StatusPill state={part.complete?"done":part.partial?"partial":"empty"} label={part.count || (part.complete?"Complete":"Missing")}/></div>)}</div> : cell.key==="epvs" ? <div style={{display:"grid",gap:5,minWidth:145}}><StatusPill state={cell.state} label={row.epvs?.status || "Not Submitted"}/>{row.epvs && <><div style={{fontSize:9,color:"#475569"}}>Submitted: {dateTimeLabel(cell.submittedAt)}</div><div style={{fontSize:9,color:"#475569"}}>Last updated: {dateTimeLabel(cell.updatedAt)}</div>{cell.reference && <div style={{fontSize:9,color:"#64748b"}}>EPVS ref: {cell.reference}</div>}{cell.lastActivityType && <div style={{fontSize:9,color:"#64748b"}}>{cell.lastActivityType}</div>}</>}</div> : <StatusPill state={cell.state} label={cell.key==="product"?(cell.state==="done"?"Ordered":"Not Ordered"):cell.key==="scaffold"?"Not Tracked":(cell.state==="done"?"Complete":cell.state==="partial"?"Booked":"Not Booked")} detail={cell.detail}/>}</td>)}
               <td style={td}><StatusPill state="unknown" label="Not Tracked" detail="No DNO workflow is linked yet"/></td>
               <td style={td}><StatusPill state={row.progress.installationScheduled?"done":"empty"} label={row.progress.installationScheduled?"Booked":"Not Booked"} detail={row.progress.installDate?dateLabel(row.progress.installDate):"No installation date"}/></td>
               <td style={td}><StatusPill state={row.progress.balanceStatus==="Paid"?"done":row.progress.balanceStatus==="Future"?"partial":"empty"} label={row.progress.balanceStatus} detail={row.progress.balanceStatus==="Future"?dateLabel(row.estimated_payment_date):money(row.balance_outstanding)}/></td>
