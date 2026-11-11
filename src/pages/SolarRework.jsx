@@ -355,6 +355,22 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
         return
       }
       if (activeTab === "quotes-sent" || activeTab === "quotes-work") {
+        let currentAuthUserId = null
+        let currentPermissionLevel = null
+        if (activeTab === "quotes-work") {
+          const { data: authData, error: authError } = await supabase.auth.getUser()
+          if (authError) throw authError
+          currentAuthUserId = authData?.user?.id || null
+          if (currentAuthUserId) {
+            const { data: currentProfile, error: profileError } = await supabase
+              .from("profiles")
+              .select("permission_level")
+              .eq("auth_user_id", currentAuthUserId)
+              .maybeSingle()
+            if (profileError) throw profileError
+            currentPermissionLevel = Number(currentProfile?.permission_level)
+          }
+        }
         // Quotes To Work excludes appointments from the rolling 7 days
         // immediately before now. Quotes Sent remains an unfiltered historical view.
         let appointmentsFromLast7Days = []
@@ -437,8 +453,11 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
             return aDate - bDate
           })
         setCallbackRows(activeTab === "quotes-work"
-          ? joinedQuotes.filter(item => item.disposition === "Call Back" && item.callback_date)
-              .sort((a, b) => String(a.callback_date).localeCompare(String(b.callback_date)))
+          ? joinedQuotes.filter(item =>
+              item.disposition === "Call Back" &&
+              item.callback_date &&
+              (currentPermissionLevel !== 1 || String(item.disposition_updated_by || "") === String(currentAuthUserId || ""))
+            ).sort((a, b) => String(a.callback_date).localeCompare(String(b.callback_date)))
           : [])
         const quotesForWork = activeTab === "quotes-work"
           ? joinedQuotes.filter(item => item.disposition !== "Call Back")
