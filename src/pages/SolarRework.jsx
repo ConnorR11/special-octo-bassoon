@@ -411,20 +411,6 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false, p
             currentPermissionLevel = Number(currentProfile?.permission_level)
           }
         }
-        // Quotes To Work excludes appointments from the rolling 7 days
-        // immediately before now. Quotes Sent remains an unfiltered historical view.
-        let appointmentsFromLast7Days = []
-        if (activeTab === "quotes-work") {
-          const now = new Date()
-          const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-          const { data: recentAppointments, error: recentAppointmentsError } = await supabase.from("appointments")
-            .select("appointment_row_id")
-            .gte("appointment_date", sevenDaysAgo.toISOString())
-            .lt("appointment_date", now.toISOString())
-            .not("appointment_date", "is", null)
-          if (recentAppointmentsError) throw recentAppointmentsError
-          appointmentsFromLast7Days = (recentAppointments || []).map(item => String(item.appointment_row_id)).filter(Boolean)
-        }
         let quoteRequest = supabase.from("solar_quotes")
           .select("id,appointment_row_id,quote_ref,customer_name,customer_email,status,created_at,sent_at,last_viewed_at,view_count,expires_at,storage_path,disposition,callback_date,visit_date,disposition_notes,disposition_updated_at,disposition_updated_by")
           .in("status", ["sent", "delivered", "viewed"])
@@ -437,10 +423,6 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false, p
             quoteRequest = quoteRequest.lt("sent_at", "2026-11-09T00:00:00Z")
           }
           quoteRequest = quoteRequest.or('disposition.is.null,disposition.not.in.("Superseded","Not interested","Accepted quote")')
-          if (appointmentsFromLast7Days.length) {
-            const excludedIds = appointmentsFromLast7Days.map(id => '"' + id.replace(/"/g, '\\"') + '"').join(",")
-            quoteRequest = quoteRequest.not("appointment_row_id", "in", "(" + excludedIds + ")")
-          }
         }
         if (quoteViewedFilter === "viewed") quoteRequest = quoteRequest.not("last_viewed_at", "is", null)
         if (quoteViewedFilter === "not-viewed") quoteRequest = quoteRequest.is("last_viewed_at", null)
