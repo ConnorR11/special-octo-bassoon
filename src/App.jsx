@@ -101,7 +101,7 @@ function App() {
       const { data: previewId, error: previewError } = await supabase.rpc("current_preview_profile_id")
       if (previewError) { console.error("Error loading admin preview:", previewError); return }
       if (!previewId) { setPreviewUser(null); return }
-      const { data: previewProfile, error: previewProfileError } = await supabase.from("profiles").select("id, full_name, display_name, email, role, permission_level, branch, department, active").eq("id", previewId).maybeSingle()
+      const { data: previewProfile, error: previewProfileError } = await supabase.from("profiles").select("id, auth_user_id, full_name, display_name, email, role, permission_level, branch, department, active").eq("id", previewId).maybeSingle()
       if (!mounted) return
       if (previewProfileError) console.error("Error loading preview profile:", previewProfileError)
       setPreviewUser(previewProfile || null)
@@ -289,7 +289,7 @@ function App() {
   } else if (page === "outstanding-solar-surveys") {
     pageContent = <OutstandingSolarSurveys onSelectDeal={deal => handleDealSelect(deal, page)}/>
   } else if (page === "quotes-to-work") {
-    pageContent = <SolarRework quotesOnly onSelectAppointment={handleAppointmentSelect}/>
+    pageContent = <SolarRework quotesOnly previewUser={previewUser} onSelectAppointment={handleAppointmentSelect}/>
   } else if (page === "epvs-applications") {
     pageContent = <EPVSApplications/>
   } else if (page === "sales-performance") {
