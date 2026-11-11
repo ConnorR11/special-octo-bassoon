@@ -740,13 +740,13 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
       ].map(tab => {
         const locked = tab.id === "to-send" && (standalonePermissionLevel === null || standalonePermissionLevel < 4)
         const selected = standaloneTab === tab.id
-        return <button key={tab.id} type="button" disabled={locked} onClick={() => setStandaloneTab(tab.id)} style={{ display: "flex", alignItems: "center", gap: 12, textAlign: "left", padding: "14px 15px", border: selected ? "1px solid #93c5fd" : "1px solid #dbe4ef", borderRadius: 11, background: selected ? "#eff6ff" : locked ? "#f8fafc" : "#fff", color: locked ? "#94a3b8" : "#0f172a", cursor: locked ? "not-allowed" : "pointer", boxShadow: selected ? "0 0 0 1px rgba(59,130,246,.08)" : "0 1px 2px rgba(15,23,42,.03)" }}>
+        return <button key={tab.id} type="button" disabled={locked} onClick={() => { setStandaloneTab(tab.id); setPage(0); setRows([]); setLoading(true); if (tab.id === "to-send") { setActiveTab("linked"); setLinkedPmGroup("pm") } else { setActiveTab("quotes-work") } }} style={{ display: "flex", alignItems: "center", gap: 12, textAlign: "left", padding: "14px 15px", border: selected ? "1px solid #93c5fd" : "1px solid #dbe4ef", borderRadius: 11, background: selected ? "#eff6ff" : locked ? "#f8fafc" : "#fff", color: locked ? "#94a3b8" : "#0f172a", cursor: locked ? "not-allowed" : "pointer", boxShadow: selected ? "0 0 0 1px rgba(59,130,246,.08)" : "0 1px 2px rgba(15,23,42,.03)" }}>
           <span style={{ width: 38, height: 38, flex: "0 0 38px", display: "grid", placeItems: "center", borderRadius: 9, background: selected ? "#dbeafe" : "#f1f5f9", color: locked ? "#94a3b8" : selected ? "#2563eb" : "#334155" }}>{tab.icon}</span>
           <span style={{ minWidth: 0 }}><span style={{ display: "block", fontSize: 13, fontWeight: 750 }}>{tab.label}</span><span style={{ display: "block", marginTop: 3, fontSize: 10, color: locked ? "#94a3b8" : "#64748b" }}>{tab.description}</span></span>
         </button>
       })}
     </div>}
-    {quotesOnly && standaloneTab === "to-send" && <div style={{ ...cardStyle, padding: 28, textAlign: "center", color: "#64748b" }}>The To Send workspace is ready for its requirements.</div>}
+
     {(activeTab === "quotes-sent" || activeTab === "quotes-work") && quoteDispositionError && <div role="alert" style={{ marginBottom: 12, padding: 10, borderRadius: 7, background: "#fff1f2", color: "#be123c", fontSize: 11 }}>{quoteDispositionError}</div>}
 
     {!quotesOnly && (
@@ -842,10 +842,10 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
         </table>
       </div>
     </div>}
-    {(!quotesOnly || standaloneTab === "rework") && <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
+    {(!quotesOnly || standaloneTab === "rework" || standaloneTab === "to-send") && <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap" }}>
-        <div style={{ fontWeight: 700, fontSize: 13 }}>{(activeTab === "quotes-sent" || activeTab === "quotes-work") ? (activeTab === "quotes-work" ? "Quotes to work" : "Quotes Sent") : activeTab === "lead-view" ? loading ? "Loading solar leads…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${page * PAGE_SIZE + rows.length} solar leads` : loading ? "Loading appointments…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${Math.min((page + 1) * PAGE_SIZE, totalCount || rows.length)} of ${totalCount.toLocaleString("en-GB")} ${activeTab !== "unlinked" ? "linked" : "unlinked"} appointments`}</div>
-        {activeTab === "quotes-work" && <div style={{ position: "relative", flex: "1 1 260px", maxWidth: 420 }}>
+        <div style={{ fontWeight: 700, fontSize: 13 }}>{quotesOnly && standaloneTab === "to-send" ? (loading ? "Loading pitched appointments…" : "Showing " + (rows.length ? page * PAGE_SIZE + 1 : 0) + "–" + Math.min((page + 1) * PAGE_SIZE, totalCount || rows.length) + " of " + totalCount.toLocaleString("en-GB") + " appointments ready to send") : (activeTab === "quotes-sent" || activeTab === "quotes-work") ? (activeTab === "quotes-work" ? "Quotes to work" : "Quotes Sent") : activeTab === "lead-view" ? loading ? "Loading solar leads…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${page * PAGE_SIZE + rows.length} solar leads` : loading ? "Loading appointments…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${Math.min((page + 1) * PAGE_SIZE, totalCount || rows.length)} of ${totalCount.toLocaleString("en-GB")} ${activeTab !== "unlinked" ? "linked" : "unlinked"} appointments`}</div>
+        {(activeTab === "quotes-work" || (quotesOnly && standaloneTab === "to-send")) && <div style={{ position: "relative", flex: "1 1 260px", maxWidth: 420 }}>
           <Search size={15} style={{ position: "absolute", left: 11, top: 12, color: "#64748b" }} />
           <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search name, postcode, phone, email…" style={{ ...inputStyle, width: "100%", paddingLeft: 33, boxSizing: "border-box" }} />
         </div>}
