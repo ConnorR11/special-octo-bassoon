@@ -47,7 +47,7 @@ function progressFor(deal, docs, answers, epvs, appointment, units) {
   const cells = [
     { key:"survey", state:videoComplete && billComplete && checklistComplete && photosComplete ? "done" : surveyStarted ? "partial" : "empty", detail:`Video ${videoComplete ? "✓" : "✗"} · Bill ${billComplete ? "✓" : "✗"} · Checklist ${answeredCount}/27 · Photos ${photoSectionsComplete}/20`, parts:[{label:"Video",complete:videoComplete,partial:false},{label:"Electricity bill",complete:billComplete,partial:false},{label:"Checklist",complete:checklistComplete,partial:checklistStarted,count:`${answeredCount}/27`},{label:"Photos",complete:photosComplete,partial:hasPhotos,count:`${photoSectionsComplete}/20`}] },
     { key:"opensolar", state:signed ? "done" : "empty", detail:signed ? dateLabel(appointment?.customer_signed_at) : "No signature recorded" },
-    { key:"bill", state:hasBill ? "done" : "empty", detail:hasBill ? "Uploaded" : "Not uploaded" },
+    { key:"bill", state:billComplete ? "done" : "empty", detail:billComplete ? "Uploaded" : "Not uploaded" },
     { key:"hies", state:"unknown", detail:"No linked CRM record" },
     { key:"epvs", state:epvsSubmitted ? "done" : "empty", detail:epvs?.status || "No linked submission" },
     { key:"validated", state:validated ? "done" : epvsSubmitted ? "partial" : "empty", detail:epvs?.status || "Not submitted" },
