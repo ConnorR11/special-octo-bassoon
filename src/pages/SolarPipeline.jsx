@@ -86,7 +86,7 @@ export default function SolarPipeline({ onSelectDeal }) {
         .select("id,pipedrive_deal_id,contract_number,customer_name,phone,email,address,postcode,product,pipedrive_data,deal_value,net_value,balance_outstanding,salesperson,salesperson_name,sale_date,status,pipedrive_stage,estimated_payment_date,installation_start_date,fit_team_1,appointment_row_id,branch,installation_roof_start_date,installation_roof_team,installation_electrics_start_date,installation_electrics_team,remedial_start_date,remedial_fit_team")
         .order("sale_date", { ascending: false }).limit(2000)
       if (dealError) throw dealError
-      const solarDeals = (deals || []).filter(deal => isSolar(deal) && Number(deal.balance_outstanding) > 0 && !/cancelled|canceled|declined/i.test(String(deal.status || "") + " " + String(deal.pipedrive_stage || "") + " " + String(deal.pipedrive_data?.status || "") + " " + String(deal.pipedrive_data?.stage || "")))
+      const solarDeals = (deals || []).filter(deal => isSolar(deal) && Number(deal.balance_outstanding) > 0 && !/customer\s+cancelled|decline/i.test(String(deal.status || "") + " " + String(deal.pipedrive_stage || "") + " " + String(deal.pipedrive_data?.status || "") + " " + String(deal.pipedrive_data?.stage || "")))
       const ids = solarDeals.map(d => String(d.id))
       const appointmentIds = [...new Set(solarDeals.map(d => String(d.appointment_row_id || "")).filter(Boolean))]
       const [docsResult, answersResult, epvsResult, appointmentsResult, unitsResult] = await Promise.all([
