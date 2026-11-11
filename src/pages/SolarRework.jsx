@@ -494,6 +494,9 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
       let request = supabase.from("appointments")
         .select("appointment_row_id,marketing_row_id,name,postcode,address,phone_number_1,secondary_phone_number,email_address,appointment_date,result,job_type,product,lead_source,open_solar_id,epvs_calculation,rep_allocated")
         .eq("job_type", "Solar")
+      // The standalone Quotes To Work > To Send list excludes Grampian branch appointments.
+      // Keep appointments with no branch assigned; only explicitly exclude Grampian.
+      if (quotesOnly && standaloneTab === "to-send") request = request.or("branch.is.null,branch.neq.Grampian")
         .not("result", "is", null)
         .neq("result", "")
         .not("result", "ilike", "sold")
