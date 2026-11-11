@@ -42,6 +42,7 @@ import SurveyPdfFile from "./pages/SurveyPdfFile"
 import SolarBillFile from "./pages/SolarBillFile"
 import EPVSApplications from "./pages/EPVSApplications"
 import OutstandingSolarSurveys from "./pages/OutstandingSolarSurveys"
+import SolarPipeline from "./pages/SolarPipeline"
 import SolarRework from "./pages/SolarRework"
 import Hotkeys from "./pages/Hotkeys"
 import LeadToCall from "./pages/LeadToCall"
@@ -121,7 +122,7 @@ function App() {
 
   useEffect(() => {
     if (!session || !profileLoaded) return
-    const restrictedPages = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, balances: 4, mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, hotkeys: 4, templates: 4, "integration-logs": 4, pronto: 4, global: 4, "outstanding-solar-surveys": 0, "quotes-to-work": 4 }
+    const restrictedPages = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, balances: 4, mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, hotkeys: 4, templates: 4, "integration-logs": 4, pronto: 4, global: 4, "outstanding-solar-surveys": 0, "solar-pipeline": 4, "quotes-to-work": 4 }
     const requiredPermission = restrictedPages[page]
     const lacksPagePermission = page === "quotes-to-work"
       ? !canAccessQuotesToWork
@@ -288,6 +289,8 @@ function App() {
     pageContent = <GlobalResults />
   } else if (page === "outstanding-solar-surveys") {
     pageContent = <OutstandingSolarSurveys onSelectDeal={deal => handleDealSelect(deal, page)}/>
+  } else if (page === "solar-pipeline") {
+    pageContent = <SolarPipeline onSelectDeal={deal => handleDealSelect(deal, page)}/>
   } else if (page === "quotes-to-work") {
     pageContent = <SolarRework quotesOnly previewUser={previewUser} onSelectAppointment={handleAppointmentSelect}/>
   } else if (page === "epvs-applications") {
