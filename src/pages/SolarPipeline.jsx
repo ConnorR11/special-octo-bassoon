@@ -20,33 +20,34 @@ function isSolar(deal) {
   return /solar|photovoltaic|\bpv\b/i.test(String(deal.product || "") + " " + String(deal.pipedrive_data?.product || ""))
 }
 function progressFor(deal, docs, answers, epvs, appointment) {
-  const hasContract = Boolean(appointment?.contract_number && appointment?.signature_path && appointment?.express_fit_signature_path && appointment?.seg_disclaimer_signature_path)
-  const hasSurveyVideo = docs.some(d => d.category === "survey_video")
+  const signed = Boolean(appointment?.customer_signed_at || (appointment?.signature_path && appointment?.express_fit_signature_path && appointment?.seg_disclaimer_signature_path))
+  const hasPhotos = docs.some(d => d.category === "survey_photos" || d.category === "survey_video")
   const hasBill = docs.some(d => d.category === "electricity_bill_epvs_waiver")
-  const hasSurveyPdf = docs.some(d => d.category === "survey_pdf")
+  const hasPdf = docs.some(d => d.category === "survey_pdf")
   const answered = Object.values(answers || {}).filter(v => String(v ?? "").trim()).length
-  const hasSurveyData = answered > 0 || docs.some(d => d.category === "survey_photos")
-  const surveyComplete = hasSurveyVideo && hasBill && hasSurveyPdf && answered >= 27
-  const epvsComplete = Boolean(epvs)
-  const installationScheduled = Boolean(deal.installation_start_date)
-  const roofStarted = Boolean(deal.installation_roof_start_date)
-  const electricsStarted = Boolean(deal.installation_electrics_start_date)
-  const remedialStarted = Boolean(deal.remedial_start_date)
-  let current = "Awaiting contract information"
-  if (hasContract) current = "Contract signed"
-  if (hasSurveyData) current = surveyComplete ? "Survey information complete" : "Survey in progress"
-  if (epvsComplete) current = "EPVS submitted"
-  if (installationScheduled) current = "Installation scheduled"
-  if (roofStarted || electricsStarted) current = "Installation in progress"
-  if (remedialStarted) current = "Remedial work recorded"
-  const milestones = [
-    { label: "Contract", done: hasContract, detail: hasContract ? dateLabel(appointment.customer_signed_at) : "Awaiting signatures" },
-    { label: "Survey", done: surveyComplete, detail: surveyComplete ? "Required survey data present" : `${answered}/27 answers · ${docs.length} files` },
-    { label: "EPVS", done: epvsComplete, detail: epvs ? (epvs.status || "Submission linked") : "No linked submission" },
-    { label: "Installation", done: installationScheduled, detail: installationScheduled ? dateLabel(deal.installation_start_date) : "No start date recorded" },
-    { label: "On site", done: roofStarted || electricsStarted, detail: roofStarted ? `Roof ${dateLabel(deal.installation_roof_start_date)}` : electricsStarted ? `Electrics ${dateLabel(deal.installation_electrics_start_date)}` : "No installation activity recorded" },
+  const surveyStarted = hasPhotos || hasPdf || answered > 0
+  const epvsSubmitted = Boolean(epvs)
+  const epvsStatus = String(epvs?.status || "").trim().toLowerCase()
+  const validated = epvsStatus.includes("validat") || epvsStatus === "registered"
+  const cells = [
+    { key:"survey", state:hasPhotos && hasPdf ? "done" : surveyStarted ? "partial" : "empty", detail:`${docs.length} files · ${answered} answers` },
+    { key:"opensolar", state:signed ? "done" : "empty", detail:signed ? dateLabel(appointment?.customer_signed_at) : "No signature recorded" },
+    { key:"bill", state:hasBill ? "done" : "empty", detail:hasBill ? "Uploaded" : "Not uploaded" },
+    { key:"hies", state:"unknown", detail:"No linked CRM record" },
+    { key:"epvs", state:epvsSubmitted ? "done" : "empty", detail:epvs?.status || "No linked submission" },
+    { key:"validated", state:validated ? "done" : epvsSubmitted ? "partial" : "empty", detail:epvs?.status || "Not submitted" },
+    { key:"product", state:"unknown", detail:"No structured order record" },
+    { key:"scaffold", state:"unknown", detail:"No structured booking record" },
+    { key:"confirmation", state:"unknown", detail:"No email event linked" },
   ]
-  return { current, milestones, hasContract, hasSurveyData, surveyComplete, epvsComplete, installationScheduled, roofStarted: roofStarted || electricsStarted }
+  let current = "Awaiting survey information"
+  if (signed) current = "OpenSolar signed"
+  if (surveyStarted) current = hasPhotos && hasPdf && hasBill ? "Survey information recorded" : "Survey information in progress"
+  if (epvsSubmitted) current = validated ? "EPVS validated" : "EPVS submitted"
+  if (deal.installation_start_date) current = "Installation scheduled"
+  if (deal.installation_roof_start_date || deal.installation_electrics_start_date) current = "Installation in progress"
+  if (deal.remedial_start_date) current = "Remedial work recorded"
+  return { current, cells, hasContract:signed, hasSurveyData:surveyStarted, surveyComplete:hasPhotos && hasPdf && hasBill, epvsComplete:epvsSubmitted, installationScheduled:Boolean(deal.installation_start_date), roofStarted:Boolean(deal.installation_roof_start_date || deal.installation_electrics_start_date) }
 }
 
 export default function SolarPipeline({ onSelectDeal }) {
@@ -65,7 +66,7 @@ export default function SolarPipeline({ onSelectDeal }) {
     setLoading(true); setError("")
     try {
       const { data: deals, error: dealError } = await supabase.from("deals")
-        .select("id,pipedrive_deal_id,contract_number,customer_name,phone,email,address,postcode,product,deal_value,net_value,balance_outstanding,salesperson,salesperson_name,sale_date,status,installation_start_date,fit_team_1,appointment_row_id,branch,installation_roof_start_date,installation_roof_team,installation_electrics_start_date,installation_electrics_team,remedial_start_date,remedial_fit_team")
+        .select("id,pipedrive_deal_id,contract_number,customer_name,phone,email,address,postcode,product,pipedrive_data,deal_value,net_value,balance_outstanding,salesperson,salesperson_name,sale_date,status,installation_start_date,fit_team_1,appointment_row_id,branch,installation_roof_start_date,installation_roof_team,installation_electrics_start_date,installation_electrics_team,remedial_start_date,remedial_fit_team")
         .order("sale_date", { ascending: false }).limit(2000)
       if (dealError) throw dealError
       const solarDeals = (deals || []).filter(deal => isSolar(deal) && Number(deal.balance_outstanding) > 0)
@@ -149,15 +150,25 @@ export default function SolarPipeline({ onSelectDeal }) {
         <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #e8edf2" }}><strong style={{ fontSize: 13 }}>Solar jobs</strong><span style={{ color: "#64748b", fontSize: 11 }}>{filtered.length.toLocaleString("en-GB")} jobs · Page {Math.min(page + 1, pages)} of {pages}</span></div>
         {error && <div style={{ margin: 14, padding: 12, borderRadius: 8, background: "#fff1f2", color: "#b42318", fontSize: 12 }}><AlertCircle size={14} style={{ verticalAlign: "middle", marginRight: 6 }}/>{error}</div>}
         {loading ? <div style={{ padding: 35, textAlign: "center", color: "#64748b", fontSize: 12 }}>Loading solar jobs…</div> : visible.length === 0 ? <div style={{ padding: 35, textAlign: "center", color: "#64748b", fontSize: 12 }}>No solar jobs match these filters.</div> : <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", minWidth: 1160, borderCollapse: "collapse" }}>
-            <thead><tr>{["Customer / Contract","Branch","Sold","Salesperson","Outstanding balance","Current progress","Evidence milestones","Installation"].map(x => <th key={x} style={th}>{x}</th>)}<th style={th}></th></tr></thead>
-            <tbody>{visible.map(row => <tr key={row.id} onClick={() => onSelectDeal?.(row)} style={{ cursor: onSelectDeal ? "pointer" : "default" }} onMouseEnter={e => e.currentTarget.style.background = "#f7fbff"} onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
-              <td style={td}><div style={{ fontWeight: 750, color: "#122d50" }}>{row.customer_name || "Unnamed customer"}</div><div style={{ color: "#64748b", marginTop: 3 }}>{row.contract_number || "No contract ref"} · {row.postcode || "No postcode"}</div></td>
-              <td style={td}>{row.branch}</td><td style={td}>{dateLabel(row.sale_date)}</td><td style={td}>{row.salesperson_name || row.salesperson || "—"}</td><td style={{ ...td, fontWeight: 750, color: "#b45309" }}>{money(row.balance_outstanding)}</td>
-              <td style={td}><span style={{ display: "inline-flex", padding: "5px 8px", borderRadius: 999, background: "#eff6ff", color: "#1d4ed8", fontWeight: 700, fontSize: 10 }}>{row.progress.current}</span></td>
-              <td style={td}><div style={{ display: "flex", gap: 4, minWidth: 170 }}>{row.progress.milestones.map(m => <span key={m.label} title={`${m.label}: ${m.detail}`} style={{ height: 7, flex: 1, borderRadius: 8, background: m.done ? "#16a34a" : "#dbe2ea" }}/>)}</div><div style={{ color: "#64748b", fontSize: 10, marginTop: 5 }}>{row.progress.milestones.filter(m => m.done).length}/5 evidence milestones recorded</div></td>
-              <td style={td}><div>{dateLabel(row.installation_start_date)}</div><div style={{ color: "#64748b", fontSize: 10, marginTop: 3 }}>{row.fit_team_1 || row.installation_roof_team || row.installation_electrics_team || "No team recorded"}</div></td>
-              <td style={td}><ChevronRight size={16} color="#0d9488"/></td>
+          <table style={{ width: "100%", minWidth: 1800, borderCollapse: "collapse" }}>
+            <thead><tr>
+              <th style={{ ...th, position:"sticky", left:0, zIndex:3, background:"#f8fafc", minWidth:230 }}>Solar installation tracker</th>
+              {["Survey docs / photos","OpenSolar signed","Bill / EPVS waiver","HIES registration","EPVS submitted","EPVS validated","Product ordered","Scaffolding booked","Installation confirmation"].map(label => <th key={label} style={{ ...th, minWidth:130, whiteSpace:"normal", lineHeight:1.35 }}>{label}</th>)}
+              <th style={th}>Outstanding balance</th>
+            </tr></thead>
+            <tbody>{visible.map(row => <tr key={row.id} onClick={() => onSelectDeal?.(row)} style={{ cursor:onSelectDeal ? "pointer" : "default" }}>
+              <td style={{ ...td, position:"sticky", left:0, zIndex:1, background:"#fff", minWidth:230 }}>
+                <div style={{ fontWeight:750, color:"#122d50" }}>{row.customer_name || "Unnamed customer"}</div>
+                <div style={{ color:"#64748b", marginTop:3 }}>{row.postcode || "No postcode"} · {row.contract_number || "No contract ref"}</div>
+                <div style={{ color:"#64748b", fontSize:10, marginTop:3 }}>{row.salesperson_name || row.salesperson || "—"} · {row.branch}</div>
+              </td>
+              {row.progress.cells.map(cell => <td key={cell.key} style={{ ...td, padding:0, minWidth:130 }}>
+                <div title={cell.detail} style={{ minHeight:54, boxSizing:"border-box", padding:"9px 8px", display:"flex", flexDirection:"column", justifyContent:"center", gap:4, background:cell.state==="done" ? "#00b050" : cell.state==="partial" ? "#ffc000" : cell.state==="unknown" ? "#e5e7eb" : "#fff", color:cell.state==="done" ? "#064e2b" : cell.state==="partial" ? "#713f12" : "#475569" }}>
+                  <strong style={{ fontSize:11 }}>{cell.state==="done" ? "Yes" : cell.state==="partial" ? "In progress" : cell.state==="unknown" ? "Not tracked" : "No"}</strong>
+                  <span style={{ fontSize:9, lineHeight:1.3 }}>{cell.detail}</span>
+                </div>
+              </td>)}
+              <td style={{ ...td, fontWeight:750, color:"#b45309", whiteSpace:"nowrap" }}>{money(row.balance_outstanding)}</td>
             </tr>)}</tbody>
           </table>
         </div>}
@@ -165,7 +176,7 @@ export default function SolarPipeline({ onSelectDeal }) {
           <button disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))} style={{ height: 32, padding: "0 11px", border: "1px solid #d8e0e8", borderRadius: 7, background: "#fff", cursor: page === 0 ? "not-allowed" : "pointer" }}>Previous</button><span style={{ fontSize: 11, color: "#64748b" }}>Page {page + 1} of {pages}</span><button disabled={page + 1 >= pages} onClick={() => setPage(p => Math.min(pages - 1, p + 1))} style={{ height: 32, padding: "0 11px", border: "1px solid #d8e0e8", borderRadius: 7, background: "#fff", cursor: page + 1 >= pages ? "not-allowed" : "pointer" }}>Next</button>
         </div>
       </div>
-      <div style={{ marginTop: 10, color: "#64748b", fontSize: 10 }}>Progress is calculated from linked CRM records, uploaded documents, survey answers, EPVS submissions and installation activity. It does not use Pipedrive stage labels.</div>
+      <div style={{ marginTop: 10, color: "#64748b", fontSize: 10 }}>Green = completed evidence · Amber = partially recorded / in progress · Grey = no structured CRM record yet · White = not recorded. Progress is based on CRM data, not Pipedrive stages.</div>
     </div>
   </section>
 }
