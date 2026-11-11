@@ -600,7 +600,11 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
       const eligibleBatch = rowsWithRelated.filter(row => {
         const email = normalise(row.email_address).toLowerCase()
         const hasRelatedDeal = Boolean(email && dealEmails.has(email))
-        return normalise(row.job_type).toLowerCase() === "solar" &&
+        const hasFutureRelatedAppointment = (row.relatedAppointments || []).some(related =>
+          related.appointment_date && new Date(related.appointment_date).getTime() > Date.now()
+        )
+        return !(quotesOnly && standaloneTab === "to-send" && hasFutureRelatedAppointment) &&
+          normalise(row.job_type).toLowerCase() === "solar" &&
           normaliseResult(row.result) !== "SOLD" &&
           // A linked appointment is also excluded when any other appointment sharing
           // its marketing row ID has already been marked SOLD.
