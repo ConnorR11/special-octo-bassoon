@@ -282,6 +282,7 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
       }).eq("id", row.id).select("id,disposition,callback_date,visit_date").single()
       if (updateError) throw updateError
       setRows(current => current.map(item => item.id === row.id ? { ...item, ...updated } : item))
+      setCallbackRows(current => current.map(item => item.id === row.id ? { ...item, ...updated } : item))
       setQuoteDispositionEdits(current => { const next = { ...current }; delete next[row.id]; return next })
     } catch (err) {
       setQuoteDispositionError(err?.message || "Unable to save quote disposition.")
@@ -748,19 +749,19 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
         <span style={{ ...muted, fontSize: 11 }}>{callbackRows.length} scheduled</span>
       </div>
       <div style={{ overflowX: "auto" }}>
-        <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 760, fontSize: 12 }}>
+        <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 1250, fontSize: 12 }}>
           <thead><tr style={{ background: "#f8fafc", textAlign: "left", color: "#475569" }}>
-            {["Customer", "Callback Date", "Appointment Date", "Phone", "Email", "Sent"].map(heading => <th key={heading} style={{ padding: "10px 13px", borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" }}>{heading}</th>)}
+            {["Customer", "Callback Date", "Appointment Date", "Phone", "Email", "Sent / Last viewed", "Views", "Disposition", "Open"].map(heading => <th key={heading} style={{ padding: "10px 13px", borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" }}>{heading}</th>)}
           </tr></thead>
           <tbody>
-            {!loading && callbackRows.length === 0 && <tr><td colSpan={6} style={{ padding: 24, textAlign: "center", color: "#64748b" }}>No callbacks scheduled.</td></tr>}
+            {!loading && callbackRows.length === 0 && <tr><td colSpan={9} style={{ padding: 24, textAlign: "center", color: "#64748b" }}>No callbacks scheduled.</td></tr>}
             {callbackRows.map(row => <tr key={row.id} onClick={() => { if (row.appointment_row_id) onSelectAppointment?.({ ...row, email: row.email_address || row.customer_email, _loadFullAppointment: true }) }} style={{ borderBottom: "1px solid #edf2f7", cursor: row.appointment_row_id ? "pointer" : "default" }}>
               <td style={{ padding: "10px 13px", fontWeight: 700 }}>{normalise(row.customer_name || row.name) || "Name missing"}</td>
               <td style={{ padding: "10px 13px", whiteSpace: "nowrap", fontWeight: 700 }}>{new Date(row.callback_date + "T00:00:00").toLocaleDateString("en-GB")}</td>
               <td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{row.appointment_date ? dateTimeLabel(row.appointment_date) : "—"}</td>
               <td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{row.phone_number_1 || row.secondary_phone_number || "—"}</td>
               <td style={{ padding: "10px 13px" }}>{row.customer_email || row.email_address || "—"}</td>
-              <td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}>{dateTimeLabel(row.sent_at)}</td>
+              <td style={{ padding: "10px 13px", whiteSpace: "nowrap" }}><div>{dateTimeLabel(row.sent_at)}</div><div style={{ marginTop: 4, color: "#64748b", fontSize: 11 }}>{row.last_viewed_at ? "Last viewed: " + dateTimeLabel(row.last_viewed_at) : "Not viewed yet"}</div></td><td style={{ padding: "10px 13px", textAlign: "center" }}>{Number(row.view_count || 0)}</td><td style={{ padding: "10px 13px", minWidth: 150 }}>{row.disposition || "Call Back"}</td><td style={{ padding: "8px 10px", textAlign: "center" }}><button type="button" title="Open sent quote" disabled={!row.storage_path} onClick={async event => { event.stopPropagation(); const popup = window.open("", "_blank"); if (!popup) return; try { const { data, error } = await supabase.storage.from("signatures").createSignedUrl(row.storage_path, 300, { download: false }); if (error || !data?.signedUrl) throw error || new Error("Could not create quote link."); popup.location.href = data.signedUrl; } catch (error) { popup.close(); setQuoteDispositionError(error?.message || "Unable to open this quote."); } }} style={{ width: 30, height: 28, padding: 0, border: "1px solid #cbd5e1", borderRadius: 5, background: "#fff", color: "#0f766e" }}><FileText size={15} /></button></td>
             </tr>)}
           </tbody>
         </table>
