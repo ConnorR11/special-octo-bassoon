@@ -65,10 +65,10 @@ export default function SolarPipeline({ onSelectDeal }) {
     setLoading(true); setError("")
     try {
       const { data: deals, error: dealError } = await supabase.from("deals")
-        .select("id,pipedrive_deal_id,contract_number,customer_name,phone,email,address,postcode,product,deal_value,net_value,salesperson,salesperson_name,sale_date,status,installation_start_date,fit_team_1,appointment_row_id,branch,installation_roof_start_date,installation_roof_team,installation_electrics_start_date,installation_electrics_team,remedial_start_date,remedial_fit_team")
+        .select("id,pipedrive_deal_id,contract_number,customer_name,phone,email,address,postcode,product,deal_value,net_value,balance_outstanding,salesperson,salesperson_name,sale_date,status,installation_start_date,fit_team_1,appointment_row_id,branch,installation_roof_start_date,installation_roof_team,installation_electrics_start_date,installation_electrics_team,remedial_start_date,remedial_fit_team")
         .order("sale_date", { ascending: false }).limit(2000)
       if (dealError) throw dealError
-      const solarDeals = (deals || []).filter(isSolar)
+      const solarDeals = (deals || []).filter(deal => isSolar(deal) && Number(deal.balance_outstanding) > 0)
       const ids = solarDeals.map(d => String(d.id))
       const appointmentIds = [...new Set(solarDeals.map(d => String(d.appointment_row_id || "")).filter(Boolean))]
       const [docsResult, answersResult, epvsResult, appointmentsResult] = await Promise.all([
@@ -116,7 +116,7 @@ export default function SolarPipeline({ onSelectDeal }) {
   const visible = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
   const totals = useMemo(() => ({
     jobs: rows.length,
-    value: rows.reduce((sum, r) => sum + (Number(r.net_value ?? r.deal_value) || 0), 0),
+    value: rows.reduce((sum, r) => sum + (Number(r.balance_outstanding) || 0), 0),
     scheduled: rows.filter(r => r.progress.installationScheduled).length,
     onSite: rows.filter(r => r.progress.roofStarted).length,
     awaitingSurvey: rows.filter(r => !r.progress.surveyComplete).length,
@@ -127,14 +127,14 @@ export default function SolarPipeline({ onSelectDeal }) {
       <div style={{ background: "linear-gradient(110deg,#142f55,#245b91)", borderRadius: 14, padding: "22px 25px", color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, boxShadow: "0 8px 22px rgba(15,35,65,.16)", marginBottom: 18 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(255,255,255,.13)", border: "1px solid rgba(255,255,255,.2)", display: "grid", placeItems: "center" }}><Sun size={24}/></div>
-          <div><div style={{ fontSize: 10, letterSpacing: ".12em", fontWeight: 800, opacity: .8 }}>HOMESHIELD · WORK IN PROGRESS</div><h1 style={{ margin: "4px 0", fontSize: 25 }}>Solar Pipeline</h1><div style={{ fontSize: 12, opacity: .85 }}>Live progress from CRM records, documents and linked systems — independent of Pipedrive stages.</div></div>
+          <div><div style={{ fontSize: 10, letterSpacing: ".12em", fontWeight: 800, opacity: .8 }}>HOMESHIELD · WORK IN PROGRESS</div><h1 style={{ margin: "4px 0", fontSize: 25 }}>Solar Pipeline</h1><div style={{ fontSize: 12, opacity: .85 }}>Live progress for solar jobs with money still outstanding, based on CRM records and linked evidence — independent of Pipedrive stages.</div></div>
         </div>
         <button onClick={() => { setRefreshing(true); load() }} disabled={loading} style={{ height: 38, border: "1px solid rgba(255,255,255,.35)", borderRadius: 8, background: "rgba(255,255,255,.12)", color: "#fff", padding: "0 13px", display: "inline-flex", alignItems: "center", gap: 7, cursor: "pointer", fontWeight: 700, fontSize: 11 }}><RefreshCw size={14}/> Refresh</button>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(165px,1fr))", gap: 12, marginBottom: 16 }}>
         {[
-          ["Solar jobs", totals.jobs, Sun], ["Net value", money(totals.value), Zap], ["Installation scheduled", totals.scheduled, CalendarDays], ["Installation activity", totals.onSite, HardHat], ["Survey incomplete", totals.awaitingSurvey, ClipboardCheck],
+          ["Solar jobs", totals.jobs, Sun], ["Outstanding balance", money(totals.value), Zap], ["Installation scheduled", totals.scheduled, CalendarDays], ["Installation activity", totals.onSite, HardHat], ["Survey incomplete", totals.awaitingSurvey, ClipboardCheck],
         ].map(([label, value, Icon]) => <div key={label} style={{ ...panel, padding: 16 }}><div style={{ color: "#64748b", fontSize: 11 }}>{label}</div><div style={{ marginTop: 7, fontSize: 24, fontWeight: 800, color: "#122d50" }}>{value}</div></div>)}
       </div>
 
@@ -150,10 +150,10 @@ export default function SolarPipeline({ onSelectDeal }) {
         {error && <div style={{ margin: 14, padding: 12, borderRadius: 8, background: "#fff1f2", color: "#b42318", fontSize: 12 }}><AlertCircle size={14} style={{ verticalAlign: "middle", marginRight: 6 }}/>{error}</div>}
         {loading ? <div style={{ padding: 35, textAlign: "center", color: "#64748b", fontSize: 12 }}>Loading solar jobs…</div> : visible.length === 0 ? <div style={{ padding: 35, textAlign: "center", color: "#64748b", fontSize: 12 }}>No solar jobs match these filters.</div> : <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", minWidth: 1160, borderCollapse: "collapse" }}>
-            <thead><tr>{["Customer / Contract","Branch","Sold","Salesperson","Value","Current progress","Evidence milestones","Installation"].map(x => <th key={x} style={th}>{x}</th>)}<th style={th}></th></tr></thead>
+            <thead><tr>{["Customer / Contract","Branch","Sold","Salesperson","Outstanding balance","Current progress","Evidence milestones","Installation"].map(x => <th key={x} style={th}>{x}</th>)}<th style={th}></th></tr></thead>
             <tbody>{visible.map(row => <tr key={row.id} onClick={() => onSelectDeal?.(row)} style={{ cursor: onSelectDeal ? "pointer" : "default" }} onMouseEnter={e => e.currentTarget.style.background = "#f7fbff"} onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
               <td style={td}><div style={{ fontWeight: 750, color: "#122d50" }}>{row.customer_name || "Unnamed customer"}</div><div style={{ color: "#64748b", marginTop: 3 }}>{row.contract_number || "No contract ref"} · {row.postcode || "No postcode"}</div></td>
-              <td style={td}>{row.branch}</td><td style={td}>{dateLabel(row.sale_date)}</td><td style={td}>{row.salesperson_name || row.salesperson || "—"}</td><td style={td}>{money(row.net_value ?? row.deal_value)}</td>
+              <td style={td}>{row.branch}</td><td style={td}>{dateLabel(row.sale_date)}</td><td style={td}>{row.salesperson_name || row.salesperson || "—"}</td><td style={{ ...td, fontWeight: 750, color: "#b45309" }}>{money(row.balance_outstanding)}</td>
               <td style={td}><span style={{ display: "inline-flex", padding: "5px 8px", borderRadius: 999, background: "#eff6ff", color: "#1d4ed8", fontWeight: 700, fontSize: 10 }}>{row.progress.current}</span></td>
               <td style={td}><div style={{ display: "flex", gap: 4, minWidth: 170 }}>{row.progress.milestones.map(m => <span key={m.label} title={`${m.label}: ${m.detail}`} style={{ height: 7, flex: 1, borderRadius: 8, background: m.done ? "#16a34a" : "#dbe2ea" }}/>)}</div><div style={{ color: "#64748b", fontSize: 10, marginTop: 5 }}>{row.progress.milestones.filter(m => m.done).length}/5 evidence milestones recorded</div></td>
               <td style={td}><div>{dateLabel(row.installation_start_date)}</div><div style={{ color: "#64748b", fontSize: 10, marginTop: 3 }}>{row.fit_team_1 || row.installation_roof_team || row.installation_electrics_team || "No team recorded"}</div></td>
