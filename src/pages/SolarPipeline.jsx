@@ -174,14 +174,15 @@ export default function SolarPipeline({ onSelectDeal }) {
         {loading ? <div style={{ padding: 35, textAlign: "center", color: "#64748b", fontSize: 12 }}>Loading solar jobs…</div> : visible.length === 0 ? <div style={{ padding: 35, textAlign: "center", color: "#64748b", fontSize: 12 }}>No solar jobs match these filters.</div> : <div style={{ overflowX: "auto" }}>
           <table style={{ width:"100%", minWidth:1850, borderCollapse:"collapse", tableLayout:"fixed" }}>
             <thead><tr>
-              <th style={{...th,position:"sticky",left:0,zIndex:3,background:"#f8fafc",minWidth:145,width:145}}>Date sold</th>
-              <th style={{...th,position:"sticky",left:145,zIndex:3,background:"#f8fafc",minWidth:210,width:210}}>Name</th>
-              {["Type","Survey","EPVS","Ordered","Scaff","DNO","Install","Balance","Stage"].map(label=><th key={label} style={{...th,minWidth:125,whiteSpace:"normal"}}>{label}</th>)}
+              <th style={{...th,position:"sticky",left:0,zIndex:3,background:"#f8fafc",minWidth:260,width:260}}>Date / Name / Contract Number</th>
+              {["Survey","EPVS","Ordered","Scaff","DNO","Install","Balance","Stage"].map(label=><th key={label} style={{...th,minWidth:125,whiteSpace:"normal"}}>{label}</th>)}
             </tr></thead>
             <tbody>{visible.map(row=><tr key={row.id} onClick={()=>onSelectDeal?.(row)} style={{cursor:onSelectDeal?"pointer":"default"}}>
-              <td style={{...td,position:"sticky",left:0,zIndex:1,background:"#fff",whiteSpace:"nowrap"}}>{dateLabel(row.sale_date)}</td>
-              <td style={{...td,position:"sticky",left:145,zIndex:1,background:"#fff"}}><div style={{fontWeight:700,color:"#172b4d"}}>{row.customer_name||"Unnamed customer"}</div><div style={{fontSize:10,color:"#64748b",marginTop:3}}>{row.contract_number||row.postcode||""}</div></td>
-              <td style={td}>{row.progress.jobType}</td>
+              <td style={{...td,position:"sticky",left:0,zIndex:1,background:"#fff",minWidth:260}}>
+                <div style={{fontSize:10,color:"#64748b"}}>{dateLabel(row.sale_date)}</div>
+                <div style={{fontWeight:700,color:"#172b4d",marginTop:3}}>{row.customer_name||"Unnamed customer"}</div>
+                <div style={{fontSize:10,color:"#64748b",marginTop:3}}>{row.contract_number||"No contract number"}</div>
+              </td>
               {row.progress.cells.filter(c=>["survey","epvs","product","scaffold","confirmation"].includes(c.key)).map(cell=><td key={cell.key} style={td}>{cell.key==="survey" ? <div style={{display:"grid",gap:5,minWidth:130}}>{cell.parts.map(part=><div key={part.label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:5}}><span style={{fontSize:9,color:"#475569"}}>{part.label}</span><StatusPill state={part.complete?"done":part.partial?"partial":"empty"} label={part.count || (part.complete?"Complete":"Missing")}/></div>)}</div> : <StatusPill state={cell.state} label={cell.key==="epvs"?(cell.state==="done"?"Submitted":"Not Submitted"):cell.key==="product"?(cell.state==="done"?"Ordered":"Not Ordered"):cell.key==="scaffold"?"Not Tracked":(cell.state==="done"?"Complete":cell.state==="partial"?"Booked":"Not Booked")} detail={cell.detail}/>}</td>)}
               <td style={td}><StatusPill state="unknown" label="Not Tracked" detail="No DNO workflow is linked yet"/></td>
               <td style={td}><StatusPill state={row.progress.installationScheduled?"done":"empty"} label={row.progress.installationScheduled?"Booked":"Not Booked"} detail={row.progress.installDate?dateLabel(row.progress.installDate):"No installation date"}/></td>
