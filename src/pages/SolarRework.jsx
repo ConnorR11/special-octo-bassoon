@@ -158,6 +158,7 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
   const [rows, setRows] = useState([])
   const [callbackRows, setCallbackRows] = useState([])
   const [standaloneTab, setStandaloneTab] = useState("rework")
+  const [standaloneTabCounts, setStandaloneTabCounts] = useState({ rework: 0, callbacks: 0, toSend: 0 })
   const [standalonePermissionLevel, setStandalonePermissionLevel] = useState(null)
 
   useEffect(() => {
@@ -468,12 +469,9 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
             const bDate = b.appointment_date ? new Date(b.appointment_date).getTime() : Number.POSITIVE_INFINITY
             return aDate - bDate
           })
-        setCallbackRows(activeTab === "quotes-work"
+        const visibleCallbacks = activeTab === "quotes-work"
           ? joinedQuotes.filter(item => {
               if (item.disposition !== "Call Back" || !item.callback_date) return false
-              // Level 1 users only see callbacks whose current quote disposition
-              // was saved by their own authenticated account. Fail closed if the
-              // profile/permission lookup did not resolve.
               if (currentPermissionLevel === 1) {
                 return Boolean(currentAuthUserId) &&
                   String(item.disposition_updated_by || "") === String(currentAuthUserId)
@@ -481,10 +479,16 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
               if (!Number.isFinite(currentPermissionLevel)) return false
               return true
             }).sort((a, b) => String(a.callback_date).localeCompare(String(b.callback_date)))
-          : [])
+          : []
+        setCallbackRows(visibleCallbacks)
         const quotesForWork = activeTab === "quotes-work"
           ? joinedQuotes.filter(item => item.disposition !== "Call Back")
           : joinedQuotes
+        if (quotesOnly) setStandaloneTabCounts(current => ({
+          ...current,
+          rework: quotesForWork.length,
+          callbacks: visibleCallbacks.length
+        }))
         const pageStart = targetPage * PAGE_SIZE
         setRows(quotesForWork.slice(pageStart, pageStart + PAGE_SIZE))
         setHasMore(quotesForWork.length > pageStart + PAGE_SIZE)
@@ -625,6 +629,7 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
       setHasMore(readinessFiltered.length > start + PAGE_SIZE)
       setRows(readinessFiltered.slice(start, start + PAGE_SIZE))
       setTotalCount(readinessFiltered.length)
+      if (quotesOnly && standaloneTab === "to-send") setStandaloneTabCounts(current => ({ ...current, toSend: readinessFiltered.length }))
     } catch (err) {
       if (requestId !== loadRequestId.current) return
       console.error("Solar Rework load failed:", err)
@@ -737,15 +742,15 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
 
     {quotesOnly && <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 12, marginBottom: 14 }}>
       {[
-        { id: "rework", label: "Rework", description: "Review sent quotes and update their outcomes", icon: <FileText size={17} /> },
-        { id: "callbacks", label: "Call Backs", description: "Manage scheduled customer callbacks", icon: <RefreshCw size={17} /> },
-        { id: "to-send", label: "To Send", description: standalonePermissionLevel === null ? "Checking access…" : standalonePermissionLevel >= 4 ? "Quotes awaiting send" : "Permission level 4 required", icon: standalonePermissionLevel !== null && standalonePermissionLevel < 4 ? <Lock size={17} /> : <Sun size={17} /> }
+        { id: "rework", label: "Rework", description: "Review sent quotes and update their outcomes", count: standaloneTabCounts.rework, icon: <FileText size={17} /> },
+        { id: "callbacks", label: "Call Backs", description: "Manage scheduled customer callbacks", count: standaloneTabCounts.callbacks, icon: <RefreshCw size={17} /> },
+        { id: "to-send", label: "To Send", description: standalonePermissionLevel === null ? "Checking access…" : standalonePermissionLevel >= 4 ? "Quotes awaiting send" : "Permission level 4 required", count: standaloneTabCounts.toSend, icon: standalonePermissionLevel !== null && standalonePermissionLevel < 4 ? <Lock size={17} /> : <Sun size={17} /> }
       ].map(tab => {
         const locked = tab.id === "to-send" && (standalonePermissionLevel === null || standalonePermissionLevel < 4)
         const selected = standaloneTab === tab.id
         return <button key={tab.id} type="button" disabled={locked} onClick={() => { setStandaloneTab(tab.id); setPage(0); setRows([]); setLoading(true); if (tab.id === "to-send") { setActiveTab("linked"); setLinkedPmGroup("pm") } else { setActiveTab("quotes-work") } }} style={{ display: "flex", alignItems: "center", gap: 12, textAlign: "left", padding: "14px 15px", border: selected ? "1px solid #93c5fd" : "1px solid #dbe4ef", borderRadius: 11, background: selected ? "#eff6ff" : locked ? "#f8fafc" : "#fff", color: locked ? "#94a3b8" : "#0f172a", cursor: locked ? "not-allowed" : "pointer", boxShadow: selected ? "0 0 0 1px rgba(59,130,246,.08)" : "0 1px 2px rgba(15,23,42,.03)" }}>
           <span style={{ width: 38, height: 38, flex: "0 0 38px", display: "grid", placeItems: "center", borderRadius: 9, background: selected ? "#dbeafe" : "#f1f5f9", color: locked ? "#94a3b8" : selected ? "#2563eb" : "#334155" }}>{tab.icon}</span>
-          <span style={{ minWidth: 0 }}><span style={{ display: "block", fontSize: 13, fontWeight: 750 }}>{tab.label}</span><span style={{ display: "block", marginTop: 3, fontSize: 10, color: locked ? "#94a3b8" : "#64748b" }}>{tab.description}</span></span>
+          <span style={{ minWidth: 0, flex: 1 }}><span style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 750 }}>{tab.label}<span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 21, height: 20, padding: "0 6px", borderRadius: 999, background: selected ? "#dbeafe" : "#eef2f7", color: locked ? "#94a3b8" : "#475569", fontSize: 10, fontWeight: 750, fontVariantNumeric: "tabular-nums" }}>{Number(tab.count || 0).toLocaleString("en-GB")}</span></span><span style={{ display: "block", marginTop: 3, fontSize: 10, color: locked ? "#94a3b8" : "#64748b" }}>{tab.description}</span></span>
         </button>
       })}
     </div>}
