@@ -386,8 +386,18 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
         const { data: quoteData, error: quoteError } = await quoteRequest
         if (requestId !== loadRequestId.current) return
         if (quoteError) throw quoteError
-        const quoteBatch = quoteData || []
+        let quoteBatch = quoteData || []
         const ids = [...new Set(quoteBatch.map(item => item.appointment_row_id).filter(Boolean))]
+        if (activeTab === "quotes-work" && ids.length) {
+          const { data: grampianAppointments, error: grampianError } = await supabase
+            .from("appointments")
+            .select("appointment_row_id")
+            .in("appointment_row_id", ids)
+            .eq("branch", "Grampian")
+          if (grampianError) throw grampianError
+          const grampianIds = new Set((grampianAppointments || []).map(item => String(item.appointment_row_id)))
+          quoteBatch = quoteBatch.filter(item => !grampianIds.has(String(item.appointment_row_id)))
+        }
         let appointmentById = {}
         if (ids.length) {
           // Kenneth and other restricted sales users may see the quote but not
