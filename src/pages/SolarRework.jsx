@@ -416,12 +416,12 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
         if (dispositionUserIds.length) {
           const { data: dispositionProfiles, error: dispositionProfilesError } = await supabase
             .from("profiles")
-            .select("id,full_name,display_name,name,email")
+            .select("id,full_name,display_name,email")
             .in("id", dispositionUserIds)
           if (dispositionProfilesError) throw dispositionProfilesError
           dispositionUserNames = Object.fromEntries((dispositionProfiles || []).map(profile => [
             String(profile.id),
-            profile.full_name || profile.display_name || profile.name || profile.email || "Unknown user"
+            profile.full_name || profile.display_name || profile.email || "Unknown user"
           ]))
         }
         quoteBatch = quoteBatch.map(item => ({
