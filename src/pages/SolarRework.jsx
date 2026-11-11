@@ -422,7 +422,7 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false, p
           if (currentAuthUserId === "9ec19caa-84f1-4aea-930f-d60ced77a900") {
             quoteRequest = quoteRequest.lt("sent_at", "2026-11-09T00:00:00Z")
           }
-          quoteRequest = quoteRequest.or('disposition.is.null,disposition.not.in.("Superseded","Not interested","Accepted quote")')
+          quoteRequest = quoteRequest.or('disposition.is.null,disposition.not.in.("Superseded","Not interested","Accepted quote","Visit booked")')
         }
         if (quoteViewedFilter === "viewed") quoteRequest = quoteRequest.not("last_viewed_at", "is", null)
         if (quoteViewedFilter === "not-viewed") quoteRequest = quoteRequest.is("last_viewed_at", null)
