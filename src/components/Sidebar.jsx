@@ -188,6 +188,7 @@ function Sidebar({ page, setPage, mobile, setMobile, onSignOut, permissionLevel 
             <NavItem icon={CalendarDays} label="Installations Performance" active={isActive("installations-performance")} onClick={() => navigate("installations-performance")}/>
             <NavItem icon={ClipboardList} label="Tasks" active={isActive("tasks")} onClick={() => navigate("tasks")}/>
             <NavItem icon={Presentation} label="Templates" active={isActive("templates")} onClick={() => navigate("templates")}/>
+            <NavItem icon={Sun} label="Solar Pipeline" active={isActive("solar-pipeline")} onClick={() => navigate("solar-pipeline")}/>
           </Folder>}
         </nav>
 
