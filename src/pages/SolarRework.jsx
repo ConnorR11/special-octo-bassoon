@@ -154,7 +154,7 @@ function QuoteDailyStatsPanel({ active, loading, stats, cardStyle, muted, firstS
     </div>}
   </div>
 }
-export default function SolarRework({ onSelectAppointment, quotesOnly = false }) {
+export default function SolarRework({ onSelectAppointment, quotesOnly = false, previewUser = null }) {
   const [rows, setRows] = useState([])
   const [callbackRows, setCallbackRows] = useState([])
   const [standaloneTab, setStandaloneTab] = useState("rework")
@@ -377,8 +377,13 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
         if (activeTab === "quotes-work") {
           const { data: authData, error: authError } = await supabase.auth.getUser()
           if (authError) throw authError
-          currentAuthUserId = authData?.user?.id || null
-          if (currentAuthUserId) {
+          // Use the impersonated profile when an administrator is previewing another user.
+          // This keeps both user-specific visibility rules and permission checks aligned
+          // with the account being previewed rather than the administrator's own account.
+          currentAuthUserId = previewUser?.auth_user_id || authData?.user?.id || null
+          if (previewUser) {
+            currentPermissionLevel = Number(previewUser.permission_level)
+          } else if (currentAuthUserId) {
             const { data: currentProfile, error: profileError } = await supabase
               .from("profiles")
               .select("permission_level")
