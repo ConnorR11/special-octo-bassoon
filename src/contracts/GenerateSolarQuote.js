@@ -45,12 +45,11 @@ function getQuoteData(appointment) {
   const termYears = Number(epvs.financeTerm ?? 0)
   const rate = Number(epvs.financeRate ?? 0)
   const deposit = Number(epvs.deposit ?? 0)
-  const adminFee = Math.max(0, Number(epvs.adminFee ?? 0))
   const financeFactor = Number(epvs.financeFactor ?? 0)
   const monthly = paymentMethod.toLowerCase() === "finance" && results.monthlyPayment !== null && results.monthlyPayment !== undefined && Number.isFinite(Number(results.monthlyPayment))
     ? Number(results.monthlyPayment)
     : null
-  return { calculation, epvs, results, openSolar, panels, inverters, batteries, panelCount, panelWattage, capacity, generation, cashPrice, paymentMethod, termYears, rate, deposit, financeFactor, monthly, adminFee }
+  return { calculation, epvs, results, openSolar, panels, inverters, batteries, panelCount, panelWattage, capacity, generation, cashPrice, paymentMethod, termYears, rate, deposit, financeFactor, monthly }
 }
 
 async function imageData(url) {
@@ -108,9 +107,8 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
   if (!saved) throw new Error("The saved appointment could not be loaded. The quote must use the latest saved EPVS calculation.")
   const record = saved
   const d = getQuoteData(record)
-  if (!d.calculation?.data || !d.calculation?.results || !d.calculation?.thirtyYearProjection ||
-      !Number.isFinite(Number(d.calculation?.data?.adminFee))) {
-    throw new Error("A complete saved EPVS calculation, including the admin fee, is required before generating the solar quote. Please save the EPVS calculation first.")
+  if (!d.calculation?.data || !d.calculation?.results || !d.calculation?.thirtyYearProjection) {
+    throw new Error("A complete saved EPVS calculation is required before generating the solar quote. Please save the EPVS calculation first.")
   }
   const openSolarImageUrl = String(d.openSolar?.imageUrl || "").trim()
   const pdf = new jsPDF({ unit: "mm", format: "a4" })
@@ -392,7 +390,7 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
   const batteryOf30=row=>numeric30(row,"batteryBenefit","battery")||numeric30(row,"batterySelfConsumptionBenefit")+numeric30(row,"forceChargeBenefit")
   const exportOf30=row=>numeric30(row,"exportBenefit")
   const benefitOf30=row=>solarOf30(row)+batteryOf30(row)+exportOf30(row)
-  // Render the saved EPVS projection values verbatim. The admin fee is separate.
+  // Render the saved EPVS projection values verbatim.
   const paymentOf30=row=>Number(row?.yearlyPayment ?? 0)
   const netAnnualOf30=row=>Number(row?.netAnnualBenefit ?? 0)
   const netPositionOf30=row=>Number(row?.cumulativePosition ?? 0)
