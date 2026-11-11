@@ -218,6 +218,7 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false, p
   const [quoteStatsLoading, setQuoteStatsLoading] = useState(false)
   const [linkedReadinessFilter, setLinkedReadinessFilter] = useState("all")
   const [page, setPage] = useState(0)
+  const [quoteSort, setQuoteSort] = useState({ key: "appointment_date", direction: "desc" })
   const [activeTab, setActiveTab] = useState(quotesOnly ? "quotes-work" : "unlinked")
   const [linkedReadinessTab, setLinkedReadinessTab] = useState("not-ready")
   const loadRequestId = useRef(0)
@@ -491,9 +492,17 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false, p
             }).sort((a, b) => String(a.callback_date).localeCompare(String(b.callback_date)))
           : []
         setCallbackRows(visibleCallbacks)
-        const quotesForWork = activeTab === "quotes-work"
+        const quotesForWork = (activeTab === "quotes-work"
           ? joinedQuotes.filter(item => item.disposition !== "Call Back")
-          : joinedQuotes
+          : joinedQuotes).sort((a, b) => {
+            const { key, direction } = quoteSort
+            const av = key === "views" ? Number(a.view_count || 0) : new Date(a[key] || 0).getTime()
+            const bv = key === "views" ? Number(b.view_count || 0) : new Date(b[key] || 0).getTime()
+            const aMissing = key !== "views" && !a[key]
+            const bMissing = key !== "views" && !b[key]
+            if (aMissing !== bMissing) return aMissing ? 1 : -1
+            return (direction === "asc" ? 1 : -1) * (av - bv)
+          })
         if (quotesOnly) setStandaloneTabCounts(current => ({
           ...current,
           rework: quotesForWork.length,
@@ -880,7 +889,7 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false, p
       <div style={{ overflowX: "auto" }}>
         <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 980, fontSize: 12 }}>
           <thead><tr style={{ background: "#f8fafc", textAlign: "left", color: "#475569" }}>
-            {((activeTab === "quotes-sent" || activeTab === "quotes-work") ? ["Customer", ...(activeTab === "quotes-sent" ? ["Quote Ref"] : []), ...(activeTab === "quotes-work" ? ["Appointment Date"] : []), "Phone", "Email", "Sent / Last viewed", "Views", "Disposition", ...(activeTab === "quotes-work" ? ["Open"] : [])] : activeTab === "lead-view" ? ["Lead", "Postcode", "Phone", "Email", "Appointment date & time", "Disposition", "Solar quote"] : ["Name", ...(activeTab === "unlinked" ? ["OpenSolar ID"] : ["Design"]), ...(activeTab === "linked" ? ["Lead disposition", "Appointment result"] : []),"Date",activeTab === "unlinked" ? "Result" : "Quote readiness", ...(activeTab === "linked" ? ["Related appointment result"] : [])]).map((heading, index) => <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</th>)}
+            {((activeTab === "quotes-sent" || activeTab === "quotes-work") ? ["Customer", ...(activeTab === "quotes-sent" ? ["Quote Ref"] : []), ...(activeTab === "quotes-work" ? ["Appointment Date"] : []), "Phone", "Email", "Sent / Last viewed", "Views", "Disposition", ...(activeTab === "quotes-work" ? ["Open"] : [])] : activeTab === "lead-view" ? ["Lead", "Postcode", "Phone", "Email", "Appointment date & time", "Disposition", "Solar quote"] : ["Name", ...(activeTab === "unlinked" ? ["OpenSolar ID"] : ["Design"]), ...(activeTab === "linked" ? ["Lead disposition", "Appointment result"] : []),"Date",activeTab === "unlinked" ? "Result" : "Quote readiness", ...(activeTab === "linked" ? ["Related appointment result"] : [])]).map((heading, index) => { const sortKey = heading === "Appointment Date" ? "appointment_date" : heading === "Sent / Last viewed" ? "sent_at" : heading === "Views" ? "views" : null; return <th key={heading || index} style={{ padding: "11px 13px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, whiteSpace: "nowrap" }}>{sortKey && (activeTab === "quotes-work" || activeTab === "quotes-sent") ? <button type="button" onClick={() => { setQuoteSort(current => ({key:sortKey,direction:current.key===sortKey && current.direction==="desc"?"asc":"desc"})); setPage(0); }} style={{border:0,background:"transparent",padding:0,font: "inherit",fontWeight:700,color:"#475569",cursor:"pointer"}}>{heading} {quoteSort.key===sortKey ? (quoteSort.direction==="desc"?"↓":"↑") : "↕"}</button> : heading}</th> })}
           </tr></thead>
           <tbody>
             {activeTab === "lead-view" && !loading && visibleRows.length === 0 && <tr><td colSpan={7} style={{ padding: 36, textAlign: "center", color: "#64748b" }}>No solar leads with an appointment date and time match these filters.</td></tr>}
