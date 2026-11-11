@@ -469,11 +469,18 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
             return aDate - bDate
           })
         setCallbackRows(activeTab === "quotes-work"
-          ? joinedQuotes.filter(item =>
-              item.disposition === "Call Back" &&
-              item.callback_date &&
-              (currentPermissionLevel !== 1 || String(item.disposition_updated_by || "") === String(currentAuthUserId || ""))
-            ).sort((a, b) => String(a.callback_date).localeCompare(String(b.callback_date)))
+          ? joinedQuotes.filter(item => {
+              if (item.disposition !== "Call Back" || !item.callback_date) return false
+              // Level 1 users only see callbacks whose current quote disposition
+              // was saved by their own authenticated account. Fail closed if the
+              // profile/permission lookup did not resolve.
+              if (currentPermissionLevel === 1) {
+                return Boolean(currentAuthUserId) &&
+                  String(item.disposition_updated_by || "") === String(currentAuthUserId)
+              }
+              if (!Number.isFinite(currentPermissionLevel)) return false
+              return true
+            }).sort((a, b) => String(a.callback_date).localeCompare(String(b.callback_date)))
           : [])
         const quotesForWork = activeTab === "quotes-work"
           ? joinedQuotes.filter(item => item.disposition !== "Call Back")
