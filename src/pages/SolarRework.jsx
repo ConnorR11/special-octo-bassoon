@@ -475,9 +475,9 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false, p
           // Prefer linked appointment fields (date and phone) over quote metadata.
           .map(item => ({ ...item, ...appointmentById[String(item.appointment_row_id)] }))
           .sort((a, b) => {
-            const aDate = a.appointment_date ? new Date(a.appointment_date).getTime() : Number.POSITIVE_INFINITY
-            const bDate = b.appointment_date ? new Date(b.appointment_date).getTime() : Number.POSITIVE_INFINITY
-            return aDate - bDate
+            const aDate = a.appointment_date ? new Date(a.appointment_date).getTime() : Number.NEGATIVE_INFINITY
+            const bDate = b.appointment_date ? new Date(b.appointment_date).getTime() : Number.NEGATIVE_INFINITY
+            return bDate - aDate
           })
         const visibleCallbacks = activeTab === "quotes-work"
           ? joinedQuotes.filter(item => {
