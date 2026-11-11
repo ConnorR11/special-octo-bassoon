@@ -220,9 +220,6 @@ export async function GenerateSolarQuote({ appointment, previewOnly = true, pric
   pdf.text(d.monthly == null ? "Not selected" : money(d.monthly)+" / month",margin+priceHalf+6,priceY+17)
   pdf.setFont("helvetica","normal");pdf.setFontSize(6.5)
   pdf.text(d.monthly == null ? "No saved EPVS finance payment is available." : "Saved EPVS finance illustration at "+d.rate.toFixed(1)+"% over "+d.termYears+" years; subject to lender approval and confirmed terms.",margin+8,priceY+22)
-  pdf.setTextColor(...navy);pdf.setFont("helvetica","bold");pdf.setFontSize(8)
-  pdf.text("ADMIN FEE",margin+5,priceY+34)
-  pdf.setFont("helvetica","normal");pdf.text(money(d.adminFee),w-margin-5,priceY+34,{align:"right"})
   footer(1)
 
   // PAGE 2 — Itemised equipment and service breakdown.
