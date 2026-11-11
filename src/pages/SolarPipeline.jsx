@@ -3,6 +3,8 @@ import { RefreshCw, Search, Sun, FileCheck, ClipboardCheck, CalendarDays, HardHa
 import { supabase } from "../lib/supabase"
 
 const PAGE_SIZE = 50
+const SURVEY_PHOTO_SECTIONS = ["Front of Property","Rear of Property","Side of Property","Close Up of Consumer Unit","Close Up of Electricity Meter","Close Up of Cut Out","Wide Of Consumer Unit","Loft Access Point","Loft Roof Truss","Internal DC Route","External DC Route","Proposed Inverter Location","Proposed Battery Location","Proposed Canopy Location","Proposed Panel Layout","Alternative Roof Elevations","Existing Solar Equipment","Existing EV Charger","High Electrical Usage Items","Shading Issues"]
+
 const panel = { background: "#fff", border: "1px solid #e1e7ee", borderRadius: 12, boxShadow: "0 2px 8px rgba(15,23,42,.04)" }
 const th = { padding: "11px 13px", textAlign: "left", color: "#64748b", fontSize: 10, textTransform: "uppercase", letterSpacing: ".04em", borderBottom: "1px solid #e8edf2", whiteSpace: "nowrap" }
 const td = { padding: "8px 9px", borderBottom: "1px solid #edf1f5", borderRight:"1px solid #edf1f5", fontSize: 12, verticalAlign: "middle" }
@@ -22,11 +24,16 @@ function isSolar(deal) {
 }
 function progressFor(deal, docs, answers, epvs, appointment, units) {
   const signed = Boolean(appointment?.customer_signed_at || (appointment?.signature_path && appointment?.express_fit_signature_path && appointment?.seg_disclaimer_signature_path))
-  const hasPhotos = docs.some(d => d.category === "survey_photos" || d.category === "survey_video")
-  const hasBill = docs.some(d => d.category === "electricity_bill_epvs_waiver")
-  const hasPdf = docs.some(d => d.category === "survey_pdf")
-  const answered = Object.values(answers || {}).filter(v => String(v ?? "").trim()).length
-  const surveyStarted = hasPhotos || hasPdf || answered > 0
+  const videoComplete = docs.some(d => d.category === "survey_video")
+  const billComplete = docs.some(d => d.category === "electricity_bill_epvs_waiver")
+  const answeredCount = Object.values(answers || {}).filter(v => String(v ?? "").trim()).length
+  const checklistComplete = answeredCount === 27
+  const checklistStarted = answeredCount > 0
+  const savedPhotoSections = new Set(docs.filter(d => d.category === "survey_photos").map(d => d.survey_section || "Front of Property"))
+  const photoSectionsComplete = SURVEY_PHOTO_SECTIONS.filter(section => savedPhotoSections.has(section)).length
+  const photosComplete = photoSectionsComplete === SURVEY_PHOTO_SECTIONS.length
+  const hasPhotos = photoSectionsComplete > 0
+  const surveyStarted = videoComplete || billComplete || checklistStarted || hasPhotos
   const epvsSubmitted = Boolean(epvs)
   const epvsStatus = String(epvs?.status || "").trim().toLowerCase()
   const validated = epvsStatus.includes("validat") || epvsStatus === "registered"
@@ -38,7 +45,7 @@ function progressFor(deal, docs, answers, epvs, appointment, units) {
   const installComplete = Boolean(deal.installation_electrics_start_date && deal.installation_roof_start_date)
   const balanceStatus = Number(deal.balance_outstanding) <= 0 ? "Paid" : deal.estimated_payment_date ? (new Date(deal.estimated_payment_date) > new Date() ? "Future" : "Outstanding") : "Outstanding"
   const cells = [
-    { key:"survey", state:hasPhotos && hasPdf ? "done" : surveyStarted ? "partial" : "empty", detail:`${docs.length} files · ${answered} answers` },
+    { key:"survey", state:videoComplete && billComplete && checklistComplete && photosComplete ? "done" : surveyStarted ? "partial" : "empty", detail:`Video ${videoComplete ? "✓" : "✗"} · Bill ${billComplete ? "✓" : "✗"} · Checklist ${answeredCount}/27 · Photos ${photoSectionsComplete}/20`, parts:[{label:"Video",complete:videoComplete,partial:false},{label:"Electricity bill",complete:billComplete,partial:false},{label:"Checklist",complete:checklistComplete,partial:checklistStarted,count:`${answeredCount}/27`},{label:"Photos",complete:photosComplete,partial:hasPhotos,count:`${photoSectionsComplete}/20`}] },
     { key:"opensolar", state:signed ? "done" : "empty", detail:signed ? dateLabel(appointment?.customer_signed_at) : "No signature recorded" },
     { key:"bill", state:hasBill ? "done" : "empty", detail:hasBill ? "Uploaded" : "Not uploaded" },
     { key:"hies", state:"unknown", detail:"No linked CRM record" },
@@ -50,12 +57,12 @@ function progressFor(deal, docs, answers, epvs, appointment, units) {
   ]
   let current = "Awaiting survey information"
   if (signed) current = "OpenSolar signed"
-  if (surveyStarted) current = hasPhotos && hasPdf && hasBill ? "Survey information recorded" : "Survey information in progress"
+  if (surveyStarted) current = videoComplete && billComplete && checklistComplete && photosComplete ? "Survey complete" : "Survey information in progress"
   if (epvsSubmitted) current = validated ? "EPVS validated" : "EPVS submitted"
   if (deal.installation_start_date) current = "Installation scheduled"
   if (deal.installation_roof_start_date || deal.installation_electrics_start_date) current = "Installation in progress"
   if (deal.remedial_start_date) current = "Remedial work recorded"
-  return { current, cells, balanceStatus, installDate, jobType:appointment?.job_type || appointment?.product || deal.product || "—", stage:deal.pipedrive_stage || "—", hasContract:signed, hasSurveyData:surveyStarted, surveyComplete:hasPhotos && hasPdf && hasBill, epvsComplete:epvsSubmitted, installationScheduled:Boolean(deal.installation_start_date), roofStarted:Boolean(deal.installation_roof_start_date || deal.installation_electrics_start_date) }
+  return { current, cells, balanceStatus, installDate, jobType:appointment?.job_type || appointment?.product || deal.product || "—", stage:deal.pipedrive_stage || "—", hasContract:signed, hasSurveyData:surveyStarted, surveyComplete:videoComplete && billComplete && checklistComplete && photosComplete, epvsComplete:epvsSubmitted, installationScheduled:Boolean(deal.installation_start_date), roofStarted:Boolean(deal.installation_roof_start_date || deal.installation_electrics_start_date) }
 }
 
 export default function SolarPipeline({ onSelectDeal }) {
@@ -83,7 +90,7 @@ export default function SolarPipeline({ onSelectDeal }) {
       const ids = solarDeals.map(d => String(d.id))
       const appointmentIds = [...new Set(solarDeals.map(d => String(d.appointment_row_id || "")).filter(Boolean))]
       const [docsResult, answersResult, epvsResult, appointmentsResult, unitsResult] = await Promise.all([
-        ids.length ? supabase.from("deal_documents").select("deal_id,category,file_name,created_at").in("deal_id", ids) : Promise.resolve({ data: [], error: null }),
+        ids.length ? supabase.from("deal_documents").select("deal_id,category,file_name,survey_section,created_at").in("deal_id", ids) : Promise.resolve({ data: [], error: null }),
         ids.length ? supabase.from("deal_survey_answers").select("deal_id,answers,updated_at").in("deal_id", ids) : Promise.resolve({ data: [], error: null }),
         ids.length ? supabase.from("epvs_submissions").select("linked_deal_id,status,epvs_created_at,last_activity_at").in("linked_deal_id", ids) : Promise.resolve({ data: [], error: null }),
         appointmentIds.length ? supabase.from("appointments").select("appointment_row_id,contract_number,signature_path,express_fit_signature_path,seg_disclaimer_signature_path,customer_signed_at,branch,job_type,product").in("appointment_row_id", appointmentIds) : Promise.resolve({ data: [], error: null }),
@@ -175,7 +182,7 @@ export default function SolarPipeline({ onSelectDeal }) {
               <td style={{...td,position:"sticky",left:0,zIndex:1,background:"#fff",whiteSpace:"nowrap"}}>{dateLabel(row.sale_date)}</td>
               <td style={{...td,position:"sticky",left:145,zIndex:1,background:"#fff"}}><div style={{fontWeight:700,color:"#172b4d"}}>{row.customer_name||"Unnamed customer"}</div><div style={{fontSize:10,color:"#64748b",marginTop:3}}>{row.contract_number||row.postcode||""}</div></td>
               <td style={td}>{row.progress.jobType}</td>
-              {row.progress.cells.filter(c=>["survey","epvs","product","scaffold","confirmation"].includes(c.key)).map(cell=><td key={cell.key} style={td}><StatusPill state={cell.state} label={cell.key==="survey"?(cell.state==="done"?"Complete":cell.state==="partial"?"In Progress":"Missing"):cell.key==="epvs"?(cell.state==="done"?"Submitted":"Not Submitted"):cell.key==="product"?(cell.state==="done"?"Ordered":"Not Ordered"):cell.key==="scaffold"?"Not Tracked":(cell.state==="done"?"Complete":cell.state==="partial"?"Booked":"Not Booked")} detail={cell.detail}/></td>)}
+              {row.progress.cells.filter(c=>["survey","epvs","product","scaffold","confirmation"].includes(c.key)).map(cell=><td key={cell.key} style={td}>{cell.key==="survey" ? <div style={{display:"grid",gap:5,minWidth:130}}>{cell.parts.map(part=><div key={part.label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:5}}><span style={{fontSize:9,color:"#475569"}}>{part.label}</span><StatusPill state={part.complete?"done":part.partial?"partial":"empty"} label={part.count || (part.complete?"Complete":"Missing")}/></div>)}</div> : <StatusPill state={cell.state} label={cell.key==="epvs"?(cell.state==="done"?"Submitted":"Not Submitted"):cell.key==="product"?(cell.state==="done"?"Ordered":"Not Ordered"):cell.key==="scaffold"?"Not Tracked":(cell.state==="done"?"Complete":cell.state==="partial"?"Booked":"Not Booked")} detail={cell.detail}/>}</td>)}
               <td style={td}><StatusPill state="unknown" label="Not Tracked" detail="No DNO workflow is linked yet"/></td>
               <td style={td}><StatusPill state={row.progress.installationScheduled?"done":"empty"} label={row.progress.installationScheduled?"Booked":"Not Booked"} detail={row.progress.installDate?dateLabel(row.progress.installDate):"No installation date"}/></td>
               <td style={td}><StatusPill state={row.progress.balanceStatus==="Paid"?"done":row.progress.balanceStatus==="Future"?"partial":"empty"} label={row.progress.balanceStatus} detail={row.progress.balanceStatus==="Future"?dateLabel(row.estimated_payment_date):money(row.balance_outstanding)}/></td>
