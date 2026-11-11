@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react"
-import { FileText, Link2, RefreshCw, Search, Sun } from "lucide-react"
+import { FileText, Link2, RefreshCw, Search, Sun, Lock } from "lucide-react"
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts"
 import { supabase } from "../lib/supabase"
 
@@ -157,6 +157,22 @@ function QuoteDailyStatsPanel({ active, loading, stats, cardStyle, muted, firstS
 export default function SolarRework({ onSelectAppointment, quotesOnly = false }) {
   const [rows, setRows] = useState([])
   const [callbackRows, setCallbackRows] = useState([])
+  const [standaloneTab, setStandaloneTab] = useState("rework")
+  const [standalonePermissionLevel, setStandalonePermissionLevel] = useState(null)
+
+  useEffect(() => {
+    if (!quotesOnly || !supabase) return
+    let cancelled = false
+    ;(async () => {
+      const { data: authData } = await supabase.auth.getUser()
+      const authUserId = authData?.user?.id
+      if (!authUserId) return
+      const { data: profile } = await supabase.from("profiles").select("permission_level").eq("auth_user_id", authUserId).maybeSingle()
+      if (!cancelled) setStandalonePermissionLevel(Number(profile?.permission_level) || 0)
+    })()
+    return () => { cancelled = true }
+  }, [quotesOnly])
+
   const [totalCount, setTotalCount] = useState(0)
   const [linkedCount, setLinkedCount] = useState(0)
   const [tabCounts, setTabCounts] = useState({ unlinked: null, linkedPm: null, linkedNonPm: null })
@@ -708,6 +724,22 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
 
     </>}
     {error && <div style={{ marginBottom: 16, padding: 12, borderRadius: 8, background: "#fff1f2", color: "#be123c", fontSize: 12 }}>{error}</div>}
+
+    {quotesOnly && <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 12, marginBottom: 14 }}>
+      {[
+        { id: "rework", label: "Rework", description: "Review sent quotes and update their outcomes", icon: <FileText size={17} /> },
+        { id: "callbacks", label: "Call Backs", description: "Manage scheduled customer callbacks", icon: <RefreshCw size={17} /> },
+        { id: "to-send", label: "To Send", description: standalonePermissionLevel === null ? "Checking access…" : standalonePermissionLevel >= 4 ? "Quotes awaiting send" : "Permission level 4 required", icon: standalonePermissionLevel !== null && standalonePermissionLevel < 4 ? <Lock size={17} /> : <Sun size={17} /> }
+      ].map(tab => {
+        const locked = tab.id === "to-send" && (standalonePermissionLevel === null || standalonePermissionLevel < 4)
+        const selected = standaloneTab === tab.id
+        return <button key={tab.id} type="button" disabled={locked} onClick={() => setStandaloneTab(tab.id)} style={{ display: "flex", alignItems: "center", gap: 12, textAlign: "left", padding: "14px 15px", border: selected ? "1px solid #93c5fd" : "1px solid #dbe4ef", borderRadius: 11, background: selected ? "#eff6ff" : locked ? "#f8fafc" : "#fff", color: locked ? "#94a3b8" : "#0f172a", cursor: locked ? "not-allowed" : "pointer", boxShadow: selected ? "0 0 0 1px rgba(59,130,246,.08)" : "0 1px 2px rgba(15,23,42,.03)" }}>
+          <span style={{ width: 38, height: 38, flex: "0 0 38px", display: "grid", placeItems: "center", borderRadius: 9, background: selected ? "#dbeafe" : "#f1f5f9", color: locked ? "#94a3b8" : selected ? "#2563eb" : "#334155" }}>{tab.icon}</span>
+          <span style={{ minWidth: 0 }}><span style={{ display: "block", fontSize: 13, fontWeight: 750 }}>{tab.label}</span><span style={{ display: "block", marginTop: 3, fontSize: 10, color: locked ? "#94a3b8" : "#64748b" }}>{tab.description}</span></span>
+        </button>
+      })}
+    </div>}
+    {quotesOnly && standaloneTab === "to-send" && <div style={{ ...cardStyle, padding: 28, textAlign: "center", color: "#64748b" }}>The To Send workspace is ready for its requirements.</div>}
     {(activeTab === "quotes-sent" || activeTab === "quotes-work") && quoteDispositionError && <div role="alert" style={{ marginBottom: 12, padding: 10, borderRadius: 7, background: "#fff1f2", color: "#be123c", fontSize: 11 }}>{quoteDispositionError}</div>}
 
     {!quotesOnly && (
@@ -779,7 +811,7 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
     )}
 
     <QuoteDailyStatsPanel active={!quotesOnly && activeTab === "quotes-sent"} loading={quoteStatsLoading} stats={quoteDailyStats} cardStyle={cardStyle} muted={muted} firstSentDate={quoteStatsRange.first ? dateLabel(quoteStatsRange.first) : ""} lastSentDate={quoteStatsRange.last ? dateLabel(quoteStatsRange.last) : ""} />
-    {activeTab === "quotes-work" && <div style={{ ...cardStyle, padding: 0, overflow: "hidden", marginBottom: 14 }}>
+    {((quotesOnly && standaloneTab === "callbacks") || (!quotesOnly && activeTab === "quotes-work")) && <div style={{ ...cardStyle, padding: 0, overflow: "hidden", marginBottom: 14 }}>
       <div style={{ padding: "14px 16px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ fontWeight: 700, fontSize: 13 }}>Callbacks</div>
         <span style={{ ...muted, fontSize: 11 }}>{callbackRows.length} scheduled</span>
@@ -803,7 +835,7 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
         </table>
       </div>
     </div>}
-    <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
+    {(!quotesOnly || standaloneTab === "rework") && <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: "1px solid #e2e8f0", flexWrap: "wrap" }}>
         <div style={{ fontWeight: 700, fontSize: 13 }}>{(activeTab === "quotes-sent" || activeTab === "quotes-work") ? (activeTab === "quotes-work" ? "Quotes to work" : "Quotes Sent") : activeTab === "lead-view" ? loading ? "Loading solar leads…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${page * PAGE_SIZE + rows.length} solar leads` : loading ? "Loading appointments…" : `Showing ${rows.length ? page * PAGE_SIZE + 1 : 0}–${Math.min((page + 1) * PAGE_SIZE, totalCount || rows.length)} of ${totalCount.toLocaleString("en-GB")} ${activeTab !== "unlinked" ? "linked" : "unlinked"} appointments`}</div>
         {activeTab === "quotes-work" && <div style={{ position: "relative", flex: "1 1 260px", maxWidth: 420 }}>
@@ -906,7 +938,7 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
           </tbody>
         </table>
       </div>
-    </div>
-    <div style={{ ...muted, marginTop: 12 }}>Saving an OpenSolar ID links the appointment in the CRM and moves it to the Linked appointments tab. This does not create a project in OpenSolar.</div>
+    </div>}
+    {!quotesOnly && <div style={{ ...muted, marginTop: 12 }}>Saving an OpenSolar ID links the appointment in the CRM and moves it to the Linked appointments tab. This does not create a project in OpenSolar.</div>}
   </div>
 }
