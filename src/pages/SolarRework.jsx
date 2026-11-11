@@ -783,7 +783,7 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false })
     </div>
     )}
 
-    {activeTab !== "quotes-work" && (
+    {activeTab !== "quotes-work" && !(quotesOnly && standaloneTab === "to-send") && (
     <div style={{ ...cardStyle, padding: 13, marginBottom: 14 }}>
       <div style={{ display: "grid", gridTemplateColumns: activeTab === "linked" ? "minmax(200px,2fr) repeat(6,minmax(120px,1fr))" : activeTab === "unlinked" ? "minmax(200px,2fr) repeat(4,minmax(125px,1fr))" : (activeTab === "quotes-sent" || activeTab === "quotes-work") ? "minmax(220px,2fr) minmax(170px,1fr)" : "minmax(220px,2fr)", gap: 10, alignItems: "center" }}>
         <div style={{ position: "relative" }}>
