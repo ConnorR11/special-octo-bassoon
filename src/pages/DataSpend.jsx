@@ -7,6 +7,15 @@ const money = value => new Intl.NumberFormat("en-GB", { style: "currency", curre
 const date = value => value ? new Date(value).toLocaleDateString("en-GB") : "—"
 const clean = value => String(value ?? "").trim()
 
+// The Data Spend list excludes leads received from Monday 00:00 this week.
+function getStartOfCurrentWeek() {
+  const start = new Date()
+  const daysSinceMonday = (start.getDay() + 6) % 7
+  start.setHours(0, 0, 0, 0)
+  start.setDate(start.getDate() - daysSinceMonday)
+  return start.toISOString()
+}
+
 function DataSpend() {
   const [activeTab, setActiveTab] = useState("missing")
   const [rows, setRows] = useState([])
@@ -38,10 +47,12 @@ function DataSpend() {
         .lt("received_date_time", "2027-01-01T00:00:00")
       if (autoCostError) throw autoCostError
 
+      const startOfCurrentWeek = getStartOfCurrentWeek()
       let request = supabase.from("leads")
         .select("delete_row_id,marketing_row_id,first_name,last_name,primary_phone_number,email,postcode,lead_source,introducer,pronto_SID,pronto_c3,disposition,hotkey_status,received_date_time,lead_cost", { count: "exact" })
-                .gte("received_date_time", "2026-01-01T00:00:00")
+        .gte("received_date_time", "2026-01-01T00:00:00")
         .lt("received_date_time", "2027-01-01T00:00:00")
+        .lt("received_date_time", startOfCurrentWeek)
       request = tabValue === "spent" ? request.not("lead_cost", "is", null) : request.is("lead_cost", null)
       if (hotkeyValue) request = request.eq("hotkey_status", hotkeyValue)
       if (sourceValue) request = request.eq("lead_source", sourceValue)
@@ -74,6 +85,7 @@ function DataSpend() {
       // Fetch every matching row in bounded batches. The API may cap each response,
       // so a single large range can silently omit sources that exist later in the result set.
       const values = []
+      const startOfCurrentWeek = getStartOfCurrentWeek()
       const batchSize = 1000
       for (let from = 0; ; from += batchSize) {
         const { data, error: optionsError } = await supabase.from("leads")
@@ -81,6 +93,7 @@ function DataSpend() {
           .is("lead_cost", null)
           .gte("received_date_time", "2026-01-01T00:00:00")
           .lt("received_date_time", "2027-01-01T00:00:00")
+          .lt("received_date_time", startOfCurrentWeek)
           .order("lead_source", { ascending: true, nullsFirst: false })
           .range(from, from + batchSize - 1)
         if (optionsError) {
