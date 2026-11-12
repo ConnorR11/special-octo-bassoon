@@ -1158,8 +1158,23 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
       pdf.setFont("helvetica", "normal")
       pdf.setFontSize(7.2)
       pdf.setTextColor(100, 112, 120)
-      const description = pdf.splitTextToSize(textValue(item.description, ""), contentWidth)
+
+      // Keep certification references visible even when the description is
+      // longer than the available card space.
+      const rawDescription = String(item.description || "")
+      const certificationMatch = rawDescription.match(/^\s*(EPVS Membership|MCS Certificate|HIES Membership)\s*:\s*(.+?)\s*$/im)
+      const descriptionText = certificationMatch
+        ? rawDescription.replace(certificationMatch[0], "").trim()
+        : rawDescription
+      const description = pdf.splitTextToSize(descriptionText, contentWidth)
       pdf.text(description.slice(0, 4), contentX, top + 18)
+
+      if (certificationMatch) {
+        pdf.setFont("helvetica", "bold")
+        pdf.setFontSize(7.2)
+        pdf.setTextColor(...ctx.accent)
+        pdf.text(`${certificationMatch[1]}: ${certificationMatch[2]}`, contentX, top + cardHeight - 5)
+      }
     })
 
     const cardsEnd = y + items.length * (cardHeight + cardGap) - cardGap
