@@ -202,7 +202,8 @@ export default async function handler(req, res) {
     const renderTemplate = value => String(value || "").replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, key) => replacements[key] ?? "")
     const subject = renderTemplate(emailTemplate.description) || `Your Homeshield contract${appointment.contract_number ? ` – ${appointment.contract_number}` : ""}`
     const emailBody = renderTemplate(emailTemplate.template_body) || `Dear ${appointment.name || "Customer"},\\n\\nPlease find attached your Homeshield contract.\\n\\nKind regards,\\nHomeshield Scotland Ltd`
-    const sendResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(sender)}/sendMail`, {
+    const sendMailUrl = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(sender)}/sendMail`
+    const sendMailOptions = {
       method: "POST",
       headers: {
         Authorization: `Bearer ${tokenData.access_token}`,
@@ -220,15 +221,45 @@ export default async function handler(req, res) {
         },
         saveToSentItems: true,
       }),
-    })
+    }
+
+    // Microsoft Graph can temporarily return 429, 502 or 503. Retry those
+    // explicit responses with bounded backoff; do not retry network failures
+    // or 504/408 because the send may have been accepted despite a lost response.
+    let sendResponse
+    let sendFailureDetails = ""
+    let graphRequestId = null
+    const maxSendAttempts = 3
+    for (let attempt = 1; attempt <= maxSendAttempts; attempt += 1) {
+      sendResponse = await fetch(sendMailUrl, sendMailOptions)
+      if (sendResponse.ok) break
+
+      sendFailureDetails = await sendResponse.text()
+      graphRequestId = sendResponse.headers.get("request-id") || sendResponse.headers.get("client-request-id") || null
+      const retryable = [429, 502, 503].includes(sendResponse.status)
+      if (!retryable || attempt === maxSendAttempts) break
+
+      const retryAfter = sendResponse.headers.get("retry-after")
+      const retryAfterSeconds = retryAfter && /^\\d+$/.test(retryAfter) ? Number(retryAfter) : null
+      const delayMs = retryAfterSeconds !== null
+        ? Math.min(retryAfterSeconds * 1000, 5000)
+        : attempt * 1000
+      console.warn("Microsoft Graph sendMail transient response; retrying:", {
+        status: sendResponse.status,
+        attempt,
+        nextAttempt: attempt + 1,
+        delayMs,
+        requestId: graphRequestId,
+      })
+      await new Promise(resolve => setTimeout(resolve, delayMs))
+    }
 
     if (!sendResponse.ok) {
-      const details = await sendResponse.text()
-      const graphRequestId = sendResponse.headers.get("request-id") || sendResponse.headers.get("client-request-id") || null
       console.error("Microsoft Graph sendMail failed:", {
         status: sendResponse.status,
         requestId: graphRequestId,
-        details: details.slice(0, 1500),
+        attempts: [429, 502, 503].includes(sendResponse.status) ? maxSendAttempts : 1,
+        details: sendFailureDetails.slice(0, 1500),
       })
       if (sendResponse.status === 403) {
         return await fail(502, "Microsoft 365 refused to send the email. Check admin consent and confirm app@homeshield.ltd is an active mailbox.", sendResponse.status)
