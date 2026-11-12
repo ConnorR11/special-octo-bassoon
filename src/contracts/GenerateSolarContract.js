@@ -1125,6 +1125,14 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
   } else if (kind === "terms_conditions") {
     drawTermsConditions(pdf, page, ctx, appointment, epvs)
   } else if (kind === "accreditations") {
+    // The EPVS Certified Installer panel is part of the accreditation page
+    // artwork rather than the editable accreditation-card list. Draw its
+    // membership reference explicitly inside the bottom of that panel.
+    pdf.setFont("helvetica", "bold")
+    pdf.setFontSize(7.2)
+    pdf.setTextColor(...rgb(settings.accent, [11, 93, 138]))
+    pdf.text("EPVS Membership: EP-48617", ctx.padding + 4, 68)
+
     const items = Array.isArray(settings.items) ? settings.items : []
     const cardHeight = Number(settings.card_height_mm || 46)
     const cardGap = Number(settings.card_gap_mm || 7)
