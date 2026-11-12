@@ -1,6 +1,7 @@
 import jsPDF from "jspdf"
 import { PDFDocument } from "pdf-lib"
 import { supabase } from "../lib/supabase"
+import { getSapZone } from "../EPVSCalculator"
 
 const CONTRACT_NAME = "Digital Solar Contract"
 
@@ -1164,8 +1165,10 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
     const cardsEnd = y + items.length * (cardHeight + cardGap) - cardGap
     if (page.body) body(pdf, page.body, ctx.padding, cardsEnd + 7, width, ctx.text, appointment, epvs)
   } else if (kind === "epvs") {
+    const sapZone = getSapZone(appointment?.postcode || data.postcode)
     y = rows(pdf, [
       ["System size", results.systemSize ? `${num(results.systemSize, 2)} kWp` : "—"],
+      ["SAP zone", sapZone ? `${sapZone.code} – ${sapZone.name}` : "Not available for this postcode"],
       ["Annual consumption", data.annualConsumption ? `${num(data.annualConsumption)} kWh` : "—"],
       ["Estimated generation", results.generation ? `${num(results.generation)} kWh` : "—"],
       ["Solar self-consumption", results.solarSelfConsumption ? `${num(results.solarSelfConsumption)} kWh` : "—"],
