@@ -572,7 +572,7 @@ function FitSheet({ setSelected }) {
       if (actual) assigned.add(normalise(actual))
       return actual || expected
     })
-    const roofNames = ["Summers", "Marcin", "Craig Marshall", "JP McPhail", "Ross White"]
+    const roofNames = ["Summers", "Marcin", "Craig Marshall", "JP McPhail", "Ross White", "Jimmy Cowan"]
     const roofTeams = roofNames.map((expected) => {
       const actual = actualTeams.find((team) => normalise(team) === normalise(expected))
       if (actual) assigned.add(normalise(actual))
