@@ -1131,7 +1131,7 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
     pdf.setFont("helvetica", "bold")
     pdf.setFontSize(7.2)
     pdf.setTextColor(...rgb(settings.accent, [11, 93, 138]))
-    pdf.text("EPVS Membership: EP-48617", ctx.padding + 7, 108)
+    pdf.text("EPVS Membership: EP-48617", ctx.padding + 7, 68)
 
     const items = Array.isArray(settings.items) ? settings.items : []
     const cardHeight = Number(settings.card_height_mm || 46)
