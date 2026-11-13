@@ -716,7 +716,8 @@ export default function EPVSCalculator({
           : initial.solarDegradationYear1,
       customerName: saved.customerName || appointment?.name || "",
       address: saved.address || appointment?.address || "",
-      postcode: saved.postcode || appointment?.postcode || "",
+      // The appointment record is authoritative; never reuse a postcode saved in an older EPVS calculation.
+      postcode: appointment?.postcode || saved.postcode || "",
       // Admin fee is stored separately for the contract and is excluded from
       // all EPVS Year 1 and 30-year payment calculations.
       adminFee:
@@ -1178,7 +1179,7 @@ export default function EPVSCalculator({
       0
     )
 
-    const sapZone = getSapZone(data.postcode, data.sapZone)
+    const sapZone = getSapZone(data.postcode)
 
     const model = calculateStandardFluxYear({
       generation,
@@ -1339,7 +1340,7 @@ export default function EPVSCalculator({
           fluxPeakImport,
           fluxPeakExport,
           fluxStandingCharge: Number(data.fluxStandingCharge || 0) * inflationMultiplier,
-          sunshineHours: getSapZone(data.postcode, data.sapZone)?.sunshine ?? 0,
+          sunshineHours: getSapZone(data.postcode)?.sunshine ?? 0,
           existingGeneration,
           existingSolarSelfConsumption: data.existingSolar
             ? Number(data.existingSolarSelfConsumption || 0)
@@ -1609,7 +1610,7 @@ export default function EPVSCalculator({
     // A ref prevents rapid repeat clicks before React has rendered the disabled state.
     if (saveInFlightRef.current) return
 
-    if (!getSapZone(data.postcode, data.sapZone)) {
+    if (!getSapZone(data.postcode)) {
       setSaveError("This postcode is not included in the approved SAP postcode table. Check the postcode before saving the EPVS calculation.")
       return
     }
@@ -1674,7 +1675,7 @@ export default function EPVSCalculator({
     String(data.importRate ?? "").trim() === "" ? "Current import rate" : null,
     String(data.exportRate ?? "").trim() === "" ? "Current export rate" : null,
     String(data.standingCharge ?? "").trim() === "" ? "Current standing charge" : null,
-    !getSapZone(data.postcode, data.sapZone) ? "A valid SAP postcode zone" : null,
+    !getSapZone(data.postcode) ? "A valid SAP postcode zone" : null,
   ].filter(Boolean)
 
   const hasRequiredEnergyInputs = missingRequiredEnergyInputs.length === 0
