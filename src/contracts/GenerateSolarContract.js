@@ -1122,14 +1122,14 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
       pdf.text(money(amount), amountX, rowY, { align: "right" })
     }
 
-    drawBreakdownRow("Solar PV", solarPvAmount, breakdownTitleY + 30)
-    drawBreakdownRow("Battery Storage", batteryAmount, breakdownTitleY + 49)
+    drawBreakdownRow("Solar PV", solarPvAmount, breakdownTitleY + 25)
+    drawBreakdownRow("Battery Storage", batteryAmount, breakdownTitleY + 40)
 
     pdf.setDrawColor(77, 137, 170)
     pdf.setLineWidth(0.35)
-    pdf.line(breakdownX, breakdownTitleY + 61, breakdownX + breakdownWidth, breakdownTitleY + 61)
+    pdf.line(breakdownX, breakdownTitleY + 49, breakdownX + breakdownWidth, breakdownTitleY + 49)
 
-    drawBreakdownRow("TOTAL", contractTotal, breakdownTitleY + 80, true)
+    drawBreakdownRow("TOTAL", contractTotal, breakdownTitleY + 63, true)
 
     return
   }
