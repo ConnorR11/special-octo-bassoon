@@ -1183,7 +1183,7 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
     pdf.setFont("helvetica", "bold")
     pdf.setFontSize(7.2)
     pdf.setTextColor(...rgb(settings.accent, [11, 93, 138]))
-    pdf.text("EPVS Membership: EP-48617", ctx.padding + 7, 75)
+    pdf.text("EPVS Membership: EP-48617", ctx.padding + 7, 83)
 
     const cardsEnd = y + items.length * (cardHeight + cardGap) - cardGap
     if (page.body) body(pdf, page.body, ctx.padding, cardsEnd + 7, width, ctx.text, appointment, epvs)
