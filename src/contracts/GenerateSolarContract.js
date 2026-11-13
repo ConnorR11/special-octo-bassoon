@@ -1107,7 +1107,7 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
     pdf.setTextColor(255, 255, 255)
     pdf.setFont("helvetica", "bold")
     pdf.setFontSize(19)
-    pdf.text("WARM HOMES LOAN BREAKDOWN", breakdownX, breakdownTitleY)
+    pdf.text("Warm Homes Loan Breakdown", breakdownX, breakdownTitleY)
 
     pdf.setDrawColor(55, 174, 230)
     pdf.setLineWidth(0.7)
@@ -1129,7 +1129,7 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
     pdf.setLineWidth(0.35)
     pdf.line(breakdownX, breakdownTitleY + 31, breakdownX + breakdownWidth, breakdownTitleY + 31)
 
-    drawBreakdownRow("TOTAL", contractTotal, breakdownTitleY + 39, true)
+    drawBreakdownRow("Total", contractTotal, breakdownTitleY + 39, true)
 
     return
   }
