@@ -1125,14 +1125,6 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
   } else if (kind === "terms_conditions") {
     drawTermsConditions(pdf, page, ctx, appointment, epvs)
   } else if (kind === "accreditations") {
-    // The EPVS Certified Installer panel is part of the accreditation page
-    // artwork rather than the editable accreditation-card list. Draw its
-    // membership reference explicitly inside the bottom of that panel.
-    pdf.setFont("helvetica", "bold")
-    pdf.setFontSize(7.2)
-    pdf.setTextColor(...rgb(settings.accent, [11, 93, 138]))
-    pdf.text("EPVS Membership: EP-48617", ctx.padding + 7, 68)
-
     const items = Array.isArray(settings.items) ? settings.items : []
     const cardHeight = Number(settings.card_height_mm || 46)
     const cardGap = Number(settings.card_gap_mm || 7)
@@ -1184,6 +1176,14 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
         pdf.text(`${certificationMatch[1]}: ${certificationMatch[2]}`, contentX, top + cardHeight - 5)
       }
     })
+
+    // Draw after the accreditation cards so the reference is not covered.
+    // The EPVS artwork panel ends around 80mm on this page; place the number
+    // just below its explanatory copy, still inside the panel.
+    pdf.setFont("helvetica", "bold")
+    pdf.setFontSize(7.2)
+    pdf.setTextColor(...rgb(settings.accent, [11, 93, 138]))
+    pdf.text("EPVS Membership: EP-48617", ctx.padding + 7, 75)
 
     const cardsEnd = y + items.length * (cardHeight + cardGap) - cardGap
     if (page.body) body(pdf, page.body, ctx.padding, cardsEnd + 7, width, ctx.text, appointment, epvs)
