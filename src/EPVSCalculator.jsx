@@ -3248,8 +3248,10 @@ function Results({
 
 const styles = {
   wrapper: {
-    maxWidth: 1200,
-    margin: "0 auto",
+    width: "100%",
+    maxWidth: "none",
+    margin: 0,
+    boxSizing: "border-box",
   },
 
   stepper: {
