@@ -1086,6 +1086,51 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
       pdf.text(String(value), x, detailY + 12)
     })
 
+    // Warm Homes Loan breakdown on the contract cover.
+    // Allocate up to £15,000 to Solar PV, with at least £3,500 to battery
+    // storage. Any contract value above £18,500 is added to battery storage.
+    const contractTotal = Math.max(0, Number(results?.systemCost ?? data?.systemCost ?? 0) || 0)
+    const solarPvAmount = Math.min(15000, Math.max(0, contractTotal - 3500))
+    const batteryAmount = contractTotal - solarPvAmount
+    const money = (amount) => new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency: "GBP",
+      maximumFractionDigits: 0,
+      minimumFractionDigits: 0,
+    }).format(amount)
+
+    const breakdownX = ctx.padding
+    const breakdownWidth = ctx.width - ctx.padding * 2
+    const breakdownTitleY = 181
+    const amountX = breakdownX + breakdownWidth - 34
+
+    pdf.setTextColor(255, 255, 255)
+    pdf.setFont("helvetica", "bold")
+    pdf.setFontSize(19)
+    pdf.text("WARM HOMES LOAN BREAKDOWN", breakdownX, breakdownTitleY)
+
+    pdf.setDrawColor(55, 174, 230)
+    pdf.setLineWidth(0.7)
+    pdf.line(breakdownX, breakdownTitleY + 8, breakdownX + breakdownWidth, breakdownTitleY + 8)
+
+    const drawBreakdownRow = (label, amount, rowY, bold = false) => {
+      pdf.setTextColor(255, 255, 255)
+      pdf.setFont("helvetica", bold ? "bold" : "normal")
+      pdf.setFontSize(bold ? 16 : 14)
+      pdf.text(label, breakdownX, rowY)
+      pdf.setFont("helvetica", "bold")
+      pdf.text(money(amount), amountX, rowY, { align: "right" })
+    }
+
+    drawBreakdownRow("Solar PV", solarPvAmount, breakdownTitleY + 30)
+    drawBreakdownRow("Battery Storage", batteryAmount, breakdownTitleY + 49)
+
+    pdf.setDrawColor(77, 137, 170)
+    pdf.setLineWidth(0.35)
+    pdf.line(breakdownX, breakdownTitleY + 61, breakdownX + breakdownWidth, breakdownTitleY + 61)
+
+    drawBreakdownRow("TOTAL", contractTotal, breakdownTitleY + 80, true)
+
     return
   }
 
