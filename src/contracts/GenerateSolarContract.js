@@ -1111,7 +1111,7 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
 
     pdf.setDrawColor(55, 174, 230)
     pdf.setLineWidth(0.7)
-    pdf.line(breakdownX, breakdownTitleY + 6, breakdownX + breakdownWidth, breakdownTitleY + 8)
+    pdf.line(breakdownX, breakdownTitleY + 6, breakdownX + breakdownWidth, breakdownTitleY + 6)
 
     const drawBreakdownRow = (label, amount, rowY, bold = false) => {
       pdf.setTextColor(255, 255, 255)
@@ -1127,7 +1127,7 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
 
     pdf.setDrawColor(77, 137, 170)
     pdf.setLineWidth(0.35)
-    pdf.line(breakdownX, breakdownTitleY + 31, breakdownX + breakdownWidth, breakdownTitleY + 49)
+    pdf.line(breakdownX, breakdownTitleY + 31, breakdownX + breakdownWidth, breakdownTitleY + 31)
 
     drawBreakdownRow("TOTAL", contractTotal, breakdownTitleY + 39, true)
 
