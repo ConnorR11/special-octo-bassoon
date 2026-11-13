@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { X, ChevronLeft, ChevronRight, LoaderCircle, Maximize2 } from "lucide-react"
 import { PDFDocument } from "pdf-lib"
+import * as pdfjs from "pdfjs-dist"
+import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url"
 import { supabase } from "../lib/supabase"
 
 const PRESENTER_PATH = "Homeshield-Solar-Presenter-edited.pdf"
@@ -159,10 +161,14 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
     async function renderPage() {
       setRenderingPage(true)
       try {
-        const pdfjsUrl = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs"
-        const pdfjs = await import(/* @vite-ignore */ pdfjsUrl)
-        pdfjs.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs"
-        const pdf = await pdfjs.getDocument({ data: new Uint8Array(pdfBytes).slice() }).promise
+        // Use the worker bundled with the CRM rather than a cross-origin CDN worker.
+        // This avoids Safari/iPad worker-loading restrictions and keeps the API/worker versions matched.
+        pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker
+        const pdf = await pdfjs.getDocument({
+          data: new Uint8Array(pdfBytes).slice(),
+          isEvalSupported: false,
+          useWorkerFetch: false,
+        }).promise
         const pdfPage = await pdf.getPage(page + 1)
         const base = pdfPage.getViewport({ scale: 1 })
         // Size the PDF from the actual centre column, not the browser viewport.
@@ -173,15 +179,23 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
         const viewport = pdfPage.getViewport({ scale })
         const canvas = document.createElement("canvas")
         const context = canvas.getContext("2d", { alpha: false })
-        const ratio = window.devicePixelRatio || 1
-        canvas.width = Math.floor(viewport.width * ratio)
-        canvas.height = Math.floor(viewport.height * ratio)
+        // Cap canvas backing resolution on high-density mobile displays to avoid
+        // exhausting Safari's per-canvas memory budget on iPads and iPhones.
+        const requestedRatio = Math.min(window.devicePixelRatio || 1, 1.5)
+        const maxCanvasPixels = 4_000_000
+        const pixelLimitedRatio = Math.sqrt(maxCanvasPixels / Math.max(1, viewport.width * viewport.height))
+        const ratio = Math.max(1, Math.min(requestedRatio, pixelLimitedRatio))
+        canvas.width = Math.max(1, Math.floor(viewport.width * ratio))
+        canvas.height = Math.max(1, Math.floor(viewport.height * ratio))
         context.setTransform(ratio, 0, 0, ratio, 0, 0)
         renderTask = pdfPage.render({ canvasContext: context, viewport })
         await renderTask.promise
         if (!cancelled) setRenderedPage({ canvas, width: viewport.width, height: viewport.height })
       } catch (e) {
-        if (!cancelled) setError("Unable to render this slide. Please refresh and try again.")
+        if (!cancelled) {
+          const reason = e?.message ? ` (${e.message})` : ""
+          setError(`Unable to render this slide${reason}. Please refresh and try again.`)
+        }
         console.error("Presenter canvas rendering failed:", e)
       } finally {
         if (!cancelled) setRenderingPage(false)
