@@ -1101,7 +1101,7 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
 
     const breakdownX = ctx.padding
     const breakdownWidth = ctx.width - ctx.padding * 2
-    const breakdownTitleY = 181
+    const breakdownTitleY = 189
     const amountX = breakdownX + breakdownWidth - 34
 
     pdf.setTextColor(255, 255, 255)
