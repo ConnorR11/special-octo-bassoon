@@ -1111,7 +1111,7 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
 
     pdf.setDrawColor(55, 174, 230)
     pdf.setLineWidth(0.7)
-    pdf.line(breakdownX, breakdownTitleY + 8, breakdownX + breakdownWidth, breakdownTitleY + 8)
+    pdf.line(breakdownX, breakdownTitleY + 6, breakdownX + breakdownWidth, breakdownTitleY + 8)
 
     const drawBreakdownRow = (label, amount, rowY, bold = false) => {
       pdf.setTextColor(255, 255, 255)
@@ -1122,14 +1122,14 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
       pdf.text(money(amount), amountX, rowY, { align: "right" })
     }
 
-    drawBreakdownRow("Solar PV", solarPvAmount, breakdownTitleY + 25)
-    drawBreakdownRow("Battery Storage", batteryAmount, breakdownTitleY + 40)
+    drawBreakdownRow("Solar PV", solarPvAmount, breakdownTitleY + 15)
+    drawBreakdownRow("Battery Storage", batteryAmount, breakdownTitleY + 24)
 
     pdf.setDrawColor(77, 137, 170)
     pdf.setLineWidth(0.35)
-    pdf.line(breakdownX, breakdownTitleY + 49, breakdownX + breakdownWidth, breakdownTitleY + 49)
+    pdf.line(breakdownX, breakdownTitleY + 31, breakdownX + breakdownWidth, breakdownTitleY + 49)
 
-    drawBreakdownRow("TOTAL", contractTotal, breakdownTitleY + 63, true)
+    drawBreakdownRow("TOTAL", contractTotal, breakdownTitleY + 39, true)
 
     return
   }
