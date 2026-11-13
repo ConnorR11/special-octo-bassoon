@@ -3,7 +3,7 @@ import { createPortal } from "react-dom"
 import { X, ChevronLeft, ChevronRight, LoaderCircle, Maximize2 } from "lucide-react"
 import { PDFDocument } from "pdf-lib"
 import * as pdfjs from "pdfjs-dist"
-import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url"
+import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.js?url"
 import { supabase } from "../lib/supabase"
 
 const PRESENTER_PATH = "Homeshield-Solar-Presenter-edited.pdf"
@@ -161,13 +161,12 @@ export default function DatabaseSalesPresenter({ appointment, onClose }) {
     async function renderPage() {
       setRenderingPage(true)
       try {
-        // Use the worker bundled with the CRM rather than a cross-origin CDN worker.
-        // This avoids Safari/iPad worker-loading restrictions and keeps the API/worker versions matched.
+        // Use the bundled PDF.js 3.x worker. This release avoids Promise.withResolvers,
+        // which is missing in Safari 17.2 and causes the presenter to fail before rendering.
         pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker
         const pdf = await pdfjs.getDocument({
           data: new Uint8Array(pdfBytes).slice(),
           isEvalSupported: false,
-          useWorkerFetch: false,
         }).promise
         const pdfPage = await pdf.getPage(page + 1)
         const base = pdfPage.getViewport({ scale: 1 })
