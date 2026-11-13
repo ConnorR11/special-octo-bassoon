@@ -16,7 +16,7 @@
     "recharts": "^3.10.1",
     "xlsx": "^0.18.1",
     "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "4.10.38",
+    "pdfjs-dist": "3.11.174",
     "leaflet": "^1.9.4",
     "xlsx-js-style": "^1.2.0",
     "tus-js-client": "^4.3.1"
