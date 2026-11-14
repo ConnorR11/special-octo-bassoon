@@ -113,8 +113,8 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,onOpenDe
  const [showResult,setShowResult]=useState(false),[soldStep,setSoldStep]=useState(1),[contractPreviewUrl,setContractPreviewUrl]=useState(""),[result,setResult]=useState(appointment?.result||appointment?.status||""),[arrivalTime,setArrivalTime]=useState(formatArrivalTime(appointment?.rep_arrival_time)),[solarMonthlySpend,setSolarMonthlySpend]=useState(appointment?.solar_monthly_spend??""),[customerName,setCustomerName]=useState(appointment?.name||""),[salesNote,setSalesNote]=useState(appointment?.sales_notes||""),[customerEmail,setCustomerEmail]=useState(appointment?.email_address||appointment?.email||""),[adminFeeExpectedDate,setAdminFeeExpectedDate]=useState(appointment?.admin_fee_expected_date||""),[priceLeft,setPriceLeft]=useState(appointment?.price_left??""),[newAppointmentDate,setNewAppointmentDate]=useState(appointment?.appointment_date?new Date(appointment.appointment_date).toISOString().slice(0,16):""),[signature,setSignature]=useState(""),[expressFitSignature,setExpressFitSignature]=useState(""),[segSignature,setSegSignature]=useState(""),[saving,setSaving]=useState(false),[sendingContract,setSendingContract]=useState(false),[contractSent,setContractSent]=useState(false),[error,setError]=useState(""),[confirming,setConfirming]=useState(false),[confirmError,setConfirmError]=useState(""),[cps,setCps]=useState({cps_h:appointment?.cps_h===true,cps_c:appointment?.cps_c===true,cps_p:appointment?.cps_p===true,cps_s:appointment?.cps_s===true}),[isPickup,setIsPickup]=useState(appointment?.is_pickup===true),[savingCps,setSavingCps]=useState(false),[cpsError,setCpsError]=useState(""),[epvs,setEpvs]=useState(appointment?.epvs_calculation||null)
  const [linkedDeal,setLinkedDeal]=useState(null)
  const [showCustomerEdit,setShowCustomerEdit]=useState(false),[savingCustomer,setSavingCustomer]=useState(false),[customerEditError,setCustomerEditError]=useState("")
- const [customerEdit,setCustomerEdit]=useState({name:appointment?.name||"",phone:appointment?.phone_number_1||appointment?.phone||"",email:appointment?.email_address||appointment?.email||"",postcode:appointment?.postcode||""})
- useEffect(()=>{setCustomerEdit({name:appointment?.name||"",phone:appointment?.phone_number_1||appointment?.phone||"",email:appointment?.email_address||appointment?.email||"",postcode:appointment?.postcode||""})},[appointment])
+ const [customerEdit,setCustomerEdit]=useState({name:appointment?.name||"",phone:appointment?.phone_number_1||appointment?.phone||"",email:appointment?.email_address||appointment?.email||"",address:appointment?.address||"",postcode:appointment?.postcode||""})
+ useEffect(()=>{setCustomerEdit({name:appointment?.name||"",phone:appointment?.phone_number_1||appointment?.phone||"",email:appointment?.email_address||appointment?.email||"",address:appointment?.address||"",postcode:appointment?.postcode||""})},[appointment])
  function setCustomerField(field,value){setCustomerEdit(current=>({...current,[field]:value}))}
  async function saveCustomerDetails(event){
   event.preventDefault()
@@ -122,7 +122,7 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,onOpenDe
   setSavingCustomer(true);setCustomerEditError("")
   try{
    const now=new Date().toISOString()
-   const payload={name:customerEdit.name.trim()||null,phone_number_1:customerEdit.phone.trim()||null,email_address:customerEdit.email.trim()||null,postcode:customerEdit.postcode.trim()||null,record_last_update:now}
+   const payload={name:customerEdit.name.trim()||null,phone_number_1:customerEdit.phone.trim()||null,email_address:customerEdit.email.trim()||null,address:customerEdit.address.trim()||null,postcode:customerEdit.postcode.trim()||null,record_last_update:now}
    const {data:updated,error:updateError}=await supabase.from("appointments").update(payload).eq("appointment_row_id",appointment.appointment_row_id).select("*").single()
    if(updateError)throw updateError
    setShowCustomerEdit(false)
@@ -263,6 +263,7 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,onOpenDe
     <ResultField label="Name" value={customerEdit.name} onChange={value=>setCustomerField("name",value)}/>
     <ResultField label="Phone" type="tel" value={customerEdit.phone} onChange={value=>setCustomerField("phone",value)}/>
     <ResultField label="Email" type="email" value={customerEdit.email} onChange={value=>setCustomerField("email",value)}/>
+    <ResultField label="Address" value={customerEdit.address} onChange={value=>setCustomerField("address",value)}/>
     <ResultField label="Postcode" value={customerEdit.postcode} onChange={value=>setCustomerField("postcode",value)}/>
     {customerEditError&&<div role="alert" style={{marginTop:12,padding:9,background:"#fbeaea",color:"#8b3333",borderRadius:6,fontSize:10}}>{customerEditError}</div>}
     <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18}}><button type="button" onClick={()=>setShowCustomerEdit(false)} disabled={savingCustomer} style={secondary}>Cancel</button><button type="submit" disabled={savingCustomer} style={{...primary,opacity:savingCustomer?0.65:1}}>{savingCustomer?"Saving…":"Save changes"}</button></div>
