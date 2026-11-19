@@ -630,11 +630,14 @@ export default function EPVSCalculator({
         ? openSolar.arrays
         : []
 
+    // The editable EPVS arrays are canonical. openSolar.arrays is an
+    // import snapshot and can become stale when an array is subsequently
+    // edited in the calculator.
     const sourceArrays =
-      openSolarArrays.length > 0
-        ? openSolarArrays
-        : Array.isArray(saved.arrays)
-          ? saved.arrays
+      Array.isArray(saved.arrays) && saved.arrays.length > 0
+        ? saved.arrays
+        : openSolarArrays.length > 0
+          ? openSolarArrays
           : initial.arrays
 
     const sixArrays = Array.from({ length: 6 }, (_, index) => {
@@ -802,8 +805,10 @@ export default function EPVSCalculator({
         ...current,
         ...saved,
         arrays: Array.from({ length: 6 }, (_, index) => {
+          // Prefer the latest editable EPVS array over the historical
+          // OpenSolar import snapshot.
           const savedArray =
-            openSolarArrays[index] || saved.arrays?.[index]
+            saved.arrays?.[index] || openSolarArrays[index]
           return savedArray
             ? {
                 ...createArray(),
@@ -1479,58 +1484,9 @@ export default function EPVSCalculator({
     }
   }, [data, results])
 
-  // Persist the current EPVS degradation assumptions when an older saved
-  // calculation does not yet contain the Year 1 value. This keeps the saved
-  // calculation, contract export and 30-year projection on the same source.
-  useEffect(() => {
-    const appointmentRowId = appointment?.appointment_row_id
-    const savedYear1 = Number(appointment?.epvs_calculation?.data?.solarDegradationYear1 || 0)
-
-    if (
-      !appointmentRowId ||
-      !supabase ||
-      savedYear1 > 0 ||
-      !data?.solarDegradationYear1 ||
-      migratedAppointmentRef.current === appointmentRowId
-    ) {
-      return
-    }
-
-    migratedAppointmentRef.current = appointmentRowId
-    let cancelled = false
-
-    const migrateSavedDegradation = async () => {
-      try {
-        const payload = {
-          ...(appointment?.epvs_calculation || {}),
-          version: 1,
-          savedAt: new Date().toISOString(),
-          data,
-          results,
-          thirtyYearProjection,
-        }
-
-        const { error } = await supabase
-          .from("appointments")
-          .update({ epvs_calculation: payload })
-          .eq("appointment_row_id", appointmentRowId)
-
-        if (error) throw error
-      } catch (error) {
-        console.error("Unable to migrate saved EPVS degradation:", error)
-        migratedAppointmentRef.current = ""
-      }
-
-      if (cancelled) return
-    }
-
-    migrateSavedDegradation()
-
-    return () => {
-      cancelled = true
-    }
-  }, [appointment?.appointment_row_id, appointment?.epvs_calculation, data, results, thirtyYearProjection])
-
+  // Legacy degradation defaults are applied in memory. Do not write the
+  // entire EPVS payload from this migration effect: it can race an OpenSolar
+  // import and overwrite the newly imported canonical arrays.
 
   useEffect(() => {
     if (!openSolarSavePending) return
