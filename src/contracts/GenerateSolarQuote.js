@@ -17,9 +17,12 @@ function getQuoteData(appointment) {
   const panels = Array.isArray(hardware.panels) ? hardware.panels : (Array.isArray(epvs.panels) ? epvs.panels : [])
   const inverters = Array.isArray(hardware.inverters) ? hardware.inverters : (Array.isArray(epvs.inverters) ? epvs.inverters : [])
   const batteries = Array.isArray(hardware.batteries) ? hardware.batteries : (Array.isArray(epvs.batteries) ? epvs.batteries : [])
-  const arrays = Array.isArray(openSolar?.arrays) && openSolar.arrays.length
-    ? openSolar.arrays
-    : (Array.isArray(epvs?.arrays) ? epvs.arrays : [])
+  // Use the current EPVS calculator arrays first. OpenSolar's project
+  // summary can contain an older module wattage (e.g. 462 W) even when the
+  // saved calculator array has since been updated (e.g. 490 W).
+  const arrays = Array.isArray(epvs?.arrays) && epvs.arrays.length
+    ? epvs.arrays
+    : (Array.isArray(openSolar?.arrays) ? openSolar.arrays : [])
   const arrayPanelCount = arrays.reduce((sum, array) => sum + Number(array?.panelCount || array?.panel_count || array?.numberOfPanels || array?.number_of_panels || 0), 0)
   const panelCount = arrayPanelCount || panels.reduce((sum, item) => sum + Number(item?.quantity || item?.count || item?.panelCount || item?.panel_count || 0), 0) || Number(epvs.panelQuantity || epvs.panel_quantity || epvs.panelCount || epvs.panel_count || epvs.numberOfPanels || epvs.number_of_panels || 0)
   const panelWattage = arrays.map(array => Number(array?.panelWattage || array?.panel_wattage || 0)).find(n => Number.isFinite(n) && n > 0) || Number(epvs.panelWattage || epvs.panel_wattage || 0) || panels.map(item => Number(item?.wattage || item?.power || item?.watts || ((item?.capacityUnit || '').toLowerCase() === 'w' ? item?.capacity : 0) || 0)).find(n => Number.isFinite(n) && n > 0) || null
