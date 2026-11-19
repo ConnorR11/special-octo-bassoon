@@ -1146,9 +1146,16 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
     const panelCount = getTotalPanelCount(data)
     const arrays = Array.isArray(data.arrays) ? data.arrays : []
     const panelWattage = arrays.map((array) => Number(array?.panelWattage || array?.panel_wattage || 0)).find((value) => value > 0) || Number(data.panelWattage || data.panel_wattage || 0)
+    // Derive installed DC capacity from the current array inputs. Saved
+    // results.systemSize can be stale after panel count/wattage edits.
+    const calculatedSystemSize = arrays.reduce((total, array) => {
+      const count = Number(array?.panelCount || array?.panel_count || 0)
+      const wattage = Number(array?.panelWattage || array?.panel_wattage || 0)
+      return total + (count > 0 && wattage > 0 ? count * wattage : 0)
+    }, 0) / 1000
     const rowsData = [
       ["Customer", textValue(appointment?.name)],
-      ["System size", results.systemSize ? `${num(results.systemSize, 2)} kWp` : "—"],
+      ["System size", calculatedSystemSize > 0 ? `${num(calculatedSystemSize, 2)} kWp` : "—"],
       ["Solar panels", panelCount > 0 ? `${num(panelCount)} × ${num(panelWattage)} W` : "—"],
       ["Inverter", data.inverterCapacity ? `${num(data.inverterCapacity, 1)} kW` : "—"],
       ["Battery", batteryCapacity > 0 ? `${num(batteryCapacity, 1)} kWh` : "Not included"],
