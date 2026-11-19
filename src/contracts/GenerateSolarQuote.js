@@ -28,7 +28,7 @@ function getQuoteData(appointment) {
     const count = Number(array?.panelCount || array?.panel_count || array?.numberOfPanels || array?.number_of_panels || 0)
     return sum + (wattage * count) / 1000
   }, 0)
-  const capacity = Number(results.systemSize || results.system_size || epvs.systemSize || epvs.system_size || openSolar.systemSize || openSolar.system_size || derivedCapacity || 0)
+  const capacity = Number(derivedCapacity > 0 ? derivedCapacity : (results.systemSize || results.system_size || epvs.systemSize || epvs.system_size || openSolar.systemSize || openSolar.system_size || 0))
   const derivedGeneration = arrays.reduce((sum, array) => {
     const wattage = Number(array?.panelWattage || array?.panel_wattage || 0)
     const count = Number(array?.panelCount || array?.panel_count || array?.numberOfPanels || array?.number_of_panels || 0)
