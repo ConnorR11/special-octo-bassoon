@@ -1218,7 +1218,7 @@ export default function SalesCommission({
             ADMINS
           </div>
 
-          <div
+          <div className="commission-summary-metrics"
             style={{
               display: "grid",
               gridTemplateColumns:
