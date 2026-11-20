@@ -73,7 +73,7 @@ const epvsBranch = String.raw`  } else if (kind === "epvs") {
 
     const inferZone = (postcode) => {
       const outward = String(postcode || "").trim().toUpperCase().split(/\s+/)[0]
-      if (/^(G|PA)/.test(outward)) return "14"
+      if (/^(G|PA|ML|FK|KA)/.test(outward)) return "14"
       if (/^DD/.test(outward)) return "15"
       if (/^AB/.test(outward)) return "16"
       if (/^IV/.test(outward)) return "17"
@@ -98,14 +98,13 @@ const epvsBranch = String.raw`  } else if (kind === "epvs") {
       if (/^SO/.test(outward)) return "3"
       if (/^BN/.test(outward)) return "2"
       if (/^(E|EC|N|NW|SE|SW|W|WC)/.test(outward)) return "1"
-      return "14"
+      // Never default an unknown postcode to a Scottish or Manchester region.
+      // The postcode is authoritative; saved EPVS zone fields may be stale.
+      return null
     }
 
-    const zone = String(
-      data.sapZone || data.sap_zone || data.sapRegionCode || data.sap_region_code || inferZone(
-        appointment?.postcode || data.postcode
-      )
-    )
+    const postcode = appointment?.postcode || data.postcode
+    const zone = String(inferZone(postcode) || "")
     const regionName = zoneMap[zone] || zone
 
     // EPVS certification panel from the supplied reference, rebuilt in the
