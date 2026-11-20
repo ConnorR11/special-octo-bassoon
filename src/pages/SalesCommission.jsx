@@ -1080,10 +1080,14 @@ export default function SalesCommission({
       grandTotals.windowCommission +
       grandTotals.admin
 
+    // Business and overall commission-rate calculations exclude admin fees.
     const overallBusiness =
       businessTotals.solar +
-      businessTotals.windows +
-      grandTotals.admin
+      businessTotals.windows
+
+    const overallTradeCommission =
+      grandTotals.solarCommission +
+      grandTotals.windowCommission
 
     summaryRows.push(
       ["COMMS", grandTotals.solarCommission, grandTotals.windowCommission, grandTotals.admin, overallCommission],
@@ -1093,7 +1097,7 @@ export default function SalesCommission({
         businessTotals.solar ? grandTotals.solarCommission / businessTotals.solar : 0,
         businessTotals.windows ? grandTotals.windowCommission / businessTotals.windows : 0,
         grandTotals.admin ? 1 : 0,
-        overallBusiness ? overallCommission / overallBusiness : 0,
+        overallBusiness ? overallTradeCommission / overallBusiness : 0,
       ]
     )
 
