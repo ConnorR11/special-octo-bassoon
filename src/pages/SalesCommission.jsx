@@ -1059,13 +1059,43 @@ export default function SalesCommission({
       { solarCommission: 0, windowCommission: 0, admin: 0 }
     )
 
-    summaryRows.push([
-      "GRAND TOTAL",
-      grandTotals.solarCommission,
-      grandTotals.windowCommission,
-      grandTotals.admin,
-      grandTotals.solarCommission + grandTotals.windowCommission + grandTotals.admin,
-    ])
+    const businessTotals = filtered.reduce(
+      (totals, { deal, type }) => {
+        if (type !== "COMMS") return totals
+
+        const contractNumber = String(deal?.contract_number || "").trim().toUpperCase()
+        if (contractNumber.startsWith("S")) {
+          totals.solar += getNetSalesValue(deal)
+        } else {
+          totals.windows += getNetSalesValue(deal)
+        }
+
+        return totals
+      },
+      { solar: 0, windows: 0 }
+    )
+
+    const overallCommission =
+      grandTotals.solarCommission +
+      grandTotals.windowCommission +
+      grandTotals.admin
+
+    const overallBusiness =
+      businessTotals.solar +
+      businessTotals.windows +
+      grandTotals.admin
+
+    summaryRows.push(
+      ["COMMS", grandTotals.solarCommission, grandTotals.windowCommission, grandTotals.admin, overallCommission],
+      ["BUSINESS", businessTotals.solar, businessTotals.windows, grandTotals.admin, overallBusiness],
+      [
+        "PERCENT",
+        businessTotals.solar ? grandTotals.solarCommission / businessTotals.solar : 0,
+        businessTotals.windows ? grandTotals.windowCommission / businessTotals.windows : 0,
+        grandTotals.admin ? 1 : 0,
+        overallBusiness ? overallCommission / overallBusiness : 0,
+      ]
+    )
 
     XLSX.utils.sheet_add_aoa(worksheet, summaryRows, {
       origin: "L1",
@@ -1074,9 +1104,14 @@ export default function SalesCommission({
     const summaryStartRow = 3
     const summaryEndRow = summaryRows.length
     for (let row = summaryStartRow; row <= summaryEndRow; row += 1) {
+      const isPercentRow = row === summaryEndRow
       for (const column of ["M", "N", "O", "P"]) {
         const cell = worksheet[`${column}${row}`]
-        if (cell) cell.z = '"£"#,##0.00;[Red]-"£"#,##0.00'
+        if (cell) {
+          cell.z = isPercentRow
+            ? "0.00%"
+            : '"£"#,##0.00;[Red]-"£"#,##0.00'
+        }
       }
     }
 
