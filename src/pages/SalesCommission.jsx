@@ -1013,12 +1013,20 @@ export default function SalesCommission({
     filtered.forEach(({ deal, type }) => {
       const salesperson = displayRepName(deal)
       const current = salespersonTotals.get(salesperson) || {
-        commission: 0,
+        solarCommission: 0,
+        windowCommission: 0,
         admin: 0,
       }
 
       if (type === "COMMS") {
-        current.commission += getCommission(deal) ?? 0
+        const contractNumber = String(deal?.contract_number || "").trim().toUpperCase()
+        const commission = getCommission(deal) ?? 0
+
+        if (contractNumber.startsWith("S")) {
+          current.solarCommission += commission
+        } else {
+          current.windowCommission += commission
+        }
       } else if (type === "ADMIN") {
         const fee = getAdminFee(deal)
         if (typeof fee === "number") current.admin += fee
@@ -1032,28 +1040,31 @@ export default function SalesCommission({
 
     const summaryRows = [
       ["Salesperson Totals"],
-      ["Salesperson", "Commission Total", "Admin Fee Total", "Overall Total"],
+      ["Salesperson", "Solar Comms", "Window Comms", "Admin", "Total"],
       ...summary.map(([salesperson, totals]) => [
         salesperson,
-        totals.commission,
+        totals.solarCommission,
+        totals.windowCommission,
         totals.admin,
-        totals.commission + totals.admin,
+        totals.solarCommission + totals.windowCommission + totals.admin,
       ]),
     ]
 
     const grandTotals = summary.reduce(
       (totals, [, values]) => ({
-        commission: totals.commission + values.commission,
+        solarCommission: totals.solarCommission + values.solarCommission,
+        windowCommission: totals.windowCommission + values.windowCommission,
         admin: totals.admin + values.admin,
       }),
-      { commission: 0, admin: 0 }
+      { solarCommission: 0, windowCommission: 0, admin: 0 }
     )
 
     summaryRows.push([
       "GRAND TOTAL",
-      grandTotals.commission,
+      grandTotals.solarCommission,
+      grandTotals.windowCommission,
       grandTotals.admin,
-      grandTotals.commission + grandTotals.admin,
+      grandTotals.solarCommission + grandTotals.windowCommission + grandTotals.admin,
     ])
 
     XLSX.utils.sheet_add_aoa(worksheet, summaryRows, {
@@ -1063,7 +1074,7 @@ export default function SalesCommission({
     const summaryStartRow = 3
     const summaryEndRow = summaryRows.length
     for (let row = summaryStartRow; row <= summaryEndRow; row += 1) {
-      for (const column of ["M", "N", "O"]) {
+      for (const column of ["M", "N", "O", "P"]) {
         const cell = worksheet[`${column}${row}`]
         if (cell) cell.z = '"£"#,##0.00;[Red]-"£"#,##0.00'
       }
@@ -1073,7 +1084,7 @@ export default function SalesCommission({
       { wch: 12 }, { wch: 16 }, { wch: 28 }, { wch: 18 },
       { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 24 },
       { wch: 16 }, { wch: 16 }, { wch: 3 },
-      { wch: 24 }, { wch: 20 }, { wch: 18 }, { wch: 18 },
+      { wch: 24 }, { wch: 20 }, { wch: 20 }, { wch: 16 }, { wch: 18 },
     ]
 
     const workbook =
