@@ -1007,6 +1007,75 @@ export default function SalesCommission({
     const worksheet =
       XLSX.utils.json_to_sheet(rows)
 
+    // Add a salesperson summary to the right of the detailed export.
+    const salespersonTotals = new Map()
+
+    filtered.forEach(({ deal, type }) => {
+      const salesperson = displayRepName(deal)
+      const current = salespersonTotals.get(salesperson) || {
+        commission: 0,
+        admin: 0,
+      }
+
+      if (type === "COMMS") {
+        current.commission += getCommission(deal) ?? 0
+      } else if (type === "ADMIN") {
+        const fee = getAdminFee(deal)
+        if (typeof fee === "number") current.admin += fee
+      }
+
+      salespersonTotals.set(salesperson, current)
+    })
+
+    const summary = Array.from(salespersonTotals.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+
+    const summaryRows = [
+      ["Salesperson Totals"],
+      ["Salesperson", "Commission Total", "Admin Fee Total", "Overall Total"],
+      ...summary.map(([salesperson, totals]) => [
+        salesperson,
+        totals.commission,
+        totals.admin,
+        totals.commission + totals.admin,
+      ]),
+    ]
+
+    const grandTotals = summary.reduce(
+      (totals, [, values]) => ({
+        commission: totals.commission + values.commission,
+        admin: totals.admin + values.admin,
+      }),
+      { commission: 0, admin: 0 }
+    )
+
+    summaryRows.push([
+      "GRAND TOTAL",
+      grandTotals.commission,
+      grandTotals.admin,
+      grandTotals.commission + grandTotals.admin,
+    ])
+
+    XLSX.utils.sheet_add_aoa(worksheet, summaryRows, {
+      origin: "L1",
+    })
+
+    const summaryStartRow = 3
+    const summaryEndRow = summaryRows.length
+    for (let row = summaryStartRow; row <= summaryEndRow; row += 1) {
+      for (const column of ["M", "N", "O"]) {
+        const cell = worksheet[`${column}${row}`]
+        if (cell) cell.z = '"£"#,##0.00;[Red]-"£"#,##0.00'
+      }
+    }
+
+    worksheet["!cols"] = [
+      { wch: 12 }, { wch: 16 }, { wch: 28 }, { wch: 18 },
+      { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 24 },
+      { wch: 16 }, { wch: 16 }, { wch: 3 },
+      { wch: 24 }, { wch: 20 }, { wch: 18 }, { wch: 18 },
+    ]
+
     const workbook =
       XLSX.utils.book_new()
 
