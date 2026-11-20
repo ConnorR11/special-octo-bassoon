@@ -13,6 +13,7 @@ import * as XLSX from "xlsx"
 import { supabase } from "../lib/supabase"
 import { useVisibility } from "../context/VisibilityContext"
 import { formatDate, getInitials, money } from "../utils/formatters"
+import "./SalesCommission.css"
 
 function getRepName(deal) {
   return (
@@ -162,6 +163,7 @@ function DealRow({
   return (
     <button
       type="button"
+      className="commission-deal-row"
       onClick={() => setSelected?.(deal)}
       style={{
         width: "100%",
@@ -178,7 +180,7 @@ function DealRow({
         fontFamily: "inherit",
       }}
     >
-      <div>
+      <div className="commission-row-type">
         <span
           style={{
             display: "inline-flex",
@@ -200,7 +202,7 @@ function DealRow({
         </span>
       </div>
 
-      <div
+      <div className="commission-row-date" data-label="Payment date"
         style={{
           fontSize: 10,
           fontWeight: 700,
@@ -213,7 +215,7 @@ function DealRow({
         {paymentDateLabel}
       </div>
 
-      <div
+      <div className="commission-row-customer" data-label="Customer"
         style={{
           display: "flex",
           alignItems: "center",
@@ -254,7 +256,7 @@ function DealRow({
         </div>
       </div>
 
-      <div
+      <div data-label="Contract"
         style={{
           fontSize: 10,
           color: "#53616b",
@@ -266,7 +268,7 @@ function DealRow({
         {deal?.contract_number || deal?.product || "—"}
       </div>
 
-      <div
+      <div data-label="Net value"
         style={{
           display: "flex",
           alignItems: "center",
@@ -286,7 +288,7 @@ function DealRow({
         </strong>
       </div>
 
-      <div
+      <div data-label="Survey cost"
         style={{
           fontSize: 10,
           color: isAdmin
@@ -307,7 +309,7 @@ function DealRow({
             : surveyCosting.toLocaleString("en-GB")}
       </div>
 
-      <div
+      <div data-label="Branch"
         style={{
           display: "flex",
           alignItems: "center",
@@ -323,7 +325,7 @@ function DealRow({
         </span>
       </div>
 
-      <div
+      <div data-label="Salesperson"
         style={{
           display: "flex",
           alignItems: "center",
@@ -346,7 +348,7 @@ function DealRow({
         </span>
       </div>
 
-      <div
+      <div className="commission-row-amount" data-label={isAdmin ? "Admin fee" : "Commission"}
         style={{
           fontSize: 11,
           fontWeight: 800,
@@ -369,7 +371,7 @@ function DealRow({
             : money(commission)}
       </div>
 
-      <div
+      <div className="commission-row-arrow"
         style={{
           display: "flex",
           justifyContent: "flex-end",
@@ -1026,13 +1028,13 @@ export default function SalesCommission({
     adminLoading
 
   return (
-    <section
+    <section className="sales-commission-page"
       style={{
         padding: "18px 24px 28px",
       }}
     >
       {/* HEADER */}
-      <div
+      <div className="commission-page-header"
         style={{
           display: "flex",
           justifyContent: "space-between",
@@ -1086,7 +1088,7 @@ export default function SalesCommission({
       </div>
 
       {/* SUMMARY CARDS */}
-      <div
+      <div className="commission-summary-grid"
         style={{
           display: "grid",
           gridTemplateColumns:
@@ -1096,7 +1098,7 @@ export default function SalesCommission({
         }}
       >
         {/* COMMS CARD */}
-        <div
+        <div className="commission-summary-card"
           style={{
             background: "#e8f4fd",
             border: "1px solid #c9e4f5",
@@ -1116,7 +1118,7 @@ export default function SalesCommission({
             COMMS
           </div>
 
-          <div
+          <div className="commission-summary-metrics"
             style={{
               display: "grid",
               gridTemplateColumns:
@@ -1196,7 +1198,7 @@ export default function SalesCommission({
         </div>
 
         {/* ADMIN CARD */}
-        <div
+        <div className="commission-summary-card"
           style={{
             background: "#fff1e8",
             border: "1px solid #f6d7c2",
@@ -1335,7 +1337,7 @@ export default function SalesCommission({
         }}
       >
         {/* SEARCH / FILTERS */}
-        <div
+        <div className="commission-search-bar"
           style={{
             display: "flex",
             alignItems: "center",
@@ -1350,7 +1352,7 @@ export default function SalesCommission({
             style={{
               position: "relative",
               flex: "1 1 260px",
-              minWidth: 220,
+              minWidth: 0,
             }}
           >
             <Search
@@ -1438,7 +1440,7 @@ export default function SalesCommission({
         </div>
 
         {filtersOpen && (
-          <div
+          <div className="commission-filter-grid"
             style={{
               display: "grid",
               gridTemplateColumns:
@@ -1582,12 +1584,12 @@ export default function SalesCommission({
             overflowX: "auto",
           }}
         >
-          <div
+          <div className="commission-table-inner"
             style={{
               minWidth: 1180,
             }}
           >
-            <div
+            <div className="commission-table-header"
               style={{
                 display: "grid",
                 gridTemplateColumns:
