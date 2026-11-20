@@ -104,8 +104,9 @@ const epvsBranch = String.raw`  } else if (kind === "epvs") {
     }
 
     const postcode = appointment?.postcode || data.postcode
-    const zone = String(inferZone(postcode) || "")
-    const regionName = zoneMap[zone] || zone
+    const postcodeZone = getSapZone(postcode)
+    const zone = String(postcodeZone?.code || "")
+    const regionName = postcodeZone?.name || zoneMap[zone] || "Unmapped postcode"
 
     // EPVS certification panel from the supplied reference, rebuilt in the
     // existing contract style so it remains sharp/selectable in the PDF.
