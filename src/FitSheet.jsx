@@ -833,10 +833,8 @@ function FitSheet({ setSelected }) {
           </div>
         )}
 
-        {job.type === "fit" &&
-          (deal.deal_value != null ||
-            deal.balance_outstanding !=
-              null) && (
+        {(deal.deal_value != null ||
+          deal.balance_outstanding != null) && (
             <div
               style={{
                 marginTop: "5px",
