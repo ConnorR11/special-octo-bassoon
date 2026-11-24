@@ -43,7 +43,7 @@ export default async function handler(req, res) {
     const { data: logRow, error: logError } = await supabase.from("integration_event_logs").insert({
       provider: "microsoft_graph", integration_name: "Microsoft 365 Overstay Email", direction: "outbound",
       event_name: "overstay_email_send", event_type: "email_with_pdf_attachment", external_id: appointmentRowId || null,
-      status: "started", received_at: new Date().toISOString(),
+      status: "received", received_at: new Date().toISOString(),
       payload: { appointment_row_id: appointmentRowId || null, recipient: customerEmail || null, sender, triggered_by: userData.user.email || userData.user.id },
     }).select("id").single()
     if (logError || !logRow?.id) {
