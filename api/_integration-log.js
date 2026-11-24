@@ -31,7 +31,7 @@ export async function createIntegrationLog({
       event_name: eventName || null,
       event_type: eventType || eventName || null,
       external_id: externalId,
-      status: "started",
+      status: "received",
       received_at: new Date().toISOString(),
       payload,
     }),
