@@ -142,7 +142,7 @@ export default function MarketingDashboard({ onSelectAppointment, permissionLeve
   const sections = [
     { id: "overview", label: "Overview", icon: "▦", description: "Daily activity and headline performance", pages: [{ id: "made-today", label: "Made Today" }] },
     { id: "canvassers", label: "Canvassers", icon: "♙", description: "Canvasser performance and activity", pages: [{ id: "canvasser-kpi", label: "Canvasser KPI", minPermission: 3 }] },
-    { id: "lead-management", label: "Lead Management", icon: "♙", description: "Work, review and manage incoming leads", pages: [{ id: "leads-to-call", label: "Leads To Call" }, { id: "speed-to-lead", label: "Speed to Lead Analysis" }, { id: "data-kanban", label: "Kanban" }, { id: "data-archived-leads", label: "Archived Leads" }] },
+    { id: "lead-management", label: "Lead Management", icon: "♙", description: "Work, review and manage incoming leads", pages: [{ id: "leads-to-call", label: "Leads To Call" }, { id: "speed-to-lead", label: "Core Speed To Lead Analysis" }, { id: "data-kanban", label: "Kanban" }, { id: "data-archived-leads", label: "Archived Leads" }] },
     { id: "lead-acquisition", label: "Lead Acquisition", icon: "◎", description: "Understand lead sources, spend, reporting and acquisition costs", pages: [{ id: "lead-sources", label: "Lead Sources", adminOnly: true }, { id: "data-spend", label: "Data Spend" }, { id: "data-overview", label: "Performance Overview" }, { id: "data-results", label: "Data Results", adminOnly: true }, { id: "lead-export", label: "Lead Export", adminOnly: true }] },
   ]
 
