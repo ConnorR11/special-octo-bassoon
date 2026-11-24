@@ -42,15 +42,17 @@ export default async function handler(req, res) {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {})
     const appointmentRowId = String(body.appointment_row_id || "").trim()
     const customerName = String(body.customer_name || "Customer").trim().slice(0, 160)
-    const documentPages = Array.isArray(body.document_pages) ? body.document_pages : []
-    if (!appointmentRowId || !documentPages.length || documentPages.length > 20) return json(res, 400, { error: "Select an appointment and load the ECOF document before sending a test." })
-    if (documentPages.some(page => typeof page !== "string" || page.length > 30000)) return json(res, 413, { error: "The ECOF document content is too large to generate as a PDF." })
+    const pdfBase64 = String(body.pdf_base64 || "").replace(/^data:application\\/pdf;base64,/, "")
+    if (!appointmentRowId || !pdfBase64) return json(res, 400, { error: "Select an appointment and generate the ECOF PDF before sending a test." })
+    if (pdfBase64.length > 9_000_000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(pdfBase64)) return json(res, 413, { error: "The generated ECOF PDF is too large or invalid." })
+    const pdfBytes = Buffer.from(pdfBase64, "base64")
+    if (pdfBytes.length < 8 || pdfBytes.subarray(0, 5).toString("ascii") !== "%PDF-") return json(res, 400, { error: "The generated attachment is not a valid PDF." })
 
     const { data: logRow, error: logError } = await db.from("integration_event_logs").insert({
       provider: "microsoft_graph", integration_name: "Microsoft 365 ECOF Test Email", direction: "outbound",
-      event_name: "ecof_test_email_send", event_type: "pdf_attachment_test_email", external_id: appointmentRowId,
+      event_name: "ecof_test_email_send", event_type: "formatted_pdf_attachment_test_email", external_id: appointmentRowId,
       status: "received", received_at: new Date().toISOString(),
-      payload: { appointment_row_id: appointmentRowId, recipient: TEST_RECIPIENT, customer_name: customerName, triggered_by: userData.user.email || userData.user.id },
+      payload: { appointment_row_id: appointmentRowId, recipient: TEST_RECIPIENT, customer_name: customerName, attachment_size_bytes: pdfBytes.length, triggered_by: userData.user.email || userData.user.id },
     }).select("id").single()
     if (logError || !logRow?.id) {
       console.error("Unable to create ECOF test email log:", logError?.message || "No log row returned")
@@ -75,65 +77,7 @@ export default async function handler(req, res) {
     }
 
     const safeName = customerName.replace(/[^a-zA-Z0-9 ._-]/g, "").trim() || "Customer"
-    const pdf = await PDFDocument.create()
-    const regular = await pdf.embedFont(StandardFonts.Helvetica)
-    const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
-    const navy = rgb(8 / 255, 41 / 255, 71 / 255)
-    const blue = rgb(8 / 255, 127 / 255, 189 / 255)
-    const grey = rgb(82 / 255, 101 / 255, 120 / 255)
-    const border = rgb(213 / 255, 225 / 255, 232 / 255)
-    const pageWidth = 595.28, pageHeight = 841.89, margin = 38
-    const cleanText = value => String(value ?? "").replace(/[’‘]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, "-").replace(/•/g, "-").replace(/£/g, "GBP ")
-    const wrap = (value, font, size, maxWidth) => {
-      const words = cleanText(value || "").split(/\s+/)
-      const lines = []
-      let line = ""
-      for (const word of words) {
-        const next = line ? line + " " + word : word
-        if (font.widthOfTextAtSize(next, size) > maxWidth && line) { lines.push(line); line = word }
-        else line = next
-      }
-      if (line) lines.push(line)
-      return lines
-    }
-    let pageNumber = 0
-    for (const rawPage of documentPages) {
-      pageNumber++
-      const page = pdf.addPage([pageWidth, pageHeight])
-      page.drawRectangle({ x: 0, y: pageHeight - 92, width: pageWidth, height: 92, color: navy })
-      page.drawRectangle({ x: 0, y: pageHeight - 95, width: pageWidth, height: 3, color: blue })
-      let logoEmbedded = false
-      try {
-        const logoResponse = await fetch("https://crm.homeshield.ltd/homeshield-logo.png")
-        if (logoResponse.ok) {
-          const logo = await pdf.embedPng(new Uint8Array(await logoResponse.arrayBuffer()))
-          const scale = Math.min(0.65, 68 / logo.width, 62 / logo.height)
-          const dims = logo.scale(scale)
-          page.drawImage(logo, { x: margin, y: pageHeight - 82, width: dims.width, height: dims.height })
-          logoEmbedded = true
-        }
-      } catch (logoError) { console.error("Unable to embed ECOF logo:", logoError?.message) }
-      const brandX = logoEmbedded ? margin + 82 : margin
-      page.drawText("HOMESHIELD SCOTLAND LTD", { x: brandX, y: pageHeight - 42, size: 14, font: bold, color: rgb(1, 1, 1) })
-      page.drawText("Enhancing Homes Across Scotland", { x: brandX, y: pageHeight - 60, size: 9, font: regular, color: rgb(1, 1, 1) })
-
-      const content = cleanText(rawPage || "").replace(/PLEASE DO NOT REPLY TO THIS EMAIL\. IT IS AN UNATTENDED AUTOMATED SERVICE\./gi, "").trim()
-      const lines = content.split(/\r?\n/).flatMap(line => line.trim() ? wrap(line.trim(), regular, 8.5, pageWidth - margin * 2) : [""])
-      const availableHeight = pageHeight - 215
-      const fontSize = Math.min(8.5, Math.max(5.8, availableHeight / Math.max(lines.length * 1.4, 1)))
-      const lineHeight = fontSize * 1.4
-      let y = pageHeight - 125
-      for (const line of lines) {
-        if (line) page.drawText(line, { x: margin, y, size: fontSize, font: regular, color: navy })
-        y -= line ? lineHeight : Math.max(4, lineHeight * 0.55)
-      }
-      page.drawLine({ start: { x: margin, y: 62 }, end: { x: pageWidth - margin, y: 62 }, thickness: 1, color: blue })
-      page.drawText("515 Lawmoor Street, Dixon Blazes Industrial Estate, Glasgow G5 0TT", { x: margin, y: 43, size: 6.5, font: regular, color: navy })
-      page.drawText("0800 6 118 118  |  info@homeshield.ltd", { x: pageWidth - margin - 160, y: 43, size: 6.5, font: regular, color: navy })
-      page.drawText(`Page ${pageNumber} of ${documentPages.length}`, { x: pageWidth - margin - 48, y: 24, size: 6, font: regular, color: grey })
-    }
-    const pdfBytes = await pdf.save()
-    const attachmentName = `${safeName.replace(/\s+/g, "-")}-ECOF-Test.pdf`
+    const attachmentName = `${safeName.replace(/\\s+/g, "-")}-ECOF-Test.pdf`
     const sendResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(sender)}/sendMail`, {
       method: "POST", headers: { Authorization: `Bearer ${tokenData.access_token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ message: {
