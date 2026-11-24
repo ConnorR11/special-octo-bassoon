@@ -8,6 +8,7 @@ import DataResults from "./DataResults"
 import LeadExport from "./LeadExport"
 import DataDashboard from "./DataDashboard"
 import CanvasserKPI from "./CanvasserKPI"
+import SpeedToLeadAnalysis from "./SpeedToLeadAnalysis"
 
 function getLondonDayBounds() {
   const now = new Date()
@@ -141,7 +142,7 @@ export default function MarketingDashboard({ onSelectAppointment, permissionLeve
   const sections = [
     { id: "overview", label: "Overview", icon: "▦", description: "Daily activity and headline performance", pages: [{ id: "made-today", label: "Made Today" }] },
     { id: "canvassers", label: "Canvassers", icon: "♙", description: "Canvasser performance and activity", pages: [{ id: "canvasser-kpi", label: "Canvasser KPI", minPermission: 3 }] },
-    { id: "lead-management", label: "Lead Management", icon: "♙", description: "Work, review and manage incoming leads", pages: [{ id: "leads-to-call", label: "Leads To Call" }, { id: "data-kanban", label: "Kanban" }, { id: "data-archived-leads", label: "Archived Leads" }] },
+    { id: "lead-management", label: "Lead Management", icon: "♙", description: "Work, review and manage incoming leads", pages: [{ id: "leads-to-call", label: "Leads To Call" }, { id: "speed-to-lead", label: "Speed to Lead Analysis" }, { id: "data-kanban", label: "Kanban" }, { id: "data-archived-leads", label: "Archived Leads" }] },
     { id: "lead-acquisition", label: "Lead Acquisition", icon: "◎", description: "Understand lead sources, spend, reporting and acquisition costs", pages: [{ id: "lead-sources", label: "Lead Sources", adminOnly: true }, { id: "data-spend", label: "Data Spend" }, { id: "data-overview", label: "Performance Overview" }, { id: "data-results", label: "Data Results", adminOnly: true }, { id: "lead-export", label: "Lead Export", adminOnly: true }] },
   ]
 
@@ -163,6 +164,7 @@ export default function MarketingDashboard({ onSelectAppointment, permissionLeve
     switch (currentPage?.id) {
       case "made-today": return <MadeTodayDashboard onSelectAppointment={onSelectAppointment} />
       case "leads-to-call": return <LeadToCall />
+      case "speed-to-lead": return <SpeedToLeadAnalysis />
       case "lead-sources": return <DataDashboard standalonePronto embeddedTab="pronto" hideHeader />
       case "data-spend": return <DataSpend />
       case "data-results": return <DataResults embedded />
