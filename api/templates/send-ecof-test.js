@@ -77,7 +77,7 @@ export default async function handler(req, res) {
     }
 
     const safeName = customerName.replace(/[^a-zA-Z0-9 ._-]/g, "").trim() || "Customer"
-    const attachmentName = `${safeName.replace(/\\s+/g, "-")}-ECOF-Test.pdf`
+    const attachmentName = `${safeName.replaceAll(" ", "-")}-ECOF-Test.pdf`
     const sendResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(sender)}/sendMail`, {
       method: "POST", headers: { Authorization: `Bearer ${tokenData.access_token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ message: {
