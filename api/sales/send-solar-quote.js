@@ -136,10 +136,12 @@ export default async function handler(req, res) {
 
     const now = new Date().toISOString()
     await db.from("solar_quotes").update({ status: "sent", sent_at: now, customer_email: customerEmail }).eq("id", quote.id)
+    const { data: actorProfile, error: actorProfileError } = await db.from("profiles").select("id").eq("auth_user_id", userData.user.id).maybeSingle()
+    if (actorProfileError) throw actorProfileError
     // A newly sent quote replaces any earlier sent quote for this appointment.
     // Keep the previous quote records and delivery history, but mark their outcomes superseded.
     const { error: supersedeError } = await db.from("solar_quotes")
-      .update({ disposition: "Superseded", callback_date: null, disposition_updated_at: now, disposition_updated_by: userData.user.id })
+      .update({ disposition: "Superseded", callback_date: null, disposition_updated_at: now, disposition_updated_by: actorProfile?.id || null })
       .eq("appointment_row_id", appointmentRowId)
       .neq("id", quote.id)
       .not("sent_at", "is", null)
