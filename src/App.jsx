@@ -123,7 +123,7 @@ function App() {
 
   useEffect(() => {
     if (!session || !profileLoaded) return
-    const restrictedPages = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, balances: 4, mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, hotkeys: 4, templates: 4, "integration-logs": 4, pronto: 4, global: 4, "outstanding-solar-surveys": 0, "solar-pipeline": 4, "quotes-to-work": 4 }
+    const restrictedPages = { "sales-performance": 2, "marketing-dashboard": 3, "canvasser-kpi": 3, balances: 4, mi: 4, seo: 4, reviews: 4, users: 4, tasks: 4, "daily-reports": 4, hotkeys: 4, templates: 4, "ecof-template": 4, "integration-logs": 4, pronto: 4, global: 4, "outstanding-solar-surveys": 0, "solar-pipeline": 4, "quotes-to-work": 4 }
     const requiredPermission = restrictedPages[page]
     const lacksPagePermission = page === "quotes-to-work"
       ? !canAccessQuotesToWork
