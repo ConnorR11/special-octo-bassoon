@@ -6,11 +6,15 @@ export async function createIntegrationLog({
   eventType,
   externalId = null,
   payload = null,
+  required = false,
 }) {
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-  if (!supabaseUrl || !serviceRoleKey) return null
+  if (!supabaseUrl || !serviceRoleKey) {
+    if (required) throw new Error("Integration logging is not configured; email was not sent.")
+    return null
+  }
 
   const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/integration_event_logs`, {
     method: "POST",
@@ -27,18 +31,23 @@ export async function createIntegrationLog({
       event_name: eventName || null,
       event_type: eventType || eventName || null,
       external_id: externalId,
-      status: "received",
+      status: "started",
+      received_at: new Date().toISOString(),
       payload,
     }),
   })
 
   if (!response.ok) {
-    console.error("Unable to create integration event log", await response.text())
+    const details = await response.text()
+    console.error("Unable to create integration event log", details)
+    if (required) throw new Error("Unable to create the email integration log; email was not sent.")
     return null
   }
 
   const rows = await response.json()
-  return Array.isArray(rows) ? rows[0] : null
+  const row = Array.isArray(rows) ? rows[0] : null
+  if (required && !row?.id) throw new Error("The email integration log was not created; email was not sent.")
+  return row
 }
 
 export async function updateIntegrationLog(logId, values = {}) {
