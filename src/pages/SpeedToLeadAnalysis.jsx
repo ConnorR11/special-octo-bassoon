@@ -87,10 +87,6 @@ export default function SpeedToLeadAnalysis() {
         <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 10 }}>Lower bars indicate faster first contact. Median limits the impact of unusually long delays.</p>
       </section>
       <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 16, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px 12px", marginBottom: 14 }}>
-          <h3 style={{ margin: 0, color: "#10233a", fontSize: 16 }}>STL Under 60 mins</h3>
-          {!loading && !error && chartRows.length > 0 && <div style={{ flex: "1 1 auto" }} />}
-        </div>
         {loading ? <p style={{ color: "#64748b" }}>Loading report…</p> : error ? <p style={{ color: "#b91c1c" }}>{error}</p> : chartRows.length === 0 ? <p style={{ color: "#64748b" }}>No leads have both timestamps recorded.</p> : <UnderThresholdsChart rows={chartRows} />}
         <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 10 }}>Percentage of called leads first contacted within each time threshold, grouped by received month.</p>
       </section>
