@@ -46,11 +46,14 @@ export default async function handler(req, res) {
     const { data: logRow, error: logError } = await db.from("integration_event_logs").insert({
       provider: "microsoft_graph", integration_name: "Microsoft 365 Solar Quote Email", direction: "outbound",
       event_name: "quote_email_send", event_type: "email_with_secure_link", external_id: appointmentRowId || null,
-      status: "received", received_at: new Date().toISOString(),
+      status: "started", received_at: new Date().toISOString(),
       payload: { appointment_row_id: appointmentRowId || null, recipient: customerEmail || null, sender, triggered_by: userData.user.email || userData.user.id },
     }).select("id").single()
-    if (logError) console.error("Unable to create solar quote email log:", logError.message)
-    else logId = logRow?.id || null
+    if (logError || !logRow?.id) {
+      console.error("Unable to create solar quote email log:", logError?.message || "No log row returned")
+      return json(res, 500, { error: "The solar quote email was not sent because its CRM integration log could not be created." })
+    }
+    logId = logRow.id
 
     if (![tenantId, clientId, clientSecret, sender].every(Boolean)) return await fail(500, "Email service is not fully configured. Check the Microsoft 365 email environment variables.")
     if (!appointmentRowId || !customerEmail || !quoteLink) return await fail(400, "Appointment, customer email and secure quote link are required.")
