@@ -74,7 +74,7 @@ export default async function handler(req, res) {
         event_name: "contract_email_send",
         event_type: "email_with_pdf_attachment",
         external_id: appointmentRowId || null,
-        status: "started",
+        status: "received",
         received_at: new Date().toISOString(),
         payload: {
           appointment_row_id: appointmentRowId || null,
