@@ -42,7 +42,7 @@ export default async function handler(req, res) {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {})
     const appointmentRowId = String(body.appointment_row_id || "").trim()
     const customerName = String(body.customer_name || "Customer").trim().slice(0, 160)
-    const pdfBase64 = String(body.pdf_base64 || "").replace(/^data:application\\/pdf;base64,/, "")
+    const pdfBase64 = String(body.pdf_base64 || "").replace("data:application/pdf;base64,", "")
     if (!appointmentRowId || !pdfBase64) return json(res, 400, { error: "Select an appointment and generate the ECOF PDF before sending a test." })
     if (pdfBase64.length > 9_000_000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(pdfBase64)) return json(res, 413, { error: "The generated ECOF PDF is too large or invalid." })
     const pdfBytes = Buffer.from(pdfBase64, "base64")
