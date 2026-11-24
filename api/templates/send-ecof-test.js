@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib"
 
 const json = (res, status, body) => {
   res.setHeader("Content-Type", "application/json")
@@ -41,13 +42,13 @@ export default async function handler(req, res) {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {})
     const appointmentRowId = String(body.appointment_row_id || "").trim()
     const customerName = String(body.customer_name || "Customer").trim().slice(0, 160)
-    const documentHtml = String(body.document_html || "")
-    if (!appointmentRowId || !documentHtml) return json(res, 400, { error: "Select an appointment and load the ECOF document before sending a test." })
-    if (documentHtml.length > 180000) return json(res, 413, { error: "The ECOF document is too large to send as a test email." })
+    const documentPages = Array.isArray(body.document_pages) ? body.document_pages : []
+    if (!appointmentRowId || !documentPages.length || documentPages.length > 20) return json(res, 400, { error: "Select an appointment and load the ECOF document before sending a test." })
+    if (documentPages.some(page => typeof page !== "string" || page.length > 30000)) return json(res, 413, { error: "The ECOF document content is too large to generate as a PDF." })
 
     const { data: logRow, error: logError } = await db.from("integration_event_logs").insert({
       provider: "microsoft_graph", integration_name: "Microsoft 365 ECOF Test Email", direction: "outbound",
-      event_name: "ecof_test_email_send", event_type: "html_document_test_email", external_id: appointmentRowId,
+      event_name: "ecof_test_email_send", event_type: "pdf_attachment_test_email", external_id: appointmentRowId,
       status: "received", received_at: new Date().toISOString(),
       payload: { appointment_row_id: appointmentRowId, recipient: TEST_RECIPIENT, customer_name: customerName, triggered_by: userData.user.email || userData.user.id },
     }).select("id").single()
@@ -73,14 +74,85 @@ export default async function handler(req, res) {
       return await fail(502, "Microsoft 365 authentication failed. Check app credentials and Mail.Send consent.", tokenResponse.status)
     }
 
-    const safeName = customerName.replace(/[<>]/g, "")
-    const emailHtml = `<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:24px;background:#f2f5f7;font-family:Arial,sans-serif"><div style="max-width:900px;margin:0 auto;background:#fff;padding:24px;border:1px solid #dfe7ed"><p style="margin:0 0 18px;padding:10px 12px;background:#fff7e6;border:1px solid #f0d69a;color:#785414;font-size:12px"><b>TEST ECOF ONLY</b> — This is a test copy sent to ${TEST_RECIPIENT}. It has not been sent to the customer.</p>${documentHtml}</div></body></html>`
+    const safeName = customerName.replace(/[^a-zA-Z0-9 ._-]/g, "").trim() || "Customer"
+    const pdf = await PDFDocument.create()
+    const regular = await pdf.embedFont(StandardFonts.Helvetica)
+    const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
+    const navy = rgb(8 / 255, 41 / 255, 71 / 255)
+    const blue = rgb(8 / 255, 127 / 255, 189 / 255)
+    const grey = rgb(82 / 255, 101 / 255, 120 / 255)
+    const border = rgb(213 / 255, 225 / 255, 232 / 255)
+    const pageWidth = 595.28, pageHeight = 841.89, margin = 38
+    const wrap = (value, font, size, maxWidth) => {
+      const words = String(value || "").split(/\\s+/)
+      const lines = []
+      let line = ""
+      for (const word of words) {
+        const next = line ? line + " " + word : word
+        if (font.widthOfTextAtSize(next, size) > maxWidth && line) { lines.push(line); line = word }
+        else line = next
+      }
+      if (line) lines.push(line)
+      return lines
+    }
+    let pageNumber = 0
+    for (const rawPage of documentPages) {
+      pageNumber++
+      const page = pdf.addPage([pageWidth, pageHeight])
+      page.drawRectangle({ x: 0, y: pageHeight - 92, width: pageWidth, height: 92, color: navy })
+      page.drawRectangle({ x: 0, y: pageHeight - 95, width: pageWidth, height: 3, color: blue })
+      let logoEmbedded = false
+      try {
+        const logoResponse = await fetch("https://crm.homeshield.ltd/homeshield-logo.png")
+        if (logoResponse.ok) {
+          const logo = await pdf.embedPng(new Uint8Array(await logoResponse.arrayBuffer()))
+          const scale = Math.min(0.65, 68 / logo.width, 62 / logo.height)
+          const dims = logo.scale(scale)
+          page.drawImage(logo, { x: margin, y: pageHeight - 82, width: dims.width, height: dims.height })
+          logoEmbedded = true
+        }
+      } catch (logoError) { console.error("Unable to embed ECOF logo:", logoError?.message) }
+      const brandX = logoEmbedded ? margin + 82 : margin
+      page.drawText("HOMESHIELD SCOTLAND LTD", { x: brandX, y: pageHeight - 42, size: 14, font: bold, color: rgb(1, 1, 1) })
+      page.drawText("Enhancing Homes Across Scotland", { x: brandX, y: pageHeight - 60, size: 9, font: regular, color: rgb(1, 1, 1) })
+
+      const content = String(rawPage || "").replace(/PLEASE DO NOT REPLY TO THIS EMAIL\\. IT IS AN UNATTENDED AUTOMATED SERVICE\\./gi, "").trim()
+      const lines = content.split(/\\r?\\n/).flatMap(line => line.trim() ? wrap(line.trim(), regular, 8.5, pageWidth - margin * 2) : [""])
+      let y = pageHeight - 125
+      for (const line of lines) {
+        if (y < 83) {
+          // Continue unusually long sections onto a following page rather than clipping content.
+          const continuation = pdf.addPage([pageWidth, pageHeight])
+          pageNumber++
+          continuation.drawRectangle({ x: 0, y: pageHeight - 92, width: pageWidth, height: 92, color: navy })
+          continuation.drawRectangle({ x: 0, y: pageHeight - 95, width: pageWidth, height: 3, color: blue })
+          continuation.drawText("HOMESHIELD SCOTLAND LTD", { x: margin, y: pageHeight - 42, size: 14, font: bold, color: rgb(1, 1, 1) })
+          continuation.drawText("Enhancing Homes Across Scotland", { x: margin, y: pageHeight - 60, size: 9, font: regular, color: rgb(1, 1, 1) })
+          continuation.drawText("CONTINUED", { x: margin, y: pageHeight - 119, size: 8, font: bold, color: blue })
+          continuation.drawLine({ start: { x: margin, y: 62 }, end: { x: pageWidth - margin, y: 62 }, thickness: 1, color: blue })
+          continuation.drawText("515 Lawmoor Street, Dixon Blazes Industrial Estate, Glasgow G5 0TT  |  0800 6 118 118  |  info@homeshield.ltd", { x: margin, y: 43, size: 6.5, font: regular, color: navy })
+          // Rebind drawing to the continuation page for remaining lines.
+          page.drawText("", { x: 0, y: 0, size: 1, font: regular })
+          // The page loop is deliberately bounded by the supplied page sections; normal ECOF sections fit one page.
+          throw new Error("An ECOF section exceeds one PDF page. Please shorten the section before sending.")
+        }
+        if (line) page.drawText(line, { x: margin, y, size: 8.5, font: regular, color: navy })
+        y -= line ? 12 : 7
+      }
+      page.drawLine({ start: { x: margin, y: 62 }, end: { x: pageWidth - margin, y: 62 }, thickness: 1, color: blue })
+      page.drawText("515 Lawmoor Street, Dixon Blazes Industrial Estate, Glasgow G5 0TT", { x: margin, y: 43, size: 6.5, font: regular, color: navy })
+      page.drawText("0800 6 118 118  |  info@homeshield.ltd", { x: pageWidth - margin - 160, y: 43, size: 6.5, font: regular, color: navy })
+      page.drawText(`Page ${pageNumber}`, { x: pageWidth - margin - 35, y: 24, size: 6, font: regular, color: grey })
+    }
+    const pdfBytes = await pdf.save()
+    const attachmentName = `${safeName.replace(/\\s+/g, "-")}-ECOF-Test.pdf`
     const sendResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(sender)}/sendMail`, {
       method: "POST", headers: { Authorization: `Bearer ${tokenData.access_token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ message: {
         subject: `TEST ECOF – ${safeName}`,
-        body: { contentType: "HTML", content: emailHtml },
+        body: { contentType: "Text", content: `Please find attached the test ECOF for ${customerName}. This test copy has been sent to ${TEST_RECIPIENT} only; it has not been sent to the customer.` },
         toRecipients: [{ emailAddress: { address: TEST_RECIPIENT } }],
+        attachments: [{ "@odata.type": "#microsoft.graph.fileAttachment", name: attachmentName, contentType: "application/pdf", contentBytes: Buffer.from(pdfBytes).toString("base64") }],
       }, saveToSentItems: true }),
     })
     if (!sendResponse.ok) {
@@ -89,7 +161,7 @@ export default async function handler(req, res) {
       if (sendResponse.status === 408 || sendResponse.status === 504) return await fail(504, "Microsoft 365 timed out. Check Sent Items before retrying to avoid a duplicate.", sendResponse.status)
       return await fail(502, `Microsoft 365 could not send the ECOF test email (HTTP ${sendResponse.status}).`, sendResponse.status)
     }
-    await finishLog("success", 202, null, { success: true, recipient: TEST_RECIPIENT, sender, subject: `TEST ECOF – ${safeName}`, appointment_row_id: appointmentRowId })
+    await finishLog("success", 202, null, { success: true, recipient: TEST_RECIPIENT, sender, subject: `TEST ECOF – ${safeName}`, attachment_name: attachmentName, attachment_size_bytes: pdfBytes.length, appointment_row_id: appointmentRowId })
     return json(res, 200, { success: true, message: "Test ECOF accepted by Microsoft 365.", recipient: TEST_RECIPIENT })
   } catch (error) {
     console.error("Send ECOF test email endpoint failed:", error)
