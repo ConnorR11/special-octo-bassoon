@@ -58,6 +58,11 @@ function DayHourHeatmap({ rows, loading, error }) {
     <div style={{ marginBottom: 14 }}>
       <h3 style={{ margin: 0, color: "#10233a", fontSize: 16 }}>Speed to Lead by Day &amp; Time</h3>
       <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 11 }}>Percentage of called Core leads contacted within 10 minutes, by the day and hour the lead was received (UK time).</p>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px 14px", marginTop: 10, marginBottom: 10, color: "#64748b", fontSize: 11 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><i style={{ width: 10, height: 10, borderRadius: 3, background: "#dc2626" }} />Red: under 25%</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><i style={{ width: 10, height: 10, borderRadius: 3, background: "#f59e0b" }} />Amber: 25–49%</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><i style={{ width: 10, height: 10, borderRadius: 3, background: "#16a34a" }} />Green: 50%+</span>
+      </div>
     </div>
     {loading ? <p style={{ color: "#64748b" }}>Loading day and time analysis…</p> : error ? <p style={{ color: "#b91c1c" }}>{error}</p> : <div style={{ overflowX: "auto" }}>
       <div style={{ minWidth: 620 }}>
@@ -75,14 +80,9 @@ function DayHourHeatmap({ rows, loading, error }) {
             })}
           </React.Fragment>)}
         </div>
-        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", flexWrap: "wrap", gap: 10, marginTop: 10, color: "#64748b", fontSize: 10 }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><i style={{ width: 10, height: 10, borderRadius: 2, background: "#dc2626" }} /> Red: under 25%</span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><i style={{ width: 10, height: 10, borderRadius: 2, background: "#f59e0b" }} /> Amber: 25–49%</span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><i style={{ width: 10, height: 10, borderRadius: 2, background: "#16a34a" }} /> Green: 50%+</span>
-        </div>
+
       </div>
     </div>}
-    <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 10 }}>Each cell displays the percentage of called leads contacted within 10 minutes. Hours shown are 09:00–20:00 UK time. Hover for average and median response time and lead volume.</p>
   </section>
 }
 
