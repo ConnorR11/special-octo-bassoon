@@ -13,6 +13,33 @@ function monthLabel(value) {
 }
 function number(value) { return Number(value || 0).toLocaleString("en-GB") }
 
+
+function UnderThresholdsChart({ rows }) {
+  const series = [
+    { key: "under_2_pct", label: "Under 2", color: "#32718f" },
+    { key: "under_10_pct", label: "Under 10", color: "#607a35" },
+    { key: "under_30_pct", label: "Under 30", color: "#a04d7e" },
+    { key: "within_60_pct", label: "Under 60", color: "#00818a" },
+  ]
+  const width = Math.max(520, rows.length * 58 + 64), height = 250
+  const left = 38, right = 12, top = 12, bottom = 38
+  const plotWidth = width - left - right, plotHeight = height - top - bottom
+  const x = i => left + (rows.length <= 1 ? plotWidth / 2 : i * plotWidth / (rows.length - 1))
+  const y = v => top + plotHeight - (Math.max(0, Math.min(100, Number(v) || 0)) / 100) * plotHeight
+  return <div style={{ minWidth: 0 }}>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 14px", marginBottom: 10 }}>
+      {series.map(s => <span key={s.key} style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#64748b", fontSize: 11 }}><i style={{ width: 10, height: 10, borderRadius: 3, background: s.color }} />{s.label} mins</span>)}
+    </div>
+    <div style={{ overflowX: "auto" }}>
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Percentage of called leads within 2, 10, 30 and 60 minutes by month" style={{ display: "block", width: "100%", minWidth: 520, height: "auto" }}>
+        {[0,20,40,60,80,100].map(t => <g key={t}><line x1={left} x2={width-right} y1={y(t)} y2={y(t)} stroke="#d8dee5" strokeDasharray="5 4" /><text x={left-8} y={y(t)+4} textAnchor="end" fill="#737b85" fontSize="11">{t}</text></g>)}
+        {rows.map((r,i) => <text key={r.month_start} x={x(i)} y={height-10} textAnchor="middle" fill="#737b85" fontSize="11">{monthLabel(r.month_start).split(" ")[0]}</text>)}
+        {series.map(s => <g key={s.key}><polyline fill="none" stroke={s.color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" points={rows.map((r,i) => `${x(i)},${y(r[s.key])}`).join(" ")} />{rows.map((r,i) => <circle key={r.month_start} cx={x(i)} cy={y(r[s.key])} r="2.5" fill={s.color}><title>{monthLabel(r.month_start)}: {Number(r[s.key] || 0).toFixed(1)}%</title></circle>)}</g>)}
+      </svg>
+    </div>
+  </div>
+}
+
 export default function SpeedToLeadAnalysis() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
@@ -48,21 +75,20 @@ export default function SpeedToLeadAnalysis() {
       <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14 }}><div style={{ color: "#64748b", fontSize: 11 }}>Latest month median</div><strong style={{ display: "block", marginTop: 5, fontSize: 23, color: "#10233a" }}>{loading || !latest ? "—" : durationLabel(latest.median_minutes)}</strong></div>
       <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14 }}><div style={{ color: "#64748b", fontSize: 11 }}>Latest month called within 60 mins</div><strong style={{ display: "block", marginTop: 5, fontSize: 23, color: "#10233a" }}>{loading || !latest ? "—" : `${Number(latest.within_60_pct).toFixed(1)}%`}</strong></div>
     </div>
-    <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 16, minWidth: 0 }}>
-      <h3 style={{ margin: "0 0 14px", color: "#10233a", fontSize: 16 }}>Median speed to first call by month</h3>
-      {loading ? <p style={{ color: "#64748b" }}>Loading report…</p> : error ? <p style={{ color: "#b91c1c" }}>{error}</p> : chartRows.length === 0 ? <p style={{ color: "#64748b" }}>No leads have both timestamps recorded.</p> : <div style={{ display: "flex", alignItems: "end", gap: 5, height: 230, overflowX: "auto", padding: "12px 4px 0" }}>
-        {chartRows.map(row => {
-          const value = Number(row.median_minutes) || 0
-          const height = Math.max(3, value / maxMinutes * 175)
-          return <div key={row.month_start} title={`${monthLabel(row.month_start)}: ${durationLabel(value)} median`} style={{ minWidth: 34, flex: "1 0 34px", height: "100%", display: "flex", flexDirection: "column", justifyContent: "end", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 9, color: "#475569", whiteSpace: "nowrap" }}>{durationLabel(value)}</span>
-            <div style={{ width: "70%", maxWidth: 32, height, background: "#32718f", borderRadius: "4px 4px 0 0" }} />
-            <span style={{ fontSize: 9, color: "#64748b", whiteSpace: "nowrap" }}>{monthLabel(row.month_start)}</span>
-          </div>
-        })}
-      </div>}
-      <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 10 }}>Lower bars indicate faster first contact. The median is used so unusually long delays do not dominate the monthly trend.</p>
-    </section>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,440px),1fr))", gap: 14, alignItems: "stretch" }}>
+      <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 16, minWidth: 0 }}>
+        <h3 style={{ margin: "0 0 14px", color: "#10233a", fontSize: 16 }}>Median speed to first call by month</h3>
+        {loading ? <p style={{ color: "#64748b" }}>Loading report…</p> : error ? <p style={{ color: "#b91c1c" }}>{error}</p> : chartRows.length === 0 ? <p style={{ color: "#64748b" }}>No leads have both timestamps recorded.</p> : <div style={{ display: "flex", alignItems: "end", gap: 5, height: 230, overflowX: "auto", padding: "12px 4px 0" }}>
+          {chartRows.map(row => { const value = Number(row.median_minutes) || 0; const height = Math.max(3, value / maxMinutes * 155); return <div key={row.month_start} title={`${monthLabel(row.month_start)}: ${durationLabel(value)} median`} style={{ minWidth: 34, flex: "1 0 34px", height: "100%", display: "flex", flexDirection: "column", justifyContent: "end", alignItems: "center", gap: 6 }}><span style={{ fontSize: 9, color: "#475569", whiteSpace: "nowrap" }}>{durationLabel(value)}</span><div style={{ width: "70%", maxWidth: 32, height, background: "#32718f", borderRadius: "4px 4px 0 0" }} /><span style={{ fontSize: 9, color: "#64748b", whiteSpace: "nowrap" }}>{monthLabel(row.month_start)}</span></div> })}
+        </div>}
+        <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 10 }}>Lower bars indicate faster first contact. Median limits the impact of unusually long delays.</p>
+      </section>
+      <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 16, minWidth: 0 }}>
+        <h3 style={{ margin: "0 0 14px", color: "#10233a", fontSize: 16 }}>STL Under 60 mins</h3>
+        {loading ? <p style={{ color: "#64748b" }}>Loading report…</p> : error ? <p style={{ color: "#b91c1c" }}>{error}</p> : chartRows.length === 0 ? <p style={{ color: "#64748b" }}>No leads have both timestamps recorded.</p> : <UnderThresholdsChart rows={chartRows} />}
+        <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 10 }}>Percentage of called leads first contacted within each time threshold, grouped by received month.</p>
+      </section>
+    </div>
     <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
       <div style={{ padding: "14px 16px", borderBottom: "1px solid #e2e8f0" }}><h3 style={{ margin: 0, color: "#10233a", fontSize: 16 }}>Monthly breakdown</h3></div>
       {loading ? <p style={{ padding: 16, color: "#64748b" }}>Loading report…</p> : error ? <p style={{ padding: 16, color: "#b91c1c" }}>{error}</p> : <div style={{ overflowX: "auto" }}>
