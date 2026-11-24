@@ -309,19 +309,21 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false, p
     try {
       const { data: userData, error: userError } = await supabase.auth.getUser()
       if (userError) throw userError
+      const { data: actorProfile, error: profileError } = await supabase.from("profiles").select("id").eq("auth_user_id", userData?.user?.id).maybeSingle()
+      if (profileError) throw profileError
       const { data: updated, error: updateError } = await supabase.from("solar_quotes").update({
         disposition: edit.disposition || null,
         callback_date: edit.disposition === "Call Back" ? edit.callback_date : null,
         visit_date: edit.disposition === "Visit booked" ? edit.visit_date : null,
         disposition_updated_at: new Date().toISOString(),
-        disposition_updated_by: userData?.user?.id || null,
+        disposition_updated_by: actorProfile?.id || null,
       }).eq("id", row.id).select("id,disposition,callback_date,visit_date,disposition_updated_at,disposition_updated_by").single()
       if (updateError) throw updateError
       let dispositionUpdatedByName = null
       if (updated.disposition_updated_by) {
         const { data: profile } = await supabase.from("profiles")
           .select("full_name,display_name,email")
-          .eq("auth_user_id", updated.disposition_updated_by)
+          .eq("id", updated.disposition_updated_by)
           .maybeSingle()
         dispositionUpdatedByName = profile?.full_name || profile?.display_name || profile?.email || null
       }
