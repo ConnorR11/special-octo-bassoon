@@ -12,6 +12,13 @@ function monthLabel(value) {
   return new Date(`${value}T12:00:00`).toLocaleDateString("en-GB", { month: "short", year: "2-digit" })
 }
 function number(value) { return Number(value || 0).toLocaleString("en-GB") }
+function compactMinutes(value) {
+  const mins = Number(value)
+  if (!Number.isFinite(mins)) return "—"
+  if (mins < 60) return `${Math.round(mins)}m`
+  if (mins < 1440) return `${(mins / 60).toFixed(1)}h`
+  return `${(mins / 1440).toFixed(1)}d`
+}
 
 
 function UnderThresholdsChart({ rows }) {
@@ -105,13 +112,13 @@ export default function SpeedToLeadAnalysis() {
               const item = dayHourRows.find(row => Number(row.weekday_index) === dayIndex + 1 && Number(row.hour_of_day) === hour)
               const pct = item ? Number(item.within_60_pct) || 0 : null
               const opacity = pct === null ? 0.08 : 0.18 + (Math.min(100, pct) / 100) * 0.82
-              return <div key={hour} title={item ? `${day} ${String(hour).padStart(2,"0")}:00 · ${pct.toFixed(1)}% within 60 mins · ${number(item.leads_called)} called leads · ${durationLabel(item.median_minutes)} median` : `${day} ${String(hour).padStart(2,"0")}:00 · No data`} style={{ height: 25, borderRadius: 3, background: pct === null ? "#e2e8f0" : `rgba(0,129,138,${opacity})`, border: "1px solid rgba(15,23,42,.04)" }} />
+              return <div key={hour} title={item ? `${day} ${String(hour).padStart(2,"0")}:00 · ${compactMinutes(item.average_minutes)} average · ${durationLabel(item.median_minutes)} median · ${pct.toFixed(1)}% within 60 mins · ${number(item.leads_called)} called leads` : `${day} ${String(hour).padStart(2,"0")}:00 · No data`} style={{ height: 25, borderRadius: 3, background: pct === null ? "#e2e8f0" : `rgba(0,129,138,${opacity})`, border: "1px solid rgba(15,23,42,.04)", display: "flex", alignItems: "center", justifyContent: "center", color: pct !== null && pct >= 45 ? "#fff" : "#164e63", fontSize: 9, fontWeight: 650, whiteSpace: "nowrap", overflow: "hidden" }}>{item ? compactMinutes(item.average_minutes) : ""}</div>
             })}
           </React.Fragment>)}
         </div>
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 6, marginTop: 10, color: "#64748b", fontSize: 10 }}><span>Lower</span>{[0.15,0.35,0.55,0.75,1].map(opacity => <i key={opacity} style={{ width: 17, height: 11, borderRadius: 2, background: `rgba(0,129,138,${opacity})` }} />)}<span>Higher % within 60 mins</span></div>
       </div></div>}
-      <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 10 }}>Hover over a cell to see lead volume, median response time and percentage contacted within 60 minutes. Blank cells indicate no called leads in that time slot.</p>
+      <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 10 }}>Each cell displays average response time (m = minutes, h = hours, d = days). Hover over a cell for exact average, median response time, lead volume and percentage contacted within 60 minutes.</p>
     </section>
     <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
       <div style={{ padding: "14px 16px", borderBottom: "1px solid #e2e8f0" }}><h3 style={{ margin: 0, color: "#10233a", fontSize: 16 }}>Monthly breakdown</h3></div>
