@@ -114,7 +114,7 @@ export default function SpeedToLeadAnalysis() {
               const trafficColor = pct === null ? "#e2e8f0" : pct >= 50 ? "#16a34a" : pct >= 25 ? "#f59e0b" : "#dc2626"
               const textColor = pct === null ? "#64748b" : pct >= 25 && pct < 50 ? "#422006" : "#ffffff"
               return <div key={hour} title={item ? `${day} ${String(hour).padStart(2,"0")}:00 · ${pct.toFixed(1)}% within 10 mins · ${compactMinutes(item.average_minutes)} average · ${durationLabel(item.median_minutes)} median · ${number(item.leads_called)} called leads` : `${day} ${String(hour).padStart(2,"0")}:00 · No data`} style={{ height: 25, borderRadius: 3, background: trafficColor, border: "1px solid rgba(15,23,42,.08)", display: "flex", alignItems: "center", justifyContent: "center", color: textColor, fontSize: 9, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden" }}>{item ? `${pct.toFixed(0)}%` : "—"}</div>
-            })})}
+            })}
           </React.Fragment>)}
         </div>
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", flexWrap: "wrap", gap: 10, marginTop: 10, color: "#64748b", fontSize: 10 }}>
