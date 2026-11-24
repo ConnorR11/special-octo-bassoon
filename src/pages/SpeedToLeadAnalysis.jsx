@@ -45,6 +45,7 @@ function UnderThresholdsChart({ rows }) {
 
 export default function SpeedToLeadAnalysis() {
   const [rows, setRows] = useState([])
+  const [uncontactedRows, setUncontactedRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
@@ -53,10 +54,10 @@ export default function SpeedToLeadAnalysis() {
     async function load() {
       setLoading(true)
       setError("")
-      const { data, error: queryError } = await supabase.rpc("get_monthly_speed_to_lead")
+      const [{ data, error: queryError }, { data: uncontactedData, error: uncontactedError }] = await Promise.all([supabase.rpc("get_monthly_speed_to_lead"), supabase.rpc("get_uncontacted_core_lead_breakdown")])
       if (!active) return
-      if (queryError) setError(queryError.message || "Unable to load speed-to-lead data.")
-      else setRows(data || [])
+      if (queryError || uncontactedError) setError((queryError || uncontactedError).message || "Unable to load speed-to-lead data.")
+      else { setRows(data || []); setUncontactedRows(uncontactedData || []) }
       setLoading(false)
     }
     load()
@@ -67,10 +68,14 @@ export default function SpeedToLeadAnalysis() {
   const maxMinutes = Math.max(60, ...chartRows.map(row => Number(row.median_minutes) || 0))
   const latest = chartRows[chartRows.length - 1]
   const total = chartRows.reduce((sum, row) => sum + Number(row.leads_called || 0), 0)
+  const uncontactedTotal = Number(uncontactedRows.find(row => row.dimension === "total")?.lead_count || 0)
+  const uncontactedGroups = dimension => uncontactedRows.filter(row => row.dimension === dimension).sort((a,b) => Number(b.lead_count)-Number(a.lead_count))
+  const weekdayRows = uncontactedGroups("weekday").sort((a,b) => Number(a.label.split("|")[0])-Number(b.label.split("|")[0]))
+  const hourRows = uncontactedGroups("hour").sort((a,b) => a.label.localeCompare(b.label))
 
   return <div style={{ display: "grid", gap: 18, minWidth: 0 }}>
     <div>
-      <h2 style={{ margin: "0 0 5px", color: "#10233a", fontSize: 21 }}>Speed to Lead Analysis</h2>
+      <h2 style={{ margin: "0 0 5px", color: "#10233a", fontSize: 21 }}>Core Speed To Lead Analysis</h2>
       <p style={{ margin: 0, color: "#64748b", fontSize: 12 }}>Monthly time between lead received date/time and first call recorded.</p>
     </div>
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}>
@@ -91,6 +96,24 @@ export default function SpeedToLeadAnalysis() {
         <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 10 }}>Percentage of called leads first contacted within each time threshold, grouped by received month.</p>
       </section>
     </div>
+    <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
+        <div><h3 style={{ margin: 0, color: "#10233a", fontSize: 16 }}>Core leads never contacted</h3><p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 11 }}>Received from 1 January 2026 onwards with no recorded first call, last call or call count.</p></div>
+        <div><div style={{ color: "#64748b", fontSize: 11 }}>Never contacted</div><strong style={{ color: "#10233a", fontSize: 25 }}>{loading ? "—" : number(uncontactedTotal)}</strong></div>
+      </div>
+      {loading ? <p style={{ color: "#64748b" }}>Loading uncontacted lead analysis…</p> : error ? <p style={{ color: "#b91c1c" }}>{error}</p> : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,250px),1fr))", gap: 16 }}>
+        {[
+          ["By lead source", uncontactedGroups("source")],
+          ["By disposition", uncontactedGroups("disposition")],
+          ["By allocated salesperson", uncontactedGroups("allocated_to")],
+          ["By day received", weekdayRows.map(r => ({ label: r.label.split("|")[1], lead_count: r.lead_count }))],
+          ["By hour received", hourRows],
+        ].map(([heading, items]) => <div key={heading} style={{ minWidth: 0 }}>
+          <h4 style={{ margin: "0 0 8px", color: "#334155", fontSize: 13 }}>{heading}</h4>
+          {items.length ? <div style={{ display: "grid", gap: 7 }}>{items.map(item => <div key={item.label} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12, borderBottom: "1px solid #f1f5f9", paddingBottom: 6 }}><span style={{ color: "#475569", overflowWrap: "anywhere" }}>{item.label}</span><strong style={{ color: "#10233a" }}>{number(item.lead_count)}</strong></div>)}</div> : <p style={{ color: "#94a3b8", fontSize: 12 }}>No uncontacted leads</p>}
+        </div>)}
+      </div>}
+    </section>
     <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
       <div style={{ padding: "14px 16px", borderBottom: "1px solid #e2e8f0" }}><h3 style={{ margin: 0, color: "#10233a", fontSize: 16 }}>Monthly breakdown</h3></div>
       {loading ? <p style={{ padding: 16, color: "#64748b" }}>Loading report…</p> : error ? <p style={{ padding: 16, color: "#b91c1c" }}>{error}</p> : <div style={{ overflowX: "auto" }}>
@@ -106,6 +129,6 @@ export default function SpeedToLeadAnalysis() {
         </table>
       </div>}
     </section>
-    <p style={{ margin: 0, color: "#64748b", fontSize: 10, lineHeight: 1.5 }}>Based on leads with both received_date_time and first_time_called populated. Negative intervals are excluded. Older records with very long gaps remain in the data; median speed is the main trend measure.</p>
+    <p style={{ margin: 0, color: "#64748b", fontSize: 10, lineHeight: 1.5 }}>Speed metrics use leads with both received_date_time and first_time_called populated. Uncontacted leads have no first_time_called, last_time_called or call_count recorded. Both reports exclude hotkey leads and use received_date_time from 1 January 2026 onwards.</p>
   </div>
 }
