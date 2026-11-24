@@ -46,8 +46,11 @@ export default async function handler(req, res) {
       status: "started", received_at: new Date().toISOString(),
       payload: { appointment_row_id: appointmentRowId || null, recipient: customerEmail || null, sender, triggered_by: userData.user.email || userData.user.id },
     }).select("id").single()
-    if (logError) console.error("Unable to create overstay email log:", logError.message)
-    else logId = logRow?.id || null
+    if (logError || !logRow?.id) {
+      console.error("Unable to create overstay email log:", logError?.message || "No log row returned")
+      return json(res, 500, { error: "The email could not be sent because its CRM integration log could not be created." })
+    }
+    logId = logRow.id
 
     if (![tenantId, clientId, clientSecret, sender].every(Boolean)) return await fail(500, "Email service is not fully configured. Check Microsoft 365 environment variables.")
     if (!appointmentRowId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) return await fail(400, "A valid customer email address is required.")
