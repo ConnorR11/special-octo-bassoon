@@ -85,47 +85,10 @@ export default function SpeedToLeadAnalysis() {
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}>
       <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14 }}><div style={{ color: "#64748b", fontSize: 11 }}>Leads with first call</div><strong style={{ display: "block", marginTop: 5, fontSize: 23, color: "#10233a" }}>{loading ? "—" : number(total)}</strong></div>
       <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14 }}><div style={{ color: "#64748b", fontSize: 11 }}>Latest month median</div><strong style={{ display: "block", marginTop: 5, fontSize: 23, color: "#10233a" }}>{loading || !latest ? "—" : durationLabel(latest.median_minutes)}</strong></div>
-      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14 }}><div style={{ color: "#64748b", fontSize: 11 }}>Latest month called within 10 mins</div><strong style={{ display: "block", marginTop: 5, fontSize: 23, color: "#10233a" }}>{loading || !latest ? "—" : `${Number(latest.within_60_pct).toFixed(1)}%`}</strong></div>
+      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14 }}><div style={{ color: "#64748b", fontSize: 11 }}>Latest month called within 10 mins</div><strong style={{ display: "block", marginTop: 5, fontSize: 23, color: "#10233a" }}>{loading || !latest ? "—" : `${Number(latest.under_10_pct).toFixed(1)}%`}</strong></div>
     </div>
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,440px),1fr))", gap: 14, alignItems: "stretch" }}>
-      <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 16, minWidth: 0 }}>
-        <h3 style={{ margin: "0 0 14px", color: "#10233a", fontSize: 16 }}>Median speed to first call by month</h3>
-        {loading ? <p style={{ color: "#64748b" }}>Loading report…</p> : error ? <p style={{ color: "#b91c1c" }}>{error}</p> : chartRows.length === 0 ? <p style={{ color: "#64748b" }}>No leads have both timestamps recorded.</p> : <div style={{ display: "flex", alignItems: "end", gap: 5, height: 230, overflowX: "auto", padding: "12px 4px 0" }}>
-          {chartRows.map(row => { const value = Number(row.median_minutes) || 0; const height = Math.max(3, value / maxMinutes * 155); return <div key={row.month_start} title={`${monthLabel(row.month_start)}: ${durationLabel(value)} median`} style={{ minWidth: 34, flex: "1 0 34px", height: "100%", display: "flex", flexDirection: "column", justifyContent: "end", alignItems: "center", gap: 6 }}><span style={{ fontSize: 9, color: "#475569", whiteSpace: "nowrap" }}>{durationLabel(value)}</span><div style={{ width: "70%", maxWidth: 32, height, background: "#32718f", borderRadius: "4px 4px 0 0" }} /><span style={{ fontSize: 9, color: "#64748b", whiteSpace: "nowrap" }}>{monthLabel(row.month_start)}</span></div> })}
-        </div>}
-        <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 10 }}>Lower bars indicate faster first contact. Median limits the impact of unusually long delays.</p>
-      </section>
-      <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 16, minWidth: 0 }}>
-        {loading ? <p style={{ color: "#64748b" }}>Loading report…</p> : error ? <p style={{ color: "#b91c1c" }}>{error}</p> : chartRows.length === 0 ? <p style={{ color: "#64748b" }}>No leads have both timestamps recorded.</p> : <UnderThresholdsChart rows={chartRows} />}
-        <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 10 }}>Percentage of called leads first contacted within each time threshold, grouped by received month.</p>
-      </section>
-    </div>
-    <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 16, minWidth: 0 }}>
-      <div style={{ marginBottom: 14 }}><h3 style={{ margin: 0, color: "#10233a", fontSize: 16 }}>Speed to Lead by Day &amp; Time</h3><p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 11 }}>Percentage of called Core leads contacted within 10 minutes, by the day and hour the lead was received (UK time).</p></div>
-      {loading ? <p style={{ color: "#64748b" }}>Loading day and time analysis…</p> : error ? <p style={{ color: "#b91c1c" }}>{error}</p> : <div style={{ overflowX: "auto" }}><div style={{ minWidth: 690 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "76px repeat(12,minmax(34px,1fr))", gap: 3, alignItems: "center" }}>
-          <div style={{ color: "#64748b", fontSize: 10 }}>Day / hour</div>
-          {Array.from({ length: 12 }, (_, index) => index + 9).map(hour => <div key={hour} style={{ textAlign: "center", color: "#64748b", fontSize: 9 }}>{String(hour).padStart(2,"0")}:00</div>)}
-          {["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map((day, dayIndex) => <React.Fragment key={day}>
-            <div style={{ color: "#475569", fontSize: 11, fontWeight: 600 }}>{day.slice(0,3)}</div>
-            {Array.from({ length: 12 }, (_, index) => index + 9).map(hour => {
-              const item = dayHourRows.find(row => Number(row.weekday_index) === dayIndex + 1 && Number(row.hour_of_day) === hour)
-              const pct = item ? Number(item.within_10_pct) || 0 : null
-              const trafficColor = pct === null ? "#e2e8f0" : pct >= 50 ? "#16a34a" : pct >= 25 ? "#f59e0b" : "#dc2626"
-              const textColor = pct === null ? "#64748b" : pct >= 25 && pct < 50 ? "#422006" : "#ffffff"
-              return <div key={hour} title={item ? `${day} ${String(hour).padStart(2,"0")}:00 · ${pct.toFixed(1)}% within 10 mins · ${compactMinutes(item.average_minutes)} average · ${durationLabel(item.median_minutes)} median · ${number(item.leads_called)} called leads` : `${day} ${String(hour).padStart(2,"0")}:00 · No data`} style={{ height: 25, borderRadius: 3, background: trafficColor, border: "1px solid rgba(15,23,42,.08)", display: "flex", alignItems: "center", justifyContent: "center", color: textColor, fontSize: 9, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden" }}>{item ? `${pct.toFixed(0)}%` : "—"}</div>
-            })}
-          </React.Fragment>)}
-        </div>
-        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", flexWrap: "wrap", gap: 10, marginTop: 10, color: "#64748b", fontSize: 10 }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><i style={{ width: 10, height: 10, borderRadius: 2, background: "#dc2626" }} /> Red: under 25%</span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><i style={{ width: 10, height: 10, borderRadius: 2, background: "#f59e0b" }} /> Amber: 25–49%</span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><i style={{ width: 10, height: 10, borderRadius: 2, background: "#16a34a" }} /> Green: 50%+</span>
-        </div>
-      </div></div>}
-      <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 10 }}>Each cell displays the percentage of called leads contacted within 10 minutes. Red is below 25%, amber is 25–49%, and green is 50% or higher. Hours shown are 09:00–20:00 UK time. Hover over a cell for average and median response time and lead volume.</p>
-    </section>
-    <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
+      <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
       <div style={{ padding: "14px 16px", borderBottom: "1px solid #e2e8f0" }}><h3 style={{ margin: 0, color: "#10233a", fontSize: 16 }}>Monthly breakdown</h3></div>
       {loading ? <p style={{ padding: 16, color: "#64748b" }}>Loading report…</p> : error ? <p style={{ padding: 16, color: "#b91c1c" }}>{error}</p> : <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 650, fontSize: 12 }}>
