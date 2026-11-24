@@ -118,31 +118,18 @@ export default async function handler(req, res) {
 
       const content = String(rawPage || "").replace(/PLEASE DO NOT REPLY TO THIS EMAIL\\. IT IS AN UNATTENDED AUTOMATED SERVICE\\./gi, "").trim()
       const lines = content.split(/\\r?\\n/).flatMap(line => line.trim() ? wrap(line.trim(), regular, 8.5, pageWidth - margin * 2) : [""])
+      const availableHeight = pageHeight - 215
+      const fontSize = Math.min(8.5, Math.max(5.8, availableHeight / Math.max(lines.length * 1.4, 1)))
+      const lineHeight = fontSize * 1.4
       let y = pageHeight - 125
       for (const line of lines) {
-        if (y < 83) {
-          // Continue unusually long sections onto a following page rather than clipping content.
-          const continuation = pdf.addPage([pageWidth, pageHeight])
-          pageNumber++
-          continuation.drawRectangle({ x: 0, y: pageHeight - 92, width: pageWidth, height: 92, color: navy })
-          continuation.drawRectangle({ x: 0, y: pageHeight - 95, width: pageWidth, height: 3, color: blue })
-          continuation.drawText("HOMESHIELD SCOTLAND LTD", { x: margin, y: pageHeight - 42, size: 14, font: bold, color: rgb(1, 1, 1) })
-          continuation.drawText("Enhancing Homes Across Scotland", { x: margin, y: pageHeight - 60, size: 9, font: regular, color: rgb(1, 1, 1) })
-          continuation.drawText("CONTINUED", { x: margin, y: pageHeight - 119, size: 8, font: bold, color: blue })
-          continuation.drawLine({ start: { x: margin, y: 62 }, end: { x: pageWidth - margin, y: 62 }, thickness: 1, color: blue })
-          continuation.drawText("515 Lawmoor Street, Dixon Blazes Industrial Estate, Glasgow G5 0TT  |  0800 6 118 118  |  info@homeshield.ltd", { x: margin, y: 43, size: 6.5, font: regular, color: navy })
-          // Rebind drawing to the continuation page for remaining lines.
-          page.drawText("", { x: 0, y: 0, size: 1, font: regular })
-          // The page loop is deliberately bounded by the supplied page sections; normal ECOF sections fit one page.
-          throw new Error("An ECOF section exceeds one PDF page. Please shorten the section before sending.")
-        }
-        if (line) page.drawText(line, { x: margin, y, size: 8.5, font: regular, color: navy })
-        y -= line ? 12 : 7
+        if (line) page.drawText(line, { x: margin, y, size: fontSize, font: regular, color: navy })
+        y -= line ? lineHeight : Math.max(4, lineHeight * 0.55)
       }
       page.drawLine({ start: { x: margin, y: 62 }, end: { x: pageWidth - margin, y: 62 }, thickness: 1, color: blue })
       page.drawText("515 Lawmoor Street, Dixon Blazes Industrial Estate, Glasgow G5 0TT", { x: margin, y: 43, size: 6.5, font: regular, color: navy })
       page.drawText("0800 6 118 118  |  info@homeshield.ltd", { x: pageWidth - margin - 160, y: 43, size: 6.5, font: regular, color: navy })
-      page.drawText(`Page ${pageNumber}`, { x: pageWidth - margin - 35, y: 24, size: 6, font: regular, color: grey })
+      page.drawText(`Page ${pageNumber} of ${documentPages.length}`, { x: pageWidth - margin - 48, y: 24, size: 6, font: regular, color: grey })
     }
     const pdfBytes = await pdf.save()
     const attachmentName = `${safeName.replace(/\\s+/g, "-")}-ECOF-Test.pdf`
