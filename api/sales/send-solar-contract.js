@@ -74,7 +74,7 @@ export default async function handler(req, res) {
         event_name: "contract_email_send",
         event_type: "email_with_pdf_attachment",
         external_id: appointmentRowId || null,
-        status: "received",
+        status: "started",
         received_at: new Date().toISOString(),
         payload: {
           appointment_row_id: appointmentRowId || null,
@@ -88,8 +88,11 @@ export default async function handler(req, res) {
       })
       .select("id")
       .single()
-    if (logError) console.error("Unable to create contract email integration log:", logError.message)
-    else logId = logRow?.id || null
+    if (logError || !logRow?.id) {
+      console.error("Unable to create contract email integration log:", logError?.message || "No log row returned")
+      return json(res, 500, { error: "The contract email was not sent because its CRM integration log could not be created." })
+    }
+    logId = logRow.id
 
     if (![tenantId, clientId, clientSecret, sender].every(Boolean)) {
       return await fail(500, "Email service is not fully configured. Check the Microsoft 365 email environment variables.")
