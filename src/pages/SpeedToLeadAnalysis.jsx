@@ -24,15 +24,18 @@ function UnderThresholdsChart({ rows }) {
   const width = Math.max(520, rows.length * 58 + 64), height = 250
   const left = 38, right = 12, top = 12, bottom = 38
   const plotWidth = width - left - right, plotHeight = height - top - bottom
+  const highestPercentage = Math.max(0, ...rows.flatMap(row => series.map(item => Number(row[item.key]) || 0)))
+  const yAxisMax = Math.max(10, Math.ceil(highestPercentage / 10) * 10)
+  const yTicks = Array.from({ length: yAxisMax / 10 + 1 }, (_, index) => index * 10)
   const x = i => left + (rows.length <= 1 ? plotWidth / 2 : i * plotWidth / (rows.length - 1))
-  const y = v => top + plotHeight - (Math.max(0, Math.min(100, Number(v) || 0)) / 100) * plotHeight
+  const y = v => top + plotHeight - (Math.max(0, Math.min(yAxisMax, Number(v) || 0)) / yAxisMax) * plotHeight
   return <div style={{ minWidth: 0 }}>
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 14px", marginBottom: 10 }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px 14px", marginBottom: 10 }}>
       {series.map(s => <span key={s.key} style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#64748b", fontSize: 11 }}><i style={{ width: 10, height: 10, borderRadius: 3, background: s.color }} />{s.label} mins</span>)}
     </div>
     <div style={{ overflowX: "auto" }}>
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Percentage of called leads within 2, 10, 30 and 60 minutes by month" style={{ display: "block", width: "100%", minWidth: 520, height: "auto" }}>
-        {[0,20,40,60,80,100].map(t => <g key={t}><line x1={left} x2={width-right} y1={y(t)} y2={y(t)} stroke="#d8dee5" strokeDasharray="5 4" /><text x={left-8} y={y(t)+4} textAnchor="end" fill="#737b85" fontSize="11">{t}</text></g>)}
+        {yTicks.map(t => <g key={t}><line x1={left} x2={width-right} y1={y(t)} y2={y(t)} stroke="#d8dee5" strokeDasharray="5 4" /><text x={left-8} y={y(t)+4} textAnchor="end" fill="#737b85" fontSize="11">{t}</text></g>)}
         {rows.map((r,i) => <text key={r.month_start} x={x(i)} y={height-10} textAnchor="middle" fill="#737b85" fontSize="11">{monthLabel(r.month_start).split(" ")[0]}</text>)}
         {series.map(s => <g key={s.key}><polyline fill="none" stroke={s.color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" points={rows.map((r,i) => `${x(i)},${y(r[s.key])}`).join(" ")} />{rows.map((r,i) => <circle key={r.month_start} cx={x(i)} cy={y(r[s.key])} r="2.5" fill={s.color}><title>{monthLabel(r.month_start)}: {Number(r[s.key] || 0).toFixed(1)}%</title></circle>)}</g>)}
       </svg>
@@ -84,7 +87,10 @@ export default function SpeedToLeadAnalysis() {
         <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 10 }}>Lower bars indicate faster first contact. Median limits the impact of unusually long delays.</p>
       </section>
       <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 16, minWidth: 0 }}>
-        <h3 style={{ margin: "0 0 14px", color: "#10233a", fontSize: 16 }}>STL Under 60 mins</h3>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px 12px", marginBottom: 14 }}>
+          <h3 style={{ margin: 0, color: "#10233a", fontSize: 16 }}>STL Under 60 mins</h3>
+          {!loading && !error && chartRows.length > 0 && <div style={{ flex: "1 1 auto" }} />}
+        </div>
         {loading ? <p style={{ color: "#64748b" }}>Loading report…</p> : error ? <p style={{ color: "#b91c1c" }}>{error}</p> : chartRows.length === 0 ? <p style={{ color: "#64748b" }}>No leads have both timestamps recorded.</p> : <UnderThresholdsChart rows={chartRows} />}
         <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 10 }}>Percentage of called leads first contacted within each time threshold, grouped by received month.</p>
       </section>
