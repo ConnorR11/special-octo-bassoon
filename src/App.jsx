@@ -34,6 +34,7 @@ import DailyReports from "./pages/DailyReports"
 import Reviews from "./pages/Reviews"
 import IntegrationLogs from "./pages/IntegrationLogs"
 import Templates from "./pages/Templates"
+import ECOFTemplate from "./pages/ECOFTemplate"
 import AdminUserPreview from "./components/AdminUserPreview"
 import ContractFile from "./pages/ContractFile"
 import OverstayFormFile from "./pages/OverstayFormFile"
@@ -343,6 +344,8 @@ function App() {
     pageContent = <IntegrationLogs setMobile={setMobile}/>
   } else if (page === "templates") {
     pageContent = <Templates/>
+  } else if (page === "ecof-template") {
+    pageContent = <ECOFTemplate onBack={() => handlePageChange("templates")}/>
   } else {
     pageContent = <Dashboard deals={allDeals} setSelected={deal=>handleDealSelect(deal, page)}/>
   }
