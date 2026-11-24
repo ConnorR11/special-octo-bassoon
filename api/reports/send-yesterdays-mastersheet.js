@@ -258,6 +258,7 @@ export default async function handler(req, res) {
     eventName: "daily_mastersheet_email",
     eventType: "scheduled_email",
     payload: { recipients, test_run: isManualRun, schedule: "06:00 Europe/London", status: "started" },
+    required: true,
   })
 
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
@@ -333,8 +334,8 @@ export default async function handler(req, res) {
     await updateIntegrationLog(integrationLog?.id, {
       status: "success",
       http_status: 202,
-      payload: { recipients, file_name: fileName, appointment_date: yesterdayDate, appointment_count: rows.length, status: "sent" },
-      result: { success: true, recipients, file_name: fileName, appointment_count: rows.length, appointment_date: yesterdayDate },
+      payload: { recipients, sender, subject: `Yesterday's Mastersheet — ${yesterdayDate}`, file_name: fileName, appointment_date: yesterdayDate, appointment_count: rows.length, status: "sent" },
+      result: { success: true, recipients, sender, subject: `Yesterday's Mastersheet — ${yesterdayDate}`, file_name: fileName, appointment_count: rows.length, appointment_date: yesterdayDate },
       error_message: null,
     })
 
