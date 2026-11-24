@@ -80,7 +80,7 @@ export default function ECOFTemplate({onBack}) {
  <p>If you have any queries, please do not hesitate to contact us on 0800 6 118 118.</p><p>Kind Regards,<br/>Customer Services</p>
  <footer className="ecof-contact-footer"><div className="ecof-footer-address"><MapPin/><span>515 Lawmoor Street, Dixon Blazes<br/>Industrial Estate, Glasgow G5 0TT</span></div><div className="ecof-footer-phone"><Phone/><span>0800 6 118 118</span></div><div className="ecof-footer-email"><Mail/><span>info@homeshield.ltd</span></div></footer>
  </section>
- <section className="ecof-page"><header className="ecof-doc-header"><img src="/homeshield-logo.png" alt="Homeshield shield"/><div><b>HOMESHIELD SCOTLAND LTD</b><small>Enhancing Homes Across Scotland</small></div></header>
+ <section className="ecof-page ecof-complaints-page"><header className="ecof-doc-header"><img src="/homeshield-logo.png" alt="Homeshield shield"/><div><b>HOMESHIELD SCOTLAND LTD</b><small>Enhancing Homes Across Scotland</small></div></header>
  <h2 className="ecof-doc-title">COMPLAINTS PROCEDURE</h2>
  <p>If you’re not completely happy with our service we’d like to hear about it, that way we can put it right. We do everything we can to make sure our customers get the best products and the best service possible, however, sometimes we may not get things right first time.</p>
  <p>We want to:</p><ul><li>Make it easy for you to tell us what went wrong.</li><li>Give your complaint the attention it deserves.</li><li>Resolve your complaint fairly.</li><li>Make sure you are satisfied with how your complaint was handled.</li></ul>
@@ -97,7 +97,6 @@ export default function ECOFTemplate({onBack}) {
 
  <footer className="ecof-contact-footer"><div className="ecof-footer-address"><MapPin/><span>515 Lawmoor Street, Dixon Blazes<br/>Industrial Estate, Glasgow G5 0TT</span></div><div className="ecof-footer-phone"><Phone/><span>0800 6 118 118</span></div><div className="ecof-footer-email"><Mail/><span>info@homeshield.ltd</span></div></footer>
  </section>
- <section className="ecof-page ecof-complaints-page"><header className="ecof-doc-header"><img src="/homeshield-logo.png" alt="Homeshield shield"/><div><b>HOMESHIELD SCOTLAND LTD</b><small>Enhancing Homes Across Scotland</small></div></header>
  <section className="ecof-page"><header className="ecof-doc-header"><img src="/homeshield-logo.png" alt="Homeshield shield"/><div><b>HOMESHIELD SCOTLAND LTD</b><small>Enhancing Homes Across Scotland</small></div></header>
  <h2 className="ecof-doc-title">IMPORTANT INFORMATION</h2>
  <p><b>IMPORTANT:</b> This document is personalised to you based on the products discussed with our representative. It outlines the purchase payment options that are open to you - we are unable to provide advice on the best funding options for your needs. The payment option you have chosen is highlighted above. All the figures within this document are for illustration only, and this document is not a quotation or a contract. If you have chosen finance then all credit is subject to application and status. More information about any of the finance options below, including full written details, can be provided on request.</p>
