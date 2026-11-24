@@ -85,7 +85,7 @@ export default async function handler(req, res) {
     const pageWidth = 595.28, pageHeight = 841.89, margin = 38
     const cleanText = value => String(value ?? "").replace(/[’‘]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, "-").replace(/•/g, "-").replace(/£/g, "GBP ")
     const wrap = (value, font, size, maxWidth) => {
-      const words = cleanText(value || "").split(/\\s+/)
+      const words = cleanText(value || "").split(/\s+/)
       const lines = []
       let line = ""
       for (const word of words) {
@@ -117,8 +117,8 @@ export default async function handler(req, res) {
       page.drawText("HOMESHIELD SCOTLAND LTD", { x: brandX, y: pageHeight - 42, size: 14, font: bold, color: rgb(1, 1, 1) })
       page.drawText("Enhancing Homes Across Scotland", { x: brandX, y: pageHeight - 60, size: 9, font: regular, color: rgb(1, 1, 1) })
 
-      const content = cleanText(rawPage || "").replace(/PLEASE DO NOT REPLY TO THIS EMAIL\\. IT IS AN UNATTENDED AUTOMATED SERVICE\\./gi, "").trim()
-      const lines = content.split(/\\r?\\n/).flatMap(line => line.trim() ? wrap(line.trim(), regular, 8.5, pageWidth - margin * 2) : [""])
+      const content = cleanText(rawPage || "").replace(/PLEASE DO NOT REPLY TO THIS EMAIL\. IT IS AN UNATTENDED AUTOMATED SERVICE\./gi, "").trim()
+      const lines = content.split(/\r?\n/).flatMap(line => line.trim() ? wrap(line.trim(), regular, 8.5, pageWidth - margin * 2) : [""])
       const availableHeight = pageHeight - 215
       const fontSize = Math.min(8.5, Math.max(5.8, availableHeight / Math.max(lines.length * 1.4, 1)))
       const lineHeight = fontSize * 1.4
@@ -133,7 +133,7 @@ export default async function handler(req, res) {
       page.drawText(`Page ${pageNumber} of ${documentPages.length}`, { x: pageWidth - margin - 48, y: 24, size: 6, font: regular, color: grey })
     }
     const pdfBytes = await pdf.save()
-    const attachmentName = `${safeName.replace(/\\s+/g, "-")}-ECOF-Test.pdf`
+    const attachmentName = `${safeName.replace(/\s+/g, "-")}-ECOF-Test.pdf`
     const sendResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(sender)}/sendMail`, {
       method: "POST", headers: { Authorization: `Bearer ${tokenData.access_token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ message: {
