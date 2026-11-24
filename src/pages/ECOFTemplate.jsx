@@ -21,6 +21,7 @@ export default function ECOFTemplate({onBack}) {
  setLoading(false)})();return()=>{live=false}},[]);
  const jobType=String(appointment?.job_type||"").trim();
  const isSolar=jobType.toLowerCase().includes("solar");
+ const purchase=Math.max(0,Number(price)||0),admin=Math.max(0,Number(fee)||0),customerDeposit=Math.max(0,Number(deposit)||0),balance=Math.max(0,purchase-admin-customerDeposit);
  const cashOrderDeposit=purchase*.25;
  const cashFinalPayment=isSolar?Math.max(0,purchase-cashOrderDeposit):Number(cashFinal)||0;
  const eligible=useMemo(()=>products.filter(p=>{const type=String(p.product||"").split(",").map(x=>x.trim().toLowerCase());return Boolean(jobType)&&type.includes(jobType.toLowerCase())&&!["cash"].includes(String(p.lender||"").toLowerCase())&&!["cash"].includes(String(p.method||"").toLowerCase())}),[products,jobType]);
@@ -28,7 +29,6 @@ export default function ECOFTemplate({onBack}) {
  const appointmentFinance=appointment?.epvs_calculation?.data||{};
  const chosenFinanceProductId=String(appointmentFinance.financeProductId||"");
  const chosenPaymentMethod=String(appointmentFinance.paymentMethod||"").toLowerCase();
- const purchase=Math.max(0,Number(price)||0),admin=Math.max(0,Number(fee)||0),customerDeposit=Math.max(0,Number(deposit)||0),balance=Math.max(0,purchase-admin-customerDeposit);
  const toggle=id=>setSelectedIds(old=>old.includes(String(id))?old.filter(x=>x!==String(id)):[...old,String(id)]);
  async function searchAppointments(){const q=appointmentSearch.trim();if(!q){setAppointmentResults([]);return;}setSearchingAppointments(true);const safe=q.replace(/[%(),]/g," ").trim();const {data,error}=await supabase.from("appointments").select("*").or(["name.ilike.%"+safe+"%","postcode.ilike.%"+safe+"%","email_address.ilike.%"+safe+"%","phone_number_1.ilike.%"+safe+"%"].join(",")).order("appointment_date",{ascending:false,nullsFirst:false}).limit(30);if(error)setError(error.message);else setAppointmentResults(data||[]);setSearchingAppointments(false);}
  function chooseAppointment(appt){setAppointment(appt);setSelectedIds([]);setAppointmentResults([]);setCustomer({name:appt.name||"",address:appt.address||"",postcode:appt.postcode||"",phone:appt.phone_number_1||"",email:appt.email_address||"",representative:appt.rep_allocated||""});const epvsData=appt.epvs_calculation?.data||{};const apptPrice=epvsData.systemCost??appt.system_cost??appt.contract_value??appt.sale_value??appt.price??"";setPrice(apptPrice==null?"":String(apptPrice));setFee(appt.admin_fee_amount==null?"":String(appt.admin_fee_amount));setDeposit(epvsData.deposit==null?(appt.deposit==null?"0":String(appt.deposit)):String(epvsData.deposit));}
