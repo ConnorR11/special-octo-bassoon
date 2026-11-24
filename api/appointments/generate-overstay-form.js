@@ -157,16 +157,16 @@ export default async function handler(req, res) {
     text("Enhancing Homes Across Scotland", brandX, 782, 10, regular, white)
 
     // Keep the title clearly below the branded header.
-    text("OVERSTAY", margin, 718, 26, bold, deepNavy)
-    text("FORM", margin + 146, 718, 26, regular, deepNavy)
-    page.drawRectangle({ x: margin, y: 702, width: 66, height: 3, color: blue })
+    text("OVERSTAY", margin, 668, 26, bold, deepNavy)
+    text("FORM", margin + 146, 668, 26, regular, deepNavy)
+    page.drawRectangle({ x: margin, y: 652, width: 66, height: 3, color: blue })
 
     // Informational notice panel, with measured wrapping to avoid crowding.
     const notice = "Trading Standards state that sales should normally last no more than two hours. When the visit lasts more than two hours we are required to record this and the reasons why this has occurred. As this has occurred in this sales visit, we would ask for you to confirm that the reasons for this overstay are correct.\n\nIf you do not agree with the reason our representative has given you for the overstay, please contact us. We are bound at all times by Trading Standards, and further details can be found at www.consumeradvice.scot"
     const noticeParagraphs = notice.split("\n\n")
     const noticeLines = noticeParagraphs.flatMap((paragraph, index) => [...(index ? [""] : []), ...linesFor(paragraph, regular, 7.8, width - 70)])
     const noticeHeight = Math.max(83, 20 + noticeLines.length * 10)
-    const noticeTop = 684
+    const noticeTop = 634
     page.drawRectangle({ x: margin, y: noticeTop - noticeHeight, width, height: noticeHeight, color: paleBlue, borderColor: paleBlue, borderWidth: 0.5 })
     page.drawCircle({ x: margin + 23, y: noticeTop - 24, size: 12, color: rgb(0.02, 0.43, 0.82) })
     text("i", margin + 20.5, noticeTop - 29, 14, bold, white)
