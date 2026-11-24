@@ -125,8 +125,11 @@ export default function SpeedToLeadAnalysis() {
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,560px),1fr))", gap: 14, alignItems: "stretch" }}>
       <DayHourHeatmap rows={dayHourRows} loading={loading} error={error} />
       <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 16, minWidth: 0 }}>
+        <div style={{ marginBottom: 14 }}>
+          <h3 style={{ margin: 0, color: "#10233a", fontSize: 16 }}>Monthly Speed to Lead Performance</h3>
+          <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 11 }}>Percentage of called Core leads first contacted within 2, 10, 30 and 60 minutes, by month received.</p>
+        </div>
         {loading ? <p style={{ color: "#64748b" }}>Loading report…</p> : error ? <p style={{ color: "#b91c1c" }}>{error}</p> : chartRows.length === 0 ? <p style={{ color: "#64748b" }}>No leads have both timestamps recorded.</p> : <UnderThresholdsChart rows={chartRows} />}
-        <p style={{ margin: "10px 0 0", color: "#64748b", fontSize: 10 }}>Percentage of called leads first contacted within each time threshold, grouped by received month.</p>
       </section>
     </div>
     <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
@@ -144,6 +147,5 @@ export default function SpeedToLeadAnalysis() {
         </table>
       </div>}
     </section>
-    <p style={{ margin: 0, color: "#64748b", fontSize: 10, lineHeight: 1.5 }}>All charts use Core leads received from 1 January 2026 onwards. Day and time are calculated in UK local time; only leads with a recorded first call are included in response-speed percentages.</p>
   </div>
 }
