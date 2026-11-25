@@ -15,11 +15,11 @@ export default function ECOFTemplate({onBack}) {
  const [appointment,setAppointment]=useState(null),[appointmentSearch,setAppointmentSearch]=useState(""),[appointmentResults,setAppointmentResults]=useState([]),[searchingAppointments,setSearchingAppointments]=useState(false),[selectedIds,setSelectedIds]=useState([]),[showCash,setShowCash]=useState(true);
  const [customer,setCustomer]=useState({name:"",address:"",postcode:"",phone:"",email:"",representative:""});
  async function getRepresentativeDisplayName(appt){
-  const repValue=String(appt?.salesperson||appt?.rep_allocated||"").trim();
-  if(!repValue)return "";
-  if(!repValue.includes("@"))return repValue;
-  const {data:profile}=await supabase.from("profiles").select("full_name,display_name,email").ilike("email",repValue).maybeSingle();
-  return String(profile?.full_name||profile?.display_name||"").trim()||repValue;
+  const repValue=String(appt?.rep_allocated||appt?.salesperson||"").trim();
+  if(!appt?.appointment_row_id)return repValue;
+  const {data,error}=await supabase.rpc("get_appointment_rep_display_name",{p_appointment_row_id:appt.appointment_row_id});
+  if(error){console.error("Unable to resolve ECOF representative name:",error);return repValue;}
+  return String(data||repValue||"").trim();
  }
  const [price,setPrice]=useState(""),[fee,setFee]=useState(""),[deposit,setDeposit]=useState("0"),[cashDeposit,setCashDeposit]=useState("852.25"),[cashDelivery,setCashDelivery]=useState("852.25"),[cashFinal,setCashFinal]=useState("1704.50"),[declarationDate,setDeclarationDate]=useState("");
  useEffect(()=>{let live=true;(async()=>{const {data,error}=await supabase.from("finance_products").select("id,internal_reference,sort_order,product,term,factor,apr,deferral_period,lender,portal,method,minimum_level").order("sort_order",{ascending:true});if(!live)return;if(error)setError(error.message);else setProducts(data||[]);
