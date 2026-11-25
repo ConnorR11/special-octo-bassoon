@@ -836,21 +836,17 @@ function CustomerDetail({
           {!deal.appointment_row_id && <div style={{ padding: "12px 0", color: "#75818b", fontSize: 11 }}>This deal does not have a linked appointment.</div>}
           {deal.appointment_row_id && contractFilesLoading && <div style={{ padding: "12px 0", color: "#75818b", fontSize: 11 }}>Loading files…</div>}
           {deal.appointment_row_id && !contractFilesLoading && contractFiles.length === 0 && <div style={{ padding: "12px 0", color: "#75818b", fontSize: 11 }}>No contract, ECOF or Overstay PDFs found for this appointment.</div>}
-          {["Contract", "ECOF", "Overstay"].map(kind => {
-            const files = contractFiles.filter(file => file.label === kind)
-            return <div key={kind}>
-              <div style={{ padding: "13px 0 5px", color: "#17364b", fontSize: 11, fontWeight: 750 }}>{kind} {files.length > 0 ? `(${files.length})` : ""}</div>
-              {files.length === 0 && !contractFilesLoading && <div style={{ padding: "5px 0 10px", color: "#89939c", fontSize: 10 }}>No {kind} PDFs found.</div>}
-              {files.map((file, index) => <div key={file.storagePath} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: index === files.length - 1 ? 0 : "1px solid #edf0f2" }}>
-                <div style={{ width: 34, height: 34, borderRadius: 8, background: "#e8f1f8", color: "#17364b", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto" }}><FileUp size={16}/></div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div title={file.name} style={{ fontSize: 11, fontWeight: 650, color: "#263645", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name}</div>
-                  <div style={{ marginTop: 4, fontSize: 9, color: "#89939c" }}>{file.created_at || file.updated_at ? new Date(file.created_at || file.updated_at).toLocaleString("en-GB") : "Date unavailable"}</div>
-                </div>
-                <button type="button" onClick={() => openContractFile(file)} disabled={openingContract} style={{ border: "1px solid #d7dee8", borderRadius: 6, padding: "7px 10px", background: "#fff", color: "#334155", fontSize: 10, fontWeight: 700, cursor: openingContract ? "wait" : "pointer", opacity: openingContract ? 0.6 : 1 }}>{openingContract ? "Opening…" : "Open"}</button>
-              </div>)}
+          {contractFiles.map((file, index) => <div key={file.storagePath} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: index === contractFiles.length - 1 ? 0 : "1px solid #edf0f2" }}>
+            <div style={{ width: 34, height: 34, borderRadius: 8, background: "#e8f1f8", color: "#17364b", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto" }}><FileUp size={16}/></div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+                <span style={{ flex: "0 0 auto", borderRadius: 4, padding: "2px 5px", background: "#eef3f7", color: "#526579", fontSize: 9, fontWeight: 750 }}>{file.label}</span>
+                <div title={file.name} style={{ minWidth: 0, fontSize: 11, fontWeight: 650, color: "#263645", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name}</div>
+              </div>
+              <div style={{ marginTop: 4, fontSize: 9, color: "#89939c" }}>{file.created_at || file.updated_at ? new Date(file.created_at || file.updated_at).toLocaleString("en-GB") : "Date unavailable"}</div>
             </div>
-          })}
+            <button type="button" onClick={() => openContractFile(file)} disabled={openingContract} style={{ border: "1px solid #d7dee8", borderRadius: 6, padding: "7px 10px", background: "#fff", color: "#334155", fontSize: 10, fontWeight: 700, cursor: openingContract ? "wait" : "pointer", opacity: openingContract ? 0.6 : 1 }}>{openingContract ? "Opening…" : "Open"}</button>
+          </div>)}
         </div>
       </div>}
 
