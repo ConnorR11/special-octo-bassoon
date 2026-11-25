@@ -150,42 +150,35 @@ export default function SpeedToLeadAnalysis() {
       </section>
     </div>
     <section style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
-      <div style={{ padding: "14px 16px", borderBottom: "1px solid #e2e8f0" }}><h3 style={{ margin: 0, color: "#10233a", fontSize: 16 }}>Monthly breakdown</h3></div>
+      <div style={{ padding: "14px 16px", borderBottom: "1px solid #e2e8f0" }}>
+        <h3 style={{ margin: 0, color: "#10233a", fontSize: 16 }}>Monthly &amp; weekly breakdown</h3>
+        <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 11 }}>Monthly totals are shown as section headers, with weekly figures underneath for the current and previous month.</p>
+      </div>
       {loading ? <p style={{ padding: 16, color: "#64748b" }}>Loading report…</p> : error ? <p style={{ padding: 16, color: "#b91c1c" }}>{error}</p> : <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 650, fontSize: 12 }}>
-          <thead><tr style={{ background: "#f8fafc", color: "#475569", textAlign: "left" }}>{["Month","Leads called","Median speed","Average speed","Within 60 mins"].map(label => <th key={label} style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>{label}</th>)}</tr></thead>
-          <tbody>{rows.map(row => <tr key={row.month_start} style={{ borderTop: "1px solid #e2e8f0" }}>
-            <td style={{ padding: "10px 12px", fontWeight: 650 }}>{monthLabel(row.month_start)}</td>
-            <td style={{ padding: "10px 12px" }}>{number(row.leads_called)}</td>
-            <td style={{ padding: "10px 12px", fontWeight: 650 }}>{durationLabel(row.median_minutes)}</td>
-            <td style={{ padding: "10px 12px" }}>{durationLabel(row.average_minutes)}</td>
-            <td style={{ padding: "10px 12px" }}>{Number(row.within_60_pct).toFixed(1)}%</td>
-          </tr>)}</tbody>
+          <thead><tr style={{ background: "#f8fafc", color: "#475569", textAlign: "left" }}>{["Month / week","Leads called","Median speed","Average speed","Within 60 mins"].map(label => <th key={label} style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>{label}</th>)}</tr></thead>
+          <tbody>{rows.map(monthRow => {
+            const monthWeeks = weeklyRows.filter(week => week.month_start === monthRow.month_start)
+            const showWeeks = weeklyMonths.some(month => month.key === monthRow.month_start)
+            return <React.Fragment key={monthRow.month_start}>
+              <tr style={{ borderTop: "1px solid #d7e2ee", background: "#edf4fa", color: "#10233a" }}>
+                <td style={{ padding: "10px 12px", fontWeight: 750 }}>{monthLabel(monthRow.month_start)}</td>
+                <td style={{ padding: "10px 12px", fontWeight: 650 }}>{number(monthRow.leads_called)}</td>
+                <td style={{ padding: "10px 12px", fontWeight: 650 }}>{durationLabel(monthRow.median_minutes)}</td>
+                <td style={{ padding: "10px 12px" }}>{durationLabel(monthRow.average_minutes)}</td>
+                <td style={{ padding: "10px 12px" }}>{Number(monthRow.within_60_pct).toFixed(1)}%</td>
+              </tr>
+              {showWeeks && monthWeeks.map(week => <tr key={`${monthRow.month_start}-${week.week_start}`} style={{ borderTop: "1px solid #e8edf3", background: "#fff" }}>
+                <td style={{ padding: "8px 12px 8px 28px", color: "#475569" }}>↳ {weekRangeLabel(week)}</td>
+                <td style={{ padding: "8px 12px" }}>{number(week.leads_called)}</td>
+                <td style={{ padding: "8px 12px", fontWeight: 650 }}>{durationLabel(week.median_minutes)}</td>
+                <td style={{ padding: "8px 12px" }}>{durationLabel(week.average_minutes)}</td>
+                <td style={{ padding: "8px 12px" }}>{Number(week.within_60_pct).toFixed(1)}%</td>
+              </tr>)}
+            </React.Fragment>
+          })}</tbody>
         </table>
       </div>}
     </section>
-    <div style={{ display: "grid", gap: 12 }}>
-      <div>
-        <h3 style={{ margin: 0, color: "#10233a", fontSize: 16 }}>Weekly breakdown</h3>
-        <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 11 }}>Week-by-week speed to lead for the current and previous calendar month. Updates automatically as the month changes.</p>
-      </div>
-      {weeklyMonths.map(month => <section key={month.key} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
-        <div style={{ padding: "12px 16px", borderBottom: "1px solid #e2e8f0" }}>
-          <h4 style={{ margin: 0, color: "#10233a", fontSize: 14 }}>{month.label}</h4>
-        </div>
-        {loading ? <p style={{ padding: 14, color: "#64748b", fontSize: 12 }}>Loading weekly report…</p> : month.rows.length === 0 ? <p style={{ padding: 14, color: "#64748b", fontSize: 12 }}>No called leads recorded for this month yet.</p> : <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600, fontSize: 12 }}>
-            <thead><tr style={{ background: "#f8fafc", color: "#475569", textAlign: "left" }}>{["Week","Leads called","Median speed","Average speed","Within 60 mins"].map(label => <th key={label} style={{ padding: "9px 12px", whiteSpace: "nowrap" }}>{label}</th>)}</tr></thead>
-            <tbody>{month.rows.map(row => <tr key={row.week_start} style={{ borderTop: "1px solid #e2e8f0" }}>
-              <td style={{ padding: "9px 12px", fontWeight: 650 }}>{weekRangeLabel(row)}</td>
-              <td style={{ padding: "9px 12px" }}>{number(row.leads_called)}</td>
-              <td style={{ padding: "9px 12px", fontWeight: 650 }}>{durationLabel(row.median_minutes)}</td>
-              <td style={{ padding: "9px 12px" }}>{durationLabel(row.average_minutes)}</td>
-              <td style={{ padding: "9px 12px" }}>{Number(row.within_60_pct).toFixed(1)}%</td>
-            </tr>)}</tbody>
-          </table>
-        </div>}
-      </section>)}
-    </div>
   </div>
 }
