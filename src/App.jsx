@@ -37,6 +37,7 @@ import Templates from "./pages/Templates"
 import ECOFTemplate from "./pages/ECOFTemplate"
 import AdminUserPreview from "./components/AdminUserPreview"
 import ContractFile from "./pages/ContractFile"
+import ECOFFile from "./pages/ECOFFile"
 import OverstayFormFile from "./pages/OverstayFormFile"
 import SurveyVideoFile from "./pages/SurveyVideoFile"
 import SurveyPdfFile from "./pages/SurveyPdfFile"
@@ -258,6 +259,8 @@ function App() {
   let pageContent
   if (page === "contract-file") {
     pageContent = <ContractFile />
+  } else if (page === "ecof-file") {
+    pageContent = <ECOFFile />
   } else if (page === "overstay-form") {
     pageContent = <OverstayFormFile />
   } else if (page === "survey-video") {
