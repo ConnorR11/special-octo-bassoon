@@ -207,6 +207,7 @@ function App() {
     async function handlePopState(){
       const path=window.location.pathname.replace(/\/+$/,"/")||"/"
       if (path === "/contract-file/") { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("contract-file"); return }
+      if (path === "/ecof-file/") { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("ecof-file"); return }
       if (path === "/overstay-form/") { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("overstay-form"); return }
       if (path === "/survey-video/") { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("survey-video"); return }
       if (path === "/survey-pdf/") { setSelected(null); setSelectedAppointment(null); setPickupAppointment(null); setPage("survey-pdf"); return }
