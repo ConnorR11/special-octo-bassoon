@@ -185,7 +185,7 @@ export default async function handler(req, res) {
         console.error("Unable to download overstay PDF from storage:", overstayDownloadError?.message)
         return await fail(500, "The overstay form could not be retrieved, so the contract email was not sent.")
       }
-      if (overstayFile.size > 5 * 1024 * 1024 || pdfFile.size + overstayFile.size > 10 * 1024 * 1024) {
+      if (overstayFile.size > 5 * 1024 * 1024 || pdfFile.size + ecofFile.size + overstayFile.size > 10 * 1024 * 1024) {
         return await fail(413, "The contract, ECOF and overstay PDF attachments exceed the email attachment limit.")
       }
       attachments.push({
