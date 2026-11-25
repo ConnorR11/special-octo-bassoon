@@ -35,7 +35,7 @@ export default function ECOFTemplate({onBack,appointmentId=null,appointmentData=
  const cashFinalPayment=isSolar?Math.max(0,purchase-cashOrderDeposit):Number(cashFinal)||0;
  const eligible=useMemo(()=>products.filter(p=>{const type=String(p.product||"").split(",").map(x=>x.trim().toLowerCase());return Boolean(jobType)&&type.includes(jobType.toLowerCase())&&!["cash"].includes(String(p.lender||"").toLowerCase())&&!["cash"].includes(String(p.method||"").toLowerCase())}),[products,jobType]);
  const selected=eligible;
- const appointmentFinance=appointment?.epvs_calculation?.data||{};
+ const appointmentEpvsRoot=appointment?.epvs_calculation||{};const appointmentFinance=appointmentEpvsRoot.data?.data||appointmentEpvsRoot.data||appointmentEpvsRoot;
  const chosenFinanceProductId=String(appointmentFinance.financeProductId||"");
  const chosenPaymentMethod=String(appointmentFinance.paymentMethod||"").toLowerCase();
  const toggle=id=>setSelectedIds(old=>old.includes(String(id))?old.filter(x=>x!==String(id)):[...old,String(id)]);
