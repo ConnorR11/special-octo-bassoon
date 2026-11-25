@@ -221,7 +221,8 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,onOpenDe
    if(!pdfResponse.ok)throw new Error("Unable to read the generated contract PDF.");
    const pdfBlob=await pdfResponse.blob();
    if(!pdfBlob.size)throw new Error("The generated contract PDF was empty.");
-   const ecofBlob=await generateAppointmentECOF(updated);
+   const ecofAppointmentSnapshot={...appointment,name:customerName.trim(),email_address:customerEmail.trim(),result:"Sold",epvs_calculation:epvs||appointment.epvs_calculation};
+   const ecofBlob=await generateAppointmentECOF(ecofAppointmentSnapshot);
    if(!ecofBlob?.size)throw new Error("The ECOF PDF could not be generated.");
    const ecofPath=`ecof-pdfs/${appointment.appointment_row_id}/${Date.now()}-ECOF.pdf`;
    const {error:ecofUploadError}=await supabase.storage.from("signatures").upload(ecofPath,ecofBlob,{contentType:"application/pdf",upsert:true});
@@ -242,7 +243,7 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,onOpenDe
    const dealResponse=await fetch("/api/sales/upload-solar-deal",{
     method:"POST",
     headers:{"Content-Type":"application/json","Authorization":`Bearer ${accessToken}`},
-    body:JSON.stringify({appointment_row_id:appointment.appointment_row_id,pdf_path:pdfPath,admin_fee_expected_date:adminFeeExpectedDate})
+    body:JSON.stringify({appointment_row_id:appointment.appointment_row_id,pdf_path:pdfPath,ecof_pdf_path:ecofPath,admin_fee_expected_date:adminFeeExpectedDate})
    });
    const dealSyncPayload=await dealResponse.json().catch(()=>({}));
    if(!dealResponse.ok)throw new Error(dealSyncPayload.error||`Unable to upload solar deal (HTTP ${dealResponse.status}).`);
