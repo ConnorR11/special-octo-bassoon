@@ -321,10 +321,10 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false, p
       if (updateError) throw updateError
       let dispositionUpdatedByName = null
       if (updated.disposition_updated_by) {
-        const { data: profile } = await supabase.from("profiles")
-          .select("full_name,display_name,email")
-          .eq("id", updated.disposition_updated_by)
-          .maybeSingle()
+        const { data: profiles } = await supabase.rpc("get_profile_names_by_auth_user_ids", {
+          p_auth_user_ids: [updated.disposition_updated_by]
+        })
+        const profile = profiles?.[0]
         dispositionUpdatedByName = profile?.full_name || profile?.display_name || profile?.email || null
       }
       const updatedWithAuditName = { ...updated, disposition_updated_by_name: dispositionUpdatedByName || "Unknown user" }
@@ -470,9 +470,7 @@ export default function SolarRework({ onSelectAppointment, quotesOnly = false, p
         let dispositionUserNames = {}
         if (dispositionUserIds.length) {
           const { data: dispositionProfiles, error: dispositionProfilesError } = await supabase
-            .from("profiles")
-            .select("id,auth_user_id,full_name,display_name,email")
-            .in("auth_user_id", dispositionUserIds)
+            .rpc("get_profile_names_by_auth_user_ids", { p_auth_user_ids: dispositionUserIds })
           if (dispositionProfilesError) throw dispositionProfilesError
           dispositionUserNames = Object.fromEntries((dispositionProfiles || []).map(profile => [
             String(profile.auth_user_id),
