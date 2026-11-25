@@ -122,15 +122,11 @@ export default function SpeedToLeadAnalysis() {
     rows: weeklyRows.filter(row => row.month_start === monthKey(date))
   }))
   const weekRangeLabel = row => {
-    const monthStart = new Date(`${row.month_start}T12:00:00`)
-    const weekStart = new Date(`${row.week_start}T12:00:00`)
-    const start = weekStart < monthStart ? monthStart : weekStart
-    const end = new Date(weekStart)
+    const start = new Date(`${row.week_start}T12:00:00`)
+    const end = new Date(start)
     end.setDate(end.getDate() + 6)
-    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0, 12)
-    const clippedEnd = end > monthEnd ? monthEnd : end
     const format = date => date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
-    return `${format(start)} – ${format(clippedEnd)}`
+    return `${format(start)} – ${format(end)}`
   }
 
   return <div style={{ display: "grid", gap: 18, minWidth: 0 }}>
