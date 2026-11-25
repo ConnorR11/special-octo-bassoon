@@ -61,6 +61,7 @@ function CustomerDetail({
   const [openingContract, setOpeningContract] = useState(false)
   const [contractFiles, setContractFiles] = useState([])
   const [contractFilesLoading, setContractFilesLoading] = useState(false)
+  const [contractFileTypeFilter, setContractFileTypeFilter] = useState("All")
   const [uploadingCategory, setUploadingCategory] = useState("")
   const [videoUploadProgress, setVideoUploadProgress] = useState(0)
   const [videoUploadStatus, setVideoUploadStatus] = useState("")
@@ -836,7 +837,17 @@ function CustomerDetail({
           {!deal.appointment_row_id && <div style={{ padding: "12px 0", color: "#75818b", fontSize: 11 }}>This deal does not have a linked appointment.</div>}
           {deal.appointment_row_id && contractFilesLoading && <div style={{ padding: "12px 0", color: "#75818b", fontSize: 11 }}>Loading files…</div>}
           {deal.appointment_row_id && !contractFilesLoading && contractFiles.length === 0 && <div style={{ padding: "12px 0", color: "#75818b", fontSize: 11 }}>No contract, ECOF or Overstay PDFs found for this appointment.</div>}
-          {contractFiles.map((file, index) => <div key={file.storagePath} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: index === contractFiles.length - 1 ? 0 : "1px solid #edf0f2" }}>
+          {deal.appointment_row_id && !contractFilesLoading && contractFiles.length > 0 && <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 0 8px", borderBottom: "1px solid #edf0f2" }}>
+            <div style={{ fontSize: 10, color: "#75818b" }}>{contractFiles.filter(file => contractFileTypeFilter === "All" || file.label === contractFileTypeFilter).length} files</div>
+            <select aria-label="Filter files by type" value={contractFileTypeFilter} onChange={event => setContractFileTypeFilter(event.target.value)} style={{ border: "1px solid #d7dee8", borderRadius: 6, padding: "7px 10px", background: "#fff", color: "#334155", fontSize: 10, fontWeight: 650 }}>
+              <option value="All">All file types</option>
+              <option value="Contract">Contract</option>
+              <option value="ECOF">ECOF</option>
+              <option value="Overstay">Overstay</option>
+            </select>
+          </div>}
+          {contractFiles.length > 0 && contractFiles.filter(file => contractFileTypeFilter === "All" || file.label === contractFileTypeFilter).length === 0 && <div style={{ padding: "14px 0", color: "#75818b", fontSize: 11 }}>No {contractFileTypeFilter} PDFs found for this appointment.</div>}
+          {contractFiles.filter(file => contractFileTypeFilter === "All" || file.label === contractFileTypeFilter).map((file, index, visibleFiles) => <div key={file.storagePath} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: index === visibleFiles.length - 1 ? 0 : "1px solid #edf0f2" }}>
             <div style={{ width: 34, height: 34, borderRadius: 8, background: "#e8f1f8", color: "#17364b", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto" }}><FileUp size={16}/></div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
