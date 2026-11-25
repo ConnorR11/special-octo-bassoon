@@ -88,6 +88,7 @@ function DayHourHeatmap({ rows, loading, error }) {
 
 export default function SpeedToLeadAnalysis() {
   const [rows, setRows] = useState([])
+  const [weeklyRows, setWeeklyRows] = useState([])
   const [dayHourRows, setDayHourRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -97,10 +98,10 @@ export default function SpeedToLeadAnalysis() {
     async function load() {
       setLoading(true)
       setError("")
-      const [{ data, error: queryError }, { data: dayHourData, error: dayHourError }] = await Promise.all([supabase.rpc("get_monthly_speed_to_lead"), supabase.rpc("get_speed_to_lead_by_received_hour")])
+      const [{ data, error: queryError }, { data: weeklyData, error: weeklyError }, { data: dayHourData, error: dayHourError }] = await Promise.all([supabase.rpc("get_monthly_speed_to_lead"), supabase.rpc("get_weekly_speed_to_lead"), supabase.rpc("get_speed_to_lead_by_received_hour")])
       if (!active) return
-      if (queryError || dayHourError) setError((queryError || dayHourError).message || "Unable to load speed-to-lead data.")
-      else { setRows(data || []); setDayHourRows(dayHourData || []) }
+      if (queryError || weeklyError || dayHourError) setError((queryError || weeklyError || dayHourError).message || "Unable to load speed-to-lead data.")
+      else { setRows(data || []); setWeeklyRows(weeklyData || []); setDayHourRows(dayHourData || []) }
       setLoading(false)
     }
     load()
@@ -110,7 +111,27 @@ export default function SpeedToLeadAnalysis() {
   const chartRows = useMemo(() => rows.filter(row => Number(row.leads_called) > 0), [rows])
   const latest = chartRows[chartRows.length - 1]
   const total = chartRows.reduce((sum, row) => sum + Number(row.leads_called || 0), 0)
-
+  const currentMonthDate = new Date()
+  currentMonthDate.setDate(1)
+  const previousMonthDate = new Date(currentMonthDate)
+  previousMonthDate.setMonth(previousMonthDate.getMonth() - 1)
+  const monthKey = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-01`
+  const weeklyMonths = [currentMonthDate, previousMonthDate].map(date => ({
+    key: monthKey(date),
+    label: date.toLocaleDateString("en-GB", { month: "long", year: "numeric" }),
+    rows: weeklyRows.filter(row => row.month_start === monthKey(date))
+  }))
+  const weekRangeLabel = row => {
+    const monthStart = new Date(`${row.month_start}T12:00:00`)
+    const weekStart = new Date(`${row.week_start}T12:00:00`)
+    const start = weekStart < monthStart ? monthStart : weekStart
+    const end = new Date(weekStart)
+    end.setDate(end.getDate() + 6)
+    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0, 12)
+    const clippedEnd = end > monthEnd ? monthEnd : end
+    const format = date => date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+    return `${format(start)} – ${format(clippedEnd)}`
+  }
 
   return <div style={{ display: "grid", gap: 18, minWidth: 0 }}>
     <div>
@@ -147,5 +168,28 @@ export default function SpeedToLeadAnalysis() {
         </table>
       </div>}
     </section>
+    <div style={{ display: "grid", gap: 12 }}>
+      <div>
+        <h3 style={{ margin: 0, color: "#10233a", fontSize: 16 }}>Weekly breakdown</h3>
+        <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 11 }}>Week-by-week speed to lead for the current and previous calendar month. Updates automatically as the month changes.</p>
+      </div>
+      {weeklyMonths.map(month => <section key={month.key} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
+        <div style={{ padding: "12px 16px", borderBottom: "1px solid #e2e8f0" }}>
+          <h4 style={{ margin: 0, color: "#10233a", fontSize: 14 }}>{month.label}</h4>
+        </div>
+        {loading ? <p style={{ padding: 14, color: "#64748b", fontSize: 12 }}>Loading weekly report…</p> : month.rows.length === 0 ? <p style={{ padding: 14, color: "#64748b", fontSize: 12 }}>No called leads recorded for this month yet.</p> : <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600, fontSize: 12 }}>
+            <thead><tr style={{ background: "#f8fafc", color: "#475569", textAlign: "left" }}>{["Week","Leads called","Median speed","Average speed","Within 60 mins"].map(label => <th key={label} style={{ padding: "9px 12px", whiteSpace: "nowrap" }}>{label}</th>)}</tr></thead>
+            <tbody>{month.rows.map(row => <tr key={row.week_start} style={{ borderTop: "1px solid #e2e8f0" }}>
+              <td style={{ padding: "9px 12px", fontWeight: 650 }}>{weekRangeLabel(row)}</td>
+              <td style={{ padding: "9px 12px" }}>{number(row.leads_called)}</td>
+              <td style={{ padding: "9px 12px", fontWeight: 650 }}>{durationLabel(row.median_minutes)}</td>
+              <td style={{ padding: "9px 12px" }}>{durationLabel(row.average_minutes)}</td>
+              <td style={{ padding: "9px 12px" }}>{Number(row.within_60_pct).toFixed(1)}%</td>
+            </tr>)}</tbody>
+          </table>
+        </div>}
+      </section>)}
+    </div>
   </div>
 }
