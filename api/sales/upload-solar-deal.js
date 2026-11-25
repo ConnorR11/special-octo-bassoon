@@ -206,6 +206,9 @@ export default async function handler(req, res) {
       return await fail(409, "The generated contract PDF path was not provided or does not match this appointment.")
     }
     const contractFileUrl = `https://crm.homeshield.ltd/contract-file?path=${encodeURIComponent(contractPdfPath)}`
+    const ecofPdfPath = String(body?.ecof_pdf_path || "").trim()
+    if (!ecofPdfPath || !ecofPdfPath.startsWith("ecof-pdfs/" + appointmentRowId + "/") || ecofPdfPath.includes("..") || ecofPdfPath.split("/").length !== 3) return await fail(409, "The generated ECOF PDF path was not provided or does not match this appointment.")
+    const ecofFileUrl = `https://crm.homeshield.ltd/ecof-file?path=${encodeURIComponent(ecofPdfPath)}`
     const overstayFormPath = String(appointment.overstay_form_link || "").trim()
     if (overstayFormPath && (!overstayFormPath.startsWith(appointmentRowId + "/") || overstayFormPath.includes("..") || overstayFormPath.split("/").length !== 2)) {
       return await fail(409, "The saved overstay form path is invalid for this appointment.")
@@ -256,7 +259,7 @@ export default async function handler(req, res) {
       "Lead: Postcode": appointment.postcode,
       "Lead: Address": appointment.address,
       "Sales Branch": appointment.branch,
-      "ECOF: File": "N/A",
+      "ECOF: File": ecofFileUrl,
       "Overstay Form": overstayFormUrl || "N/A",
       "Customer Name": appointment.name,
     }
