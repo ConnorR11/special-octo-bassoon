@@ -63,6 +63,7 @@ export default async function handler(req, res) {
     const customerEmail = String(body?.customer_email || "").trim()
     const fileName = String(body?.file_name || "Digital-Solar-Contract.pdf").replace(/[^a-zA-Z0-9._-]/g, "-")
     const pdfPath = String(body?.pdf_path || "").trim()
+    const ecofPdfPath = String(body?.ecof_pdf_path || "").trim()
 
     // Record the attempt before validation or Microsoft Graph calls. Never log the PDF or credentials.
     const { data: logRow, error: logError } = await supabase
@@ -97,10 +98,10 @@ export default async function handler(req, res) {
     if (![tenantId, clientId, clientSecret, sender].every(Boolean)) {
       return await fail(500, "Email service is not fully configured. Check the Microsoft 365 email environment variables.")
     }
-    if (!appointmentRowId || !customerEmail || !pdfPath) {
+    if (!appointmentRowId || !customerEmail || !pdfPath || !ecofPdfPath) {
       return await fail(400, "Appointment, customer email and contract PDF are required.")
     }
-    if (!pdfPath.startsWith("contract-pdfs/") || pdfPath.includes("..")) {
+    if (!pdfPath.startsWith("contract-pdfs/") || pdfPath.includes("..") || !ecofPdfPath.startsWith("ecof-pdfs/") || ecofPdfPath.includes("..")) {
       return await fail(400, "Invalid contract PDF storage path.")
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
@@ -163,6 +164,15 @@ export default async function handler(req, res) {
       contentType: "application/pdf",
       contentBytes: pdfBase64,
     }]
+    const { data: ecofFile, error: ecofDownloadError } = await supabase.storage.from("signatures").download(ecofPdfPath)
+    if (ecofDownloadError || !ecofFile) return await fail(500, "Unable to retrieve the generated ECOF PDF, so the contract email was not sent.")
+    if (ecofFile.size > 5 * 1024 * 1024 || pdfFile.size + ecofFile.size > 10 * 1024 * 1024) return await fail(413, "The contract and ECOF attachments exceed the email attachment limit.")
+    attachments.push({
+      "@odata.type": "#microsoft.graph.fileAttachment",
+      name: `${String(appointment.name || "Customer").replace(/[^a-zA-Z0-9._-]/g, "-")}-ECOF.pdf`,
+      contentType: "application/pdf",
+      contentBytes: Buffer.from(await ecofFile.arrayBuffer()).toString("base64"),
+    })
 
     // Attach the generated overstay form when one exists. BOs never call this contract endpoint.
     if (appointment.overstay_form_link) {
@@ -176,7 +186,7 @@ export default async function handler(req, res) {
         return await fail(500, "The overstay form could not be retrieved, so the contract email was not sent.")
       }
       if (overstayFile.size > 5 * 1024 * 1024 || pdfFile.size + overstayFile.size > 10 * 1024 * 1024) {
-        return await fail(413, "The contract and overstay PDF attachments exceed the email attachment limit.")
+        return await fail(413, "The contract, ECOF and overstay PDF attachments exceed the email attachment limit.")
       }
       attachments.push({
         "@odata.type": "#microsoft.graph.fileAttachment",
