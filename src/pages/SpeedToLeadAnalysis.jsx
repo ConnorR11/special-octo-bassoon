@@ -155,8 +155,8 @@ export default function SpeedToLeadAnalysis() {
         <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 11 }}>Monthly totals are shown as section headers, with weekly figures underneath for the current and previous month.</p>
       </div>
       {loading ? <p style={{ padding: 16, color: "#64748b" }}>Loading report…</p> : error ? <p style={{ padding: 16, color: "#b91c1c" }}>{error}</p> : <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 650, fontSize: 12 }}>
-          <thead><tr style={{ background: "#f8fafc", color: "#475569", textAlign: "left" }}>{["Month / week","Leads called","Median speed","Average speed","Within 60 mins"].map(label => <th key={label} style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>{label}</th>)}</tr></thead>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900, fontSize: 12 }}>
+          <thead><tr style={{ background: "#f8fafc", color: "#475569", textAlign: "left" }}>{["Month / week","Leads called","Median speed","Average speed","Within 2 mins","Within 10 mins","Within 30 mins","Within 60 mins"].map(label => <th key={label} style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>{label}</th>)}</tr></thead>
           <tbody>{rows.map(monthRow => {
             const monthWeeks = weeklyRows.filter(week => week.month_start === monthRow.month_start)
             const showWeeks = weeklyMonths.some(month => month.key === monthRow.month_start)
@@ -166,6 +166,9 @@ export default function SpeedToLeadAnalysis() {
                 <td style={{ padding: "10px 12px", fontWeight: 650 }}>{number(monthRow.leads_called)}</td>
                 <td style={{ padding: "10px 12px", fontWeight: 650 }}>{durationLabel(monthRow.median_minutes)}</td>
                 <td style={{ padding: "10px 12px" }}>{durationLabel(monthRow.average_minutes)}</td>
+                <td style={{ padding: "10px 12px" }}>{Number(monthRow.under_2_pct).toFixed(1)}%</td>
+                <td style={{ padding: "10px 12px" }}>{Number(monthRow.under_10_pct).toFixed(1)}%</td>
+                <td style={{ padding: "10px 12px" }}>{Number(monthRow.under_30_pct).toFixed(1)}%</td>
                 <td style={{ padding: "10px 12px" }}>{Number(monthRow.within_60_pct).toFixed(1)}%</td>
               </tr>
               {showWeeks && monthWeeks.map(week => <tr key={`${monthRow.month_start}-${week.week_start}`} style={{ borderTop: "1px solid #e8edf3", background: "#fff" }}>
@@ -173,6 +176,9 @@ export default function SpeedToLeadAnalysis() {
                 <td style={{ padding: "8px 12px" }}>{number(week.leads_called)}</td>
                 <td style={{ padding: "8px 12px", fontWeight: 650 }}>{durationLabel(week.median_minutes)}</td>
                 <td style={{ padding: "8px 12px" }}>{durationLabel(week.average_minutes)}</td>
+                <td style={{ padding: "8px 12px" }}>{Number(week.within_2_pct).toFixed(1)}%</td>
+                <td style={{ padding: "8px 12px" }}>{Number(week.within_10_pct).toFixed(1)}%</td>
+                <td style={{ padding: "8px 12px" }}>{Number(week.within_30_pct).toFixed(1)}%</td>
                 <td style={{ padding: "8px 12px" }}>{Number(week.within_60_pct).toFixed(1)}%</td>
               </tr>)}
             </React.Fragment>
