@@ -6,6 +6,8 @@ const json = (res, status, body) => {
   return res.status(status).json(body)
 }
 
+const MAX_COMBINED_ATTACHMENT_BYTES = 50 * 1024 * 1024
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return json(res, 405, { error: "Method not allowed." })
 
@@ -154,9 +156,6 @@ export default async function handler(req, res) {
       console.error("Unable to download contract PDF from storage:", pdfDownloadError?.message)
       return await fail(500, "Unable to retrieve the generated contract PDF from storage.")
     }
-    if (pdfFile.size > 10 * 1024 * 1024) {
-      return await fail(413, "The contract PDF is over the 10 MB email attachment limit.")
-    }
     const pdfBase64 = Buffer.from(await pdfFile.arrayBuffer()).toString("base64")
     const attachments = [{
       "@odata.type": "#microsoft.graph.fileAttachment",
@@ -166,7 +165,9 @@ export default async function handler(req, res) {
     }]
     const { data: ecofFile, error: ecofDownloadError } = await supabase.storage.from("signatures").download(ecofPdfPath)
     if (ecofDownloadError || !ecofFile) return await fail(500, "Unable to retrieve the generated ECOF PDF, so the contract email was not sent.")
-    if (ecofFile.size > 5 * 1024 * 1024 || pdfFile.size + ecofFile.size > 10 * 1024 * 1024) return await fail(413, "The contract and ECOF attachments exceed the email attachment limit.")
+    if (pdfFile.size + ecofFile.size > MAX_COMBINED_ATTACHMENT_BYTES) {
+      return await fail(413, "The combined contract and ECOF attachments exceed the 50 MB email attachment limit.")
+    }
     attachments.push({
       "@odata.type": "#microsoft.graph.fileAttachment",
       name: `${String(appointment.name || "Customer").replace(/[^a-zA-Z0-9._-]/g, "-")}-ECOF.pdf`,
@@ -185,8 +186,8 @@ export default async function handler(req, res) {
         console.error("Unable to download overstay PDF from storage:", overstayDownloadError?.message)
         return await fail(500, "The overstay form could not be retrieved, so the contract email was not sent.")
       }
-      if (overstayFile.size > 5 * 1024 * 1024 || pdfFile.size + ecofFile.size + overstayFile.size > 10 * 1024 * 1024) {
-        return await fail(413, "The contract, ECOF and overstay PDF attachments exceed the email attachment limit.")
+      if (pdfFile.size + ecofFile.size + overstayFile.size > MAX_COMBINED_ATTACHMENT_BYTES) {
+        return await fail(413, "The combined contract, ECOF and overstay attachments exceed the 50 MB email attachment limit.")
       }
       attachments.push({
         "@odata.type": "#microsoft.graph.fileAttachment",
