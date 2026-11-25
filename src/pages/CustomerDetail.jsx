@@ -174,6 +174,25 @@ function CustomerDetail({
           .filter(file => file?.name && !file.name.startsWith(".") && file.name.toLowerCase().endsWith(".pdf"))
           .map(file => ({ ...file, label: item.label, bucket: item.bucket, storagePath: `${item.folder}/${file.name}` }))
       }))
+      // Older overstay forms were stored as external Glide/Google Storage URLs
+      // directly on the appointment rather than in the current overstay-forms bucket.
+      const { data: appointmentFiles, error: appointmentFilesError } = await supabase
+        .from("appointments")
+        .select("overstay_form_link")
+        .eq("appointment_row_id", appointmentId)
+        .maybeSingle()
+      if (appointmentFilesError) throw appointmentFilesError
+      const legacyOverstayUrl = String(appointmentFiles?.overstay_form_link || "").trim()
+      if (/^https:\/\//i.test(legacyOverstayUrl)) {
+        results.push([{
+          name: "Overstay Form.pdf",
+          label: "Overstay",
+          storagePath: legacyOverstayUrl,
+          externalUrl: legacyOverstayUrl,
+          created_at: null,
+          updated_at: null,
+        }])
+      }
       setContractFiles(results.flat().sort((a, b) => {
         const dateA = new Date(a.created_at || a.updated_at || 0).getTime()
         const dateB = new Date(b.created_at || b.updated_at || 0).getTime()
@@ -416,6 +435,10 @@ function CustomerDetail({
     setOpeningContract(true)
     setDocumentError("")
     try {
+      if (contractFile.externalUrl && /^https:\/\//i.test(contractFile.externalUrl)) {
+        window.open(contractFile.externalUrl, "_blank", "noopener,noreferrer")
+        return
+      }
       const { data, error } = await supabase.storage.from(contractFile.bucket || "signatures").createSignedUrl(contractFile.storagePath, 60)
       if (error) throw error
       if (!data?.signedUrl) throw new Error("Could not create a secure link to this PDF.")
