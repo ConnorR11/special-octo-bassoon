@@ -221,6 +221,11 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,onOpenDe
    if(!pdfResponse.ok)throw new Error("Unable to read the generated contract PDF.");
    const pdfBlob=await pdfResponse.blob();
    if(!pdfBlob.size)throw new Error("The generated contract PDF was empty.");
+   const ecofBlob=await generateAppointmentECOF(appointment.appointment_row_id);
+   if(!ecofBlob?.size)throw new Error("The ECOF PDF could not be generated.");
+   const ecofPath=`ecof-pdfs/${appointment.appointment_row_id}/${Date.now()}-ECOF.pdf`;
+   const {error:ecofUploadError}=await supabase.storage.from("signatures").upload(ecofPath,ecofBlob,{contentType:"application/pdf",upsert:true});
+   if(ecofUploadError)throw new Error(`Unable to save the ECOF PDF: ${ecofUploadError.message}`);
    const fileName=`${String(customerName||"Customer").replace(/[^a-z0-9]+/gi,"-")}-Digital-Solar-Contract.pdf`;
    const pdfPath=`contract-pdfs/${appointment.appointment_row_id}/${Date.now()}-${fileName}`;
    const{error:uploadError}=await supabase.storage.from("signatures").upload(pdfPath,pdfBlob,{contentType:"application/pdf",upsert:true});
@@ -229,7 +234,7 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,onOpenDe
    const emailResponse=await fetch("/api/sales/send-solar-contract",{
     method:"POST",
     headers:{"Content-Type":"application/json","Authorization":`Bearer ${accessToken}`},
-    body:JSON.stringify({appointment_row_id:appointment.appointment_row_id,customer_email:customerEmail.trim(),file_name:fileName,pdf_path:pdfPath})
+    body:JSON.stringify({appointment_row_id:appointment.appointment_row_id,customer_email:customerEmail.trim(),file_name:fileName,pdf_path:pdfPath,ecof_pdf_path:ecofPath})
    });
    const emailPayload=await emailResponse.json().catch(()=>({}));
    if(!emailResponse.ok)throw new Error(emailPayload.error||`Unable to email the solar contract (HTTP ${emailResponse.status}).`);
