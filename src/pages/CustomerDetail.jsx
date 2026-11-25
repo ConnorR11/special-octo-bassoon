@@ -160,20 +160,27 @@ function CustomerDetail({
     }
     setContractFilesLoading(true)
     try {
-      const folder = `contract-pdfs/${deal.appointment_row_id}`
-      const { data: files, error } = await supabase.storage.from("signatures").list(folder, { limit: 100 })
-      if (error) throw error
-      const pdfFiles = (files || [])
-        .filter(file => file?.name && !file.name.startsWith(".") && file.name.toLowerCase().endsWith(".pdf"))
-        .sort((a, b) => {
-          const dateA = new Date(a.created_at || a.updated_at || 0).getTime()
-          const dateB = new Date(b.created_at || b.updated_at || 0).getTime()
-          return dateB - dateA || b.name.localeCompare(a.name)
-        })
-      setContractFiles(pdfFiles.map(file => ({ ...file, storagePath: `${folder}/${file.name}` })))
+      const appointmentId = deal.appointment_row_id
+      const folders = [
+        { label: "Contract", bucket: "signatures", folder: `contract-pdfs/${appointmentId}` },
+        { label: "ECOF", bucket: "signatures", folder: `ecof-pdfs/${appointmentId}` },
+        { label: "Overstay", bucket: "overstay-forms", folder: appointmentId },
+      ]
+      const results = await Promise.all(folders.map(async item => {
+        const { data, error } = await supabase.storage.from(item.bucket).list(item.folder, { limit: 100 })
+        if (error) throw error
+        return (data || [])
+          .filter(file => file?.name && !file.name.startsWith(".") && file.name.toLowerCase().endsWith(".pdf"))
+          .map(file => ({ ...file, label: item.label, bucket: item.bucket, storagePath: `${item.folder}/${file.name}` }))
+      }))
+      setContractFiles(results.flat().sort((a, b) => {
+        const dateA = new Date(a.created_at || a.updated_at || 0).getTime()
+        const dateB = new Date(b.created_at || b.updated_at || 0).getTime()
+        return dateB - dateA || b.name.localeCompare(a.name)
+      }))
     } catch (error) {
-      console.error("Unable to load contract files:", error)
-      setDocumentError(error?.message || "Unable to load contract files.")
+      console.error("Unable to load linked appointment PDFs:", error)
+      setDocumentError(error?.message || "Unable to load linked appointment PDFs.")
       setContractFiles([])
     } finally {
       setContractFilesLoading(false)
@@ -408,9 +415,9 @@ function CustomerDetail({
     setOpeningContract(true)
     setDocumentError("")
     try {
-      const { data, error } = await supabase.storage.from("signatures").createSignedUrl(contractFile.storagePath, 60)
+      const { data, error } = await supabase.storage.from(contractFile.bucket || "signatures").createSignedUrl(contractFile.storagePath, 60)
       if (error) throw error
-      if (!data?.signedUrl) throw new Error("Could not create a secure link to this contract.")
+      if (!data?.signedUrl) throw new Error("Could not create a secure link to this PDF.")
       window.open(data.signedUrl, "_blank", "noopener,noreferrer")
     } catch (err) {
       console.error("Unable to open digital contract:", err)
@@ -824,19 +831,26 @@ function CustomerDetail({
       </div>
 
       {activeTab === "contracts" && <div className="card" style={{ marginBottom: 18 }}>
-        <div className="card-head"><div><h2>Contract Files</h2><p>Digital contracts linked to this appointment, newest first</p></div></div>
+        <div className="card-head"><div><h2>Contract Files</h2><p>Contract, ECOF and Overstay PDFs linked to this appointment, newest first</p></div></div>
         <div style={{ padding: "0 20px 20px", display: "grid", gap: 0 }}>
           {!deal.appointment_row_id && <div style={{ padding: "12px 0", color: "#75818b", fontSize: 11 }}>This deal does not have a linked appointment.</div>}
-          {deal.appointment_row_id && contractFilesLoading && <div style={{ padding: "12px 0", color: "#75818b", fontSize: 11 }}>Loading contract files…</div>}
-          {deal.appointment_row_id && !contractFilesLoading && contractFiles.length === 0 && <div style={{ padding: "12px 0", color: "#75818b", fontSize: 11 }}>No contract PDFs found for this appointment.</div>}
-          {contractFiles.map((file, index) => <div key={file.name} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: index === contractFiles.length - 1 ? 0 : "1px solid #edf0f2" }}>
-            <div style={{ width: 34, height: 34, borderRadius: 8, background: "#e8f1f8", color: "#17364b", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto" }}><FileUp size={16}/></div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div title={file.name} style={{ fontSize: 11, fontWeight: 650, color: "#263645", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name}</div>
-              <div style={{ marginTop: 4, fontSize: 9, color: "#89939c" }}>{file.created_at || file.updated_at ? new Date(file.created_at || file.updated_at).toLocaleString("en-GB") : "Date unavailable"}</div>
+          {deal.appointment_row_id && contractFilesLoading && <div style={{ padding: "12px 0", color: "#75818b", fontSize: 11 }}>Loading files…</div>}
+          {deal.appointment_row_id && !contractFilesLoading && contractFiles.length === 0 && <div style={{ padding: "12px 0", color: "#75818b", fontSize: 11 }}>No contract, ECOF or Overstay PDFs found for this appointment.</div>}
+          {["Contract", "ECOF", "Overstay"].map(kind => {
+            const files = contractFiles.filter(file => file.label === kind)
+            return <div key={kind}>
+              <div style={{ padding: "13px 0 5px", color: "#17364b", fontSize: 11, fontWeight: 750 }}>{kind} {files.length > 0 ? `(${files.length})` : ""}</div>
+              {files.length === 0 && !contractFilesLoading && <div style={{ padding: "5px 0 10px", color: "#89939c", fontSize: 10 }}>No {kind} PDFs found.</div>}
+              {files.map((file, index) => <div key={file.storagePath} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: index === files.length - 1 ? 0 : "1px solid #edf0f2" }}>
+                <div style={{ width: 34, height: 34, borderRadius: 8, background: "#e8f1f8", color: "#17364b", display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto" }}><FileUp size={16}/></div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div title={file.name} style={{ fontSize: 11, fontWeight: 650, color: "#263645", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name}</div>
+                  <div style={{ marginTop: 4, fontSize: 9, color: "#89939c" }}>{file.created_at || file.updated_at ? new Date(file.created_at || file.updated_at).toLocaleString("en-GB") : "Date unavailable"}</div>
+                </div>
+                <button type="button" onClick={() => openContractFile(file)} disabled={openingContract} style={{ border: "1px solid #d7dee8", borderRadius: 6, padding: "7px 10px", background: "#fff", color: "#334155", fontSize: 10, fontWeight: 700, cursor: openingContract ? "wait" : "pointer", opacity: openingContract ? 0.6 : 1 }}>{openingContract ? "Opening…" : "Open"}</button>
+              </div>)}
             </div>
-            <button type="button" onClick={() => openContractFile(file)} disabled={openingContract} style={{ border: "1px solid #d7dee8", borderRadius: 6, padding: "7px 10px", background: "#fff", color: "#334155", fontSize: 10, fontWeight: 700, cursor: openingContract ? "wait" : "pointer", opacity: openingContract ? 0.6 : 1 }}>{openingContract ? "Opening…" : "Open"}</button>
-          </div>)}
+          })}
         </div>
       </div>}
 
