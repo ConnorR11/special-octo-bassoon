@@ -385,12 +385,39 @@ export default async function handler(req, res) {
     // Preserve the EPVS calculation as it stood when this deal was first uploaded.
     // Never overwrite this snapshot on subsequent syncs or appointment recalculations.
     if (appointment.epvs_calculation && typeof appointment.epvs_calculation === "object") {
-      const { error: epvsSnapshotError } = await supabase
+      // Set the original snapshot once. For an existing deal, never replace it
+      // with a subsequently edited appointment calculation.
+      const { error: originalSnapshotError } = await supabase
         .from("deals")
         .update({ original_epvs_calculation: appointment.epvs_calculation })
         .eq("id", savedDealRow.id)
         .is("original_epvs_calculation", null)
-      if (epvsSnapshotError) throw epvsSnapshotError
+      if (originalSnapshotError) throw originalSnapshotError
+    }
+
+    // Initialise the agreed and working positions from the original snapshot.
+    // Existing deals with a missing current/updated value are seeded from the
+    // immutable original, not from the potentially changed appointment EPVS.
+    const { data: epvsSnapshots, error: epvsReadError } = await supabase
+      .from("deals")
+      .select("original_epvs_calculation,current_epvs_calculation,updated_epvs_calculation")
+      .eq("id", savedDealRow.id)
+      .single()
+    if (epvsReadError) throw epvsReadError
+
+    const epvsInitialisation = {}
+    if (epvsSnapshots?.original_epvs_calculation && !epvsSnapshots.current_epvs_calculation) {
+      epvsInitialisation.current_epvs_calculation = epvsSnapshots.original_epvs_calculation
+    }
+    if (epvsSnapshots?.original_epvs_calculation && !epvsSnapshots.updated_epvs_calculation) {
+      epvsInitialisation.updated_epvs_calculation =
+        epvsSnapshots.current_epvs_calculation || epvsSnapshots.original_epvs_calculation
+    }
+    if (Object.keys(epvsInitialisation).length) {
+      let initialiseQuery = supabase.from("deals").update(epvsInitialisation).eq("id", savedDealRow.id)
+      if (epvsInitialisation.current_epvs_calculation) initialiseQuery = initialiseQuery.is("current_epvs_calculation", null)
+      const { error: initialiseError } = await initialiseQuery
+      if (initialiseError) throw initialiseError
     }
 
     // Populate Pipedrive's Supabase_ID field with the primary key from public.deals.
