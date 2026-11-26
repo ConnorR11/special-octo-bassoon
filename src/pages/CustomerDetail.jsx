@@ -1204,7 +1204,7 @@ function CustomerDetail({
             {generatingCvfPdf ? "Preparing CVF..." : "Download CVF PDF"}
           </button>
         </div>
-        <div style={{ marginTop: 14, padding: 12, borderRadius: 8, background: "#fff8e8", color: "#805b16", fontSize: 11, lineHeight: 1.5 }}>This calculator saves to the deal’s Updated EPVS calculation only. It does not change the appointment calculation or the agreed Current EPVS design.</div>
+        <div style={{ marginTop: 14, padding: 12, borderRadius: 8, background: "#fff8e8", color: "#805b16", fontSize: 11, lineHeight: 1.5 }}>Downloading a CVF creates a PDF on your device only. It does not update either EPVS calculation or save a document to the deal.</div>
 
       </div>}
 
