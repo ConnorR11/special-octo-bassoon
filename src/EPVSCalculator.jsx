@@ -562,11 +562,10 @@ const cappedBatterySC = Math.min(
 
 export default function EPVSCalculator({
   appointment,
-  onCalculationChange,
+  onCalculationChange = null,
   permissionLevel = 1,
   dealId = null,
   initialCalculation = null,
-  onCalculationChange = null,
 }) {
   const [loadingFluxRates, setLoadingFluxRates] = useState(false)
   const [fluxRateError, setFluxRateError] = useState("")
