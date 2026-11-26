@@ -564,6 +564,8 @@ export default function EPVSCalculator({
   appointment,
   onCalculationChange,
   permissionLevel = 1,
+  dealId = null,
+  initialCalculation = null,
 }) {
   const [loadingFluxRates, setLoadingFluxRates] = useState(false)
   const [fluxRateError, setFluxRateError] = useState("")
@@ -623,7 +625,7 @@ export default function EPVSCalculator({
 }, [])
   
   const appointmentInitial = useMemo(() => {
-    const saved = appointment?.epvs_calculation?.data || {}
+    const saved = (initialCalculation || appointment?.epvs_calculation)?.data || {}
     const openSolar = saved?.openSolar
     const openSolarArrays =
       openSolar && Array.isArray(openSolar.arrays)
@@ -730,7 +732,7 @@ export default function EPVSCalculator({
           ? Math.max(0, Number(appointment.admin_fee_amount) || 0)
           : 399,
     }
-  }, [appointment])
+  }, [appointment, initialCalculation])
 
   const [data, setData] =
     useState(appointmentInitial)
@@ -745,6 +747,7 @@ export default function EPVSCalculator({
   // (arrays, panel/battery/inverter fields), so the refresh watches those
   // fields rather than a separate data.openSolar object.
   useEffect(() => {
+    if (dealId) return
     const appointmentRowId = String(appointment?.appointment_row_id || "").trim()
     if (!appointmentRowId || !supabase) return
 
@@ -908,7 +911,7 @@ export default function EPVSCalculator({
       window.clearInterval(pollTimer)
       if (channel) supabase.removeChannel(channel)
     }
-  }, [appointment?.appointment_row_id])
+  }, [appointment?.appointment_row_id, dealId])
 
   const update = (key, value) => {
     setData((current) => ({
@@ -996,7 +999,7 @@ export default function EPVSCalculator({
       // records the retrieved rates against this appointment.
       const appointmentRowId = appointment?.appointment_row_id
 
-      if (appointmentRowId && supabase) {
+      if (!dealId && appointmentRowId && supabase) {
         const existingCalculation = appointment?.epvs_calculation || {}
         const existingData = existingCalculation?.data || {}
 
@@ -1492,6 +1495,23 @@ export default function EPVSCalculator({
     if (!openSolarSavePending) return
 
     const appointmentRowId = appointment?.appointment_row_id
+    if (dealId) {
+      let cancelled = false
+      const saveDealCalculation = async () => {
+        try {
+          const payload = { version: 1, savedAt: new Date().toISOString(), data, results, thirtyYearProjection }
+          const { data: savedRows, error } = await supabase.from("deals").update({ updated_epvs_calculation: payload }).eq("id", dealId).select("id")
+          if (error) throw error
+          if (!Array.isArray(savedRows) || savedRows.length !== 1) throw new Error("The deal calculation was not saved.")
+          if (!cancelled) setOpenSolarSavePending(false)
+        } catch (error) {
+          console.error("CVF OpenSolar calculation could not be saved:", error)
+          if (!cancelled) { setFluxRateError(error?.message || "OpenSolar design loaded, but the updated CVF calculation could not be saved."); setOpenSolarSavePending(false) }
+        }
+      }
+      saveDealCalculation()
+      return () => { cancelled = true }
+    }
     if (!appointmentRowId || !supabase) {
       setOpenSolarSavePending(false)
       return
@@ -1580,7 +1600,7 @@ export default function EPVSCalculator({
 
     const appointmentRowId = String(appointment?.appointment_row_id || "").trim()
 
-    if (!appointmentRowId) {
+    if (!dealId && !appointmentRowId) {
       setSaveError("This appointment does not have an appointment ID, so the calculation cannot be saved.")
       return
     }
@@ -1605,15 +1625,13 @@ export default function EPVSCalculator({
       }
 
       // Request the updated row back so a zero-row update cannot be shown as saved.
-      const { data: savedRows, error } = await supabase
-        .from("appointments")
-        .update({ epvs_calculation: payload })
-        .eq("appointment_row_id", appointmentRowId)
-        .select("appointment_row_id")
+      const { data: savedRows, error } = dealId
+        ? await supabase.from("deals").update({ updated_epvs_calculation: payload }).eq("id", dealId).select("id")
+        : await supabase.from("appointments").update({ epvs_calculation: payload }).eq("appointment_row_id", appointmentRowId).select("appointment_row_id")
 
       if (error) throw error
       if (!Array.isArray(savedRows) || savedRows.length !== 1) {
-        throw new Error("The appointment was not updated. Please refresh the appointment and try again.")
+        throw new Error(dealId ? "The deal was not updated. Please refresh and try again." : "The appointment was not updated. Please refresh the appointment and try again.")
       }
 
       setSaveMessage(`Saved successfully at ${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`)
