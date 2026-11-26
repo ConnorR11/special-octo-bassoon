@@ -621,9 +621,24 @@ async function getPersonDetails(
   const emails = Array.isArray(person.email) ? person.email : []
   const primaryEmail = emails.find(item => item?.primary && item?.value)
     || emails.find(item => item?.value)
+  const addressValue = person.address
+  const address = typeof addressValue === "string"
+    ? addressValue.trim()
+    : [addressValue?.street, addressValue?.city, addressValue?.state, addressValue?.country]
+        .filter(Boolean)
+        .join(", ")
+  const postcode = String(
+    person.postal_code ||
+    person.address_postal_code ||
+    (typeof addressValue === "object" ? addressValue?.postal_code : "") ||
+    ""
+  ).trim()
+
   return {
     name: String(person.name || "").trim() || null,
     email: String(primaryEmail?.value || "").trim() || null,
+    address: address || null,
+    postcode: postcode || null,
   }
 }
 
@@ -1396,6 +1411,14 @@ export default async function handler(req, res) {
       personDetails.email ||
       String(deal?.person?.email?.[0]?.value || "").trim() ||
       null
+    const customerAddress =
+      personDetails.address ||
+      (typeof deal?.person?.address === "string" ? deal.person.address.trim() : "") ||
+      null
+    const customerPostcode =
+      personDetails.postcode ||
+      String(deal?.person?.postal_code || deal?.person?.address_postal_code || "").trim() ||
+      null
 
     const contractNumber = await getContractNumberFromDeal(pipedriveToken, deal)
 
@@ -1712,6 +1735,8 @@ export default async function handler(req, res) {
       // Only write an email when Pipedrive provides one; preserve any existing
       // CRM email if the linked person has no email address.
       ...(customerEmail ? { email: customerEmail } : {}),
+      ...(customerAddress ? { address: customerAddress } : {}),
+      ...(customerPostcode ? { postcode: customerPostcode } : {}),
 
       salesperson,
 
