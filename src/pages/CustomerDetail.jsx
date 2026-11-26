@@ -845,6 +845,11 @@ function CustomerDetail({
 
   const pipedriveStage = String(deal?.pipedrive_stage || "").trim() || "—"
   const isSolarDeal = /solar/i.test(String(deal?.product || deal?.pipedrive_data?.product || ""))
+  const canAccessCvf = Number(permissionLevel) > 1
+
+  useEffect(() => {
+    if (!canAccessCvf && activeTab === "cvf") setActiveTab("details")
+  }, [canAccessCvf, activeTab])
 
 
   return (
@@ -1139,10 +1144,10 @@ function CustomerDetail({
       </div>
 
       <div role="tablist" aria-label="Deal details tabs" style={{display:"flex",gap:6,borderBottom:"1px solid #dfe5eb",marginBottom:18,overflowX:"auto"}}>
-        {[{key:"details",label:"Deal information"},{key:"survey",label:"Survey & Documents"},{key:"contracts",label:"Contract Files"},...(isSolarDeal?[{key:"cvf",label:"Contract Variations"}]:[])].map(tab => <button key={tab.key} type="button" role="tab" aria-selected={activeTab===tab.key} onClick={()=>setActiveTab(tab.key)} style={{flex:"0 0 auto",padding:"12px 16px",border:0,borderBottom:activeTab===tab.key?"3px solid #002d49":"3px solid transparent",marginBottom:-1,background:"transparent",color:activeTab===tab.key?"#002d49":"#64748b",fontSize:12,fontWeight:activeTab===tab.key?700:600,cursor:"pointer"}}>{tab.label}</button>)}
+        {[{key:"details",label:"Deal information"},{key:"survey",label:"Survey & Documents"},{key:"contracts",label:"Contract Files"},...(isSolarDeal && canAccessCvf?[{key:"cvf",label:"Contract Variations"}]:[])].map(tab => <button key={tab.key} type="button" role="tab" aria-selected={activeTab===tab.key} onClick={()=>setActiveTab(tab.key)} style={{flex:"0 0 auto",padding:"12px 16px",border:0,borderBottom:activeTab===tab.key?"3px solid #002d49":"3px solid transparent",marginBottom:-1,background:"transparent",color:activeTab===tab.key?"#002d49":"#64748b",fontSize:12,fontWeight:activeTab===tab.key?700:600,cursor:"pointer"}}>{tab.label}</button>)}
       </div>
 
-      {activeTab === "cvf" && isSolarDeal && <div className="card" style={{ marginBottom: 18, padding: 18 }}>
+      {activeTab === "cvf" && isSolarDeal && canAccessCvf && <div className="card" style={{ marginBottom: 18, padding: 18 }}>
         <div style={{ marginBottom: 14 }}>
           <h2 style={{ margin: 0, fontSize: 18, color: "#10233f" }}>EPVS Calculator — Contract Variation</h2>
           <p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>Review and calculate the proposed variation using the latest updated EPVS calculation.</p>
