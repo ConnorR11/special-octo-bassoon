@@ -73,7 +73,46 @@ function CustomerDetail({
   const [activeTab, setActiveTab] = useState("details")
   const [cvfCurrent, setCvfCurrent] = useState(deal?.current_epvs_calculation || deal?.original_epvs_calculation || null)
   const [cvfUpdated, setCvfUpdated] = useState(deal?.updated_epvs_calculation || null)
+  const [cvfAppointmentCalculation, setCvfAppointmentCalculation] = useState(null)
   const [cvfRefreshing, setCvfRefreshing] = useState(false)
+
+  // Payment details belong to the original appointment EPVS record. Load that
+  // snapshot separately and use it only as a fallback behind the updated CVF
+  // calculation, so the latest variation design remains authoritative.
+  useEffect(() => {
+    let active = true
+    const appointmentRowId = String(deal?.appointment_row_id || "").trim()
+    setCvfAppointmentCalculation(null)
+    if (!appointmentRowId) return () => { active = false }
+
+    supabase
+      .from("appointments")
+      .select("epvs_calculation")
+      .eq("appointment_row_id", appointmentRowId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) throw error
+        if (active) setCvfAppointmentCalculation(data?.epvs_calculation || null)
+      })
+      .catch(error => {
+        console.error("Unable to load original appointment EPVS payment details:", error)
+      })
+
+    return () => { active = false }
+  }, [deal?.appointment_row_id])
+
+  const cvfCalculationForEditor = (() => {
+    const original = cvfAppointmentCalculation || {}
+    const updated = cvfUpdated || {}
+    return {
+      ...original,
+      ...updated,
+      data: {
+        ...(original?.data || {}),
+        ...(updated?.data || {}),
+      },
+    }
+  })()
   const [cvfMessage, setCvfMessage] = useState("")
   const [cvfError, setCvfError] = useState("")
   const [surveyAnswers, setSurveyAnswers] = useState({})
@@ -890,10 +929,10 @@ function CustomerDetail({
         {cvfError && <div role="alert" style={{ marginBottom: 12, padding: 11, borderRadius: 7, background: "#fff0f0", color: "#a33b3b", fontSize: 11 }}>{cvfError}</div>}
         {cvfMessage && <div style={{ marginBottom: 12, padding: 11, borderRadius: 7, background: "#eaf6ee", color: "#28734c", fontSize: 11 }}>{cvfMessage}</div>}
         <EPVSCalculator
-          key={`cvf-${deal.id}-${cvfUpdated?.savedAt || cvfUpdated?.importedAt || "empty"}`}
-          appointment={{ ...deal, appointment_row_id: null, epvs_calculation: cvfUpdated || null }}
+          key={`cvf-${deal.id}-${cvfUpdated?.savedAt || cvfUpdated?.importedAt || "empty"}-${cvfAppointmentCalculation?.savedAt || "appointment"}`}
+          appointment={{ ...deal, appointment_row_id: null, epvs_calculation: cvfCalculationForEditor }}
           dealId={deal.id}
-          initialCalculation={cvfUpdated}
+          initialCalculation={cvfCalculationForEditor}
           permissionLevel={permissionLevel}
         />
         {!cvfUpdated && <div style={{ marginTop: 12, padding: 12, borderRadius: 8, background: "#f8fafc", color: "#64748b", fontSize: 11 }}>No updated EPVS calculation has been imported yet. Use “Get Current Design” in the OpenSolar system design section below to import the latest design into this CVF.</div>}
