@@ -182,24 +182,9 @@ function CustomerDetail({
   const cvfHardware = data => data?.hardware || data?.openSolar?.hardware || {}
   const cvfHardwareLabel = (items, key) => (Array.isArray(items) ? items : []).map(item => [item?.manufacturer, item?.model].filter(Boolean).join(" ")).filter(Boolean).join(", ") || "Not specified"
   const cvfChanged = (a, b) => JSON.stringify(a ?? null) !== JSON.stringify(b ?? null)
-  // The calculator can emit its initial empty React state before its
-  // saved Updated EPVS snapshot has hydrated. Do not let that transient
-  // empty callback replace the persisted variation in the comparison panel.
-  const cvfDraftHasValues = Boolean(
-    (Array.isArray(cvfDraftData?.arrays) && cvfDraftData.arrays.some(item =>
-      cvfNumber(item?.panelCount) > 0 || cvfNumber(item?.panelWattage) > 0
-    )) ||
-    cvfDraftData?.systemCost != null ||
-    cvfDraftData?.paymentMethod ||
-    cvfDraftData?.annualConsumption != null ||
-    cvfDraftData?.currentEnergy?.annualConsumption != null ||
-    cvfDraftData?.importRate != null ||
-    cvfDraftData?.standingCharge != null ||
-    cvfDraftData?.hardware?.panels?.length ||
-    cvfDraftData?.hardware?.batteries?.length ||
-    cvfDraftData?.hardware?.inverters?.length
-  )
-  const cvfDraft = cvfDraftHasValues ? cvfDraftData : cvfUpdatedData
+  // EPVSCalculator publishes its live state only after the saved Updated
+  // EPVS snapshot has hydrated, so the latest callback is authoritative.
+  const cvfDraft = cvfDraftData || cvfUpdatedData
   const cvfFormatMoney = value => value === "" || value == null ? "Not set" : new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 2 }).format(Number(value) || 0)
   const cvfFormatNumber = (value, suffix = "") => value === "" || value == null ? "Not set" : `${Number(value).toLocaleString("en-GB", { maximumFractionDigits: 2 })}${suffix}`
   const cvfHardwareDetails = data => cvfHardware(data)
