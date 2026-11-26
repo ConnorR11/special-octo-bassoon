@@ -23,7 +23,7 @@ export default async function handler(req, res) {
 
     const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {})
     const path = String(body.path || "").trim()
-    if (!path.startsWith("contract-pdfs/") || path.includes("..") || path.split("/").length < 3) {
+    if (!(path.startsWith("contract-pdfs/") || path.startsWith("cvf-pdfs/")) || path.includes("..") || path.split("/").length !== 3) {
       return json(res, 400, { error: "Invalid contract reference." })
     }
 
