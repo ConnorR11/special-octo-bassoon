@@ -169,13 +169,10 @@ function CustomerDetail({
     }
   }
 
-  // A deal may not yet have current_epvs_calculation populated. In that
-  // case the linked appointment's original EPVS calculation is the agreed
-  // baseline for the CVF comparison (not the editable Updated EPVS JSON).
-  const cvfCurrentData =
-    cvfCurrent?.data ||
-    cvfAppointmentCalculation?.data ||
-    {}
+  // The CVF comparison is strictly Current EPVS versus Updated EPVS.
+  // Do not fall back to the appointment calculation: these deal-level JSON
+  // fields are being introduced and will be populated for deals going forward.
+  const cvfCurrentData = cvfCurrent?.data || {}
   const cvfUpdatedData = cvfUpdated?.data || {}
   const cvfCurrentArrays = Array.isArray(cvfCurrentData.arrays) ? cvfCurrentData.arrays : []
   const cvfUpdatedArrays = Array.isArray(cvfUpdatedData.arrays) ? cvfUpdatedData.arrays : []
