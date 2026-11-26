@@ -1395,9 +1395,13 @@ async function appendVariationPage(bytes, variation) {
     page.drawText(header, { x: W - right - bold.widthOfTextAtSize(header, 8), y: H - 27, size: 8, font: bold, color: pdfRgb(1,1,1) })
     y = H - 67
   }
+  const cleanPdfText = value => String(value ?? "—")
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim() || "—"
   const wrap = (value, font, size, maxWidth) => {
     const lines = []; let line = ""
-    for (const word of String(value ?? "—").replace(/[\r\n\t]+/g, " ").split(/\s+/)) {
+    for (const word of cleanPdfText(value).split(/\s+/)) {
       const next = line ? line + " " + word : word
       if (font.widthOfTextAtSize(next, size) > maxWidth && line) { lines.push(line); line = word } else line = next
     }
@@ -1430,7 +1434,7 @@ async function appendVariationPage(bytes, variation) {
   for (const group of groups) {
     if (y < 105) { newPage(true); tableHeader() }
     page.drawRectangle({ x: left, y: y - 18, width: contentWidth, height: 18, color: navy })
-    page.drawText(group.category, { x: left + 7, y: y - 12, size: 8, font: bold, color: pdfRgb(1,1,1) }); y -= 18
+    page.drawText(cleanPdfText(group.category), { x: left + 7, y: y - 12, size: 8, font: bold, color: pdfRgb(1,1,1) }); y -= 18
     for (const row of group.rows) {
       const cells = [row.label || "", row.before || "—", row.after || "—"]
       const sizes = [7.2, 7, 7], fonts = [bold, regular, regular]
@@ -1439,7 +1443,7 @@ async function appendVariationPage(bytes, variation) {
       if (y - rowHeight < 65) {
         newPage(true); tableHeader()
         page.drawRectangle({ x: left, y: y - 18, width: contentWidth, height: 18, color: navy })
-        page.drawText(group.category + " (continued)", { x: left + 7, y: y - 12, size: 8, font: bold, color: pdfRgb(1,1,1) }); y -= 18
+        page.drawText(cleanPdfText(group.category) + " (continued)", { x: left + 7, y: y - 12, size: 8, font: bold, color: pdfRgb(1,1,1) }); y -= 18
       }
       page.drawRectangle({ x: left, y: y - rowHeight, width: contentWidth, height: rowHeight, color: pdfRgb(1,1,1), borderColor: border, borderWidth: 0.45 })
       for (let index = 1; index < 3; index++) page.drawLine({ start: { x: xs[index], y }, end: { x: xs[index], y: y - rowHeight }, thickness: 0.35, color: border })
