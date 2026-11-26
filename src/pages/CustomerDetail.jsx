@@ -174,15 +174,35 @@ function CustomerDetail({
       }
       const result = await GenerateSolarContract({ appointment, epvsOverride: cvfUpdated, variation, previewOnly: true })
       if (!result?.blob || !result?.fileName) throw new Error("The CVF PDF could not be generated.")
+      const contractNumber = String(deal.contract_number || appointment.contract_number || "Solar").replace(/[^a-zA-Z0-9_-]/g, "-")
+      const fileName = `${contractNumber}-Contract-Variation.pdf`
+      const bytes = new Uint8Array(await result.blob.arrayBuffer())
+      let binary = ""
+      const chunkSize = 0x8000
+      for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize))
+      }
+      const pdfBase64 = btoa(binary)
+      const { data: sessionData } = await supabase.auth.getSession()
+      const accessToken = sessionData?.session?.access_token
+      if (!accessToken) throw new Error("Please sign in again before saving the CVF.")
+      const response = await fetch("/api/deals/save-cvf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ deal_id: deal.id, pdf_base64: pdfBase64, file_name: fileName }),
+      })
+      const saved = await response.json().catch(() => ({}))
+      if (!response.ok || !saved.success) throw new Error(saved.error || "The CVF could not be saved or synced to Pipedrive.")
+      await loadContractFiles()
       const url = URL.createObjectURL(result.blob)
       const link = window.document.createElement("a")
       link.href = url
-      link.download = result.fileName.replace(/Digital-Solar-Contract/i, "Contract-Variation")
+      link.download = fileName
       window.document.body.appendChild(link)
       link.click()
       link.remove()
       window.setTimeout(() => URL.revokeObjectURL(url), 1000)
-      setCvfMessage("CVF PDF downloaded. No EPVS data or deal files were changed.")
+      setCvfMessage("CVF saved to Contract Files, synced to Pipedrive, and the deal moved to On Hold.")
     } catch (error) {
       console.error("CVF PDF generation failed:", error)
       setCvfError(error?.message || "Unable to generate the contract variation PDF.")
@@ -452,6 +472,7 @@ function CustomerDetail({
       const appointmentId = deal.appointment_row_id
       const folders = [
         { label: "Contract", bucket: "signatures", folder: `contract-pdfs/${appointmentId}` },
+        { label: "CVF", bucket: "signatures", folder: `cvf-pdfs/${appointmentId}` },
         { label: "ECOF", bucket: "signatures", folder: `ecof-pdfs/${appointmentId}` },
         { label: "Overstay", bucket: "overstay-forms", folder: appointmentId },
       ]
@@ -1232,6 +1253,7 @@ function CustomerDetail({
             <select aria-label="Filter files by type" value={contractFileTypeFilter} onChange={event => setContractFileTypeFilter(event.target.value)} style={{ width: "auto", minWidth: 170, maxWidth: "100%", border: "1px solid #d7dee8", borderRadius: 6, padding: "7px 10px", background: "#fff", color: "#334155", fontSize: 10, fontWeight: 650 }}>
               <option value="All">All file types</option>
               <option value="Contract">Contract</option>
+              <option value="CVF">CVF</option>
               <option value="ECOF">ECOF</option>
               <option value="Overstay">Overstay</option>
             </select>
