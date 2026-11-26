@@ -169,7 +169,13 @@ function CustomerDetail({
     }
   }
 
-  const cvfCurrentData = cvfCurrent?.data || {}
+  // A deal may not yet have current_epvs_calculation populated. In that
+  // case the linked appointment's original EPVS calculation is the agreed
+  // baseline for the CVF comparison (not the editable Updated EPVS JSON).
+  const cvfCurrentData =
+    cvfCurrent?.data ||
+    cvfAppointmentCalculation?.data ||
+    {}
   const cvfUpdatedData = cvfUpdated?.data || {}
   const cvfCurrentArrays = Array.isArray(cvfCurrentData.arrays) ? cvfCurrentData.arrays : []
   const cvfUpdatedArrays = Array.isArray(cvfUpdatedData.arrays) ? cvfUpdatedData.arrays : []
