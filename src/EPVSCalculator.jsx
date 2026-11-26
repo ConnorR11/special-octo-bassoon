@@ -564,6 +564,7 @@ export default function EPVSCalculator({
   appointment,
   onCalculationChange = null,
   onCalculationSaved = null,
+  onRegisterSave = null,
   permissionLevel = 1,
   dealId = null,
   initialCalculation = null,
@@ -571,6 +572,7 @@ export default function EPVSCalculator({
   const [loadingFluxRates, setLoadingFluxRates] = useState(false)
   const [fluxRateError, setFluxRateError] = useState("")
   const [savingCalculation, setSavingCalculation] = useState(false)
+  const saveCalculationRef = useRef(null)
   const saveInFlightRef = useRef(false)
   const [saveMessage, setSaveMessage] = useState("")
   const [saveError, setSaveError] = useState("")
@@ -1705,6 +1707,16 @@ export default function EPVSCalculator({
       setSavingCalculation(false)
     }
   }
+
+  // Expose the same validated save operation to the CVF header action.
+  // Keep the registered function stable while always invoking the latest closure.
+  saveCalculationRef.current = saveCalculation
+  useEffect(() => {
+    if (!onRegisterSave) return undefined
+    const triggerSave = () => saveCalculationRef.current?.()
+    onRegisterSave(triggerSave)
+    return () => onRegisterSave(null)
+  }, [onRegisterSave])
 
   const missingRequiredEnergyInputs = [
     String(data.annualConsumption ?? "").trim() === "" ? "Annual electricity consumption" : null,
