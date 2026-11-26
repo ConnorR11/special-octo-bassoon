@@ -202,9 +202,9 @@ function CustomerDetail({
   const cvfFirstHardware = (data, key) => (Array.isArray(cvfHardwareDetails(data)?.[key]) ? cvfHardwareDetails(data)[key][0] : null)
   const cvfChangeRows = (() => {
     const rows = []
-    const add = (label, before, after, formatter = value => value == null || value === "" ? "Not set" : String(value)) => {
+    const add = (label, before, after, formatter = value => value == null || value === "" ? "Not set" : String(value), category = "System Design") => {
       const normalise = value => value == null || value === "" ? "" : String(value).trim()
-      if (normalise(before) !== normalise(after)) rows.push({ label, before: formatter(before), after: formatter(after) })
+      if (normalise(before) !== normalise(after)) rows.push({ label, before: formatter(before), after: formatter(after), category })
     }
     const beforeArrays = cvfCurrentData.arrays || []
     const afterArrays = cvfDraft.arrays || []
@@ -212,28 +212,28 @@ function CustomerDetail({
     const afterPanels = afterArrays.reduce((sum, item) => sum + cvfNumber(item?.panelCount), 0)
     const beforeSize = cvfSystemSize(cvfCurrentData)
     const afterSize = cvfSystemSize(cvfDraft)
-    add("Solar panels", beforePanels, afterPanels, value => cvfFormatNumber(value, " panels"))
-    add("Solar system size", beforeSize.toFixed(2), afterSize.toFixed(2), value => cvfFormatNumber(value, " kWp"))
+    add("Solar panels", beforePanels, afterPanels, value => cvfFormatNumber(value, " panels"), "System Design")
+    add("Solar system size", beforeSize.toFixed(2), afterSize.toFixed(2), value => cvfFormatNumber(value, " kWp"), "System Design")
     const arrayLayout = arrays => (Array.isArray(arrays) ? arrays : [])
       .filter(item => cvfNumber(item?.panelCount) > 0)
       .map((item, index) => `Array ${index + 1}: ${item.panelCount} × ${item.panelWattage}W, ${item.orientation}°, ${item.pitch}° pitch`)
       .join("\n")
-    add("Roof array layout", arrayLayout(beforeArrays), arrayLayout(afterArrays), value => value || "No panels")
+    add("Roof array layout", arrayLayout(beforeArrays), arrayLayout(afterArrays), value => value || "No panels", "System Design")
     const beforeBattery = cvfFirstHardware(cvfCurrentData, "batteries")
     const afterBattery = cvfFirstHardware(cvfDraft, "batteries")
-    add("Battery", beforeBattery?.model || "", afterBattery?.model || "", value => value || "None")
-    add("Battery capacity", beforeBattery ? Number(beforeBattery.capacity || 0) * Number(beforeBattery.quantity || 1) : 0, afterBattery ? Number(afterBattery.capacity || 0) * Number(afterBattery.quantity || 1) : 0, value => cvfFormatNumber(value, " kWh"))
+    add("Battery", beforeBattery?.model || "", afterBattery?.model || "", value => value || "None", "System Design")
+    add("Battery capacity", beforeBattery ? Number(beforeBattery.capacity || 0) * Number(beforeBattery.quantity || 1) : 0, afterBattery ? Number(afterBattery.capacity || 0) * Number(afterBattery.quantity || 1) : 0, value => cvfFormatNumber(value, " kWh"), "System Design")
     const beforeInverter = cvfFirstHardware(cvfCurrentData, "inverters")
     const afterInverter = cvfFirstHardware(cvfDraft, "inverters")
-    add("Inverter", beforeInverter?.model || "", afterInverter?.model || "", value => value || "None")
-    add("Inverter capacity", beforeInverter ? Number(beforeInverter.capacity || 0) * Number(beforeInverter.quantity || 1) : cvfCurrentData.inverterCapacity, afterInverter ? Number(afterInverter.capacity || 0) * Number(afterInverter.quantity || 1) : cvfDraft.inverterCapacity, value => cvfFormatNumber(value, " kW"))
-    add("System cost", cvfCurrentData.systemCost, cvfDraft.systemCost, cvfFormatMoney)
-    add("Deposit", cvfCurrentData.deposit, cvfDraft.deposit, cvfFormatMoney)
-    add("Admin fee", cvfCurrentData.adminFee, cvfDraft.adminFee, cvfFormatMoney)
-    add("Total contract value", cvfCurrentData.totalContractValue, cvfDraft.totalContractValue, cvfFormatMoney)
-    add("Payment method", cvfCurrentData.paymentMethod, cvfDraft.paymentMethod)
-    add("Finance term", cvfCurrentData.financeTerm, cvfDraft.financeTerm, value => value ? `${value} years` : "Not set")
-    add("Finance APR", cvfCurrentData.financeRate, cvfDraft.financeRate, value => value == null || value === "" ? "Not set" : `${value}%`)
+    add("Inverter", beforeInverter?.model || "", afterInverter?.model || "", value => value || "None", "System Design")
+    add("Inverter capacity", beforeInverter ? Number(beforeInverter.capacity || 0) * Number(beforeInverter.quantity || 1) : cvfCurrentData.inverterCapacity, afterInverter ? Number(afterInverter.capacity || 0) * Number(afterInverter.quantity || 1) : cvfDraft.inverterCapacity, value => cvfFormatNumber(value, " kW"), "System Design")
+    add("System cost", cvfCurrentData.systemCost, cvfDraft.systemCost, cvfFormatMoney, "Payment Information")
+    add("Deposit", cvfCurrentData.deposit, cvfDraft.deposit, cvfFormatMoney, "Payment Information")
+    add("Admin fee", cvfCurrentData.adminFee, cvfDraft.adminFee, cvfFormatMoney, "Payment Information")
+    add("Total contract value", cvfCurrentData.totalContractValue, cvfDraft.totalContractValue, cvfFormatMoney, "Payment Information")
+    add("Payment method", cvfCurrentData.paymentMethod, cvfDraft.paymentMethod, "Payment Information")
+    add("Finance term", cvfCurrentData.financeTerm, cvfDraft.financeTerm, value => value ? `${value} years` : "Not set", "Payment Information")
+    add("Finance APR", cvfCurrentData.financeRate, cvfDraft.financeRate, value => value == null || value === "" ? "Not set" : `${value}%`, "Payment Information")
     // Energy snapshots may be stored in the grouped currentEnergy object
     // or in the legacy flat fields. Read both so edits are compared against
     // the agreed baseline even when it was saved using the newer JSON shape.
@@ -241,13 +241,41 @@ function CustomerDetail({
     const draftEnergy = cvfDraft.currentEnergy || {}
     const energyValue = (energy, flatData, key) =>
       energy?.[key] ?? flatData?.[key]
-    add("Annual electricity consumption", energyValue(currentEnergy, cvfCurrentData, "annualConsumption"), energyValue(draftEnergy, cvfDraft, "annualConsumption"), value => cvfFormatNumber(value, " kWh"))
-    add("Import rate", energyValue(currentEnergy, cvfCurrentData, "importRate"), energyValue(draftEnergy, cvfDraft, "importRate"), value => cvfFormatNumber(value, "p/kWh"))
-    add("Export rate", energyValue(currentEnergy, cvfCurrentData, "exportRate"), energyValue(draftEnergy, cvfDraft, "exportRate"), value => cvfFormatNumber(value, "p/kWh"))
-    add("Standing charge", energyValue(currentEnergy, cvfCurrentData, "standingCharge"), energyValue(draftEnergy, cvfDraft, "standingCharge"), value => cvfFormatNumber(value, "p/day"))
-    add("Existing solar PV", energyValue(currentEnergy, cvfCurrentData, "existingSolar"), energyValue(draftEnergy, cvfDraft, "existingSolar"), value => value ? "Yes" : "No")
+    add("Annual electricity consumption", energyValue(currentEnergy, cvfCurrentData, "annualConsumption"), energyValue(draftEnergy, cvfDraft, "annualConsumption"), value => cvfFormatNumber(value, " kWh"), "Current Energy")
+    add("Import rate", energyValue(currentEnergy, cvfCurrentData, "importRate"), energyValue(draftEnergy, cvfDraft, "importRate"), value => cvfFormatNumber(value, "p/kWh"), "Current Energy")
+    add("Export rate", energyValue(currentEnergy, cvfCurrentData, "exportRate"), energyValue(draftEnergy, cvfDraft, "exportRate"), value => cvfFormatNumber(value, "p/kWh"), "Current Energy")
+    add("Standing charge", energyValue(currentEnergy, cvfCurrentData, "standingCharge"), energyValue(draftEnergy, cvfDraft, "standingCharge"), value => cvfFormatNumber(value, "p/day"), "Current Energy")
+    add("Existing solar PV", energyValue(currentEnergy, cvfCurrentData, "existingSolar"), energyValue(draftEnergy, cvfDraft, "existingSolar"), value => value ? "Yes" : "No", "Current Energy")
+    // EPVS output metrics are compared independently from the design and
+    // payment inputs, using the results stored in each EPVS JSON snapshot.
+    const beforeResults = cvfCurrent?.results || {}
+    const afterResults = cvfUpdated?.results || {}
+    const resultRows = [
+      ["Annual generation", "generation", value => cvfFormatNumber(value, " kWh")],
+      ["Annual electricity export", "exportKwh", value => cvfFormatNumber(value, " kWh")],
+      ["Annual bill before installation", "billPreInstall", cvfFormatMoney],
+      ["Annual bill after installation", "billPostInstall", cvfFormatMoney],
+      ["Estimated annual saving", "annualSaving", cvfFormatMoney],
+      ["Solar benefit", "solarBenefit", cvfFormatMoney],
+      ["Export benefit", "exportBenefit", cvfFormatMoney],
+      ["Battery self-consumption benefit", "batterySelfConsumptionBenefit", cvfFormatMoney],
+      ["Force-charge benefit", "forceChargeBenefit", cvfFormatMoney],
+      ["Simple payback", "simplePayback", value => value == null ? "Not available" : cvfFormatNumber(value, " years")],
+    ]
+    resultRows.forEach(([label, key, formatter]) =>
+      add(label, beforeResults[key], afterResults[key], formatter, "EPVS Calculations")
+    )
     return rows
   })()
+  const cvfChangeGroups = [
+    "Current Energy",
+    "System Design",
+    "Payment Information",
+    "EPVS Calculations",
+  ].map(category => ({
+    category,
+    rows: cvfChangeRows.filter(row => row.category === category),
+  }))
 
   const surveyQuestions = [
     ["Is this home in a listed building or in a conservation area?", "listed_conservation"], ["Is it a suspended or concrete floor?", "floor_type"], ["Where is the main fusebox located?", "fusebox_location"], ["How far is the fusebox from the intended fit location of the battery/inverter?", "fusebox_distance"], ["How long is the DC run?", "dc_run"], ["Where will the battery/inverter be located?", "inverter_location"], ["Is the battery/inverter being installed on the south facing wall?", "south_wall"], ["Is a canopy or a fireproof encasement being fitted?", "canopy_fireproof"], ["What type of external walls are there?", "external_walls"], ["Building Width", "building_width"], ["Building Height", "building_height"], ["Height of roof from loft-hatch", "roof_height_loft"], ["Roof Tile Type", "roof_tile_type"], ["Condition of Roof", "roof_condition"], ["Shading Issues", "shading_issues"], ["Roof Obstructions", "roof_obstructions"], ["Any Access Issues", "access_issues"], ["Can scaffolding be erected?", "scaffolding"], ["Does customer Wi-Fi reach the battery/inverter?", "wifi_reach"], ["What is the size of the cut out switch?", "cutout_size"], ["What is the customer’s MPAN number?", "mpan"], ["Are there any high energy appliances?", "high_energy_appliances"], ["Is there sufficient loft access?", "loft_access"], ["Does the customer consent to Copex/trunking around the building? (If loft access is insufficient)", "copex_consent"], ["Does the customer have an existing solar system?", "existing_solar"], ["How many panels? (And their output)", "existing_panels"], ["Type & Size of Inverter", "existing_inverter"]
@@ -1027,21 +1055,27 @@ function CustomerDetail({
             </div>
           </div>
           {cvfChangeRows.length > 0 ? (
-            <div style={{ overflowX: "auto" }}>
-              <div style={{ minWidth: 420, display: "grid", gridTemplateColumns: "minmax(150px, 1.2fr) minmax(110px, 1fr) minmax(110px, 1fr)", fontSize: 11 }}>
-                <div style={{ padding: "8px 10px", color: "#64748b", fontWeight: 700, borderBottom: "1px solid #dfe6ed" }}>Item</div>
-                <div style={{ padding: "8px 10px", color: "#64748b", fontWeight: 700, borderBottom: "1px solid #dfe6ed" }}>Before</div>
-                <div style={{ padding: "8px 10px", color: "#64748b", fontWeight: 700, borderBottom: "1px solid #dfe6ed" }}>After</div>
-                {cvfChangeRows.map(row => (
-                  <React.Fragment key={row.label}>
-                    <div style={{ padding: "9px 10px", color: "#475569", fontWeight: 650, borderBottom: "1px solid #edf1f5" }}>{row.label}</div>
-                    <div style={{ padding: "9px 10px", color: "#64748b", borderBottom: "1px solid #edf1f5", overflowWrap: "anywhere", whiteSpace: "pre-line" }}>{row.before}</div>
-                    <div style={{ padding: "9px 10px", color: "#176b45", fontWeight: 650, borderBottom: "1px solid #edf1f5", overflowWrap: "anywhere", whiteSpace: "pre-line" }}>{row.after}</div>
-                  </React.Fragment>
-                ))}
-              </div>
-            </div>
-          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {cvfChangeGroups.filter(group => group.rows.length > 0).map(group => (
+                <div key={group.category}>
+                  <h4 style={{ margin: "4px 0 7px", color: "#172554", fontSize: 12, fontWeight: 750 }}>{group.category}</h4>
+                  <div style={{ overflowX: "auto" }}>
+                    <div style={{ minWidth: 420, display: "grid", gridTemplateColumns: "minmax(150px, 1.2fr) minmax(110px, 1fr) minmax(110px, 1fr)", fontSize: 11 }}>
+                      <div style={{ padding: "8px 10px", color: "#64748b", fontWeight: 700, borderBottom: "1px solid #dfe6ed" }}>Item</div>
+                      <div style={{ padding: "8px 10px", color: "#64748b", fontWeight: 700, borderBottom: "1px solid #dfe6ed" }}>Before</div>
+                      <div style={{ padding: "8px 10px", color: "#64748b", fontWeight: 700, borderBottom: "1px solid #dfe6ed" }}>After</div>
+                      {group.rows.map(row => (
+                        <React.Fragment key={row.label}>
+                          <div style={{ padding: "9px 10px", color: "#475569", fontWeight: 650, borderBottom: "1px solid #edf1f5" }}>{row.label}</div>
+                          <div style={{ padding: "9px 10px", color: "#64748b", borderBottom: "1px solid #edf1f5", overflowWrap: "anywhere", whiteSpace: "pre-line" }}>{row.before}</div>
+                          <div style={{ padding: "9px 10px", color: "#176b45", fontWeight: 650, borderBottom: "1px solid #edf1f5", overflowWrap: "anywhere", whiteSpace: "pre-line" }}>{row.after}</div>
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>: (
             <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12 }}>Changes will appear here as you edit the calculator.</p>
           )}
         </section>
