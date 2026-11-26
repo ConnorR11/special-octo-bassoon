@@ -110,6 +110,11 @@ const PIPEDRIVE_FIELDS = {
     key: null,
   },
 
+  leadAddress: {
+    name: "Lead: Address",
+    key: null,
+  },
+
   contractPaymentMethod: {
     name: "Contract: Payment Method",
     key: null,
@@ -1166,6 +1171,9 @@ export default async function handler(req, res) {
         getCustomFieldValue(deal, fields.installationCompletionDate.key)
       )
 
+    const leadAddress =
+      normaliseText(getCustomFieldValue(deal, fields.leadAddress.key))
+
     const contractPaymentMethod =
       normaliseText(
         getCustomFieldValue(deal, fields.contractPaymentMethod.key)
@@ -1412,6 +1420,7 @@ export default async function handler(req, res) {
       String(deal?.person?.email?.[0]?.value || "").trim() ||
       null
     const customerAddress =
+      leadAddress ||
       personDetails.address ||
       (typeof deal?.person?.address === "string" ? deal.person.address.trim() : "") ||
       null
