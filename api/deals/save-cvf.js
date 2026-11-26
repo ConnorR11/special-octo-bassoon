@@ -46,12 +46,16 @@ export default async function handler(req, res) {
 
     const { data: deal, error: dealError } = await supabase
       .from("deals")
-      .select("id,appointment_row_id,contract_number,pipedrive_deal_id")
+      .select("id,appointment_row_id,contract_number,pipedrive_deal_id,updated_epvs_calculation")
       .eq("id", dealId)
       .maybeSingle()
     if (dealError) throw dealError
     if (!deal?.appointment_row_id) return json(res, 404, { success: false, error: "The deal or its linked appointment could not be found." })
     if (!deal.pipedrive_deal_id) return json(res, 409, { success: false, error: "This deal is not linked to a Pipedrive deal." })
+    const updatedCalculation = deal.updated_epvs_calculation
+    if (!updatedCalculation?.data || !updatedCalculation?.results || !updatedCalculation?.thirtyYearProjection) {
+      return json(res, 409, { success: false, error: "The saved Updated EPVS calculation is incomplete. The current EPVS baseline has not been changed." })
+    }
 
     const appointmentRowId = String(deal.appointment_row_id)
     const storagePath = `cvf-pdfs/${appointmentRowId}/${fileName}`
@@ -96,11 +100,25 @@ export default async function handler(req, res) {
       }),
     })
 
+    // Once the revised paperwork is safely stored and the Pipedrive deal is
+    // updated, promote the exact Updated EPVS JSON used for this CVF to become
+    // the new Current EPVS baseline for the next variation.
+    const { data: promotedRows, error: promoteError } = await supabase
+      .from("deals")
+      .update({ current_epvs_calculation: updatedCalculation })
+      .eq("id", deal.id)
+      .select("id")
+    if (promoteError) throw promoteError
+    if (!Array.isArray(promotedRows) || promotedRows.length !== 1) {
+      throw new Error("The CVF was saved and synced to Pipedrive, but the Current EPVS baseline could not be updated. Please retry.")
+    }
+
     return json(res, 200, {
       success: true,
       storage_path: storagePath,
       contract_file_url: contractFileUrl,
       stage_id: ON_HOLD_STAGE_ID,
+      current_epvs_promoted: true,
     })
   } catch (error) {
     console.error("Save CVF failed:", error)
