@@ -70,6 +70,11 @@ function CustomerDetail({
   const [documentNotice, setDocumentNotice] = useState("")
   const [openingDocument, setOpeningDocument] = useState("")
   const [activeTab, setActiveTab] = useState("details")
+  const [cvfCurrent, setCvfCurrent] = useState(deal?.current_epvs_calculation || deal?.original_epvs_calculation || null)
+  const [cvfUpdated, setCvfUpdated] = useState(deal?.updated_epvs_calculation || null)
+  const [cvfRefreshing, setCvfRefreshing] = useState(false)
+  const [cvfMessage, setCvfMessage] = useState("")
+  const [cvfError, setCvfError] = useState("")
   const [surveyAnswers, setSurveyAnswers] = useState({})
   const [surveySaving, setSurveySaving] = useState(false)
   const [surveyAnswersLoaded, setSurveyAnswersLoaded] = useState(false)
@@ -78,6 +83,50 @@ function CustomerDetail({
   const [expandedSurveySection, setExpandedSurveySection] = useState("Property & installation")
   const [surveyPhotosExpanded, setSurveyPhotosExpanded] = useState(false)
   const [generatingSurvey, setGeneratingSurvey] = useState(false)
+  const refreshCvfFromOpenSolar = async () => {
+    const projectId = String(deal?.open_solar_id || "").trim()
+    if (!deal?.id || !projectId) {
+      setCvfError("This deal does not have an OpenSolar project linked.")
+      return
+    }
+    setCvfRefreshing(true)
+    setCvfError("")
+    setCvfMessage("")
+    try {
+      const { data, error } = await supabase.functions.invoke("opensolar-design", {
+        body: { projectId, dealId: deal.id },
+      })
+      if (error) throw error
+      if (!data?.success) throw new Error(data?.error || "OpenSolar refresh failed.")
+      const { data: latest, error: readError } = await supabase
+        .from("deals")
+        .select("current_epvs_calculation,original_epvs_calculation,updated_epvs_calculation")
+        .eq("id", deal.id)
+        .single()
+      if (readError) throw readError
+      setCvfCurrent(latest.current_epvs_calculation || latest.original_epvs_calculation || null)
+      setCvfUpdated(latest.updated_epvs_calculation || null)
+      setCvfMessage(`OpenSolar design refreshed successfully · ${data.arrays?.length || 0} roof arrays imported.`)
+      onUpdated?.()
+    } catch (error) {
+      console.error("CVF OpenSolar refresh failed:", error)
+      setCvfError(error?.message || "Unable to refresh the OpenSolar design.")
+    } finally {
+      setCvfRefreshing(false)
+    }
+  }
+
+  const cvfCurrentData = cvfCurrent?.data || {}
+  const cvfUpdatedData = cvfUpdated?.data || {}
+  const cvfCurrentArrays = Array.isArray(cvfCurrentData.arrays) ? cvfCurrentData.arrays : []
+  const cvfUpdatedArrays = Array.isArray(cvfUpdatedData.arrays) ? cvfUpdatedData.arrays : []
+  const cvfNumber = value => Number(value || 0)
+  const cvfPanelCount = data => (Array.isArray(data?.arrays) ? data.arrays : []).reduce((sum, item) => sum + cvfNumber(item?.panelCount), 0)
+  const cvfSystemSize = data => (Array.isArray(data?.arrays) ? data.arrays : []).reduce((sum, item) => sum + cvfNumber(item?.panelCount) * cvfNumber(item?.panelWattage) / 1000, 0)
+  const cvfHardware = data => data?.hardware || data?.openSolar?.hardware || {}
+  const cvfHardwareLabel = (items, key) => (Array.isArray(items) ? items : []).map(item => [item?.manufacturer, item?.model].filter(Boolean).join(" ")).filter(Boolean).join(", ") || "Not specified"
+  const cvfChanged = (a, b) => JSON.stringify(a ?? null) !== JSON.stringify(b ?? null)
+
   const surveyQuestions = [
     ["Is this home in a listed building or in a conservation area?", "listed_conservation"], ["Is it a suspended or concrete floor?", "floor_type"], ["Where is the main fusebox located?", "fusebox_location"], ["How far is the fusebox from the intended fit location of the battery/inverter?", "fusebox_distance"], ["How long is the DC run?", "dc_run"], ["Where will the battery/inverter be located?", "inverter_location"], ["Is the battery/inverter being installed on the south facing wall?", "south_wall"], ["Is a canopy or a fireproof encasement being fitted?", "canopy_fireproof"], ["What type of external walls are there?", "external_walls"], ["Building Width", "building_width"], ["Building Height", "building_height"], ["Height of roof from loft-hatch", "roof_height_loft"], ["Roof Tile Type", "roof_tile_type"], ["Condition of Roof", "roof_condition"], ["Shading Issues", "shading_issues"], ["Roof Obstructions", "roof_obstructions"], ["Any Access Issues", "access_issues"], ["Can scaffolding be erected?", "scaffolding"], ["Does customer Wi-Fi reach the battery/inverter?", "wifi_reach"], ["What is the size of the cut out switch?", "cutout_size"], ["What is the customer’s MPAN number?", "mpan"], ["Are there any high energy appliances?", "high_energy_appliances"], ["Is there sufficient loft access?", "loft_access"], ["Does the customer consent to Copex/trunking around the building? (If loft access is insufficient)", "copex_consent"], ["Does the customer have an existing solar system?", "existing_solar"], ["How many panels? (And their output)", "existing_panels"], ["Type & Size of Inverter", "existing_inverter"]
   ]
@@ -828,8 +877,60 @@ function CustomerDetail({
       </div>
 
       <div role="tablist" aria-label="Deal details tabs" style={{display:"flex",gap:6,borderBottom:"1px solid #dfe5eb",marginBottom:18,overflowX:"auto"}}>
-        {[{key:"details",label:"Deal information"},{key:"survey",label:"Survey & Documents"},{key:"contracts",label:"Contract Files"}].map(tab => <button key={tab.key} type="button" role="tab" aria-selected={activeTab===tab.key} onClick={()=>setActiveTab(tab.key)} style={{flex:"0 0 auto",padding:"12px 16px",border:0,borderBottom:activeTab===tab.key?"3px solid #002d49":"3px solid transparent",marginBottom:-1,background:"transparent",color:activeTab===tab.key?"#002d49":"#64748b",fontSize:12,fontWeight:activeTab===tab.key?700:600,cursor:"pointer"}}>{tab.label}</button>)}
+        {[{key:"details",label:"Deal information"},{key:"survey",label:"Survey & Documents"},{key:"contracts",label:"Contract Files"},...(isSolarDeal?[{key:"cvf",label:"Contract Variations"}]:[])].map(tab => <button key={tab.key} type="button" role="tab" aria-selected={activeTab===tab.key} onClick={()=>setActiveTab(tab.key)} style={{flex:"0 0 auto",padding:"12px 16px",border:0,borderBottom:activeTab===tab.key?"3px solid #002d49":"3px solid transparent",marginBottom:-1,background:"transparent",color:activeTab===tab.key?"#002d49":"#64748b",fontSize:12,fontWeight:activeTab===tab.key?700:600,cursor:"pointer"}}>{tab.label}</button>)}
       </div>
+
+      {activeTab === "cvf" && isSolarDeal && <div className="card" style={{ marginBottom: 18 }}>
+        <div className="card-head">
+          <div><h2>Contract Variation Form</h2><p>Refresh the latest system design from OpenSolar and review changes against the agreed EPVS design.</p></div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {deal.open_solar_id && <a href={`https://app.opensolar.com/projects/${encodeURIComponent(deal.open_solar_id)}/design`} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,padding:"9px 12px",border:"1px solid #cbd5e1",borderRadius:7,color:"#172554",textDecoration:"none",fontSize:11,fontWeight:700}}>Open OpenSolar <ExternalLink size={13}/></a>}
+            <button type="button" onClick={refreshCvfFromOpenSolar} disabled={cvfRefreshing || !deal.open_solar_id} style={{display:"inline-flex",alignItems:"center",gap:7,padding:"9px 13px",border:0,borderRadius:7,background:"#172554",color:"#fff",fontSize:11,fontWeight:700,cursor:cvfRefreshing?"wait":"pointer",opacity:cvfRefreshing||!deal.open_solar_id?0.55:1}}>{cvfRefreshing?"Refreshing…":"Refresh from OpenSolar"}</button>
+          </div>
+        </div>
+        <div style={{padding:"0 20px 20px"}}>
+          {!deal.open_solar_id && <div style={{padding:14,border:"1px solid #f1d3a5",borderRadius:8,background:"#fff9ed",color:"#8a5a12",fontSize:12}}>No OpenSolar project ID is linked to this deal. Link the project on the appointment before creating a variation.</div>}
+          {cvfError && <div style={{marginBottom:12,padding:11,borderRadius:7,background:"#fff0f0",color:"#a33b3b",fontSize:11}}>{cvfError}</div>}
+          {cvfMessage && <div style={{marginBottom:12,padding:11,borderRadius:7,background:"#eaf6ee",color:"#28734c",fontSize:11}}>{cvfMessage}</div>}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}}>
+            <div style={{border:"1px solid #dfe5eb",borderRadius:9,padding:14}}>
+              <div style={{fontSize:10,fontWeight:800,color:"#64748b",textTransform:"uppercase",letterSpacing:".06em"}}>Current agreed design</div>
+              <div style={{fontSize:24,fontWeight:800,color:"#172554",marginTop:8}}>{cvfSystemSize(cvfCurrentData).toFixed(2)} kWp</div>
+              <div style={{fontSize:11,color:"#64748b",marginTop:3}}>{cvfPanelCount(cvfCurrentData)} panels · {cvfCurrentArrays.filter(a=>cvfNumber(a?.panelCount)>0).length} arrays</div>
+              <div style={{fontSize:11,color:"#475569",marginTop:12}}>Panels: {cvfHardwareLabel(cvfHardware(cvfCurrentData).panels,"panels")}</div>
+              <div style={{fontSize:11,color:"#475569",marginTop:5}}>Inverter: {cvfHardwareLabel(cvfHardware(cvfCurrentData).inverters,"inverters")}</div>
+              <div style={{fontSize:11,color:"#475569",marginTop:5}}>Battery: {cvfHardwareLabel(cvfHardware(cvfCurrentData).batteries,"batteries")}</div>
+            </div>
+            <div style={{border:"1px solid #c9d8e7",borderRadius:9,padding:14,background:"#f8fbfe"}}>
+              <div style={{fontSize:10,fontWeight:800,color:"#64748b",textTransform:"uppercase",letterSpacing:".06em"}}>Updated OpenSolar design</div>
+              <div style={{fontSize:24,fontWeight:800,color:"#172554",marginTop:8}}>{cvfSystemSize(cvfUpdatedData).toFixed(2)} kWp</div>
+              <div style={{fontSize:11,color:"#64748b",marginTop:3}}>{cvfPanelCount(cvfUpdatedData)} panels · {cvfUpdatedArrays.filter(a=>cvfNumber(a?.panelCount)>0).length} arrays</div>
+              <div style={{fontSize:11,color:"#475569",marginTop:12}}>Panels: {cvfHardwareLabel(cvfHardware(cvfUpdatedData).panels,"panels")}</div>
+              <div style={{fontSize:11,color:"#475569",marginTop:5}}>Inverter: {cvfHardwareLabel(cvfHardware(cvfUpdatedData).inverters,"inverters")}</div>
+              <div style={{fontSize:11,color:"#475569",marginTop:5}}>Battery: {cvfHardwareLabel(cvfHardware(cvfUpdatedData).batteries,"batteries")}</div>
+              {cvfUpdated?.importedAt && <div style={{fontSize:10,color:"#64748b",marginTop:9}}>Imported {new Date(cvfUpdated.importedAt).toLocaleString("en-GB")}</div>}
+            </div>
+          </div>
+          <div style={{marginTop:18,borderTop:"1px solid #e5eaf0",paddingTop:16}}>
+            <h3 style={{margin:"0 0 10px",fontSize:14,color:"#172554"}}>Design changes</h3>
+            {!cvfCurrent && <div style={{fontSize:11,color:"#64748b"}}>No original/current EPVS snapshot is available for comparison yet.</div>}
+            {!cvfUpdated && <div style={{fontSize:11,color:"#64748b"}}>Refresh from OpenSolar to import the proposed design and generate the comparison.</div>}
+            {cvfCurrent && cvfUpdated && <div style={{display:"grid",gap:8}}>
+              {[
+                ["Panel count",cvfPanelCount(cvfCurrentData),cvfPanelCount(cvfUpdatedData)],
+                ["System size",`${cvfSystemSize(cvfCurrentData).toFixed(2)} kWp`,`${cvfSystemSize(cvfUpdatedData).toFixed(2)} kWp`],
+                ["Panel model",cvfHardwareLabel(cvfHardware(cvfCurrentData).panels),cvfHardwareLabel(cvfHardware(cvfUpdatedData).panels)],
+                ["Inverter",cvfHardwareLabel(cvfHardware(cvfCurrentData).inverters),cvfHardwareLabel(cvfHardware(cvfUpdatedData).inverters)],
+                ["Battery",cvfHardwareLabel(cvfHardware(cvfCurrentData).batteries),cvfHardwareLabel(cvfHardware(cvfUpdatedData).batteries)],
+                ["Roof arrays",cvfCurrentArrays.filter(a=>cvfNumber(a?.panelCount)>0).length,cvfUpdatedArrays.filter(a=>cvfNumber(a?.panelCount)>0).length],
+              ].map(([label,before,after])=><div key={label} style={{display:"grid",gridTemplateColumns:"minmax(90px,.7fr) minmax(0,1fr) minmax(0,1fr)",gap:8,padding:"9px 0",borderBottom:"1px solid #eef1f4",fontSize:11}}>
+                <strong style={{color:"#475569"}}>{label}</strong><span style={{color:"#64748b"}}>{before}</span><span style={{color:cvfChanged(before,after)?"#166534":"#475569",fontWeight:cvfChanged(before,after)?750:500}}>{after}{cvfChanged(before,after)?" · Changed":""}</span>
+              </div>)}
+              <div style={{marginTop:8,padding:12,borderRadius:8,background:"#fff8e8",color:"#805b16",fontSize:11,lineHeight:1.5}}>This is the design comparison stage. EPVS financial results, price adjustment, PDF generation and customer signature are not yet part of this first CVF view. Current remains unchanged until a future signed-CVF workflow is completed.</div>
+            </div>}
+          </div>
+        </div>
+      </div>}
 
       {activeTab === "contracts" && <div className="card" style={{ marginBottom: 18 }}>
         <div className="card-head"><div><h2>Contract Files</h2><p>Contract, ECOF and Overstay PDFs linked to this appointment, newest first</p></div></div>
