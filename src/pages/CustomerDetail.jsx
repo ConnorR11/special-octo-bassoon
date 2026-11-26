@@ -253,14 +253,8 @@ function CustomerDetail({
     const resultRows = [
       ["Annual generation", "generation", value => cvfFormatNumber(value, " kWh")],
       ["Annual electricity export", "exportKwh", value => cvfFormatNumber(value, " kWh")],
-      ["Annual bill before installation", "billPreInstall", cvfFormatMoney],
-      ["Annual bill after installation", "billPostInstall", cvfFormatMoney],
-      ["Estimated annual saving", "annualSaving", cvfFormatMoney],
-      ["Solar benefit", "solarBenefit", cvfFormatMoney],
-      ["Export benefit", "exportBenefit", cvfFormatMoney],
-      ["Battery self-consumption benefit", "batterySelfConsumptionBenefit", cvfFormatMoney],
-      ["Force-charge benefit", "forceChargeBenefit", cvfFormatMoney],
-      ["Simple payback", "simplePayback", value => value == null ? "Not available" : cvfFormatNumber(value, " years")],
+      ["First year total benefit", "annualSaving", cvfFormatMoney],
+      ["Payback Period", "simplePayback", value => value == null ? "Not available" : cvfFormatNumber(value, " years")],
     ]
     resultRows.forEach(([label, key, formatter]) =>
       add(label, beforeResults[key], afterResults[key], formatter, "EPVS Calculations")
