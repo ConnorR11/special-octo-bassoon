@@ -582,11 +582,11 @@ async function getContractNumberFromDeal(pipedriveToken, deal) {
   })
   return value || null
 }
-async function getPersonName(
+async function getPersonDetails(
   pipedriveToken,
   personId
 ) {
-  if (!personId) return null
+  if (!personId) return { name: null, email: null }
 
   const response = await fetch(
     `https://api.pipedrive.com/api/v2/persons/${encodeURIComponent(
@@ -604,13 +604,17 @@ async function getPersonName(
   const json = await response.json().catch(() => ({}))
 
   if (!response.ok || !json?.success) {
-    return null
+    return { name: null, email: null }
   }
 
-  return (
-    String(json?.data?.name || "").trim() ||
-    null
-  )
+  const person = json.data || {}
+  const emails = Array.isArray(person.email) ? person.email : []
+  const primaryEmail = emails.find(item => item?.primary && item?.value)
+    || emails.find(item => item?.value)
+  return {
+    name: String(person.name || "").trim() || null,
+    email: String(primaryEmail?.value || "").trim() || null,
+  }
 }
 
 async function getUserName(
@@ -1359,16 +1363,18 @@ export default async function handler(req, res) {
       deal?.person_id ??
       null
 
+    const personDetails = await getPersonDetails(pipedriveToken, personId)
     const customerName =
-      (await getPersonName(
-        pipedriveToken,
-        personId
-      )) ||
+      personDetails.name ||
       String(
         deal?.person_name ||
           deal?.person?.name ||
           ""
       ).trim() ||
+      null
+    const customerEmail =
+      personDetails.email ||
+      String(deal?.person?.email?.[0]?.value || "").trim() ||
       null
 
     const contractNumber = await getContractNumberFromDeal(pipedriveToken, deal)
@@ -1674,6 +1680,10 @@ export default async function handler(req, res) {
 
       customer_name:
         customerName,
+
+      // Only write an email when Pipedrive provides one; preserve any existing
+      // CRM email if the linked person has no email address.
+      ...(customerEmail ? { email: customerEmail } : {}),
 
       salesperson,
 
