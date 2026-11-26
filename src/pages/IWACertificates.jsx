@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react"
 import { Search, RefreshCw, ShieldCheck, FileText, ChevronLeft, ChevronRight, Link2, Unlink, X, CheckCircle2 } from "lucide-react"
 import { supabase } from "../lib/supabase"
+import * as XLSX from "xlsx"
 
 const PAGE_SIZE = 50
 const money = value => {
@@ -193,7 +194,7 @@ export default function IWACertificates() {
       }
 
       const headers = ["Customer Name","Address","Email Address","Deposit Amount","Date Deposit Paid","Type of Install","Date of Completion","Total Contract Value","Other Information"]
-      const csvRows = allDeals.map(deal => {
+      const rows = allDeals.map(deal => {
         const address = deal.address && deal.postcode && deal.address.toUpperCase().includes(deal.postcode.trim().toUpperCase())
           ? deal.address
           : [deal.address, deal.postcode].filter(Boolean).join(", ")
@@ -205,21 +206,19 @@ export default function IWACertificates() {
           "N/A",
           deal.product || "",
           deal.installation_completion_date ? new Date(`${deal.installation_completion_date}T00:00:00`).toLocaleDateString("en-GB") : "",
-          deal.deal_value == null ? "" : formatCurrency(Number(deal.deal_value)),
+          deal.deal_value == null ? "" : Number(deal.deal_value),
           deal.contract_payment_method || "",
         ]
       })
-      const escapeCsv = value => `"${String(value ?? "").replace(/"/g, '""')}"`
-      const csv = [headers, ...csvRows].map(row => row.map(escapeCsv).join(",")).join("\\r\\n")
-      const blob = new Blob(["\\uFEFF", csv], { type: "text/csv;charset=utf-8;" })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.href = url
-      link.download = `IWA-To-Send-${new Date().toISOString().slice(0,10)}.csv`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
+
+      const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows])
+      worksheet["!cols"] = [
+        { wch: 28 }, { wch: 48 }, { wch: 34 }, { wch: 16 }, { wch: 18 },
+        { wch: 18 }, { wch: 20 }, { wch: 22 }, { wch: 22 },
+      ]
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, "IWA To Send")
+      XLSX.writeFile(workbook, `IWA-To-Send-${new Date().toISOString().slice(0,10)}.xlsx`)
     } catch (err) {
       setToSendError(err?.message || "Unable to export the IWA To Send list.")
     } finally {
@@ -403,7 +402,7 @@ export default function IWACertificates() {
       {activeTab === "to-send" && <div style={{ background: "#fff", border: "1px solid #e7ebef", borderRadius: 12, overflow: "hidden" }}>
         <div style={{ padding: 15, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", borderBottom: "1px solid #edf0f2" }}>
           <div style={{ flex: "1 1 320px", position: "relative" }}><Search size={16} style={{ position: "absolute", left: 11, top: 11, color: "#8a949d" }}/><input value={toSendSearch} onChange={e => { setToSendSearch(e.target.value); setToSendPage(0) }} placeholder="Search customer, contract, postcode or address..." style={{ width: "100%", boxSizing: "border-box", border: "1px solid #dce2e7", borderRadius: 8, padding: "9px 10px 9px 34px", fontSize: 13 }}/></div>
-          <button onClick={exportToSend} disabled={toSendLoading} style={{ border: "1px solid #dce2e7", borderRadius: 8, background: "#fff", padding: "9px 13px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "#34495a" }}><FileText size={15}/> Export CSV</button>
+          <button onClick={exportToSend} disabled={toSendLoading} style={{ border: "1px solid #dce2e7", borderRadius: 8, background: "#fff", padding: "9px 13px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "#34495a" }}><FileText size={15}/> Export Excel</button>
           <button onClick={loadToSend} disabled={toSendLoading} style={{ border: "1px solid #dce2e7", borderRadius: 8, background: "#fff", padding: "9px 13px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "#34495a" }}><RefreshCw size={15}/> Refresh</button>
         </div>
         {toSendError && <div style={{ padding: 14, color: "#b42318", background: "#fff4f2", fontSize: 13 }}>{toSendError}</div>}
