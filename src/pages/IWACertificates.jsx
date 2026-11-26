@@ -344,9 +344,9 @@ export default function IWACertificates() {
                 <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>N/A</td>
                 <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>N/A</td>
                 <td style={{ padding: "12px 13px" }}>{deal.product || "—"}</td>
-                <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>{deal.installation_completion_date ? new Date(`${deal.installation_completion_date}T00:00:00`).toLocaleDateString("en-GB") : "N/A"}</td>
+                <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>{deal.installation_completion_date ? new Date(`${deal.installation_completion_date}T00:00:00`).toLocaleDateString("en-GB") : "—"}</td>
                 <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>{deal.deal_value == null ? "—" : formatCurrency(Number(deal.deal_value))}</td>
-                <td style={{ padding: "12px 13px" }}>{deal.contract_payment_method || "N/A"}</td>
+                <td style={{ padding: "12px 13px" }}>{deal.contract_payment_method || "—"}</td>
               </tr>)}
             </tbody>
           </table>
