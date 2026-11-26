@@ -1738,8 +1738,10 @@ export default async function handler(req, res) {
       // Do not erase an existing value if the webhook/API response omits it.
       ...(netValue !== null ? { net_value: netValue } : {}),
 
+      // Preserve the CRM name if Pipedrive does not return a usable
+      // linked-person name for this webhook event.
       customer_name:
-        customerName,
+        customerName || matchedDeal.customer_name || null,
 
       // Only write an email when Pipedrive provides one; preserve any existing
       // CRM email if the linked person has no email address.
