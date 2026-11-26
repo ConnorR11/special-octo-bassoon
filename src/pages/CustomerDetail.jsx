@@ -254,10 +254,43 @@ function CustomerDetail({
       ["Annual generation", "generation", value => cvfFormatNumber(value, " kWh")],
       ["Annual electricity export", "exportKwh", value => cvfFormatNumber(value, " kWh")],
       ["First year total benefit", "annualSaving", cvfFormatMoney],
-      ["Payback Period", "simplePayback", value => value == null ? "Not available" : cvfFormatNumber(value, " years")],
     ]
     resultRows.forEach(([label, key, formatter]) =>
       add(label, beforeResults[key], afterResults[key], formatter, "EPVS Calculations")
+    )
+
+    // Match the green Payback Period card in ThirtyYearBreakdown exactly:
+    // it uses the selected average-inflation scenario, sums all projected
+    // payments, then finds the first year cumulative benefit covers them.
+    const cardPaybackPeriod = snapshot => {
+      const projection = snapshot?.thirtyYearProjection?.scenarios?.averageInflation
+      const projectionRows = Array.isArray(projection?.rows) ? projection.rows : []
+      if (!projectionRows.length) return null
+      const totalPayments = projectionRows.reduce(
+        (total, row) => total + Number(row?.yearlyPayment || 0),
+        0
+      )
+      let cumulativeBenefit = 0
+      for (const row of projectionRows) {
+        const annualBenefit = [
+          "solarBenefit",
+          "batterySelfConsumptionBenefit",
+          "forceChargeBenefit",
+          "exportBenefit",
+        ].reduce((total, key) => total + Number(row?.[key] ?? row?.model?.[key] ?? 0), 0)
+        cumulativeBenefit += annualBenefit
+        if (totalPayments + cumulativeBenefit >= 0) return Number(row?.year || 0) || null
+      }
+      return null
+    }
+    const beforePayback = cardPaybackPeriod(cvfCurrent)
+    const afterPayback = cardPaybackPeriod(cvfUpdated)
+    add(
+      "Payback Period",
+      beforePayback,
+      afterPayback,
+      value => value == null ? "Not achieved" : cvfFormatNumber(value, " years"),
+      "EPVS Calculations"
     )
     return rows
   })()
