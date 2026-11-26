@@ -563,6 +563,7 @@ const cappedBatterySC = Math.min(
 export default function EPVSCalculator({
   appointment,
   onCalculationChange = null,
+  onCalculationSaved = null,
   permissionLevel = 1,
   dealId = null,
   initialCalculation = null,
@@ -1692,6 +1693,9 @@ export default function EPVSCalculator({
         throw new Error(dealId ? "The deal was not updated. Please refresh and try again." : "The appointment was not updated. Please refresh the appointment and try again.")
       }
 
+      // Notify the parent with the exact persisted payload so the CVF
+      // comparison refreshes from the saved Updated EPVS, not a stale snapshot.
+      onCalculationSaved?.(payload)
       setSaveMessage(`Saved successfully at ${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`)
     } catch (err) {
       console.error("Error saving EPVS calculation:", err)
