@@ -341,8 +341,8 @@ export default function IWACertificates() {
                 <td style={{ padding: "12px 13px", fontWeight: 600 }}>{deal.customer_name || "—"}</td>
                 <td style={{ padding: "12px 13px", color: "#66727d", minWidth: 260 }}>{[deal.address, deal.postcode].filter(Boolean).join(", ") || "—"}</td>
                 <td style={{ padding: "12px 13px" }}>{deal.email || "—"}</td>
-                <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>—</td>
-                <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>—</td>
+                <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>N/A</td>
+                <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>N/A</td>
                 <td style={{ padding: "12px 13px" }}>{deal.product || "—"}</td>
                 <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>{deal.installation_completion_date ? new Date(`${deal.installation_completion_date}T00:00:00`).toLocaleDateString("en-GB") : "—"}</td>
                 <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>{deal.deal_value == null ? "—" : formatCurrency(Number(deal.deal_value))}</td>
