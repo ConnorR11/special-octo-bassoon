@@ -208,7 +208,7 @@ function CustomerDetail({
     const arrayLayout = arrays => (Array.isArray(arrays) ? arrays : [])
       .filter(item => cvfNumber(item?.panelCount) > 0)
       .map((item, index) => `Array ${index + 1}: ${item.panelCount} × ${item.panelWattage}W, ${item.orientation}°, ${item.pitch}° pitch`)
-      .join("; ")
+      .join("\\n")
     add("Roof array layout", arrayLayout(beforeArrays), arrayLayout(afterArrays), value => value || "No panels")
     const beforeBattery = cvfFirstHardware(cvfCurrentData, "batteries")
     const afterBattery = cvfFirstHardware(cvfDraft, "batteries")
@@ -1017,8 +1017,8 @@ function CustomerDetail({
                 {cvfChangeRows.map(row => (
                   <React.Fragment key={row.label}>
                     <div style={{ padding: "9px 10px", color: "#475569", fontWeight: 650, borderBottom: "1px solid #edf1f5" }}>{row.label}</div>
-                    <div style={{ padding: "9px 10px", color: "#64748b", borderBottom: "1px solid #edf1f5", overflowWrap: "anywhere" }}>{row.before}</div>
-                    <div style={{ padding: "9px 10px", color: "#176b45", fontWeight: 650, borderBottom: "1px solid #edf1f5", overflowWrap: "anywhere" }}>{row.after}</div>
+                    <div style={{ padding: "9px 10px", color: "#64748b", borderBottom: "1px solid #edf1f5", overflowWrap: "anywhere", whiteSpace: "pre-line" }}>{row.before}</div>
+                    <div style={{ padding: "9px 10px", color: "#176b45", fontWeight: 650, borderBottom: "1px solid #edf1f5", overflowWrap: "anywhere", whiteSpace: "pre-line" }}>{row.after}</div>
                   </React.Fragment>
                 ))}
               </div>
