@@ -975,35 +975,28 @@ function CustomerDetail({
         {!deal.open_solar_id && <div style={{ marginBottom: 14, padding: 14, border: "1px solid #f1d3a5", borderRadius: 8, background: "#fff9ed", color: "#8a5a12", fontSize: 12 }}>No OpenSolar project ID is linked to this deal. Link the project on the appointment before importing a variation.</div>}
         {cvfError && <div role="alert" style={{ marginBottom: 12, padding: 11, borderRadius: 7, background: "#fff0f0", color: "#a33b3b", fontSize: 11 }}>{cvfError}</div>}
         {cvfMessage && <div style={{ marginBottom: 12, padding: 11, borderRadius: 7, background: "#eaf6ee", color: "#28734c", fontSize: 11 }}>{cvfMessage}</div>}
-        <section aria-label="Changes being made" style={{ marginBottom: 16, padding: 16, border: "1px solid #dbe3ec", borderRadius: 10, background: "#fbfcfe" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
-            <div>
-              <h3 style={{ margin: 0, color: "#10233f", fontSize: 15 }}>Changes being made</h3>
-              <p style={{ margin: "4px 0 0", color: "#718096", fontSize: 11 }}>Live comparison against the latest agreed EPVS calculation.</p>
-            </div>
-            <span style={{ padding: "4px 8px", borderRadius: 20, background: cvfChangeRows.length ? "#e8f2ff" : "#edf7ef", color: cvfChangeRows.length ? "#245b9b" : "#28734c", fontSize: 10, fontWeight: 700 }}>
-              {cvfChangeRows.length ? `${cvfChangeRows.length} change${cvfChangeRows.length === 1 ? "" : "s"}` : "No changes detected"}
+        <section aria-label="Changes being made" style={{ marginBottom: 16, padding: 14, border: "1px solid #dbe3ec", borderRadius: 10, background: "#fbfcfe" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: cvfChangeRows.length ? 8 : 0 }}>
+            <h3 style={{ margin: 0, color: "#10233f", fontSize: 14 }}>Changes being made</h3>
+            <span style={{ color: "#64748b", fontSize: 11, fontWeight: 600 }}>
+              {cvfChangeRows.length ? `${cvfChangeRows.length} change${cvfChangeRows.length === 1 ? "" : "s"}` : "No changes"}
             </span>
           </div>
           {cvfChangeRows.length > 0 ? (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 460 }}>
-                <thead><tr style={{ color: "#64748b", textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>
-                  <th style={{ padding: "8px 10px 8px 0", fontWeight: 600 }}>Item</th>
-                  <th style={{ padding: 8, fontWeight: 600 }}>Current agreed</th>
-                  <th style={{ padding: 8, fontWeight: 600 }}>Proposed</th>
-                </tr></thead>
-                <tbody>{cvfChangeRows.map((row, index) => (
-                  <tr key={row.label} style={{ borderBottom: index === cvfChangeRows.length - 1 ? 0 : "1px solid #edf1f5" }}>
-                    <td style={{ padding: "9px 10px 9px 0", color: "#334155", fontWeight: 600 }}>{row.label}</td>
-                    <td style={{ padding: 9, color: "#64748b" }}>{row.before}</td>
-                    <td style={{ padding: 9, color: "#176b45", fontWeight: 700 }}>{row.after}</td>
-                  </tr>
-                ))}</tbody>
-              </table>
+            <div style={{ display: "grid", gap: 0 }}>
+              {cvfChangeRows.map((row, index) => (
+                <div key={row.label} style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, padding: "8px 0", borderTop: index === 0 ? "1px solid #e8edf2" : "1px solid #edf1f5", fontSize: 12 }}>
+                  <span style={{ color: "#475569", fontWeight: 600 }}>{row.label}</span>
+                  <span style={{ textAlign: "right", color: "#176b45", fontWeight: 600 }}>
+                    <span style={{ color: "#94a3b8", fontWeight: 400 }}>{row.before}</span>
+                    <span style={{ padding: "0 7px", color: "#94a3b8" }}>→</span>
+                    {row.after}
+                  </span>
+                </div>
+              ))}
             </div>
           ) : (
-            <p style={{ margin: 0, color: "#64748b", fontSize: 12 }}>No differences from the latest agreed calculation yet. Changes made in the calculator will appear here automatically.</p>
+            <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12 }}>Changes will appear here as you edit the calculator.</p>
           )}
         </section>
         <EPVSCalculator
