@@ -953,7 +953,12 @@ export default function EPVSCalculator({
   if (lender === "cash" || method === "cash") return false
   if (Number(financeProduct.minimum_level || 1) > Number(permissionLevel || 1)) return false
 
-  const jobType = String(appointment?.job_type || "")
+  // Deal-view CVFs receive the deal record, which may expose the
+  // product as "Solar" rather than the appointment's job_type field.
+  // Fall back to product so eligible finance options are still available.
+  const jobType = String(
+    appointment?.job_type || appointment?.product || data?.jobType || ""
+  )
     .trim()
     .toLowerCase()
 
