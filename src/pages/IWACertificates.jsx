@@ -467,7 +467,6 @@ export default function IWACertificates() {
             <div style={{ fontSize: 11, color: "#77818b", marginTop: 14 }}>The deal row ID is only saved after you select Approve Match.</div>
           </div>
         </div>
-        </div>
       </div>}
     </div>
   )
