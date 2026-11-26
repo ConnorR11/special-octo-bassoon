@@ -74,6 +74,7 @@ function CustomerDetail({
   const [cvfCurrent, setCvfCurrent] = useState(deal?.current_epvs_calculation || null)
   const [cvfUpdated, setCvfUpdated] = useState(deal?.updated_epvs_calculation || null)
   const [cvfDraftData, setCvfDraftData] = useState(null)
+  const [cvfSaveAction, setCvfSaveAction] = useState(null)
   const [cvfAppointmentCalculation, setCvfAppointmentCalculation] = useState(null)
   const [cvfRefreshing, setCvfRefreshing] = useState(false)
 
@@ -1005,11 +1006,21 @@ function CustomerDetail({
         {cvfError && <div role="alert" style={{ marginBottom: 12, padding: 11, borderRadius: 7, background: "#fff0f0", color: "#a33b3b", fontSize: 11 }}>{cvfError}</div>}
         {cvfMessage && <div style={{ marginBottom: 12, padding: 11, borderRadius: 7, background: "#eaf6ee", color: "#28734c", fontSize: 11 }}>{cvfMessage}</div>}
         <section aria-label="Changes being made" style={{ marginBottom: 16, padding: 14, border: "1px solid #dbe3ec", borderRadius: 10, background: "#fbfcfe" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: cvfChangeRows.length ? 10 : 0 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: cvfChangeRows.length ? 10 : 0, flexWrap: "wrap" }}>
             <h3 style={{ margin: 0, color: "#10233f", fontSize: 14 }}>Changes being made</h3>
-            <span style={{ color: "#64748b", fontSize: 11, fontWeight: 600 }}>
-              {cvfChangeRows.length ? `${cvfChangeRows.length} change${cvfChangeRows.length === 1 ? "" : "s"}` : "No changes"}
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ color: "#64748b", fontSize: 11, fontWeight: 600 }}>
+                {cvfChangeRows.length ? `${cvfChangeRows.length} change${cvfChangeRows.length === 1 ? "" : "s"}` : "No changes"}
+              </span>
+              <button
+                type="button"
+                onClick={() => cvfSaveAction?.()}
+                disabled={!cvfSaveAction}
+                style={{ padding: "8px 13px", border: 0, borderRadius: 7, background: "#172554", color: "#fff", fontSize: 12, fontWeight: 700, cursor: cvfSaveAction ? "pointer" : "not-allowed", opacity: cvfSaveAction ? 1 : 0.55 }}
+              >
+                Update Changes
+              </button>
+            </div>
           </div>
           {cvfChangeRows.length > 0 ? (
             <div style={{ overflowX: "auto" }}>
@@ -1040,6 +1051,7 @@ function CustomerDetail({
             setCvfUpdated(savedCalculation)
             setCvfDraftData(savedCalculation?.data || null)
           }}
+          onRegisterSave={setCvfSaveAction}
           permissionLevel={permissionLevel}
         />
         {!cvfUpdated && <div style={{ marginTop: 12, padding: 12, borderRadius: 8, background: "#f8fafc", color: "#64748b", fontSize: 11 }}>No updated EPVS calculation has been imported yet. Use “Get Current Design” in the OpenSolar system design section below to import the latest design into this CVF.</div>}
