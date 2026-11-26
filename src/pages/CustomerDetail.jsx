@@ -265,7 +265,15 @@ function CustomerDetail({
     add("Solar system size", beforeSize.toFixed(2), afterSize.toFixed(2), value => cvfFormatNumber(value, " kWp"), "System Design")
     const arrayLayout = arrays => (Array.isArray(arrays) ? arrays : [])
       .filter(item => cvfNumber(item?.panelCount) > 0)
-      .map((item, index) => `Array ${index + 1}: ${item.panelCount} × ${item.panelWattage}W, ${item.orientation}°, ${item.pitch}° pitch`)
+      .map((item, index) => {
+        const irradiance = item?.irradiance == null || item.irradiance === ""
+          ? "Not set"
+          : cvfFormatNumber(item.irradiance, " Kk")
+        const shadeFactor = item?.shading == null || item.shading === ""
+          ? "Not set"
+          : cvfFormatNumber(item.shading)
+        return `Array ${index + 1}: ${item.panelCount} × ${item.panelWattage}W, ${item.orientation}°, ${item.pitch}° pitch, Irradiance: ${irradiance}, Shade factor: ${shadeFactor}`
+      })
       .join("\n")
     add("Roof array layout", arrayLayout(beforeArrays), arrayLayout(afterArrays), value => value || "No panels", "System Design")
     const beforePanel = cvfFirstHardware(cvfCurrentData, "panels")
