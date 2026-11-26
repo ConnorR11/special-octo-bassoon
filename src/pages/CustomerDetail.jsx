@@ -71,7 +71,7 @@ function CustomerDetail({
   const [documentNotice, setDocumentNotice] = useState("")
   const [openingDocument, setOpeningDocument] = useState("")
   const [activeTab, setActiveTab] = useState("details")
-  const [cvfCurrent, setCvfCurrent] = useState(deal?.current_epvs_calculation || deal?.original_epvs_calculation || null)
+  const [cvfCurrent, setCvfCurrent] = useState(deal?.current_epvs_calculation || null)
   const [cvfUpdated, setCvfUpdated] = useState(deal?.updated_epvs_calculation || null)
   const [cvfDraftData, setCvfDraftData] = useState(null)
   const [cvfAppointmentCalculation, setCvfAppointmentCalculation] = useState(null)
@@ -182,9 +182,11 @@ function CustomerDetail({
   const cvfHardware = data => data?.hardware || data?.openSolar?.hardware || {}
   const cvfHardwareLabel = (items, key) => (Array.isArray(items) ? items : []).map(item => [item?.manufacturer, item?.model].filter(Boolean).join(" ")).filter(Boolean).join(", ") || "Not specified"
   const cvfChanged = (a, b) => JSON.stringify(a ?? null) !== JSON.stringify(b ?? null)
-  // EPVSCalculator publishes its live state only after the saved Updated
-  // EPVS snapshot has hydrated, so the latest callback is authoritative.
-  const cvfDraft = cvfDraftData || cvfUpdatedData
+  // The comparison is deliberately between the two persisted deal JSONs.
+  // Do not use transient calculator form state here: it can briefly be empty
+  // while the editor hydrates and incorrectly show zeros / "Not set".
+  // Saving the calculator updates cvfUpdated, which refreshes this comparison.
+  const cvfDraft = cvfUpdatedData
   const cvfFormatMoney = value => value === "" || value == null ? "Not set" : new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 2 }).format(Number(value) || 0)
   const cvfFormatNumber = (value, suffix = "") => value === "" || value == null ? "Not set" : `${Number(value).toLocaleString("en-GB", { maximumFractionDigits: 2 })}${suffix}`
   const cvfHardwareDetails = data => cvfHardware(data)
