@@ -1370,79 +1370,95 @@ function footer(pdf, index, count, settings, appointment) {
 
 async function appendVariationPage(bytes, variation) {
   const doc = await PDFDocument.load(bytes)
-  const page = doc.addPage([595.28, 841.89])
-  const { width, height } = page.getSize()
+  const W = 595.28, H = 841.89, left = 42, right = 42
+  const contentWidth = W - left - right
   const regular = await doc.embedFont("Helvetica")
   const bold = await doc.embedFont("Helvetica-Bold")
   const navy = pdfRgb(0.02, 0.16, 0.27)
   const blue = pdfRgb(0.05, 0.36, 0.54)
-  const grey = pdfRgb(0.35, 0.40, 0.45)
-  const left = 42
-  let y = height - 58
-  const draw = (text, x, top, size = 9, font = regular, color = grey, maxWidth = width - 84) => {
-    const value = String(text ?? "—")
-    const words = value.split(/\\s+/)
-    let line = ""
-    const lines = []
-    for (const word of words) {
+  const pale = pdfRgb(0.94, 0.97, 0.99)
+  const border = pdfRgb(0.84, 0.88, 0.92)
+  const grey = pdfRgb(0.30, 0.35, 0.40)
+  const categories = ["Current Energy", "System Design", "Payment Information", "EPVS Calculations"]
+  const rows = Array.isArray(variation.rows) ? variation.rows : []
+  const groups = categories.map(category => ({ category, rows: rows.filter(row => (row.category || "System Design") === category) })).filter(group => group.rows.length)
+  rows.filter(row => !categories.includes(row.category)).forEach(row => {
+    let group = groups.find(item => item.category === (row.category || "Other"))
+    if (!group) { group = { category: row.category || "Other", rows: [] }; groups.push(group) }
+    group.rows.push(row)
+  })
+  let page, y
+  const newPage = (continued = false) => {
+    page = doc.addPage([W, H])
+    page.drawRectangle({ x: 0, y: H - 42, width: W, height: 42, color: navy })
+    page.drawText("HOMESHIELD SCOTLAND LTD", { x: left, y: H - 27, size: 9, font: bold, color: pdfRgb(1,1,1) })
+    const header = continued ? "CONTRACT VARIATION FORM · CONTINUED" : "CONTRACT VARIATION FORM"
+    page.drawText(header, { x: W - right - bold.widthOfTextAtSize(header, 8), y: H - 27, size: 8, font: bold, color: pdfRgb(1,1,1) })
+    y = H - 67
+  }
+  const wrap = (value, font, size, maxWidth) => {
+    const lines = []; let line = ""
+    for (const word of String(value ?? "—").split(/\\s+/)) {
       const next = line ? line + " " + word : word
-      if (font.widthOfTextAtSize(next, size) > maxWidth && line) { lines.push(line); line = word }
-      else line = next
+      if (font.widthOfTextAtSize(next, size) > maxWidth && line) { lines.push(line); line = word } else line = next
     }
     if (line) lines.push(line)
-    lines.forEach((item, index) => page.drawText(item, { x, y: top - index * (size + 3), size, font, color }))
-    return top - lines.length * (size + 3)
+    return lines.length ? lines : ["—"]
   }
-  page.drawRectangle({ x: 0, y: height - 42, width, height: 42, color: navy })
-  page.drawText("HOMESHIELD SCOTLAND LTD", { x: left, y: height - 27, size: 9, font: bold, color: pdfRgb(1, 1, 1) })
-  page.drawText("CONTRACT VARIATION FORM", { x: width - left - bold.widthOfTextAtSize("CONTRACT VARIATION FORM", 9), y: height - 27, size: 9, font: bold, color: pdfRgb(1, 1, 1) })
+  const drawWrapped = (target, value, x, top, width, size, font, color, lineHeight) => {
+    const lines = wrap(value, font, size, width)
+    lines.forEach((line, index) => target.drawText(line, { x, y: top - size - index * lineHeight, size, font, color }))
+    return lines.length
+  }
+  newPage()
   page.drawText("Contract Variation", { x: left, y, size: 20, font: bold, color: navy }); y -= 30
-  const meta = [
-    ["Customer", variation.customerName],
-    ["Address", variation.address],
-    ["Contract number", variation.contractNumber],
-    ["Variation date", date(new Date())],
-  ]
-  meta.forEach(([label, value]) => {
+  const meta = [["Customer", variation.customerName], ["Address", variation.address], ["Contract number", variation.contractNumber], ["Variation date", date(new Date())]]
+  for (const [label, value] of meta) {
     page.drawText(label.toUpperCase(), { x: left, y, size: 7, font: bold, color: blue })
-    page.drawText(String(value || "—"), { x: left + 110, y, size: 9, font: regular, color: grey })
-    y -= 17
-  })
-  y -= 8
-  page.drawLine({ start: { x: left, y }, end: { x: width - left, y }, thickness: 1, color: blue }); y -= 22
-  page.drawText("CHANGES TO THE AGREED CONTRACT", { x: left, y, size: 10, font: bold, color: navy }); y -= 20
-  page.drawText("Item", { x: left, y, size: 8, font: bold, color: blue })
-  page.drawText("Original", { x: left + 190, y, size: 8, font: bold, color: blue })
-  page.drawText("Revised", { x: left + 330, y, size: 8, font: bold, color: blue })
-  y -= 8
-  page.drawLine({ start: { x: left, y }, end: { x: width - left, y }, thickness: 0.7, color: blue }); y -= 15
-  const rows = Array.isArray(variation.rows) ? variation.rows : []
-  for (const row of rows) {
-    const labelLines = String(row.label || "").split(/\\n/)
-    const beforeLines = String(row.before || "—").split(/\\n/)
-    const afterLines = String(row.after || "—").split(/\\n/)
-    const count = Math.max(labelLines.length, beforeLines.length, afterLines.length, 1)
-    for (let i = 0; i < count; i++) {
-      if (y < 95) break
-      page.drawText((labelLines[i] || "").slice(0, 44), { x: left, y, size: 7.5, font: bold, color: grey })
-      page.drawText((beforeLines[i] || "").slice(0, 36), { x: left + 190, y, size: 7, font: regular, color: grey })
-      page.drawText((afterLines[i] || "").slice(0, 36), { x: left + 330, y, size: 7, font: regular, color: navy })
-      y -= 11
-    }
-    y -= 5
-    if (y < 95) break
+    drawWrapped(page, value || "—", left + 110, y + 2, contentWidth - 110, 8.5, regular, grey, 11)
+    y -= 16
   }
-  if (!rows.length) draw("No differences were recorded between the original and revised EPVS calculations.", left, y, 9, regular, grey)
-  y = Math.max(80, y - 8)
-  page.drawLine({ start: { x: left, y }, end: { x: width - left, y }, thickness: 0.7, color: blue })
-  y -= 18
-  draw("This variation records the revised system specification and EPVS calculation. All other terms and conditions of the original contract remain unchanged unless expressly varied in writing.", left, y, 8, regular, grey)
-  y -= 48
-  page.drawText("Customer acknowledgement", { x: left, y, size: 8, font: bold, color: navy })
-  draw("The original contract signatures and timestamps are retained in the preceding contract pages. This form is an accompanying record of the revised design.", left, y - 14, 7.5, regular, grey)
+  y -= 5
+  page.drawLine({ start: { x: left, y }, end: { x: W - right, y }, thickness: 1, color: blue }); y -= 22
+  const col = [130, 170, contentWidth - 300]
+  const xs = [left, left + col[0], left + col[0] + col[1]]
+  const tableHeader = () => {
+    page.drawRectangle({ x: left, y: y - 19, width: contentWidth, height: 19, color: pale })
+    ;["Item", "Original", "Revised"].forEach((label, index) => page.drawText(label, { x: xs[index] + 7, y: y - 13, size: 8, font: bold, color: blue }))
+    y -= 19
+  }
+  tableHeader()
+  for (const group of groups) {
+    if (y < 105) { newPage(true); tableHeader() }
+    page.drawRectangle({ x: left, y: y - 18, width: contentWidth, height: 18, color: navy })
+    page.drawText(group.category, { x: left + 7, y: y - 12, size: 8, font: bold, color: pdfRgb(1,1,1) }); y -= 18
+    for (const row of group.rows) {
+      const cells = [row.label || "", row.before || "—", row.after || "—"]
+      const sizes = [7.2, 7, 7], fonts = [bold, regular, regular]
+      const wrapped = cells.map((value, index) => wrap(value, fonts[index], sizes[index], col[index] - 14))
+      const rowHeight = Math.max(22, Math.max(...wrapped.map(lines => lines.length)) * 9 + 10)
+      if (y - rowHeight < 65) {
+        newPage(true); tableHeader()
+        page.drawRectangle({ x: left, y: y - 18, width: contentWidth, height: 18, color: navy })
+        page.drawText(group.category + " (continued)", { x: left + 7, y: y - 12, size: 8, font: bold, color: pdfRgb(1,1,1) }); y -= 18
+      }
+      page.drawRectangle({ x: left, y: y - rowHeight, width: contentWidth, height: rowHeight, color: pdfRgb(1,1,1), borderColor: border, borderWidth: 0.45 })
+      for (let index = 1; index < 3; index++) page.drawLine({ start: { x: xs[index], y }, end: { x: xs[index], y: y - rowHeight }, thickness: 0.35, color: border })
+      cells.forEach((value, index) => drawWrapped(page, value, xs[index] + 7, y - 5, col[index] - 14, sizes[index], fonts[index], index === 2 ? navy : grey, 9))
+      y -= rowHeight
+    }
+    y -= 9
+  }
+  const legal = "This variation records the revised system specification and EPVS calculation. All other terms and conditions of the original contract remain unchanged unless expressly varied in writing."
+  const acknowledgement = "The original contract signatures and timestamps are retained in the preceding contract pages. This form is an accompanying record of the revised design."
+  const legalLines = wrap(legal, regular, 7.5, contentWidth), ackLines = wrap(acknowledgement, regular, 7.2, contentWidth)
+  if (y - (25 + legalLines.length * 10 + ackLines.length * 10) < 55) newPage(true)
+  page.drawLine({ start: { x: left, y }, end: { x: W - right, y }, thickness: 0.7, color: blue }); y -= 15
+  drawWrapped(page, legal, left, y, contentWidth, 7.5, regular, grey, 10); y -= legalLines.length * 10 + 15
+  page.drawText("Customer acknowledgement", { x: left, y, size: 8, font: bold, color: navy }); y -= 5
+  drawWrapped(page, acknowledgement, left, y, contentWidth, 7.2, regular, grey, 10)
   return doc.save()
 }
-
 export async function GenerateSolarContract({ appointment, previewOnly = false, epvsOverride = null, variation = null }) {
   if (!appointment) return
 
