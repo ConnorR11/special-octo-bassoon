@@ -172,10 +172,8 @@ export default function IWACertificates() {
           .range(from, from + 999)
         const term = toSendSearch.trim()
         if (term) {
-          const safe = term.replace(/[%_]/g, "\\  useEffect(() => {
-    if (activeTab === "to-send") loadToSend()
-  }, [activeTab, loadToSend])").replace(/,/g, "\\,")
-          request = request.or(`customer_name.ilike.%${safe}%,contract_number.ilike.%${safe}%,postcode.ilike.%${safe}%,address.ilike.%${safe}%`)
+          const safe = term.replace(/[%_]/g, "\\$&").replace(/,/g, "\\,")
+          request = request.or(\`customer_name.ilike.%\${safe}%,contract_number.ilike.%\${safe}%,postcode.ilike.%\${safe}%,address.ilike.%\${safe}%\`)
         }
         const { data, error } = await request
         if (error) throw error
@@ -206,18 +204,18 @@ export default function IWACertificates() {
           "N/A",
           "N/A",
           deal.product || "",
-          deal.installation_completion_date ? new Date(`${deal.installation_completion_date}T00:00:00`).toLocaleDateString("en-GB") : "",
+          deal.installation_completion_date ? new Date(\`\${deal.installation_completion_date}T00:00:00\`).toLocaleDateString("en-GB") : "",
           deal.deal_value == null ? "" : formatCurrency(Number(deal.deal_value)),
           deal.contract_payment_method || "",
         ]
       })
-      const escapeCsv = value => `"${String(value ?? "").replace(/"/g, '""')}"`
+      const escapeCsv = value => \`"\${String(value ?? "").replace(/"/g, '""')}"\`
       const csv = [headers, ...csvRows].map(row => row.map(escapeCsv).join(",")).join("\\r\\n")
       const blob = new Blob(["\\uFEFF", csv], { type: "text/csv;charset=utf-8;" })
       const url = URL.createObjectURL(blob)
       const link = document.createElement("a")
       link.href = url
-      link.download = `IWA-To-Send-${new Date().toISOString().slice(0,10)}.csv`
+      link.download = \`IWA-To-Send-\${new Date().toISOString().slice(0,10)}.csv\`
       document.body.appendChild(link)
       link.click()
       link.remove()
