@@ -150,7 +150,7 @@ function CustomerDetail({
       return
     }
     if (!deal?.appointment_row_id) {
-      setCvfError("This deal has no linked appointment, so the original contract signatures cannot be retrieved.")
+      setCvfError("This deal has no linked appointment, so the original contract details cannot be retrieved.")
       return
     }
     if (!cvfCurrent?.data) {
@@ -174,25 +174,15 @@ function CustomerDetail({
       }
       const result = await GenerateSolarContract({ appointment, epvsOverride: cvfUpdated, variation, previewOnly: true })
       if (!result?.blob || !result?.fileName) throw new Error("The CVF PDF could not be generated.")
-      const path = deal.id + "/contract_variations/" + Date.now() + "-CVF.pdf"
-      const { error: uploadError } = await supabase.storage.from("deal-documents").upload(path, result.blob, { contentType: "application/pdf", upsert: false })
-      if (uploadError) throw uploadError
-      const { data: userData } = await supabase.auth.getUser()
-      const { error: metadataError } = await supabase.from("deal_documents").insert({
-        deal_id: deal.id,
-        category: "contract_variation",
-        file_name: result.fileName.replace(/Digital-Solar-Contract/i, "Contract-Variation"),
-        storage_path: path,
-        mime_type: "application/pdf",
-        file_size: result.blob.size,
-        uploaded_by: userData?.user?.id || null,
-      })
-      if (metadataError) {
-        await supabase.storage.from("deal-documents").remove([path])
-        throw metadataError
-      }
-      setCvfMessage("Contract variation PDF generated and saved to this deal.")
-      await loadDocuments()
+      const url = URL.createObjectURL(result.blob)
+      const link = window.document.createElement("a")
+      link.href = url
+      link.download = result.fileName.replace(/Digital-Solar-Contract/i, "Contract-Variation")
+      window.document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+      setCvfMessage("CVF PDF downloaded. No EPVS data or deal files were changed.")
     } catch (error) {
       console.error("CVF PDF generation failed:", error)
       setCvfError(error?.message || "Unable to generate the contract variation PDF.")
@@ -1211,19 +1201,11 @@ function CustomerDetail({
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
           <button type="button" onClick={generateCvfPdf} disabled={generatingCvfPdf || !cvfUpdated || !cvfCurrent} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 15px", border: 0, borderRadius: 7, background: "#172554", color: "#fff", fontSize: 12, fontWeight: 700, cursor: generatingCvfPdf ? "wait" : "pointer", opacity: generatingCvfPdf || !cvfUpdated || !cvfCurrent ? 0.55 : 1 }}>
             {generatingCvfPdf ? <LoaderCircle size={14} /> : <FileUp size={14} />}
-            {generatingCvfPdf ? "Generating CVF..." : "Generate & Save CVF PDF"}
+            {generatingCvfPdf ? "Preparing CVF..." : "Download CVF PDF"}
           </button>
         </div>
         <div style={{ marginTop: 14, padding: 12, borderRadius: 8, background: "#fff8e8", color: "#805b16", fontSize: 11, lineHeight: 1.5 }}>This calculator saves to the deal’s Updated EPVS calculation only. It does not change the appointment calculation or the agreed Current EPVS design.</div>
-        <div style={{ marginTop: 16, borderTop: "1px solid #e5eaf0", paddingTop: 14 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 13, color: "#10233f" }}>Generated CVF documents</h3>
-          {documents.filter(document => document.category === "contract_variation").length === 0
-            ? <div style={{ color: "#64748b", fontSize: 11 }}>No CVF PDFs have been generated for this deal yet.</div>
-            : documents.filter(document => document.category === "contract_variation").map(document => <div key={document.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "9px 0", borderBottom: "1px solid #edf1f5" }}>
-                <div style={{ minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 650, color: "#263645", overflowWrap: "anywhere" }}>{document.file_name}</div><div style={{ marginTop: 3, fontSize: 9, color: "#89939c" }}>{document.created_at ? new Date(document.created_at).toLocaleString("en-GB") : "Date unavailable"}</div></div>
-                <button type="button" onClick={() => downloadCvfDocument(document)} disabled={openingDocument === document.id} style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 10px", border: "1px solid #d7dee8", borderRadius: 6, background: "#fff", color: "#172554", fontSize: 10, fontWeight: 700, cursor: "pointer" }}><FileUp size={13}/>{openingDocument === document.id ? "Downloading..." : "Download PDF"}</button>
-              </div>)}
-        </div>
+
       </div>}
 
       {activeTab === "contracts" && <div className="card" style={{ marginBottom: 18 }}>
