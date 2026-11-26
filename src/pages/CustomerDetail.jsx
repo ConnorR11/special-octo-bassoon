@@ -218,11 +218,18 @@ function CustomerDetail({
     add("Payment method", cvfCurrentData.paymentMethod, cvfDraft.paymentMethod)
     add("Finance term", cvfCurrentData.financeTerm, cvfDraft.financeTerm, value => value ? `${value} years` : "Not set")
     add("Finance APR", cvfCurrentData.financeRate, cvfDraft.financeRate, value => value == null || value === "" ? "Not set" : `${value}%`)
-    add("Annual electricity consumption", cvfCurrentData.annualConsumption, cvfDraft.annualConsumption, value => cvfFormatNumber(value, " kWh"))
-    add("Import rate", cvfCurrentData.importRate, cvfDraft.importRate, value => cvfFormatNumber(value, "p/kWh"))
-    add("Export rate", cvfCurrentData.exportRate, cvfDraft.exportRate, value => cvfFormatNumber(value, "p/kWh"))
-    add("Standing charge", cvfCurrentData.standingCharge, cvfDraft.standingCharge, value => cvfFormatNumber(value, "p/day"))
-    add("Existing solar PV", cvfCurrentData.existingSolar, cvfDraft.existingSolar, value => value ? "Yes" : "No")
+    // Energy snapshots may be stored in the grouped currentEnergy object
+    // or in the legacy flat fields. Read both so edits are compared against
+    // the agreed baseline even when it was saved using the newer JSON shape.
+    const currentEnergy = cvfCurrentData.currentEnergy || {}
+    const draftEnergy = cvfDraft.currentEnergy || {}
+    const energyValue = (snapshot, flat, key) =>
+      snapshot?.[key] ?? snapshot?.[flat]
+    add("Annual electricity consumption", energyValue(currentEnergy, cvfCurrentData, "annualConsumption"), energyValue(draftEnergy, cvfDraft, "annualConsumption"), value => cvfFormatNumber(value, " kWh"))
+    add("Import rate", energyValue(currentEnergy, cvfCurrentData, "importRate"), energyValue(draftEnergy, cvfDraft, "importRate"), value => cvfFormatNumber(value, "p/kWh"))
+    add("Export rate", energyValue(currentEnergy, cvfCurrentData, "exportRate"), energyValue(draftEnergy, cvfDraft, "exportRate"), value => cvfFormatNumber(value, "p/kWh"))
+    add("Standing charge", energyValue(currentEnergy, cvfCurrentData, "standingCharge"), energyValue(draftEnergy, cvfDraft, "standingCharge"), value => cvfFormatNumber(value, "p/day"))
+    add("Existing solar PV", energyValue(currentEnergy, cvfCurrentData, "existingSolar"), energyValue(draftEnergy, cvfDraft, "existingSolar"), value => value ? "Yes" : "No")
     return rows
   })()
 
