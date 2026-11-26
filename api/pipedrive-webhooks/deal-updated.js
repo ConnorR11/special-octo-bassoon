@@ -105,6 +105,16 @@ const PIPEDRIVE_FIELDS = {
     key: "55177af32aecef5d2f250bd701c2bbee064136fc",
   },
 
+  installationCompletionDate: {
+    name: "Installation: Completion Date",
+    key: null,
+  },
+
+  contractPaymentMethod: {
+    name: "Contract: Payment Method",
+    key: null,
+  },
+
   fitTeam: {
     name: "Installation: Fit Team",
     key: "9dea8a18f5fe439880a93a49c0be9072f7d38107",
@@ -1136,6 +1146,16 @@ export default async function handler(req, res) {
         )
       )
 
+    const installationCompletionDate =
+      normaliseDate(
+        getCustomFieldValue(deal, fields.installationCompletionDate.key)
+      )
+
+    const contractPaymentMethod =
+      normaliseText(
+        getCustomFieldValue(deal, fields.contractPaymentMethod.key)
+      )
+
     const fitTeam1 =
       normaliseFitTeam(
         getCustomFieldValue(
@@ -1393,6 +1413,12 @@ export default async function handler(req, res) {
       "Installation: Start Date":
         installationStartDate,
 
+      "Installation: Completion Date":
+        installationCompletionDate,
+
+      "Contract: Payment Method":
+        contractPaymentMethod,
+
       "Installation: Fit Team":
         fitTeam1,
 
@@ -1518,6 +1544,8 @@ export default async function handler(req, res) {
         "customer_name",
         "contract_number",
         "installation_start_date",
+        "installation_completion_date",
+        "contract_payment_method",
         "fit_team_1",
         "installation_issues_fit_team",
         "installations_issues_start_date",
@@ -1689,6 +1717,9 @@ export default async function handler(req, res) {
 
       installation_start_date:
         installationStartDate,
+
+      ...(installationCompletionDate ? { installation_completion_date: installationCompletionDate } : {}),
+      ...(contractPaymentMethod ? { contract_payment_method: contractPaymentMethod } : {}),
 
       fit_team_1:
         fitTeam1,
