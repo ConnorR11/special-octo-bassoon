@@ -566,6 +566,7 @@ export default function EPVSCalculator({
   permissionLevel = 1,
   dealId = null,
   initialCalculation = null,
+  onCalculationChange = null,
 }) {
   const [loadingFluxRates, setLoadingFluxRates] = useState(false)
   const [fluxRateError, setFluxRateError] = useState("")
@@ -760,6 +761,12 @@ export default function EPVSCalculator({
 
   const [data, setData] =
     useState(appointmentInitial)
+
+  // Let the parent CVF screen render a live comparison while the user edits.
+  useEffect(() => {
+    onCalculationChange?.(data)
+  }, [data, onCalculationChange])
+
   const migratedAppointmentRef = useRef("")
 
   useEffect(() => {
