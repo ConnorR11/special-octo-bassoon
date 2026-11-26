@@ -36,13 +36,11 @@ export default async function handler(req, res) {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {})
     const dealId = String(body.deal_id || "").trim()
     const fileName = String(body.file_name || "").trim()
-    const base64 = String(body.pdf_base64 || "").trim()
+    const storagePath = String(body.storage_path || "").trim()
     if (!dealId || !/^[a-zA-Z0-9_-]+-Contract-Variation\.pdf$/.test(fileName)) {
       return json(res, 400, { success: false, error: "The deal or CVF filename is invalid." })
     }
-    if (!base64 || base64.length > 9_000_000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) {
-      return json(res, 400, { success: false, error: "The generated CVF PDF is missing or too large." })
-    }
+    if (!storagePath) return json(res, 400, { success: false, error: "The uploaded CVF storage path is missing." })
 
     const { data: deal, error: dealError } = await supabase
       .from("deals")
@@ -58,18 +56,15 @@ export default async function handler(req, res) {
     }
 
     const appointmentRowId = String(deal.appointment_row_id)
-    const storagePath = `cvf-pdfs/${appointmentRowId}/${fileName}`
-    const pdfBuffer = Buffer.from(base64, "base64")
-    if (pdfBuffer.length < 100 || pdfBuffer.subarray(0, 5).toString("ascii") !== "%PDF-") {
-      return json(res, 400, { success: false, error: "The generated file is not a valid PDF." })
+    if (storagePath !== `cvf-pdfs/${appointmentRowId}/${fileName}`) {
+      return json(res, 400, { success: false, error: "The CVF storage path does not match this deal." })
     }
-
-    const { error: uploadError } = await supabase.storage.from("signatures").upload(storagePath, pdfBuffer, {
-      contentType: "application/pdf",
-      cacheControl: "60",
-      upsert: true,
-    })
-    if (uploadError) throw uploadError
+    const folder = `cvf-pdfs/${appointmentRowId}`
+    const { data: storedFiles, error: storageError } = await supabase.storage.from("signatures").list(folder, { limit: 100 })
+    if (storageError) throw storageError
+    if (!(storedFiles || []).some(file => file.name === fileName)) {
+      return json(res, 404, { success: false, error: "The CVF PDF was not found in Storage. Please retry the upload." })
+    }
 
     const pipedriveRequest = async (path, options = {}) => {
       const separator = path.includes("?") ? "&" : "?"
