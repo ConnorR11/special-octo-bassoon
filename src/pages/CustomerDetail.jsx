@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import * as tus from "tus-js-client"
 import {
   ArrowLeft,
@@ -75,6 +75,11 @@ function CustomerDetail({
   const [cvfUpdated, setCvfUpdated] = useState(deal?.updated_epvs_calculation || null)
   const [cvfDraftData, setCvfDraftData] = useState(null)
   const [cvfSaveAction, setCvfSaveAction] = useState(null)
+  // Store the registered save function as a value. Passing a function directly
+  // to a React state setter would execute it as an updater (and save immediately).
+  const registerCvfSaveAction = useCallback(action => {
+    setCvfSaveAction(() => action)
+  }, [])
   const [cvfAppointmentCalculation, setCvfAppointmentCalculation] = useState(null)
   const [cvfRefreshing, setCvfRefreshing] = useState(false)
 
@@ -1051,7 +1056,7 @@ function CustomerDetail({
             setCvfUpdated(savedCalculation)
             setCvfDraftData(savedCalculation?.data || null)
           }}
-          onRegisterSave={setCvfSaveAction}
+          onRegisterSave={registerCvfSaveAction}
           permissionLevel={permissionLevel}
         />
         {!cvfUpdated && <div style={{ marginTop: 12, padding: 12, borderRadius: 8, background: "#f8fafc", color: "#64748b", fontSize: 11 }}>No updated EPVS calculation has been imported yet. Use “Get Current Design” in the OpenSolar system design section below to import the latest design into this CVF.</div>}
