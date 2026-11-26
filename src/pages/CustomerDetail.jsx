@@ -179,7 +179,10 @@ function CustomerDetail({
   const cvfNumber = value => Number(value || 0)
   const cvfPanelCount = data => (Array.isArray(data?.arrays) ? data.arrays : []).reduce((sum, item) => sum + cvfNumber(item?.panelCount), 0)
   const cvfSystemSize = data => (Array.isArray(data?.arrays) ? data.arrays : []).reduce((sum, item) => sum + cvfNumber(item?.panelCount) * cvfNumber(item?.panelWattage) / 1000, 0)
-  const cvfHardware = data => data?.hardware || data?.openSolar?.hardware || {}
+  // The nested OpenSolar hardware snapshot is refreshed with each design
+  // import. The top-level hardware object can be an older copied snapshot,
+  // so prefer the nested OpenSolar values when both are present.
+  const cvfHardware = data => data?.openSolar?.hardware || data?.hardware || {}
   const cvfHardwareLabel = (items, key) => (Array.isArray(items) ? items : []).map(item => [item?.manufacturer, item?.model].filter(Boolean).join(" ")).filter(Boolean).join(", ") || "Not specified"
   const cvfChanged = (a, b) => JSON.stringify(a ?? null) !== JSON.stringify(b ?? null)
   // The comparison is deliberately between the two persisted deal JSONs.
