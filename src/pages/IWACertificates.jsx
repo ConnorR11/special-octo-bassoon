@@ -108,7 +108,7 @@ export default function IWACertificates() {
     setToSendError("")
     try {
       let request = supabase.from("deals")
-        .select("id,contract_number,customer_name,address,postcode,email,appointment_row_id,product,deal_value,net_value,sale_date,installation_start_date,salesperson_name,status,iwa_certificates!iwa_certificates_deal_row_id_fkey(id)", { count: "exact" })
+        .select("id,contract_number,customer_name,address,postcode,email,appointment_row_id,product,deal_value,net_value,sale_date,installation_start_date,installation_completion_date,contract_payment_method,salesperson_name,status,iwa_certificates!iwa_certificates_deal_row_id_fkey(id)", { count: "exact" })
         .is("iwa_certificates", null)
         .gte("sale_date", "2024-01-01")
         .eq("product", "Windows")
@@ -344,9 +344,9 @@ export default function IWACertificates() {
                 <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>N/A</td>
                 <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>N/A</td>
                 <td style={{ padding: "12px 13px" }}>{deal.product || "—"}</td>
-                <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>N/A</td>
+                <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>{deal.installation_completion_date ? new Date(`${deal.installation_completion_date}T00:00:00`).toLocaleDateString("en-GB") : "N/A"}</td>
                 <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>{deal.deal_value == null ? "—" : formatCurrency(Number(deal.deal_value))}</td>
-                <td style={{ padding: "12px 13px" }}>N/A</td>
+                <td style={{ padding: "12px 13px" }}>{deal.contract_payment_method || "N/A"}</td>
               </tr>)}
             </tbody>
           </table>
