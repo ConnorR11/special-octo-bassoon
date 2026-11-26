@@ -208,7 +208,7 @@ function CustomerDetail({
     const arrayLayout = arrays => (Array.isArray(arrays) ? arrays : [])
       .filter(item => cvfNumber(item?.panelCount) > 0)
       .map((item, index) => `Array ${index + 1}: ${item.panelCount} × ${item.panelWattage}W, ${item.orientation}°, ${item.pitch}° pitch`)
-      .join("\\n")
+      .join("\n")
     add("Roof array layout", arrayLayout(beforeArrays), arrayLayout(afterArrays), value => value || "No panels")
     const beforeBattery = cvfFirstHardware(cvfCurrentData, "batteries")
     const afterBattery = cvfFirstHardware(cvfDraft, "batteries")
