@@ -1,5 +1,5 @@
 import jsPDF from "jspdf"
-import { PDFDocument } from "pdf-lib"
+import { PDFDocument, rgb as pdfRgb } from "pdf-lib"
 import { supabase } from "../lib/supabase"
 import { getSapZone } from "../EPVSCalculator"
 
@@ -1374,9 +1374,9 @@ async function appendVariationPage(bytes, variation) {
   const { width, height } = page.getSize()
   const regular = await doc.embedFont("Helvetica")
   const bold = await doc.embedFont("Helvetica-Bold")
-  const navy = { r: 0.02, g: 0.16, b: 0.27 }
-  const blue = { r: 0.05, g: 0.36, b: 0.54 }
-  const grey = { r: 0.35, g: 0.40, b: 0.45 }
+  const navy = pdfRgb(0.02, 0.16, 0.27)
+  const blue = pdfRgb(0.05, 0.36, 0.54)
+  const grey = pdfRgb(0.35, 0.40, 0.45)
   const left = 42
   let y = height - 58
   const draw = (text, x, top, size = 9, font = regular, color = grey, maxWidth = width - 84) => {
@@ -1394,7 +1394,7 @@ async function appendVariationPage(bytes, variation) {
     return top - lines.length * (size + 3)
   }
   page.drawRectangle({ x: 0, y: height - 42, width, height: 42, color: navy })
-  page.drawText("HOMESHIELD SCOTLAND LTD", { x: left, y: height - 27, size: 9, font: bold, color: { r: 1, g: 1, b: 1 } })
+  page.drawText("HOMESHIELD SCOTLAND LTD", { x: left, y: height - 27, size: 9, font: bold, color: pdfRgb(1, 1, 1) })
   page.drawText("CONTRACT VARIATION FORM", { x: width - left - bold.widthOfTextAtSize("CONTRACT VARIATION FORM", 9), y: height - 27, size: 9, font: bold, color: { r: 1, g: 1, b: 1 } })
   page.drawText("Contract Variation", { x: left, y, size: 20, font: bold, color: navy }); y -= 30
   const meta = [
