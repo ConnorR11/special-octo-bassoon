@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import * as tus from "tus-js-client"
 import {
   ArrowLeft,
@@ -102,7 +102,10 @@ function CustomerDetail({
     return () => { active = false }
   }, [deal?.appointment_row_id])
 
-  const cvfCalculationForEditor = (() => {
+  // Keep the editor inputs stable while the parent receives live draft
+  // updates. Recreating these objects on every render caused EPVSCalculator's
+  // initialisation effect to reset its state after each keystroke.
+  const cvfCalculationForEditor = useMemo(() => {
     const original = cvfAppointmentCalculation || {}
     const updated = cvfUpdated || {}
     return {
@@ -113,7 +116,16 @@ function CustomerDetail({
         ...(updated?.data || {}),
       },
     }
-  })()
+  }, [cvfAppointmentCalculation, cvfUpdated])
+
+  const cvfEditorAppointment = useMemo(
+    () => ({
+      ...deal,
+      appointment_row_id: null,
+      epvs_calculation: cvfCalculationForEditor,
+    }),
+    [deal, cvfCalculationForEditor]
+  )
   const [cvfMessage, setCvfMessage] = useState("")
   const [cvfError, setCvfError] = useState("")
   const [surveyAnswers, setSurveyAnswers] = useState({})
@@ -1003,7 +1015,7 @@ function CustomerDetail({
         </section>
         <EPVSCalculator
           key={`cvf-${deal.id}-${cvfUpdated?.savedAt || cvfUpdated?.importedAt || "empty"}-${cvfAppointmentCalculation?.savedAt || "appointment"}`}
-          appointment={{ ...deal, appointment_row_id: null, epvs_calculation: cvfCalculationForEditor }}
+          appointment={cvfEditorAppointment}
           dealId={deal.id}
           initialCalculation={cvfCalculationForEditor}
           onCalculationChange={setCvfDraftData}
