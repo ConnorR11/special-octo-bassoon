@@ -13,6 +13,7 @@ import {
 
 import { supabase } from "../lib/supabase"
 import SurveyProgressBar from "../components/SurveyProgressBar"
+import EPVSCalculator from "../EPVSCalculator"
 
 const surveyPhotoSectionGroups = [
   { title: "Property & installation", sections: ["Front of Property", "Rear of Property", "Side of Property", "Proposed Canopy Location"] },
@@ -880,56 +881,23 @@ function CustomerDetail({
         {[{key:"details",label:"Deal information"},{key:"survey",label:"Survey & Documents"},{key:"contracts",label:"Contract Files"},...(isSolarDeal?[{key:"cvf",label:"Contract Variations"}]:[])].map(tab => <button key={tab.key} type="button" role="tab" aria-selected={activeTab===tab.key} onClick={()=>setActiveTab(tab.key)} style={{flex:"0 0 auto",padding:"12px 16px",border:0,borderBottom:activeTab===tab.key?"3px solid #002d49":"3px solid transparent",marginBottom:-1,background:"transparent",color:activeTab===tab.key?"#002d49":"#64748b",fontSize:12,fontWeight:activeTab===tab.key?700:600,cursor:"pointer"}}>{tab.label}</button>)}
       </div>
 
-      {activeTab === "cvf" && isSolarDeal && <div className="card" style={{ marginBottom: 18 }}>
-        <div className="card-head">
-          <div><h2>Contract Variation Form</h2><p>Refresh the latest system design from OpenSolar and review changes against the agreed EPVS design.</p></div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            {deal.open_solar_id && <a href={`https://app.opensolar.com/projects/${encodeURIComponent(deal.open_solar_id)}/design`} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,padding:"9px 12px",border:"1px solid #cbd5e1",borderRadius:7,color:"#172554",textDecoration:"none",fontSize:11,fontWeight:700}}>Open OpenSolar <ExternalLink size={13}/></a>}
-            <button type="button" onClick={refreshCvfFromOpenSolar} disabled={cvfRefreshing || !deal.open_solar_id} style={{display:"inline-flex",alignItems:"center",gap:7,padding:"9px 13px",border:0,borderRadius:7,background:"#172554",color:"#fff",fontSize:11,fontWeight:700,cursor:cvfRefreshing?"wait":"pointer",opacity:cvfRefreshing||!deal.open_solar_id?0.55:1}}>{cvfRefreshing?"Refreshing…":"Refresh from OpenSolar"}</button>
-          </div>
+      {activeTab === "cvf" && isSolarDeal && <div className="card" style={{ marginBottom: 18, padding: 18 }}>
+        <div style={{ marginBottom: 14 }}>
+          <h2 style={{ margin: 0, fontSize: 18, color: "#10233f" }}>EPVS Calculator — Contract Variation</h2>
+          <p style={{ margin: "5px 0 0", fontSize: 11, color: "#888" }}>Review and calculate the proposed variation using the latest updated EPVS calculation.</p>
         </div>
-        <div style={{padding:"0 20px 20px"}}>
-          {!deal.open_solar_id && <div style={{padding:14,border:"1px solid #f1d3a5",borderRadius:8,background:"#fff9ed",color:"#8a5a12",fontSize:12}}>No OpenSolar project ID is linked to this deal. Link the project on the appointment before creating a variation.</div>}
-          {cvfError && <div style={{marginBottom:12,padding:11,borderRadius:7,background:"#fff0f0",color:"#a33b3b",fontSize:11}}>{cvfError}</div>}
-          {cvfMessage && <div style={{marginBottom:12,padding:11,borderRadius:7,background:"#eaf6ee",color:"#28734c",fontSize:11}}>{cvfMessage}</div>}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}}>
-            <div style={{border:"1px solid #dfe5eb",borderRadius:9,padding:14}}>
-              <div style={{fontSize:10,fontWeight:800,color:"#64748b",textTransform:"uppercase",letterSpacing:".06em"}}>Current agreed design</div>
-              <div style={{fontSize:24,fontWeight:800,color:"#172554",marginTop:8}}>{cvfSystemSize(cvfCurrentData).toFixed(2)} kWp</div>
-              <div style={{fontSize:11,color:"#64748b",marginTop:3}}>{cvfPanelCount(cvfCurrentData)} panels · {cvfCurrentArrays.filter(a=>cvfNumber(a?.panelCount)>0).length} arrays</div>
-              <div style={{fontSize:11,color:"#475569",marginTop:12}}>Panels: {cvfHardwareLabel(cvfHardware(cvfCurrentData).panels,"panels")}</div>
-              <div style={{fontSize:11,color:"#475569",marginTop:5}}>Inverter: {cvfHardwareLabel(cvfHardware(cvfCurrentData).inverters,"inverters")}</div>
-              <div style={{fontSize:11,color:"#475569",marginTop:5}}>Battery: {cvfHardwareLabel(cvfHardware(cvfCurrentData).batteries,"batteries")}</div>
-            </div>
-            <div style={{border:"1px solid #c9d8e7",borderRadius:9,padding:14,background:"#f8fbfe"}}>
-              <div style={{fontSize:10,fontWeight:800,color:"#64748b",textTransform:"uppercase",letterSpacing:".06em"}}>Updated OpenSolar design</div>
-              <div style={{fontSize:24,fontWeight:800,color:"#172554",marginTop:8}}>{cvfSystemSize(cvfUpdatedData).toFixed(2)} kWp</div>
-              <div style={{fontSize:11,color:"#64748b",marginTop:3}}>{cvfPanelCount(cvfUpdatedData)} panels · {cvfUpdatedArrays.filter(a=>cvfNumber(a?.panelCount)>0).length} arrays</div>
-              <div style={{fontSize:11,color:"#475569",marginTop:12}}>Panels: {cvfHardwareLabel(cvfHardware(cvfUpdatedData).panels,"panels")}</div>
-              <div style={{fontSize:11,color:"#475569",marginTop:5}}>Inverter: {cvfHardwareLabel(cvfHardware(cvfUpdatedData).inverters,"inverters")}</div>
-              <div style={{fontSize:11,color:"#475569",marginTop:5}}>Battery: {cvfHardwareLabel(cvfHardware(cvfUpdatedData).batteries,"batteries")}</div>
-              {cvfUpdated?.importedAt && <div style={{fontSize:10,color:"#64748b",marginTop:9}}>Imported {new Date(cvfUpdated.importedAt).toLocaleString("en-GB")}</div>}
-            </div>
-          </div>
-          <div style={{marginTop:18,borderTop:"1px solid #e5eaf0",paddingTop:16}}>
-            <h3 style={{margin:"0 0 10px",fontSize:14,color:"#172554"}}>Design changes</h3>
-            {!cvfCurrent && <div style={{fontSize:11,color:"#64748b"}}>No original/current EPVS snapshot is available for comparison yet.</div>}
-            {!cvfUpdated && <div style={{fontSize:11,color:"#64748b"}}>Refresh from OpenSolar to import the proposed design and generate the comparison.</div>}
-            {cvfCurrent && cvfUpdated && <div style={{display:"grid",gap:8}}>
-              {[
-                ["Panel count",cvfPanelCount(cvfCurrentData),cvfPanelCount(cvfUpdatedData)],
-                ["System size",`${cvfSystemSize(cvfCurrentData).toFixed(2)} kWp`,`${cvfSystemSize(cvfUpdatedData).toFixed(2)} kWp`],
-                ["Panel model",cvfHardwareLabel(cvfHardware(cvfCurrentData).panels),cvfHardwareLabel(cvfHardware(cvfUpdatedData).panels)],
-                ["Inverter",cvfHardwareLabel(cvfHardware(cvfCurrentData).inverters),cvfHardwareLabel(cvfHardware(cvfUpdatedData).inverters)],
-                ["Battery",cvfHardwareLabel(cvfHardware(cvfCurrentData).batteries),cvfHardwareLabel(cvfHardware(cvfUpdatedData).batteries)],
-                ["Roof arrays",cvfCurrentArrays.filter(a=>cvfNumber(a?.panelCount)>0).length,cvfUpdatedArrays.filter(a=>cvfNumber(a?.panelCount)>0).length],
-              ].map(([label,before,after])=><div key={label} style={{display:"grid",gridTemplateColumns:"minmax(90px,.7fr) minmax(0,1fr) minmax(0,1fr)",gap:8,padding:"9px 0",borderBottom:"1px solid #eef1f4",fontSize:11}}>
-                <strong style={{color:"#475569"}}>{label}</strong><span style={{color:"#64748b"}}>{before}</span><span style={{color:cvfChanged(before,after)?"#166534":"#475569",fontWeight:cvfChanged(before,after)?750:500}}>{after}{cvfChanged(before,after)?" · Changed":""}</span>
-              </div>)}
-              <div style={{marginTop:8,padding:12,borderRadius:8,background:"#fff8e8",color:"#805b16",fontSize:11,lineHeight:1.5}}>This is the design comparison stage. EPVS financial results, price adjustment, PDF generation and customer signature are not yet part of this first CVF view. Current remains unchanged until a future signed-CVF workflow is completed.</div>
-            </div>}
-          </div>
-        </div>
+        {!deal.open_solar_id && <div style={{ marginBottom: 14, padding: 14, border: "1px solid #f1d3a5", borderRadius: 8, background: "#fff9ed", color: "#8a5a12", fontSize: 12 }}>No OpenSolar project ID is linked to this deal. Link the project on the appointment before importing a variation.</div>}
+        {cvfError && <div role="alert" style={{ marginBottom: 12, padding: 11, borderRadius: 7, background: "#fff0f0", color: "#a33b3b", fontSize: 11 }}>{cvfError}</div>}
+        {cvfMessage && <div style={{ marginBottom: 12, padding: 11, borderRadius: 7, background: "#eaf6ee", color: "#28734c", fontSize: 11 }}>{cvfMessage}</div>}
+        <EPVSCalculator
+          key={`cvf-${deal.id}-${cvfUpdated?.savedAt || cvfUpdated?.importedAt || "empty"}`}
+          appointment={{ ...deal, appointment_row_id: null, epvs_calculation: cvfUpdated || null }}
+          dealId={deal.id}
+          initialCalculation={cvfUpdated}
+          permissionLevel={permissionLevel}
+        />
+        {!cvfUpdated && <div style={{ marginTop: 12, padding: 12, borderRadius: 8, background: "#f8fafc", color: "#64748b", fontSize: 11 }}>No updated EPVS calculation has been imported yet. Use “Get Current Design” in the OpenSolar system design section below to import the latest design into this CVF.</div>}
+        <div style={{ marginTop: 14, padding: 12, borderRadius: 8, background: "#fff8e8", color: "#805b16", fontSize: 11, lineHeight: 1.5 }}>This calculator saves to the deal’s Updated EPVS calculation only. It does not change the appointment calculation or the agreed Current EPVS design.</div>
       </div>}
 
       {activeTab === "contracts" && <div className="card" style={{ marginBottom: 18 }}>
