@@ -872,7 +872,7 @@ function CustomerDetail({
   }
 
   const pipedriveStage = String(deal?.pipedrive_stage || "").trim() || "—"
-  const isSolarDeal = /solar/i.test(String(deal?.product || deal?.pipedrive_data?.product || ""))
+  const isSolarDeal = String(deal?.contract_number || "").trim().toUpperCase().startsWith("S") || /solar/i.test(String(deal?.product || deal?.pipedrive_data?.product || ""))
   const canAccessCvf = Number(permissionLevel) > 1
 
   useEffect(() => {
