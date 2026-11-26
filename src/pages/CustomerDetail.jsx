@@ -172,7 +172,7 @@ function CustomerDetail({
         contractNumber: deal.contract_number || appointment.contract_number,
         rows: cvfChangeRows.map(row => ({ label: row.label, before: row.before, after: row.after })),
       }
-      const result = await GenerateSolarContract({ appointment, epvsOverride: cvfUpdated, variation })
+      const result = await GenerateSolarContract({ appointment, epvsOverride: cvfUpdated, variation, previewOnly: true })
       if (!result?.blob || !result?.fileName) throw new Error("The CVF PDF could not be generated.")
       const path = deal.id + "/contract_variations/" + Date.now() + "-CVF.pdf"
       const { error: uploadError } = await supabase.storage.from("deal-documents").upload(path, result.blob, { contentType: "application/pdf", upsert: false })
