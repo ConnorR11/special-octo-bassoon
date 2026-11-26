@@ -437,6 +437,7 @@ export default function IWACertificates() {
             <button disabled={toSendLoading || toSendRows.length < PAGE_SIZE} onClick={() => setToSendPage(value => value + 1)} style={{ border: "1px solid #dce2e7", borderRadius: 7, padding: "7px 10px", background: "#fff", cursor: "pointer", opacity: toSendRows.length < PAGE_SIZE ? .45 : 1 }}><ChevronRight size={15}/></button>
           </div>
         </div>
+        </div>
       </div>}
 
       {matchingCertificate && <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(15,25,35,.48)", display: "flex", justifyContent: "center", alignItems: "center", padding: 18 }}>
