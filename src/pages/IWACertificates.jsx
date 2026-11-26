@@ -399,7 +399,11 @@ export default function IWACertificates() {
 
       </>}
 
-      {activeTab === "to-send" && <div style={{ background: "#fff", border: "1px solid #e7ebef", borderRadius: 12, overflow: "hidden" }}>
+      {activeTab === "to-send" && <div>
+        <p style={{ margin: "0 0 12px", color: "#c62828", fontSize: 13, fontWeight: 650 }}>
+          Reminder: Update this list from IWA before sending any new certificates to avoid duplicates.
+        </p>
+        <div style={{ background: "#fff", border: "1px solid #e7ebef", borderRadius: 12, overflow: "hidden" }}>
         <div style={{ padding: 15, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", borderBottom: "1px solid #edf0f2" }}>
           <div style={{ flex: "1 1 320px", position: "relative" }}><Search size={16} style={{ position: "absolute", left: 11, top: 11, color: "#8a949d" }}/><input value={toSendSearch} onChange={e => { setToSendSearch(e.target.value); setToSendPage(0) }} placeholder="Search customer, contract, postcode or address..." style={{ width: "100%", boxSizing: "border-box", border: "1px solid #dce2e7", borderRadius: 8, padding: "9px 10px 9px 34px", fontSize: 13 }}/></div>
           <button onClick={exportToSend} disabled={toSendLoading} style={{ border: "1px solid #dce2e7", borderRadius: 8, background: "#fff", padding: "9px 13px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "#34495a" }}><FileText size={15}/> Export Excel</button>
@@ -461,6 +465,7 @@ export default function IWACertificates() {
             </div>
             <div style={{ fontSize: 11, color: "#77818b", marginTop: 14 }}>The deal row ID is only saved after you select Approve Match.</div>
           </div>
+        </div>
         </div>
       </div>}
     </div>
