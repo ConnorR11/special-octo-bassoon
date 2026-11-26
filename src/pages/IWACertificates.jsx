@@ -339,7 +339,7 @@ export default function IWACertificates() {
             <tbody>
               {toSendLoading ? <tr><td colSpan="9" style={{ padding: 30, textAlign: "center", color: "#7b858e" }}>Loading deals…</td></tr> : toSendRows.length === 0 ? <tr><td colSpan="9" style={{ padding: 30, textAlign: "center", color: "#7b858e" }}>No deals awaiting an IWA certificate.</td></tr> : toSendRows.map(deal => <tr key={deal.id} style={{ borderBottom: "1px solid #eef1f3" }}>
                 <td style={{ padding: "12px 13px", fontWeight: 600 }}>{deal.customer_name || "—"}</td>
-                <td style={{ padding: "12px 13px", color: "#66727d", minWidth: 260 }}>{[deal.address, deal.postcode].filter(Boolean).join(", ") || "—"}</td>
+                <td style={{ padding: "12px 13px", color: "#66727d", minWidth: 260 }}>{deal.address && deal.postcode && deal.address.toUpperCase().includes(deal.postcode.trim().toUpperCase()) ? deal.address : [deal.address, deal.postcode].filter(Boolean).join(", ") || "—"}</td>
                 <td style={{ padding: "12px 13px" }}>{deal.email || "—"}</td>
                 <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>N/A</td>
                 <td style={{ padding: "12px 13px", whiteSpace: "nowrap" }}>N/A</td>
