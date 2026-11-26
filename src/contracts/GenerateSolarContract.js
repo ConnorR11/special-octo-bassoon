@@ -1564,8 +1564,8 @@ export async function GenerateSolarContract({ appointment, previewOnly = false, 
   }
 
   const blob = new Blob([bytes], { type: "application/pdf" })
+  if (previewOnly) return { url: null, blob, fileName: safeName + "-Digital-Solar-Contract.pdf", contractNumber }
   const url = URL.createObjectURL(blob)
-  if (previewOnly) return { url, blob, fileName: safeName + "-Digital-Solar-Contract.pdf", contractNumber }
   const link = document.createElement("a")
   link.href = url
   link.download = safeName + "-Digital-Solar-Contract.pdf"
