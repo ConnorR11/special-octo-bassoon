@@ -1367,7 +1367,83 @@ function footer(pdf, index, count, settings, appointment) {
   pdf.text(`Page ${index + 1} of ${count}`, width - padding, height - 8, { align: "right" })
 }
 
-export async function GenerateSolarContract({ appointment, previewOnly = false }) {
+
+async function appendVariationPage(bytes, variation) {
+  const doc = await PDFDocument.load(bytes)
+  const page = doc.addPage("A4")
+  const { width, height } = page.getSize()
+  const regular = await doc.embedFont("Helvetica")
+  const bold = await doc.embedFont("Helvetica-Bold")
+  const navy = { r: 0.02, g: 0.16, b: 0.27 }
+  const blue = { r: 0.05, g: 0.36, b: 0.54 }
+  const grey = { r: 0.35, g: 0.40, b: 0.45 }
+  const left = 42
+  let y = height - 58
+  const draw = (text, x, top, size = 9, font = regular, color = grey, maxWidth = width - 84) => {
+    const value = String(text ?? "—")
+    const words = value.split(/\\s+/)
+    let line = ""
+    const lines = []
+    for (const word of words) {
+      const next = line ? line + " " + word : word
+      if (font.widthOfTextAtSize(next, size) > maxWidth && line) { lines.push(line); line = word }
+      else line = next
+    }
+    if (line) lines.push(line)
+    lines.forEach((item, index) => page.drawText(item, { x, y: top - index * (size + 3), size, font, color }))
+    return top - lines.length * (size + 3)
+  }
+  page.drawRectangle({ x: 0, y: height - 42, width, height: 42, color: navy })
+  page.drawText("HOMESHIELD SCOTLAND LTD", { x: left, y: height - 27, size: 9, font: bold, color: { r: 1, g: 1, b: 1 } })
+  page.drawText("CONTRACT VARIATION FORM", { x: width - left - bold.widthOfTextAtSize("CONTRACT VARIATION FORM", 9), y: height - 27, size: 9, font: bold, color: { r: 1, g: 1, b: 1 } })
+  page.drawText("Contract Variation", { x: left, y, size: 20, font: bold, color: navy }); y -= 30
+  const meta = [
+    ["Customer", variation.customerName],
+    ["Address", variation.address],
+    ["Contract number", variation.contractNumber],
+    ["Variation date", date(new Date())],
+  ]
+  meta.forEach(([label, value]) => {
+    page.drawText(label.toUpperCase(), { x: left, y, size: 7, font: bold, color: blue })
+    page.drawText(String(value || "—"), { x: left + 110, y, size: 9, font: regular, color: grey })
+    y -= 17
+  })
+  y -= 8
+  page.drawLine({ start: { x: left, y }, end: { x: width - left, y }, thickness: 1, color: blue }); y -= 22
+  page.drawText("CHANGES TO THE AGREED CONTRACT", { x: left, y, size: 10, font: bold, color: navy }); y -= 20
+  page.drawText("Item", { x: left, y, size: 8, font: bold, color: blue })
+  page.drawText("Original", { x: left + 190, y, size: 8, font: bold, color: blue })
+  page.drawText("Revised", { x: left + 330, y, size: 8, font: bold, color: blue })
+  y -= 8
+  page.drawLine({ start: { x: left, y }, end: { x: width - left, y }, thickness: 0.7, color: blue }); y -= 15
+  const rows = Array.isArray(variation.rows) ? variation.rows : []
+  for (const row of rows) {
+    const labelLines = String(row.label || "").split(/\\n/)
+    const beforeLines = String(row.before || "—").split(/\\n/)
+    const afterLines = String(row.after || "—").split(/\\n/)
+    const count = Math.max(labelLines.length, beforeLines.length, afterLines.length, 1)
+    for (let i = 0; i < count; i++) {
+      if (y < 95) break
+      page.drawText((labelLines[i] || "").slice(0, 44), { x: left, y, size: 7.5, font: bold, color: grey })
+      page.drawText((beforeLines[i] || "").slice(0, 36), { x: left + 190, y, size: 7, font: regular, color: grey })
+      page.drawText((afterLines[i] || "").slice(0, 36), { x: left + 330, y, size: 7, font: regular, color: navy })
+      y -= 11
+    }
+    y -= 5
+    if (y < 95) break
+  }
+  if (!rows.length) draw("No differences were recorded between the original and revised EPVS calculations.", left, y, 9, regular, grey)
+  y = Math.max(80, y - 8)
+  page.drawLine({ start: { x: left, y }, end: { x: width - left, y }, thickness: 0.7, color: blue })
+  y -= 18
+  draw("This variation records the revised system specification and EPVS calculation. All other terms and conditions of the original contract remain unchanged unless expressly varied in writing.", left, y, 8, regular, grey)
+  y -= 48
+  page.drawText("Customer acknowledgement", { x: left, y, size: 8, font: bold, color: navy })
+  draw("The original contract signatures and timestamps are retained in the preceding contract pages. This form is an accompanying record of the revised design.", left, y - 14, 7.5, regular, grey)
+  return doc.save()
+}
+
+export async function GenerateSolarContract({ appointment, previewOnly = false, epvsOverride = null, variation = null }) {
   if (!appointment) return
 
   // Always refresh the appointment from Supabase so the contract uses the
@@ -1448,7 +1524,7 @@ export async function GenerateSolarContract({ appointment, previewOnly = false }
 
   // The contract must always use the EPVS calculation saved on the appointment.
   // Do not accept a separate/stale EPVS calculation passed by the caller.
-  let epvs = appointment?.epvs_calculation || null
+  let epvs = epvsOverride || appointment?.epvs_calculation || null
   if (typeof epvs === "string") {
     try {
       epvs = JSON.parse(epvs)
@@ -1473,7 +1549,8 @@ export async function GenerateSolarContract({ appointment, previewOnly = false }
   const safeName = textValue(appointment?.name, "Customer")
     .replace(/[^a-z0-9]+/gi, "-")
     .replace(/^-+|-+$/g, "") || "Customer"
-  const bytes = await appendProductDatasheets(pdf, appointment, epvs, pages)
+  let bytes = await appendProductDatasheets(pdf, appointment, epvs, pages)
+  if (variation) bytes = await appendVariationPage(bytes, variation)
 
   // Only persist the contract number after the complete contract has
   // successfully rendered, including its datasheets.
