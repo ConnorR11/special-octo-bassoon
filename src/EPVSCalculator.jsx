@@ -1619,7 +1619,25 @@ export default function EPVSCalculator({
       const payload = {
         version: 1,
         savedAt: new Date().toISOString(),
-        data,
+        data: {
+          ...data,
+          // Keep the customer's existing bill and PV details grouped in the
+          // JSON so the deal view can render them without relying on form state.
+          // The flat fields remain for compatibility with EPVS calculations.
+          currentEnergy: {
+            annualConsumption: Number(data.annualConsumption || 0),
+            importRate: Number(data.importRate || 0),
+            exportRate: Number(data.exportRate || 0),
+            standingCharge: Number(data.standingCharge || 0),
+            existingSolar: Boolean(data.existingSolar),
+            existingGeneration: data.existingSolar
+              ? Number(data.existingGeneration || 0)
+              : 0,
+            existingSolarSelfConsumption: data.existingSolar
+              ? Number(data.existingSolarSelfConsumption || 0)
+              : 0,
+          },
+        },
         results,
         thirtyYearProjection,
       }
