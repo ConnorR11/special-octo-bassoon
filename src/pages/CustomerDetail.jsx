@@ -732,6 +732,29 @@ function CustomerDetail({
     } finally { setOpeningDocument("") }
   }
 
+  async function downloadCvfDocument(document) {
+    setOpeningDocument(document.id)
+    setDocumentError("")
+    try {
+      const { data, error } = await supabase.storage.from("deal-documents").download(document.storage_path)
+      if (error) throw error
+      if (!data) throw new Error("The CVF PDF could not be downloaded.")
+      const url = URL.createObjectURL(data)
+      const link = window.document.createElement("a")
+      link.href = url
+      link.download = document.file_name || "Contract-Variation.pdf"
+      window.document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error("Unable to download CVF PDF:", error)
+      setDocumentError(error?.message || "Unable to download CVF PDF.")
+    } finally {
+      setOpeningDocument("")
+    }
+  }
+
   async function deleteDocument(document) {
     if (!window.confirm(`Delete "${document.file_name}"? This cannot be undone.`)) return
     setDocumentError("")
@@ -1198,7 +1221,7 @@ function CustomerDetail({
             ? <div style={{ color: "#64748b", fontSize: 11 }}>No CVF PDFs have been generated for this deal yet.</div>
             : documents.filter(document => document.category === "contract_variation").map(document => <div key={document.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "9px 0", borderBottom: "1px solid #edf1f5" }}>
                 <div style={{ minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 650, color: "#263645", overflowWrap: "anywhere" }}>{document.file_name}</div><div style={{ marginTop: 3, fontSize: 9, color: "#89939c" }}>{document.created_at ? new Date(document.created_at).toLocaleString("en-GB") : "Date unavailable"}</div></div>
-                <button type="button" onClick={() => openDocument(document)} disabled={openingDocument === document.id} style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 10px", border: "1px solid #d7dee8", borderRadius: 6, background: "#fff", color: "#172554", fontSize: 10, fontWeight: 700, cursor: "pointer" }}><FileUp size={13}/>{openingDocument === document.id ? "Opening..." : "Download PDF"}</button>
+                <button type="button" onClick={() => downloadCvfDocument(document)} disabled={openingDocument === document.id} style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 10px", border: "1px solid #d7dee8", borderRadius: 6, background: "#fff", color: "#172554", fontSize: 10, fontWeight: 700, cursor: "pointer" }}><FileUp size={13}/>{openingDocument === document.id ? "Downloading..." : "Download PDF"}</button>
               </div>)}
         </div>
       </div>}
