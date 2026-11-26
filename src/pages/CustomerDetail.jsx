@@ -193,7 +193,10 @@ function CustomerDetail({
       })
       const saved = await response.json().catch(() => ({}))
       if (!response.ok || !saved.success) throw new Error(saved.error || "The CVF could not be saved or synced to Pipedrive.")
+      if (!saved.current_epvs_promoted) throw new Error("The CVF was saved, but the current EPVS baseline was not promoted.")
+      setCvfCurrent(cvfUpdated)
       await loadContractFiles()
+      onUpdated?.()
       const url = URL.createObjectURL(result.blob)
       const link = window.document.createElement("a")
       link.href = url
@@ -202,7 +205,7 @@ function CustomerDetail({
       link.click()
       link.remove()
       window.setTimeout(() => URL.revokeObjectURL(url), 1000)
-      setCvfMessage("CVF saved to Contract Files, synced to Pipedrive, and the deal moved to On Hold.")
+      setCvfMessage("CVF saved to Contract Files, synced to Pipedrive, and moved to On Hold. Its Updated EPVS JSON is now the Current EPVS baseline for the next variation.")
     } catch (error) {
       console.error("CVF PDF generation failed:", error)
       setCvfError(error?.message || "Unable to generate the contract variation PDF.")
