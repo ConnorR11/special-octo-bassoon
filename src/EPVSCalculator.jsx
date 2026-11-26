@@ -626,6 +626,24 @@ export default function EPVSCalculator({
   
   const appointmentInitial = useMemo(() => {
     const saved = (initialCalculation || appointment?.epvs_calculation)?.data || {}
+    // CVF stores the customer's bill snapshot under data.currentEnergy.
+    // Hydrate the calculator's existing flat input fields from that object
+    // so the energy form is populated when a deal is reopened or refreshed.
+    const currentEnergy = saved?.currentEnergy || {}
+    const annualConsumption =
+      currentEnergy.annualConsumption ?? saved.annualConsumption ?? ""
+    const importRate = currentEnergy.importRate ?? saved.importRate ?? ""
+    const exportRate = currentEnergy.exportRate ?? saved.exportRate ?? ""
+    const standingCharge =
+      currentEnergy.standingCharge ?? saved.standingCharge ?? ""
+    const existingSolar =
+      currentEnergy.existingSolar ?? saved.existingSolar ?? false
+    const existingGeneration =
+      currentEnergy.existingGeneration ?? saved.existingGeneration ?? 0
+    const existingSolarSelfConsumption =
+      currentEnergy.existingSolarSelfConsumption ??
+      saved.existingSolarSelfConsumption ??
+      50
     const openSolar = saved?.openSolar
     const openSolarArrays =
       openSolar && Array.isArray(openSolar.arrays)
@@ -665,13 +683,19 @@ export default function EPVSCalculator({
     return {
       ...initial,
       ...saved,
+      annualConsumption,
       importRate:
-        saved.importRate === "" || saved.importRate == null
+        importRate === "" || importRate == null
           ? ""
           : Math.min(
               IMPORT_RATE_CAP_PENCE,
-              Math.max(0, Number(saved.importRate) || 0)
+              Math.max(0, Number(importRate) || 0)
             ),
+      exportRate,
+      standingCharge,
+      existingSolar,
+      existingGeneration,
+      existingSolarSelfConsumption,
       arrays: sixArrays,
       ...(openSolarArrays.length > 0
         ? {
