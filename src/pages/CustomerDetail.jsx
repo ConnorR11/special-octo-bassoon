@@ -170,7 +170,7 @@ function CustomerDetail({
         customerName: deal.customer_name || appointment.name,
         address: [deal.address || appointment.address, deal.postcode || appointment.postcode].filter(Boolean).join(", "),
         contractNumber: deal.contract_number || appointment.contract_number,
-        rows: cvfChangeRows.map(row => ({ label: row.label, before: row.before, after: row.after })),
+        rows: cvfChangeRows.map(row => ({ label: row.label, before: row.before, after: row.after, category: row.category })),
       }
       const result = await GenerateSolarContract({ appointment, epvsOverride: cvfUpdated, variation, previewOnly: true })
       if (!result?.blob || !result?.fileName) throw new Error("The CVF PDF could not be generated.")
