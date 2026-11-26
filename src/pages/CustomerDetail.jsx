@@ -231,7 +231,7 @@ function CustomerDetail({
     add("Deposit", cvfCurrentData.deposit, cvfDraft.deposit, cvfFormatMoney, "Payment Information")
     add("Admin fee", cvfCurrentData.adminFee, cvfDraft.adminFee, cvfFormatMoney, "Payment Information")
     add("Total contract value", cvfCurrentData.totalContractValue, cvfDraft.totalContractValue, cvfFormatMoney, "Payment Information")
-    add("Payment method", cvfCurrentData.paymentMethod, cvfDraft.paymentMethod, "Payment Information")
+    add("Payment method", cvfCurrentData.paymentMethod, cvfDraft.paymentMethod, value => value || "Not set", "Payment Information")
     add("Finance term", cvfCurrentData.financeTerm, cvfDraft.financeTerm, value => value ? `${value} years` : "Not set", "Payment Information")
     add("Finance APR", cvfCurrentData.financeRate, cvfDraft.financeRate, value => value == null || value === "" ? "Not set" : `${value}%`, "Payment Information")
     // Energy snapshots may be stored in the grouped currentEnergy object
