@@ -1031,6 +1031,7 @@ function CustomerDetail({
           dealId={deal.id}
           initialCalculation={cvfCalculationForEditor}
           onCalculationChange={setCvfDraftData}
+          onCalculationSaved={setCvfUpdated}
           permissionLevel={permissionLevel}
         />
         {!cvfUpdated && <div style={{ marginTop: 12, padding: 12, borderRadius: 8, background: "#f8fafc", color: "#64748b", fontSize: 11 }}>No updated EPVS calculation has been imported yet. Use “Get Current Design” in the OpenSolar system design section below to import the latest design into this CVF.</div>}
