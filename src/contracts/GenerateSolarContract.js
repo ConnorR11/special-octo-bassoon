@@ -1397,7 +1397,7 @@ async function appendVariationPage(bytes, variation) {
   }
   const wrap = (value, font, size, maxWidth) => {
     const lines = []; let line = ""
-    for (const word of String(value ?? "—").split(/\\s+/)) {
+    for (const word of String(value ?? "—").replace(/[\\r\\n\\t]+/g, " ").split(/\\s+/)) {
       const next = line ? line + " " + word : word
       if (font.widthOfTextAtSize(next, size) > maxWidth && line) { lines.push(line); line = word } else line = next
     }
