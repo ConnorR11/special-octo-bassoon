@@ -760,17 +760,22 @@ export default function EPVSCalculator({
 
   const [data, setData] =
     useState(appointmentInitial)
-
-  // Let the parent CVF screen render a live comparison while the user edits.
-  useEffect(() => {
-    onCalculationChange?.(data)
-  }, [data, onCalculationChange])
+  const [draftHydrated, setDraftHydrated] = useState(false)
 
   const migratedAppointmentRef = useRef("")
 
   useEffect(() => {
+    setDraftHydrated(false)
     setData(appointmentInitial)
+    setDraftHydrated(true)
   }, [appointmentInitial])
+
+  // Only publish calculator state after the saved Updated EPVS has hydrated.
+  // Thereafter every keystroke is sent to the parent for the live comparison.
+  useEffect(() => {
+    if (!draftHydrated) return
+    onCalculationChange?.(data)
+  }, [data, draftHydrated, onCalculationChange])
 
   // Keep the EPVS display in sync when OpenSolar saves a design.
   // OpenSolar now writes directly into the existing EPVS calculator structure
