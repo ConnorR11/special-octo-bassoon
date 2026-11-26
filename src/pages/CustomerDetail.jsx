@@ -74,11 +74,11 @@ function CustomerDetail({
   const [cvfCurrent, setCvfCurrent] = useState(deal?.current_epvs_calculation || null)
   const [cvfUpdated, setCvfUpdated] = useState(deal?.updated_epvs_calculation || null)
   const [cvfDraftData, setCvfDraftData] = useState(null)
-  const [cvfSaveAction, setCvfSaveAction] = useState(null)
-  // Store the registered save function as a value. Passing a function directly
-  // to a React state setter would execute it as an updater (and save immediately).
+  const cvfSaveActionRef = useRef(null)
+  // Keep the save callback in a ref rather than React state. This prevents
+  // React from ever interpreting a registered function as a state updater.
   const registerCvfSaveAction = useCallback(action => {
-    setCvfSaveAction(() => action)
+    cvfSaveActionRef.current = action
   }, [])
   const [cvfAppointmentCalculation, setCvfAppointmentCalculation] = useState(null)
   const [cvfRefreshing, setCvfRefreshing] = useState(false)
@@ -1019,9 +1019,8 @@ function CustomerDetail({
               </span>
               <button
                 type="button"
-                onClick={() => cvfSaveAction?.()}
-                disabled={!cvfSaveAction}
-                style={{ padding: "8px 13px", border: 0, borderRadius: 7, background: "#172554", color: "#fff", fontSize: 12, fontWeight: 700, cursor: cvfSaveAction ? "pointer" : "not-allowed", opacity: cvfSaveAction ? 1 : 0.55 }}
+                onClick={() => cvfSaveActionRef.current?.()}
+                style={{ padding: "8px 13px", border: 0, borderRadius: 7, background: "#172554", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
               >
                 Update Changes
               </button>
