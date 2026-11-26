@@ -1075,7 +1075,8 @@ function CustomerDetail({
                   </div>
                 </div>
               ))}
-            </div>: (
+            </div>
+          ) : (
             <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12 }}>Changes will appear here as you edit the calculator.</p>
           )}
         </section>
