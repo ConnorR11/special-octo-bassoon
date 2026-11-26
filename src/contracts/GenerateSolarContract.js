@@ -383,9 +383,8 @@ async function getProductDatasheetPaths(appointment, epvs, pages) {
   return out
 }
 
-async function appendProductDatasheets(pdf, appointment, epvs, pages) {
+async function appendProductDatasheets(base, appointment, epvs, pages) {
   const paths = await getProductDatasheetPaths(appointment, epvs, pages)
-  const base = pdf.output("arraybuffer")
   if (!paths.length) return new Uint8Array(base)
   const merged = await PDFDocument.load(base)
   for (const path of paths) {
@@ -1565,8 +1564,10 @@ export async function GenerateSolarContract({ appointment, previewOnly = false, 
   const safeName = textValue(appointment?.name, "Customer")
     .replace(/[^a-z0-9]+/gi, "-")
     .replace(/^-+|-+$/g, "") || "Customer"
-  let bytes = await appendProductDatasheets(pdf, appointment, epvs, pages)
+  // Keep the CVF immediately after the contract/T&Cs pages, before datasheets.
+  let bytes = new Uint8Array(pdf.output("arraybuffer"))
   if (variation) bytes = await appendVariationPage(bytes, variation)
+  bytes = await appendProductDatasheets(bytes, appointment, epvs, pages)
 
   // Only persist the contract number after the complete contract has
   // successfully rendered, including its datasheets.
