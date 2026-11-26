@@ -1081,6 +1081,39 @@ function CustomerDetail({
               </button>
             </div>
           </div>
+          {(cvfCurrent?.data?.openSolar?.imageUrl || cvfCurrent?.data?.imageUrl || cvfUpdated?.data?.openSolar?.imageUrl || cvfUpdated?.data?.imageUrl) && (
+            <div style={{ marginBottom: 16 }}>
+              <h4 style={{ margin: "4px 0 10px", color: "#172554", fontSize: 12, fontWeight: 750 }}>System Design — Before &amp; After</h4>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 12 }}>
+                {[
+                  {
+                    label: "Original Design",
+                    imageUrl: cvfCurrent?.data?.openSolar?.imageUrl || cvfCurrent?.data?.imageUrl,
+                  },
+                  {
+                    label: "Revised Design",
+                    imageUrl: cvfUpdated?.data?.openSolar?.imageUrl || cvfUpdated?.data?.imageUrl,
+                  },
+                ].map(item => (
+                  <div key={item.label} style={{ minWidth: 0, border: "1px solid #dbe3ec", borderRadius: 8, overflow: "hidden", background: "#fff" }}>
+                    <div style={{ padding: "8px 10px", color: "#334155", fontSize: 11, fontWeight: 700, borderBottom: "1px solid #e8edf3" }}>{item.label}</div>
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.label + " solar design"}
+                        loading="lazy"
+                        style={{ display: "block", width: "100%", height: 230, objectFit: "contain", background: "#f8fafc" }}
+                      />
+                    ) : (
+                      <div style={{ height: 120, display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: 11 }}>
+                        No design image saved
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {cvfChangeRows.length > 0 ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {cvfChangeGroups.filter(group => group.rows.length > 0).map(group => (
