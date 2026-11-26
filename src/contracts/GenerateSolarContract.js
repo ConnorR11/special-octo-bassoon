@@ -1370,7 +1370,7 @@ function footer(pdf, index, count, settings, appointment) {
 
 async function appendVariationPage(bytes, variation) {
   const doc = await PDFDocument.load(bytes)
-  const page = doc.addPage("A4")
+  const page = doc.addPage([595.28, 841.89])
   const { width, height } = page.getSize()
   const regular = await doc.embedFont("Helvetica")
   const bold = await doc.embedFont("Helvetica-Bold")
