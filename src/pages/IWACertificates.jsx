@@ -152,6 +152,83 @@ export default function IWACertificates() {
   useEffect(() => {
     if (activeTab === "to-send") loadToSend()
   }, [activeTab, loadToSend])
+  const exportToSend = async () => {
+    if (!supabase) return
+    setToSendLoading(true)
+    setToSendError("")
+    try {
+      const allDeals = []
+      let from = 0
+      while (true) {
+        let request = supabase.from("deals")
+          .select("id,contract_number,customer_name,address,postcode,email,appointment_row_id,product,deal_value,net_value,sale_date,installation_start_date,installation_completion_date,contract_payment_method,salesperson_name,status,iwa_certificates!iwa_certificates_deal_row_id_fkey(id)")
+          .is("iwa_certificates", null)
+          .gte("sale_date", "2026-01-01")
+          .eq("product", "Windows")
+          .not("installation_start_date", "is", null)
+          .gt("net_value", 0)
+          .eq("balance_outstanding", 0)
+          .order("installation_completion_date", { ascending: true, nullsFirst: true })
+          .range(from, from + 999)
+        const term = toSendSearch.trim()
+        if (term) {
+          const safe = term.replace(/[%_]/g, "\\  useEffect(() => {
+    if (activeTab === "to-send") loadToSend()
+  }, [activeTab, loadToSend])").replace(/,/g, "\\,")
+          request = request.or(`customer_name.ilike.%${safe}%,contract_number.ilike.%${safe}%,postcode.ilike.%${safe}%,address.ilike.%${safe}%`)
+        }
+        const { data, error } = await request
+        if (error) throw error
+        allDeals.push(...(data || []))
+        if (!data || data.length < 1000) break
+        from += 1000
+      }
+
+      const appointmentIds = [...new Set(allDeals.map(deal => deal.appointment_row_id).filter(Boolean))]
+      const appointmentEmails = {}
+      for (let i = 0; i < appointmentIds.length; i += 500) {
+        const { data, error } = await supabase.from("appointments")
+          .select("appointment_row_id,email_address")
+          .in("appointment_row_id", appointmentIds.slice(i, i + 500))
+        if (error) throw error
+        for (const appointment of data || []) appointmentEmails[appointment.appointment_row_id] = appointment.email_address
+      }
+
+      const headers = ["Customer Name","Address","Email Address","Deposit Amount","Date Deposit Paid","Type of Install","Date of Completion","Total Contract Value","Other Information"]
+      const csvRows = allDeals.map(deal => {
+        const address = deal.address && deal.postcode && deal.address.toUpperCase().includes(deal.postcode.trim().toUpperCase())
+          ? deal.address
+          : [deal.address, deal.postcode].filter(Boolean).join(", ")
+        return [
+          deal.customer_name || "",
+          address || "",
+          deal.email || appointmentEmails[deal.appointment_row_id] || "",
+          "N/A",
+          "N/A",
+          deal.product || "",
+          deal.installation_completion_date ? new Date(`${deal.installation_completion_date}T00:00:00`).toLocaleDateString("en-GB") : "",
+          deal.deal_value == null ? "" : formatCurrency(Number(deal.deal_value)),
+          deal.contract_payment_method || "",
+        ]
+      })
+      const escapeCsv = value => `"${String(value ?? "").replace(/"/g, '""')}"`
+      const csv = [headers, ...csvRows].map(row => row.map(escapeCsv).join(",")).join("\\r\\n")
+      const blob = new Blob(["\\uFEFF", csv], { type: "text/csv;charset=utf-8;" })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `IWA-To-Send-${new Date().toISOString().slice(0,10)}.csv`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setToSendError(err?.message || "Unable to export the IWA To Send list.")
+    } finally {
+      setToSendLoading(false)
+    }
+  }
+
   const searchDeals = async (value, certificate = matchingCertificate) => {
     setExactMatchMode(false)
     setDealSearch(value)
@@ -328,6 +405,7 @@ export default function IWACertificates() {
       {activeTab === "to-send" && <div style={{ background: "#fff", border: "1px solid #e7ebef", borderRadius: 12, overflow: "hidden" }}>
         <div style={{ padding: 15, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", borderBottom: "1px solid #edf0f2" }}>
           <div style={{ flex: "1 1 320px", position: "relative" }}><Search size={16} style={{ position: "absolute", left: 11, top: 11, color: "#8a949d" }}/><input value={toSendSearch} onChange={e => { setToSendSearch(e.target.value); setToSendPage(0) }} placeholder="Search customer, contract, postcode or address..." style={{ width: "100%", boxSizing: "border-box", border: "1px solid #dce2e7", borderRadius: 8, padding: "9px 10px 9px 34px", fontSize: 13 }}/></div>
+          <button onClick={exportToSend} disabled={toSendLoading} style={{ border: "1px solid #dce2e7", borderRadius: 8, background: "#fff", padding: "9px 13px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "#34495a" }}><FileText size={15}/> Export CSV</button>
           <button onClick={loadToSend} disabled={toSendLoading} style={{ border: "1px solid #dce2e7", borderRadius: 8, background: "#fff", padding: "9px 13px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "#34495a" }}><RefreshCw size={15}/> Refresh</button>
         </div>
         {toSendError && <div style={{ padding: 14, color: "#b42318", background: "#fff4f2", fontSize: 13 }}>{toSendError}</div>}
