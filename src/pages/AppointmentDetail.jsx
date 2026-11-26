@@ -174,9 +174,10 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,onOpenDe
     if(solar({...appointment,...updated})&&!epvs)throw new Error("Please complete and save the EPVS calculation before generating the solar contract.");
     onUpdated?.(updated);
     const generated=await GenerateSolarContract({appointment:updated,previewOnly:true});
-    if(!generated?.url)throw new Error("The contract preview could not be generated.");
+    if(!generated?.blob)throw new Error("The contract PDF could not be generated.");
+    const previewUrl=URL.createObjectURL(generated.blob);
     if(contractPreviewUrl)URL.revokeObjectURL(contractPreviewUrl);
-    setContractPreviewUrl(generated.url);
+    setContractPreviewUrl(previewUrl);
     setSoldStep(2);
    }catch(e){console.error("Unable to prepare contract preview:",e);setError(e?.message||"Unable to prepare the contract preview.");}
    finally{setSaving(false)}
@@ -198,9 +199,10 @@ export default function AppointmentDetail({appointment,onBack,onUpdated,onOpenDe
     if(solar({...appointment,...updated})&&!epvs)throw new Error("Please complete and save the EPVS calculation before generating the solar contract.");
     onUpdated?.(updated);
     const generated=await GenerateSolarContract({appointment:updated,previewOnly:true});
-    if(!generated?.url)throw new Error("The signed contract PDF could not be generated.");
+    if(!generated?.blob)throw new Error("The signed contract PDF could not be generated.");
+    const previewUrl=URL.createObjectURL(generated.blob);
     if(contractPreviewUrl)URL.revokeObjectURL(contractPreviewUrl);
-    setContractPreviewUrl(generated.url);
+    setContractPreviewUrl(previewUrl);
     setSoldStep(4);
    }catch(e){console.error("Unable to save signatures and prepare final contract:",e);setError(e?.message||"Unable to save signatures and prepare the final contract.");}
    finally{setSaving(false)}
