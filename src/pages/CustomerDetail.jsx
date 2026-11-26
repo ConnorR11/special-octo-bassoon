@@ -243,8 +243,8 @@ function CustomerDetail({
     // the agreed baseline even when it was saved using the newer JSON shape.
     const currentEnergy = cvfCurrentData.currentEnergy || {}
     const draftEnergy = cvfDraft.currentEnergy || {}
-    const energyValue = (snapshot, flat, key) =>
-      snapshot?.[key] ?? snapshot?.[flat]
+    const energyValue = (energy, flatData, key) =>
+      energy?.[key] ?? flatData?.[key]
     add("Annual electricity consumption", energyValue(currentEnergy, cvfCurrentData, "annualConsumption"), energyValue(draftEnergy, cvfDraft, "annualConsumption"), value => cvfFormatNumber(value, " kWh"))
     add("Import rate", energyValue(currentEnergy, cvfCurrentData, "importRate"), energyValue(draftEnergy, cvfDraft, "importRate"), value => cvfFormatNumber(value, "p/kWh"))
     add("Export rate", energyValue(currentEnergy, cvfCurrentData, "exportRate"), energyValue(draftEnergy, cvfDraft, "exportRate"), value => cvfFormatNumber(value, "p/kWh"))
