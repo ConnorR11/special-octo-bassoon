@@ -1395,7 +1395,7 @@ async function appendVariationPage(bytes, variation) {
   }
   page.drawRectangle({ x: 0, y: height - 42, width, height: 42, color: navy })
   page.drawText("HOMESHIELD SCOTLAND LTD", { x: left, y: height - 27, size: 9, font: bold, color: pdfRgb(1, 1, 1) })
-  page.drawText("CONTRACT VARIATION FORM", { x: width - left - bold.widthOfTextAtSize("CONTRACT VARIATION FORM", 9), y: height - 27, size: 9, font: bold, color: { r: 1, g: 1, b: 1 } })
+  page.drawText("CONTRACT VARIATION FORM", { x: width - left - bold.widthOfTextAtSize("CONTRACT VARIATION FORM", 9), y: height - 27, size: 9, font: bold, color: pdfRgb(1, 1, 1) })
   page.drawText("Contract Variation", { x: left, y, size: 20, font: bold, color: navy }); y -= 30
   const meta = [
     ["Customer", variation.customerName],
@@ -1486,7 +1486,10 @@ export async function GenerateSolarContract({ appointment, previewOnly = false, 
 
   if (!salesRepName) salesRepName = "—"
 
-  if (!contractNumber) {
+  if (!contractNumber && variation) {
+    // CVFs must not allocate or persist a new contract number.
+    contractNumber = "—"
+  } else if (!contractNumber) {
     const { data: generatedContractNumber, error: contractNumberError } = await supabase
       .rpc("next_digital_solar_contract_number")
     if (contractNumberError) throw contractNumberError
@@ -1494,9 +1497,6 @@ export async function GenerateSolarContract({ appointment, previewOnly = false, 
     contractNumber = String(generatedContractNumber || "").trim()
     if (!contractNumber) throw new Error("Unable to generate a digital solar contract number.")
 
-    // Keep the number in memory while the contract is being built.
-    // It is only written to the appointment after the PDF has been
-    // successfully generated.
     shouldPersistContractNumber = true
   }
 
@@ -1554,7 +1554,7 @@ export async function GenerateSolarContract({ appointment, previewOnly = false, 
 
   // Only persist the contract number after the complete contract has
   // successfully rendered, including its datasheets.
-  if (shouldPersistContractNumber) {
+  if (shouldPersistContractNumber && !variation) {
     const { error: contractUpdateError } = await supabase
       .from("appointments")
       .update({ contract_number: contractNumber })
