@@ -73,6 +73,7 @@ function CustomerDetail({
   const [activeTab, setActiveTab] = useState("details")
   const [cvfCurrent, setCvfCurrent] = useState(deal?.current_epvs_calculation || deal?.original_epvs_calculation || null)
   const [cvfUpdated, setCvfUpdated] = useState(deal?.updated_epvs_calculation || null)
+  const [cvfDraftData, setCvfDraftData] = useState(null)
   const [cvfAppointmentCalculation, setCvfAppointmentCalculation] = useState(null)
   const [cvfRefreshing, setCvfRefreshing] = useState(false)
 
@@ -166,6 +167,44 @@ function CustomerDetail({
   const cvfHardware = data => data?.hardware || data?.openSolar?.hardware || {}
   const cvfHardwareLabel = (items, key) => (Array.isArray(items) ? items : []).map(item => [item?.manufacturer, item?.model].filter(Boolean).join(" ")).filter(Boolean).join(", ") || "Not specified"
   const cvfChanged = (a, b) => JSON.stringify(a ?? null) !== JSON.stringify(b ?? null)
+  const cvfDraft = cvfDraftData || cvfUpdatedData
+  const cvfFormatMoney = value => value === "" || value == null ? "Not set" : new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 2 }).format(Number(value) || 0)
+  const cvfFormatNumber = (value, suffix = "") => value === "" || value == null ? "Not set" : `${Number(value).toLocaleString("en-GB", { maximumFractionDigits: 2 })}${suffix}`
+  const cvfHardwareDetails = data => cvfHardware(data)
+  const cvfFirstHardware = (data, key) => (Array.isArray(cvfHardwareDetails(data)?.[key]) ? cvfHardwareDetails(data)[key][0] : null)
+  const cvfChangeRows = (() => {
+    const rows = []
+    const add = (label, before, after, formatter = value => value == null || value === "" ? "Not set" : String(value)) => {
+      const normalise = value => value == null || value === "" ? "" : String(value).trim()
+      if (normalise(before) !== normalise(after)) rows.push({ label, before: formatter(before), after: formatter(after) })
+    }
+    const beforeArrays = cvfCurrentData.arrays || []
+    const afterArrays = cvfDraft.arrays || []
+    const beforePanels = beforeArrays.reduce((sum, item) => sum + cvfNumber(item?.panelCount), 0)
+    const afterPanels = afterArrays.reduce((sum, item) => sum + cvfNumber(item?.panelCount), 0)
+    const beforeSize = cvfSystemSize(cvfCurrentData)
+    const afterSize = cvfSystemSize(cvfDraft)
+    add("Solar panels", beforePanels, afterPanels, value => cvfFormatNumber(value, " panels"))
+    add("Solar system size", beforeSize.toFixed(2), afterSize.toFixed(2), value => cvfFormatNumber(value, " kWp"))
+    const beforeBattery = cvfFirstHardware(cvfCurrentData, "batteries")
+    const afterBattery = cvfFirstHardware(cvfDraft, "batteries")
+    add("Battery", beforeBattery?.model || "", afterBattery?.model || "", value => value || "None")
+    add("Battery capacity", beforeBattery ? Number(beforeBattery.capacity || 0) * Number(beforeBattery.quantity || 1) : 0, afterBattery ? Number(afterBattery.capacity || 0) * Number(afterBattery.quantity || 1) : 0, value => cvfFormatNumber(value, " kWh"))
+    const beforeInverter = cvfFirstHardware(cvfCurrentData, "inverters")
+    const afterInverter = cvfFirstHardware(cvfDraft, "inverters")
+    add("Inverter", beforeInverter?.model || "", afterInverter?.model || "", value => value || "None")
+    add("System cost", cvfCurrentData.systemCost, cvfDraft.systemCost, cvfFormatMoney)
+    add("Deposit", cvfCurrentData.deposit, cvfDraft.deposit, cvfFormatMoney)
+    add("Payment method", cvfCurrentData.paymentMethod, cvfDraft.paymentMethod)
+    add("Finance term", cvfCurrentData.financeTerm, cvfDraft.financeTerm, value => value ? `${value} years` : "Not set")
+    add("Finance APR", cvfCurrentData.financeRate, cvfDraft.financeRate, value => value == null || value === "" ? "Not set" : `${value}%`)
+    add("Annual electricity consumption", cvfCurrentData.annualConsumption, cvfDraft.annualConsumption, value => cvfFormatNumber(value, " kWh"))
+    add("Import rate", cvfCurrentData.importRate, cvfDraft.importRate, value => cvfFormatNumber(value, "p/kWh"))
+    add("Export rate", cvfCurrentData.exportRate, cvfDraft.exportRate, value => cvfFormatNumber(value, "p/kWh"))
+    add("Standing charge", cvfCurrentData.standingCharge, cvfDraft.standingCharge, value => cvfFormatNumber(value, "p/day"))
+    add("Existing solar PV", cvfCurrentData.existingSolar, cvfDraft.existingSolar, value => value ? "Yes" : "No")
+    return rows
+  })()
 
   const surveyQuestions = [
     ["Is this home in a listed building or in a conservation area?", "listed_conservation"], ["Is it a suspended or concrete floor?", "floor_type"], ["Where is the main fusebox located?", "fusebox_location"], ["How far is the fusebox from the intended fit location of the battery/inverter?", "fusebox_distance"], ["How long is the DC run?", "dc_run"], ["Where will the battery/inverter be located?", "inverter_location"], ["Is the battery/inverter being installed on the south facing wall?", "south_wall"], ["Is a canopy or a fireproof encasement being fitted?", "canopy_fireproof"], ["What type of external walls are there?", "external_walls"], ["Building Width", "building_width"], ["Building Height", "building_height"], ["Height of roof from loft-hatch", "roof_height_loft"], ["Roof Tile Type", "roof_tile_type"], ["Condition of Roof", "roof_condition"], ["Shading Issues", "shading_issues"], ["Roof Obstructions", "roof_obstructions"], ["Any Access Issues", "access_issues"], ["Can scaffolding be erected?", "scaffolding"], ["Does customer Wi-Fi reach the battery/inverter?", "wifi_reach"], ["What is the size of the cut out switch?", "cutout_size"], ["What is the customer’s MPAN number?", "mpan"], ["Are there any high energy appliances?", "high_energy_appliances"], ["Is there sufficient loft access?", "loft_access"], ["Does the customer consent to Copex/trunking around the building? (If loft access is insufficient)", "copex_consent"], ["Does the customer have an existing solar system?", "existing_solar"], ["How many panels? (And their output)", "existing_panels"], ["Type & Size of Inverter", "existing_inverter"]
@@ -928,11 +967,43 @@ function CustomerDetail({
         {!deal.open_solar_id && <div style={{ marginBottom: 14, padding: 14, border: "1px solid #f1d3a5", borderRadius: 8, background: "#fff9ed", color: "#8a5a12", fontSize: 12 }}>No OpenSolar project ID is linked to this deal. Link the project on the appointment before importing a variation.</div>}
         {cvfError && <div role="alert" style={{ marginBottom: 12, padding: 11, borderRadius: 7, background: "#fff0f0", color: "#a33b3b", fontSize: 11 }}>{cvfError}</div>}
         {cvfMessage && <div style={{ marginBottom: 12, padding: 11, borderRadius: 7, background: "#eaf6ee", color: "#28734c", fontSize: 11 }}>{cvfMessage}</div>}
+        <section aria-label="Changes being made" style={{ marginBottom: 16, padding: 16, border: "1px solid #dbe3ec", borderRadius: 10, background: "#fbfcfe" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
+            <div>
+              <h3 style={{ margin: 0, color: "#10233f", fontSize: 15 }}>Changes being made</h3>
+              <p style={{ margin: "4px 0 0", color: "#718096", fontSize: 11 }}>Live comparison against the latest agreed EPVS calculation.</p>
+            </div>
+            <span style={{ padding: "4px 8px", borderRadius: 20, background: cvfChangeRows.length ? "#e8f2ff" : "#edf7ef", color: cvfChangeRows.length ? "#245b9b" : "#28734c", fontSize: 10, fontWeight: 700 }}>
+              {cvfChangeRows.length ? `${cvfChangeRows.length} change${cvfChangeRows.length === 1 ? "" : "s"}` : "No changes detected"}
+            </span>
+          </div>
+          {cvfChangeRows.length > 0 ? (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 460 }}>
+                <thead><tr style={{ color: "#64748b", textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>
+                  <th style={{ padding: "8px 10px 8px 0", fontWeight: 600 }}>Item</th>
+                  <th style={{ padding: 8, fontWeight: 600 }}>Current agreed</th>
+                  <th style={{ padding: 8, fontWeight: 600 }}>Proposed</th>
+                </tr></thead>
+                <tbody>{cvfChangeRows.map((row, index) => (
+                  <tr key={row.label} style={{ borderBottom: index === cvfChangeRows.length - 1 ? 0 : "1px solid #edf1f5" }}>
+                    <td style={{ padding: "9px 10px 9px 0", color: "#334155", fontWeight: 600 }}>{row.label}</td>
+                    <td style={{ padding: 9, color: "#64748b" }}>{row.before}</td>
+                    <td style={{ padding: 9, color: "#176b45", fontWeight: 700 }}>{row.after}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          ) : (
+            <p style={{ margin: 0, color: "#64748b", fontSize: 12 }}>No differences from the latest agreed calculation yet. Changes made in the calculator will appear here automatically.</p>
+          )}
+        </section>
         <EPVSCalculator
           key={`cvf-${deal.id}-${cvfUpdated?.savedAt || cvfUpdated?.importedAt || "empty"}-${cvfAppointmentCalculation?.savedAt || "appointment"}`}
           appointment={{ ...deal, appointment_row_id: null, epvs_calculation: cvfCalculationForEditor }}
           dealId={deal.id}
           initialCalculation={cvfCalculationForEditor}
+          onCalculationChange={setCvfDraftData}
           permissionLevel={permissionLevel}
         />
         {!cvfUpdated && <div style={{ marginTop: 12, padding: 12, borderRadius: 8, background: "#f8fafc", color: "#64748b", fontSize: 11 }}>No updated EPVS calculation has been imported yet. Use “Get Current Design” in the OpenSolar system design section below to import the latest design into this CVF.</div>}
