@@ -108,7 +108,7 @@ export default function IWACertificates() {
     setToSendError("")
     try {
       let request = supabase.from("deals")
-        .select("id,contract_number,customer_name,address,postcode,email,product,deal_value,net_value,sale_date,installation_start_date,salesperson_name,status,iwa_certificates!iwa_certificates_deal_row_id_fkey(id)", { count: "exact" })
+        .select("id,contract_number,customer_name,address,postcode,email,appointment_row_id,product,deal_value,net_value,sale_date,installation_start_date,salesperson_name,status,iwa_certificates!iwa_certificates_deal_row_id_fkey(id)", { count: "exact" })
         .is("iwa_certificates", null)
         .gte("sale_date", "2024-01-01")
         .eq("product", "Windows")
@@ -124,7 +124,21 @@ export default function IWACertificates() {
       }
       const { data, error: queryError, count } = await request
       if (queryError) throw queryError
-      setToSendRows(data || [])
+      const dealRows = data || []
+      const appointmentIds = [...new Set(dealRows.map(deal => deal.appointment_row_id).filter(Boolean))]
+      let appointmentEmails = {}
+      if (appointmentIds.length) {
+        const { data: appointmentRows, error: appointmentError } = await supabase
+          .from("appointments")
+          .select("appointment_row_id,email_address")
+          .in("appointment_row_id", appointmentIds)
+        if (appointmentError) throw appointmentError
+        appointmentEmails = Object.fromEntries((appointmentRows || []).map(appointment => [appointment.appointment_row_id, appointment.email_address]))
+      }
+      setToSendRows(dealRows.map(deal => ({
+        ...deal,
+        email: deal.email || appointmentEmails[deal.appointment_row_id] || null,
+      })))
       setToSendCount(count || 0)
     } catch (err) {
       setToSendError(err?.message || "Unable to load deals awaiting an IWA certificate.")
