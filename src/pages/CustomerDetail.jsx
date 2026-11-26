@@ -976,24 +976,26 @@ function CustomerDetail({
         {cvfError && <div role="alert" style={{ marginBottom: 12, padding: 11, borderRadius: 7, background: "#fff0f0", color: "#a33b3b", fontSize: 11 }}>{cvfError}</div>}
         {cvfMessage && <div style={{ marginBottom: 12, padding: 11, borderRadius: 7, background: "#eaf6ee", color: "#28734c", fontSize: 11 }}>{cvfMessage}</div>}
         <section aria-label="Changes being made" style={{ marginBottom: 16, padding: 14, border: "1px solid #dbe3ec", borderRadius: 10, background: "#fbfcfe" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: cvfChangeRows.length ? 8 : 0 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: cvfChangeRows.length ? 10 : 0 }}>
             <h3 style={{ margin: 0, color: "#10233f", fontSize: 14 }}>Changes being made</h3>
             <span style={{ color: "#64748b", fontSize: 11, fontWeight: 600 }}>
               {cvfChangeRows.length ? `${cvfChangeRows.length} change${cvfChangeRows.length === 1 ? "" : "s"}` : "No changes"}
             </span>
           </div>
           {cvfChangeRows.length > 0 ? (
-            <div style={{ display: "grid", gap: 0 }}>
-              {cvfChangeRows.map((row, index) => (
-                <div key={row.label} style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, padding: "8px 0", borderTop: index === 0 ? "1px solid #e8edf2" : "1px solid #edf1f5", fontSize: 12 }}>
-                  <span style={{ color: "#475569", fontWeight: 600 }}>{row.label}</span>
-                  <span style={{ textAlign: "right", color: "#176b45", fontWeight: 600 }}>
-                    <span style={{ color: "#94a3b8", fontWeight: 400 }}>{row.before}</span>
-                    <span style={{ padding: "0 7px", color: "#94a3b8" }}>→</span>
-                    {row.after}
-                  </span>
-                </div>
-              ))}
+            <div style={{ overflowX: "auto" }}>
+              <div style={{ minWidth: 420, display: "grid", gridTemplateColumns: "minmax(150px, 1.2fr) minmax(110px, 1fr) minmax(110px, 1fr)", fontSize: 11 }}>
+                <div style={{ padding: "8px 10px", color: "#64748b", fontWeight: 700, borderBottom: "1px solid #dfe6ed" }}>Item</div>
+                <div style={{ padding: "8px 10px", color: "#64748b", fontWeight: 700, borderBottom: "1px solid #dfe6ed" }}>Before</div>
+                <div style={{ padding: "8px 10px", color: "#64748b", fontWeight: 700, borderBottom: "1px solid #dfe6ed" }}>After</div>
+                {cvfChangeRows.map(row => (
+                  <React.Fragment key={row.label}>
+                    <div style={{ padding: "9px 10px", color: "#475569", fontWeight: 650, borderBottom: "1px solid #edf1f5" }}>{row.label}</div>
+                    <div style={{ padding: "9px 10px", color: "#64748b", borderBottom: "1px solid #edf1f5", overflowWrap: "anywhere" }}>{row.before}</div>
+                    <div style={{ padding: "9px 10px", color: "#176b45", fontWeight: 650, borderBottom: "1px solid #edf1f5", overflowWrap: "anywhere" }}>{row.after}</div>
+                  </React.Fragment>
+                ))}
+              </div>
             </div>
           ) : (
             <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12 }}>Changes will appear here as you edit the calculator.</p>
