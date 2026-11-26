@@ -176,23 +176,27 @@ function CustomerDetail({
       if (!result?.blob || !result?.fileName) throw new Error("The CVF PDF could not be generated.")
       const contractNumber = String(deal.contract_number || appointment.contract_number || "Solar").replace(/[^a-zA-Z0-9_-]/g, "-")
       const fileName = `${contractNumber}-Contract-Variation.pdf`
-      const bytes = new Uint8Array(await result.blob.arrayBuffer())
-      let binary = ""
-      const chunkSize = 0x8000
-      for (let offset = 0; offset < bytes.length; offset += chunkSize) {
-        binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize))
-      }
-      const pdfBase64 = btoa(binary)
+      const storagePath = `cvf-pdfs/${appointment.appointment_row_id}/${fileName}`
+      const { error: uploadError } = await supabase.storage.from("signatures").upload(storagePath, result.blob, {
+        contentType: "application/pdf",
+        cacheControl: "60",
+        upsert: true,
+      })
+      if (uploadError) throw new Error(`CVF PDF upload failed: ${uploadError.message}`)
       const { data: sessionData } = await supabase.auth.getSession()
       const accessToken = sessionData?.session?.access_token
-      if (!accessToken) throw new Error("Please sign in again before saving the CVF.")
+      if (!accessToken) throw new Error("Please sign in again before syncing the CVF to Pipedrive.")
       const response = await fetch("/api/deals/save-cvf", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ deal_id: deal.id, pdf_base64: pdfBase64, file_name: fileName }),
+        body: JSON.stringify({ deal_id: deal.id, file_name: fileName, storage_path: storagePath }),
       })
-      const saved = await response.json().catch(() => ({}))
-      if (!response.ok || !saved.success) throw new Error(saved.error || "The CVF could not be saved or synced to Pipedrive.")
+      const responseText = await response.text()
+      let saved = {}
+      try { saved = responseText ? JSON.parse(responseText) : {} } catch { saved = {} }
+      if (!response.ok || !saved.success) {
+        throw new Error(saved.error || `CVF saved to Storage, but Pipedrive sync failed (HTTP ${response.status}). ${responseText.slice(0, 300)}`)
+      }
       if (!saved.current_epvs_promoted) throw new Error("The CVF was saved, but the current EPVS baseline was not promoted.")
       setCvfCurrent(cvfUpdated)
       await loadContractFiles()
