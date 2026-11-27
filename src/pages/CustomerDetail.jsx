@@ -14,7 +14,7 @@ import {
 import { supabase } from "../lib/supabase"
 import SurveyProgressBar from "../components/SurveyProgressBar"
 import EPVSCalculator from "../EPVSCalculator"
-import { GenerateSolarContract } from "../contracts/GenerateSolarContract"
+import { AppendContractVariation, GenerateSolarContract } from "../contracts/GenerateSolarContract"
 
 const surveyPhotoSectionGroups = [
   { title: "Property & installation", sections: ["Front of Property", "Rear of Property", "Side of Property", "Proposed Canopy Location"] },
@@ -177,7 +177,17 @@ function CustomerDetail({
       const contractNumber = String(deal.contract_number || appointment.contract_number || "Solar").replace(/[^a-zA-Z0-9_-]/g, "-")
       const fileName = `${contractNumber}-Contract-Variation.pdf`
       const storagePath = `cvf-pdfs/${appointment.appointment_row_id}/${fileName}`
-      const { error: uploadError } = await supabase.storage.from("signatures").upload(storagePath, result.blob, {
+      const { data: existingCvfFile, error: existingCvfError } = await supabase.storage.from("signatures").download(storagePath)
+      let cumulativeCvfBlob = result.blob
+      if (existingCvfError && !/not found|object not found|404/i.test(existingCvfError.message || "")) {
+        throw new Error(`Unable to load the previous CVF: ${existingCvfError.message}`)
+      }
+      if (existingCvfFile) {
+        const previousBytes = new Uint8Array(await existingCvfFile.arrayBuffer())
+        const cumulativeBytes = await AppendContractVariation(previousBytes, variation)
+        cumulativeCvfBlob = new Blob([cumulativeBytes], { type: "application/pdf" })
+      }
+      const { error: uploadError } = await supabase.storage.from("signatures").upload(storagePath, cumulativeCvfBlob, {
         contentType: "application/pdf",
         cacheControl: "60",
         upsert: true,
@@ -201,7 +211,7 @@ function CustomerDetail({
       setCvfCurrent(cvfUpdated)
       await loadContractFiles()
       onUpdated?.()
-      const url = URL.createObjectURL(result.blob)
+      const url = URL.createObjectURL(cumulativeCvfBlob)
       const link = window.document.createElement("a")
       link.href = url
       link.download = fileName
