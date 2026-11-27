@@ -218,7 +218,7 @@ function CustomerDetail({
           throw new Error(`Unable to load the previous CVF: ${existingCvfError?.message || "File not found"}`)
         }
         const previousBytes = new Uint8Array(await existingCvfFile.arrayBuffer())
-        const cumulativeBytes = await AppendContractVariation(previousBytes, variation)
+        const cumulativeBytes = await AppendContractVariation(previousBytes, variation, result.contractPageCount)
         cumulativeCvfBlob = new Blob([cumulativeBytes], { type: "application/pdf" })
       }
       const fileName = `${cvfPrefix} ${sequence}.pdf`
