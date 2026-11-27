@@ -179,14 +179,13 @@ function CustomerDetail({
       const { data: existingCvfFiles, error: listCvfError } = await supabase.storage.from("signatures").list(folder, { limit: 100 })
       if (listCvfError) throw new Error(`Unable to list previous CVFs: ${listCvfError.message}`)
       const cvfPrefix = `${contractNumber} - Contract Variation`
-      const numberedPattern = new RegExp(`^${cvfPrefix.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")} (\\d{3})\\.pdf$`)
       const matchingFiles = (existingCvfFiles || []).filter(file =>
         file.name === `${contractNumber}-Contract-Variation.pdf` ||
         file.name.startsWith(`${contractNumber}-Contract-Variation-`) ||
-        numberedPattern.test(file.name)
+        file.name.startsWith(`${cvfPrefix} `) && / \\d{3}\\.pdf$/.test(file.name)
       )
       const numberedFiles = matchingFiles
-        .map(file => ({ file, match: file.name.match(numberedPattern) }))
+        .map(file => ({ file, match: file.name.match(/ - Contract Variation (\\d{3})\\.pdf$/) }))
         .filter(item => item.match)
         .sort((a, b) => Number(b.match[1]) - Number(a.match[1]))
       const legacyFiles = matchingFiles
