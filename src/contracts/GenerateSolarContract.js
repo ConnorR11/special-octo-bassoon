@@ -1471,7 +1471,19 @@ export async function AppendContractVariation(previousPdfBytes, variation) {
   const existingDocument = await PDFDocument.load(previousPdfBytes)
   const variationDocument = await PDFDocument.load(newVariationBytes)
   const copiedPages = await existingDocument.copyPages(variationDocument, variationDocument.getPageIndices())
-  copiedPages.forEach(page => existingDocument.addPage(page))
+
+  // The original solar contract occupies pages 1–8. Keep all CVFs together
+  // from page 9 onwards, before any appended product datasheets.
+  const keywords = existingDocument.getKeywords()
+  const marker = (keywords || []).find(value => /^Homeshield CVF pages:\\s*\\d+$/i.test(value))
+  const recordedCount = marker ? Number(marker.match(/\\d+/)?.[0]) : 1
+  const existingCvfPages = Number.isFinite(recordedCount) && recordedCount > 0 ? recordedCount : 1
+  const insertionIndex = Math.min(8 + existingCvfPages, existingDocument.getPageCount())
+  copiedPages.forEach((page, offset) => existingDocument.insertPage(insertionIndex + offset, page))
+  existingDocument.setKeywords([
+    ...(keywords || []).filter(value => !/^Homeshield CVF pages:\\s*\\d+$/i.test(value)),
+    `Homeshield CVF pages: ${existingCvfPages + copiedPages.length}`,
+  ])
   return new Uint8Array(await existingDocument.save())
 }
 
@@ -1586,6 +1598,18 @@ export async function GenerateSolarContract({ appointment, previewOnly = false, 
   let bytes = new Uint8Array(pdf.output("arraybuffer"))
   if (variation) bytes = await appendVariationPage(bytes, variation)
   bytes = await appendProductDatasheets(bytes, appointment, epvs, pages)
+
+  // Record the number of CVF pages so future variations can be inserted
+  // directly after the existing CVF timeline rather than after datasheets.
+  if (variation) {
+    const documentWithCvfIndex = await PDFDocument.load(bytes)
+    const keywords = documentWithCvfIndex.getKeywords() || []
+    documentWithCvfIndex.setKeywords([
+      ...keywords.filter(value => !/^Homeshield CVF pages:\\s*\\d+$/i.test(value)),
+      `Homeshield CVF pages: ${documentWithCvfIndex.getPageCount() >= pages.length + 1 ? 1 : 1}`,
+    ])
+    bytes = new Uint8Array(await documentWithCvfIndex.save())
+  }
 
   // Only persist the contract number after the complete contract has
   // successfully rendered, including its datasheets.
