@@ -1463,7 +1463,7 @@ async function appendVariationPage(bytes, variation) {
   return doc.save()
 }
 
-export async function AppendContractVariation(previousPdfBytes, variation) {
+export async function AppendContractVariation(previousPdfBytes, variation, contractPageCountHint = null) {
   if (!previousPdfBytes || !variation) throw new Error("The existing CVF PDF and new variation are required.")
   const blankDocument = await PDFDocument.create()
   const blankPdfBytes = await blankDocument.save()
@@ -1472,37 +1472,27 @@ export async function AppendContractVariation(previousPdfBytes, variation) {
   const variationDocument = await PDFDocument.load(newVariationBytes)
   const copiedPages = await existingDocument.copyPages(variationDocument, variationDocument.getPageIndices())
 
-  // The original solar contract occupies pages 1–8. Keep all CVFs together
-  // from page 9 onwards, before any appended product datasheets.
+  // Keep the complete CVF sequence immediately after the actual contract
+  // template pages. The template is configurable, so never assume it is 8 pages.
   const keywords = existingDocument.getKeywords()
   const keywordList = typeof keywords === "string"
     ? keywords.split(",").map(value => value.trim()).filter(Boolean)
     : Array.isArray(keywords) ? keywords : []
-  const marker = keywordList.find(value => /^Homeshield CVF pages:\s*\d+$/i.test(value))
-  const hasCvfMarker = Boolean(marker)
-  const recordedCount = marker ? Number(marker.match(/\d+/)?.[0]) : 1
+  const marker = keywordList.find(value => /^Homeshield CVF pages:\\s*\\d+$/i.test(value))
+  const contractMarker = keywordList.find(value => /^Homeshield Contract pages:\\s*\\d+$/i.test(value))
+  const recordedCount = marker ? Number(marker.match(/\\d+/)?.[0]) : 1
   const existingCvfPages = Number.isFinite(recordedCount) && recordedCount > 0 ? recordedCount : 1
-
-  // Older CVF PDFs did not record their CVF page count and some versions
-  // appended the variation after the datasheets. In that legacy format the
-  // most recent CVF is the final page. Move it to the CVF section directly
-  // after the eight contract/T&Cs pages before inserting the new variation.
-  if (!hasCvfMarker && existingDocument.getPageCount() > 8) {
-    const legacyCvfPage = existingDocument.getPage(existingDocument.getPageCount() - 1)
-    existingDocument.removePage(existingDocument.getPageCount() - 1)
-    existingDocument.insertPage(Math.min(8, existingDocument.getPageCount()), legacyCvfPage)
+  const markedContractPages = contractMarker ? Number(contractMarker.match(/\\d+/)?.[0]) : null
+  const contractPageCount = Number.isInteger(Number(contractPageCountHint)) && Number(contractPageCountHint) > 0
+    ? Number(contractPageCountHint)
+    : Number.isInteger(markedContractPages) && markedContractPages > 0
+      ? markedContractPages
+      : null
+  if (!contractPageCount) {
+    throw new Error("The contract page count could not be determined, so the CVF cannot safely be placed before the datasheets. Please regenerate the base contract once.")
   }
 
-  // Remove empty pages within the CVF sequence before inserting the next
-  // variation. These can be left behind by earlier PDF assembly and would
-  // otherwise split the variation timeline.
-  const cvfEndIndex = Math.min(8 + existingCvfPages, existingDocument.getPageCount())
-  for (let pageIndex = cvfEndIndex - 1; pageIndex >= 8; pageIndex -= 1) {
-    const page = existingDocument.getPage(pageIndex)
-    if (!page.node.Contents()) existingDocument.removePage(pageIndex)
-  }
-
-  const insertionIndex = Math.min(8 + existingCvfPages, existingDocument.getPageCount())
+  const insertionIndex = Math.min(contractPageCount + existingCvfPages, existingDocument.getPageCount())
   copiedPages.forEach((page, offset) => existingDocument.insertPage(insertionIndex + offset, page))
   existingDocument.setKeywords([
     ...keywordList.filter(value => !/^Homeshield CVF pages:\s*\d+$/i.test(value)),
@@ -1662,7 +1652,7 @@ export async function GenerateSolarContract({ appointment, previewOnly = false, 
   }
 
   const blob = new Blob([bytes], { type: "application/pdf" })
-  if (previewOnly) return { url: null, blob, fileName: safeName + "-Digital-Solar-Contract.pdf", contractNumber }
+  if (previewOnly) return { url: null, blob, fileName: safeName + "-Digital-Solar-Contract.pdf", contractNumber, contractPageCount: pages.length }
   const url = URL.createObjectURL(blob)
   const link = document.createElement("a")
   link.href = url
