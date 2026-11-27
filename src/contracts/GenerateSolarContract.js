@@ -1056,7 +1056,7 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
     // white typography as the rest of the customer-facing cover.
     const coverDetails = [
       ["SALES REP", salesRepName],
-      ["SOLD DATE", date(appointment?.sale_date || appointment?.sold_date || appointment?.date_sold)],
+      ["APPOINTMENT DATE", date(appointment?.appointment_date)],
       ["CONTRACT NUMBER", appointment?.contract_number || "—"],
     ]
 
