@@ -37,7 +37,7 @@ export default async function handler(req, res) {
     const dealId = String(body.deal_id || "").trim()
     const fileName = String(body.file_name || "").trim()
     const storagePath = String(body.storage_path || "").trim()
-    if (!dealId || !/^[a-zA-Z0-9_-]+-Contract-Variation\.pdf$/.test(fileName)) {
+    if (!dealId || !/^[a-zA-Z0-9_-]+-Contract-Variation(?:-[0-9TZ]+)?\.pdf$/.test(fileName)) {
       return json(res, 400, { success: false, error: "The deal or CVF filename is invalid." })
     }
     if (!storagePath) return json(res, 400, { success: false, error: "The uploaded CVF storage path is missing." })
