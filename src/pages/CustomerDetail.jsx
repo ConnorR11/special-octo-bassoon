@@ -255,7 +255,7 @@ function CustomerDetail({
         }
         const previousBytes = new Uint8Array(await existingCvfFile.arrayBuffer())
         const refreshedPdfBytes = new Uint8Array(await result.blob.arrayBuffer())
-        const cumulativeBytes = await RebuildCumulativeContract(refreshedPdfBytes, previousBytes, result.contractPageCount)
+        const cumulativeBytes = await RebuildCumulativeContract(refreshedPdfBytes, previousBytes, result.contractPageCount, result.cvfPageCount)
         cumulativeCvfBlob = new Blob([cumulativeBytes], { type: "application/pdf" })
       }
       const fileName = `${cvfPrefix} ${sequence}.pdf`
