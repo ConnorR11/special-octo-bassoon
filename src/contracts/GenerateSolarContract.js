@@ -1480,9 +1480,9 @@ export async function RebuildCumulativeContract(updatedPdfBytes, previousPdfByte
     const keywords = typeof raw === "string"
       ? raw.split(",").map(value => value.trim())
       : Array.isArray(raw) ? raw : []
-    const value = keywords.find(item => new RegExp("^Homeshield " + marker + ":\\\\s*\\\\d+$", "i").test(item))
+    const value = keywords.find(item => new RegExp("^Homeshield " + marker + ":\\s*\\d+$", "i").test(item))
     if (!value) return null
-    const count = Number(value.match(/\\d+/)?.[0])
+    const count = Number(value.match(/\d+/)?.[0])
     return Number.isInteger(count) && count >= 0 ? count : null
   }
 
