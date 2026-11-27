@@ -1465,8 +1465,9 @@ async function appendVariationPage(bytes, variation) {
 
 export async function AppendContractVariation(previousPdfBytes, variation) {
   if (!previousPdfBytes || !variation) throw new Error("The existing CVF PDF and new variation are required.")
-  const blankDocument = await PDFDocument.create().save()
-  const newVariationBytes = await appendVariationPage(blankDocument, variation)
+  const blankDocument = await PDFDocument.create()
+  const blankPdfBytes = await blankDocument.save()
+  const newVariationBytes = await appendVariationPage(blankPdfBytes, variation)
   const existingDocument = await PDFDocument.load(previousPdfBytes)
   const variationDocument = await PDFDocument.load(newVariationBytes)
   const copiedPages = await existingDocument.copyPages(variationDocument, variationDocument.getPageIndices())
