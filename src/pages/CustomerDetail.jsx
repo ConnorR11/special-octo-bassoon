@@ -74,6 +74,9 @@ function CustomerDetail({
   const [activeTab, setActiveTab] = useState("details")
   const [cvfCurrent, setCvfCurrent] = useState(deal?.current_epvs_calculation || null)
   const [cvfUpdated, setCvfUpdated] = useState(deal?.updated_epvs_calculation || null)
+  const [cvfCustomerName, setCvfCustomerName] = useState(deal?.customer_name || "")
+  const [cvfCustomerAddress, setCvfCustomerAddress] = useState(deal?.address || "")
+  const [cvfCustomerPostcode, setCvfCustomerPostcode] = useState(deal?.postcode || "")
   const [cvfDraftData, setCvfDraftData] = useState(null)
   const cvfSaveActionRef = useRef(null)
   // Keep the save callback in a ref rather than React state. This prevents
@@ -166,9 +169,20 @@ function CustomerDetail({
         .eq("appointment_row_id", deal.appointment_row_id).maybeSingle()
       if (appointmentError) throw appointmentError
       if (!appointment) throw new Error("The original appointment could not be loaded.")
+      const customerName = String(cvfCustomerName || "").trim()
+      const customerAddress = String(cvfCustomerAddress || "").trim()
+      const customerPostcode = String(cvfCustomerPostcode || "").trim()
+      if (!customerName || !customerAddress || !customerPostcode) {
+        throw new Error("Complete the customer name, address and postcode before generating the CVF.")
+      }
+      const { error: customerUpdateError } = await supabase
+        .from("deals")
+        .update({ customer_name: customerName, address: customerAddress, postcode: customerPostcode })
+        .eq("id", deal.id)
+      if (customerUpdateError) throw customerUpdateError
       const variation = {
-        customerName: deal.customer_name || appointment.name,
-        address: [deal.address || appointment.address, deal.postcode || appointment.postcode].filter(Boolean).join(", "),
+        customerName,
+        address: [customerAddress, customerPostcode].filter(Boolean).join(", "),
         contractNumber: deal.contract_number || appointment.contract_number,
         rows: cvfChangeRows.map(row => ({ label: row.label, before: row.before, after: row.after, category: row.category })),
       }
@@ -311,6 +325,9 @@ function CustomerDetail({
       const normalise = value => value == null || value === "" ? "" : String(value).trim()
       if (normalise(before) !== normalise(after)) rows.push({ label, before: formatter(before), after: formatter(after), category })
     }
+    add("Customer name", deal?.customer_name || "", cvfCustomerName, value => value || "Not set", "Customer Information")
+    add("Address", deal?.address || "", cvfCustomerAddress, value => value || "Not set", "Customer Information")
+    add("Postcode", deal?.postcode || "", cvfCustomerPostcode, value => value || "Not set", "Customer Information")
     const beforeArrays = cvfCurrentData.arrays || []
     const afterArrays = cvfDraft.arrays || []
     const beforePanels = beforeArrays.reduce((sum, item) => sum + cvfNumber(item?.panelCount), 0)
@@ -413,6 +430,7 @@ function CustomerDetail({
     return rows
   })()
   const cvfChangeGroups = [
+    "Customer Information",
     "Current Energy",
     "System Design",
     "Payment Information",
@@ -1212,6 +1230,24 @@ function CustomerDetail({
         {!deal.open_solar_id && <div style={{ marginBottom: 14, padding: 14, border: "1px solid #f1d3a5", borderRadius: 8, background: "#fff9ed", color: "#8a5a12", fontSize: 12 }}>No OpenSolar project ID is linked to this deal. Link the project on the appointment before importing a variation.</div>}
         {cvfError && <div role="alert" style={{ marginBottom: 12, padding: 11, borderRadius: 7, background: "#fff0f0", color: "#a33b3b", fontSize: 11 }}>{cvfError}</div>}
         {cvfMessage && <div style={{ marginBottom: 12, padding: 11, borderRadius: 7, background: "#eaf6ee", color: "#28734c", fontSize: 11 }}>{cvfMessage}</div>}
+        <section aria-label="Customer Information" style={{ marginBottom: 16, padding: 14, border: "1px solid #dbe3ec", borderRadius: 10, background: "#fbfcfe" }}>
+          <h3 style={{ margin: "0 0 12px", color: "#10233f", fontSize: 14 }}>Customer Information</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
+            <label style={{ display: "flex", flexDirection: "column", gap: 5, color: "#475569", fontSize: 11, fontWeight: 650 }}>
+              Customer name
+              <input value={cvfCustomerName} onChange={event => setCvfCustomerName(event.target.value)} placeholder="Customer name" style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", border: "1px solid #cbd5e1", borderRadius: 7, fontSize: 12, color: "#10233f", background: "#fff" }} />
+            </label>
+            <label style={{ display: "flex", flexDirection: "column", gap: 5, color: "#475569", fontSize: 11, fontWeight: 650 }}>
+              Address
+              <input value={cvfCustomerAddress} onChange={event => setCvfCustomerAddress(event.target.value)} placeholder="Contract address" style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", border: "1px solid #cbd5e1", borderRadius: 7, fontSize: 12, color: "#10233f", background: "#fff" }} />
+            </label>
+            <label style={{ display: "flex", flexDirection: "column", gap: 5, color: "#475569", fontSize: 11, fontWeight: 650 }}>
+              Postcode
+              <input value={cvfCustomerPostcode} onChange={event => setCvfCustomerPostcode(event.target.value)} placeholder="Postcode" style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", border: "1px solid #cbd5e1", borderRadius: 7, fontSize: 12, color: "#10233f", background: "#fff" }} />
+            </label>
+          </div>
+          <p style={{ margin: "9px 0 0", color: "#64748b", fontSize: 10 }}>Updates are included in the Customer Information changes on the CVF and saved to the deal when the CVF is generated.</p>
+        </section>
         <section aria-label="Changes being made" style={{ marginBottom: 16, padding: 14, border: "1px solid #dbe3ec", borderRadius: 10, background: "#fbfcfe" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: cvfChangeRows.length ? 10 : 0, flexWrap: "wrap" }}>
             <h3 style={{ margin: 0, color: "#10233f", fontSize: 14 }}>Changes being made</h3>
