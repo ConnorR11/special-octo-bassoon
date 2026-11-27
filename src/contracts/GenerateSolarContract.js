@@ -1014,7 +1014,7 @@ function drawTermsConditions(pdf, page, ctx, appointment, epvs) {
   })
 }
 
-async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesRepName, soldDate) {
+async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesRepName) {
   const settings = page.settings || {}
   const ctx = header(pdf, settings)
   const kind = settings.page_kind || "standard"
@@ -1056,7 +1056,7 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
     // white typography as the rest of the customer-facing cover.
     const coverDetails = [
       ["SALES REP", salesRepName],
-      ["SOLD DATE", date(soldDate || appointment?.sale_date || appointment?.sold_date || appointment?.date_sold)],
+      ["SOLD DATE", date(appointment?.sale_date || appointment?.sold_date || appointment?.date_sold)],
       ["CONTRACT NUMBER", appointment?.contract_number || "—"],
     ]
 
@@ -1521,6 +1521,7 @@ export async function GenerateSolarContract({ appointment, previewOnly = false, 
 
   const contractAppointment = {
     ...appointment,
+    sale_date: soldDate || appointment?.sale_date || appointment?.sold_date || appointment?.date_sold || null,
     contract_number: contractNumber,
   }
 
@@ -1561,7 +1562,7 @@ export async function GenerateSolarContract({ appointment, previewOnly = false, 
   for (let index = 0; index < pages.length; index += 1) {
     if (index > 0) pdf.addPage(pageSize.toLowerCase(), orientation)
     const page = pages[index]
-    await renderPage(pdf, page, index, pages.length, contractAppointment, epvs, salesRepName, soldDate || appointment?.sale_date || appointment?.sold_date || appointment?.date_sold)
+    await renderPage(pdf, page, index, pages.length, contractAppointment, epvs, salesRepName)
     footer(pdf, index, pages.length, page.settings || {}, appointment)
   }
 
