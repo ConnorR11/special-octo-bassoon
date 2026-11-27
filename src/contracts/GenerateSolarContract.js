@@ -1,5 +1,6 @@
 import jsPDF from "jspdf"
 import { PDFDocument, rgb as pdfRgb } from "pdf-lib"
+import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs"
 import { supabase } from "../lib/supabase"
 import { getSapZone } from "../EPVSCalculator"
 
@@ -1469,48 +1470,68 @@ export async function RebuildCumulativeContract(updatedPdfBytes, previousPdfByte
   }
   const updated = await PDFDocument.load(updatedPdfBytes)
   const previous = await PDFDocument.load(previousPdfBytes)
-  const updatedKeywordsRaw = updated.getKeywords()
-  const updatedKeywords = typeof updatedKeywordsRaw === "string" ? updatedKeywordsRaw.split(",").map(v => v.trim()).filter(Boolean) : Array.isArray(updatedKeywordsRaw) ? updatedKeywordsRaw : []
-  const previousKeywordsRaw = previous.getKeywords()
-  const previousKeywords = typeof previousKeywordsRaw === "string" ? previousKeywordsRaw.split(",").map(v => v.trim()).filter(Boolean) : Array.isArray(previousKeywordsRaw) ? previousKeywordsRaw : []
-  const readCount = (items, prefix, fallback = 0) => {
-    const marker = items.find(value => String(value).toLowerCase().startsWith(prefix.toLowerCase() + ":"))
-    const value = marker ? Number.parseInt(marker.slice(marker.indexOf(":") + 1).trim(), 10) : fallback
-    return Number.isInteger(value) && value >= 0 ? value : fallback
-  }
   const contractCount = Number(contractPageCount)
-  const oldCvfCount = readCount(previousKeywords, "Homeshield CVF pages", 1)
-  const newCvfCount = readCount(updatedKeywords, "Homeshield CVF pages", 1)
-  if (updated.getPageCount() < contractCount + newCvfCount) throw new Error("The newly generated PDF is missing its CVF pages.")
-  if (previous.getPageCount() < contractCount + oldCvfCount) throw new Error("The previous CVF PDF is incomplete; its variation pages cannot be safely recovered.")
 
+  // Identify CVF pages by their actual rendered heading, not by assuming
+  // they are at the beginning or end of the file. Older PDFs can have CVFs
+  // interleaved with datasheets, which page-count metadata alone cannot fix.
+  const findCvfPageIndices = async bytes => {
+    const task = getDocument({ data: new Uint8Array(bytes), disableWorker: true })
+    const pdf = await task.promise
+    const indices = []
+    try {
+      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+        const page = await pdf.getPage(pageNumber)
+        const content = await page.getTextContent()
+        const text = content.items.map(item => item.str || "").join(" ").replace(/\\s+/g, " ").toUpperCase()
+        if (text.includes("CONTRACT VARIATION FORM")) indices.push(pageNumber - 1)
+      }
+    } finally {
+      await pdf.destroy()
+    }
+    return indices
+  }
+
+  const previousCvfIndices = await findCvfPageIndices(previousPdfBytes)
+  const updatedCvfIndices = await findCvfPageIndices(updatedPdfBytes)
+  if (!updatedCvfIndices.length) throw new Error("The newly generated PDF does not contain a recognisable CVF page.")
+  if (previous.getPageCount() < contractCount) throw new Error("The previous CVF PDF is shorter than the contract template.")
+
+  const updatedKeywordsRaw = updated.getKeywords()
+  const updatedKeywords = typeof updatedKeywordsRaw === "string"
+    ? updatedKeywordsRaw.split(",").map(v => v.trim()).filter(Boolean)
+    : Array.isArray(updatedKeywordsRaw) ? updatedKeywordsRaw : []
   const output = await PDFDocument.create()
   const copyRange = async (source, indices) => {
     if (!indices.length) return
     const pages = await output.copyPages(source, indices)
     pages.forEach(page => output.addPage(page))
   }
-  // Always use freshly rendered contract pages so corrected customer details
-  // replace the stale details in the original contract template.
+
+  // Freshly render the full contract so corrected customer details replace
+  // stale details on every original contract page.
   await copyRange(updated, Array.from({ length: contractCount }, (_, index) => index))
 
-  let oldCvfIndices = []
-  const grouped = previousKeywords.some(value => String(value).toLowerCase() === "homeshield cvf order: grouped-v1")
-  if (grouped) {
-    oldCvfIndices = Array.from({ length: oldCvfCount }, (_, index) => contractCount + index)
-  } else if (oldCvfCount > 0) {
-    // Legacy files placed the first CVF after the contract and appended later
-    // CVFs at the very end, after datasheets.
-    oldCvfIndices = [contractCount]
-    for (let index = 0; index < oldCvfCount - 1; index++) oldCvfIndices.push(previous.getPageCount() - (oldCvfCount - 1 - index))
-  }
-  await copyRange(previous, oldCvfIndices)
-  await copyRange(updated, Array.from({ length: newCvfCount }, (_, index) => contractCount + index))
-  const datasheetStart = contractCount + newCvfCount
-  await copyRange(updated, Array.from({ length: Math.max(0, updated.getPageCount() - datasheetStart) }, (_, index) => datasheetStart + index))
+  // Keep every previous CVF together, regardless of where legacy versions
+  // left it among the datasheets, then append the newly generated CVF page(s).
+  await copyRange(previous, previousCvfIndices)
+  await copyRange(updated, updatedCvfIndices)
+
+  const allCvfIndices = new Set(updatedCvfIndices)
+  const datasheetIndices = Array.from(
+    { length: Math.max(0, updated.getPageCount() - contractCount) },
+    (_, index) => contractCount + index
+  ).filter(index => !allCvfIndices.has(index))
+  await copyRange(updated, datasheetIndices)
+
+  const totalCvfPages = previousCvfIndices.length + updatedCvfIndices.length
   output.setKeywords([
-    ...updatedKeywords.filter(value => !String(value).toLowerCase().startsWith("homeshield cvf pages:") && !String(value).toLowerCase().startsWith("homeshield contract pages:") && String(value).toLowerCase() !== "homeshield cvf order: grouped-v1"),
-    `Homeshield CVF pages: ${oldCvfCount + newCvfCount}`,
+    ...updatedKeywords.filter(value =>
+      !String(value).toLowerCase().startsWith("homeshield cvf pages:") &&
+      !String(value).toLowerCase().startsWith("homeshield contract pages:") &&
+      String(value).toLowerCase() !== "homeshield cvf order: grouped-v1"
+    ),
+    `Homeshield CVF pages: ${totalCvfPages}`,
     `Homeshield Contract pages: ${contractCount}`,
     "Homeshield CVF order: grouped-v1",
   ])
