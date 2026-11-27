@@ -1478,6 +1478,16 @@ export async function AppendContractVariation(previousPdfBytes, variation) {
   const marker = (keywords || []).find(value => /^Homeshield CVF pages:\s*\d+$/i.test(value))
   const recordedCount = marker ? Number(marker.match(/\d+/)?.[0]) : 1
   const existingCvfPages = Number.isFinite(recordedCount) && recordedCount > 0 ? recordedCount : 1
+
+  // Remove empty pages within the CVF sequence before inserting the next
+  // variation. These can be left behind by earlier PDF assembly and would
+  // otherwise split the variation timeline.
+  const cvfEndIndex = Math.min(8 + existingCvfPages, existingDocument.getPageCount())
+  for (let pageIndex = cvfEndIndex - 1; pageIndex >= 8; pageIndex -= 1) {
+    const page = existingDocument.getPage(pageIndex)
+    if (!page.node.Contents()) existingDocument.removePage(pageIndex)
+  }
+
   const insertionIndex = Math.min(8 + existingCvfPages, existingDocument.getPageCount())
   copiedPages.forEach((page, offset) => existingDocument.insertPage(insertionIndex + offset, page))
   existingDocument.setKeywords([
