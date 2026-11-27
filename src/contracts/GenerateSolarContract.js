@@ -1478,11 +1478,11 @@ export async function AppendContractVariation(previousPdfBytes, variation, contr
   const keywordList = typeof keywords === "string"
     ? keywords.split(",").map(value => value.trim()).filter(Boolean)
     : Array.isArray(keywords) ? keywords : []
-  const marker = keywordList.find(value => /^Homeshield CVF pages:\\s*\\d+$/i.test(value))
-  const contractMarker = keywordList.find(value => /^Homeshield Contract pages:\\s*\\d+$/i.test(value))
-  const recordedCount = marker ? Number(marker.match(/\\d+/)?.[0]) : 1
+  const marker = keywordList.find(value => /^Homeshield CVF pages:\s*\d+$/i.test(value))
+  const contractMarker = keywordList.find(value => /^Homeshield Contract pages:\s*\d+$/i.test(value))
+  const recordedCount = marker ? Number(marker.match(/\d+/)?.[0]) : 1
   const existingCvfPages = Number.isFinite(recordedCount) && recordedCount > 0 ? recordedCount : 1
-  const markedContractPages = contractMarker ? Number(contractMarker.match(/\\d+/)?.[0]) : null
+  const markedContractPages = contractMarker ? Number(contractMarker.match(/\d+/)?.[0]) : null
   const contractPageCount = Number.isInteger(Number(contractPageCountHint)) && Number(contractPageCountHint) > 0
     ? Number(contractPageCountHint)
     : Number.isInteger(markedContractPages) && markedContractPages > 0
@@ -1495,8 +1495,9 @@ export async function AppendContractVariation(previousPdfBytes, variation, contr
   const insertionIndex = Math.min(contractPageCount + existingCvfPages, existingDocument.getPageCount())
   copiedPages.forEach((page, offset) => existingDocument.insertPage(insertionIndex + offset, page))
   existingDocument.setKeywords([
-    ...keywordList.filter(value => !/^Homeshield CVF pages:\s*\d+$/i.test(value)),
+    ...keywordList.filter(value => !/^Homeshield CVF pages:\s*\d+$/i.test(value) && !/^Homeshield Contract pages:\s*\d+$/i.test(value)),
     `Homeshield CVF pages: ${existingCvfPages + copiedPages.length}`,
+    `Homeshield Contract pages: ${contractPageCount}`,
   ])
   return new Uint8Array(await existingDocument.save())
 }
@@ -1634,8 +1635,9 @@ export async function GenerateSolarContract({ appointment, previewOnly = false, 
       ? keywords.split(",").map(value => value.trim()).filter(Boolean)
       : Array.isArray(keywords) ? keywords : []
     documentWithCvfIndex.setKeywords([
-      ...keywordList.filter(value => !/^Homeshield CVF pages:\s*\d+$/i.test(value)),
+      ...keywordList.filter(value => !/^Homeshield CVF pages:\s*\d+$/i.test(value) && !/^Homeshield Contract pages:\s*\d+$/i.test(value)),
       `Homeshield CVF pages: ${cvfPageCount}`,
+      `Homeshield Contract pages: ${contractPageCount}`,
     ])
     bytes = new Uint8Array(await documentWithCvfIndex.save())
   }
