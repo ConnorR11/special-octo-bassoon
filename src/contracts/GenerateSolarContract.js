@@ -1504,8 +1504,12 @@ export async function RebuildCumulativeContract(updatedPdfBytes, previousPdfByte
         // "Contract Variation Form" in clause 12. Identify an actual CVF by
         // its form heading plus its dedicated variation-date field instead
         // of matching that phrase anywhere in the page body.
+        // The generated CVF page is titled "Contract Variation" (not
+        // "Contract Variation Form"). Older uploaded CVFs may use the longer
+        // heading, so accept either while still requiring both metadata fields.
+        const hasCvfHeading = /\\bCONTRACT\\s+VARIATION(?:\\s+FORM)?\\b/.test(pageText)
         const isCvfForm =
-          pageText.includes("CONTRACT VARIATION FORM") &&
+          hasCvfHeading &&
           /\\bVARIATION\\s+DATE\\b/.test(pageText) &&
           /\\bCONTRACT\\s+NUMBER\\b/.test(pageText)
         if (isCvfForm) indices.push(pageNumber - 1)
