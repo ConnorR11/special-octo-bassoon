@@ -627,18 +627,25 @@ async function getPersonDetails(
   const primaryEmail = emails.find(item => item?.primary && item?.value)
     || emails.find(item => item?.value)
   const addressValue = person.address
-  const postalAddress = person.postal_address
-  const address = typeof addressValue === "string"
+  // The standard Pipedrive person "address" field is a single text field.
+  // CVF sync stores the postcode at the end of that value because the
+  // structured postal_address field requires Contact Sync to be enabled.
+  const rawAddress = typeof addressValue === "string"
     ? addressValue.trim()
-    : String(postalAddress?.value || "").trim() ||
+    : String(person.postal_address?.value || "").trim() ||
       [addressValue?.street, addressValue?.city, addressValue?.state, addressValue?.country]
         .filter(Boolean)
         .join(", ")
+  const trailingPostcode = rawAddress.match(/(?:,|\\s)\\s*([A-Z]{1,2}\\d[A-Z\\d]?\\s*\\d[A-Z]{2})\\s*$/i)?.[1] || ""
+  const address = trailingPostcode
+    ? rawAddress.replace(/(?:,|\\s)\\s*[A-Z]{1,2}\\d[A-Z\\d]?\\s*\\d[A-Z]{2}\\s*$/i, "").trim()
+    : rawAddress
   const postcode = String(
     person.postal_code ||
     person.address_postal_code ||
-    postalAddress?.postal_code ||
+    person.postal_address?.postal_code ||
     (typeof addressValue === "object" ? addressValue?.postal_code : "") ||
+    trailingPostcode ||
     ""
   ).trim()
 
