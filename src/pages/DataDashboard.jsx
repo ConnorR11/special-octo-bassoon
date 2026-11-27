@@ -1493,7 +1493,7 @@ function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeade
 
       {activeTab === "overview" ? (
         <>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16, marginBottom: 18 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))", gap: 16, marginBottom: 18 }}>
         {[
           { title: "Sales conversion funnel · 2026", period: "1 Jan 2026 to today", counts: conversionFunnel, previous: false },
           { title: "Sales conversion funnel · 2025", period: "Same period last year", counts: conversionFunnel2025, previous: true },
@@ -1555,7 +1555,6 @@ function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeade
           )
         })}
       </div>
-      <style>{`@media (max-width: 900px) { .data-dashboard-page .data-dashboard-chart-card { min-width: 0; } }</style>
 
       <div className="data-dashboard-chart-card">
         <div className="data-dashboard-chart-head">
