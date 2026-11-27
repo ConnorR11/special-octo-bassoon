@@ -1056,7 +1056,7 @@ async function renderPage(pdf, page, index, pageCount, appointment, epvs, salesR
     // white typography as the rest of the customer-facing cover.
     const coverDetails = [
       ["SALES REP", salesRepName],
-      ["DATE", date(new Date())],
+      ["SOLD DATE", date(soldDate || appointment?.sale_date || appointment?.sold_date || appointment?.date_sold)],
       ["CONTRACT NUMBER", appointment?.contract_number || "—"],
     ]
 
@@ -1462,7 +1462,7 @@ async function appendVariationPage(bytes, variation) {
   drawWrapped(page, acknowledgement, left, y, contentWidth, 7.2, regular, grey, 10)
   return doc.save()
 }
-export async function GenerateSolarContract({ appointment, previewOnly = false, epvsOverride = null, variation = null }) {
+export async function GenerateSolarContract({ appointment, previewOnly = false, epvsOverride = null, variation = null, soldDate = null }) {
   if (!appointment) return
 
   // Always refresh the appointment from Supabase so the contract uses the
