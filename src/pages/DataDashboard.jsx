@@ -1527,9 +1527,9 @@ function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeade
                     {stages.map((stage, index) => {
                       const count = funnel.counts[stage.key]
                       const ratio = funnel.counts.leads ? count / funnel.counts.leads * 100 : 0
-                      const width = index === 0 ? "100%" : `${Math.max(24, ratio)}%`
+                      const width = `${Math.max(0, ratio)}%`
                       return (
-                        <div key={stage.key} style={{ width, minWidth: 90, maxWidth: "100%", minHeight: 51, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", padding: "6px 10px", boxSizing: "border-box", background: stage.background, color: stage.color, clipPath: index === 0 ? "polygon(0 0,100% 0,92% 100%,8% 100%)" : index === 4 ? "polygon(16% 0,84% 0,84% 100%,16% 100%)" : "polygon(8% 0,92% 0,84% 100%,16% 100%)" }}>
+                        <div key={stage.key} style={{ width, minWidth: 0, maxWidth: "100%", minHeight: 51, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", padding: "6px 10px", boxSizing: "border-box", background: stage.background, color: stage.color, clipPath: index === 0 ? "polygon(0 0,100% 0,92% 100%,8% 100%)" : index === 4 ? "polygon(16% 0,84% 0,84% 100%,16% 100%)" : "polygon(8% 0,92% 0,84% 100%,16% 100%)" }}>
                           <div style={{ fontSize: 11, fontWeight: 700 }}>{stage.label}</div>
                           <div style={{ fontSize: 19, lineHeight: 1.2, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{formatNumber(count)}</div>
                         </div>
