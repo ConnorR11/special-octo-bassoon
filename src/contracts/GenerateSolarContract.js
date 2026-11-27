@@ -1463,8 +1463,8 @@ async function appendVariationPage(bytes, variation) {
   return doc.save()
 }
 
-export async function RebuildCumulativeContract(updatedPdfBytes, previousPdfBytes, contractPageCount) {
-  if (!updatedPdfBytes || !previousPdfBytes || !Number.isInteger(Number(contractPageCount)) || Number(contractPageCount) < 1) {
+export async function RebuildCumulativeContract(updatedPdfBytes, previousPdfBytes, contractPageCount, updatedCvfPageCount) {
+  if (!updatedPdfBytes || !previousPdfBytes || !Number.isInteger(Number(contractPageCount)) || Number(contractPageCount) < 1 || !Number.isInteger(Number(updatedCvfPageCount)) || Number(updatedCvfPageCount) < 1) {
     throw new Error("The updated contract, previous CVF PDF and contract page count are required.")
   }
 
@@ -1486,16 +1486,19 @@ export async function RebuildCumulativeContract(updatedPdfBytes, previousPdfByte
     return Number.isInteger(count) && count >= 0 ? count : null
   }
 
-  const updatedContractCount = readPageMarker(updated, "Contract pages")
-  const updatedCvfCount = readPageMarker(updated, "CVF pages")
+  // The generator returns these boundaries directly from the in-memory PDF.
+  // Do not round-trip the newly generated page counts through PDF metadata:
+  // metadata readers/writers can normalise keyword fields differently.
+  const updatedContractCount = contractCount
+  const updatedCvfCount = Number(updatedCvfPageCount)
   const previousContractCount = readPageMarker(previous, "Contract pages")
   const previousCvfCount = readPageMarker(previous, "CVF pages")
 
   if (updated.getPageCount() < contractCount) {
     throw new Error(`The refreshed contract has fewer than ${contractCount} contract pages.`)
   }
-  if (updatedContractCount !== contractCount || !Number.isInteger(updatedCvfCount) || updatedCvfCount < 1) {
-    throw new Error("The newly generated PDF is missing valid contract/CVF page metadata. Please generate it again before rebuilding.")
+  if (updatedContractCount !== contractCount || !Number.isInteger(updatedCvfCount) || updatedCvfCount < 1 || contractCount + updatedCvfCount > updated.getPageCount()) {
+    throw new Error("The newly generated PDF has invalid contract/CVF page boundaries. Please generate it again before rebuilding.")
   }
   if (previousContractCount !== contractCount || !Number.isInteger(previousCvfCount)) {
     throw new Error("The previous cumulative CVF PDF is missing reliable page metadata. It cannot safely be updated automatically.")
@@ -1757,7 +1760,7 @@ export async function GenerateSolarContract({ appointment, previewOnly = false, 
   }
 
   const blob = new Blob([bytes], { type: "application/pdf" })
-  if (previewOnly) return { url: null, blob, fileName: safeName + "-Digital-Solar-Contract.pdf", contractNumber, contractPageCount: variation ? contractPageCount : pdf.getNumberOfPages() }
+  if (previewOnly) return { url: null, blob, fileName: safeName + "-Digital-Solar-Contract.pdf", contractNumber, contractPageCount: variation ? contractPageCount : pdf.getNumberOfPages(), cvfPageCount }
   const url = URL.createObjectURL(blob)
   const link = document.createElement("a")
   link.href = url
