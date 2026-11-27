@@ -198,7 +198,7 @@ function CustomerDetail({
         const cumulativeBytes = await AppendContractVariation(previousBytes, variation)
         cumulativeCvfBlob = new Blob([cumulativeBytes], { type: "application/pdf" })
       }
-      const timestamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\\.\\d{3}Z$/, "Z")
+      const timestamp = new Date().toISOString().replace(/[-:.]/g, "")
       const fileName = `${cvfPrefix}-${timestamp}.pdf`
       const storagePath = `${folder}/${fileName}`
       const { error: uploadError } = await supabase.storage.from("signatures").upload(storagePath, cumulativeCvfBlob, {
