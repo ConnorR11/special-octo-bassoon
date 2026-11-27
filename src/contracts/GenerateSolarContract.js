@@ -1596,7 +1596,14 @@ export async function GenerateSolarContract({ appointment, previewOnly = false, 
     .replace(/^-+|-+$/g, "") || "Customer"
   // Keep the CVF immediately after the contract/T&Cs pages, before datasheets.
   let bytes = new Uint8Array(pdf.output("arraybuffer"))
-  if (variation) bytes = await appendVariationPage(bytes, variation)
+  let cvfPageCount = 0
+  if (variation) {
+    const contractDocument = await PDFDocument.load(bytes)
+    const contractPageCount = contractDocument.getPageCount()
+    bytes = await appendVariationPage(bytes, variation)
+    const documentWithVariation = await PDFDocument.load(bytes)
+    cvfPageCount = documentWithVariation.getPageCount() - contractPageCount
+  }
   bytes = await appendProductDatasheets(bytes, appointment, epvs, pages)
 
   // Record the number of CVF pages so future variations can be inserted
@@ -1606,7 +1613,7 @@ export async function GenerateSolarContract({ appointment, previewOnly = false, 
     const keywords = documentWithCvfIndex.getKeywords() || []
     documentWithCvfIndex.setKeywords([
       ...keywords.filter(value => !/^Homeshield CVF pages:\\s*\\d+$/i.test(value)),
-      `Homeshield CVF pages: ${documentWithCvfIndex.getPageCount() >= pages.length + 1 ? 1 : 1}`,
+      `Homeshield CVF pages: ${cvfPageCount}`,
     ])
     bytes = new Uint8Array(await documentWithCvfIndex.save())
   }
