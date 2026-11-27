@@ -87,6 +87,8 @@ function CustomerDetail({
   const [cvfAppointmentCalculation, setCvfAppointmentCalculation] = useState(null)
   const [cvfRefreshing, setCvfRefreshing] = useState(false)
   const [generatingCvfPdf, setGeneratingCvfPdf] = useState(false)
+  const [savingCvfCustomer, setSavingCvfCustomer] = useState(false)
+  const [cvfCustomerSaved, setCvfCustomerSaved] = useState(false)
 
   // Payment details belong to the original appointment EPVS record. Load that
   // snapshot separately and use it only as a fallback behind the updated CVF
@@ -147,6 +149,40 @@ function CustomerDetail({
   const [expandedSurveySection, setExpandedSurveySection] = useState("Property & installation")
   const [surveyPhotosExpanded, setSurveyPhotosExpanded] = useState(false)
   const [generatingSurvey, setGeneratingSurvey] = useState(false)
+  async function saveCvfCustomerInformation() {
+    if (!deal?.id || savingCvfCustomer) return
+    const customerName = String(cvfCustomerName || "").trim()
+    const customerAddress = String(cvfCustomerAddress || "").trim()
+    const customerPostcode = String(cvfCustomerPostcode || "").trim()
+    if (!customerName || !customerAddress || !customerPostcode) {
+      setCvfError("Complete the customer name, address and postcode before saving.")
+      return
+    }
+    setSavingCvfCustomer(true)
+    setCvfCustomerSaved(false)
+    setCvfError("")
+    try {
+      const { data: updatedDeal, error } = await supabase
+        .from("deals")
+        .update({
+          customer_name: customerName,
+          address: customerAddress,
+          postcode: customerPostcode,
+        })
+        .eq("id", deal.id)
+        .select("*")
+        .single()
+      if (error) throw error
+      onUpdated?.(updatedDeal)
+      setCvfCustomerSaved(true)
+    } catch (error) {
+      console.error("Save CVF customer information failed:", error)
+      setCvfError(error?.message || "Unable to save customer information to the deal.")
+    } finally {
+      setSavingCvfCustomer(false)
+    }
+  }
+
   async function generateCvfPdf() {
     if (!cvfUpdated?.data || !cvfUpdated?.results || !cvfUpdated?.thirtyYearProjection) {
       setCvfError("Save a complete updated EPVS calculation before generating the CVF.")
@@ -1299,7 +1335,13 @@ function CustomerDetail({
               <input value={cvfCustomerPostcode} onChange={event => setCvfCustomerPostcode(event.target.value)} placeholder="Postcode" style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", border: "1px solid #cbd5e1", borderRadius: 7, fontSize: 12, color: "#10233f", background: "#fff" }} />
             </label>
           </div>
-          <p style={{ margin: "9px 0 0", color: "#64748b", fontSize: 10 }}>Updates are included in the Customer Information changes on the CVF and saved to the deal when the CVF is generated.</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
+            <button type="button" onClick={saveCvfCustomerInformation} disabled={savingCvfCustomer} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 12px", border: 0, borderRadius: 7, background: "#172554", color: "#fff", fontSize: 11, fontWeight: 700, cursor: savingCvfCustomer ? "wait" : "pointer", opacity: savingCvfCustomer ? 0.6 : 1 }}>
+              {savingCvfCustomer ? "Saving..." : "Save customer details"}
+            </button>
+            {cvfCustomerSaved && <span style={{ color: "#15803d", fontSize: 11, fontWeight: 600 }}>Saved to deal</span>}
+          </div>
+          <p style={{ margin: "9px 0 0", color: "#64748b", fontSize: 10 }}>Saving updates the customer name, address and postcode directly on this deal. Generating the CVF also saves these details.</p>
         </section>
         <EPVSCalculator
           key={`cvf-${deal.id}-${cvfUpdated?.savedAt || cvfUpdated?.importedAt || "empty"}-${cvfAppointmentCalculation?.savedAt || "appointment"}`}
