@@ -91,6 +91,9 @@ function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeade
   const [selectedLeadType, setSelectedLeadType] = useState("")
   const [leadSourcesLoading, setLeadSourcesLoading] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [conversionFunnel, setConversionFunnel] = useState({ leads: 0, appointments: 0, sales: 0 })
+  const [funnelLoading, setFunnelLoading] = useState(false)
+  const [funnelError, setFunnelError] = useState("")
   const [error, setError] = useState("")
   const [internalActiveTab, setInternalActiveTab] = useState(standalonePronto ? "pronto" : "overview")
   const activeTab = embeddedTab || internalActiveTab
@@ -576,6 +579,80 @@ function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeade
     }
   }
 
+  async function loadConversionFunnel() {
+    if (!supabase) return
+    setFunnelLoading(true)
+    setFunnelError("")
+    try {
+      const pageSize = 1000
+      const leads = []
+      for (let from = 0; ; from += pageSize) {
+        let query = supabase.from("leads")
+          .select("marketing_row_id")
+          .gte("received_date_time", new Date(START_YEAR, 0, 1).toISOString())
+          .not("marketing_row_id", "is", null)
+          .order("received_date_time", { ascending: true })
+          .range(from, from + pageSize - 1)
+        if (selectedLeadSource) query = query.eq("lead_source", selectedLeadSource)
+        const { data, error: leadError } = await query
+        if (leadError) throw leadError
+        leads.push(...(data || []))
+        if (!data || data.length < pageSize) break
+      }
+
+      const leadIds = [...new Set(leads.map((row) => String(row.marketing_row_id || "").trim()).filter(Boolean))]
+      const appointmentIds = new Set()
+      const appointmentLeadIds = new Set()
+      for (let i = 0; i < leadIds.length; i += 200) {
+        const batch = leadIds.slice(i, i + 200)
+        const { data, error: appointmentError } = await supabase.from("appointments")
+          .select("appointment_row_id,marketing_row_id")
+          .in("marketing_row_id", batch)
+        if (appointmentError) throw appointmentError
+        ;(data || []).forEach((row) => {
+          if (row.appointment_row_id) appointmentIds.add(String(row.appointment_row_id))
+          if (row.marketing_row_id) appointmentLeadIds.add(String(row.marketing_row_id))
+        })
+      }
+
+      const soldLeadIds = new Set()
+      const appointmentIdList = [...appointmentIds]
+      for (let i = 0; i < appointmentIdList.length; i += 200) {
+        const batch = appointmentIdList.slice(i, i + 200)
+        const { data, error: dealError } = await supabase.from("deals")
+          .select("appointment_row_id")
+          .in("appointment_row_id", batch)
+        if (dealError) throw dealError
+        const soldAppointmentIds = new Set((data || []).map((row) => String(row.appointment_row_id || "")).filter(Boolean))
+        if (soldAppointmentIds.size) {
+          for (let j = 0; j < leadIds.length; j += 200) {
+            const leadBatch = leadIds.slice(j, j + 200)
+            const { data: linkedAppointments, error: linkedError } = await supabase.from("appointments")
+              .select("marketing_row_id,appointment_row_id")
+              .in("marketing_row_id", leadBatch)
+              .in("appointment_row_id", [...soldAppointmentIds])
+            if (linkedError) throw linkedError
+            ;(linkedAppointments || []).forEach((row) => {
+              if (row.marketing_row_id) soldLeadIds.add(String(row.marketing_row_id))
+            })
+          }
+        }
+      }
+
+      setConversionFunnel({
+        leads: leadIds.length,
+        appointments: appointmentLeadIds.size,
+        sales: soldLeadIds.size,
+      })
+    } catch (err) {
+      console.error("Error loading sales conversion funnel:", err)
+      setFunnelError(err?.message || "Unable to load sales conversion funnel.")
+      setConversionFunnel({ leads: 0, appointments: 0, sales: 0 })
+    } finally {
+      setFunnelLoading(false)
+    }
+  }
+
   async function loadData() {
     if (!supabase) {
       setError("Supabase is not configured.")
@@ -710,6 +787,10 @@ function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeade
   useEffect(() => {
     loadData()
   }, [selectedLeadSource, chartPeriod])
+
+  useEffect(() => {
+    loadConversionFunnel()
+  }, [selectedLeadSource])
 
   useEffect(() => {
     if (activeTab === "pronto") {
@@ -1437,6 +1518,47 @@ function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeade
 
       {activeTab === "overview" ? (
         <>
+      <div className="data-dashboard-chart-card" style={{ marginBottom: 18 }}>
+        <div className="data-dashboard-chart-head">
+          <div>
+            <div className="data-dashboard-chart-title"><TrendingUp size={17} /> Sales conversion funnel</div>
+            <div className="data-dashboard-chart-subtitle">Unique leads received since January 2026, matched to appointments and sold deals</div>
+          </div>
+          <div className="data-dashboard-status">{funnelLoading ? "Loading…" : `${formatNumber(conversionFunnel.leads)} leads`}</div>
+        </div>
+        {funnelError ? <div className="data-dashboard-empty">{funnelError}</div> : funnelLoading ? <div className="data-dashboard-empty">Calculating lead, appointment and sale conversions…</div> : (
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(220px, 0.8fr)", gap: 24, alignItems: "center", padding: "18px 20px 22px" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
+              {[
+                { label: "Leads", count: conversionFunnel.leads, width: "100%", background: "#bfdbfe", color: "#1e40af" },
+                { label: "Leads with appointment", count: conversionFunnel.appointments, width: conversionFunnel.leads ? `${Math.max(24, conversionFunnel.appointments / conversionFunnel.leads * 100)}%` : "24%", background: "#bbf7d0", color: "#166534" },
+                { label: "Leads with sale", count: conversionFunnel.sales, width: conversionFunnel.leads ? `${Math.max(18, conversionFunnel.sales / conversionFunnel.leads * 100)}%` : "18%", background: "#fde68a", color: "#92400e" },
+              ].map((stage, index) => (
+                <div key={stage.label} style={{ width: stage.width, minWidth: 150, maxWidth: "100%", minHeight: 66, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", padding: "9px 12px", boxSizing: "border-box", background: stage.background, color: stage.color, clipPath: index === 0 ? "polygon(0 0,100% 0,92% 100%,8% 100%)" : index === 1 ? "polygon(8% 0,92% 0,84% 100%,16% 100%)" : "polygon(16% 0,84% 0,84% 100%,16% 100%)" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700 }}>{stage.label}</div>
+                  <div style={{ fontSize: 23, lineHeight: 1.25, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{formatNumber(stage.count)}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "grid", gap: 12 }}>
+              {[
+                { label: "Lead → Appointment", value: conversionFunnel.leads ? conversionFunnel.appointments / conversionFunnel.leads * 100 : 0, detail: `${formatNumber(conversionFunnel.appointments)} of ${formatNumber(conversionFunnel.leads)} leads` },
+                { label: "Appointment → Sale", value: conversionFunnel.appointments ? conversionFunnel.sales / conversionFunnel.appointments * 100 : 0, detail: `${formatNumber(conversionFunnel.sales)} of ${formatNumber(conversionFunnel.appointments)} leads with appointments` },
+                { label: "Lead → Sale", value: conversionFunnel.leads ? conversionFunnel.sales / conversionFunnel.leads * 100 : 0, detail: "Overall conversion" },
+              ].map((item) => (
+                <div key={item.label} style={{ border: "1px solid #e5eaf0", borderRadius: 9, padding: "11px 13px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
+                    <span style={{ color: "#475569", fontSize: 12, fontWeight: 650 }}>{item.label}</span>
+                    <strong style={{ fontSize: 20, color: "#0f172a", fontVariantNumeric: "tabular-nums" }}>{item.value.toFixed(1)}%</strong>
+                  </div>
+                  <div style={{ color: "#94a3b8", fontSize: 11, marginTop: 3 }}>{item.detail}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="data-dashboard-chart-card">
         <div className="data-dashboard-chart-head">
           <div>
