@@ -115,6 +115,11 @@ const PIPEDRIVE_FIELDS = {
     key: null,
   },
 
+  leadPostcode: {
+    name: "Lead: Postcode",
+    key: null,
+  },
+
   contractPaymentMethod: {
     name: "Contract: Payment Method",
     key: null,
@@ -1182,6 +1187,7 @@ export default async function handler(req, res) {
       )
 
     const leadAddress =
+    const leadPostcode = normaliseText(getCustomFieldValue(deal, fields.leadPostcode.key))
       normaliseText(getCustomFieldValue(deal, fields.leadAddress.key))
 
     const contractPaymentMethod =
@@ -1435,6 +1441,7 @@ export default async function handler(req, res) {
       (typeof deal?.person?.address === "string" ? deal.person.address.trim() : "") ||
       null
     const customerPostcode =
+      leadPostcode ||
       personDetails.postcode ||
       String(deal?.person?.postal_code || deal?.person?.address_postal_code || "").trim() ||
       null
