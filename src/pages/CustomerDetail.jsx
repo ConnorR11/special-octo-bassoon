@@ -254,8 +254,18 @@ function CustomerDetail({
           throw new Error(`Unable to load the previous CVF: ${existingCvfError?.message || "File not found"}`)
         }
         const previousBytes = new Uint8Array(await existingCvfFile.arrayBuffer())
+        const manifestPath = `${previousPath}.metadata.json`
+        const { data: previousManifestFile, error: previousManifestError } = await supabase.storage.from("signatures").download(manifestPath)
+        let previousPageMetadata = null
+        if (!previousManifestError && previousManifestFile) {
+          try {
+            previousPageMetadata = JSON.parse(await previousManifestFile.text())
+          } catch {
+            throw new Error("The previous CVF page manifest is invalid. Please remove the incomplete test CVF and generate a fresh first CVF.")
+          }
+        }
         const refreshedPdfBytes = new Uint8Array(await result.blob.arrayBuffer())
-        const cumulativeBytes = await RebuildCumulativeContract(refreshedPdfBytes, previousBytes, result.contractPageCount, result.cvfPageCount)
+        const cumulativeBytes = await RebuildCumulativeContract(refreshedPdfBytes, previousBytes, result.contractPageCount, result.cvfPageCount, previousPageMetadata)
         cumulativeCvfBlob = new Blob([cumulativeBytes], { type: "application/pdf" })
       }
       const fileName = `${cvfPrefix} ${sequence}.pdf`
@@ -266,6 +276,42 @@ function CustomerDetail({
         upsert: false,
       })
       if (uploadError) throw new Error(`CVF PDF upload failed: ${uploadError.message}`)
+      // Store page boundaries separately from PDF metadata. This manifest is
+      // the authoritative index for the next cumulative rebuild.
+      const manifest = {
+        version: 1,
+        contractPageCount: result.contractPageCount,
+        cvfPageCount: previousCvf ? undefined : result.cvfPageCount,
+      }
+      if (previousCvf) {
+        const previousManifestPath = `${folder}/${previousCvf.name}.metadata.json`
+        const { data: previousManifestFile } = await supabase.storage.from("signatures").download(previousManifestPath)
+        if (previousManifestFile) {
+          try {
+            const previousManifest = JSON.parse(await previousManifestFile.text())
+            manifest.cvfPageCount = Number(previousManifest.cvfPageCount) + Number(result.cvfPageCount)
+          } catch {}
+        } else {
+          // Rebuild has already validated the legacy PDF metadata if no
+          // sidecar was available; read its resulting total from the PDF.
+          const cumulativeBytes = new Uint8Array(await cumulativeCvfBlob.arrayBuffer())
+          const { PDFDocument } = await import("pdf-lib")
+          const cumulativeDocument = await PDFDocument.load(cumulativeBytes)
+          const keywords = cumulativeDocument.getKeywords()
+          const keywordList = Array.isArray(keywords) ? keywords : String(keywords || "").split(",")
+          const marker = keywordList.map(value => String(value).trim()).find(value => /^Homeshield CVF pages:\s*\d+$/i.test(value))
+          manifest.cvfPageCount = Number(marker?.match(/\d+/)?.[0])
+        }
+      }
+      if (!Number.isInteger(manifest.cvfPageCount) || manifest.cvfPageCount < 1) {
+        throw new Error("Unable to record the cumulative CVF page boundaries.")
+      }
+      const { error: manifestError } = await supabase.storage.from("signatures").upload(`${storagePath}.metadata.json`, new Blob([JSON.stringify(manifest)], { type: "application/json" }), {
+        contentType: "application/json",
+        cacheControl: "60",
+        upsert: true,
+      })
+      if (manifestError) throw new Error(`CVF page manifest upload failed: ${manifestError.message}`)
       const { data: sessionData } = await supabase.auth.getSession()
       const accessToken = sessionData?.session?.access_token
       if (!accessToken) throw new Error("Please sign in again before syncing the CVF to Pipedrive.")
