@@ -1462,6 +1462,18 @@ async function appendVariationPage(bytes, variation) {
   drawWrapped(page, acknowledgement, left, y, contentWidth, 7.2, regular, grey, 10)
   return doc.save()
 }
+
+export async function AppendContractVariation(previousPdfBytes, variation) {
+  if (!previousPdfBytes || !variation) throw new Error("The existing CVF PDF and new variation are required.")
+  const blankDocument = await PDFDocument.create().save()
+  const newVariationBytes = await appendVariationPage(blankDocument, variation)
+  const existingDocument = await PDFDocument.load(previousPdfBytes)
+  const variationDocument = await PDFDocument.load(newVariationBytes)
+  const copiedPages = await existingDocument.copyPages(variationDocument, variationDocument.getPageIndices())
+  copiedPages.forEach(page => existingDocument.addPage(page))
+  return new Uint8Array(await existingDocument.save())
+}
+
 export async function GenerateSolarContract({ appointment, previewOnly = false, epvsOverride = null, variation = null, soldDate = null }) {
   if (!appointment) return
 
