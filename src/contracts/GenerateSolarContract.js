@@ -1469,13 +1469,23 @@ export async function RebuildCumulativeContract(updatedPdfBytes, previousPdfByte
   if (!updatedPdfBytes || !previousPdfBytes || !Number.isInteger(Number(contractPageCount)) || Number(contractPageCount) < 1) {
     throw new Error("The updated contract, previous CVF PDF and contract page count are required.")
   }
+
   const updated = await PDFDocument.load(updatedPdfBytes)
   const previous = await PDFDocument.load(previousPdfBytes)
   const contractCount = Number(contractPageCount)
 
-  // Identify CVF pages by their actual rendered heading, not by assuming
-  // they are at the beginning or end of the file. Older PDFs can have CVFs
-  // interleaved with datasheets, which page-count metadata alone cannot fix.
+  if (contractCount > updated.getPageCount()) {
+    throw new Error(`The contract template page count (${contractCount}) exceeds the newly generated PDF (${updated.getPageCount()} pages).`)
+  }
+
+  // A cumulative CVF must always be rebuilt from three clean sections:
+  // 1. The freshly rendered contract template.
+  // 2. Every CVF from the previous cumulative PDF, followed by this new CVF.
+  // 3. Datasheets from the fresh PDF only.
+  //
+  // Never copy the previous PDF's non-CVF pages. Older cumulative PDFs may
+  // contain duplicated contract/T&C pages or datasheets interleaved with CVFs.
+
   const findCvfPageIndices = async bytes => {
     pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker
     const task = pdfjs.getDocument({ data: new Uint8Array(bytes) })
@@ -1485,8 +1495,12 @@ export async function RebuildCumulativeContract(updatedPdfBytes, previousPdfByte
       for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
         const page = await pdf.getPage(pageNumber)
         const content = await page.getTextContent()
-        const text = content.items.map(item => item.str || "").join(" ").replace(/\\s+/g, " ").toUpperCase()
-        if (text.includes("CONTRACT VARIATION FORM")) indices.push(pageNumber - 1)
+        const pageText = content.items
+          .map(item => item.str || "")
+          .join(" ")
+          .replace(/\\s+/g, " ")
+          .toUpperCase()
+        if (pageText.includes("CONTRACT VARIATION FORM")) indices.push(pageNumber - 1)
       }
     } finally {
       await pdf.destroy()
@@ -1496,37 +1510,47 @@ export async function RebuildCumulativeContract(updatedPdfBytes, previousPdfByte
 
   const previousCvfIndices = await findCvfPageIndices(previousPdfBytes)
   const updatedCvfIndices = await findCvfPageIndices(updatedPdfBytes)
-  if (!updatedCvfIndices.length) throw new Error("The newly generated PDF does not contain a recognisable CVF page.")
-  if (previous.getPageCount() < contractCount) throw new Error("The previous CVF PDF is shorter than the contract template.")
-
-  const updatedKeywordsRaw = updated.getKeywords()
-  const updatedKeywords = typeof updatedKeywordsRaw === "string"
-    ? updatedKeywordsRaw.split(",").map(v => v.trim()).filter(Boolean)
-    : Array.isArray(updatedKeywordsRaw) ? updatedKeywordsRaw : []
-  const output = await PDFDocument.create()
-  const copyRange = async (source, indices) => {
-    if (!indices.length) return
-    const pages = await output.copyPages(source, indices)
-    pages.forEach(page => output.addPage(page))
+  if (!updatedCvfIndices.length) {
+    throw new Error("The newly generated PDF does not contain a recognisable CVF page.")
   }
 
-  // Freshly render the full contract so corrected customer details replace
-  // stale details on every original contract page.
-  await copyRange(updated, Array.from({ length: contractCount }, (_, index) => index))
+  // CVFs must be outside the contract-template section. This also prevents
+  // a misclassified page from being silently included in both sections.
+  const invalidUpdatedCvf = updatedCvfIndices.find(index => index < contractCount)
+  if (invalidUpdatedCvf !== undefined) {
+    throw new Error(`A CVF was detected inside the contract template at page ${invalidUpdatedCvf + 1}. The PDF was not rebuilt.`)
+  }
 
-  // Keep every previous CVF together, regardless of where legacy versions
-  // left it among the datasheets, then append the newly generated CVF page(s).
-  await copyRange(previous, previousCvfIndices)
-  await copyRange(updated, updatedCvfIndices)
+  const output = await PDFDocument.create()
+  const copyPages = async (source, indices) => {
+    if (!indices.length) return
+    const copied = await output.copyPages(source, indices)
+    copied.forEach(page => output.addPage(page))
+  }
 
-  const allCvfIndices = new Set(updatedCvfIndices)
+  // Section 1: the complete, freshly rendered contract template.
+  await copyPages(updated, Array.from({ length: contractCount }, (_, index) => index))
+
+  // Section 2: all historical CVFs in their existing order, then the new CVF.
+  await copyPages(previous, previousCvfIndices)
+  await copyPages(updated, updatedCvfIndices)
+
+  // Section 3: datasheets from this generation only. Previous non-CVF pages
+  // are intentionally discarded so old contract pages/datasheets cannot
+  // leak into the rebuilt document.
+  const cvfIndexSet = new Set(updatedCvfIndices)
   const datasheetIndices = Array.from(
-    { length: Math.max(0, updated.getPageCount() - contractCount) },
-    (_, index) => contractCount + index
-  ).filter(index => !allCvfIndices.has(index))
-  await copyRange(updated, datasheetIndices)
+    { length: updated.getPageCount() - contractCount },
+    (_, offset) => contractCount + offset
+  ).filter(index => !cvfIndexSet.has(index))
+  await copyPages(updated, datasheetIndices)
 
   const totalCvfPages = previousCvfIndices.length + updatedCvfIndices.length
+  const updatedKeywordsRaw = updated.getKeywords()
+  const updatedKeywords = typeof updatedKeywordsRaw === "string"
+    ? updatedKeywordsRaw.split(",").map(value => value.trim()).filter(Boolean)
+    : Array.isArray(updatedKeywordsRaw) ? updatedKeywordsRaw : []
+
   output.setKeywords([
     ...updatedKeywords.filter(value =>
       !String(value).toLowerCase().startsWith("homeshield cvf pages:") &&
@@ -1537,6 +1561,12 @@ export async function RebuildCumulativeContract(updatedPdfBytes, previousPdfByte
     `Homeshield Contract pages: ${contractCount}`,
     "Homeshield CVF order: grouped-v1",
   ])
+
+  const expectedPageCount = contractCount + totalCvfPages + datasheetIndices.length
+  if (output.getPageCount() !== expectedPageCount) {
+    throw new Error("The rebuilt PDF did not pass its section-order page-count check.")
+  }
+
   return new Uint8Array(await output.save())
 }
 
