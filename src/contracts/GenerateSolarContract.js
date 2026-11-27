@@ -1,7 +1,5 @@
 import jsPDF from "jspdf"
 import { PDFDocument, rgb as pdfRgb } from "pdf-lib"
-import * as pdfjs from "pdfjs-dist"
-import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.js?url"
 import { supabase } from "../lib/supabase"
 import { getSapZone } from "../EPVSCalculator"
 
@@ -1474,111 +1472,80 @@ export async function RebuildCumulativeContract(updatedPdfBytes, previousPdfByte
   const previous = await PDFDocument.load(previousPdfBytes)
   const contractCount = Number(contractPageCount)
 
-  if (contractCount > updated.getPageCount()) {
-    throw new Error(`The contract template page count (${contractCount}) exceeds the newly generated PDF (${updated.getPageCount()} pages).`)
+  // Page boundaries are recorded as PDF metadata when each CVF is generated.
+  // Use those counts rather than trying to recognise CVF pages from extracted
+  // text (which is unreliable across fonts, PDF generators and T&Cs wording).
+  const readPageMarker = (document, marker) => {
+    const raw = document.getKeywords()
+    const keywords = typeof raw === "string"
+      ? raw.split(",").map(value => value.trim())
+      : Array.isArray(raw) ? raw : []
+    const value = keywords.find(item => new RegExp("^Homeshield " + marker + ":\\\\s*\\\\d+$", "i").test(item))
+    if (!value) return null
+    const count = Number(value.match(/\\d+/)?.[0])
+    return Number.isInteger(count) && count >= 0 ? count : null
   }
 
-  // A cumulative CVF must always be rebuilt from three clean sections:
-  // 1. The freshly rendered contract template.
-  // 2. Every CVF from the previous cumulative PDF, followed by this new CVF.
-  // 3. Datasheets from the fresh PDF only.
-  //
-  // Never copy the previous PDF's non-CVF pages. Older cumulative PDFs may
-  // contain duplicated contract/T&C pages or datasheets interleaved with CVFs.
+  const updatedContractCount = readPageMarker(updated, "Contract pages")
+  const updatedCvfCount = readPageMarker(updated, "CVF pages")
+  const previousContractCount = readPageMarker(previous, "Contract pages")
+  const previousCvfCount = readPageMarker(previous, "CVF pages")
 
-  const findCvfPageIndices = async bytes => {
-    pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker
-    const task = pdfjs.getDocument({ data: new Uint8Array(bytes) })
-    const pdf = await task.promise
-    const indices = []
-    try {
-      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-        const page = await pdf.getPage(pageNumber)
-        const content = await page.getTextContent()
-        const pageText = content.items
-          .map(item => item.str || "")
-          .join(" ")
-          .replace(/\\s+/g, " ")
-          .toUpperCase()
-        // The contract's Terms & Conditions legitimately mention a
-        // "Contract Variation Form" in clause 12. Identify an actual CVF by
-        // its form heading plus its dedicated variation-date field instead
-        // of matching that phrase anywhere in the page body.
-        // The generated CVF page is titled "Contract Variation" (not
-        // "Contract Variation Form"). Older uploaded CVFs may use the longer
-        // heading, so accept either while still requiring both metadata fields.
-        const hasCvfHeading = /\\bCONTRACT\\s+VARIATION(?:\\s+FORM)?\\b/.test(pageText)
-        const isCvfForm =
-          hasCvfHeading &&
-          /\\bVARIATION\\s+DATE\\b/.test(pageText) &&
-          /\\bCONTRACT\\s+NUMBER\\b/.test(pageText)
-        if (isCvfForm) indices.push(pageNumber - 1)
-      }
-    } finally {
-      await pdf.destroy()
-    }
-    return indices
+  if (updated.getPageCount() < contractCount) {
+    throw new Error(`The refreshed contract has fewer than ${contractCount} contract pages.`)
+  }
+  if (updatedContractCount !== contractCount || !Number.isInteger(updatedCvfCount) || updatedCvfCount < 1) {
+    throw new Error("The newly generated PDF is missing valid contract/CVF page metadata. Please generate it again before rebuilding.")
+  }
+  if (previousContractCount !== contractCount || !Number.isInteger(previousCvfCount)) {
+    throw new Error("The previous cumulative CVF PDF is missing reliable page metadata. It cannot safely be updated automatically.")
+  }
+  if (previous.getPageCount() < previousContractCount + previousCvfCount) {
+    throw new Error("The previous cumulative CVF PDF is incomplete; its recorded contract and CVF pages do not match the PDF.")
   }
 
-  const previousCvfIndices = await findCvfPageIndices(previousPdfBytes)
-  const updatedCvfIndices = await findCvfPageIndices(updatedPdfBytes)
-  if (!updatedCvfIndices.length) {
-    throw new Error("The newly generated PDF does not contain a recognisable CVF page.")
-  }
-
-  // CVFs must be outside the contract-template section. This also prevents
-  // a misclassified page from being silently included in both sections.
-  const invalidUpdatedCvf = updatedCvfIndices.find(index => index < contractCount)
-  if (invalidUpdatedCvf !== undefined) {
-    throw new Error(`A CVF was detected inside the contract template at page ${invalidUpdatedCvf + 1}. The PDF was not rebuilt.`)
+  const updatedCvfStart = contractCount
+  const updatedDatasheetStart = updatedCvfStart + updatedCvfCount
+  if (updatedDatasheetStart > updated.getPageCount()) {
+    throw new Error("The newly generated PDF's CVF page metadata exceeds its page count.")
   }
 
   const output = await PDFDocument.create()
-  const copyPages = async (source, indices) => {
-    if (!indices.length) return
+  const copyRange = async (source, startIndex, count) => {
+    if (count <= 0) return
+    const indices = Array.from({ length: count }, (_, offset) => startIndex + offset)
     const copied = await output.copyPages(source, indices)
     copied.forEach(page => output.addPage(page))
   }
 
-  // Section 1: the complete, freshly rendered contract template.
-  await copyPages(updated, Array.from({ length: contractCount }, (_, index) => index))
+  // Replace the contract section with the freshly rendered version, retain
+  // every existing CVF page unchanged, append the new CVF page(s), and finish
+  // with the latest datasheets generated alongside this CVF.
+  await copyRange(updated, 0, contractCount)
+  await copyRange(previous, previousContractCount, previousCvfCount)
+  await copyRange(updated, updatedCvfStart, updatedCvfCount)
+  await copyRange(updated, updatedDatasheetStart, updated.getPageCount() - updatedDatasheetStart)
 
-  // Section 2: all historical CVFs in their existing order, then the new CVF.
-  await copyPages(previous, previousCvfIndices)
-  await copyPages(updated, updatedCvfIndices)
-
-  // Section 3: datasheets from this generation only. Previous non-CVF pages
-  // are intentionally discarded so old contract pages/datasheets cannot
-  // leak into the rebuilt document.
-  const cvfIndexSet = new Set(updatedCvfIndices)
-  const datasheetIndices = Array.from(
-    { length: updated.getPageCount() - contractCount },
-    (_, offset) => contractCount + offset
-  ).filter(index => !cvfIndexSet.has(index))
-  await copyPages(updated, datasheetIndices)
-
-  const totalCvfPages = previousCvfIndices.length + updatedCvfIndices.length
+  const totalCvfCount = previousCvfCount + updatedCvfCount
   const updatedKeywordsRaw = updated.getKeywords()
   const updatedKeywords = typeof updatedKeywordsRaw === "string"
     ? updatedKeywordsRaw.split(",").map(value => value.trim()).filter(Boolean)
     : Array.isArray(updatedKeywordsRaw) ? updatedKeywordsRaw : []
-
   output.setKeywords([
     ...updatedKeywords.filter(value =>
-      !String(value).toLowerCase().startsWith("homeshield cvf pages:") &&
-      !String(value).toLowerCase().startsWith("homeshield contract pages:") &&
-      String(value).toLowerCase() !== "homeshield cvf order: grouped-v1"
+      !/^Homeshield CVF pages:/i.test(String(value)) &&
+      !/^Homeshield Contract pages:/i.test(String(value)) &&
+      !/^Homeshield CVF order:/i.test(String(value))
     ),
-    `Homeshield CVF pages: ${totalCvfPages}`,
+    `Homeshield CVF pages: ${totalCvfCount}`,
     `Homeshield Contract pages: ${contractCount}`,
     "Homeshield CVF order: grouped-v1",
   ])
 
-  const expectedPageCount = contractCount + totalCvfPages + datasheetIndices.length
+  const expectedPageCount = contractCount + totalCvfCount + (updated.getPageCount() - updatedDatasheetStart)
   if (output.getPageCount() !== expectedPageCount) {
-    throw new Error("The rebuilt PDF did not pass its section-order page-count check.")
+    throw new Error("The cumulative CVF PDF failed its page-count check.")
   }
-
   return new Uint8Array(await output.save())
 }
 
