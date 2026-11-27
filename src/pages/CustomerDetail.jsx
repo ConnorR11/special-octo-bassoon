@@ -1230,24 +1230,6 @@ function CustomerDetail({
         {!deal.open_solar_id && <div style={{ marginBottom: 14, padding: 14, border: "1px solid #f1d3a5", borderRadius: 8, background: "#fff9ed", color: "#8a5a12", fontSize: 12 }}>No OpenSolar project ID is linked to this deal. Link the project on the appointment before importing a variation.</div>}
         {cvfError && <div role="alert" style={{ marginBottom: 12, padding: 11, borderRadius: 7, background: "#fff0f0", color: "#a33b3b", fontSize: 11 }}>{cvfError}</div>}
         {cvfMessage && <div style={{ marginBottom: 12, padding: 11, borderRadius: 7, background: "#eaf6ee", color: "#28734c", fontSize: 11 }}>{cvfMessage}</div>}
-        <section aria-label="Customer Information" style={{ marginBottom: 16, padding: 14, border: "1px solid #dbe3ec", borderRadius: 10, background: "#fbfcfe" }}>
-          <h3 style={{ margin: "0 0 12px", color: "#10233f", fontSize: 14 }}>Customer Information</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
-            <label style={{ display: "flex", flexDirection: "column", gap: 5, color: "#475569", fontSize: 11, fontWeight: 650 }}>
-              Customer name
-              <input value={cvfCustomerName} onChange={event => setCvfCustomerName(event.target.value)} placeholder="Customer name" style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", border: "1px solid #cbd5e1", borderRadius: 7, fontSize: 12, color: "#10233f", background: "#fff" }} />
-            </label>
-            <label style={{ display: "flex", flexDirection: "column", gap: 5, color: "#475569", fontSize: 11, fontWeight: 650 }}>
-              Address
-              <input value={cvfCustomerAddress} onChange={event => setCvfCustomerAddress(event.target.value)} placeholder="Contract address" style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", border: "1px solid #cbd5e1", borderRadius: 7, fontSize: 12, color: "#10233f", background: "#fff" }} />
-            </label>
-            <label style={{ display: "flex", flexDirection: "column", gap: 5, color: "#475569", fontSize: 11, fontWeight: 650 }}>
-              Postcode
-              <input value={cvfCustomerPostcode} onChange={event => setCvfCustomerPostcode(event.target.value)} placeholder="Postcode" style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", border: "1px solid #cbd5e1", borderRadius: 7, fontSize: 12, color: "#10233f", background: "#fff" }} />
-            </label>
-          </div>
-          <p style={{ margin: "9px 0 0", color: "#64748b", fontSize: 10 }}>Updates are included in the Customer Information changes on the CVF and saved to the deal when the CVF is generated.</p>
-        </section>
         <section aria-label="Changes being made" style={{ marginBottom: 16, padding: 14, border: "1px solid #dbe3ec", borderRadius: 10, background: "#fbfcfe" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: cvfChangeRows.length ? 10 : 0, flexWrap: "wrap" }}>
             <h3 style={{ margin: 0, color: "#10233f", fontSize: 14 }}>Changes being made</h3>
@@ -1289,6 +1271,24 @@ function CustomerDetail({
           ) : (
             <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12 }}>Changes will appear here as you edit the calculator.</p>
           )}
+        </section>
+<section aria-label="Customer Information" style={{ marginBottom: 16, padding: 14, border: "1px solid #dbe3ec", borderRadius: 10, background: "#fbfcfe" }}>
+          <h3 style={{ margin: "0 0 12px", color: "#10233f", fontSize: 14 }}>Customer Information</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
+            <label style={{ display: "flex", flexDirection: "column", gap: 5, color: "#475569", fontSize: 11, fontWeight: 650 }}>
+              Customer name
+              <input value={cvfCustomerName} onChange={event => setCvfCustomerName(event.target.value)} placeholder="Customer name" style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", border: "1px solid #cbd5e1", borderRadius: 7, fontSize: 12, color: "#10233f", background: "#fff" }} />
+            </label>
+            <label style={{ display: "flex", flexDirection: "column", gap: 5, color: "#475569", fontSize: 11, fontWeight: 650 }}>
+              Address
+              <input value={cvfCustomerAddress} onChange={event => setCvfCustomerAddress(event.target.value)} placeholder="Contract address" style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", border: "1px solid #cbd5e1", borderRadius: 7, fontSize: 12, color: "#10233f", background: "#fff" }} />
+            </label>
+            <label style={{ display: "flex", flexDirection: "column", gap: 5, color: "#475569", fontSize: 11, fontWeight: 650 }}>
+              Postcode
+              <input value={cvfCustomerPostcode} onChange={event => setCvfCustomerPostcode(event.target.value)} placeholder="Postcode" style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", border: "1px solid #cbd5e1", borderRadius: 7, fontSize: 12, color: "#10233f", background: "#fff" }} />
+            </label>
+          </div>
+          <p style={{ margin: "9px 0 0", color: "#64748b", fontSize: 10 }}>Updates are included in the Customer Information changes on the CVF and saved to the deal when the CVF is generated.</p>
         </section>
         <EPVSCalculator
           key={`cvf-${deal.id}-${cvfUpdated?.savedAt || cvfUpdated?.importedAt || "empty"}-${cvfAppointmentCalculation?.savedAt || "appointment"}`}
