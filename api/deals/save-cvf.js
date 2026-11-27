@@ -100,10 +100,10 @@ export default async function handler(req, res) {
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
           name: customerName,
-          postal_address: {
-            value: customerAddress,
-            postal_code: customerPostcode,
-          },
+          // "address" is the standard Pipedrive person field. "postal_address"
+          // is a Contact Sync-only field and returns HTTP 403 when that
+          // optional feature is not enabled.
+          address: [customerAddress, customerPostcode].filter(Boolean).join(", "),
         }),
       }
     )
