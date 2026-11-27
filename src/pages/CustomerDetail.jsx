@@ -198,17 +198,18 @@ function CustomerDetail({
       const matchingFiles = (existingCvfFiles || []).filter(file =>
         file.name === `${contractNumber}-Contract-Variation.pdf` ||
         file.name.startsWith(`${contractNumber}-Contract-Variation-`) ||
-        file.name.startsWith(`${cvfPrefix} `) && / \\d{3}\\.pdf$/.test(file.name)
+        file.name.startsWith(`${cvfPrefix} `) && / \d{3}\.pdf$/.test(file.name)
       )
       const numberedFiles = matchingFiles
-        .map(file => ({ file, match: file.name.match(/ - Contract Variation (\\d{3})\\.pdf$/) }))
+        .map(file => ({ file, match: file.name.match(/ - Contract Variation (\d{3})\.pdf$/) }))
         .filter(item => item.match)
         .sort((a, b) => Number(b.match[1]) - Number(a.match[1]))
       const legacyFiles = matchingFiles
         .filter(file => !numberedFiles.some(item => item.file.name === file.name))
         .sort((a, b) => b.name.localeCompare(a.name))
       const previousCvf = numberedFiles[0]?.file || legacyFiles[0] || null
-      const sequence = String(matchingFiles.length + 1).padStart(3, "0")
+      const highestSequence = numberedFiles.reduce((highest, item) => Math.max(highest, Number(item.match[1]) || 0), 0)
+      const sequence = String(highestSequence + 1).padStart(3, "0")
       let cumulativeCvfBlob = result.blob
       if (previousCvf) {
         const previousPath = `${folder}/${previousCvf.name}`
