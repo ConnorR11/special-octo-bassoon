@@ -1474,8 +1474,8 @@ export async function RebuildCumulativeContract(updatedPdfBytes, previousPdfByte
   const previousKeywordsRaw = previous.getKeywords()
   const previousKeywords = typeof previousKeywordsRaw === "string" ? previousKeywordsRaw.split(",").map(v => v.trim()).filter(Boolean) : Array.isArray(previousKeywordsRaw) ? previousKeywordsRaw : []
   const readCount = (items, prefix, fallback = 0) => {
-    const marker = items.find(value => new RegExp("^" + prefix + ":\\\\s*\\\\d+$", "i").test(value))
-    const value = marker ? Number(marker.match(/\\\\d+/)?.[0]) : fallback
+    const marker = items.find(value => String(value).toLowerCase().startsWith(prefix.toLowerCase() + ":"))
+    const value = marker ? Number.parseInt(marker.slice(marker.indexOf(":") + 1).trim(), 10) : fallback
     return Number.isInteger(value) && value >= 0 ? value : fallback
   }
   const contractCount = Number(contractPageCount)
@@ -1495,7 +1495,7 @@ export async function RebuildCumulativeContract(updatedPdfBytes, previousPdfByte
   await copyRange(updated, Array.from({ length: contractCount }, (_, index) => index))
 
   let oldCvfIndices = []
-  const grouped = previousKeywords.some(value => /^Homeshield CVF order:\\s*grouped-v1$/i.test(value))
+  const grouped = previousKeywords.some(value => String(value).toLowerCase() === "homeshield cvf order: grouped-v1")
   if (grouped) {
     oldCvfIndices = Array.from({ length: oldCvfCount }, (_, index) => contractCount + index)
   } else if (oldCvfCount > 0) {
@@ -1509,7 +1509,7 @@ export async function RebuildCumulativeContract(updatedPdfBytes, previousPdfByte
   const datasheetStart = contractCount + newCvfCount
   await copyRange(updated, Array.from({ length: Math.max(0, updated.getPageCount() - datasheetStart) }, (_, index) => datasheetStart + index))
   output.setKeywords([
-    ...updatedKeywords.filter(value => !/^Homeshield CVF pages:\\s*\\d+$/i.test(value) && !/^Homeshield Contract pages:\\s*\\d+$/i.test(value) && !/^Homeshield CVF order:\\s*grouped-v1$/i.test(value)),
+    ...updatedKeywords.filter(value => !String(value).toLowerCase().startsWith("homeshield cvf pages:") && !String(value).toLowerCase().startsWith("homeshield contract pages:") && String(value).toLowerCase() !== "homeshield cvf order: grouped-v1"),
     `Homeshield CVF pages: ${oldCvfCount + newCvfCount}`,
     `Homeshield Contract pages: ${contractCount}`,
     "Homeshield CVF order: grouped-v1",
