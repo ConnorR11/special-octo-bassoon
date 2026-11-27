@@ -1,6 +1,6 @@
 import jsPDF from "jspdf"
 import { PDFDocument, rgb as pdfRgb } from "pdf-lib"
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs"
+import * as pdfjs from "pdfjs-dist"
 import { supabase } from "../lib/supabase"
 import { getSapZone } from "../EPVSCalculator"
 
@@ -1476,7 +1476,7 @@ export async function RebuildCumulativeContract(updatedPdfBytes, previousPdfByte
   // they are at the beginning or end of the file. Older PDFs can have CVFs
   // interleaved with datasheets, which page-count metadata alone cannot fix.
   const findCvfPageIndices = async bytes => {
-    const task = getDocument({ data: new Uint8Array(bytes), disableWorker: true })
+    const task = pdfjs.getDocument({ data: new Uint8Array(bytes), disableWorker: true })
     const pdf = await task.promise
     const indices = []
     try {
