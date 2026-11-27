@@ -178,15 +178,22 @@ function CustomerDetail({
       const folder = `cvf-pdfs/${appointment.appointment_row_id}`
       const { data: existingCvfFiles, error: listCvfError } = await supabase.storage.from("signatures").list(folder, { limit: 100 })
       if (listCvfError) throw new Error(`Unable to list previous CVFs: ${listCvfError.message}`)
-      const cvfPrefix = `${contractNumber}-Contract-Variation`
-      const previousCvf = (existingCvfFiles || [])
-        .filter(file => file.name === `${cvfPrefix}.pdf` || (file.name.startsWith(`${cvfPrefix}-`) && file.name.endsWith(".pdf")))
-        .sort((a, b) => {
-          const aTimestamped = a.name.startsWith(`${cvfPrefix}-`)
-          const bTimestamped = b.name.startsWith(`${cvfPrefix}-`)
-          if (aTimestamped !== bTimestamped) return aTimestamped ? -1 : 1
-          return b.name.localeCompare(a.name)
-        })[0]
+      const cvfPrefix = `${contractNumber} - Contract Variation`
+      const numberedPattern = new RegExp(`^${cvfPrefix.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")} (\\d{3})\\.pdf$`)
+      const matchingFiles = (existingCvfFiles || []).filter(file =>
+        file.name === `${contractNumber}-Contract-Variation.pdf` ||
+        file.name.startsWith(`${contractNumber}-Contract-Variation-`) ||
+        numberedPattern.test(file.name)
+      )
+      const numberedFiles = matchingFiles
+        .map(file => ({ file, match: file.name.match(numberedPattern) }))
+        .filter(item => item.match)
+        .sort((a, b) => Number(b.match[1]) - Number(a.match[1]))
+      const legacyFiles = matchingFiles
+        .filter(file => !numberedFiles.some(item => item.file.name === file.name))
+        .sort((a, b) => b.name.localeCompare(a.name))
+      const previousCvf = numberedFiles[0]?.file || legacyFiles[0] || null
+      const sequence = String(matchingFiles.length + 1).padStart(3, "0")
       let cumulativeCvfBlob = result.blob
       if (previousCvf) {
         const previousPath = `${folder}/${previousCvf.name}`
@@ -198,8 +205,7 @@ function CustomerDetail({
         const cumulativeBytes = await AppendContractVariation(previousBytes, variation)
         cumulativeCvfBlob = new Blob([cumulativeBytes], { type: "application/pdf" })
       }
-      const timestamp = new Date().toISOString().replace(/[-:.]/g, "")
-      const fileName = `${cvfPrefix}-${timestamp}.pdf`
+      const fileName = `${cvfPrefix} ${sequence}.pdf`
       const storagePath = `${folder}/${fileName}`
       const { error: uploadError } = await supabase.storage.from("signatures").upload(storagePath, cumulativeCvfBlob, {
         contentType: "application/pdf",
