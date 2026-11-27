@@ -175,22 +175,31 @@ function CustomerDetail({
       const result = await GenerateSolarContract({ appointment, epvsOverride: cvfUpdated, variation, previewOnly: true, soldDate: deal.sale_date })
       if (!result?.blob || !result?.fileName) throw new Error("The CVF PDF could not be generated.")
       const contractNumber = String(deal.contract_number || appointment.contract_number || "Solar").replace(/[^a-zA-Z0-9_-]/g, "-")
-      const fileName = `${contractNumber}-Contract-Variation.pdf`
-      const storagePath = `cvf-pdfs/${appointment.appointment_row_id}/${fileName}`
-      const { data: existingCvfFile, error: existingCvfError } = await supabase.storage.from("signatures").download(storagePath)
+      const folder = `cvf-pdfs/${appointment.appointment_row_id}`
+      const { data: existingCvfFiles, error: listCvfError } = await supabase.storage.from("signatures").list(folder, { limit: 100 })
+      if (listCvfError) throw new Error(`Unable to list previous CVFs: ${listCvfError.message}`)
+      const cvfPrefix = `${contractNumber}-Contract-Variation`
+      const previousCvf = (existingCvfFiles || [])
+        .filter(file => file.name === `${cvfPrefix}.pdf` || (file.name.startsWith(`${cvfPrefix}-`) && file.name.endsWith(".pdf")))
+        .sort((a, b) => b.name.localeCompare(a.name))[0]
       let cumulativeCvfBlob = result.blob
-      if (existingCvfError && !/not found|object not found|404/i.test(existingCvfError.message || "")) {
-        throw new Error(`Unable to load the previous CVF: ${existingCvfError.message}`)
-      }
-      if (existingCvfFile) {
+      if (previousCvf) {
+        const previousPath = `${folder}/${previousCvf.name}`
+        const { data: existingCvfFile, error: existingCvfError } = await supabase.storage.from("signatures").download(previousPath)
+        if (existingCvfError || !existingCvfFile) {
+          throw new Error(`Unable to load the previous CVF: ${existingCvfError?.message || "File not found"}`)
+        }
         const previousBytes = new Uint8Array(await existingCvfFile.arrayBuffer())
         const cumulativeBytes = await AppendContractVariation(previousBytes, variation)
         cumulativeCvfBlob = new Blob([cumulativeBytes], { type: "application/pdf" })
       }
+      const timestamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\\.\\d{3}Z$/, "Z")
+      const fileName = `${cvfPrefix}-${timestamp}.pdf`
+      const storagePath = `${folder}/${fileName}`
       const { error: uploadError } = await supabase.storage.from("signatures").upload(storagePath, cumulativeCvfBlob, {
         contentType: "application/pdf",
         cacheControl: "60",
-        upsert: true,
+        upsert: false,
       })
       if (uploadError) throw new Error(`CVF PDF upload failed: ${uploadError.message}`)
       const { data: sessionData } = await supabase.auth.getSession()
