@@ -1186,9 +1186,12 @@ export default async function handler(req, res) {
         getCustomFieldValue(deal, fields.installationCompletionDate.key)
       )
 
-    const leadAddress =
-    const leadPostcode = normaliseText(getCustomFieldValue(deal, fields.leadPostcode.key))
-      normaliseText(getCustomFieldValue(deal, fields.leadAddress.key))
+    const leadAddress = normaliseText(
+      getCustomFieldValue(deal, fields.leadAddress.key)
+    )
+    const leadPostcode = normaliseText(
+      getCustomFieldValue(deal, fields.leadPostcode.key)
+    )
 
     const contractPaymentMethod =
       normaliseText(
