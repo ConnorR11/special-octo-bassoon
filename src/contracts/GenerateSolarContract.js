@@ -1463,6 +1463,60 @@ async function appendVariationPage(bytes, variation) {
   return doc.save()
 }
 
+export async function RebuildCumulativeContract(updatedPdfBytes, previousPdfBytes, contractPageCount) {
+  if (!updatedPdfBytes || !previousPdfBytes || !Number.isInteger(Number(contractPageCount)) || Number(contractPageCount) < 1) {
+    throw new Error("The updated contract, previous CVF PDF and contract page count are required.")
+  }
+  const updated = await PDFDocument.load(updatedPdfBytes)
+  const previous = await PDFDocument.load(previousPdfBytes)
+  const updatedKeywordsRaw = updated.getKeywords()
+  const updatedKeywords = typeof updatedKeywordsRaw === "string" ? updatedKeywordsRaw.split(",").map(v => v.trim()).filter(Boolean) : Array.isArray(updatedKeywordsRaw) ? updatedKeywordsRaw : []
+  const previousKeywordsRaw = previous.getKeywords()
+  const previousKeywords = typeof previousKeywordsRaw === "string" ? previousKeywordsRaw.split(",").map(v => v.trim()).filter(Boolean) : Array.isArray(previousKeywordsRaw) ? previousKeywordsRaw : []
+  const readCount = (items, prefix, fallback = 0) => {
+    const marker = items.find(value => new RegExp("^" + prefix + ":\\\\s*\\\\d+$", "i").test(value))
+    const value = marker ? Number(marker.match(/\\\\d+/)?.[0]) : fallback
+    return Number.isInteger(value) && value >= 0 ? value : fallback
+  }
+  const contractCount = Number(contractPageCount)
+  const oldCvfCount = readCount(previousKeywords, "Homeshield CVF pages", 1)
+  const newCvfCount = readCount(updatedKeywords, "Homeshield CVF pages", 1)
+  if (updated.getPageCount() < contractCount + newCvfCount) throw new Error("The newly generated PDF is missing its CVF pages.")
+  if (previous.getPageCount() < contractCount + oldCvfCount) throw new Error("The previous CVF PDF is incomplete; its variation pages cannot be safely recovered.")
+
+  const output = await PDFDocument.create()
+  const copyRange = async (source, indices) => {
+    if (!indices.length) return
+    const pages = await output.copyPages(source, indices)
+    pages.forEach(page => output.addPage(page))
+  }
+  // Always use freshly rendered contract pages so corrected customer details
+  // replace the stale details in the original contract template.
+  await copyRange(updated, Array.from({ length: contractCount }, (_, index) => index))
+
+  let oldCvfIndices = []
+  const grouped = previousKeywords.some(value => /^Homeshield CVF order:\\s*grouped-v1$/i.test(value))
+  if (grouped) {
+    oldCvfIndices = Array.from({ length: oldCvfCount }, (_, index) => contractCount + index)
+  } else if (oldCvfCount > 0) {
+    // Legacy files placed the first CVF after the contract and appended later
+    // CVFs at the very end, after datasheets.
+    oldCvfIndices = [contractCount]
+    for (let index = 0; index < oldCvfCount - 1; index++) oldCvfIndices.push(previous.getPageCount() - (oldCvfCount - 1 - index))
+  }
+  await copyRange(previous, oldCvfIndices)
+  await copyRange(updated, Array.from({ length: newCvfCount }, (_, index) => contractCount + index))
+  const datasheetStart = contractCount + newCvfCount
+  await copyRange(updated, Array.from({ length: Math.max(0, updated.getPageCount() - datasheetStart) }, (_, index) => datasheetStart + index))
+  output.setKeywords([
+    ...updatedKeywords.filter(value => !/^Homeshield CVF pages:\\s*\\d+$/i.test(value) && !/^Homeshield Contract pages:\\s*\\d+$/i.test(value) && !/^Homeshield CVF order:\\s*grouped-v1$/i.test(value)),
+    `Homeshield CVF pages: ${oldCvfCount + newCvfCount}`,
+    `Homeshield Contract pages: ${contractCount}`,
+    "Homeshield CVF order: grouped-v1",
+  ])
+  return new Uint8Array(await output.save())
+}
+
 export async function AppendContractVariation(previousPdfBytes, variation, contractPageCountHint = null) {
   if (!previousPdfBytes || !variation) throw new Error("The existing CVF PDF and new variation are required.")
   const blankDocument = await PDFDocument.create()
