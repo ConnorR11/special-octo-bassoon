@@ -1559,6 +1559,11 @@ export async function GenerateSolarContract({ appointment, previewOnly = false, 
 
   const contractAppointment = {
     ...appointment,
+    // A CVF may include corrected customer details. Use those values for
+    // the regenerated contract pages as well as the variation summary.
+    name: variation?.customerName || appointment?.name,
+    address: variation?.customerAddress || appointment?.address,
+    postcode: variation?.customerPostcode || appointment?.postcode,
     sale_date: soldDate || appointment?.sale_date || appointment?.sold_date || appointment?.date_sold || null,
     contract_number: contractNumber,
   }
