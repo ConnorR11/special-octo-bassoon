@@ -1463,7 +1463,7 @@ async function appendVariationPage(bytes, variation) {
   return doc.save()
 }
 
-export async function RebuildCumulativeContract(updatedPdfBytes, previousPdfBytes, contractPageCount, updatedCvfPageCount) {
+export async function RebuildCumulativeContract(updatedPdfBytes, previousPdfBytes, contractPageCount, updatedCvfPageCount, previousPageMetadata = null) {
   if (!updatedPdfBytes || !previousPdfBytes || !Number.isInteger(Number(contractPageCount)) || Number(contractPageCount) < 1 || !Number.isInteger(Number(updatedCvfPageCount)) || Number(updatedCvfPageCount) < 1) {
     throw new Error("The updated contract, previous CVF PDF and contract page count are required.")
   }
@@ -1491,8 +1491,8 @@ export async function RebuildCumulativeContract(updatedPdfBytes, previousPdfByte
   // metadata readers/writers can normalise keyword fields differently.
   const updatedContractCount = contractCount
   const updatedCvfCount = Number(updatedCvfPageCount)
-  const previousContractCount = readPageMarker(previous, "Contract pages")
-  const previousCvfCount = readPageMarker(previous, "CVF pages")
+  const previousContractCount = Number(previousPageMetadata?.contractPageCount) || readPageMarker(previous, "Contract pages")
+  const previousCvfCount = Number(previousPageMetadata?.cvfPageCount) || readPageMarker(previous, "CVF pages")
 
   if (updated.getPageCount() < contractCount) {
     throw new Error(`The refreshed contract has fewer than ${contractCount} contract pages.`)
