@@ -182,6 +182,8 @@ function CustomerDetail({
       if (customerUpdateError) throw customerUpdateError
       const variation = {
         customerName,
+        customerAddress,
+        customerPostcode,
         address: [customerAddress, customerPostcode].filter(Boolean).join(", "),
         contractNumber: deal.contract_number || appointment.contract_number,
         rows: cvfChangeRows.map(row => ({ label: row.label, before: row.before, after: row.after, category: row.category })),
