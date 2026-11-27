@@ -584,59 +584,16 @@ function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeade
     setFunnelLoading(true)
     setFunnelError("")
     try {
-      const pageSize = 1000
-      const leads = []
-      for (let from = 0; ; from += pageSize) {
-        let query = supabase.from("leads")
-          .select("marketing_row_id")
-          .gte("received_date_time", new Date(START_YEAR, 0, 1).toISOString())
-          .not("marketing_row_id", "is", null)
-          .order("received_date_time", { ascending: true })
-          .range(from, from + pageSize - 1)
-        if (selectedLeadSource) query = query.eq("lead_source", selectedLeadSource)
-        const { data, error: leadError } = await query
-        if (leadError) throw leadError
-        leads.push(...(data || []))
-        if (!data || data.length < pageSize) break
-      }
-
-      const leadIds = [...new Set(leads.map((row) => String(row.marketing_row_id || "").trim()).filter(Boolean))]
-      const appointmentIds = new Set()
-      const appointmentToLead = new Map()
-      const appointmentLeadIds = new Set()
-      for (let i = 0; i < leadIds.length; i += 200) {
-        const batch = leadIds.slice(i, i + 200)
-        const { data, error: appointmentError } = await supabase.from("appointments")
-          .select("appointment_row_id,marketing_row_id")
-          .in("marketing_row_id", batch)
-        if (appointmentError) throw appointmentError
-        ;(data || []).forEach((row) => {
-          if (row.appointment_row_id) {
-            appointmentIds.add(String(row.appointment_row_id))
-            if (row.marketing_row_id) appointmentToLead.set(String(row.appointment_row_id), String(row.marketing_row_id))
-          }
-          if (row.marketing_row_id) appointmentLeadIds.add(String(row.marketing_row_id))
-        })
-      }
-
-      const soldLeadIds = new Set()
-      const appointmentIdList = [...appointmentIds]
-      for (let i = 0; i < appointmentIdList.length; i += 200) {
-        const batch = appointmentIdList.slice(i, i + 200)
-        const { data, error: dealError } = await supabase.from("deals")
-          .select("appointment_row_id")
-          .in("appointment_row_id", batch)
-        if (dealError) throw dealError
-        ;(data || []).forEach((row) => {
-          const leadId = appointmentToLead.get(String(row.appointment_row_id || ""))
-          if (leadId) soldLeadIds.add(leadId)
-        })
-      }
-
+      const { data, error: rpcError } = await supabase.rpc("get_sales_conversion_funnel", {
+        start_date: new Date(START_YEAR, 0, 1).toISOString(),
+        selected_lead_source: selectedLeadSource || null,
+      })
+      if (rpcError) throw rpcError
+      const result = Array.isArray(data) ? data[0] : data
       setConversionFunnel({
-        leads: leadIds.length,
-        appointments: appointmentLeadIds.size,
-        sales: soldLeadIds.size,
+        leads: Number(result?.leads || 0),
+        appointments: Number(result?.appointments || 0),
+        sales: Number(result?.sales || 0),
       })
     } catch (err) {
       console.error("Error loading sales conversion funnel:", err)
