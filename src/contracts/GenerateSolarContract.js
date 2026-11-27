@@ -1378,7 +1378,7 @@ async function appendVariationPage(bytes, variation) {
   const pale = pdfRgb(0.94, 0.97, 0.99)
   const border = pdfRgb(0.84, 0.88, 0.92)
   const grey = pdfRgb(0.30, 0.35, 0.40)
-  const categories = ["Current Energy", "System Design", "Payment Information", "EPVS Calculations"]
+  const categories = ["Customer Information", "Current Energy", "System Design", "Payment Information", "EPVS Calculations"]
   const rows = Array.isArray(variation.rows) ? variation.rows : []
   const groups = categories.map(category => ({ category, rows: rows.filter(row => (row.category || "System Design") === category) })).filter(group => group.rows.length)
   rows.filter(row => !categories.includes(row.category)).forEach(row => {
