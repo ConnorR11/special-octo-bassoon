@@ -91,7 +91,7 @@ function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeade
   const [selectedLeadType, setSelectedLeadType] = useState("")
   const [leadSourcesLoading, setLeadSourcesLoading] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [conversionFunnel, setConversionFunnel] = useState({ leads: 0, appointments: 0, sales: 0 })
+  const [conversionFunnel, setConversionFunnel] = useState({ leads: 0, h: 0, c: 0, p: 0, s: 0 })
   const [funnelLoading, setFunnelLoading] = useState(false)
   const [funnelError, setFunnelError] = useState("")
   const [error, setError] = useState("")
@@ -592,13 +592,15 @@ function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeade
       const result = Array.isArray(data) ? data[0] : data
       setConversionFunnel({
         leads: Number(result?.leads || 0),
-        appointments: Number(result?.appointments || 0),
-        sales: Number(result?.sales || 0),
+        h: Number(result?.h || 0),
+        c: Number(result?.c || 0),
+        p: Number(result?.p || 0),
+        s: Number(result?.s || 0),
       })
     } catch (err) {
       console.error("Error loading sales conversion funnel:", err)
       setFunnelError(err?.message || "Unable to load sales conversion funnel.")
-      setConversionFunnel({ leads: 0, appointments: 0, sales: 0 })
+      setConversionFunnel({ leads: 0, h: 0, c: 0, p: 0, s: 0 })
     } finally {
       setFunnelLoading(false)
     }
@@ -1473,7 +1475,7 @@ function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeade
         <div className="data-dashboard-chart-head">
           <div>
             <div className="data-dashboard-chart-title"><TrendingUp size={17} /> Sales conversion funnel</div>
-            <div className="data-dashboard-chart-subtitle">Unique leads received since January 2026, matched to appointments and sold deals</div>
+            <div className="data-dashboard-chart-subtitle">Lead progression through H, C, P and S stages since January 2026</div>
           </div>
           <div className="data-dashboard-status">{funnelLoading ? "Loading…" : `${formatNumber(conversionFunnel.leads)} leads`}</div>
         </div>
@@ -1482,8 +1484,10 @@ function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeade
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
               {[
                 { label: "Leads", count: conversionFunnel.leads, width: "100%", background: "#bfdbfe", color: "#1e40af" },
-                { label: "Leads with appointment", count: conversionFunnel.appointments, width: conversionFunnel.leads ? `${Math.max(24, conversionFunnel.appointments / conversionFunnel.leads * 100)}%` : "24%", background: "#bbf7d0", color: "#166534" },
-                { label: "Leads with sale", count: conversionFunnel.sales, width: conversionFunnel.leads ? `${Math.max(18, conversionFunnel.sales / conversionFunnel.leads * 100)}%` : "18%", background: "#fde68a", color: "#92400e" },
+                { label: "H", count: conversionFunnel.h, width: conversionFunnel.leads ? `${Math.max(24, conversionFunnel.h / conversionFunnel.leads * 100)}%` : "24%", background: "#bbf7d0", color: "#166534" },
+                { label: "C", count: conversionFunnel.c, width: conversionFunnel.leads ? `${Math.max(22, conversionFunnel.c / conversionFunnel.leads * 100)}%` : "22%", background: "#86efac", color: "#166534" },
+                { label: "P", count: conversionFunnel.p, width: conversionFunnel.leads ? `${Math.max(20, conversionFunnel.p / conversionFunnel.leads * 100)}%` : "20%", background: "#fde68a", color: "#92400e" },
+                { label: "S", count: conversionFunnel.s, width: conversionFunnel.leads ? `${Math.max(18, conversionFunnel.s / conversionFunnel.leads * 100)}%` : "18%", background: "#fca5a5", color: "#991b1b" },
               ].map((stage, index) => (
                 <div key={stage.label} style={{ width: stage.width, minWidth: 150, maxWidth: "100%", minHeight: 66, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", padding: "9px 12px", boxSizing: "border-box", background: stage.background, color: stage.color, clipPath: index === 0 ? "polygon(0 0,100% 0,92% 100%,8% 100%)" : index === 1 ? "polygon(8% 0,92% 0,84% 100%,16% 100%)" : "polygon(16% 0,84% 0,84% 100%,16% 100%)" }}>
                   <div style={{ fontSize: 12, fontWeight: 700 }}>{stage.label}</div>
@@ -1493,9 +1497,11 @@ function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeade
             </div>
             <div style={{ display: "grid", gap: 12 }}>
               {[
-                { label: "Lead → Appointment", value: conversionFunnel.leads ? conversionFunnel.appointments / conversionFunnel.leads * 100 : 0, detail: `${formatNumber(conversionFunnel.appointments)} of ${formatNumber(conversionFunnel.leads)} leads` },
-                { label: "Appointment → Sale", value: conversionFunnel.appointments ? conversionFunnel.sales / conversionFunnel.appointments * 100 : 0, detail: `${formatNumber(conversionFunnel.sales)} of ${formatNumber(conversionFunnel.appointments)} leads with appointments` },
-                { label: "Lead → Sale", value: conversionFunnel.leads ? conversionFunnel.sales / conversionFunnel.leads * 100 : 0, detail: "Overall conversion" },
+                { label: "Lead → H", value: conversionFunnel.leads ? conversionFunnel.h / conversionFunnel.leads * 100 : 0, detail: `${formatNumber(conversionFunnel.h)} of ${formatNumber(conversionFunnel.leads)} leads` },
+                { label: "H → C", value: conversionFunnel.h ? conversionFunnel.c / conversionFunnel.h * 100 : 0, detail: `${formatNumber(conversionFunnel.c)} of ${formatNumber(conversionFunnel.h)} H` },
+                { label: "C → P", value: conversionFunnel.c ? conversionFunnel.p / conversionFunnel.c * 100 : 0, detail: `${formatNumber(conversionFunnel.p)} of ${formatNumber(conversionFunnel.c)} C` },
+                { label: "P → S", value: conversionFunnel.p ? conversionFunnel.s / conversionFunnel.p * 100 : 0, detail: `${formatNumber(conversionFunnel.s)} of ${formatNumber(conversionFunnel.p)} P` },
+                { label: "Lead → S", value: conversionFunnel.leads ? conversionFunnel.s / conversionFunnel.leads * 100 : 0, detail: "Overall lead-to-sale conversion" },
               ].map((item) => (
                 <div key={item.label} style={{ border: "1px solid #e5eaf0", borderRadius: 9, padding: "11px 13px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
