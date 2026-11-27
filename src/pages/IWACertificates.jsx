@@ -36,6 +36,8 @@ export default function IWACertificates() {
   const [dealSearchLoading, setDealSearchLoading] = useState(false)
   const [matchSaving, setMatchSaving] = useState(false)
   const [matchError, setMatchError] = useState("")
+  const [bulkMatching, setBulkMatching] = useState(false)
+  const [bulkMatchProgress, setBulkMatchProgress] = useState("")
   const [exactMatchMode, setExactMatchMode] = useState(false)
   const [activeTab, setActiveTab] = useState("sent-unmatched")
   const [toSendRows, setToSendRows] = useState([])
@@ -317,6 +319,90 @@ export default function IWACertificates() {
     await loadRows()
   }
 
+  const matchAllExact = async () => {
+    if (bulkMatching) return
+    if (!window.confirm("Find and approve all unambiguous exact matches? Only certificates with an exact customer-name and contract-value match, a deal sale date before completion, and an unlinked deal will be matched. Ambiguous matches will be skipped.")) return
+    setBulkMatching(true)
+    setBulkMatchProgress("Loading unmatched certificates…")
+    setError("")
+    try {
+      const certificates = []
+      for (let from = 0; ; from += 1000) {
+        const { data, error } = await supabase.from("iwa_certificates").select("id,certificate_id,customer_name,contract_value,completion_date_text").eq("match_status", "unmatched").is("deal_row_id", null).range(from, from + 999)
+        if (error) throw error
+        certificates.push(...(data || []))
+        if (!data || data.length < 1000) break
+      }
+      setBulkMatchProgress("Loading eligible deals…")
+      const deals = []
+      for (let from = 0; ; from += 1000) {
+        const { data, error } = await supabase.from("deals").select("id,customer_name,deal_value,sale_date,product").not("sale_date", "is", null).range(from, from + 999)
+        if (error) throw error
+        deals.push(...(data || []))
+        if (!data || data.length < 1000) break
+      }
+      const linked = new Set()
+      for (let from = 0; ; from += 1000) {
+        const { data, error } = await supabase.from("iwa_certificates").select("deal_row_id").not("deal_row_id", "is", null).range(from, from + 999)
+        if (error) throw error
+        for (const row of data || []) if (row.deal_row_id) linked.add(row.deal_row_id)
+        if (!data || data.length < 1000) break
+      }
+      const normalize = value => String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("en-GB")
+      const index = new Map()
+      for (const deal of deals) {
+        const name = normalize(deal.customer_name)
+        const value = Number(deal.deal_value)
+        if (!name || !value || !deal.sale_date || String(deal.product || "").toLowerCase().includes("solar") || linked.has(deal.id)) continue
+        const key = name + "|" + value
+        if (!index.has(key)) index.set(key, [])
+        index.get(key).push(deal)
+      }
+      const matches = []
+      let skipped = 0
+      for (const certificate of certificates) {
+        const parts = String(certificate.completion_date_text || "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+        const name = normalize(certificate.customer_name)
+        const value = parseAmount(certificate.contract_value)
+        if (!parts || !name || !value) { skipped++; continue }
+        const completed = parts[3] + "-" + parts[2].padStart(2, "0") + "-" + parts[1].padStart(2, "0")
+        const candidates = (index.get(name + "|" + value) || []).filter(deal => deal.sale_date < completed && !linked.has(deal.id))
+        if (candidates.length === 1) {
+          matches.push({ certificate, deal: candidates[0] })
+          linked.add(candidates[0].id)
+        } else skipped++
+      }
+      if (!matches.length) {
+        setBulkMatchProgress("No unambiguous exact matches found. " + skipped.toLocaleString("en-GB") + " skipped.")
+        return
+      }
+      if (!window.confirm("Found " + matches.length.toLocaleString("en-GB") + " unique exact matches. " + skipped.toLocaleString("en-GB") + " certificates will remain unmatched. Approve these matches?")) {
+        setBulkMatchProgress("Found " + matches.length.toLocaleString("en-GB") + " matches; no changes made.")
+        return
+      }
+      let saved = 0
+      const failures = []
+      for (let i = 0; i < matches.length; i += 20) {
+        const batch = matches.slice(i, i + 20)
+        setBulkMatchProgress("Approving matches… " + Math.min(i + 20, matches.length).toLocaleString("en-GB") + " of " + matches.length.toLocaleString("en-GB"))
+        const results = await Promise.all(batch.map(async ({ certificate, deal }) => {
+          const { error } = await supabase.from("iwa_certificates").update({ deal_row_id: deal.id, match_status: "approved" }).eq("id", certificate.id).eq("match_status", "unmatched").is("deal_row_id", null)
+          return { certificate, error }
+        }))
+        for (const result of results) {
+          if (result.error) failures.push(result.certificate.certificate_id + ": " + result.error.message)
+          else saved++
+        }
+      }
+      setBulkMatchProgress("Completed: " + saved.toLocaleString("en-GB") + " matched; " + skipped.toLocaleString("en-GB") + " skipped; " + failures.length.toLocaleString("en-GB") + " errors.")
+      if (failures.length) setError("Some matches could not be saved: " + failures.slice(0, 5).join("; "))
+      await loadRows()
+    } catch (err) {
+      setError(err?.message || "Unable to match exact certificates.")
+      setBulkMatchProgress("")
+    } finally { setBulkMatching(false) }
+  }
+
   const removeMatch = async row => {
     if (!window.confirm("Remove this deal link and return the certificate to awaiting match?")) return
     const result = await supabase.from("iwa_certificates")
@@ -356,10 +442,11 @@ export default function IWACertificates() {
       </div>
       {activeTab !== "to-send" && <>
       <div style={{ background: "#fff", border: "1px solid #e7ebef", borderRadius: 12, overflow: "hidden" }}>
-        <div style={{ padding: 15, display: "flex", gap: 10, flexWrap: "wrap", borderBottom: "1px solid #edf0f2" }}>
+        <div style={{ padding: 15, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", borderBottom: "1px solid #edf0f2" }}>
           <div style={{ flex: "1 1 280px", position: "relative" }}><Search size={16} style={{ position: "absolute", left: 11, top: 11, color: "#8a949d" }}/><input value={search} onChange={e => { setSearch(e.target.value); setPage(0) }} placeholder="Search certificate, customer or address..." style={{ width: "100%", boxSizing: "border-box", border: "1px solid #dce2e7", borderRadius: 8, padding: "9px 10px 9px 34px", fontSize: 13 }}/></div>
-
+          {activeTab === "sent-unmatched" && <button onClick={matchAllExact} disabled={bulkMatching || loading || counts.unmatched === 0} style={{ border: 0, borderRadius: 8, padding: "10px 14px", background: "#176b45", color: "#fff", fontWeight: 650, cursor: bulkMatching ? "wait" : "pointer", whiteSpace: "nowrap" }}>{bulkMatching ? "Matching…" : "Match All Exact Matches"}</button>}
         </div>
+        {bulkMatchProgress && <div style={{ padding: "9px 15px", background: "#f0f7f3", color: "#176b45", borderBottom: "1px solid #e3eee7", fontSize: 12 }}>{bulkMatchProgress}</div>}
         {error && <div style={{ padding: 14, color: "#b42318", background: "#fff4f2", fontSize: 13 }}>{error}</div>}
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1160, fontSize: 12 }}>
