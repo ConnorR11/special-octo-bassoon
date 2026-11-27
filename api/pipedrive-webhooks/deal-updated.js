@@ -627,14 +627,17 @@ async function getPersonDetails(
   const primaryEmail = emails.find(item => item?.primary && item?.value)
     || emails.find(item => item?.value)
   const addressValue = person.address
+  const postalAddress = person.postal_address
   const address = typeof addressValue === "string"
     ? addressValue.trim()
-    : [addressValue?.street, addressValue?.city, addressValue?.state, addressValue?.country]
+    : String(postalAddress?.value || "").trim() ||
+      [addressValue?.street, addressValue?.city, addressValue?.state, addressValue?.country]
         .filter(Boolean)
         .join(", ")
   const postcode = String(
     person.postal_code ||
     person.address_postal_code ||
+    postalAddress?.postal_code ||
     (typeof addressValue === "object" ? addressValue?.postal_code : "") ||
     ""
   ).trim()
