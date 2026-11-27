@@ -245,7 +245,14 @@ function CustomerDetail({
       if (!saved.current_epvs_promoted) throw new Error("The CVF was saved, but the current EPVS baseline was not promoted.")
       setCvfCurrent(cvfUpdated)
       await loadContractFiles()
-      onUpdated?.()
+      // The parent update handler expects the refreshed deal object. Calling
+      // it without an argument clears the selected deal and can crash App.
+      onUpdated?.({
+        ...deal,
+        customer_name: customerName,
+        address: customerAddress,
+        postcode: customerPostcode,
+      })
       const url = URL.createObjectURL(cumulativeCvfBlob)
       const link = window.document.createElement("a")
       link.href = url
