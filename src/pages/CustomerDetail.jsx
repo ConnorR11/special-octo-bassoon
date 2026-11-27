@@ -14,7 +14,7 @@ import {
 import { supabase } from "../lib/supabase"
 import SurveyProgressBar from "../components/SurveyProgressBar"
 import EPVSCalculator from "../EPVSCalculator"
-import { AppendContractVariation, GenerateSolarContract } from "../contracts/GenerateSolarContract"
+import { RebuildCumulativeContract, GenerateSolarContract } from "../contracts/GenerateSolarContract"
 
 const surveyPhotoSectionGroups = [
   { title: "Property & installation", sections: ["Front of Property", "Rear of Property", "Side of Property", "Proposed Canopy Location"] },
@@ -218,7 +218,8 @@ function CustomerDetail({
           throw new Error(`Unable to load the previous CVF: ${existingCvfError?.message || "File not found"}`)
         }
         const previousBytes = new Uint8Array(await existingCvfFile.arrayBuffer())
-        const cumulativeBytes = await AppendContractVariation(previousBytes, variation, result.contractPageCount)
+        const refreshedPdfBytes = new Uint8Array(await result.blob.arrayBuffer())
+        const cumulativeBytes = await RebuildCumulativeContract(refreshedPdfBytes, previousBytes, result.contractPageCount)
         cumulativeCvfBlob = new Blob([cumulativeBytes], { type: "application/pdf" })
       }
       const fileName = `${cvfPrefix} ${sequence}.pdf`
