@@ -1633,9 +1633,10 @@ export async function GenerateSolarContract({ appointment, previewOnly = false, 
   // Keep the CVF immediately after the contract/T&Cs pages, before datasheets.
   let bytes = new Uint8Array(pdf.output("arraybuffer"))
   let cvfPageCount = 0
+  let contractPageCount = 0
   if (variation) {
     const contractDocument = await PDFDocument.load(bytes)
-    const contractPageCount = contractDocument.getPageCount()
+    contractPageCount = contractDocument.getPageCount()
     bytes = await appendVariationPage(bytes, variation)
     const documentWithVariation = await PDFDocument.load(bytes)
     cvfPageCount = documentWithVariation.getPageCount() - contractPageCount
