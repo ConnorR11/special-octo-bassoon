@@ -1479,8 +1479,19 @@ export async function AppendContractVariation(previousPdfBytes, variation) {
     ? keywords.split(",").map(value => value.trim()).filter(Boolean)
     : Array.isArray(keywords) ? keywords : []
   const marker = keywordList.find(value => /^Homeshield CVF pages:\s*\d+$/i.test(value))
+  const hasCvfMarker = Boolean(marker)
   const recordedCount = marker ? Number(marker.match(/\d+/)?.[0]) : 1
   const existingCvfPages = Number.isFinite(recordedCount) && recordedCount > 0 ? recordedCount : 1
+
+  // Older CVF PDFs did not record their CVF page count and some versions
+  // appended the variation after the datasheets. In that legacy format the
+  // most recent CVF is the final page. Move it to the CVF section directly
+  // after the eight contract/T&Cs pages before inserting the new variation.
+  if (!hasCvfMarker && existingDocument.getPageCount() > 8) {
+    const legacyCvfPage = existingDocument.getPage(existingDocument.getPageCount() - 1)
+    existingDocument.removePage(existingDocument.getPageCount() - 1)
+    existingDocument.insertPage(Math.min(8, existingDocument.getPageCount()), legacyCvfPage)
+  }
 
   // Remove empty pages within the CVF sequence before inserting the next
   // variation. These can be left behind by earlier PDF assembly and would
