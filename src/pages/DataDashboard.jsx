@@ -602,6 +602,7 @@ function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeade
 
       const leadIds = [...new Set(leads.map((row) => String(row.marketing_row_id || "").trim()).filter(Boolean))]
       const appointmentIds = new Set()
+      const appointmentToLead = new Map()
       const appointmentLeadIds = new Set()
       for (let i = 0; i < leadIds.length; i += 200) {
         const batch = leadIds.slice(i, i + 200)
@@ -610,7 +611,10 @@ function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeade
           .in("marketing_row_id", batch)
         if (appointmentError) throw appointmentError
         ;(data || []).forEach((row) => {
-          if (row.appointment_row_id) appointmentIds.add(String(row.appointment_row_id))
+          if (row.appointment_row_id) {
+            appointmentIds.add(String(row.appointment_row_id))
+            if (row.marketing_row_id) appointmentToLead.set(String(row.appointment_row_id), String(row.marketing_row_id))
+          }
           if (row.marketing_row_id) appointmentLeadIds.add(String(row.marketing_row_id))
         })
       }
@@ -623,20 +627,10 @@ function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeade
           .select("appointment_row_id")
           .in("appointment_row_id", batch)
         if (dealError) throw dealError
-        const soldAppointmentIds = new Set((data || []).map((row) => String(row.appointment_row_id || "")).filter(Boolean))
-        if (soldAppointmentIds.size) {
-          for (let j = 0; j < leadIds.length; j += 200) {
-            const leadBatch = leadIds.slice(j, j + 200)
-            const { data: linkedAppointments, error: linkedError } = await supabase.from("appointments")
-              .select("marketing_row_id,appointment_row_id")
-              .in("marketing_row_id", leadBatch)
-              .in("appointment_row_id", [...soldAppointmentIds])
-            if (linkedError) throw linkedError
-            ;(linkedAppointments || []).forEach((row) => {
-              if (row.marketing_row_id) soldLeadIds.add(String(row.marketing_row_id))
-            })
-          }
-        }
+        ;(data || []).forEach((row) => {
+          const leadId = appointmentToLead.get(String(row.appointment_row_id || ""))
+          if (leadId) soldLeadIds.add(leadId)
+        })
       }
 
       setConversionFunnel({
