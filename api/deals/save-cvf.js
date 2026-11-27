@@ -98,13 +98,7 @@ export default async function handler(req, res) {
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({
-          name: customerName,
-          // "address" is the standard Pipedrive person field. "postal_address"
-          // is a Contact Sync-only field and returns HTTP 403 when that
-          // optional feature is not enabled.
-          address: [customerAddress, customerPostcode].filter(Boolean).join(", "),
-        }),
+        body: JSON.stringify({ name: customerName }),
       }
     )
     const personPayload = await personUpdate.json().catch(() => ({}))
@@ -119,6 +113,12 @@ export default async function handler(req, res) {
     const leadAddressFieldKey = String(leadAddressField?.key || leadAddressField?.field_code || "").trim()
     if (!leadAddressFieldKey) throw new Error('Pipedrive deal field "Lead: Address" was not found.')
 
+    const leadPostcodeField = (Array.isArray(fields) ? fields : []).find(field =>
+      String(field?.name || field?.field_name || "").trim().toLowerCase() === "lead: postcode"
+    )
+    const leadPostcodeFieldKey = String(leadPostcodeField?.key || leadPostcodeField?.field_code || "").trim()
+    if (!leadPostcodeFieldKey) throw new Error('Pipedrive deal field "Lead: Postcode" was not found.')
+
     const contractFileField = (Array.isArray(fields) ? fields : []).find(field =>
       String(field?.name || field?.field_name || "").trim().toLowerCase() === "contract: file"
     )
@@ -131,6 +131,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         [contractFileFieldKey]: contractFileUrl,
         [leadAddressFieldKey]: customerAddress,
+        [leadPostcodeFieldKey]: customerPostcode,
         stage_id: ON_HOLD_STAGE_ID,
       }),
     })
