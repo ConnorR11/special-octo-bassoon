@@ -44,7 +44,7 @@ export default async function handler(req, res) {
 
     const { data: deal, error: dealError } = await supabase
       .from("deals")
-      .select("id,appointment_row_id,contract_number,pipedrive_deal_id,updated_epvs_calculation")
+      .select("id,appointment_row_id,contract_number,pipedrive_deal_id,updated_epvs_calculation,customer_name,address,postcode")
       .eq("id", dealId)
       .maybeSingle()
     if (dealError) throw dealError
@@ -79,7 +79,46 @@ export default async function handler(req, res) {
       return payload.data
     }
 
+    // Update the linked Pipedrive person first. The deal-updated webhook
+    // reads customer name/postcode from this person and would otherwise
+    // immediately overwrite the corrected CRM values with stale details.
+    const pipedriveDeal = await pipedriveRequest(`deals/${encodeURIComponent(deal.pipedrive_deal_id)}`)
+    const personId = pipedriveDeal?.person_id?.value ?? pipedriveDeal?.person_id ?? null
+    if (!personId) throw new Error("The linked Pipedrive person could not be found, so customer details were not synced.")
+
+    const customerName = String(deal.customer_name || "").trim()
+    const customerAddress = String(deal.address || "").trim()
+    const customerPostcode = String(deal.postcode || "").trim()
+    if (!customerName || !customerAddress || !customerPostcode) {
+      throw new Error("The deal must have a customer name, address and postcode before syncing the CVF.")
+    }
+
+    const personUpdate = await fetch(
+      `https://api.pipedrive.com/api/v2/persons/${encodeURIComponent(personId)}?api_token=${encodeURIComponent(pipedriveToken)}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          name: customerName,
+          postal_address: {
+            value: customerAddress,
+            postal_code: customerPostcode,
+          },
+        }),
+      }
+    )
+    const personPayload = await personUpdate.json().catch(() => ({}))
+    if (!personUpdate.ok || personPayload.success === false) {
+      throw new Error(personPayload.error || personPayload.error_info || `Unable to update the linked Pipedrive person's name and address (HTTP ${personUpdate.status}).`)
+    }
+
     const fields = await pipedriveRequest("dealFields")
+    const leadAddressField = (Array.isArray(fields) ? fields : []).find(field =>
+      String(field?.name || field?.field_name || "").trim().toLowerCase() === "lead: address"
+    )
+    const leadAddressFieldKey = String(leadAddressField?.key || leadAddressField?.field_code || "").trim()
+    if (!leadAddressFieldKey) throw new Error('Pipedrive deal field "Lead: Address" was not found.')
+
     const contractFileField = (Array.isArray(fields) ? fields : []).find(field =>
       String(field?.name || field?.field_name || "").trim().toLowerCase() === "contract: file"
     )
@@ -91,6 +130,7 @@ export default async function handler(req, res) {
       method: "PUT",
       body: JSON.stringify({
         [contractFileFieldKey]: contractFileUrl,
+        [leadAddressFieldKey]: customerAddress,
         stage_id: ON_HOLD_STAGE_ID,
       }),
     })
@@ -113,6 +153,7 @@ export default async function handler(req, res) {
       storage_path: storagePath,
       contract_file_url: contractFileUrl,
       stage_id: ON_HOLD_STAGE_ID,
+      customer_details_synced: true,
       current_epvs_promoted: true,
     })
   } catch (error) {
