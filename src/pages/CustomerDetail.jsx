@@ -181,7 +181,12 @@ function CustomerDetail({
       const cvfPrefix = `${contractNumber}-Contract-Variation`
       const previousCvf = (existingCvfFiles || [])
         .filter(file => file.name === `${cvfPrefix}.pdf` || (file.name.startsWith(`${cvfPrefix}-`) && file.name.endsWith(".pdf")))
-        .sort((a, b) => b.name.localeCompare(a.name))[0]
+        .sort((a, b) => {
+          const aTimestamped = a.name.startsWith(`${cvfPrefix}-`)
+          const bTimestamped = b.name.startsWith(`${cvfPrefix}-`)
+          if (aTimestamped !== bTimestamped) return aTimestamped ? -1 : 1
+          return b.name.localeCompare(a.name)
+        })[0]
       let cumulativeCvfBlob = result.blob
       if (previousCvf) {
         const previousPath = `${folder}/${previousCvf.name}`
