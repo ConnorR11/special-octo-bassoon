@@ -1500,7 +1500,15 @@ export async function RebuildCumulativeContract(updatedPdfBytes, previousPdfByte
           .join(" ")
           .replace(/\\s+/g, " ")
           .toUpperCase()
-        if (pageText.includes("CONTRACT VARIATION FORM")) indices.push(pageNumber - 1)
+        // The contract's Terms & Conditions legitimately mention a
+        // "Contract Variation Form" in clause 12. Identify an actual CVF by
+        // its form heading plus its dedicated variation-date field instead
+        // of matching that phrase anywhere in the page body.
+        const isCvfForm =
+          pageText.includes("CONTRACT VARIATION FORM") &&
+          /\\bVARIATION\\s+DATE\\b/.test(pageText) &&
+          /\\bCONTRACT\\s+NUMBER\\b/.test(pageText)
+        if (isCvfForm) indices.push(pageNumber - 1)
       }
     } finally {
       await pdf.destroy()
