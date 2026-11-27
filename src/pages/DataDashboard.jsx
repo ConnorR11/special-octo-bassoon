@@ -92,6 +92,7 @@ function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeade
   const [leadSourcesLoading, setLeadSourcesLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [conversionFunnel, setConversionFunnel] = useState({ leads: 0, h: 0, c: 0, p: 0, s: 0 })
+  const [conversionFunnel2025, setConversionFunnel2025] = useState({ leads: 0, h: 0, c: 0, p: 0, s: 0 })
   const [funnelLoading, setFunnelLoading] = useState(false)
   const [funnelError, setFunnelError] = useState("")
   const [error, setError] = useState("")
@@ -584,23 +585,44 @@ function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeade
     setFunnelLoading(true)
     setFunnelError("")
     try {
-      const { data, error: rpcError } = await supabase.rpc("get_sales_conversion_funnel", {
-        start_date: new Date(START_YEAR, 0, 1).toISOString(),
-        selected_lead_source: selectedLeadSource || null,
-      })
-      if (rpcError) throw rpcError
-      const result = Array.isArray(data) ? data[0] : data
-      setConversionFunnel({
-        leads: Number(result?.leads || 0),
-        h: Number(result?.h || 0),
-        c: Number(result?.c || 0),
-        p: Number(result?.p || 0),
-        s: Number(result?.s || 0),
-      })
+      const now = new Date()
+      const currentStart = new Date(START_YEAR, 0, 1)
+      const currentEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+      const comparisonStart = new Date(currentStart)
+      comparisonStart.setFullYear(comparisonStart.getFullYear() - 1)
+      const comparisonEnd = new Date(currentEnd)
+      comparisonEnd.setFullYear(comparisonEnd.getFullYear() - 1)
+      const [currentResult, previousResult] = await Promise.all([
+        supabase.rpc("get_sales_conversion_funnel", {
+          start_date: currentStart.toISOString(),
+          end_date: currentEnd.toISOString(),
+          selected_lead_source: selectedLeadSource || null,
+        }),
+        supabase.rpc("get_sales_conversion_funnel", {
+          start_date: comparisonStart.toISOString(),
+          end_date: comparisonEnd.toISOString(),
+          selected_lead_source: selectedLeadSource || null,
+        }),
+      ])
+      if (currentResult.error) throw currentResult.error
+      if (previousResult.error) throw previousResult.error
+      const toCounts = (response) => {
+        const result = Array.isArray(response.data) ? response.data[0] : response.data
+        return {
+          leads: Number(result?.leads || 0),
+          h: Number(result?.h || 0),
+          c: Number(result?.c || 0),
+          p: Number(result?.p || 0),
+          s: Number(result?.s || 0),
+        }
+      }
+      setConversionFunnel(toCounts(currentResult))
+      setConversionFunnel2025(toCounts(previousResult))
     } catch (err) {
-      console.error("Error loading sales conversion funnel:", err)
-      setFunnelError(err?.message || "Unable to load sales conversion funnel.")
+      console.error("Error loading sales conversion funnels:", err)
+      setFunnelError(err?.message || "Unable to load sales conversion funnels.")
       setConversionFunnel({ leads: 0, h: 0, c: 0, p: 0, s: 0 })
+      setConversionFunnel2025({ leads: 0, h: 0, c: 0, p: 0, s: 0 })
     } finally {
       setFunnelLoading(false)
     }
@@ -1471,50 +1493,69 @@ function DataDashboard({ standalonePronto = false, embeddedTab = null, hideHeade
 
       {activeTab === "overview" ? (
         <>
-      <div className="data-dashboard-chart-card" style={{ marginBottom: 18 }}>
-        <div className="data-dashboard-chart-head">
-          <div>
-            <div className="data-dashboard-chart-title"><TrendingUp size={17} /> Sales conversion funnel</div>
-            <div className="data-dashboard-chart-subtitle">Lead progression through H, C, P and S stages since January 2026</div>
-          </div>
-          <div className="data-dashboard-status">{funnelLoading ? "Loading…" : `${formatNumber(conversionFunnel.leads)} leads`}</div>
-        </div>
-        {funnelError ? <div className="data-dashboard-empty">{funnelError}</div> : funnelLoading ? <div className="data-dashboard-empty">Calculating lead, appointment and sale conversions…</div> : (
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(220px, 0.8fr)", gap: 24, alignItems: "center", padding: "18px 20px 22px" }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
-              {[
-                { label: "Leads", count: conversionFunnel.leads, width: "100%", background: "#bfdbfe", color: "#1e40af" },
-                { label: "H", count: conversionFunnel.h, width: conversionFunnel.leads ? `${Math.max(24, conversionFunnel.h / conversionFunnel.leads * 100)}%` : "24%", background: "#bbf7d0", color: "#166534" },
-                { label: "C", count: conversionFunnel.c, width: conversionFunnel.leads ? `${Math.max(22, conversionFunnel.c / conversionFunnel.leads * 100)}%` : "22%", background: "#86efac", color: "#166534" },
-                { label: "P", count: conversionFunnel.p, width: conversionFunnel.leads ? `${Math.max(20, conversionFunnel.p / conversionFunnel.leads * 100)}%` : "20%", background: "#fde68a", color: "#92400e" },
-                { label: "S", count: conversionFunnel.s, width: conversionFunnel.leads ? `${Math.max(18, conversionFunnel.s / conversionFunnel.leads * 100)}%` : "18%", background: "#fca5a5", color: "#991b1b" },
-              ].map((stage, index) => (
-                <div key={stage.label} style={{ width: stage.width, minWidth: 150, maxWidth: "100%", minHeight: 66, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", padding: "9px 12px", boxSizing: "border-box", background: stage.background, color: stage.color, clipPath: index === 0 ? "polygon(0 0,100% 0,92% 100%,8% 100%)" : index === 1 ? "polygon(8% 0,92% 0,84% 100%,16% 100%)" : "polygon(16% 0,84% 0,84% 100%,16% 100%)" }}>
-                  <div style={{ fontSize: 12, fontWeight: 700 }}>{stage.label}</div>
-                  <div style={{ fontSize: 23, lineHeight: 1.25, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{formatNumber(stage.count)}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16, marginBottom: 18 }}>
+        {[
+          { title: "Sales conversion funnel · 2026", period: "1 Jan 2026 to today", counts: conversionFunnel, previous: false },
+          { title: "Sales conversion funnel · 2025", period: "Same period last year", counts: conversionFunnel2025, previous: true },
+        ].map((funnel) => {
+          const stages = [
+            { label: "Leads", key: "leads", background: "#bfdbfe", color: "#1e40af" },
+            { label: "H", key: "h", background: "#bbf7d0", color: "#166534" },
+            { label: "C", key: "c", background: "#86efac", color: "#166534" },
+            { label: "P", key: "p", background: "#fde68a", color: "#92400e" },
+            { label: "S", key: "s", background: "#fca5a5", color: "#991b1b" },
+          ]
+          const conversionRows = [
+            { label: "Lead → H", from: "leads", to: "h" },
+            { label: "H → C", from: "h", to: "c" },
+            { label: "C → P", from: "c", to: "p" },
+            { label: "P → S", from: "p", to: "s" },
+            { label: "Lead → S", from: "leads", to: "s" },
+          ]
+          return (
+            <div key={funnel.title} className="data-dashboard-chart-card" style={{ marginBottom: 0, minWidth: 0 }}>
+              <div className="data-dashboard-chart-head">
+                <div>
+                  <div className="data-dashboard-chart-title"><TrendingUp size={17} /> {funnel.title}</div>
+                  <div className="data-dashboard-chart-subtitle">{funnel.period} · {selectedLeadSource || "All lead sources"}</div>
                 </div>
-              ))}
-            </div>
-            <div style={{ display: "grid", gap: 12 }}>
-              {[
-                { label: "Lead → H", value: conversionFunnel.leads ? conversionFunnel.h / conversionFunnel.leads * 100 : 0, detail: `${formatNumber(conversionFunnel.h)} of ${formatNumber(conversionFunnel.leads)} leads` },
-                { label: "H → C", value: conversionFunnel.h ? conversionFunnel.c / conversionFunnel.h * 100 : 0, detail: `${formatNumber(conversionFunnel.c)} of ${formatNumber(conversionFunnel.h)} H` },
-                { label: "C → P", value: conversionFunnel.c ? conversionFunnel.p / conversionFunnel.c * 100 : 0, detail: `${formatNumber(conversionFunnel.p)} of ${formatNumber(conversionFunnel.c)} C` },
-                { label: "P → S", value: conversionFunnel.p ? conversionFunnel.s / conversionFunnel.p * 100 : 0, detail: `${formatNumber(conversionFunnel.s)} of ${formatNumber(conversionFunnel.p)} P` },
-                { label: "Lead → S", value: conversionFunnel.leads ? conversionFunnel.s / conversionFunnel.leads * 100 : 0, detail: "Overall lead-to-sale conversion" },
-              ].map((item) => (
-                <div key={item.label} style={{ border: "1px solid #e5eaf0", borderRadius: 9, padding: "11px 13px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
-                    <span style={{ color: "#475569", fontSize: 12, fontWeight: 650 }}>{item.label}</span>
-                    <strong style={{ fontSize: 20, color: "#0f172a", fontVariantNumeric: "tabular-nums" }}>{item.value.toFixed(1)}%</strong>
+                <div className="data-dashboard-status">{formatNumber(funnel.counts.leads)} leads</div>
+              </div>
+              {funnelError ? <div className="data-dashboard-empty">{funnelError}</div> : funnelLoading ? <div className="data-dashboard-empty">Calculating funnel…</div> : (
+                <div style={{ padding: "18px 16px 20px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, marginBottom: 16 }}>
+                    {stages.map((stage, index) => {
+                      const count = funnel.counts[stage.key]
+                      const ratio = funnel.counts.leads ? count / funnel.counts.leads * 100 : 0
+                      const width = index === 0 ? "100%" : `${Math.max(24, ratio)}%`
+                      return (
+                        <div key={stage.key} style={{ width, minWidth: 90, maxWidth: "100%", minHeight: 51, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", padding: "6px 10px", boxSizing: "border-box", background: stage.background, color: stage.color, clipPath: index === 0 ? "polygon(0 0,100% 0,92% 100%,8% 100%)" : index === 4 ? "polygon(16% 0,84% 0,84% 100%,16% 100%)" : "polygon(8% 0,92% 0,84% 100%,16% 100%)" }}>
+                          <div style={{ fontSize: 11, fontWeight: 700 }}>{stage.label}</div>
+                          <div style={{ fontSize: 19, lineHeight: 1.2, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{formatNumber(count)}</div>
+                        </div>
+                      )
+                    })}
                   </div>
-                  <div style={{ color: "#94a3b8", fontSize: 11, marginTop: 3 }}>{item.detail}</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
+                    {conversionRows.map((item) => {
+                      const denominator = funnel.counts[item.from]
+                      const numerator = funnel.counts[item.to]
+                      const value = denominator ? numerator / denominator * 100 : 0
+                      return (
+                        <div key={item.label} style={{ border: "1px solid #e5eaf0", borderRadius: 8, padding: "8px 9px", minWidth: 0 }}>
+                          <div style={{ color: "#64748b", fontSize: 10, fontWeight: 650 }}>{item.label}</div>
+                          <div style={{ color: "#0f172a", fontSize: 17, fontWeight: 750, fontVariantNumeric: "tabular-nums" }}>{value.toFixed(1)}%</div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-              ))}
+              )}
             </div>
-          </div>
-        )}
+          )
+        })}
       </div>
+      <style>{`@media (max-width: 900px) { .data-dashboard-page .data-dashboard-chart-card { min-width: 0; } }</style>
 
       <div className="data-dashboard-chart-card">
         <div className="data-dashboard-chart-head">
