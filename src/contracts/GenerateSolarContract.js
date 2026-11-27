@@ -1492,12 +1492,28 @@ export async function AppendContractVariation(previousPdfBytes, variation, contr
     throw new Error("The contract page count could not be determined, so the CVF cannot safely be placed before the datasheets. Please regenerate the base contract once.")
   }
 
+  // One-off migration for PDFs produced by the earlier append logic:
+  // the first CVF followed the contract, but later CVFs were left at the end
+  // of the PDF after the datasheets. Pull those trailing CVF pages forward.
+  const orderMarker = keywordList.find(value => /^Homeshield CVF order:\s*grouped-v1$/i.test(value))
+  if (!orderMarker && existingCvfPages > 1) {
+    const trailingCvfPages = []
+    const pagesToMove = Math.min(existingCvfPages - 1, Math.max(0, existingDocument.getPageCount() - contractPageCount - 1))
+    for (let index = 0; index < pagesToMove; index += 1) {
+      const lastIndex = existingDocument.getPageCount() - 1
+      trailingCvfPages.unshift(existingDocument.getPage(lastIndex))
+      existingDocument.removePage(lastIndex)
+    }
+    trailingCvfPages.forEach((page, offset) => existingDocument.insertPage(contractPageCount + 1 + offset, page))
+  }
+
   const insertionIndex = Math.min(contractPageCount + existingCvfPages, existingDocument.getPageCount())
   copiedPages.forEach((page, offset) => existingDocument.insertPage(insertionIndex + offset, page))
   existingDocument.setKeywords([
-    ...keywordList.filter(value => !/^Homeshield CVF pages:\s*\d+$/i.test(value) && !/^Homeshield Contract pages:\s*\d+$/i.test(value)),
+    ...keywordList.filter(value => !/^Homeshield CVF pages:\s*\d+$/i.test(value) && !/^Homeshield Contract pages:\s*\d+$/i.test(value) && !/^Homeshield CVF order:\s*grouped-v1$/i.test(value)),
     `Homeshield CVF pages: ${existingCvfPages + copiedPages.length}`,
     `Homeshield Contract pages: ${contractPageCount}`,
+    "Homeshield CVF order: grouped-v1",
   ])
   return new Uint8Array(await existingDocument.save())
 }
